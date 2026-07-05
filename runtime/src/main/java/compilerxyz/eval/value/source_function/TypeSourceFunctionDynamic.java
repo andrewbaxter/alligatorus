@@ -24,6 +24,8 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceFunctionDynamic()
     implements Type,
@@ -34,6 +36,10 @@ public record TypeSourceFunctionDynamic()
         AspectInitialBind,
         AspectLift,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_FUNCTION_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

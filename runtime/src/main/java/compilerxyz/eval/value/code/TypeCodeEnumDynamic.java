@@ -21,6 +21,8 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeCodeEnumDynamic()
     implements
@@ -30,6 +32,10 @@ public record TypeCodeEnumDynamic()
         AspectDropDynamicLight,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_CODE_ENUM_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

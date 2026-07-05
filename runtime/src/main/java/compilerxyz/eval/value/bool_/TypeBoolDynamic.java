@@ -44,6 +44,8 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeBoolDynamic()
     implements
@@ -59,6 +61,10 @@ public record TypeBoolDynamic()
         AspectLift,
         AspectStackValueDynamic,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_BOOL_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

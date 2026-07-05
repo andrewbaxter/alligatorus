@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ImportInstall;
+import compilerxyz.eval.TypeId;
 
 public record TypeSourceFunctionConst(SourceFunctionData data)
     implements Type,
@@ -53,6 +54,18 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         AspectFunction,
         AspectType,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    if (!(data.bindingId instanceof BindingId.Def def)) {
+      throw new IllegalStateException(
+          "TypeSourceFunctionConst::typeId: bindingId is not BindingId.Def for '"
+              + data.name
+              + "'");
+    }
+    return new TypeId.DefsetMember(def.defSet(), def.index());
+  }
+
 
   @Override
   public String typeDesc() {

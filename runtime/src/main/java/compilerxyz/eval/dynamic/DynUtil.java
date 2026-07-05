@@ -187,16 +187,8 @@ public final class DynUtil {
      *                 child value.
      */
     public static EResult<Code> dropDestructiveComposite(
-            ExprContext xx, QExprId loc, CodeValue cv, TList<DropChild> children) {
-        if (!(cv.value() instanceof Opt.Some<Value> some)) {
-            return EResult.ok(Code.none(loc));
-        }
-        if (!(some.value() instanceof ValueDynamic vd)) {
-            return EResult.ok(Code.none(loc));
-        }
-        if (!isStackRooted(vd.source())) {
-            return EResult.ok(Code.none(loc));
-        }
+            ExprContext xx, QExprId loc, ValueDynamic.Source source, TList<DropChild> children) {
+        boolean stackRooted = isStackRooted(source);
         TList<CodeDynamic> childDrops = new TList<>();
         for (var child : children) {
             var childDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, child.childType());
@@ -221,9 +213,12 @@ public final class DynUtil {
             }
         }
         if (childDrops.isEmpty()) {
-            return EResult.ok(Code.of(loc, JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP)));
+            return EResult.ok(source.drop(loc));
         }
         var out = new JavaBytecodeSequence();
+        if (!stackRooted) {
+            out.add(source.realize(xx, loc));
+        }
         for (var d : childDrops) out.add(d);
         out.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         return EResult.ok(Code.of(loc, new CodeDynamic(loc, out)));
@@ -252,6 +247,7 @@ public final class DynUtil {
             case ValueDynamic.Source.Expr expr -> true;
             case ValueDynamic.Source.Binding binding -> false;
             case ValueDynamic.Source.Field field -> isStackRooted(field.base());
+            case ValueDynamic.Source.Dup dup -> isStackRooted(dup.base());
         };
     }
 

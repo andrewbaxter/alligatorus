@@ -31,6 +31,8 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeFunctionDynamic(
     Type arg,
@@ -47,6 +49,10 @@ public record TypeFunctionDynamic(
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.typeId(), ret.typeId())); }
+
 
   private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
       JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));

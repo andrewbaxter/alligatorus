@@ -33,6 +33,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
     implements
@@ -43,6 +45,10 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         AspectInitialBind,
         AspectElementUseDynamicBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_ENTRY_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+
 
   private static final JavaInternalName MAP_ENTRY_INAME =
       JavaInternalName.of("java/util/Map$Entry");
@@ -65,10 +71,12 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // Object references, so the base POP suffices, but the destructuring
     // policy is emitted for correctness when a child type introduces its own
     // drop semantics.
-    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> some)
-        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)
-        || !(vd.source() instanceof compilerxyz.eval.value.ValueDynamic.Source.Expr)) {
-      return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> some)) {
+      throw new IllegalStateException("TypeMapEntryDynamic::drop: called on absent CodeValue");
+    }
+    if (!(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)) {
+      throw new IllegalStateException(
+          "TypeMapEntryDynamic::drop: expected ValueDynamic, got " + some.value().getClass());
     }
     var descObjNoArgs =
         JavaMethodDescriptor.fromParts(
@@ -83,7 +91,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         new compilerxyz.eval.dynamic.DynUtil.DropChild(
             valueType,
             JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
-    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, cv, children);
+    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, vd.source(), children);
   }
 
   @Override
@@ -143,8 +151,9 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // field type's declared JVM class so the stack shape matches the language
     // type. Container element types are already box-substituted at construction
     // time, so the target descriptor is always object-shaped here.
-    if (spec.type() instanceof AspectConsumeDynamic fieldConsume) {
-      var fieldDesc = fieldConsume.consumeDynamicJvmClass();
+    var fieldConsumeOpt = AspectConsumeDynamic.getMaybe(xx, spec.type());
+    if (fieldConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> fieldConsumeSome) {
+      var fieldDesc = fieldConsumeSome.value().consumeDynamicJvmClass();
       var d = fieldDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);

@@ -27,6 +27,7 @@ public final class GenMain {
         JavaFormatterOptions.builder().style(JavaFormatterOptions.Style.PALANTIR).build());
 
     var builtinUniqueIds = new TSet<Long>();
+    var builtinTypeIds = new TSet<Long>();
     var scopeIds = new TSet<Long>();
 
     AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
@@ -36,6 +37,7 @@ public final class GenMain {
     interfaceSpecs.addAll(BuiltinTreeGen.extraInterfaceSpecs());
     InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
     IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
+    TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds);
 
     PushStructsGen.run(
         outRoot, formatter, PushStructsGen.specs(TraitsGen.specs()), builtinUniqueIds, scopeIds);

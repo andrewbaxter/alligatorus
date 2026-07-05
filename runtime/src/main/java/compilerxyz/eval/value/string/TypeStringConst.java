@@ -35,6 +35,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeStringConst()
     implements
@@ -46,6 +48,10 @@ public record TypeStringConst()
         AspectField,
         AspectStringConst,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_STRING_CONST_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

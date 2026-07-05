@@ -16,6 +16,8 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeFunctionCastValueDynamic()
     implements
@@ -23,6 +25,10 @@ public record TypeFunctionCastValueDynamic()
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

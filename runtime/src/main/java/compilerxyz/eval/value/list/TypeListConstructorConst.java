@@ -21,6 +21,8 @@ import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeListConstructorConst()
     implements
@@ -28,6 +30,10 @@ public record TypeListConstructorConst()
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_LIST_CONSTRUCTOR_CONST_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

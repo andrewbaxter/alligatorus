@@ -288,7 +288,7 @@ public final class InterfacesGen {
       elements.add("new $T($L)", TUPLE_ELEMENT_DYNAMIC, asTypeExpr(dyns.get(i)));
     }
     elements.add(")");
-    return CodeBlock.of("new $T($L)", TUPLE, elements.build());
+    return CodeBlock.of("new $T($T.none(), $L)", TUPLE, OPT, elements.build());
   }
 
   private static CodeBlock asTypeExpr(CodeBlock dyn) {

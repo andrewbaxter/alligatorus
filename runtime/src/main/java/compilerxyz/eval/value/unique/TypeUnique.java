@@ -44,6 +44,8 @@ import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeUnique()
     implements
@@ -55,6 +57,10 @@ public record TypeUnique()
         AspectInitialBind,
         AspectOperatorEq,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_UNIQUE_TYPE_ID; }
+
 
   public static final BindingId UNIQUE_EQ_FN_SCOPE_ID = new BindingId.Builtin(7021);
 

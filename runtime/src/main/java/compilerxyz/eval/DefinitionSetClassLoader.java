@@ -7,8 +7,7 @@ import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import compilerxyz.eval.dynamic.RecordClassEmitter;
-import compilerxyz.eval.dynamic.TupleClassEmitter;
+import compilerxyz.eval.dynamic.CompositeClassEmitter;
 
 public final class DefinitionSetClassLoader extends ClassLoader {
 
@@ -42,14 +41,8 @@ public final class DefinitionSetClassLoader extends ClassLoader {
       return defined;
     }
 
-    if (name.startsWith(TupleClassEmitter.BINARY_NAME_PREFIX)) {
-      var resolved =
-          TupleClassEmitter.findLoadedByName(name);
-      if (resolved != null) return resolved;
-    }
-    if (name.startsWith(RecordClassEmitter.BINARY_NAME_PREFIX)) {
-      var resolved =
-          RecordClassEmitter.findLoadedByName(name);
+    if (name.startsWith(CompositeClassEmitter.BINARY_NAME_PREFIX)) {
+      var resolved = CompositeClassEmitter.findLoadedByName(name);
       if (resolved != null) return resolved;
     }
     for (var dep : dependencyLoaders) {

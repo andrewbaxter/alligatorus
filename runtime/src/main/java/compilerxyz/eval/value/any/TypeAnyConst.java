@@ -35,6 +35,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeAnyConst()
     implements
@@ -48,6 +50,10 @@ public record TypeAnyConst()
         AspectInitialBind,
         AspectType,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_ANY_CONST_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

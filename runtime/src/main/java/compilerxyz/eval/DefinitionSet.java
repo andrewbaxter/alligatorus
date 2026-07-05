@@ -16,6 +16,7 @@ import compilerxyz.eval.value.source_interface.SourceInterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.eval.value.source_object.SourceObjectData;
 import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
+import compilerxyz.eval.value.source_union.SourceUnionData;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.safejson.JsonValues;
@@ -40,6 +41,7 @@ public final class DefinitionSet implements ExporterAny {
   public final Counter nextFieldId;
   public final Counter nextInterfaceMethodId;
   public final TList<SourceObjectData> objects;
+  public final TList<SourceUnionData> unions;
 
   public DefinitionSet(DefSetId defSetId) {
     this.artifactId = null;
@@ -49,6 +51,7 @@ public final class DefinitionSet implements ExporterAny {
     this.functions = new TList<>();
     this.interfaces = new TList<>();
     this.objects = new TList<>();
+    this.unions = new TList<>();
     this.nextEntryId = new Counter();
     this.nextFieldId = new Counter();
     this.nextInterfaceMethodId = new Counter();

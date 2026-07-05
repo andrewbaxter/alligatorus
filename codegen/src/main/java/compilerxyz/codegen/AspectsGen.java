@@ -39,6 +39,7 @@ final class AspectsGen {
   private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
+  private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
   private static final ClassName CODE_DYNAMIC =
       ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
   private static final ClassName DYN_UTIL =
@@ -212,7 +213,21 @@ final class AspectsGen {
     var locParam = new Param("loc", QEXPR_ID);
     return TList.of(
         new AspectSpec("Identity aspect for null", "Null", 1001, TList.of()),
-        new AspectSpec("Identity aspect for record", "Record", 1002, TList.of()),
+        new AspectSpec(
+            "Identity aspect for record",
+            "Record",
+            1002,
+            TList.of(
+                new AspectMethod(
+                    "Get the record's field name to type mapping.",
+                    "recordFieldTypes",
+                    TList.of(),
+                    ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, TYPE)),
+                new AspectMethod(
+                    "",
+                    "recordTakeFields",
+                    TList.of(xxParam, locParam, new Param("value", VALUE)),
+                    ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, EVAL_RES)))),
         new AspectSpec(
             "Identity aspect for dynamic number", "NumberDynamic", 1003, TList.of()),
         new AspectSpec("Identity aspect for dynamic bool", "BoolDynamic", 1004, TList.of()),
@@ -309,7 +324,7 @@ final class AspectsGen {
                 new AspectMethod(
                     "",
                     "takeElements",
-                    TList.of(new Param("value", VALUE)),
+                    TList.of(xxParam, locParam, new Param("value", VALUE)),
                     ParameterizedTypeName.get(TLIST, EVAL_RES)))),
         new AspectSpec(
             "Identity aspect for union",

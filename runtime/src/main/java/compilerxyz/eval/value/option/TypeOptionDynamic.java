@@ -40,6 +40,8 @@ import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeOptionDynamic(Type elementType)
     implements
@@ -51,6 +53,10 @@ public record TypeOptionDynamic(Type elementType)
         AspectField,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

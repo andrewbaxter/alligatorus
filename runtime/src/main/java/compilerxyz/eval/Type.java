@@ -10,6 +10,11 @@ public interface Type extends Value {
         "user did not provide a Type::typeDesc method on " + getClass().getName());
   }
 
+  default TypeId typeId() {
+    throw new AssertionError(
+        "user did not provide a Type::typeId method on " + getClass().getName());
+  }
+
   default Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     return Opt.none();
   }

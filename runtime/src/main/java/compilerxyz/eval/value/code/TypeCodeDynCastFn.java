@@ -14,8 +14,14 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeCodeDynCastFn() implements Type, AspectFunction, ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_CODE_DYN_CAST_FN_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

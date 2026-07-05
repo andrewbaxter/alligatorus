@@ -4,6 +4,8 @@ import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.util.Opt;
@@ -37,6 +39,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record StringConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_STRING_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<string-const>";
     }
@@ -53,6 +58,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record NullConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NULL_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<null-const>";
@@ -71,6 +79,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record NullDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NULL_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<null-dynamic>";
     }
@@ -87,6 +98,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record BoolConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_BOOL_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<bool-const>";
@@ -105,6 +119,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record NumberConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NUMBER_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<number-const>";
     }
@@ -121,6 +138,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record NumberDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NUMBER_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<number-dynamic>";
@@ -139,6 +159,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record NumberDynamicBox() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NUMBER_DYNAMIC_BOX_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<number-dynamic-box>";
     }
@@ -155,6 +178,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record BoolDynamicBox() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_BOOL_DYNAMIC_BOX_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<bool-dynamic-box>";
@@ -173,6 +199,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record StringDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_STRING_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<string-dynamic>";
     }
@@ -189,6 +218,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record AnyConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ANY_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<any-const>";
@@ -207,6 +239,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record AnyDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ANY_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<any-dynamic>";
     }
@@ -223,6 +258,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record ConstkeyDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CONSTKEY_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<constkey>";
@@ -241,6 +279,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record Unique() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_UNIQUE_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<unique>";
     }
@@ -257,6 +298,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record Expr() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<expr>";
@@ -275,6 +319,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record ExprStagedPlaceholder() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_STAGED_PLACEHOLDER_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<stage result>";
     }
@@ -291,6 +338,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record FunctionDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_FUNCTION_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<function-dynamic>";
@@ -309,6 +359,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record FunctionAspectDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_FUNCTION_ASPECT_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<function-aspect-dynamic>";
     }
@@ -325,6 +378,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record FunctionCastValueDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<function-cast-value-dynamic>";
@@ -343,6 +399,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record ListDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<list-dynamic>";
     }
@@ -359,6 +418,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record ListNewDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_NEW_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<list-new-dynamic>";
@@ -377,6 +439,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record ListConstructorConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_CONSTRUCTOR_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<list-constructor-const>";
     }
@@ -393,6 +458,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record MapDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_MAP_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<map-dynamic>";
@@ -411,6 +479,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record MapNewDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_MAP_NEW_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<map-new-dynamic>";
     }
@@ -427,6 +498,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record MapGetFnDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_MAP_GET_FN_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<map-get-fn-dynamic>";
@@ -445,6 +519,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record MapEntryDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_MAP_ENTRY_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<map-entry-dynamic>";
     }
@@ -461,6 +538,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record MapConstructorConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_MAP_CONSTRUCTOR_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<map-constructor-const>";
@@ -479,6 +559,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record OptionDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_OPTION_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<option-dynamic>";
     }
@@ -495,6 +578,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record OptionVariantConstructorDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<option-variant-constructor-dynamic>";
@@ -513,6 +599,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record OptionConstructorConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_OPTION_CONSTRUCTOR_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<option-constructor-const>";
     }
@@ -529,6 +618,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record AspectDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ASPECT_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<aspect-dynamic>";
@@ -547,6 +639,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record PanicDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_PANIC_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<panic-dynamic>";
     }
@@ -563,6 +658,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record ThrowDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_THROW_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<throw-dynamic>";
@@ -581,6 +679,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record BoolDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_BOOL_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<bool-dynamic>";
     }
@@ -597,6 +698,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record AnyBindingDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ANY_BINDING_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<any-binding-dynamic>";
@@ -615,6 +719,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record AnyTargetDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ANY_TARGET_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<any-target-dynamic>";
     }
@@ -631,6 +738,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record CodeDynCastFn() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_DYN_CAST_FN_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "Code dyn cast fn type";
@@ -649,6 +759,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record CodeDynHandleDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_DYN_HANDLE_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "Code dyn handle type (dynamic)";
     }
@@ -665,6 +778,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record CodeEnumDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_ENUM_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "Code enum type (dynamic)";
@@ -683,6 +799,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record CodeStructDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_STRUCT_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "Code struct type (dynamic)";
     }
@@ -699,6 +818,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceFunctionConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_FUNCTION_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<definition_set_function>";
@@ -717,6 +839,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceFunctionDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_FUNCTION_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<definition_set_function_dynamic>";
     }
@@ -733,6 +858,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceInterfaceConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_INTERFACE_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<interface>";
@@ -751,6 +879,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceInterfaceDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_INTERFACE_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<interface_ref>";
     }
@@ -767,6 +898,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceObjectConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_OBJECT_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<object>";
@@ -785,6 +919,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceObjectDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_OBJECT_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<object-dynamic>";
     }
@@ -801,6 +938,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceObjectRefDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_OBJECT_REF_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<definition_set_object_ref>";
@@ -819,6 +959,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceObjectNewConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_OBJECT_NEW_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<definition_set_object_new>";
     }
@@ -835,6 +978,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceObjectNewDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<definition_set_object_new-dynamic>";
@@ -853,6 +999,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceUnionConst() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_CONST_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<union>";
     }
@@ -869,6 +1018,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceUnionDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<union-dynamic>";
@@ -887,6 +1039,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceUnionRefDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_REF_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<union-ref>";
     }
@@ -903,6 +1058,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceUnionNewConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_NEW_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<union_new>";
@@ -921,6 +1079,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record SourceUnionNewDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<union_new-dynamic>";
     }
@@ -937,6 +1098,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record CodeValueExternDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<CodeValueExtern-dynamic>";
@@ -955,6 +1119,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
 
   record ExprContextPushDynamic() implements TypeRoot {
     @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_CONTEXT_PUSH_DYNAMIC_TYPE_ID; }
+
+    @Override
     public String typeDesc() {
       return "type<ExprContextPush-dynamic>";
     }
@@ -971,6 +1138,9 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   }
 
   record SourceExportsLiftedConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_EXPORTS_LIFTED_CONST_TYPE_ID; }
+
     @Override
     public String typeDesc() {
       return "type<definition_set_exports>";

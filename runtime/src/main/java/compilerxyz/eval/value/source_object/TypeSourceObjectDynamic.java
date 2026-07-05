@@ -47,6 +47,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
+import compilerxyz.eval.TypeId;
 
 public record TypeSourceObjectDynamic(SourceObjectData data)
     implements
@@ -59,6 +60,19 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         AspectInitialBind,
         AspectLift,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+  }
+
+  private static long uniqueId(Unique u) {
+    return switch (u) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> s.id();
+    };
+  }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

@@ -26,6 +26,8 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeConstkeyDynamic()
     implements
@@ -35,6 +37,10 @@ public record TypeConstkeyDynamic()
         AspectDropDynamicLight,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

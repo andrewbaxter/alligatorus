@@ -25,6 +25,8 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeMapNewDynamic(Type keyType, Type valueType)
     implements
@@ -32,6 +34,10 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_NEW_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+
 
   @Override
   public String typeDesc() {

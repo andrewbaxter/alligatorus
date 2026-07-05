@@ -35,6 +35,8 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeBoolDynamicBox()
     implements
@@ -46,6 +48,10 @@ public record TypeBoolDynamicBox()
         AspectDynamicUnboxed,
         AspectInitialBind,
         AspectStackValueDynamic {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_BOOL_DYNAMIC_BOX_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

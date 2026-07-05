@@ -27,6 +27,9 @@ import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.TList;
 
 public record TypeMethodDynamic(
     Type receiver,
@@ -43,6 +46,10 @@ public record TypeMethodDynamic(
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, TList.of(receiver.typeId(), arg.typeId(), ret.typeId())); }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

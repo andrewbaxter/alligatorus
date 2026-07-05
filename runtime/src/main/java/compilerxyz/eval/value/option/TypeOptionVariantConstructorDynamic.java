@@ -33,6 +33,8 @@ import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
     implements
@@ -40,6 +42,10 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
         AspectArtifact,
         AspectFunction,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+
 
   @Override
   public String typeDesc() {

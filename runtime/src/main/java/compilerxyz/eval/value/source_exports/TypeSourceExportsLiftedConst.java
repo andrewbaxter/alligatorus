@@ -37,9 +37,20 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.safejson.JsonValues;
+import compilerxyz.eval.TypeId;
 
 public record TypeSourceExportsLiftedConst(SourceExportsData set)
     implements Type, AspectArtifact, AspectBind, AspectField, ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    if (set.setId == null) {
+      throw new IllegalStateException(
+          "TypeSourceExportsLiftedConst::typeId: SourceExportsData has no def-set id");
+    }
+    return new TypeId.DefsetMember(set.setId, 0L);
+  }
+
 
   @Override
   public String typeDesc() {

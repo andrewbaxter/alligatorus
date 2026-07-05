@@ -32,6 +32,8 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeBoolConst()
     implements
@@ -42,6 +44,10 @@ public record TypeBoolConst()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_BOOL_CONST_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

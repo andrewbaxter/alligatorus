@@ -25,6 +25,8 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceUnionNewDynamic()
     implements Type,
@@ -36,6 +38,10 @@ public record TypeSourceUnionNewDynamic()
         AspectLift,
         AspectStackValueDynamic,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

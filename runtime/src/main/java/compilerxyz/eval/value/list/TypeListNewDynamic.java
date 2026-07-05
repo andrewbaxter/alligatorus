@@ -28,6 +28,8 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeListNewDynamic(Type elementType)
     implements
@@ -35,6 +37,10 @@ public record TypeListNewDynamic(Type elementType)
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+
 
   @Override
   public String typeDesc() {
@@ -63,7 +69,7 @@ public record TypeListNewDynamic(Type elementType)
     var dynamicElements = new TList<CodeDynamic>();
     var argTupleOpt = AspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome) {
-      var elements = argTupleSome.value().takeElements(argSome.value());
+      var elements = argTupleSome.value().takeElements(xx, loc, argSome.value());
       for (var elemRes : elements) {
         if (elemRes.hasErrors()) return elemRes.reerr();
         var elemCv = elemRes.requireValue("takeElements");

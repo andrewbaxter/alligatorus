@@ -39,6 +39,8 @@ import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeNumberDynamicBox()
     implements
@@ -53,6 +55,10 @@ public record TypeNumberDynamicBox()
         AspectElementUseDynamicBind,
         AspectSet,
         AspectStackValueDynamic {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_NUMBER_DYNAMIC_BOX_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

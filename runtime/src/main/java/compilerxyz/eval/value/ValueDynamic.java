@@ -100,5 +100,17 @@ public record ValueDynamic(Source source, Type type_) implements Value {
         return base.drop(loc);
       }
     }
+
+    record Dup(Source base) implements Source {
+      @Override
+      public CodeDynamic realize(ExprContext xx, QExprId loc) {
+        return JavaBytecodeUtils.inst(loc, Opcodes.DUP);
+      }
+
+      @Override
+      public Code drop(QExprId loc) {
+        return Code.none(loc);
+      }
+    }
   }
 }

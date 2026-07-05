@@ -52,6 +52,8 @@ import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectType;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeStringDynamic()
     implements
@@ -69,6 +71,10 @@ public record TypeStringDynamic()
         AspectStringDynamic,
         ExporterAny {
 
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_STRING_DYNAMIC_TYPE_ID; }
+
+
   private static final compilerxyz.eval.dynamic.JavaInternalName JAVA_STRING =
       compilerxyz.eval.dynamic.JavaInternalName.fromClass(String.class);
   private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_TO_STR =
@@ -76,7 +82,7 @@ public record TypeStringDynamic()
           compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class), TList.of());
 
   private static final Type EMPTY_TUPLE =
-      new compilerxyz.eval.value.tuple.Tuple(new TList<>());
+      new compilerxyz.eval.value.tuple.Tuple(compilerxyz.util.Opt.none(), new TList<>());
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(

@@ -149,7 +149,7 @@ public final class ConstEval {
         for (var elExpr : t.elements()) {
           elements.add(new TupleElement.EvalRes(constEval(xx, elExpr)));
         }
-        yield EResult.ok(new CodeValue(Code.none(loc), Opt.some(new Tuple(elements))));
+        yield EResult.ok(new CodeValue(Code.none(loc), Opt.some(new Tuple(Opt.none(), elements))));
       }
       case Expr.Record r -> constEvalRecord(xx, loc, r);
       case Expr.OperatorLt e -> {

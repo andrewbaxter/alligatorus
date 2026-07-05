@@ -51,6 +51,8 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.EvalContext;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeAnyDynamic()
     implements
@@ -66,6 +68,10 @@ public record TypeAnyDynamic()
         AspectStackValueDynamic,
         AspectType,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_ANY_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

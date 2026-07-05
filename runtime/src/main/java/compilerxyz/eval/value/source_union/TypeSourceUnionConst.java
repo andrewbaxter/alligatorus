@@ -36,6 +36,7 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
 
 public record TypeSourceUnionConst(SourceUnionData data)
     implements
@@ -49,6 +50,19 @@ public record TypeSourceUnionConst(SourceUnionData data)
         AspectType,
         AspectUnion,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+  }
+
+  private static long uniqueId(Unique u) {
+    return switch (u) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> s.id();
+    };
+  }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

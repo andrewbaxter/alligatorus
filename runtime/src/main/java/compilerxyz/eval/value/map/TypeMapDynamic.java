@@ -23,6 +23,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
@@ -59,6 +60,8 @@ import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.function.Function;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeMapDynamic(Type keyType, Type valueType)
     implements
@@ -67,12 +70,17 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectIterable,
         AspectStackValueDynamic,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+
 
   @Override
   public String typeDesc() {
@@ -91,6 +99,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(AspectDropDynamic.ID)) {
+      return AspectDropDynamic.getMaybe(xx, keyType).optIsSome()
+              || AspectDropDynamic.getMaybe(xx, valueType).optIsSome()
+          ? Opt.some(this)
+          : Opt.none();
+    }
     if (key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
@@ -426,11 +440,100 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  public EResult<Code> dropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+    var keyDropOpt = AspectDropDynamic.getMaybe(xx, keyType);
+    var valDropOpt = AspectDropDynamic.getMaybe(xx, valueType);
+    if (!(cv.value() instanceof Opt.Some<Value> some)
+        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)) {
+      return EResult.ok(Code.none(loc));
+    }
+    var entrySlot =
+        new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    var entryClassName = JavaInternalName.of("java/util/Map$Entry");
+
+    var bodySeq = new JavaBytecodeSequence();
+    if (keyDropOpt instanceof Opt.Some<AspectDropDynamic> keyDropSome) {
+      var loadKeySeq = new JavaBytecodeSequence();
+      loadKeySeq.add(
+          new CodeDynamic(
+              loc,
+              new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot.key())));
+      loadKeySeq.add(
+          JavaBytecodeUtils.callInterfaceMethod(
+              loc,
+              entryClassName,
+              "getKey",
+              JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromClass(Object.class), TList.of())));
+      var keyCv =
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
+              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(keyType)));
+      var keyDropRes = keyDropSome.value().drop(xx, loc, keyCv);
+      if (keyDropRes.hasErrors()) return keyDropRes.reerr();
+      var keyDropDyn = keyDropRes.requireValue("map key drop").dynamic();
+      if (keyDropDyn != null) bodySeq.add(keyDropDyn);
+    }
+    if (valDropOpt instanceof Opt.Some<AspectDropDynamic> valDropSome) {
+      var loadValSeq = new JavaBytecodeSequence();
+      loadValSeq.add(
+          new CodeDynamic(
+              loc,
+              new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot.key())));
+      loadValSeq.add(
+          JavaBytecodeUtils.callInterfaceMethod(
+              loc,
+              entryClassName,
+              "getValue",
+              JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromClass(Object.class), TList.of())));
+      var valCv =
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(loc, loadValSeq)),
+              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(valueType)));
+      var valDropRes = valDropSome.value().drop(xx, loc, valCv);
+      if (valDropRes.hasErrors()) return valDropRes.reerr();
+      var valDropDyn = valDropRes.requireValue("map value drop").dynamic();
+      if (valDropDyn != null) bodySeq.add(valDropDyn);
+    }
+
+    var mapName = JavaInternalName.of("java/util/Map");
+    var setName = JavaInternalName.of("java/util/Set");
+    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var entrySetMethod =
+        JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
+    var iterMethod =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
+    var setupSeq = new JavaBytecodeSequence();
+    setupSeq.add(vd.source().realize(xx, loc));
+    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
+    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
+    var iteratorSetup = new CodeDynamic(loc, setupSeq);
+
+    var decodeSeq = new JavaBytecodeSequence();
+    decodeSeq.add(
+        JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(entryClassName)));
+    var elementDecode = new CodeDynamic(loc, decodeSeq);
+
+    var loop =
+        DynUtil.foreachSkeleton(
+            loc,
+            iteratorSetup,
+            elementDecode,
+            entrySlot,
+            Opcodes.ASTORE,
+            Code.of(loc, new CodeDynamic(loc, bodySeq)));
+    var loopCode = loop.code().dynamic();
+    var finalSeq = new JavaBytecodeSequence();
+    if (loopCode != null) finalSeq.add(loopCode);
+    finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    return EResult.ok(Code.of(loc, new CodeDynamic(loc, finalSeq)));
   }
 
 }

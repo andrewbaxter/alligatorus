@@ -22,9 +22,15 @@ import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceObjectNewDynamic()
     implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, AspectLift, ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

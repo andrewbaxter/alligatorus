@@ -500,12 +500,12 @@ public final class PushStructsGen {
       elements.add("new $T($L)", TUPLE_ELEMENT_DYNAMIC, args.get(i).type().dynamicType());
     }
     elements.add(")");
-    return CodeBlock.of("new $T($L)", TUPLE, elements.build());
+    return CodeBlock.of("new $T($T.none(), $L)", TUPLE, OPT, elements.build());
   }
 
   private static CodeBlock unitOrDynamic(String ret) {
     if (ret.equals("()") || ret.isEmpty()) {
-      return CodeBlock.of("new $T($T.<$T>of())", TUPLE, TLIST,
+      return CodeBlock.of("new $T($T.none(), $T.<$T>of())", TUPLE, OPT, TLIST,
           ClassName.get("compilerxyz.eval.value.tuple", "TupleElement"));
     }
     return CodeBlock.of("$L", ret);

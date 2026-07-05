@@ -38,9 +38,28 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    return new TypeId.Composite(
+        GenTypeIds.TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID,
+        TList.of(
+            new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity)),
+            new TypeId.Builtin(variantIndex)));
+  }
+
+  private static long uniqueId(Unique u) {
+    return switch (u) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> s.id();
+    };
+  }
+
 
   @Override
   public String typeDesc() {

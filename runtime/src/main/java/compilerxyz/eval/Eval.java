@@ -12,6 +12,7 @@ import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.value.any.TypeAnyConst;
 import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.eval.value.unique.BindingUniqueDualMode;
@@ -158,7 +159,7 @@ public final class Eval {
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }
-    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope walkBuildBinding");
+    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope walkBuildBinding").binding();
     xx.vx.ix.builtinScopeRootBinding = rootBinding;
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
@@ -172,37 +173,44 @@ public final class Eval {
     return EResult.ok(GenBuiltinTree.build(importState, interfaces));
   }
 
-  private static EResult<Binding> walkBuildBinding(
+  private record WalkResult(Binding binding, Type type) {}
+
+  private static EResult<WalkResult> walkBuildBinding(
       ExprContext xx, QExprId loc, BuiltinTree node) {
     if (node instanceof BuiltinTree.Branch branch) {
-      var fields = new TOrderedMap<ConstKey, Binding>();
+      var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
       for (var child : branch.children()) {
         var childRes = walkBuildBinding(xx, loc, child.node());
         if (childRes.hasErrors()) {
           return childRes.reerr();
         }
-        var childBinding =
+        var childResult =
             childRes.requireValue("Eval::walkBuildBinding child binding");
-        fields.put(new ConstKey.Str(child.name()), childBinding);
+        fields.put(
+            new ConstKey.Str(child.name()),
+            new ArgumentEntry(childResult.binding(), childResult.type()));
       }
-      return EResult.ok(new ArgumentRecordBinding(new ArgumentRecord(fields)));
+      var argRecord = new ArgumentRecord(fields);
+      return EResult.ok(new WalkResult(new ArgumentRecordBinding(argRecord), argRecord));
     }
     var leaf = ((BuiltinTree.Leaf) node).leaf();
     if (leaf instanceof BuiltinTree.BuiltinLeaf.Function fn) {
-      return initialBindLeaf(xx, loc, fn.type(), fn.dynamicKey());
+      return initialBindLeafWalk(xx, loc, fn.type(), fn.dynamicKey());
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.Interface iface) {
-      return initialBindLeaf(xx, loc, iface.type(), iface.dynamicKey());
+      return initialBindLeafWalk(xx, loc, iface.type(), iface.dynamicKey());
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.Constructor ctor) {
-      return initialBindLeaf(xx, loc, ctor.type(), ctor.dynamicKey());
+      return initialBindLeafWalk(xx, loc, ctor.type(), ctor.dynamicKey());
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.InitialBind ib) {
-      return initialBindLeaf(xx, loc, ib.type(), ib.dynamicKey());
+      return initialBindLeafWalk(xx, loc, ib.type(), ib.dynamicKey());
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.AspectId aspectId) {
       return EResult.ok(
-          new BindingUniqueDualMode(aspectId.dynamicKey(), aspectId.unique()));
+          new WalkResult(
+              new BindingUniqueDualMode(aspectId.dynamicKey(), aspectId.unique()),
+              new compilerxyz.eval.value.unique.TypeUnique()));
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.AnyConst anyConst) {
       var anyConstType = new TypeAnyConst();
@@ -217,9 +225,16 @@ public final class Eval {
         return br.reerr();
       }
       var result = br.requireValue("Eval::walkBuildBinding AnyConst bind result");
-      return EResult.ok(result.binding());
+      return EResult.ok(new WalkResult(result.binding(), anyConstType));
     }
     throw new IllegalStateException("Unhandled BuiltinLeaf variant: " + leaf.getClass());
+  }
+
+  private static EResult<WalkResult> initialBindLeafWalk(
+      ExprContext xx, QExprId loc, Type type, BindingId dynamicKey) {
+    var res = initialBindLeaf(xx, loc, type, dynamicKey);
+    if (res.hasErrors()) return res.reerr();
+    return EResult.ok(new WalkResult(res.requireValue("initialBindLeafWalk"), type));
   }
 
   private static EResult<Binding> initialBindLeaf(

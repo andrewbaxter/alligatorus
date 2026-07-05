@@ -23,6 +23,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
@@ -59,6 +60,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.function.Function;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeListDynamic(Type elementType)
     implements
@@ -67,12 +70,17 @@ public record TypeListDynamic(Type elementType)
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
+        AspectDropDynamic,
         AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
         AspectIterable,
         AspectStackValueDynamic,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+
 
   @Override
   public JavaDataDescriptor consumeDynamicJvmClass() {
@@ -91,6 +99,11 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(AspectDropDynamic.ID)) {
+      return AspectDropDynamic.getMaybe(xx, elementType).optIsSome()
+          ? Opt.some(this)
+          : Opt.none();
+    }
     if (key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
@@ -287,13 +300,17 @@ public record TypeListDynamic(Type elementType)
           "TypeListDynamic::foreach: element binding must be BindingId.Local");
     }
 
-    // Iterator.next() returns Object; cast to the element type's declared JVM
-    // class so the binding slot is typed as promised. Elements are already
-    // stored in their boxed form (the list constructor substitutes the boxed
-    // type at construction time), so no unbox is needed here.
+    var elementDecode = elementDecodeCast(xx, loc);
+    return EResult.ok(
+        DynUtil.foreachSkeleton(
+            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
+  }
+
+  private CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
     var decodeSeq = new JavaBytecodeSequence();
-    if (elementType instanceof AspectConsumeDynamic elemConsume) {
-      var elemDesc = elemConsume.consumeDynamicJvmClass();
+    var elemConsumeOpt = AspectConsumeDynamic.getMaybe(xx, elementType);
+    if (elemConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> elemConsumeSome) {
+      var elemDesc = elemConsumeSome.value().consumeDynamicJvmClass();
       var d = elemDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
@@ -302,10 +319,7 @@ public record TypeListDynamic(Type elementType)
         }
       }
     }
-    var elementDecode = new CodeDynamic(loc, decodeSeq);
-    return EResult.ok(
-        DynUtil.foreachSkeleton(
-            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
+    return new CodeDynamic(loc, decodeSeq);
   }
 
   @Override
@@ -324,11 +338,53 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  public EResult<Code> dropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+    var elemDropRes = AspectDropDynamic.get(xx, loc, elementType);
+    if (elemDropRes.hasErrors()) return elemDropRes.reerr();
+    var elemDrop = elemDropRes.requireValue("TypeListDynamic::drop element AspectDropDynamic");
+    if (!(cv.value() instanceof Opt.Some<Value> some)
+        || !(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)) {
+      return EResult.ok(Code.none(loc));
+    }
+    var elementSlot =
+        new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    var loadElement =
+        new CodeDynamic(
+            loc,
+            new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot.key()));
+    var elementCv =
+        new CodeValue(
+            Code.of(loc, loadElement),
+            Opt.some(compilerxyz.eval.value.ValueDynamic.stack(elementType)));
+    var elemDropCodeRes = elemDrop.drop(xx, loc, elementCv);
+    if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
+    var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
+
+    var iterableName = JavaInternalName.of("java/lang/Iterable");
+    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var iterMethod =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
+    var setupSeq = new JavaBytecodeSequence();
+    setupSeq.add(vd.source().realize(xx, loc));
+    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
+    var iteratorSetup = new CodeDynamic(loc, setupSeq);
+
+    var elementDecode = elementDecodeCast(xx, loc);
+
+    var loop =
+        DynUtil.foreachSkeleton(
+            loc, iteratorSetup, elementDecode, elementSlot, Opcodes.ASTORE, elemDropCode);
+    var loopCode = loop.code().dynamic();
+    var finalSeq = new JavaBytecodeSequence();
+    if (loopCode != null) finalSeq.add(loopCode);
+    finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    return EResult.ok(Code.of(loc, new CodeDynamic(loc, finalSeq)));
   }
 
 }

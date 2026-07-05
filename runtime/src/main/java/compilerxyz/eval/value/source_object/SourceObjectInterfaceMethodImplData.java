@@ -146,18 +146,22 @@ public final class SourceObjectInterfaceMethodImplData {
                 + ")");
       }
       var ids = new TList<BindingId.Local>(dataFieldNames.size());
-      var fields = new TOrderedMap<ConstKey, Binding>();
+      var fields = new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
       for (int i = 0; i < dataFieldNames.size(); i++) {
         var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         ids.add(pid);
-        var ibResult = AspectInitialBind.get(xx, rootLoc, paramTypes.get(i));
+        var paramType = paramTypes.get(i);
+        var ibResult = AspectInitialBind.get(xx, rootLoc, paramType);
         if (ibResult.hasErrors()) {
           return ibResult.reerr();
         }
         var ibAspect =
             ibResult.requireValue(
                 "SourceObjectInterfaceMethodImplData::compile param InitialBind");
-        fields.put(new ConstKey.Str(dataFieldNames.get(i)), ibAspect.initialBind(pid));
+        fields.put(
+            new ConstKey.Str(dataFieldNames.get(i)),
+            new compilerxyz.eval.value.argrecord.ArgumentEntry(
+                ibAspect.initialBind(pid), paramType));
       }
       var argRecord = new ArgumentRecord(fields);
       bodyScope.values.put(

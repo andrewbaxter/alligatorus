@@ -27,6 +27,8 @@ import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeCodeValueExternDynamic()
     implements
@@ -38,6 +40,10 @@ public record TypeCodeValueExternDynamic()
         AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

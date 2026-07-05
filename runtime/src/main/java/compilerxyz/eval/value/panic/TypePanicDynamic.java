@@ -25,9 +25,15 @@ import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypePanicDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_PANIC_DYNAMIC_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {

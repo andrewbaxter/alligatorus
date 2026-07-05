@@ -22,6 +22,8 @@ import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeMapConstructorConst()
     implements
@@ -29,6 +31,10 @@ public record TypeMapConstructorConst()
         AspectFunction,
         AspectInitialBind,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_MAP_CONSTRUCTOR_CONST_TYPE_ID; }
+
 
   @Override
   public String typeDesc() {
@@ -63,7 +69,7 @@ public record TypeMapConstructorConst()
     if (!(aspectTupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
       return EResult.err(loc, "map() requires a tuple of (key_type, value_type)");
     }
-    var elements = tupleSome.value().takeElements(argValue);
+    var elements = tupleSome.value().takeElements(xx, loc, argValue);
     if (elements.size() != 2) {
       return EResult.err(
           loc,

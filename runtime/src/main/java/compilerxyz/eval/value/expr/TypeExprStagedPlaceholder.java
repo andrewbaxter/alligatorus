@@ -16,9 +16,15 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
 
 public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
+
+  @Override
+  public TypeId typeId() { return GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID; }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {

@@ -349,6 +349,7 @@ public final class BuiltinTreeGen {
     var tupleElement = ClassName.get("compilerxyz.eval.value.tuple", "TupleElement");
     var tupleElementDynamic =
         ClassName.get("compilerxyz.eval.value.tuple", "TupleElement", "Dynamic");
+    var opt = ClassName.get("compilerxyz.util", "Opt");
     var elements = CodeBlock.builder();
     elements.add("$T.<$T>of(", TLIST, tupleElement);
     for (var i = 0; i < args.size(); i++) {
@@ -356,7 +357,7 @@ public final class BuiltinTreeGen {
       elements.add("new $T($L)", tupleElementDynamic, args.get(i).type().dynamicType());
     }
     elements.add(")");
-    return CodeBlock.of("new $T($L)", tuple, elements.build());
+    return CodeBlock.of("new $T($T.none(), $L)", tuple, opt, elements.build());
   }
 
   private static String ifaceHolderFieldName(InterfaceSpec spec) {

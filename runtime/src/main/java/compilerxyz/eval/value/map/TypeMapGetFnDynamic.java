@@ -12,12 +12,19 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.TList;
 
 public record TypeMapGetFnDynamic(Type keyType, Type valueType)
     implements
         Type,
         AspectFunction,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+
 
   @Override
   public String typeDesc() {

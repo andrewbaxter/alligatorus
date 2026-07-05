@@ -334,7 +334,8 @@ public final class DynRuntime {
   public static compilerxyz.gen.SourceUnionBuilder defSetBuilderUnion(
       ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
     var identity = freshUnique(xx);
-    var data = new compilerxyz.eval.value.source_union.SourceUnionData(identity);
+    var data = new compilerxyz.eval.value.source_union.SourceUnionData(dsb.inner, identity);
+    dsb.inner.unions.add(data);
     return new compilerxyz.gen.SourceUnionBuilder(data);
   }
 
@@ -553,7 +554,7 @@ public final class DynRuntime {
     var aspectIdMethod =
         new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(
             "aspect_id", aspectUniqueField);
-    aspectIdMethod.argType = new compilerxyz.eval.value.tuple.Tuple(new compilerxyz.util.TList<>());
+    aspectIdMethod.argType = new compilerxyz.eval.value.tuple.Tuple(compilerxyz.util.Opt.none(), new compilerxyz.util.TList<>());
     aspectIdMethod.retType = new compilerxyz.eval.value.unique.TypeUnique();
     ifaceData.methods.add(aspectIdMethod);
     var impl =

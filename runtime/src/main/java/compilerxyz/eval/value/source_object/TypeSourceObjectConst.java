@@ -56,6 +56,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.source_function.ExternalCodec;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinInterfaces;
+import compilerxyz.eval.TypeId;
 
 public record TypeSourceObjectConst(SourceObjectData data)
     implements
@@ -68,6 +69,19 @@ public record TypeSourceObjectConst(SourceObjectData data)
         AspectInitialBind,
         AspectType,
         ExporterAny {
+
+  @Override
+  public TypeId typeId() {
+    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+  }
+
+  private static long uniqueId(Unique u) {
+    return switch (u) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> s.id();
+    };
+  }
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
