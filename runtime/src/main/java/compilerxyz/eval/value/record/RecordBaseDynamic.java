@@ -22,30 +22,6 @@ public record RecordBaseDynamic(ValueDynamic.Source source) {
     return xx.target.targetCodeToBindSub(loc, carry, recordType);
   }
 
-  public CodeValue recordBaseFieldAccess(
-      ExprContext xx, QExprId loc, String key, Type entryType) {
-    var childSource = new ValueDynamic.Source.Field(source, key);
-    var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, childSource));
-    if (entryType instanceof Record recordType) {
-      var newFields = new TOrderedMap<ConstKey, RecordField>();
-      for (var entry : recordType.fields().entrySet()) {
-        var t =
-            switch (entry.getValue()) {
-              case RecordField.Dynamic d -> d.type();
-              case RecordField.EvalRes er ->
-                  throw new IllegalStateException(
-                      "RecordBaseDynamic::fieldAccess: field dynamic type Record has non-Mortar"
-                          + " field");
-            };
-        newFields.put(entry.getKey(), new RecordField.Dynamic(t));
-      }
-      Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(childSource)), newFields);
-      return new CodeValue(fieldCode, Opt.some(innerRecord));
-    }
-    Value valueDynamic = new ValueDynamic(childSource, entryType);
-    return new CodeValue(fieldCode, Opt.some(valueDynamic));
-  }
-
   public EResult<CodeDynamic> recordBaseToDynamic(QExprId loc, Code carry) {
     var dyn = carry.dynamic();
     if (dyn == null) {

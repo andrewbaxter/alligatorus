@@ -110,4 +110,13 @@ public record TypeConstkeyDynamic()
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(new TypeConstkeyDynamic());
   }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
 }

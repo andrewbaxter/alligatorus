@@ -50,6 +50,8 @@ final class AspectsGen {
   private static final ClassName SOURCE_INTERFACE_DATA =
       ClassName.get(
           "compilerxyz.eval.value.source_interface", "SourceInterfaceData");
+  private static final ClassName VALUE_DYNAMIC_SOURCE =
+      ClassName.get("compilerxyz.eval.value", "ValueDynamic", "Source");
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
@@ -67,16 +69,7 @@ final class AspectsGen {
       ClassName.get("org.jspecify.annotations", "Nullable");
 
   private record AspectMethod(
-      String javadoc,
-      String name,
-      TList<Param> params,
-      TypeName ret,
-      String defaultBody,
-      Object[] defaultBodyArgs) {
-    AspectMethod(String javadoc, String name, TList<Param> params, TypeName ret) {
-      this(javadoc, name, params, ret, null, null);
-    }
-  }
+      String javadoc, String name, TList<Param> params, TypeName ret) {}
 
   private record NestedRecord(String javadoc, String name, TList<Param> components) {}
 
@@ -135,13 +128,10 @@ final class AspectsGen {
     }
 
     for (var m : spec.methods) {
-      var method = MethodSpec.methodBuilder(m.name).returns(m.ret);
-      if (m.defaultBody != null) {
-        method.addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
-        method.addStatement(m.defaultBody, m.defaultBodyArgs);
-      } else {
-        method.addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
-      }
+      var method =
+          MethodSpec.methodBuilder(m.name)
+              .returns(m.ret)
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
       if (m.javadoc != null && !m.javadoc.isEmpty()) {
         method.addJavadoc(m.javadoc + "\n");
       }
@@ -588,21 +578,92 @@ final class AspectsGen {
                     ParameterizedTypeName.get(ERESULT, CODE)))),
         new AspectSpec(
             "Light drop for values that only need to clean up their stack footprint (POP)"
-                + " when discarded — no per-type cleanup. The default {@code drop}"
-                + " emission is the source's drop code (POP for a stack base, base-drop"
-                + " for a field access, noop for a binding); implementers do not"
-                + " override.",
+                + " when discarded — no per-type cleanup. Implementers typically delegate"
+                + " to {@link compilerxyz.eval.dynamic.DynUtil#dropDefault}.",
             "DropDynamicLight",
             1035,
             TList.of(
                 new AspectMethod(
-                    "Emit the drop code for this value. Default: delegate to"
-                        + " {@link compilerxyz.eval.dynamic.DynUtil#dropDefault}.",
+                    "Emit the drop code for this value.",
                     "dropDynamicLight",
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE),
-                    "return $T.dropDefault(xx, loc, cv)",
-                    new Object[] {DYN_UTIL}))),
+                    ParameterizedTypeName.get(ERESULT, CODE)))),
+        new AspectSpec(
+            "Called on the type of a field's value to produce the CodeValue that a field"
+                + " expression evaluates to when the base is const. Implementations typically"
+                + " return the child CodeValue unmodified.",
+            "FieldUseConst",
+            1036,
+            TList.of(
+                new AspectMethod(
+                    "",
+                    "fieldUseConst",
+                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
+                    EVAL_RES))),
+        new AspectSpec(
+            "Called on the type of a field's value to produce the CodeValue that a field"
+                + " expression evaluates to when the base is dynamic. Receives the base's"
+                + " Source and the JVM field name owned by the parent's runtime class."
+                + " Implementations typically delegate to {@link"
+                + " compilerxyz.eval.dynamic.DynUtil#fieldUseDefaultDynamic} to wrap this"
+                + " type as a ValueDynamic backed by {@link ValueDynamic.Source.Field}.",
+            "FieldUseDynamic",
+            1037,
+            TList.of(
+                new AspectMethod(
+                    "",
+                    "fieldUseDynamic",
+                    TList.of(
+                        xxParam,
+                        locParam,
+                        new Param("baseSource", VALUE_DYNAMIC_SOURCE),
+                        new Param("javaFieldName", ClassName.get(String.class))),
+                    EVAL_RES))),
+        new AspectSpec(
+            "Called on the type of an element to produce the CodeValue that an element"
+                + " expression evaluates to when the container is const. Implementations"
+                + " typically return the child CodeValue unmodified.",
+            "ElementUseConst",
+            1038,
+            TList.of(
+                new AspectMethod(
+                    "",
+                    "elementUseConst",
+                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
+                    EVAL_RES))),
+        new AspectSpec(
+            "Called on the type of an element to produce the CodeValue that an element"
+                + " expression evaluates to when the container is dynamic. Receives the fully"
+                + " constructed element Source and the carry Code (load-base bytecode)."
+                + " Implementations typically delegate to {@link"
+                + " compilerxyz.eval.dynamic.DynUtil#elementUseDefaultDynamic} to wrap this"
+                + " type as a ValueDynamic with the given source.",
+            "ElementUseDynamic",
+            1039,
+            TList.of(
+                new AspectMethod(
+                    "",
+                    "elementUseDynamic",
+                    TList.of(
+                        xxParam,
+                        locParam,
+                        new Param("elementSource", VALUE_DYNAMIC_SOURCE),
+                        new Param("carry", CODE)),
+                    EVAL_RES))),
+        new AspectSpec(
+            "Creates the loop-variable Binding for an element read out of a homogeneous"
+                + " collection (foreach). Same shape as {@link AspectInitialBind} but"
+                + " specifically for the element-as-loop-variable case; the returned"
+                + " Binding drives {@code bindingUse_} for references to the loop"
+                + " variable inside the foreach body.",
+            "ElementUseDynamicBind",
+            1040,
+            TList.of(
+                new AspectMethod(
+                    "",
+                    "elementUseDynamicBind",
+                    TList.of(new Param("dynamicKey", BINDING_ID)),
+                    BINDING))),
         new AspectSpec(
             "Identity aspect for aspects (types representing values holding aspect"
                 + " implementations).",

@@ -29,6 +29,7 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicBoxed;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectNumberConst;
 import compilerxyz.gen.AspectNumberDynamic;
@@ -73,6 +74,7 @@ public record TypeNumberDynamic()
         AspectDynamicBoxed,
         AspectField,
         AspectInitialBind,
+        AspectElementUseDynamicBind,
         AspectLift,
         AspectNumberDynamic,
         AspectOperatorAdd,
@@ -139,6 +141,7 @@ public record TypeNumberDynamic()
         || key.equals(AspectOperatorAdd.ID)
         || key.equals(AspectSet.ID)
         || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectElementUseDynamicBind.ID)
         || key.equals(AspectLift.ID)
         || key.equals(AspectArtifact.ID)) {
       return Opt.some(this);
@@ -399,4 +402,19 @@ public record TypeNumberDynamic()
               loc, "TypeNumberDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
         }
       };
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
+
+  @Override
+  public compilerxyz.eval.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return initialBind(dynamicKey);
+  }
+
 }

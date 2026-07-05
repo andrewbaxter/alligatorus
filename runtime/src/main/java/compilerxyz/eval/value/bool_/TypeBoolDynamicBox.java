@@ -163,4 +163,13 @@ public record TypeBoolDynamicBox()
             JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/Boolean")),
             TList.of(JavaDataDescriptor.DESC_BOOL)));
   }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
 }

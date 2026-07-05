@@ -177,4 +177,13 @@ public record TypeAnyConst()
     return EResult.ok(new ValueTypeAnyConst());
   }
 
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
 }

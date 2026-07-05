@@ -31,6 +31,7 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicUnboxed;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectNumberConst;
 import compilerxyz.gen.AspectNumberDynamic;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -49,6 +50,7 @@ public record TypeNumberDynamicBox()
         AspectDynamicUnboxed,
         AspectField,
         AspectInitialBind,
+        AspectElementUseDynamicBind,
         AspectSet,
         AspectStackValueDynamic {
 
@@ -83,7 +85,8 @@ public record TypeNumberDynamicBox()
         || key.equals(AspectField.ID)
         || key.equals(AspectStackValueDynamic.ID)
         || key.equals(AspectSet.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectElementUseDynamicBind.ID)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {
@@ -210,4 +213,19 @@ public record TypeNumberDynamicBox()
             JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/Double")),
             TList.of(JavaDataDescriptor.DESC_DOUBLE)));
   }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
+
+  @Override
+  public compilerxyz.eval.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return initialBind(dynamicKey);
+  }
+
 }

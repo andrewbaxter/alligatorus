@@ -27,6 +27,8 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectFieldUseConst;
+import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -52,6 +54,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         AspectConsumeDynamic,
         AspectDropDynamic,
         AspectField,
+        AspectFieldUseDynamic,
         AspectInitialBind,
         ExporterAny {
 
@@ -145,6 +148,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
+        || key.equals(AspectFieldUseDynamic.ID)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }
@@ -186,8 +190,13 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     var entryType = recordFieldType(typeField);
     if (base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
-      return EResult.ok(
-          baseSome.value().recordBaseFieldAccess(xx, loc, ck.toCanonical(), entryType));
+      var useDynOpt = AspectFieldUseDynamic.getMaybe(xx, entryType);
+      if (useDynOpt instanceof Opt.Some<AspectFieldUseDynamic> useDynSome) {
+        return useDynSome.value().fieldUseDynamic(
+            xx, loc, baseSome.value().source(), ck.toCanonical());
+      }
+      return compilerxyz.eval.dynamic.DynUtil.fieldUseDefaultDynamic(
+          xx, loc, entryType, baseSome.value().source(), ck.toCanonical());
     }
     if (!(self_.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof Record recordValue)) {
@@ -204,11 +213,43 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         if (inner.hasErrors()) {
           yield EResult.err(loc, "Field '" + ck.toCanonical() + "' evaluated to error");
         }
-        yield EResult.ok(inner.requireValue("Record::field EvalRes"));
+        var childCv = inner.requireValue("Record::field EvalRes");
+        var childType = childCv.value() instanceof Opt.Some<Value> cvSome
+            ? cvSome.value().valueTypeOf()
+            : entryType;
+        var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
+        if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
+          yield useConstSome.value().fieldUseConst(xx, loc, childCv);
+        }
+        yield EResult.ok(childCv);
       }
       case RecordField.Dynamic d ->
           throw new IllegalStateException("Record::field: baseless record value has Dynamic field");
     };
+  }
+
+  @Override
+  public EResult<CodeValue> fieldUseDynamic(
+      ExprContext xx,
+      QExprId loc,
+      compilerxyz.eval.value.ValueDynamic.Source baseSource,
+      String javaFieldName) {
+    var childSource = new compilerxyz.eval.value.ValueDynamic.Source.Field(baseSource, javaFieldName);
+    var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, childSource));
+    var newFields = new TOrderedMap<ConstKey, RecordField>();
+    for (var entry : fields.entrySet()) {
+      var t =
+          switch (entry.getValue()) {
+            case RecordField.Dynamic d -> d.type();
+            case RecordField.EvalRes er ->
+                throw new IllegalStateException(
+                    "Record::fieldUseDynamic: field-type Record has non-Dynamic entry '"
+                        + entry.getKey().toCanonical() + "'");
+          };
+      newFields.put(entry.getKey(), new RecordField.Dynamic(t));
+    }
+    Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(childSource)), newFields);
+    return EResult.ok(new CodeValue(fieldCode, Opt.some(innerRecord)));
   }
 
   @Override

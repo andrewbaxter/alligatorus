@@ -28,6 +28,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
@@ -40,6 +41,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         AspectDropDynamic,
         AspectField,
         AspectInitialBind,
+        AspectElementUseDynamicBind,
         ExporterAny {
 
   private static final JavaInternalName MAP_ENTRY_INAME =
@@ -104,7 +106,8 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     if (key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamic.ID)
         || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectElementUseDynamicBind.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -191,4 +194,10 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(this);
   }
+
+  @Override
+  public compilerxyz.eval.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return initialBind(dynamicKey);
+  }
+
 }

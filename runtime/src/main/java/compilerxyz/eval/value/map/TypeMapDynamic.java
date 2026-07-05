@@ -260,57 +260,33 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     var mapName = JavaInternalName.of("java/util/Map");
     var setName = JavaInternalName.of("java/util/Set");
     var iteratorName = JavaInternalName.of("java/util/Iterator");
-    var descObject = JavaDataDescriptor.fromClass(Object.class);
-    var descBool = JavaDataDescriptor.DESC_BOOL;
     var entrySetMethod =
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
     var iterMethod =
         JavaMethodDescriptor.fromParts(
             JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-    var hasNextMethod = JavaMethodDescriptor.fromParts(descBool, TList.of());
-    var nextMethod = JavaMethodDescriptor.fromParts(descObject, TList.of());
+    var setupSeq = new JavaBytecodeSequence();
+    setupSeq.add(baseDyn);
+    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
+    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
+    var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    var loopLabel = new LabelNode();
-    var doneLabel = new LabelNode();
-    var seq = new JavaBytecodeSequence();
-    seq.add(baseDyn);
-    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
-    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
-    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "hasNext", hasNextMethod));
-    seq.add(
-        new CodeDynamic(
-            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iteratorName, "next", nextMethod));
     if (!(elementScopeId instanceof BindingId.Local localBinding)) {
       throw new IllegalStateException(
           "TypeMapDynamic::foreach: element binding must be BindingId.Local");
     }
     // Iterator.next() returns Object; cast to Map.Entry (the element language
     // type) so the binding slot is typed as promised.
-    seq.add(
+    var decodeSeq = new JavaBytecodeSequence();
+    decodeSeq.add(
         JavaBytecodeUtils.cast(loc,
             JavaDataDescriptor.fromInternalName(
                 JavaInternalName.of("java/util/Map$Entry"))));
-    seq.add(JavaBytecodeUtils.storeObj(loc, localBinding.key()));
-    var bodyDyn = body.code().dynamic();
-    if (bodyDyn != null) {
-      seq.add(bodyDyn);
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    }
-    seq.add(
-        new CodeDynamic(
-            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
-    seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    seq.add(JavaBytecodeUtils.literalNull(loc));
+    var elementDecode = new CodeDynamic(loc, decodeSeq);
 
-    var stackRes = AspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
-    if (stackRes.hasErrors()) return stackRes.reerr();
     return EResult.ok(
-        stackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, new CodeDynamic(loc, seq)));
+        compilerxyz.eval.dynamic.DynUtil.foreachSkeleton(
+            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
   }
 
   @Override
@@ -448,4 +424,13 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(this);
   }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
 }

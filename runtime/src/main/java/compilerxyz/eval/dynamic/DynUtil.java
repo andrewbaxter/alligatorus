@@ -43,6 +43,78 @@ public final class DynUtil {
         return new CodeDynamic(loc, seq);
     }
 
+    /**
+     * Shared JVM foreach-loop skeleton. Callers provide the type-specific
+     * pieces (iterator setup, element decode, element slot, store opcode, body)
+     * and this emits the label-based loop wrapping them. The loop return value
+     * is a stack null wrapped as a TypeNullDynamic ValueDynamic — no
+     * AspectStackValueDynamic lookup involved.
+     */
+    public static CodeValue foreachSkeleton(
+            QExprId loc,
+            CodeDynamic iteratorSetup,
+            CodeDynamic elementDecode,
+            compilerxyz.eval.BindingId.Local elementSlot,
+            int elementStoreOp,
+            Code body) {
+        var loopLabel = new org.objectweb.asm.tree.LabelNode();
+        var doneLabel = new org.objectweb.asm.tree.LabelNode();
+        var seq = new JavaBytecodeSequence();
+        seq.add(iteratorSetup);
+        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
+        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        var iteratorName = JavaInternalName.of("java/util/Iterator");
+        seq.add(
+                JavaBytecodeUtils.callInterfaceMethod(
+                        loc,
+                        iteratorName,
+                        "hasNext",
+                        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
+        seq.add(
+                new CodeDynamic(
+                        loc,
+                        new JavaBytecodeInstructionObj(
+                                new org.objectweb.asm.tree.JumpInsnNode(
+                                        org.objectweb.asm.Opcodes.IFEQ, doneLabel))));
+        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        seq.add(
+                JavaBytecodeUtils.callInterfaceMethod(
+                        loc,
+                        iteratorName,
+                        "next",
+                        JavaMethodDescriptor.fromParts(
+                                JavaDataDescriptor.fromClass(Object.class), TList.of())));
+        seq.add(elementDecode);
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(elementStoreOp, elementSlot.key())));
+        var bodyDyn = body.dynamic();
+        if (bodyDyn != null) {
+            seq.add(bodyDyn);
+            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+        }
+        seq.add(
+                new CodeDynamic(
+                        loc,
+                        new JavaBytecodeInstructionObj(
+                                new org.objectweb.asm.tree.JumpInsnNode(
+                                        org.objectweb.asm.Opcodes.GOTO, loopLabel))));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
+        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+        seq.add(JavaBytecodeUtils.literalNull(loc));
+        return dynamicStackToValue(loc, new CodeDynamic(loc, seq), new TypeNullDynamic());
+    }
+
+    public static EResult<CodeValue> fieldUseDefaultDynamic(
+            ExprContext xx, QExprId loc, Type self, ValueDynamic.Source baseSource, String javaFieldName) {
+        var childSource = new ValueDynamic.Source.Field(baseSource, javaFieldName);
+        var code = compilerxyz.eval.Code.of(loc, renderSource(xx, loc, childSource));
+        return EResult.ok(new CodeValue(code, Opt.some(new ValueDynamic(childSource, self))));
+    }
+
+    public static EResult<CodeValue> elementUseDefaultDynamic(
+            ExprContext xx, QExprId loc, Type self, ValueDynamic.Source elementSource, Code carry) {
+        return EResult.ok(new CodeValue(carry, Opt.some(new ValueDynamic(elementSource, self))));
+    }
+
     public static CodeDynamic renderSource(
             ExprContext xx, QExprId loc, ValueDynamic.Source src) {
         if (src instanceof ValueDynamic.Source.Expr) {

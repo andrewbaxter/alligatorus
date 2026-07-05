@@ -80,4 +80,13 @@ public record TypeExprStagedPlaceholder()
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(this);
   }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
+
 }
