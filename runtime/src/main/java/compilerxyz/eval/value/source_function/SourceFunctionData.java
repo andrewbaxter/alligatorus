@@ -112,6 +112,7 @@ public final class SourceFunctionData {
     }
 
     var innerVx = new EvalContext(xx.vx.ix);
+    innerVx.evalRootInternalName = xx.vx.evalRootInternalName;
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
 
