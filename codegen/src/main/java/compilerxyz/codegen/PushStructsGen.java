@@ -677,7 +677,7 @@ public final class PushStructsGen {
       }
       sourceObjectMethods.add(
           new PushMethod(
-              traitSpec.name(),
+              "impl_" + traitSpec.name(),
               TList.of(new NamedTypeRef("record", recordArg)),
               "()",
               empty,
@@ -764,14 +764,8 @@ public final class PushStructsGen {
         sourceInterfaceMethodResult);
   }
 
-  private static final java.util.Set<String> RESERVED_NAMES =
-      java.util.Set.of("new", "type", "value", "class");
-
   private static String pushMethodName(String name) {
-    if (!name.endsWith("_")) return name;
-    var stripped = name.substring(0, name.length() - 1);
-    if (RESERVED_NAMES.contains(stripped)) return name;
-    return stripped;
+    return name.endsWith("_") ? name.substring(0, name.length() - 1) : name;
   }
 
   private static String snakeCase(String camel) {
