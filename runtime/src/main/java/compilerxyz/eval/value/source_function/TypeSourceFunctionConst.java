@@ -358,8 +358,21 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
             TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+    var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
+    if (convertedRes.hasErrors()) return convertedRes.reerr();
+    var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
+    var packedRes = DynUtil.destructurePackedObject(xx, loc, argType, converted);
+    if (packedRes.hasErrors()) return packedRes.reerr();
+    var packedArg = packedRes.requireValue("TypeSourceFunctionConst::call packed arg");
+    var retStackRes =
+        compilerxyz.gen.AspectStackValueDynamic.get(xx, loc, retType);
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
     var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, descriptor, false);
-    return fnType.call(xx, loc, function, argument);
+    var invocation = fnType.emitInvocation(loc, xx.vx, TList.of(packedArg));
+    return EResult.ok(
+        retStackRes
+            .requireValue("TypeSourceFunctionConst::call ret stack")
+            .toValue(loc, invocation));
   }
 
   @Override

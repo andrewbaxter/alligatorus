@@ -382,4 +382,70 @@ public final class DynUtil {
         }
         return EResult.err(loc, "Cannot modify a temporary value");
     }
+
+    /**
+     * If {@code argType} is a tuple, destructure the compile-time value into per-element
+     * CodeDynamic pushes (each element lowered via its own AspectConsumeDynamic). Otherwise
+     * lowers the whole value via {@code argType}'s AspectConsumeDynamic and returns a
+     * singleton list. Used at call sites whose JVM descriptor takes destructured positional args.
+     */
+    public static EResult<TList<CodeDynamic>> destructurePositional(
+            ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
+        var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+        if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+            if (!(converted.value() instanceof Opt.Some<Value> some)) {
+                return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
+            }
+            var elementTypes = tupleSome.value().elementTypes();
+            var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
+            if (elementTypes.size() != elemCvs.size()) {
+                throw new IllegalStateException(
+                        "DynUtil::destructurePositional: elementTypes/takeElements size mismatch");
+            }
+            var out = new TList<CodeDynamic>(elementTypes.size());
+            for (int i = 0; i < elementTypes.size(); i++) {
+                var elemCvRes = elemCvs.get(i);
+                if (elemCvRes.hasErrors()) return elemCvRes.reerr();
+                var elemCv = elemCvRes.requireValue("DynUtil::destructurePositional element");
+                var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
+                if (consumeRes.hasErrors()) return consumeRes.reerr();
+                var elemDyn =
+                        consumeRes
+                                .requireValue("DynUtil::destructurePositional consume")
+                                .toDynamic(xx, loc, elemCv);
+                if (elemDyn.hasErrors()) return elemDyn.reerr();
+                out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
+            }
+            return EResult.ok(out);
+        }
+        var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
+        if (consumeRes.hasErrors()) return consumeRes.reerr();
+        var argDyn =
+                consumeRes
+                        .requireValue("DynUtil::destructurePositional arg consume")
+                        .toDynamic(xx, loc, converted);
+        if (argDyn.hasErrors()) return argDyn.reerr();
+        return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
+    }
+
+    /**
+     * Same as {@link #destructurePositional} but packs the results into a single Object:
+     * 0 elements → ACONST_NULL; 1 element → the element as-is; 2+ elements →
+     * Object[] via {@link JavaBytecodeUtils#buildObjectArray}. Used at call sites whose JVM
+     * descriptor takes a single packed Object payload (e.g. invisible builtins, constructor
+     * wrappers).
+     */
+    public static EResult<CodeDynamic> destructurePackedObject(
+            ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
+        var positional = destructurePositional(xx, loc, argType, converted);
+        if (positional.hasErrors()) return positional.reerr();
+        var elemCodes = positional.requireValue("DynUtil::destructurePackedObject elements");
+        if (elemCodes.isEmpty()) {
+            return EResult.ok(JavaBytecodeUtils.literalNull(loc));
+        }
+        if (elemCodes.size() == 1) {
+            return EResult.ok(elemCodes.get(0));
+        }
+        return EResult.ok(JavaBytecodeUtils.buildObjectArray(loc, elemCodes));
+    }
 }

@@ -1,59 +1,74 @@
 package compilerxyz.eval.value.source_object_new;
 
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.Binding;
-import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Erb;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
-import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamicLight;
-import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectLift;
+import compilerxyz.gen.AspectFunction;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
+import java.util.function.Function;
+import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-public record TypeSourceObjectNewDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, AspectLift, ExporterAny {
+public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
+    implements Type, AspectBind, AspectFunction, ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID; }
-
-
-  @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public TypeId typeId() {
+    return new TypeId.Composite(
+        GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
+        TList.of(new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity))));
   }
+
+  private static long uniqueId(Unique u) {
+    return switch (u) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> s.id();
+    };
+  }
+
 
   @Override
   public String typeDesc() {
+    var d = type_.description;
+    if (d != null) return d;
     return "definition_set_object_new";
   }
 
   @Override
   public Type valueTypeOf() {
-    return new TypeRoot.SourceObjectNewDynamic();
+    return new TypeRoot.SourceObjectNewConst();
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)) {
+    if (key.equals(AspectBind.ID) || key.equals(AspectFunction.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -61,32 +76,63 @@ public record TypeSourceObjectNewDynamic()
 
   @Override
   public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.bindViaTarget(xx, loc, cv);
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      return EResult.err(
+          loc, "TypeSourceObjectNewDynamic::bind: CodeValue has no compile-time value");
+    }
+    Value v = some.value();
+    return EResult.ok(new BindResult(Code.none(loc), new SourceObjectNewConstBinding(v)));
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeSourceObjectNewDynamic::toDynamic: CodeValue has no dynamic code");
-  }
+  public EResult<CodeValue> call(
+      ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
+    var set = type_.set;
+    if (set == null) {
+      return EResult.err(
+          loc, "TypeSourceObjectNewDynamic::call: object has no definition set reference");
+    }
+    xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
+    Type underlyingType = type_.underlyingType;
+    if (underlyingType == null) {
+      return EResult.err(
+          loc, "TypeSourceObjectNewDynamic::call: object underlying type not finalised");
+    }
+    var erb = new Erb(loc);
+    var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
+    if (convertedOpt.isEmpty()) {
+      return EResult.errs(erb.errors());
+    }
+    var converted = convertedOpt.get();
+    var underlyingJsOpt =
+        erb.mustEr(
+            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
+                xx, loc, underlyingType, converted));
+    if (underlyingJsOpt.isEmpty()) {
+      return EResult.errs(erb.errors());
+    }
+    var underlyingJs = underlyingJsOpt.get();
+    Type resultType = type_;
 
-  @Override
-  public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, this);
-  }
-
-  @Override
-  public EResult<Value> lift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof TypeSourceObjectNewConst ctorType)) {
+    var objectIndex = set.objects.indexOf(type_);
+    if (objectIndex < 0) {
       return EResult.err(
           loc,
-          "TypeSourceObjectNewDynamic::lift: expected TypeSourceObjectNewConst, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+          "TypeSourceObjectNewDynamic::call: source object not registered in its owning def-set");
     }
-    return EResult.ok(new ValueAnyConst(ctorType));
+    var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, objectIndex);
+    var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
+    var ctorDesc =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
+            TList.of(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT));
+    var newInstance =
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
+    return EResult.ok(DynUtil.dynamicStackToValue(loc, newInstance, resultType));
+  }
+
+  @Override
+  public Opt<Type> exceptionType() {
+    return Opt.none();
   }
 
   @Override
@@ -99,12 +145,10 @@ public record TypeSourceObjectNewDynamic()
     return EResult.ok(this);
   }
 
-  @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  private record SourceObjectNewConstBinding(Value value) implements Binding {
+    @Override
+    public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+      return new CodeValue(Code.none(loc), Opt.some(value));
+    }
   }
-
 }

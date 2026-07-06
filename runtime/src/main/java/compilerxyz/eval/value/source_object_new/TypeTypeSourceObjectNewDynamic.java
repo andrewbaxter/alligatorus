@@ -1,4 +1,4 @@
-package compilerxyz.eval.value.source_object;
+package compilerxyz.eval.value.source_object_new;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Binding;
@@ -15,19 +15,21 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-public record TypeSourceObjectRefDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, ExporterAny {
+public record TypeTypeSourceObjectNewDynamic()
+    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, AspectLift, ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_OBJECT_REF_DYNAMIC_TYPE_ID; }
+  public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID; }
 
 
   @Override
@@ -37,12 +39,12 @@ public record TypeSourceObjectRefDynamic()
 
   @Override
   public String typeDesc() {
-    return "definition_set_object_ref";
+    return "definition_set_object_new";
   }
 
   @Override
   public Type valueTypeOf() {
-    return new TypeRoot.SourceObjectRefDynamic();
+    return new TypeRoot.SourceObjectNewDynamic();
   }
 
   @Override
@@ -50,7 +52,8 @@ public record TypeSourceObjectRefDynamic()
     if (key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectLift.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -66,12 +69,24 @@ public record TypeSourceObjectRefDynamic()
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeSourceObjectRefDynamic::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeTypeSourceObjectNewDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Value> lift(
+      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
+    if (!(externalHostValue instanceof TypeSourceObjectNewDynamic ctorType)) {
+      return EResult.err(
+          loc,
+          "TypeTypeSourceObjectNewDynamic::lift: expected TypeSourceObjectNewDynamic, got "
+              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+    }
+    return EResult.ok(new ValueAnyConst(new TypeTypeSourceObjectNewConst(ctorType.type_())));
   }
 
   @Override

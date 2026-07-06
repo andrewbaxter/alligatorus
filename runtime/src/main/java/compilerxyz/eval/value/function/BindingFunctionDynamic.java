@@ -17,8 +17,7 @@ public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic t
     implements Binding {
   @Override
   public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
-    var empty = new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeSequence());
     Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
-    return new CodeValue(Code.of(loc, empty), Opt.some(value));
+    return new CodeValue(Code.none(loc), Opt.some(value));
   }
 }

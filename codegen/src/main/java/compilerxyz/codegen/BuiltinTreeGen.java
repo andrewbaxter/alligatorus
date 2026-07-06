@@ -180,7 +180,8 @@ public final class BuiltinTreeGen {
     }
   }
 
-  private record FunctionHelper(long scopeId, TList<NamedTypeRef> args, CodeBlock body) {}
+  private record FunctionHelper(
+      long scopeId, TList<NamedTypeRef> args, TypeName ret, CodeBlock body) {}
 
   private static TList<FunctionHelper> collectFunctionLeaves(NodeSpec root) {
     var out = new TList<FunctionHelper>();
@@ -196,9 +197,9 @@ public final class BuiltinTreeGen {
       case Leaf l -> {
         switch (l.leaf()) {
           case LeafSpec.Function fn ->
-              out.add(new FunctionHelper(fn.builtinScopeId(), fn.args(), fn.body()));
+              out.add(new FunctionHelper(fn.builtinScopeId(), fn.args(), fn.ret(), fn.body()));
           case LeafSpec.Constructor c ->
-              out.add(new FunctionHelper(c.builtinScopeId(), c.args(), c.body()));
+              out.add(new FunctionHelper(c.builtinScopeId(), c.args(), c.ret(), c.body()));
           default -> {}
         }
       }

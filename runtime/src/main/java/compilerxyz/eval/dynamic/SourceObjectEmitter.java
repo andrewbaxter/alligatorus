@@ -7,7 +7,7 @@ import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
-import compilerxyz.eval.value.source_object.SourceObjectData;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData;
 import org.objectweb.asm.ClassWriter;
@@ -198,7 +198,7 @@ public final class SourceObjectEmitter {
   public static EmittedSourceObject emit(
       DefSetId defSet,
       long objectIndex,
-      SourceObjectData data,
+      TypeSourceObjectDynamic data,
       TOrderedMap<String, Object> builtinDynamics,
       TSet<BindingId.Def> staticFunctionDefs) {
     var binaryName = binaryNameFor(defSet, objectIndex);
@@ -758,7 +758,7 @@ public final class SourceObjectEmitter {
   }
 
   private static TOrderedSet<String> emitHostInterfaceAdapters(
-      ClassWriter cw, JavaInternalName internalName, SourceObjectData data) {
+      ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
     var emitted = new TOrderedSet<String>();
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
       var impl = data.interfaceImpls.get(implIdx);

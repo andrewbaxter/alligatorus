@@ -27,7 +27,7 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewConst;
+import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -203,7 +203,7 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
     }
     for (var objData : set.objects) {
       if (keyName.equals(objData.name)) {
-        Type ctorType = new TypeSourceObjectNewConst(objData);
+        Type ctorType = new TypeSourceObjectNewDynamic(objData);
         return EResult.ok(
             new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(ctorType))));
       }
@@ -226,7 +226,7 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
     }
     for (var objData : set.objects) {
       if (s.value().equals(objData.name)) {
-        return Opt.some(new TypeSourceObjectNewConst(objData));
+        return Opt.some(new TypeSourceObjectNewDynamic(objData));
       }
     }
     return Opt.none();

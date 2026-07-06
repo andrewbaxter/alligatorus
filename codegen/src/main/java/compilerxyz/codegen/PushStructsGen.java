@@ -79,6 +79,17 @@ public final class PushStructsGen {
   private static final ClassName JAVA_DATA_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
   private static final String DYN_RUNTIME_INTNAME = "compilerxyz/eval/dynamic/DynRuntime";
+  private static final ClassName JAVA_BYTECODE_SEQUENCE =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeSequence");
+  private static final ClassName JAVA_BYTECODE_UTILS =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeUtils");
+  private static final ClassName TYPE_OBJECT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName OBJECT_DATA_FIELD =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
+  private static final ClassName OBJECT_METHOD =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
+  private static final ClassName TYPE_ID = ClassName.get("compilerxyz.eval", "TypeId");
 
   private static final ClassName TUPLE = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
   private static final ClassName TUPLE_ELEMENT_DYNAMIC =
@@ -87,7 +98,7 @@ public final class PushStructsGen {
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
 
-  public record PushField(String name, TypeRef ret, CodeBlock body) {}
+  public record PushField(String name, String javaFieldName, TypeRef ret, CodeBlock body) {}
 
   public record PushStructSpec(
       String name,
@@ -117,8 +128,8 @@ public final class PushStructsGen {
     validate(specs, builtinUniqueIds);
     for (var spec : specs) {
       writeDataClass(outRoot, formatter, spec);
-      writeTypeSentinel(outRoot, formatter, spec);
     }
+    writeGenObjectTypes(outRoot, formatter, specs);
   }
 
   private static void validate(TList<PushStructSpec> specs, TSet<Long> builtinUniqueIds) {
@@ -149,10 +160,13 @@ public final class PushStructsGen {
 
   private static void writeDataClass(Path outRoot, Formatter formatter, PushStructSpec spec)
       throws IOException {
-    var sentinel = ClassName.get(GEN_PACKAGE, "Type" + spec.name() + "Dynamic");
-      var cls =
-              TypeSpec.classBuilder(spec.name())
-                      .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+    var chars = spec.name().toCharArray();
+    chars[0] = Character.toLowerCase(chars[0]);
+    var factoryName = new String(chars);
+    var genObjectTypes = ClassName.get(GEN_PACKAGE, "GenObjectTypes");
+    var cls =
+        TypeSpec.classBuilder(spec.name())
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
     var ctor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
     for (var df : spec.dataFields()) {
@@ -164,87 +178,43 @@ public final class PushStructsGen {
     cls.addMethod(ctor.build());
 
     cls.addMethod(
-            MethodSpec.methodBuilder("dynamicType")
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .returns(TYPE)
-                    .addStatement("return new $T()", sentinel)
-            .build());
-
-    var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
-    GenMain.write(outRoot, file, formatter);
-  }
-
-  private static void writeTypeSentinel(Path outRoot, Formatter formatter, PushStructSpec spec)
-      throws IOException {
-    var sentinelName = "Type" + spec.name() + "Dynamic";
-    var sentinel = ClassName.get(GEN_PACKAGE, sentinelName);
-      var cls =
-              TypeSpec.classBuilder(sentinelName)
-                      .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                      .addSuperinterface(TYPE)
-                      .addSuperinterface(ASPECT_FIELD)
-                      .addSuperinterface(ASPECT_CONSUME_DYNAMIC)
-                      .addSuperinterface(
-                          ClassName.get("compilerxyz.gen", "AspectDropDynamic"))
-                      .addSuperinterface(ASPECT_BIND)
-                      .addSuperinterface(ASPECT_BIND_DYNAMIC)
-                      .addSuperinterface(ASPECT_STACK_VALUE_DYNAMIC);
-
-    cls.addField(
-            FieldSpec.builder(UNIQUE, "IDENTITY", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.builtinUniqueId())
-                    .build());
-
-    cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC).build());
-
-    cls.addMethod(
-        MethodSpec.methodBuilder("typeDesc")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
-            .returns(String.class)
-            .addStatement("return $S", spec.name())
-            .build());
-
-    cls.addMethod(
-        MethodSpec.methodBuilder("valueTypeOf")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
+        MethodSpec.methodBuilder("dynamicType")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(TYPE)
-            .addStatement("return this")
+            .addStatement("return $T.$L()", genObjectTypes, factoryName)
             .build());
-
-    cls.addMethod(buildAspectDispatch(spec, sentinel));
-
-    cls.addMethod(buildFieldMethod(spec, sentinel));
-    cls.addMethod(buildFieldTypeOpt(spec));
-    cls.addMethod(buildFieldKeys());
-    cls.addMethod(buildToDynamicMethod());
-    cls.addMethod(buildConsumeDynamicJvmClassMethod());
-    cls.addMethod(buildDropMethod());
-    cls.addMethod(buildBindMethod());
-    cls.addMethod(buildBindDynamicMethod());
-    cls.addMethod(buildToValueMethod(sentinel));
 
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
   }
 
-  private static MethodSpec buildAspectDispatch(PushStructSpec spec, ClassName sentinel) {
-    var m =
-        MethodSpec.methodBuilder("typeAspect")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
-            .returns(ParameterizedTypeName.get(OPT, ASPECT))
-            .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(UNIQUE, "key")
-            .addStatement("if (key.equals(IDENTITY)) return $T.some(this)", OPT)
-            .addStatement("if (key.equals($T.ID)) return $T.some(this)", ASPECT_FIELD, OPT)
-            .addStatement(
-                "if (key.equals($T.ID)) return $T.some(this)", ASPECT_CONSUME_DYNAMIC, OPT)
-            .addStatement("if (key.equals($T.ID)) return $T.some(this)", ASPECT_BIND, OPT)
-            .addStatement("if (key.equals($T.ID)) return $T.some(this)", ASPECT_BIND_DYNAMIC, OPT)
-            .addStatement(
-                "if (key.equals($T.ID)) return $T.some(this)", ASPECT_STACK_VALUE_DYNAMIC, OPT);
+  private static void writeGenObjectTypes(
+      Path outRoot, Formatter formatter, TList<PushStructSpec> specs) throws IOException {
+    var cls =
+        TypeSpec.classBuilder("GenObjectTypes")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+    cls.addMethod(
+        MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+    for (var spec : specs) {
+      var chars = spec.name().toCharArray();
+      chars[0] = Character.toLowerCase(chars[0]);
+      var fieldName = new String(chars) + "_instance";
+      cls.addField(
+          FieldSpec.builder(TYPE, fieldName, Modifier.PRIVATE, Modifier.STATIC).build());
+      cls.addMethod(buildObjectTypeFactory(spec, fieldName));
+    }
+    var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
+    GenMain.write(outRoot, file, formatter);
+  }
+
+  private static MethodSpec buildObjectTypeFactory(PushStructSpec spec, String fieldName) {
+    var chars = spec.name().toCharArray();
+    chars[0] = Character.toLowerCase(chars[0]);
+    var factoryName = new String(chars);
+    var specClass = ClassName.get(GEN_PACKAGE, spec.name());
+    var jvmInternal = specClass.canonicalName().replace('.', '/');
+
+    CodeBlock extraAspect;
     if (spec.extraAspectFn() != null) {
       var fn = spec.extraAspectFn();
       var lastDot = fn.lastIndexOf('.');
@@ -254,214 +224,80 @@ public final class PushStructsGen {
       }
       var className = ClassName.bestGuess(fn.substring(0, lastDot));
       var methodName = fn.substring(lastDot + 1);
-      m.addStatement("return $T.$L(xx, key)", className, methodName);
+      extraAspect =
+          CodeBlock.of("$T.some($T::$L)", OPT, className, methodName);
     } else {
-      m.addStatement("return $T.none()", OPT);
+      extraAspect = CodeBlock.of("$T.none()", OPT);
     }
-    return m.build();
-  }
 
-  private static MethodSpec buildToDynamicMethod() {
-    return MethodSpec.methodBuilder("toDynamic")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(ParameterizedTypeName.get(ERESULT_RT, CODE_DYNAMIC))
-        .addParameter(EXPR_CONTEXT, "xx")
-        .addParameter(QEXPR_ID, "loc")
-        .addParameter(CODE_VALUE, "cv")
-        .addStatement("return $T.dynamicConsumeToDynamic(xx, loc, cv)", DYN_UTIL)
-        .build();
-  }
-
-  private static final ClassName JVM_CONSTANTS =
-      ClassName.get("compilerxyz.eval.dynamic", "JvmConstants");
-
-  private static MethodSpec buildConsumeDynamicJvmClassMethod() {
-    return MethodSpec.methodBuilder("consumeDynamicJvmClass")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(JAVA_DATA_DESCRIPTOR)
-        .addStatement("return $T.DESC_OBJECT", JVM_CONSTANTS)
-        .build();
-  }
-
-  private static MethodSpec buildDropMethod() {
-    return MethodSpec.methodBuilder("drop")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(ParameterizedTypeName.get(ERESULT_RT, CODE))
-        .addParameter(EXPR_CONTEXT, "xx")
-        .addParameter(QEXPR_ID, "loc")
-        .addParameter(CODE_VALUE, "cv")
-        .addStatement("return $T.dropDefault(xx, loc, cv)", DYN_UTIL)
-        .build();
-  }
-
-  private static MethodSpec buildBindMethod() {
-    return MethodSpec.methodBuilder("bind")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(ParameterizedTypeName.get(ERESULT_RT, ASPECT_BIND_RESULT))
-        .addParameter(EXPR_CONTEXT, "xx")
-        .addParameter(QEXPR_ID, "loc")
-        .addParameter(CODE_VALUE, "cv")
-        .addStatement("return $T.bindViaTarget(xx, loc, cv)", DYN_UTIL)
-        .build();
-  }
-
-  private static MethodSpec buildBindDynamicMethod() {
-    return MethodSpec.methodBuilder("bindDynamic")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(
-            ParameterizedTypeName.get(
-                ERESULT_RT, ParameterizedTypeName.get(OPT, TARGET_BIND_SUB)))
-        .addParameter(EXPR_CONTEXT, "xx")
-        .addParameter(QEXPR_ID, "loc")
-        .addParameter(CODE_VALUE, "cv")
-        .addStatement("return $T.bindDynamicDefault(xx, loc, cv)", DYN_UTIL)
-        .build();
-  }
-
-  private static MethodSpec buildToValueMethod(ClassName sentinel) {
-    return MethodSpec.methodBuilder("toValue")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(CODE_VALUE)
-        .addParameter(QEXPR_ID, "loc")
-        .addParameter(CODE_DYNAMIC, "value")
-        .addStatement("return $T.dynamicStackToValue(loc, value, this)", DYN_UTIL)
-        .build();
-  }
-
-  private static MethodSpec buildFieldMethod(PushStructSpec spec, ClassName sentinel) {
-    var m =
-        MethodSpec.methodBuilder("field")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
-            .returns(ParameterizedTypeName.get(ERESULT, CODE_VALUE))
-            .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(QEXPR_ID, "loc")
-            .addParameter(CODE_VALUE, "self")
-            .addParameter(CODE_VALUE, "key");
-
-    m.addStatement("var erb = new $T(loc)", ERB);
-    m.beginControlFlow(
-        "if (!(key.value() instanceof $T.Some<$T> keySome))", OPT, VALUE);
-    m.addStatement(
-        "return $T.err(loc, $S)",
-        ERESULT,
-        spec.name() + "::field: key has no compile-time value");
-    m.endControlFlow();
-    m.addStatement("var ckOpt = erb.mustRes($T.extractConstKey(xx, loc, keySome.value()))", EVAL);
-    m.addStatement("if (ckOpt.isEmpty()) return $T.errs(erb.errors())", ERESULT);
-    m.addStatement("var ck = ckOpt.get()");
-    m.beginControlFlow("if (!(ck instanceof $T ckStr))", CONST_KEY_STR);
-    m.addStatement(
-        "return $T.err(loc, $S + ck.toCanonical())",
-        ERESULT,
-        spec.name() + ": unknown field ");
-    m.endControlFlow();
-    m.addStatement("var keyStr = ckStr.value()");
-
-    m.addStatement("var dyn = self.code().dynamic()");
-    m.beginControlFlow("if (dyn == null)");
-    m.addStatement(
-        "return $T.err(loc, $S)", ERESULT, spec.name() + ": self has no dynamic code");
-    m.endControlFlow();
-
-    for (var f : spec.fields()) {
-      m.addCode(buildFieldGetterArm(sentinel, pushMethodName(f.name()), f));
+    var dataFieldsList = CodeBlock.builder();
+    dataFieldsList.add("$T.<$T>of(", TLIST, OBJECT_DATA_FIELD);
+    for (int i = 0; i < spec.fields().size(); i++) {
+      var f = spec.fields().get(i);
+      if (i > 0) dataFieldsList.add(", ");
+      dataFieldsList.add(
+          "new $T($S, $S, $T.fromClass($T.class), $L)",
+          OBJECT_DATA_FIELD,
+          pushMethodName(f.name()),
+          f.javaFieldName(),
+          JAVA_DATA_DESCRIPTOR,
+          rawTypeName(f.ret().path()),
+          f.ret().dynamicType());
     }
-    for (var meth : spec.methods()) {
-      m.addCode(buildMethodArm(sentinel, pushMethodName(meth.name()), meth));
-    }
-    m.addStatement(
-        "return $T.err(loc, $S + keyStr)",
-        ERESULT,
-        spec.name() + ": unknown field '");
-    return m.build();
-  }
+    dataFieldsList.add(")");
 
-  private static CodeBlock buildFieldGetterArm(ClassName sentinel, String keyName, PushField f) {
-    return CodeBlock.builder()
-        .beginControlFlow("if (keyStr.equals($S))", keyName)
-        .addStatement(
-            "return $T.ok(new $T(self.code(), $T.some($T.stack($L))))",
-            ERESULT,
-            CODE_VALUE,
-            OPT,
-            VALUE_DYNAMIC,
-            f.ret().dynamicType())
-        .endControlFlow()
-        .build();
-  }
-
-  private static CodeBlock buildMethodArm(ClassName sentinel, String keyName, PushMethod meth) {
-    var dynRuntimeMethod = meth.dynRuntimeMethod();
-    if (dynRuntimeMethod == null) {
-      throw new IllegalStateException(
-          "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
-    }
-    return CodeBlock.builder()
-        .beginControlFlow("if (keyStr.equals($S))", keyName)
-        .addStatement(
-            "return $T.ok(new $T(self.code(), $T.some($T.stack($L))))",
-            ERESULT,
-            CODE_VALUE,
-            OPT,
-            VALUE_DYNAMIC,
-            methodFunctionType(sentinel, meth, dynRuntimeMethod))
-        .endControlFlow()
-        .build();
-  }
-
-  private static MethodSpec buildFieldTypeOpt(PushStructSpec spec) {
-    var m =
-        MethodSpec.methodBuilder("fieldTypeOpt")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
-            .returns(ParameterizedTypeName.get(OPT, TYPE))
-            .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(CONST_KEY, "key");
-    m.beginControlFlow("if (!(key instanceof $T.Str keyStr))", CONST_KEY);
-    m.addStatement("return $T.none()", OPT);
-    m.endControlFlow();
-    for (var f : spec.fields()) {
-      m.beginControlFlow("if (keyStr.value().equals($S))", pushMethodName(f.name()));
-      m.addStatement("return $T.some($L)", OPT, f.ret().dynamicType());
-      m.endControlFlow();
-    }
-    var sentinelForTypeOpt = ClassName.get(GEN_PACKAGE, "Type" + spec.name() + "Dynamic");
-    for (var meth : spec.methods()) {
-      m.beginControlFlow("if (keyStr.value().equals($S))", pushMethodName(meth.name()));
+    var methodsList = CodeBlock.builder();
+    methodsList.add("$T.<$T>of(", TLIST, OBJECT_METHOD);
+    for (int i = 0; i < spec.methods().size(); i++) {
+      var meth = spec.methods().get(i);
       var dynRuntimeMethod = meth.dynRuntimeMethod();
       if (dynRuntimeMethod == null) {
         throw new IllegalStateException(
             "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
       }
-      m.addStatement("return $T.some($L)", OPT, methodFunctionType(sentinelForTypeOpt, meth, dynRuntimeMethod));
-      m.endControlFlow();
+      if (i > 0) methodsList.add(", ");
+      methodsList.add(
+          "new $T($S, $L)",
+          OBJECT_METHOD,
+          pushMethodName(meth.name()),
+          methodFunctionType(null, specClass, meth, dynRuntimeMethod));
     }
-    m.addStatement("return $T.none()", OPT);
-    return m.build();
-  }
+    methodsList.add(")");
 
-  private static MethodSpec buildFieldKeys() {
-    return MethodSpec.methodBuilder("fieldKeys")
-        .addModifiers(Modifier.PUBLIC)
-        .addAnnotation(Override.class)
-        .returns(ParameterizedTypeName.get(TLIST, CONST_KEY))
-        .addParameter(EXPR_CONTEXT, "xx")
-        .addStatement("return new $T<>()", TLIST)
+    return MethodSpec.methodBuilder(factoryName)
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .returns(TYPE)
+        .beginControlFlow("if ($N == null)", fieldName)
+        .addStatement(
+            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $L)",
+            fieldName,
+            TYPE_OBJECT_DYNAMIC,
+            TYPE_ID,
+            spec.builtinUniqueId(),
+            spec.name(),
+            JAVA_INTERNAL_NAME,
+            jvmInternal,
+            JAVA_DATA_DESCRIPTOR,
+            specClass,
+            dataFieldsList.build(),
+            methodsList.build(),
+            extraAspect)
+        .endControlFlow()
+        .addStatement("return $N", fieldName)
         .build();
   }
 
+
+  private static com.squareup.javapoet.TypeName rawTypeName(com.squareup.javapoet.TypeName t) {
+    if (t instanceof com.squareup.javapoet.ParameterizedTypeName p) return p.rawType;
+    return t;
+  }
+
   private static CodeBlock methodFunctionType(
-      ClassName sentinel, PushMethod m, String dynRuntimeMethodName) {
+      ClassName sentinel, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {
     var argDynType = argDynamicTypeExpr(m.args());
     var retDynType = unitOrDynamic(m.ret());
-    var descriptor = methodDescriptorExpr(m);
+    var descriptor = methodDescriptorExpr(receiverClass, m);
     return CodeBlock.of(
         "new $T($L, $L, $T.of($S), $S, $L, true)",
         TYPE_FUNCTION_DYNAMIC,
@@ -473,19 +309,19 @@ public final class PushStructsGen {
         descriptor);
   }
 
-  private static CodeBlock methodDescriptorExpr(PushMethod m) {
+  private static CodeBlock methodDescriptorExpr(ClassName receiverClass, PushMethod m) {
     var argListExpr = CodeBlock.builder();
     argListExpr.add("$T.of($T.fromClass($T.class)", TLIST, JAVA_DATA_DESCRIPTOR, EXPR_CONTEXT);
-    argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, ClassName.OBJECT);
+    argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, receiverClass);
     for (var a : m.args()) {
-      argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, ClassName.OBJECT);
+      argListExpr.add(", $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, rawTypeName(a.type().path()));
     }
     argListExpr.add(")");
     return CodeBlock.of(
         "$T.fromParts($T.fromClass($T.class), $L)",
         JAVA_METHOD_DESCRIPTOR,
         JAVA_DATA_DESCRIPTOR,
-        ClassName.OBJECT,
+        rawTypeName(m.retClass().path()),
         argListExpr.build());
   }
 
@@ -511,30 +347,13 @@ public final class PushStructsGen {
     return CodeBlock.of("$L", ret);
   }
 
-  private static final ClassName T_DEFINITION_SET_BUILDER_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeDefinitionSetBuilderDynamic");
-  private static final ClassName T_OPTION_PUSH_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeOptionPushDynamic");
-  private static final ClassName T_SOURCE_FUNC_RESULT_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceFuncResultDynamic");
-  private static final ClassName T_SOURCE_OBJECT_RESULT_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceObjectResultDynamic");
-  private static final ClassName T_SOURCE_OBJECT_METHOD_RESULT_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceObjectMethodResultDynamic");
-  private static final ClassName T_SOURCE_INTERFACE_RESULT_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceInterfaceResultDynamic");
-  private static final ClassName T_SOURCE_INTERFACE_METHOD_RESULT_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceInterfaceMethodResultDynamic");
-  private static final ClassName T_SOURCE_UNION_BUILDER_DYN =
-      ClassName.get(GEN_PACKAGE, "TypeSourceUnionBuilderDynamic");
-
   private static final ClassName DEFINITION_SET =
       ClassName.get("compilerxyz.eval", "DefinitionSet");
   private static final ClassName TYPE_RT = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName ANY_TYPE =
-      ClassName.get("compilerxyz.eval.push", "AnyType");
+      ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName STAGED_EXPR =
-      ClassName.get("compilerxyz.eval.push", "StagedExpr");
+      ClassName.get("compilerxyz.eval.expr", "StagedExprCell");
 
   private static final ClassName TYPE_SOURCE_FUNCTION_CONST =
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionConst");
@@ -547,15 +366,15 @@ public final class PushStructsGen {
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceMethodData");
   private static final ClassName SOURCE_OBJECT_REF =
-      ClassName.get("compilerxyz.eval.value.source_object", "SourceObjectRef");
+      ClassName.get("compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic");
   private static final ClassName SOURCE_DATA_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_object", "SourceDataMethodData");
   private static final ClassName TYPE_SOURCE_OBJECT_REF_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_object", "TypeSourceObjectRefDynamic");
+      ClassName.get("compilerxyz.eval.value.source_object", "TypeTypeSourceObjectDynamic");
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_CONST =
-      ClassName.get("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewConst");
-  private static final ClassName TYPE_SOURCE_OBJECT_NEW_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewDynamic");
+  private static final ClassName TYPE_SOURCE_OBJECT_NEW_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.source_object_new", "TypeTypeSourceObjectNewDynamic");
   private static final ClassName SOURCE_UNION_DATA =
       ClassName.get("compilerxyz.eval.value.source_union", "SourceUnionData");
   private static final ClassName SOURCE_UNION_REF =
@@ -601,14 +420,20 @@ public final class PushStructsGen {
     return "new " + c.canonicalName() + "()";
   }
 
+  private static String objRef(String specName) {
+    var chars = specName.toCharArray();
+    chars[0] = Character.toLowerCase(chars[0]);
+    return GEN_PACKAGE + ".GenObjectTypes." + new String(chars) + "()";
+  }
+
   public static TList<PushStructSpec> specs() {
     return specs(TList.of());
   }
 
   public static TList<PushStructSpec> specs(TList<InterfaceSpec> traitSpecs) {
-    var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
-    var string = TypeRef.unit(TYPE_STRING_DYNAMIC);
-    var bool = TypeRef.unit(TYPE_BOOL_DYNAMIC);
+    var any = ref(ClassName.OBJECT, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
+    var string = ref(ClassName.get(String.class), CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC));
+    var bool = ref(ClassName.get(Boolean.class), CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
     var anyTypeArg = ref(ANY_TYPE, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
     var stagedExprArg = ref(STAGED_EXPR, CodeBlock.of("new $T()", TYPE_EXPR));
     var uniqueArg = ref(UNIQUE_RT, CodeBlock.of("new $T()", TYPE_UNIQUE_RT));
@@ -624,6 +449,22 @@ public final class PushStructsGen {
 
     var empty = CodeBlock.of("");
 
+    var retObject = TypeRef.opaque(ClassName.OBJECT);
+    var retSourceFuncResult = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceFuncResult"));
+    var retSourceObjectBuilder = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceObjectBuilder"));
+    var retSourceInterfaceResult =
+        TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceInterfaceResult"));
+    var retSourceInterfaceMethodResult =
+        TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceInterfaceMethodResult"));
+    var retSourceObjectMethodResult =
+        TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceObjectMethodResult"));
+    var retSourceUnionBuilder = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "SourceUnionBuilder"));
+    var retDefinitionSetBuilder =
+        TypeRef.opaque(ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"));
+    var retOptionPush = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "OptionPush"));
+    var retSourceInterfaceRef = TypeRef.opaque(SOURCE_INTERFACE_REF);
+    var retSourceUnionNewRef = TypeRef.opaque(SOURCE_UNION_NEW_REF);
+
     var definitionSetBuilder =
         new PushStructSpec(
             "DefinitionSetBuilder",
@@ -634,27 +475,26 @@ public final class PushStructsGen {
                 new PushMethod(
                     "func",
                     TList.of(new NamedTypeRef("name", string)),
-                    dynExpr(T_SOURCE_FUNC_RESULT_DYN),
+                    objRef("SourceFuncResult"),
                     empty,
-                    "defSetBuilderFunc"),
+                    "defSetBuilderFunc",
+                    retSourceFuncResult),
                 new PushMethod(
                     "object",
                     TList.of(new NamedTypeRef("name", string)),
-                    dynExpr(T_SOURCE_OBJECT_RESULT_DYN),
+                    objRef("SourceObjectBuilder"),
                     empty,
-                    "defSetBuilderObject"),
+                    "defSetBuilderObject",
+                    retSourceObjectBuilder),
                 new PushMethod(
-                    "build", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty,
-                    "defSetBuilderBuild"),
+                    "union", TList.of(), objRef("SourceUnionBuilder"), empty,
+                    "defSetBuilderUnion", retSourceUnionBuilder),
                 new PushMethod(
-                    "union", TList.of(), dynExpr(T_SOURCE_UNION_BUILDER_DYN), empty,
-                    "defSetBuilderUnion"),
+                    "interface", TList.of(), objRef("SourceInterfaceResult"), empty,
+                    "defSetBuilderInterface", retSourceInterfaceResult),
                 new PushMethod(
-                    "interface", TList.of(), dynExpr(T_SOURCE_INTERFACE_RESULT_DYN), empty,
-                    "defSetBuilderInterface"),
-                new PushMethod(
-                    "finish", TList.of(), dynExpr(T_DEFINITION_SET_BUILDER_DYN), empty,
-                    "defSetBuilderFinish")),
+                    "finish", TList.of(), "()", empty,
+                    "defSetBuilderFinish", retObject)),
             "compilerxyz.eval.definition_set.DefinitionSetExtraAspect.extraAspect");
 
     var optionPush =
@@ -666,7 +506,7 @@ public final class PushStructsGen {
             TList.of(
                 new PushMethod(
                     "is_some_", TList.of(), dynExpr(TYPE_BOOL_DYNAMIC), empty,
-                    "optionPushGet")));
+                    "optionPushGet", retObject)));
 
     var typeRefPush =
         new PushStructSpec(
@@ -678,9 +518,10 @@ public final class PushStructsGen {
                 new PushMethod(
                     "aspect",
                     TList.of(new NamedTypeRef("unique", uniqueArg)),
-                    dynExpr(T_OPTION_PUSH_DYN),
+                    objRef("OptionPush"),
                     empty,
-                    "typeRefPushAspect")));
+                    "typeRefPushAspect",
+                    retOptionPush)));
 
     var sourceFuncResult =
         new PushStructSpec(
@@ -690,6 +531,7 @@ public final class PushStructsGen {
             TList.of(
                 new PushField(
                     "func",
+                    "func_ref",
                     ref(
                         TYPE_SOURCE_FUNCTION_CONST,
                         CodeBlock.of("new $T()", TYPE_SOURCE_FUNCTION_DYNAMIC)),
@@ -700,7 +542,8 @@ public final class PushStructsGen {
                     TList.of(new NamedTypeRef("description", string)),
                     "()",
                     empty,
-                    "srcFuncSetDescription"),
+                    "srcFuncSetDescription",
+                    retObject),
                 new PushMethod(
                     "impl_",
                     TList.of(
@@ -709,13 +552,15 @@ public final class PushStructsGen {
                         new NamedTypeRef("impl_body", stagedExprArg)),
                     "()",
                     empty,
-                    "srcFuncSetTypesAndImpl"),
+                    "srcFuncSetTypesAndImpl",
+                    retObject),
                 new PushMethod(
                     "set_exception_type",
                     TList.of(new NamedTypeRef("exception_type", anyTypeArg)),
                     "()",
                     empty,
-                    "srcFuncSetExcType")));
+                    "srcFuncSetExcType",
+                    retObject)));
 
     var sourceObjectMethodResult =
         new PushStructSpec(
@@ -732,7 +577,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("impl_body", stagedExprArg)),
                     "()",
                     empty,
-                    "srcObjectMethodSetTypesAndImpl")));
+                    "srcObjectMethodSetTypesAndImpl",
+                    retObject)));
 
     var sourceInterfaceResult =
         new PushStructSpec(
@@ -742,6 +588,7 @@ public final class PushStructsGen {
             TList.of(
                 new PushField(
                     "type_",
+                    "interface_ref",
                     ref(
                         SOURCE_INTERFACE_REF,
                         CodeBlock.of("new $T()", TYPE_SOURCE_INTERFACE_DYNAMIC)),
@@ -752,19 +599,22 @@ public final class PushStructsGen {
                     TList.of(new NamedTypeRef("description", string)),
                     "()",
                     empty,
-                    "srcInterfaceSetDescription"),
+                    "srcInterfaceSetDescription",
+                    retObject),
                 new PushMethod(
                     "func",
                     TList.of(new NamedTypeRef("name", string)),
-                    dynExpr(T_SOURCE_INTERFACE_METHOD_RESULT_DYN),
+                    objRef("SourceInterfaceMethodResult"),
                     empty,
-                    "srcInterfaceAddMethod"),
+                    "srcInterfaceAddMethod",
+                    retSourceInterfaceMethodResult),
                 new PushMethod(
                     "set_is_aspect",
                     TList.of(new NamedTypeRef("is_aspect", bool)),
                     "()",
                     empty,
-                    "srcInterfaceSetIsAspect")));
+                    "srcInterfaceSetIsAspect",
+                    retObject)));
 
     var sourceObjectMethods = new TList<PushMethod>();
     sourceObjectMethods.add(
@@ -773,21 +623,24 @@ public final class PushStructsGen {
             TList.of(new NamedTypeRef("description", string)),
             "()",
             empty,
-            "srcObjectSetDescription"));
+            "srcObjectSetDescription",
+            retObject));
     sourceObjectMethods.add(
         new PushMethod(
             "set_inner",
             TList.of(new NamedTypeRef("type_ref", anyTypeArg)),
             "()",
             empty,
-            "srcObjectSetInnerType"));
+            "srcObjectSetInnerType",
+            retObject));
     sourceObjectMethods.add(
         new PushMethod(
             "func",
             TList.of(new NamedTypeRef("name", string)),
-            dynExpr(T_SOURCE_OBJECT_METHOD_RESULT_DYN),
+            objRef("SourceObjectMethodResult"),
             empty,
-            "srcObjectAddMethod"));
+            "srcObjectAddMethod",
+            retSourceObjectMethodResult));
     sourceObjectMethods.add(
         new PushMethod(
             "impl_interface",
@@ -796,14 +649,25 @@ public final class PushStructsGen {
                 new NamedTypeRef("record", recordArg)),
             "()",
             empty,
-            "srcObjectImplInterface"));
+            "srcObjectImplInterface",
+            retObject));
     sourceObjectMethods.add(
         new PushMethod(
             "aspect",
             TList.of(new NamedTypeRef("record", recordArg)),
             "new " + TYPE_SOURCE_INTERFACE_DYNAMIC.canonicalName() + "()",
             empty,
-            "srcObjectImplAspect"));
+            "srcObjectImplAspect",
+            retSourceInterfaceRef));
+    var retTypeSourceObjectNewConst = TypeRef.opaque(TYPE_SOURCE_OBJECT_NEW_CONST);
+    sourceObjectMethods.add(
+        new PushMethod(
+            "new_",
+            TList.of(),
+            dynExpr(TYPE_SOURCE_OBJECT_NEW_DYNAMIC),
+            empty,
+            "srcObjectResultNew",
+            retTypeSourceObjectNewConst));
 
     for (var traitSpec : traitSpecs) {
       if (traitSpec.registerInScope()) continue;
@@ -823,41 +687,39 @@ public final class PushStructsGen {
               TList.of(new NamedTypeRef("record", recordArg)),
               "()",
               empty,
-              runtimeName));
+              runtimeName,
+              retObject));
     }
     var sourceObjectResult =
         new PushStructSpec(
-            "SourceObjectResult",
+            "SourceObjectBuilder",
             3006L,
             TList.of(new NamedTypeRef("object_ref", dataPath(SOURCE_OBJECT_REF))),
             TList.of(
                 new PushField(
                     "type_ref_",
+                    "object_ref",
                     ref(
                         SOURCE_OBJECT_REF,
                         CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_REF_DYNAMIC)),
-                    empty),
-                new PushField(
-                    "new_",
-                    ref(
-                        TYPE_SOURCE_OBJECT_NEW_CONST,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_NEW_DYNAMIC)),
                     empty)),
             TList.<PushMethod>from(sourceObjectMethods));
 
+    var retSourceUnionRef = TypeRef.opaque(SOURCE_UNION_REF);
     var sourceUnionBuilder =
         new PushStructSpec(
             "SourceUnionBuilder",
             3007L,
             TList.of(new NamedTypeRef("data", dataPath(SOURCE_UNION_DATA))),
+            TList.of(),
             TList.of(
-                new PushField(
+                new PushMethod(
                     "type_",
-                    ref(
-                        SOURCE_UNION_REF,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_UNION_REF_DYNAMIC)),
-                    empty)),
-            TList.of(
+                    TList.of(),
+                    dynExpr(TYPE_SOURCE_UNION_REF_DYNAMIC),
+                    empty,
+                    "srcUnionBuilderTypeRef",
+                    retSourceUnionRef),
                 new PushMethod(
                     "variant",
                     TList.of(
@@ -865,7 +727,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("type_ref", anyTypeArg)),
                     "new " + TYPE_SOURCE_UNION_NEW_DYNAMIC.canonicalName() + "()",
                     empty,
-                    "srcUnionAddVariant")));
+                    "srcUnionAddVariant",
+                    retSourceUnionNewRef)));
 
     var sourceInterfaceMethodResult =
         new PushStructSpec(
@@ -881,7 +744,8 @@ public final class PushStructsGen {
                         new NamedTypeRef("ret", anyTypeArg)),
                     "()",
                     empty,
-                    "srcInterfaceMethodSetTypes")));
+                    "srcInterfaceMethodSetTypes",
+                    retObject)));
 
     return TList.of(
         definitionSetBuilder,

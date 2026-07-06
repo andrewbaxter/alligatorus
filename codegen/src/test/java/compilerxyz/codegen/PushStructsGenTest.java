@@ -43,7 +43,7 @@ final class PushStructsGenTest {
             "DemoBuilder",
             9001L,
             TList.of(new NamedTypeRef("inner", ref(ANY_DYN))),
-            TList.of(new PushField("type_ref_", ref(ANY_DYN), CodeBlock.of("self.inner"))),
+            TList.of(new PushField("type_ref_", "inner", ref(ANY_DYN), CodeBlock.of("self.inner"))),
             TList.of(
                 new PushMethod(
                     "build",
@@ -148,7 +148,7 @@ final class PushStructsGenTest {
             "Conflict",
             9007L,
             TList.of(),
-            TList.of(new PushField("clash", ref(ANY_DYN), CodeBlock.of("null"))),
+            TList.of(new PushField("clash", "clash", ref(ANY_DYN), CodeBlock.of("null"))),
             TList.of(new PushMethod("clash", TList.of(), "()", CodeBlock.of(""))));
     assertThrows(
         IllegalStateException.class,

@@ -58,7 +58,7 @@ import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.TypeId;
 
-public record TypeSourceObjectConst(SourceObjectData data)
+public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     implements
         Type,
         AspectArtifact,
@@ -72,7 +72,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
 
   @Override
   public TypeId typeId() {
-    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+    return new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity));
   }
 
   private static long uniqueId(Unique u) {
@@ -90,9 +90,9 @@ public record TypeSourceObjectConst(SourceObjectData data)
 
   @Override
   public String typeDesc() {
-    var d = data.description;
+    var d = type_.description;
     if (d != null) return d;
-    return "object(" + (data.name != null ? data.name : "?") + ")";
+    return "object(" + (type_.name != null ? type_.name : "?") + ")";
   }
 
   @Override
@@ -102,7 +102,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(data.identity)
+    if (key.equals(type_.identity)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
@@ -111,13 +111,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
         || key.equals(AspectInitialBind.ID)) {
       return Opt.some(this);
     }
-    for (var impl : data.interfaceImpls) {
+    for (var impl : type_.interfaceImpls) {
       if (key.equals(impl.interface_.identity)) {
         return Opt.some(this);
       }
     }
     if (key.equals(AspectType.ID)) {
-      for (var impl : data.interfaceImpls) {
+      for (var impl : type_.interfaceImpls) {
         if (impl.interface_.builtinKind
             == BuiltinInterfaceKind.TYPE) {
           return Opt.some(this);
@@ -135,7 +135,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
     return ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
   }
 
-  private static final Map<SourceObjectData, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
+  private static final Map<TypeSourceObjectDynamic, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
       java.util.Collections.synchronizedMap(new IdentityHashMap<>());
 
   public static final ExporterRootDelegate DELEGATE =
@@ -146,18 +146,18 @@ public record TypeSourceObjectConst(SourceObjectData data)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeSourceObjectConst oc)) {
+          if (!(self instanceof TypeTypeSourceObjectConst oc)) {
             return EResult.err(
                 loc,
-                "TypeSourceObjectConst::exporterRootDelegateSelfExport: expected TypeSourceObjectConst, got "
+                "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: expected TypeTypeSourceObjectConst, got "
                     + self.getClass());
           }
-          var dt = oc.data;
+          var dt = oc.type_;
           var set = dt.set;
           if (set == null) {
             return EResult.err(
                 loc,
-                "TypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
+                "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
                     + (dt.name == null ? "(unnamed)" : dt.name)
                     + "' is not attached to a definition set");
           }
@@ -165,7 +165,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
           if (underlying == null) {
             return EResult.err(
                 loc,
-                "TypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
+                "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
                     + (dt.name == null ? "(unnamed)" : dt.name)
                     + "' missing underlying type");
           }
@@ -176,7 +176,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
             return EResult.errs(errors);
           }
           var defSetArt =
-              defSetArtRes.requireValue("TypeSourceObjectConst::exporterExport defSet artifact");
+              defSetArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport defSet artifact");
           var underlyingArtRes = ArtifactSupport.exportArtifact(xx, loc, underlying);
           if (underlyingArtRes.hasErrors()) {
             underlyingArtRes.drainInto(errors);
@@ -184,7 +184,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
           }
           var underlyingArt =
               underlyingArtRes.requireValue(
-                  "TypeSourceObjectConst::exporterExport underlying artifact");
+                  "TypeTypeSourceObjectConst::exporterExport underlying artifact");
           var methods = new TList<ArtifactDataDefSetMethod>();
           for (var m : dt.methods) {
             var argT = m.argType;
@@ -192,7 +192,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
             if (argT == null || retT == null) {
               return EResult.err(
                   loc,
-                  "TypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
+                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
                       + (dt.name == null ? "(unnamed)" : dt.name)
                       + "' method '"
                       + m.name
@@ -209,7 +209,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
             if (m.compiledBodyCode == null && m.compiledClassName == null) {
               return EResult.err(
                   loc,
-                  "TypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
+                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
                       + m.name
                       + "' has not been compiled");
             }
@@ -217,7 +217,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
             if (!(mBinding instanceof BindingId.Def def)) {
               return EResult.err(
                   loc,
-                  "TypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
+                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
                       + m.name
                       + "' has no BindingId.Def (got "
                       + mBinding
@@ -229,14 +229,14 @@ public record TypeSourceObjectConst(SourceObjectData data)
               return EResult.errs(errors);
             }
             var argArt =
-                argArtRes.requireValue("TypeSourceObjectConst::exporterExport method arg artifact");
+                argArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport method arg artifact");
             var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retT);
             if (retArtRes.hasErrors()) {
               retArtRes.drainInto(errors);
               return EResult.errs(errors);
             }
             var retArt =
-                retArtRes.requireValue("TypeSourceObjectConst::exporterExport method ret artifact");
+                retArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport method ret artifact");
             var extRes =
                 ExternalCodec.exportExternals(
                     xx, loc, m.capturedExternals);
@@ -245,7 +245,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
               return EResult.errs(errors);
             }
             var ext =
-                extRes.requireValue("TypeSourceObjectConst::exporterExport method externals");
+                extRes.requireValue("TypeTypeSourceObjectConst::exporterExport method externals");
             methods.add(
                 new ArtifactDataDefSetMethod(
                     m.name,
@@ -270,7 +270,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
               }
               userIface =
                   ifaceArtRes.requireValue(
-                      "TypeSourceObjectConst::exporterExport user interface artifact");
+                      "TypeTypeSourceObjectConst::exporterExport user interface artifact");
             }
             var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
             for (var mi : impl.methodImpls) {
@@ -285,7 +285,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
               if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
                 return EResult.err(
                     loc,
-                    "TypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl (idx="
+                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl (idx="
                         + mi.interfaceMethodIndex
                         + ") has not been compiled");
               }
@@ -293,7 +293,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
               if (!(miBinding instanceof BindingId.Def miDef)) {
                 return EResult.err(
                     loc,
-                    "TypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl has no "
+                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl has no "
                         + "BindingId.Def (got "
                         + miBinding
                         + ")");
@@ -307,7 +307,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
               }
               var ext =
                   extRes.requireValue(
-                      "TypeSourceObjectConst::exporterExport interface method externals");
+                      "TypeTypeSourceObjectConst::exporterExport interface method externals");
               methodImpls.add(
                   new ArtifactDataDefSetInterfaceMethodImpl(
                       mi.interfaceMethodIndex,
@@ -346,7 +346,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
-            return EResult.err(loc, "TypeSourceObjectConst requires an artifact id to deserialize");
+            return EResult.err(loc, "TypeTypeSourceObjectConst requires an artifact id to deserialize");
           }
           var idValue = idSome.value();
           return ArtifactSupport.implImportIndependentArtifact(
@@ -360,14 +360,14 @@ public record TypeSourceObjectConst(SourceObjectData data)
                   body = JsonValues.fromValue(ArtifactDataDefSetObject.class, raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
-                      "TypeSourceObjectConst data: failed to parse "
+                      "TypeTypeSourceObjectConst type_: failed to parse "
                           + "ArtifactDataDefSetObject: "
                           + e.getMessage());
                 }
                 return new Result.Ok<>(body);
               },
               (body) -> {
-                var dt = new SourceObjectData(
+                var dt = new TypeSourceObjectDynamic(
                     body.defSetId(), body.name(), body.identity(), body.dataField());
                 dt.artifactId = idValue;
                 dt.compiledBinaryName = body.compiledBinaryName();
@@ -412,10 +412,10 @@ public record TypeSourceObjectConst(SourceObjectData data)
                               xx2, loc2, body.defSet());
                       var defSetVal =
                           defSetAny.requireValue(
-                              "TypeSourceObjectConst::finalizer defSet artifact");
+                              "TypeTypeSourceObjectConst::finalizer defSet artifact");
                       if (!(defSetVal instanceof DefinitionSet set)) {
                         throw new IllegalStateException(
-                            "TypeSourceObjectConst finalizer: def-set artifact resolved to "
+                            "TypeTypeSourceObjectConst finalizer: def-set artifact resolved to "
                                 + defSetVal.getClass()
                                 + " (expected DefinitionSet)");
                       }
@@ -426,7 +426,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
                               xx2, loc2, body.underlyingType());
                       var underlyingVal =
                           underlyingRes.requireValue(
-                              "TypeSourceObjectConst::finalizer underlying type");
+                              "TypeTypeSourceObjectConst::finalizer underlying type");
                       dt.underlyingType = underlyingVal;
                       var bodyMethodsIt = body.methods().iterator();
                       for (var md : dt.methods) {
@@ -436,21 +436,21 @@ public record TypeSourceObjectConst(SourceObjectData data)
                                 xx2, loc2, sm.argType());
                         var argVal =
                             argRes.requireValue(
-                                "TypeSourceObjectConst::finalizer method arg type");
+                                "TypeTypeSourceObjectConst::finalizer method arg type");
                         md.argType = argVal;
                         var retRes =
                             ArtifactSupport.independentFinalizeImportTypeArtifact(
                                 xx2, loc2, sm.retType());
                         var retVal =
                             retRes.requireValue(
-                                "TypeSourceObjectConst::finalizer method ret type");
+                                "TypeTypeSourceObjectConst::finalizer method ret type");
                         md.retType = retVal;
                         var extRes =
                             ExternalCodec.importExternals(
                                 xx2, loc2, sm.capturedExternals());
                         var extVal =
                             extRes.requireValue(
-                                "TypeSourceObjectConst::finalizer method externals");
+                                "TypeTypeSourceObjectConst::finalizer method externals");
                         md.capturedExternals.addAll(extVal);
                       }
                       for (var impl : body.interfaceImpls()) {
@@ -463,7 +463,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
                           var ifaceArt = impl.userIface();
                           if (ifaceArt == null) {
                             throw new IllegalStateException(
-                                "TypeSourceObjectConst finalizer: non-builtin iface impl missing "
+                                "TypeTypeSourceObjectConst finalizer: non-builtin iface impl missing "
                                     + "user_iface artifact");
                           }
                           var ifaceAny =
@@ -471,10 +471,10 @@ public record TypeSourceObjectConst(SourceObjectData data)
                                   xx2, loc2, ifaceArt);
                           var ifaceVal =
                               ifaceAny.requireValue(
-                                  "TypeSourceObjectConst::finalizer user iface artifact");
+                                  "TypeTypeSourceObjectConst::finalizer user iface artifact");
                           if (!(ifaceVal instanceof TypeSourceInterfaceConst ic)) {
                             throw new IllegalStateException(
-                                "TypeSourceObjectConst finalizer: user iface artifact resolved to "
+                                "TypeTypeSourceObjectConst finalizer: user iface artifact resolved to "
                                     + ifaceVal.getClass());
                           }
                           iface = ic.data();
@@ -492,7 +492,7 @@ public record TypeSourceObjectConst(SourceObjectData data)
                                   xx2, loc2, mi.capturedExternals());
                           var extVal =
                               extRes.requireValue(
-                                  "TypeSourceObjectConst::finalizer iface method externals");
+                                  "TypeTypeSourceObjectConst::finalizer iface method externals");
                           mid.capturedExternals.addAll(extVal);
                           implData.methodImpls.add(mid);
                         }
@@ -519,15 +519,15 @@ public record TypeSourceObjectConst(SourceObjectData data)
     };
   }
 
-  public record ImportedSourceObjectConst(SourceObjectData data) implements ExporterAny {
+  public record ImportedSourceObjectConst(TypeSourceObjectDynamic type_) implements ExporterAny {
     @Override
     public EResult<Type> exporterAnyAsType() {
-      return EResult.ok(new TypeSourceObjectConst(data));
+      return EResult.ok(new TypeTypeSourceObjectConst(type_));
     }
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new TypeSourceObjectConst(data));
+      return EResult.ok(new TypeTypeSourceObjectConst(type_));
     }
   }
 
@@ -544,15 +544,15 @@ public record TypeSourceObjectConst(SourceObjectData data)
         || !(some.value() instanceof ValueSourceObjectConst instance)) {
       return EResult.err(
           loc,
-          "TypeSourceObjectConst::toDynamic: expected ValueSourceObjectConst, got "
+          "TypeTypeSourceObjectConst::toDynamic: expected ValueSourceObjectConst, got "
               + (cv.value() instanceof Opt.Some<Value> s
                   ? s.value().getClass().getName()
                   : "no value"));
     }
-    Type underlyingType = data.underlyingType;
+    Type underlyingType = type_.underlyingType;
     if (underlyingType == null) {
       return EResult.err(
-          loc, "TypeSourceObjectConst::toDynamic: object underlying type not finalised");
+          loc, "TypeTypeSourceObjectConst::toDynamic: object underlying type not finalised");
     }
     var erb = new Erb(loc);
     var rawUnderlyingCv =
@@ -563,28 +563,27 @@ public record TypeSourceObjectConst(SourceObjectData data)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var toDynamicOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, underlyingType));
-    if (toDynamicOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJsOpt = erb.mustEr(toDynamicOpt.get().toDynamic(xx, loc, converted));
+    var underlyingJsOpt =
+        erb.mustEr(
+            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
+                xx, loc, underlyingType, converted));
     if (underlyingJsOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
     var underlyingJs = underlyingJsOpt.get();
 
-    var set = data.set;
+    var set = type_.set;
     if (set == null) {
       return EResult.err(
-          loc, "TypeSourceObjectConst::toDynamic: object has no definition set reference");
+          loc, "TypeTypeSourceObjectConst::toDynamic: object has no definition set reference");
     }
     xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-    var objectIndex = set.objects.indexOf(data);
+    var objectIndex = set.objects.indexOf(type_);
     if (objectIndex < 0) {
       return EResult.err(
           loc,
-          "TypeSourceObjectConst::toDynamic: object '"
-              + (data.name == null ? "(unnamed)" : data.name)
+          "TypeTypeSourceObjectConst::toDynamic: object '"
+              + (type_.name == null ? "(unnamed)" : type_.name)
               + "' not registered in its owning def-set");
     }
     var objInternalName =
@@ -604,13 +603,13 @@ public record TypeSourceObjectConst(SourceObjectData data)
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    var dynType = new TypeSourceObjectDynamic(data);
+    TypeSourceObjectDynamic dynType = type_;
     if (!self.code().isNone()) {
       return dynType.field(xx, loc, self, key);
     }
     var selfCodeRes = toDynamic(xx, loc, self);
     if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
-    var selfCode = selfCodeRes.requireValue("TypeSourceObjectConst::field toDynamic");
+    var selfCode = selfCodeRes.requireValue("TypeTypeSourceObjectConst::field toDynamic");
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),
@@ -630,35 +629,35 @@ public record TypeSourceObjectConst(SourceObjectData data)
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeSourceObjectConst(data));
+    return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceObjectConst(type_));
   }
 
   @Override
   public Type type_(Value value) {
     if (!(value instanceof ValueSourceObjectConst inst)) {
       throw new IllegalStateException(
-          "TypeSourceObjectConst::type_: expected ValueSourceObjectConst, got "
+          "TypeTypeSourceObjectConst::type_: expected ValueSourceObjectConst, got "
               + (value == null ? "null" : value.getClass().getName()));
     }
-    var set = data.set;
+    var set = type_.set;
     if (set == null) {
       throw new IllegalStateException(
-          "TypeSourceObjectConst::type_: object '"
-              + (data.name == null ? "(unnamed)" : data.name)
+          "TypeTypeSourceObjectConst::type_: object '"
+              + (type_.name == null ? "(unnamed)" : type_.name)
               + "' has no definition set reference");
     }
-    var binaryName = data.compiledBinaryName;
+    var binaryName = type_.compiledBinaryName;
     if (binaryName == null) {
       throw new IllegalStateException(
-          "TypeSourceObjectConst::type_: object '"
-              + (data.name == null ? "(unnamed)" : data.name)
+          "TypeTypeSourceObjectConst::type_: object '"
+              + (type_.name == null ? "(unnamed)" : type_.name)
               + "' has not been compiled (compiledBinaryName == null)");
     }
     var loader =
         DefinitionSetClassLoader.SHARED_CACHE.getIfPresent(set.defSetId);
     if (loader == null) {
       throw new IllegalStateException(
-          "TypeSourceObjectConst::type_: def-set "
+          "TypeTypeSourceObjectConst::type_: def-set "
               + set.defSetId
               + " has no installed class loader (call ImportInstall.installDefSetToDynamic first)");
     }
@@ -667,21 +666,21 @@ public record TypeSourceObjectConst(SourceObjectData data)
       cls = Class.forName(binaryName, true, loader);
     } catch (ClassNotFoundException e) {
       throw new AssertionError(
-          "TypeSourceObjectConst::type_: generated class " + binaryName + " failed to load", e);
+          "TypeTypeSourceObjectConst::type_: generated class " + binaryName + " failed to load", e);
     }
     Object instance;
     try {
       instance = cls.getDeclaredConstructor(Object.class).newInstance(inst.underlying());
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(
-          "TypeSourceObjectConst::type_: generated class "
+          "TypeTypeSourceObjectConst::type_: generated class "
               + binaryName
               + " failed to instantiate",
           e);
     }
     if (!(instance instanceof Type t)) {
       throw new IllegalStateException(
-          "TypeSourceObjectConst::type_: generated class "
+          "TypeTypeSourceObjectConst::type_: generated class "
               + binaryName
               + " does not implement Type — object must declare a Type builtin-interface impl"
               + " (see SourceObjectEmitter.builtinHostInterfaceInternalName)");

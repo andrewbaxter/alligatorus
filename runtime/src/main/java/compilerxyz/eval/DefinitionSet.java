@@ -14,8 +14,8 @@ import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.SourceInterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
-import compilerxyz.eval.value.source_object.SourceObjectData;
-import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.source_union.SourceUnionData;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
@@ -40,7 +40,7 @@ public final class DefinitionSet implements ExporterAny {
   public final Counter nextEntryId;
   public final Counter nextFieldId;
   public final Counter nextInterfaceMethodId;
-  public final TList<SourceObjectData> objects;
+  public final TList<TypeSourceObjectDynamic> objects;
   public final TList<SourceUnionData> unions;
 
   public DefinitionSet(DefSetId defSetId) {
@@ -141,7 +141,7 @@ public final class DefinitionSet implements ExporterAny {
           var errors = new TList<ExprErr>();
           var objects = new TList<Artifact>(set.objects.size());
           for (var dt : set.objects) {
-            var dtConst = new TypeSourceObjectConst(dt);
+            var dtConst = new TypeTypeSourceObjectConst(dt);
             var artRes = ArtifactSupport.exportArtifact(xx, loc, dtConst);
             if (artRes.hasErrors()) {
               artRes.drainInto(errors);
@@ -229,12 +229,12 @@ public final class DefinitionSet implements ExporterAny {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dtArt);
                         var v = any.requireValue("DefinitionSet::finalizer object artifact");
-                        SourceObjectData dtData;
-                        if (v instanceof TypeSourceObjectConst dtConst) {
-                          dtData = dtConst.data();
+                        TypeSourceObjectDynamic dtData;
+                        if (v instanceof TypeTypeSourceObjectConst dtConst) {
+                          dtData = dtConst.type_();
                         } else if (v
-                            instanceof TypeSourceObjectConst.ImportedSourceObjectConst impDt) {
-                          dtData = impDt.data();
+                            instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst impDt) {
+                          dtData = impDt.type_();
                         } else {
                           throw new IllegalStateException(
                               "def-set object artifact had wrong type: " + v.getClass());

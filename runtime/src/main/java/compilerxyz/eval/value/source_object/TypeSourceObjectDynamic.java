@@ -1,17 +1,19 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.DefSetId;
+import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
-import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.ExprContext;
-import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -26,10 +28,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.CodeLoc;
-import compilerxyz.eval.dynamic.BindingCode;
-import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
@@ -39,17 +37,19 @@ import compilerxyz.eval.value.aspect.TypeAspectDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.binding.TypeAnyBindingDynamic;
 import compilerxyz.eval.value.binding.TypeAnyTargetDynamic;
-import compilerxyz.eval.value.code.TypeCodeDynHandleDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.util.TOrderedMap;
+import compilerxyz.util.TSet;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.TypeId;
+import org.jspecify.annotations.Nullable;
 
-public record TypeSourceObjectDynamic(SourceObjectData data)
+public final class TypeSourceObjectDynamic
     implements
         Type,
         AspectBind,
@@ -61,9 +61,89 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         AspectLift,
         ExporterAny {
 
+  public @Nullable DefSetId setId;
+
+  @SuppressWarnings("NullAway.Init")
+  public final DefinitionSet set;
+  public final @Nullable String name;
+  public @Nullable String description;
+  public @Nullable Type underlyingType;
+  public final Unique identity;
+  public final String dataField;
+  public final TList<SourceDataMethodData> methods;
+  public final TList<SourceObjectInterfaceImplData> interfaceImpls;
+  public @Nullable ArtifactIdSource artifactId;
+  public @Nullable ArtifactIdSource newArtifactId;
+
+  public @Nullable String compiledBinaryName;
+  public byte @Nullable [] compiledBytecode;
+  public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
+
+  public TypeSourceObjectDynamic(
+      DefSetId setId, @Nullable String name, Unique identity, String dataField, DefinitionSet set) {
+    this.setId = setId;
+    this.set = set;
+    this.name = name;
+    this.identity = identity;
+    this.dataField = dataField;
+    this.methods = new TList<>();
+    this.interfaceImpls = new TList<>();
+  }
+
+  @SuppressWarnings("NullAway")
+  public TypeSourceObjectDynamic(
+      @Nullable DefSetId setId, @Nullable String name, Unique identity, String dataField) {
+    this.setId = setId;
+    this.set = (DefinitionSet) null;
+    this.name = name;
+    this.identity = identity;
+    this.dataField = dataField;
+    this.methods = new TList<>();
+    this.interfaceImpls = new TList<>();
+  }
+
+  public EResult<Void> finish(
+      QExprId loc,
+      long objectIndex,
+      DefinitionSetClassLoader loader,
+      TOrderedMap<String, Object> builtinDynamics,
+      TSet<BindingId.Def> staticFunctionDefs) {
+    if (compiledBinaryName != null) {
+      return EResult.ok(null);
+    }
+    if (setId == null) {
+      return EResult.err(
+          loc,
+          "TypeSourceObjectDynamic.finish: setId is null for object '"
+              + (name == null ? "(unnamed)" : name)
+              + "'");
+    }
+    var emitted =
+        SourceObjectEmitter.emit(setId, objectIndex, this, builtinDynamics, staticFunctionDefs);
+    compiledBinaryName = emitted.binaryName();
+    compiledBytecode = emitted.bytecode();
+    compiledStaticFieldValues = emitted.staticFieldValues();
+    loader.registerClass(emitted.binaryName(), emitted.bytecode());
+    if (!emitted.staticFieldValues().isEmpty()) {
+      loader.registerExternals(emitted.binaryName(), emitted.staticFieldValues());
+    }
+    return EResult.ok(null);
+  }
+
+  public void initSetReflectively(DefinitionSet set) {
+    try {
+      var f = TypeSourceObjectDynamic.class.getDeclaredField("set");
+      f.setAccessible(true);
+      f.set(this, set);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(
+          "TypeSourceObjectDynamic.initSetReflectively: failed to write final 'set' field", e);
+    }
+  }
+
   @Override
   public TypeId typeId() {
-    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+    return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
   }
 
   private static long uniqueId(Unique u) {
@@ -73,17 +153,16 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     };
   }
 
-
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
   public String typeDesc() {
-    var d = data.description;
-    if (d != null) return d;
-    return "object(" + (data.name != null ? data.name : "?") + ")";
+    if (description != null) return description;
+    return "object(" + (name != null ? name : "?") + ")";
   }
 
   @Override
@@ -93,7 +172,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(data.identity)
+    if (key.equals(identity)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
@@ -104,7 +183,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       return Opt.some(this);
     }
 
-    for (var impl : data.interfaceImpls) {
+    for (var impl : interfaceImpls) {
       if (key.equals(impl.interface_.identity)) {
         return Opt.some(this);
       }
@@ -126,8 +205,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeSourceObjectDynamic::toDynamic: CodeValue has no dynamic code");
+    return EResult.err(loc, "TypeSourceObjectDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -150,7 +228,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     String fieldName = null;
     Type argType = null;
     Type retType = null;
-    for (var m : data.methods) {
+    for (var m : methods) {
       if (m.name.equals(keyName)) {
         if (m.retType == null) {
           throw new IllegalStateException("Data type method missing return type");
@@ -163,7 +241,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     }
     if (fieldName == null) {
       outer:
-      for (var impl : data.interfaceImpls) {
+      for (var impl : interfaceImpls) {
         for (var method : impl.interface_.methods) {
           if (method.name.equals(keyName)) {
             if (method.argType == null) {
@@ -189,12 +267,11 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
     }
     if (!(self.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof ValueDynamic selfVd)) {
-      return EResult.err(
-          loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");
+      return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");
     }
 
-    if (data.set != null) {
-      xx.vx.definitionSets.putIfAbsent(data.set.defSetId, data.set);
+    if (set != null) {
+      xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
     }
     var descObjObj =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
@@ -210,10 +287,7 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
             fieldName,
             descObjObj,
             false);
-    return EResult.ok(
-        new CodeValue(
-            self.code(),
-            Opt.some(ValueDynamic.stack(fieldType))));
+    return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(fieldType))));
   }
 
   @Override
@@ -228,23 +302,23 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeSourceObjectDynamic(data));
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override
   public EResult<Value> lift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    var underlyingType = data.underlyingType;
-    if (underlyingType == null) {
+      ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
+    var ut = underlyingType;
+    if (ut == null) {
       return EResult.err(
           loc, "TypeSourceObjectDynamic::lift: object underlying type not finalised");
     }
-    var underlyingLiftOpt = AspectLift.getMaybe(xx, underlyingType);
+    var underlyingLiftOpt = AspectLift.getMaybe(xx, ut);
     if (underlyingLiftOpt.optIsNone()) {
       return EResult.err(
           loc,
           "TypeSourceObjectDynamic::lift: underlying type ("
-              + underlyingType.typeDesc()
+              + ut.typeDesc()
               + ") missing AspectLift");
     }
     var underlyingLift = underlyingLiftOpt.optUnwrap();
@@ -269,25 +343,23 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
           "TypeSourceObjectDynamic::lift: expected SourceObjectInstance, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return underlyingLift.lift(xx, loc, underlyingHost)
-        .map(
-            underlying ->
-                new ValueSourceObjectConst(
-                    data, underlying));
+    return underlyingLift
+        .lift(xx, loc, underlyingHost)
+        .map(underlying -> new ValueSourceObjectConst(this, underlying));
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    if (destType.typeAspect(xx, data.identity).optIsSome()) {
+    if (destType.typeAspect(xx, identity).optIsSome()) {
       return true;
     }
-    for (var impl : data.interfaceImpls) {
+    for (var impl : interfaceImpls) {
       if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
         return true;
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
-      for (var impl : data.interfaceImpls) {
+      for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
           return true;
         }
@@ -301,16 +373,13 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType.typeAspect(xx, data.identity).optIsSome()) {
+    if (destType.typeAspect(xx, identity).optIsSome()) {
       return EResult.ok(
-          new CodeValue(
-              cv.code(),
-              Opt.some(
-                  ValueDynamic.stack(new TypeSourceObjectDynamic(data)))));
+          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(this))));
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
-      for (var impl : data.interfaceImpls) {
+      for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
           hasTypeImpl = true;
           break;
@@ -319,13 +388,12 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       if (hasTypeImpl) {
         var sourceCode = cv.code().dynamic();
         if (sourceCode == null) {
-          return EResult.err(
-              loc, "cast " + typeDesc() + " -> any: source has no runtime code");
+          return EResult.err(loc, "cast " + typeDesc() + " -> any: source has no runtime code");
         }
         return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAnyDynamic()));
       }
     }
-    for (var impl : data.interfaceImpls) {
+    for (var impl : interfaceImpls) {
       if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
         var builtinKind = impl.interface_.builtinKind;
         Type resultType = null;
@@ -363,15 +431,13 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(
-                    ValueDynamic.stack(new TypeSourceInterfaceConst(impl.interface_)))));
+                Opt.some(ValueDynamic.stack(new TypeSourceInterfaceConst(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
-        return EResult.err(
-            loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
+        return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
       }
       return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAspectDynamic()));
     }
@@ -380,14 +446,12 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, data.identity).optIsSome();
+    return sourceType.typeAspect(xx, identity).optIsSome();
   }
 
   private CodeValue emitBuiltinCast(
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
-    return new CodeValue(
-        Code.of(loc, sourceCode),
-        Opt.some(ValueDynamic.stack(resultType)));
+    return new CodeValue(Code.of(loc, sourceCode), Opt.some(ValueDynamic.stack(resultType)));
   }
 
   @Override
@@ -407,5 +471,4 @@ public record TypeSourceObjectDynamic(SourceObjectData data)
       compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
-
 }

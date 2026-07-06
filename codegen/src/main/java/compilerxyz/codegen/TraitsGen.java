@@ -24,8 +24,8 @@ public final class TraitsGen {
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
   private static final ClassName TYPE_EXPR_CONTEXT_PUSH_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextPushDynamic");
-  private static final ClassName TYPE_TYPE_REF_PUSH_DYNAMIC =
-      ClassName.get("compilerxyz.gen", "TypeTypeRefPushDynamic");
+  private static final ClassName TYPE_REF_PUSH =
+      ClassName.get("compilerxyz.gen", "TypeRefPush");
   private static final ClassName TYPE_UNIQUE =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
   private static final ClassName TYPE_OPTION_DYNAMIC =
@@ -38,7 +38,7 @@ public final class TraitsGen {
     var aspect = TypeRef.unit(TYPE_ASPECT_DYNAMIC);
     var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
     var xxRef = TypeRef.unit(TYPE_EXPR_CONTEXT_PUSH_DYNAMIC);
-    var typeRefPush = TypeRef.unit(TYPE_TYPE_REF_PUSH_DYNAMIC);
+    var typeRefPush = TypeRef.viaPush(TYPE_REF_PUSH);
     var unique = TypeRef.unit(TYPE_UNIQUE);
 
     var aspectOption =

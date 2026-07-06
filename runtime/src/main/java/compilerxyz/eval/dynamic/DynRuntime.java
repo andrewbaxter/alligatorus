@@ -248,13 +248,13 @@ public final class DynRuntime {
   public static Value castValue(ExprContext xx, Value value) {
     throw new UnsupportedOperationException(
         "invisible builtin cast_value: invisible_builtins.rs scope 7002 body pending ValuePull +"
-            + " TypeSourceObjectConst port");
+            + " TypeTypeSourceObjectConst port");
   }
 
   public static Type objectRefToType(ExprContext xx, Object ref) {
     throw new UnsupportedOperationException(
         "invisible builtin object_ref_to_type: invisible_builtins.rs scope 7013 body pending"
-            + " SourceObjectRef + TypeSourceObjectConst port");
+            + " SourceObjectRef + TypeTypeSourceObjectConst port");
   }
 
   public static Type unionRefToType(ExprContext xx, Object ref) {
@@ -272,7 +272,7 @@ public final class DynRuntime {
   public static Type objectNewToType(ExprContext xx, Object ref) {
     throw new UnsupportedOperationException(
         "invisible builtin object_new_to_type: invisible_builtins.rs scope 7012 body pending"
-            + " object_new TypeSourceObjectNewConst port");
+            + " object_new TypeSourceObjectNewDynamic port");
   }
 
   public static Type unionNewToType(ExprContext xx, Object ref) {
@@ -314,21 +314,15 @@ public final class DynRuntime {
         new compilerxyz.eval.value.source_function.TypeSourceFunctionConst(data));
   }
 
-  public static compilerxyz.gen.SourceObjectResult defSetBuilderObject(
+  public static compilerxyz.gen.SourceObjectBuilder defSetBuilderObject(
       ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb, String name) {
     var identity = freshUnique(xx);
     var dataField = "_" + dsb.inner.nextFieldId.next();
     var data =
-        new compilerxyz.eval.value.source_object.SourceObjectData(
+        new compilerxyz.eval.value.source_object.TypeSourceObjectDynamic(
             dsb.inner.defSetId, name, identity, dataField, dsb.inner);
     dsb.inner.objects.add(data);
-    return new compilerxyz.gen.SourceObjectResult(
-        new compilerxyz.eval.value.source_object.SourceObjectRef(data));
-  }
-
-  public static compilerxyz.gen.DefinitionSetBuilder defSetBuilderBuild(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
-    return new compilerxyz.gen.DefinitionSetBuilder(dsb.inner);
+    return new compilerxyz.gen.SourceObjectBuilder(data);
   }
 
   public static compilerxyz.gen.SourceUnionBuilder defSetBuilderUnion(
@@ -350,10 +344,10 @@ public final class DynRuntime {
         new compilerxyz.eval.value.source_interface.SourceInterfaceRef(iface));
   }
 
-  public static compilerxyz.gen.DefinitionSetBuilder defSetBuilderFinish(
+  public static Object defSetBuilderFinish(
       ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
     dsb.inner.finished = true;
-    return new compilerxyz.gen.DefinitionSetBuilder(dsb.inner);
+    return null;
   }
 
   public static compilerxyz.eval.value.source_function.TypeSourceFunctionConst srcFuncGetRef(
@@ -449,38 +443,38 @@ public final class DynRuntime {
     return null;
   }
 
-  public static compilerxyz.eval.value.source_object.SourceObjectRef srcObjectGetRef(
-      compilerxyz.gen.SourceObjectResult sor) {
+  public static compilerxyz.eval.value.source_object.TypeSourceObjectDynamic srcObjectGetRef(
+      compilerxyz.gen.SourceObjectBuilder sor) {
     return sor.object_ref;
   }
 
-  public static compilerxyz.eval.value.source_object_new.TypeSourceObjectNewConst
-      srcObjectAsTypeNew(compilerxyz.gen.SourceObjectResult sor) {
-    return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewConst(
-        sor.object_ref.data());
+  public static compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic
+      srcObjectAsTypeNew(compilerxyz.gen.SourceObjectBuilder sor) {
+    return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic(
+        sor.object_ref);
   }
 
   public static Object srcObjectSetDescription(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, String description) {
-    if (sor.object_ref.data().description != null) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, String description) {
+    if (sor.object_ref.description != null) {
       throw new IllegalStateException("Object already has a description");
     }
-    sor.object_ref.data().description = description;
+    sor.object_ref.description = description;
     return null;
   }
 
   public static Object srcObjectSetInnerType(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, Type typeRef) {
-    if (sor.object_ref.data().underlyingType != null) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Type typeRef) {
+    if (sor.object_ref.underlyingType != null) {
       throw new IllegalStateException("Object already has an inner type");
     }
-    sor.object_ref.data().underlyingType = typeRef;
+    sor.object_ref.underlyingType = typeRef;
     return null;
   }
 
   public static compilerxyz.gen.SourceObjectMethodResult srcObjectAddMethod(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, String name) {
-    var dtData = sor.object_ref.data();
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, String name) {
+    var dtData = sor.object_ref;
     var ds = lookupDefSet(xx, dtData.setId);
     var fieldName = "_" + ds.nextFieldId.next();
     var entryId = ds.nextEntryId.next();
@@ -493,12 +487,12 @@ public final class DynRuntime {
 
   public static Object srcObjectImplInterface(
       ExprContext xx,
-      compilerxyz.gen.SourceObjectResult sor,
+      compilerxyz.gen.SourceObjectBuilder sor,
       compilerxyz.eval.value.source_interface.SourceInterfaceRef ifaceRef,
       Object recordArg) {
     var record = recordToConstKeyExprMap(recordArg);
     var ifaceData = ifaceRef.data();
-    var dtData = sor.object_ref.data();
+    var dtData = sor.object_ref;
     var ds = lookupDefSet(xx, dtData.setId);
     var impl =
         new compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData(ifaceData);
@@ -522,9 +516,9 @@ public final class DynRuntime {
   }
 
   public static compilerxyz.eval.value.source_interface.SourceInterfaceRef srcObjectImplAspect(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, Object recordArg) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object recordArg) {
     var record = recordToConstKeyExprMap(recordArg);
-    var dtData = sor.object_ref.data();
+    var dtData = sor.object_ref;
     var ds = lookupDefSet(xx, dtData.setId);
     var identity = freshUnique(xx);
     var ifaceData =
@@ -598,12 +592,12 @@ public final class DynRuntime {
   }
 
   public static Object srcObjectImplValue(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, Object arg) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg) {
     return implBuiltinInterface(xx, sor, arg, "value");
   }
 
   public static Object srcObjectImplTypeInterface(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, Object arg) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg) {
     return implBuiltinInterface(xx, sor, arg, "type_");
   }
 
@@ -634,6 +628,17 @@ public final class DynRuntime {
     return new compilerxyz.eval.value.source_union.SourceUnionRef(sub.data);
   }
 
+  public static compilerxyz.eval.value.source_union.SourceUnionRef srcUnionBuilderTypeRef(
+      ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub) {
+    return new compilerxyz.eval.value.source_union.SourceUnionRef(sub.data);
+  }
+
+  public static compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic
+      srcObjectResultNew(ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor) {
+    return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic(
+        sor.object_ref);
+  }
+
   public static compilerxyz.eval.value.source_union_new.SourceUnionNewRef srcUnionAddVariant(
       ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub, String tag, Type typeRef) {
     var jsTag = Prefixes.TAG_PREFIX + sub.data.nextTagId.next();
@@ -645,9 +650,9 @@ public final class DynRuntime {
   }
 
   private static Object implBuiltinInterface(
-      ExprContext xx, compilerxyz.gen.SourceObjectResult sor, Object arg, String ifaceField) {
+      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg, String ifaceField) {
     var record = recordToConstKeyExprMap(arg);
-    var dtData = sor.object_ref.data();
+    var dtData = sor.object_ref;
     var ds = lookupDefSet(xx, dtData.setId);
     var vx = xx.vx;
     var builtinIfaces =

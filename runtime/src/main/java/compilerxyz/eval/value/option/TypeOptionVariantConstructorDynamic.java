@@ -18,7 +18,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
-import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
@@ -103,11 +102,10 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var toDynamicOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, underlyingType));
-    if (toDynamicOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJsOpt = erb.mustEr(toDynamicOpt.get().toDynamic(xx, loc, converted));
+    var underlyingJsOpt =
+        erb.mustEr(
+            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
+                xx, loc, underlyingType, converted));
     if (underlyingJsOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }

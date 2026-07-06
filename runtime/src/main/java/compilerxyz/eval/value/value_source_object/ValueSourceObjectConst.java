@@ -12,8 +12,8 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
-import compilerxyz.eval.value.source_object.SourceObjectData;
-import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
 import compilerxyz.safejson.SafeJsonSerializable;
@@ -21,11 +21,11 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 
-public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
+public record ValueSourceObjectConst(TypeSourceObjectDynamic data, Value underlying)
     implements Value, ExporterAny {
   @Override
   public Type valueTypeOf() {
-    return new TypeSourceObjectConst(data);
+    return new TypeTypeSourceObjectConst(data);
   }
 
   @Override
@@ -57,7 +57,7 @@ public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
                     + self.getClass());
           }
           var errors = new TList<ExprErr>();
-          var typeValue = new TypeSourceObjectConst(inst.data);
+          var typeValue = new TypeTypeSourceObjectConst(inst.data);
           var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, typeValue);
           if (typeArtRes.hasErrors()) {
             typeArtRes.drainInto(errors);
@@ -100,12 +100,12 @@ public record ValueSourceObjectConst(SourceObjectData data, Value underlying)
           }
           var typeAny =
               typeRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData type any");
-          SourceObjectData dt;
-          if (typeAny instanceof TypeSourceObjectConst tc) {
-            dt = tc.data();
+          TypeSourceObjectDynamic dt;
+          if (typeAny instanceof TypeTypeSourceObjectConst tc) {
+            dt = tc.type_();
           } else if (typeAny
-              instanceof TypeSourceObjectConst.ImportedSourceObjectConst imported) {
-            dt = imported.data();
+              instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst imported) {
+            dt = imported.type_();
           } else {
             return EResult.err(
                 loc,

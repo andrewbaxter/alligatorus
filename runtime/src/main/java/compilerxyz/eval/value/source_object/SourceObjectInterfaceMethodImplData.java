@@ -53,7 +53,7 @@ public final class SourceObjectInterfaceMethodImplData {
       ExprContext xx,
       QExprId rootLoc,
       SourceInterfaceData iface,
-      SourceObjectData dtData,
+      TypeSourceObjectDynamic dtData,
       Type underlyingType,
       String dataField) {
     if (compiledBodyCode != null) {
@@ -87,7 +87,7 @@ public final class SourceObjectInterfaceMethodImplData {
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
-    var outerType = new TypeSourceObjectDynamic(dtData);
+    TypeSourceObjectDynamic outerType = dtData;
     var outerIb = AspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
       bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().initialBind(outerId));

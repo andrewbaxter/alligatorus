@@ -22,7 +22,6 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
-import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -146,11 +145,10 @@ public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var toDynamicOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, underlyingType));
-    if (toDynamicOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJsOpt = erb.mustEr(toDynamicOpt.get().toDynamic(xx, loc, converted));
+    var underlyingJsOpt =
+        erb.mustEr(
+            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
+                xx, loc, underlyingType, converted));
     if (underlyingJsOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }

@@ -14,7 +14,6 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -67,16 +66,14 @@ public record TypeThrowDynamic()
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var toDynamicOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, excType));
-    if (toDynamicOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var valueCodeOpt = erb.mustEr(toDynamicOpt.get().toDynamic(xx, loc, converted));
-    if (valueCodeOpt.isEmpty()) {
+    var packedOpt =
+        erb.mustEr(
+            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(xx, loc, excType, converted));
+    if (packedOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
     var args = new TList<CodeDynamic>();
-    args.add(valueCodeOpt.get());
+    args.add(packedOpt.get());
     var throwType =
         new compilerxyz.eval.value.function.TypeFunctionDynamic(
             excType,

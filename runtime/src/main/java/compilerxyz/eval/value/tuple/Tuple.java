@@ -35,7 +35,13 @@ import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CompositeSlotSort;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.Target;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.ExprErr;
@@ -120,27 +126,27 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
     var sortedTypes = sortTupleTypes(elementTypesUnsorted);
     var klass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
-            compilerxyz.eval.dynamic.CompositeClassEmitter.internalNameFor(xx, sortedTypes));
-    var children = new TList<compilerxyz.eval.dynamic.DynUtil.DropChild>(sortedTypes.size());
+        JavaInternalName.of(
+            CompositeClassEmitter.internalNameFor(xx, sortedTypes));
+    var children = new TList<DynUtil.DropChild>(sortedTypes.size());
     for (int i = sortedTypes.size() - 1; i >= 0; i--) {
       var slotType = sortedTypes.get(i);
       var access =
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+          JavaBytecodeUtils.accessField(
               loc,
               klass,
-              compilerxyz.eval.dynamic.CompositeClassEmitter.slotFieldName(i),
-              compilerxyz.eval.dynamic.CompositeClassEmitter.slotDescriptor(xx, slotType));
-      children.add(new compilerxyz.eval.dynamic.DynUtil.DropChild(slotType, access));
+              CompositeClassEmitter.slotFieldName(i),
+              CompositeClassEmitter.slotDescriptor(xx, slotType));
+      children.add(new DynUtil.DropChild(slotType, access));
     }
-    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, source, children);
+    return DynUtil.dropDestructiveComposite(xx, loc, source, children);
   }
 
-  private static compilerxyz.eval.dynamic.CompositeSlotSort.Result<Integer> sortTupleSlots(
+  private static CompositeSlotSort.Result<Integer> sortTupleSlots(
       TList<Type> types) {
     var entries = new TOrderedMap<Integer, Type>();
     for (int i = 0; i < types.size(); i++) entries.put(i, types.get(i));
-    return compilerxyz.eval.dynamic.CompositeSlotSort.sort(entries, Integer::compare);
+    return CompositeSlotSort.sort(entries, Integer::compare);
   }
 
   private static TList<Type> sortTupleTypes(TList<Type> types) {
@@ -156,7 +162,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -244,7 +250,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         new compilerxyz.eval.CodeValue(
             compilerxyz.eval.Code.of(
                 loc,
-                compilerxyz.eval.dynamic.JavaBytecodeUtils.literalNull(loc)),
+                JavaBytecodeUtils.literalNull(loc)),
             Opt.some(
                 compilerxyz.eval.value.ValueDynamic.stack(destType))));
   }
@@ -588,6 +594,19 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             continue;
           }
           var elemCv = inner.requireValue("Tuple::bindSub element value");
+          if (elemCv.value() instanceof Opt.Some<Value> elemSome) {
+            var elemType = elemSome.value().valueTypeOf();
+            var boxedType = DynUtil.substituteBoxed(xx, elemType);
+            if (!boxedType.equals(elemType)) {
+              var boxedRes = boxedType.typeCastFrom(xx, loc, elemCv);
+              if (boxedRes.hasErrors()) {
+                if (errors == null) errors = new TList<>();
+                boxedRes.drainInto(errors);
+                continue;
+              }
+              elemCv = boxedRes.requireValue("Tuple::bindSub boxed element");
+            }
+          }
           var savedValue = elemCv.value();
           var subRes = xx.target.targetMaybeBindSub(xx, loc, elemCv);
           if (subRes.hasErrors()) {
@@ -731,10 +750,6 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (errors != null && !errors.isEmpty()) {
       return EResult.errs(errors);
     }
-    if (types.isEmpty()) {
-      var empty = new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence());
-      return EResult.ok(DynUtil.wrapWithCarry(loc, carry, empty));
-    }
     var slotOf = slotOfIndex(types);
     var sortedTypes = sortTupleTypes(types);
     @SuppressWarnings("unchecked")
@@ -744,7 +759,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
     var sortedCodes = new TList<CodeDynamic>(types.size());
     for (var c : sortedCodesArr) sortedCodes.add(c);
-    var klass = compilerxyz.eval.dynamic.JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
+    var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
     var argSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
     for (var c : sortedCodes) argSeq.add(c);
     var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
@@ -752,7 +767,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         DynUtil.wrapWithCarry(
             loc,
             carry,
-            compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(
+            JavaBytecodeUtils.instantiate(
                 loc, klass, ctorDesc, new CodeDynamic(loc, argSeq))));
   }
 

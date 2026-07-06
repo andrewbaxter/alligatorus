@@ -21,10 +21,10 @@ import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
-import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
+import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.value.source_exports.TypeSourceExportsLiftedConst;
-import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewConst;
+import compilerxyz.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionConst;
 import compilerxyz.eval.value.source_union_new.TypeSourceUnionNewConst;
 import compilerxyz.eval.value.string.TypeStringConst;
@@ -154,7 +154,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   SOURCE_OBJECT_CONST("source_object_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeSourceObjectConst.DELEGATE;
+      return TypeTypeSourceObjectConst.DELEGATE;
     }
   },
   SOURCE_OBJECT_VALUE_CONST("source_object_value_const") {
@@ -166,7 +166,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   SOURCE_OBJECT_NEW_CONST("source_object_new_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeSourceObjectNewConst.DELEGATE;
+      return TypeTypeSourceObjectNewConst.DELEGATE;
     }
   },
   SOURCE_UNION_CONST("source_union_const") {

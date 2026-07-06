@@ -38,6 +38,11 @@ import compilerxyz.gen.AspectRecord;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.Target;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.ExprErr;
@@ -89,7 +94,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     var sortedKeys = new TList<ConstKey>(record.fields.size());
     sortedKeys.addAll(record.fields.keySet());
     sortedKeys.sort(ConstKey.CANONICAL_ORDER);
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var seq = new JavaBytecodeSequence();
     for (int i = sortedKeys.size() - 1; i >= 0; i--) {
       var f = record.fields.getOrNull(sortedKeys.get(i));
       if (!(f instanceof RecordField.EvalRes er)) {
@@ -114,13 +119,13 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   private EResult<Code> dropSourced(ExprContext xx, QExprId loc, ValueDynamic.Source source) {
     var slotInfo = computeSlotInfo(fields);
     var klass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
+        JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
     var children = new TList<DynUtil.DropChild>(slotInfo.sortedTypes().size());
     for (int i = slotInfo.sortedTypes().size() - 1; i >= 0; i--) {
       var slotType = slotInfo.sortedTypes().get(i);
       var access =
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+          JavaBytecodeUtils.accessField(
               loc,
               klass,
               CompositeClassEmitter.slotFieldName(i),
@@ -164,7 +169,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -248,12 +253,12 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
       var slotInfo = computeSlotInfo(fields);
       var recordInternal = CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes());
-      var recordKlass = compilerxyz.eval.dynamic.JavaInternalName.of(recordInternal);
+      var recordKlass = JavaInternalName.of(recordInternal);
       int slotIndex = slotInfo.slotOfKey().get(ck);
-      var loadSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var loadSeq = new JavaBytecodeSequence();
       loadSeq.add(baseSome.value().source().realize(xx, loc));
       loadSeq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+          JavaBytecodeUtils.accessField(
               loc,
               recordKlass,
               CompositeClassEmitter.slotFieldName(slotIndex),
@@ -630,7 +635,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       srcAccessSource = sourcedSource;
     }
     var srcKlass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
+        JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, srcSlotInfo.sortedTypes()));
 
     var destSortedKeys = new TList<ConstKey>(fields.size());
@@ -652,10 +657,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var destType = recordFieldType(fields.getOrNull(key));
       var srcFieldType = srcFieldTypes.getOrNull(key);
       int srcSlot = srcSlotInfo.slotOfKey().get(key);
-      var loadSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var loadSeq = new JavaBytecodeSequence();
       loadSeq.add(srcAccessSource.realize(xx, loc));
       loadSeq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+          JavaBytecodeUtils.accessField(
               loc,
               srcKlass,
               CompositeClassEmitter.slotFieldName(srcSlot),
@@ -681,17 +686,17 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       return EResult.errs(erb.errors());
     }
     var destKlass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
+        JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, destSlotInfo.sortedTypes()));
-    var argSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var argSeq = new JavaBytecodeSequence();
     for (var c : destFieldCodes) argSeq.add(c);
     var ctorDesc = CompositeClassEmitter.constructorDesc(xx, destSlotInfo.sortedTypes());
     var instantiate =
-        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(
+        JavaBytecodeUtils.instantiate(
             loc, destKlass, ctorDesc, new CodeDynamic(loc, argSeq));
     CodeDynamic finalDyn;
     if (sourceLoadCarry != null) {
-      var finalSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var finalSeq = new JavaBytecodeSequence();
       finalSeq.add(sourceLoadCarry);
       finalSeq.add(instantiate);
       finalDyn = new CodeDynamic(loc, finalSeq);
@@ -842,16 +847,16 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       return EResult.errs(errors);
     }
     var klass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
+        JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, sortedTypes));
-    var argSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var argSeq = new JavaBytecodeSequence();
     for (var c : entryCodes) argSeq.add(c);
     var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
     return EResult.ok(
         DynUtil.wrapWithCarry(
             loc,
             carry,
-            compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(
+            JavaBytecodeUtils.instantiate(
                 loc, klass, ctorDesc, new CodeDynamic(loc, argSeq))));
   }
 

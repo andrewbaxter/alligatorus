@@ -94,6 +94,14 @@ public record TypeFunctionDynamic(
       seq.add(argCode);
     }
     seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
+    if (ret instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
+      var retDesc = retConsume.consumeDynamicJvmClass();
+      var d = retDesc.value();
+      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())
+          && d.charAt(0) == 'L') {
+        seq.add(JavaBytecodeUtils.cast(loc, retDesc));
+      }
+    }
     return new CodeDynamic(loc, seq);
   }
 
@@ -126,27 +134,105 @@ public record TypeFunctionDynamic(
 
   @Override
   public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var argConsumeRes = AspectConsumeDynamic.get(xx, loc, arg);
-    if (argConsumeRes.hasErrors()) return argConsumeRes.reerr();
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
-    var argDynRes =
-        argConsumeRes
-            .requireValue("TypeFunctionDynamic::call arg consume")
-            .toDynamic(
-                xx, loc, convertedRes.requireValue("TypeFunctionDynamic::call converted arg"));
-    if (argDynRes.hasErrors()) return argDynRes.reerr();
+    var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
     var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     var selfDyn = self.code().dynamic();
     if (selfDyn != null) argList.add(selfDyn);
-    argList.add(argDynRes.requireValue("TypeFunctionDynamic::call arg"));
+    var contextSlots = needsExprContext ? 1 : 0;
+    var receiverSlots = selfDyn != null ? 1 : 0;
+    var remainingSlots =
+        parameterCount(descriptor.value()) - contextSlots - receiverSlots;
+    if (remainingSlots == 1) {
+      var argsDynRes = destructurePackedObject(xx, loc, arg, converted);
+      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+      argList.add(argsDynRes.requireValue("TypeFunctionDynamic::call packed arg"));
+    } else {
+      var argsDynRes = destructurePositional(xx, loc, arg, converted);
+      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+      for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
+        argList.add(c);
+      }
+    }
     return EResult.ok(
         retStackRes
             .requireValue("TypeFunctionDynamic::call ret stack")
             .toValue(loc, emitInvocation(loc, xx.vx, argList)));
+  }
+
+  private static EResult<TList<CodeDynamic>> destructurePositional(
+      ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
+    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+    if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+      if (!(converted.value() instanceof Opt.Some<Value> some)) {
+        return EResult.err(loc, "TypeFunctionDynamic::destructure: arg has no compile-time value");
+      }
+      var elementTypes = tupleSome.value().elementTypes();
+      var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
+      if (elementTypes.size() != elemCvs.size()) {
+        throw new IllegalStateException(
+            "TypeFunctionDynamic::destructure: elementTypes/takeElements size mismatch");
+      }
+      var out = new TList<CodeDynamic>(elementTypes.size());
+      for (int i = 0; i < elementTypes.size(); i++) {
+        var elemCvRes = elemCvs.get(i);
+        if (elemCvRes.hasErrors()) return elemCvRes.reerr();
+        var elemCv = elemCvRes.requireValue("TypeFunctionDynamic::destructure element");
+        var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
+        if (consumeRes.hasErrors()) return consumeRes.reerr();
+        var elemDyn =
+            consumeRes
+                .requireValue("TypeFunctionDynamic::destructure consume")
+                .toDynamic(xx, loc, elemCv);
+        if (elemDyn.hasErrors()) return elemDyn.reerr();
+        out.add(elemDyn.requireValue("TypeFunctionDynamic::destructure elem toDynamic"));
+      }
+      return EResult.ok(out);
+    }
+    var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var argDyn =
+        consumeRes
+            .requireValue("TypeFunctionDynamic::call arg consume")
+            .toDynamic(xx, loc, converted);
+    if (argDyn.hasErrors()) return argDyn.reerr();
+    return EResult.ok(TList.of(argDyn.requireValue("TypeFunctionDynamic::call arg")));
+  }
+
+  private static int parameterCount(String descriptor) {
+    int n = 0;
+    int i = 1;
+    while (i < descriptor.length() && descriptor.charAt(i) != ')') {
+      var c = descriptor.charAt(i);
+      if (c == 'L') {
+        n++;
+        i = descriptor.indexOf(';', i) + 1;
+      } else if (c == '[') {
+        i++;
+      } else {
+        n++;
+        i++;
+      }
+    }
+    return n;
+  }
+
+  private static EResult<CodeDynamic> destructurePackedObject(
+      ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
+    var positional = destructurePositional(xx, loc, argType, converted);
+    if (positional.hasErrors()) return positional.reerr();
+    var elemCodes = positional.requireValue("TypeFunctionDynamic::destructure packed elements");
+    if (elemCodes.isEmpty()) {
+      return EResult.ok(JavaBytecodeUtils.literalNull(loc));
+    }
+    if (elemCodes.size() == 1) {
+      return EResult.ok(elemCodes.get(0));
+    }
+    return EResult.ok(JavaBytecodeUtils.buildObjectArray(loc, elemCodes));
   }
 
   @Override
