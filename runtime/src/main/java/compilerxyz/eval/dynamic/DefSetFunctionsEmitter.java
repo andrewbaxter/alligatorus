@@ -14,17 +14,22 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
 public final class DefSetFunctionsEmitter {
-  private static final JavaMethodDescriptor MDESC_FUNCTION_METHOD =
-      JavaMethodDescriptor.fromParts(
-          JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of(JvmConstants.DESC_OBJECT));
-
   private DefSetFunctionsEmitter() {}
+
+  public record ArgSlot(BindingId.Local id, JavaDataDescriptor jvmDesc) {}
 
   public record FunctionSpec(
       long bindingIndex,
-      BindingId.Local argId,
+      TList<ArgSlot> argSlots,
+      JavaDataDescriptor retDesc,
       CodeDynamic bodyCode,
-      TList<EvalContext.ExternalEntry> externals) {}
+      TList<EvalContext.ExternalEntry> externals) {
+    public JavaMethodDescriptor descriptor() {
+      var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
+      for (var s : argSlots) argDescs.add(s.jvmDesc());
+      return JavaMethodDescriptor.fromParts(retDesc, argDescs);
+    }
+  }
 
   public record EmittedFunctions(
       String binaryName,
@@ -133,19 +138,17 @@ public final class DefSetFunctionsEmitter {
         cw.visitMethod(
             Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
             methodName,
-            MDESC_FUNCTION_METHOD.value(),
+            spec.descriptor().value(),
             null,
             null);
     var target = new TargetDynamic(new Counter());
     target.registerStaticFunctionDefs(staticFunctionDefs);
-    var ctx = new EmitCtx(internalName, 1, prefix);
+    int reservedLocals = 0;
+    for (var s : spec.argSlots()) reservedLocals += slotWidth(s.jvmDesc());
+    var ctx = new EmitCtx(internalName, Math.max(1, reservedLocals), prefix);
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
 
     var seq = JavaBytecodeUtils.seq();
-
-    var argSlot = ctx.allocSlot(spec.argId());
-    seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-    seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ASTORE, argSlot));
 
     var ownerInternal = JavaInternalName.of(internalName);
     for (int i = 0; i < spec.externals().size(); i++) {
@@ -159,7 +162,49 @@ public final class DefSetFunctionsEmitter {
     }
 
     target.emit(seq, ctx, spec.bodyCode());
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
-    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
+    seq.add(JavaBytecodeUtils.inst(loc, returnOpcode(spec.retDesc())));
+
+    var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
+    for (var s : spec.argSlots()) {
+      initialSlots.add(
+          new JavaBytecodeSequence.InitialSlot(s.id().key(), slotWidth(s.jvmDesc()) == 2));
+    }
+    JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
+  }
+
+  private static int slotWidth(JavaDataDescriptor d) {
+    var v = d.value();
+    return (v.equals("D") || v.equals("J")) ? 2 : 1;
+  }
+
+  private static int loadOpcode(JavaDataDescriptor d) {
+    return switch (d.value()) {
+      case "I", "Z", "B", "S", "C" -> Opcodes.ILOAD;
+      case "J" -> Opcodes.LLOAD;
+      case "F" -> Opcodes.FLOAD;
+      case "D" -> Opcodes.DLOAD;
+      default -> Opcodes.ALOAD;
+    };
+  }
+
+  private static int storeOpcode(JavaDataDescriptor d) {
+    return switch (d.value()) {
+      case "I", "Z", "B", "S", "C" -> Opcodes.ISTORE;
+      case "J" -> Opcodes.LSTORE;
+      case "F" -> Opcodes.FSTORE;
+      case "D" -> Opcodes.DSTORE;
+      default -> Opcodes.ASTORE;
+    };
+  }
+
+  private static int returnOpcode(JavaDataDescriptor d) {
+    return switch (d.value()) {
+      case "V" -> Opcodes.RETURN;
+      case "I", "Z", "B", "S", "C" -> Opcodes.IRETURN;
+      case "J" -> Opcodes.LRETURN;
+      case "F" -> Opcodes.FRETURN;
+      case "D" -> Opcodes.DRETURN;
+      default -> Opcodes.ARETURN;
+    };
   }
 }

@@ -499,6 +499,15 @@ public class JavaBytecodeUtils {
     mv.visitEnd();
   }
 
+  public static void renderMethodTyped(
+      JavaBytecodeSequence seq,
+      org.objectweb.asm.MethodVisitor mv,
+      TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
+    seq.renderTyped(mv, initialSlots);
+    mv.visitMaxs(0, 0);
+    mv.visitEnd();
+  }
+
   public static JavaQualifiedName qualifiedNameFromClass(Class<?> klass) {
     var value = new TList<String>();
     Class<?> prevAt = klass;

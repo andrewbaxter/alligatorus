@@ -131,8 +131,30 @@ public class JavaBytecodeSequence implements JavaBytecode {
     return new CodeDynamic(loc, bc);
   }
 
+    public record InitialSlot(JavaBytecodeBindingKey key, boolean wide) {
+        public InitialSlot(JavaBytecodeBindingKey key) {
+            this(key, false);
+        }
+    }
+
+    public TMap<Integer, QExprId> renderTyped(
+            MethodVisitor out, TList<InitialSlot> initialSlots) {
+        var narrowKeys = new TList<JavaBytecodeBindingKey>();
+        for (var s : initialSlots) narrowKeys.add(s.key());
+        return renderInternal(out, narrowKeys, initialSlots);
+    }
+
     public TMap<Integer, QExprId> render(
             MethodVisitor out, TList<JavaBytecodeBindingKey> initialIndexes) {
+        var slots = new TList<InitialSlot>(initialIndexes.size());
+        for (var k : initialIndexes) slots.add(new InitialSlot(k));
+        return renderInternal(out, initialIndexes, slots);
+    }
+
+    private TMap<Integer, QExprId> renderInternal(
+            MethodVisitor out,
+            TList<JavaBytecodeBindingKey> initialIndexes,
+            TList<InitialSlot> initialSlotWidths) {
         var locMap = new TMap<Integer, QExprId>();
         final int[] locCounter = {0};
         var catchLastUses = new TMap<JavaBytecodeCatchKey, Integer>();
@@ -381,10 +403,15 @@ public class JavaBytecodeSequence implements JavaBytecode {
                     new PVector[]{TreePVector.empty()};
             var branchIndexes =
                     new TMap<Label, Pair<PMap<JavaBytecodeBindingKey, Integer>, PVector<JavaBytecodeBindingKey>>>();
-            for (int i = 0; i < initialIndexes.size(); i++) {
-                final JavaBytecodeBindingKey key = initialIndexes.get(i);
-                currentIndexes[0] = currentIndexes[0].plus(key, i);
-                currentRevIndexes[0] = currentRevIndexes[0].plus(key);
+            int initSlot = 0;
+            for (int i = 0; i < initialSlotWidths.size(); i++) {
+                var s = initialSlotWidths.get(i);
+                currentIndexes[0] = currentIndexes[0].plus(s.key(), initSlot);
+                currentRevIndexes[0] = currentRevIndexes[0].plus(s.key());
+                if (s.wide()) {
+                    currentRevIndexes[0] = currentRevIndexes[0].plus(s.key());
+                }
+                initSlot += s.wide() ? 2 : 1;
             }
             int codeIndex = 0;
             for (JavaBytecode n : flattened) {

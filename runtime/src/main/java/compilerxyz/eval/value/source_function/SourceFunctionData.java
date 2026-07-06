@@ -18,6 +18,14 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectRecord;
+import compilerxyz.gen.AspectTuple;
+import compilerxyz.eval.value.argrecord.ArgumentEntry;
+import compilerxyz.eval.value.argrecord.ArgumentRecord;
+import compilerxyz.eval.value.argrecord.ArgumentTuple;
+import compilerxyz.eval.value.argrecord.ArgumentTupleBinding;
+import compilerxyz.eval.value.argrecord.ArgumentRecordBinding;
+import compilerxyz.eval.Binding;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.util.Opt;
@@ -106,13 +114,49 @@ public final class SourceFunctionData {
     var innerVx = new EvalContext(xx.vx.ix);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
-    var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
-    var ibMaybe = AspectInitialBind.getMaybe(xx, argT);
-    if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-      bodyScope.values.put(new ConstKey.Str("arg"), ibSome.value().initialBind(argId));
+
+    var argSlots = new TList<DefSetFunctionsEmitter.ArgSlot>();
+    var tupleOpt = AspectTuple.getMaybe(xx, argT);
+    var recordOpt = AspectRecord.getMaybe(xx, argT);
+    if (tupleOpt.optIsSome()) {
+      var elemTypes = tupleOpt.optUnwrap().elementTypes();
+      var elemBindings = new TList<Binding>();
+      for (var et : elemTypes) {
+        var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
+        var ibMaybe = AspectInitialBind.getMaybe(xx, et);
+        if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+          return EResult.err(rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBind");
+        }
+        elemBindings.add(ibSome.value().initialBind(slotId));
+      }
+      var argTuple = new ArgumentTuple(elemBindings, elemTypes);
+      bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
+    } else if (recordOpt.optIsSome()) {
+      var fieldTypes = recordOpt.optUnwrap().recordFieldTypes();
+      var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
+      for (var entry : fieldTypes.entrySet()) {
+        var et = entry.getValue();
+        var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
+        var ibMaybe = AspectInitialBind.getMaybe(xx, et);
+        if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+          return EResult.err(rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBind");
+        }
+        fields.put(entry.getKey(), new ArgumentEntry(ibSome.value().initialBind(slotId), et));
+      }
+      var argRec = new ArgumentRecord(fields);
+      bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
+    } else {
+      var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+      argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
+      var ibMaybe = AspectInitialBind.getMaybe(xx, argT);
+      if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
+        bodyScope.values.put(new ConstKey.Str("arg"), ibSome.value().initialBind(slotId));
+      }
     }
     var funcXx =
         new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
@@ -170,10 +214,34 @@ public final class SourceFunctionData {
       throw new AssertionError(
           "SourceFunctionData.finish: binding id must be a Def, got " + defBinding.getClass());
     }
+    var retDescRes = jvmDescForRes(xx, rootLoc, retT);
+    if (retDescRes.hasErrors()) return retDescRes.reerr();
+    var retDesc = retDescRes.requireValue("SourceFunctionData::finish retDesc");
     functionSpec =
         new DefSetFunctionsEmitter.FunctionSpec(
-            def.index(), argId, bodyCode, TList.from(captured));
+            def.index(), argSlots, retDesc, bodyCode, TList.from(captured));
     return EResult.ok(null);
+  }
+
+  private static compilerxyz.eval.dynamic.JavaDataDescriptor jvmDescFor(
+      ExprContext xx, QExprId loc, Type t) {
+    var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
+    if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
+      return some.value().consumeDynamicJvmClass();
+    }
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  }
+
+  private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescForRes(
+      ExprContext xx, QExprId loc, Type t) {
+    var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
+    if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
+      return EResult.ok(some.value().consumeDynamicJvmClass());
+    }
+    return EResult.ok(
+        compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+            compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT));
   }
 
   public EResult<Void> instantiate(QExprId rootLoc, DefinitionSetClassLoader loader) {

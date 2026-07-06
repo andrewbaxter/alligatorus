@@ -354,25 +354,41 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(def.defSet()));
     var methodName =
         compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionMethodName(def.index());
-    var descriptor =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
     var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
-    var packedRes = DynUtil.destructurePackedObject(xx, loc, argType, converted);
-    if (packedRes.hasErrors()) return packedRes.reerr();
-    var packedArg = packedRes.requireValue("TypeSourceFunctionConst::call packed arg");
+    var argElementsRes = DynUtil.destructureCallArg(xx, loc, argType, converted);
+    if (argElementsRes.hasErrors()) return argElementsRes.reerr();
+    var argElements = argElementsRes.requireValue("TypeSourceFunctionConst::call arg elements");
+
+    var argDescs = new TList<compilerxyz.eval.dynamic.JavaDataDescriptor>(argElements.size());
+    for (var e : argElements) argDescs.add(e.jvmDesc());
+    var retDescRes = jvmDescOf(xx, loc, retType);
+    if (retDescRes.hasErrors()) return retDescRes.reerr();
+    var retDesc = retDescRes.requireValue("TypeSourceFunctionConst::call retDesc");
+    var descriptor =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(retDesc, argDescs);
     var retStackRes =
         compilerxyz.gen.AspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
+
+    var argCodes = new TList<compilerxyz.eval.dynamic.CodeDynamic>(argElements.size());
+    for (var e : argElements) argCodes.add(e.code());
     var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, descriptor, false);
-    var invocation = fnType.emitInvocation(loc, xx.vx, TList.of(packedArg));
+    var invocation = fnType.emitInvocation(loc, xx.vx, argCodes);
     return EResult.ok(
         retStackRes
             .requireValue("TypeSourceFunctionConst::call ret stack")
             .toValue(loc, invocation));
+  }
+
+  private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescOf(
+      ExprContext xx, QExprId loc, Type t) {
+    var consumeRes =
+        compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, t);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    return EResult.ok(
+        consumeRes.requireValue("jvmDescOf consume").consumeDynamicJvmClass());
   }
 
   @Override
