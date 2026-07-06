@@ -172,8 +172,12 @@ public final class PushStructsGen {
     for (var df : spec.dataFields()) {
       cls.addField(
           FieldSpec.builder(df.type().path(), df.name(), Modifier.PUBLIC, Modifier.FINAL).build());
-      ctor.addParameter(ParameterSpec.builder(df.type().path(), df.name()).build());
-      ctor.addStatement("this.$N = $N", df.name(), df.name());
+      if (df.derivedFrom() != null) {
+        ctor.addStatement("this.$N = $L", df.name(), df.derivedFrom());
+      } else {
+        ctor.addParameter(ParameterSpec.builder(df.type().path(), df.name()).build());
+        ctor.addStatement("this.$N = $N", df.name(), df.name());
+      }
     }
     cls.addMethod(ctor.build());
 
@@ -659,16 +663,6 @@ public final class PushStructsGen {
             empty,
             "srcObjectImplAspect",
             retSourceInterfaceRef));
-    var retTypeSourceObjectNewConst = TypeRef.opaque(TYPE_SOURCE_OBJECT_NEW_CONST);
-    sourceObjectMethods.add(
-        new PushMethod(
-            "new_",
-            TList.of(),
-            dynExpr(TYPE_SOURCE_OBJECT_NEW_DYNAMIC),
-            empty,
-            "srcObjectResultNew",
-            retTypeSourceObjectNewConst));
-
     for (var traitSpec : traitSpecs) {
       if (traitSpec.registerInScope()) continue;
       var runtimeName =
@@ -694,14 +688,26 @@ public final class PushStructsGen {
         new PushStructSpec(
             "SourceObjectBuilder",
             3006L,
-            TList.of(new NamedTypeRef("object_ref", dataPath(SOURCE_OBJECT_REF))),
+            TList.of(
+                new NamedTypeRef("type_", dataPath(SOURCE_OBJECT_REF)),
+                new NamedTypeRef(
+                    "new_",
+                    dataPath(TYPE_SOURCE_OBJECT_NEW_CONST),
+                    CodeBlock.of("new $T(type_)", TYPE_SOURCE_OBJECT_NEW_CONST))),
             TList.of(
                 new PushField(
                     "type_ref_",
-                    "object_ref",
+                    "type_",
                     ref(
                         SOURCE_OBJECT_REF,
                         CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_REF_DYNAMIC)),
+                    empty),
+                new PushField(
+                    "new_",
+                    "new_",
+                    ref(
+                        TYPE_SOURCE_OBJECT_NEW_CONST,
+                        CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_NEW_DYNAMIC)),
                     empty)),
             TList.<PushMethod>from(sourceObjectMethods));
 
