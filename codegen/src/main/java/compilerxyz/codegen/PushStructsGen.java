@@ -386,9 +386,9 @@ public final class PushStructsGen {
   private static final ClassName TYPE_SOURCE_UNION_REF_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.source_union", "TypeTypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_NEW_REF =
-      ClassName.get("compilerxyz.eval.value.source_union_new", "SourceUnionNewRef");
-  private static final ClassName TYPE_SOURCE_UNION_NEW_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.source_union_new", "TypeSourceUnionNewDynamic");
+  private static final ClassName TYPE_SOURCE_UNION_NEW_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.source_union_new", "TypeTypeSourceUnionNewDynamic");
   private static final ClassName TYPE_STRING_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName VALUE_STRING_CONST =

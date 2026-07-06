@@ -278,7 +278,7 @@ public final class DynRuntime {
   public static Type unionNewToType(ExprContext xx, Object ref) {
     throw new UnsupportedOperationException(
         "invisible builtin union_new_to_type: invisible_builtins.rs scope 7018 body pending"
-            + " SourceUnionNewRef + TypeSourceUnionNewConst port");
+            + " SourceUnionNewRef + TypeSourceUnionNewDynamic port");
   }
 
   public static Value dataInstanceToValue(ExprContext xx, Object template, Object instance) {
@@ -612,14 +612,15 @@ public final class DynRuntime {
     return null;
   }
 
-  public static compilerxyz.eval.value.source_union_new.SourceUnionNewRef srcUnionAddVariant(
+  public static compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic srcUnionAddVariant(
       ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub, String tag, Type typeRef) {
     var jsTag = Prefixes.TAG_PREFIX + sub.type_.nextTagId.next();
     var variantIndex = sub.type_.variants.size();
     sub.type_.variants.add(
         new compilerxyz.eval.value.source_union.SourceUnionVariant(
             new compilerxyz.eval.ConstKey.Str(tag), jsTag, typeRef));
-    return new compilerxyz.eval.value.source_union_new.SourceUnionNewRef(sub.type_, variantIndex);
+    return new compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic(
+        sub.type_, variantIndex);
   }
 
   private static Object implBuiltinInterface(

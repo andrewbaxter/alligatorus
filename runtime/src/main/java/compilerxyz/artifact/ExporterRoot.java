@@ -26,7 +26,7 @@ import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.value.source_exports.TypeSourceExportsLiftedConst;
 import compilerxyz.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
 import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
-import compilerxyz.eval.value.source_union_new.TypeSourceUnionNewConst;
+import compilerxyz.eval.value.source_union_new.TypeTypeSourceUnionNewConst;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
@@ -178,7 +178,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   SOURCE_UNION_NEW_CONST("source_union_new_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeSourceUnionNewConst.DELEGATE;
+      return TypeTypeSourceUnionNewConst.DELEGATE;
     }
   },
   SOURCE_EXPORTS_LIFTED_CONST("source_exports_lifted_const") {
