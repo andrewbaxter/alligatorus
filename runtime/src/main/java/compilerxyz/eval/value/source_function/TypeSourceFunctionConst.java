@@ -358,7 +358,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
             TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
-    var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
+    var unwrappedArg = unwrapSingletonTuple(xx, loc, argType, argument);
+    var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, unwrappedArg);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
     var packedRes = DynUtil.destructurePackedObject(xx, loc, argType, converted);
@@ -378,6 +379,27 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   @Override
   public Opt<Type> exceptionType() {
     return data.exceptionType == null ? Opt.none() : Opt.some(data.exceptionType);
+  }
+
+  private static CodeValue unwrapSingletonTuple(
+      ExprContext xx, QExprId loc, Type argType, CodeValue argument) {
+    if (compilerxyz.gen.AspectTuple.getMaybe(xx, argType).optIsSome()) {
+      return argument;
+    }
+    if (!(argument.value() instanceof Opt.Some<Value> some)) {
+      return argument;
+    }
+    var argValueType = some.value().valueTypeOf();
+    var callerTupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argValueType);
+    if (!(callerTupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome)) {
+      return argument;
+    }
+    if (tupleSome.value().elementTypes().size() != 1) return argument;
+    var elemsCv = tupleSome.value().takeElements(xx, loc, some.value());
+    if (elemsCv.size() != 1) return argument;
+    var elem0Res = elemsCv.get(0);
+    if (elem0Res.hasErrors()) return argument;
+    return elem0Res.requireValue("TypeSourceFunctionConst::unwrapSingletonTuple");
   }
 
   @Override
