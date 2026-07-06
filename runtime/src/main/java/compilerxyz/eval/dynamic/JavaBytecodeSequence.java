@@ -314,10 +314,9 @@ public class JavaBytecodeSequence implements JavaBytecode {
             @SuppressWarnings("unchecked") final PMap<JavaBytecodeBindingKey, Integer>[] currentBindingLastUses =
                     new PMap[]{HashTreePMap.<JavaBytecodeBindingKey, Integer>empty()};
             var branchBindingLastUses = new TMap<Label, PMap<JavaBytecodeBindingKey, Integer>>();
-            int index = 0;
             for (int i = flattened.size() - 1; i >= 0; i--) {
                 JavaBytecode e = flattened.get(i);
-                int finalIndex = index;
+                int finalIndex = i;
                 e.dispatch(
                         new DefaultDispatcher<Object>() {
                             @Override
@@ -387,13 +386,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                 return null;
                             }
                         });
-                index += 1;
-            }
-            for (Map.Entry<JavaBytecodeBindingKey, TList<Integer>> use : bindingLastUses.entrySet()) {
-                final TList<Integer> lastUses = use.getValue();
-                for (int i = 0; i < lastUses.size(); i++) {
-                    lastUses.set(i, totalUses.get(use.getKey()) - 1 - lastUses.get(i));
-                }
             }
         }
         {
