@@ -48,7 +48,17 @@ public record TypeFunctionDynamic(
         AspectDropDynamicLight,
         AspectFunction,
         AspectInitialBind,
+        compilerxyz.gen.AspectLift,
         ExporterAny {
+
+  @Override
+  public EResult<Value> lift(
+      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
+    // The externalHostValue can be either an actual TypeFunctionDynamic (rare) or the JVM
+    // receiver value for a method-value access. Either way, the compile-time type is the
+    // TypeFunctionDynamic itself, so wrap `this` as the const value.
+    return EResult.ok(new compilerxyz.eval.value.any.ValueAnyConst(this));
+  }
 
   @Override
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.typeId(), ret.typeId())); }
@@ -126,7 +136,8 @@ public record TypeFunctionDynamic(
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectBind.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(compilerxyz.gen.AspectLift.ID)) {
       return Opt.some(this);
     }
     return Opt.none();

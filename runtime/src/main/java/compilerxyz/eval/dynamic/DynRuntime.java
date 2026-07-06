@@ -478,7 +478,7 @@ public final class DynRuntime {
       ExprContext xx,
       compilerxyz.gen.SourceObjectBuilder sor,
       compilerxyz.eval.value.source_interface.SourceInterfaceRef ifaceRef,
-      Object recordArg) {
+      java.util.Map<Object, Object> recordArg) {
     var record = recordToConstKeyExprMap(recordArg);
     var ifaceData = ifaceRef.data();
     var dtData = sor.type_;
@@ -586,12 +586,16 @@ public final class DynRuntime {
   }
 
   public static Object srcObjectImplValue(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg) {
+      ExprContext xx,
+      compilerxyz.gen.SourceObjectBuilder sor,
+      java.util.Map<Object, Object> arg) {
     return implBuiltinInterface(xx, sor, arg, "value");
   }
 
   public static Object srcObjectImplTypeInterface(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg) {
+      ExprContext xx,
+      compilerxyz.gen.SourceObjectBuilder sor,
+      java.util.Map<Object, Object> arg) {
     return implBuiltinInterface(xx, sor, arg, "type_");
   }
 

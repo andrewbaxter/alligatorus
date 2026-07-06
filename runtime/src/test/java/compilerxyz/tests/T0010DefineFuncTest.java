@@ -81,7 +81,7 @@ public final class T0010DefineFuncTest {
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),
-                    mb.call(mb.scopeUse("my_func"), mb.tupleOf(mb.str("hello world")))))));
+                    mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
@@ -123,7 +123,7 @@ public final class T0010DefineFuncTest {
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),
-                    mb.call(mb.scopeUse("my_func"), mb.tupleOf(mb.str("hello world")))))));
+                    mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
