@@ -28,7 +28,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-public record TypeSourceUnionRefDynamic()
+public record TypeTypeSourceUnionDynamic()
     implements Type,
         AspectBind,
         AspectBindDynamic,
@@ -86,7 +86,7 @@ public record TypeSourceUnionRefDynamic()
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeSourceUnionRefDynamic::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeTypeSourceUnionDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -97,13 +97,13 @@ public record TypeSourceUnionRefDynamic()
   @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof SourceUnionRef ref)) {
+    if (!(externalHostValue instanceof TypeSourceUnionDynamic ut)) {
       return EResult.err(
           loc,
-          "TypeSourceUnionRefDynamic::lift: expected SourceUnionRef, got "
+          "TypeTypeSourceUnionDynamic::lift: expected TypeSourceUnionDynamic, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return EResult.ok(new ValueAnyConst(new TypeSourceUnionConst(ref.data())));
+    return EResult.ok(new ValueAnyConst(new TypeTypeSourceUnionConst(ut)));
   }
 
   @Override

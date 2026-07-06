@@ -260,7 +260,7 @@ public final class DynRuntime {
   public static Type unionRefToType(ExprContext xx, Object ref) {
     throw new UnsupportedOperationException(
         "invisible builtin union_ref_to_type: invisible_builtins.rs scope 7019 body pending"
-            + " SourceUnionRef + TypeSourceUnionConst port");
+            + " SourceUnionRef + TypeTypeSourceUnionConst port");
   }
 
   public static Type functionConstToType(ExprContext xx, Object ref) {
@@ -328,7 +328,7 @@ public final class DynRuntime {
   public static compilerxyz.gen.SourceUnionBuilder defSetBuilderUnion(
       ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
     var identity = freshUnique(xx);
-    var data = new compilerxyz.eval.value.source_union.SourceUnionData(dsb.inner, identity);
+    var data = new compilerxyz.eval.value.source_union.TypeSourceUnionDynamic(dsb.inner, identity);
     dsb.inner.unions.add(data);
     return new compilerxyz.gen.SourceUnionBuilder(data);
   }
@@ -612,24 +612,14 @@ public final class DynRuntime {
     return null;
   }
 
-  public static compilerxyz.eval.value.source_union.SourceUnionRef srcUnionAsRef(
-      compilerxyz.gen.SourceUnionBuilder sub) {
-    return new compilerxyz.eval.value.source_union.SourceUnionRef(sub.data);
-  }
-
-  public static compilerxyz.eval.value.source_union.SourceUnionRef srcUnionBuilderTypeRef(
-      ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub) {
-    return new compilerxyz.eval.value.source_union.SourceUnionRef(sub.data);
-  }
-
   public static compilerxyz.eval.value.source_union_new.SourceUnionNewRef srcUnionAddVariant(
       ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub, String tag, Type typeRef) {
-    var jsTag = Prefixes.TAG_PREFIX + sub.data.nextTagId.next();
-    var variantIndex = sub.data.variants.size();
-    sub.data.variants.add(
+    var jsTag = Prefixes.TAG_PREFIX + sub.type_.nextTagId.next();
+    var variantIndex = sub.type_.variants.size();
+    sub.type_.variants.add(
         new compilerxyz.eval.value.source_union.SourceUnionVariant(
             new compilerxyz.eval.ConstKey.Str(tag), jsTag, typeRef));
-    return new compilerxyz.eval.value.source_union_new.SourceUnionNewRef(sub.data, variantIndex);
+    return new compilerxyz.eval.value.source_union_new.SourceUnionNewRef(sub.type_, variantIndex);
   }
 
   private static Object implBuiltinInterface(

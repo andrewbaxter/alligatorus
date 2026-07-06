@@ -30,8 +30,8 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.source_union.SourceUnionData;
-import compilerxyz.eval.value.source_union.TypeSourceUnionConst;
+import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -40,7 +40,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
+public record TypeSourceUnionNewConst(TypeSourceUnionDynamic data, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 
   @Override
@@ -102,7 +102,7 @@ public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
           return EResult.err(
               loc,
               "TypeSourceUnionNewConst::exporterRootDelegateSelfExport: recursive export_artifact + parent "
-                  + "TypeSourceUnionConst export deferred");
+                  + "TypeTypeSourceUnionConst export deferred");
         }
 
         @Override
@@ -111,7 +111,7 @@ public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
           return EResult.err(
               loc,
               "TypeSourceUnionNewConst::exporterRootDelegateSelfFromArtifactData: recursive "
-                  + "import_independent_artifact + parent TypeSourceUnionConst import deferred");
+                  + "import_independent_artifact + parent TypeTypeSourceUnionConst import deferred");
         }
       };
 
@@ -153,7 +153,7 @@ public record TypeSourceUnionNewConst(SourceUnionData data, int variantIndex)
       return EResult.errs(erb.errors());
     }
     var underlyingJs = underlyingJsOpt.get();
-    Type resultType = new TypeSourceUnionConst(data);
+    Type resultType = new TypeTypeSourceUnionConst(data);
     var canonicalTag = new ConstKey.Str(jsTag).toCanonical();
     var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
     seq.add(JavaBytecodeUtils.literalString(loc, canonicalTag));

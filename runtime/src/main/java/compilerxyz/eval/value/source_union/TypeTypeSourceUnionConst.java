@@ -38,7 +38,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
-public record TypeSourceUnionConst(SourceUnionData data)
+public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     implements
         Type,
         AspectArtifact,
@@ -53,7 +53,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
 
   @Override
   public TypeId typeId() {
-    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+    return new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity));
   }
 
   private static long uniqueId(Unique u) {
@@ -81,7 +81,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(data.identity)
+    if (key.equals(type_.identity)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
@@ -113,7 +113,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
             Function<JsonValue, ArtifactBody> makeBody) {
           return EResult.err(
               loc,
-              "TypeSourceUnionConst::exporterRootDelegateSelfExport: recursive export_artifact + per-variant payload "
+              "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: recursive export_artifact + per-variant payload "
                   + "type export deferred");
         }
 
@@ -122,7 +122,7 @@ public record TypeSourceUnionConst(SourceUnionData data)
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return EResult.err(
               loc,
-              "TypeSourceUnionConst::exporterRootDelegateSelfFromArtifactData: recursive import_independent_artifact "
+              "TypeTypeSourceUnionConst::exporterRootDelegateSelfFromArtifactData: recursive import_independent_artifact "
                   + "+ per-variant payload type import deferred");
         }
       };
@@ -142,23 +142,23 @@ public record TypeSourceUnionConst(SourceUnionData data)
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeSourceUnionConst::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeTypeSourceUnionConst::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeSourceUnionConst(data));
+    return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceUnionConst(type_));
   }
 
   @Override
   public Type type_(Value value) {
-    return new TypeSourceUnionConst(data);
+    return new TypeTypeSourceUnionConst(type_);
   }
 
   @Override
   public TList<AspectUnion.Variant> variants() {
     var out = new TList<AspectUnion.Variant>();
-    for (var v : data.variants) {
+    for (var v : type_.variants) {
       out.add(new AspectUnion.Variant(v.tag, v.jsTag, v.type));
     }
     return out;

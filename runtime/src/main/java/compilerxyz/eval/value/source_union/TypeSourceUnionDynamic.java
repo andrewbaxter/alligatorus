@@ -1,9 +1,12 @@
 package compilerxyz.eval.value.source_union;
 
+import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.Counter;
+import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -26,8 +29,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
+import org.jspecify.annotations.Nullable;
 
-public record TypeSourceUnionDynamic(SourceUnionData data)
+public final class TypeSourceUnionDynamic
     implements
         Type,
         AspectBind,
@@ -38,9 +42,22 @@ public record TypeSourceUnionDynamic(SourceUnionData data)
         AspectUnion,
         ExporterAny {
 
+  public final DefinitionSet set;
+  public final Unique identity;
+  public @Nullable ArtifactIdSource newArtifactId;
+  public final Counter nextTagId;
+  public final TList<SourceUnionVariant> variants;
+
+  public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
+    this.set = set;
+    this.identity = identity;
+    this.nextTagId = new Counter();
+    this.variants = new TList<>();
+  }
+
   @Override
   public TypeId typeId() {
-    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+    return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
   }
 
   private static long uniqueId(Unique u) {
@@ -50,10 +67,10 @@ public record TypeSourceUnionDynamic(SourceUnionData data)
     };
   }
 
-
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -68,7 +85,7 @@ public record TypeSourceUnionDynamic(SourceUnionData data)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(data.identity)
+    if (key.equals(identity)
         || key.equals(GenIdentities.UNION_REF_TYPE_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
@@ -95,19 +112,18 @@ public record TypeSourceUnionDynamic(SourceUnionData data)
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeSourceUnionDynamic::toDynamic: CodeValue has no dynamic code");
+    return EResult.err(loc, "TypeSourceUnionDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeSourceUnionDynamic(data));
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override
   public TList<AspectUnion.Variant> variants() {
     var out = new TList<AspectUnion.Variant>();
-    for (var v : data.variants) {
+    for (var v : variants) {
       out.add(new AspectUnion.Variant(v.tag, v.jsTag, v.type));
     }
     return out;
@@ -130,5 +146,4 @@ public record TypeSourceUnionDynamic(SourceUnionData data)
       compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
-
 }

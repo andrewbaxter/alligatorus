@@ -16,7 +16,7 @@ import compilerxyz.eval.value.source_interface.SourceInterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
-import compilerxyz.eval.value.source_union.SourceUnionData;
+import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.safejson.JsonValues;
@@ -41,7 +41,7 @@ public final class DefinitionSet implements ExporterAny {
   public final Counter nextFieldId;
   public final Counter nextInterfaceMethodId;
   public final TList<TypeSourceObjectDynamic> objects;
-  public final TList<SourceUnionData> unions;
+  public final TList<TypeSourceUnionDynamic> unions;
 
   public DefinitionSet(DefSetId defSetId) {
     this.artifactId = null;

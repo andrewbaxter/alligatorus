@@ -380,11 +380,11 @@ public final class PushStructsGen {
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.source_object_new", "TypeTypeSourceObjectNewDynamic");
   private static final ClassName SOURCE_UNION_DATA =
-      ClassName.get("compilerxyz.eval.value.source_union", "SourceUnionData");
+      ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_REF =
-      ClassName.get("compilerxyz.eval.value.source_union", "SourceUnionRef");
+      ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
   private static final ClassName TYPE_SOURCE_UNION_REF_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionRefDynamic");
+      ClassName.get("compilerxyz.eval.value.source_union", "TypeTypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_NEW_REF =
       ClassName.get("compilerxyz.eval.value.source_union_new", "SourceUnionNewRef");
   private static final ClassName TYPE_SOURCE_UNION_NEW_DYNAMIC =
@@ -711,21 +711,20 @@ public final class PushStructsGen {
                     empty)),
             TList.<PushMethod>from(sourceObjectMethods));
 
-    var retSourceUnionRef = TypeRef.opaque(SOURCE_UNION_REF);
     var sourceUnionBuilder =
         new PushStructSpec(
             "SourceUnionBuilder",
             3007L,
-            TList.of(new NamedTypeRef("data", dataPath(SOURCE_UNION_DATA))),
-            TList.of(),
+            TList.of(new NamedTypeRef("type_", dataPath(SOURCE_UNION_DATA))),
             TList.of(
-                new PushMethod(
+                new PushField(
                     "type_",
-                    TList.of(),
-                    dynExpr(TYPE_SOURCE_UNION_REF_DYNAMIC),
-                    empty,
-                    "srcUnionBuilderTypeRef",
-                    retSourceUnionRef),
+                    "type_",
+                    ref(
+                        SOURCE_UNION_REF,
+                        CodeBlock.of("new $T()", TYPE_SOURCE_UNION_REF_DYNAMIC)),
+                    empty)),
+            TList.of(
                 new PushMethod(
                     "variant",
                     TList.of(
