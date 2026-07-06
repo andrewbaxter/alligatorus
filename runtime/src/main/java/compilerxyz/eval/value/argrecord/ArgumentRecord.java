@@ -1,27 +1,19 @@
 package compilerxyz.eval.value.argrecord;
 
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Code;
-import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
-import compilerxyz.eval.Erb;
-import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
-import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.AspectField;
-import compilerxyz.gen.AspectRecord;
 import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import java.util.stream.Collectors;
 
 public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
-    implements Type, Value, AspectField, AspectRecord, ExporterAny {
+    implements Type, Value, ExporterAny {
 
   @Override
   public String typeDesc() {
@@ -37,62 +29,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectField.ID) || key.equals(AspectRecord.ID)) {
-      return Opt.some(this);
-    }
     return Opt.none();
-  }
-
-  @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    var erb = new Erb(loc);
-    if (!(key.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "ArgumentRecord::field: key has no compile-time value");
-    }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, some.value()));
-    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    var ck = ckOpt.get();
-    var entry = fields.getOrNull(ck);
-    if (entry == null) {
-      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on argument record");
-    }
-    return EResult.ok(entry.binding().bindingUse_(xx, loc, Code.none(loc)));
-  }
-
-  @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
-  }
-
-  @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    return Opt.none();
-  }
-
-  @Override
-  public TOrderedMap<ConstKey, Type> recordFieldTypes() {
-    var out = new TOrderedMap<ConstKey, Type>();
-    for (var entry : fields.entrySet()) {
-      out.put(entry.getKey(), entry.getValue().type());
-    }
-    return out;
-  }
-
-  @Override
-  public TOrderedMap<ConstKey, EResult<CodeValue>> recordTakeFields(
-      ExprContext xx, QExprId loc, Value value) {
-    if (!(value instanceof ArgumentRecord ar)) {
-      throw new IllegalArgumentException(
-          "ArgumentRecord::recordTakeFields: expected ArgumentRecord value, got "
-              + value.getClass());
-    }
-    var out = new TOrderedMap<ConstKey, EResult<CodeValue>>();
-    for (var entry : ar.fields.entrySet()) {
-      out.put(
-          entry.getKey(),
-          EResult.ok(entry.getValue().binding().bindingUse_(xx, loc, Code.none(loc))));
-    }
-    return out;
   }
 
   @Override
