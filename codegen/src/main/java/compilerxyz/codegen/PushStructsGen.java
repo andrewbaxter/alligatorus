@@ -696,7 +696,7 @@ public final class PushStructsGen {
                     CodeBlock.of("new $T(type_)", TYPE_SOURCE_OBJECT_NEW_CONST))),
             TList.of(
                 new PushField(
-                    "type_ref_",
+                    "type_",
                     "type_",
                     ref(
                         SOURCE_OBJECT_REF,
@@ -765,8 +765,14 @@ public final class PushStructsGen {
         sourceInterfaceMethodResult);
   }
 
+  private static final java.util.Set<String> RESERVED_NAMES =
+      java.util.Set.of("new", "type", "value", "class");
+
   private static String pushMethodName(String name) {
-    return name.endsWith("_") ? name.substring(0, name.length() - 1) : name;
+    if (!name.endsWith("_")) return name;
+    var stripped = name.substring(0, name.length() - 1);
+    if (RESERVED_NAMES.contains(stripped)) return name;
+    return stripped;
   }
 
   private static String snakeCase(String camel) {
