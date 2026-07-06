@@ -280,7 +280,7 @@ public final class Eval {
       }
     }
     var key = ImportInstall.bindingIdDynamicKey(dynamicKey);
-    xx.vx.ix.builtinDynamics.put(key, dynamicValue.externalHostValue());
+    xx.vx.ix.builtinDynamics.put(key, dynamicValue);
   }
 
   public static CompileImport.EvalOutcome eval(

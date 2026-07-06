@@ -199,8 +199,19 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       + "' missing arg/ret type");
             }
             if (m.compiledBodyCode == null && m.compiledClassName == null) {
+              if (dt.setId == null) {
+                throw new AssertionError(
+                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: dt.setId is null");
+              }
+              var objectIndex = dt.set.objects.indexOf(dt);
+              if (objectIndex < 0) {
+                throw new AssertionError(
+                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: dt not in its owning set");
+              }
+              var objInternalName =
+                  compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dt.setId, objectIndex);
               var finishRes = m.finish(xx, loc, dt.name == null ? "(unnamed)" : dt.name,
-                  underlying, dt.dataField);
+                  underlying, dt.dataField, objInternalName);
               if (finishRes.hasErrors()) {
                 finishRes.drainInto(errors);
                 return EResult.errs(errors);

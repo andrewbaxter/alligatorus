@@ -125,23 +125,35 @@ public record TypeMethodDynamic(
         var elemCv = elemCvRes.requireValue("TypeMethodDynamic::destructure element");
         var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
         if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var elemDyn =
-            consumeRes
-                .requireValue("TypeMethodDynamic::destructure consume")
-                .toDynamic(xx, loc, elemCv);
+        var consume = consumeRes.requireValue("TypeMethodDynamic::destructure consume");
+        var elemDyn = consume.toDynamic(xx, loc, elemCv);
         if (elemDyn.hasErrors()) return elemDyn.reerr();
-        out.add(elemDyn.requireValue("TypeMethodDynamic::destructure elem toDynamic"));
+        var elemCode = elemDyn.requireValue("TypeMethodDynamic::destructure elem toDynamic");
+        out.add(withCastIfNeeded(loc, elemCode, consume.consumeDynamicJvmClass()));
       }
       return EResult.ok(out);
     }
     var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
-    var argDyn =
-        consumeRes
-            .requireValue("TypeMethodDynamic::call arg consume")
-            .toDynamic(xx, loc, converted);
+    var consume = consumeRes.requireValue("TypeMethodDynamic::call arg consume");
+    var argDyn = consume.toDynamic(xx, loc, converted);
     if (argDyn.hasErrors()) return argDyn.reerr();
-    return EResult.ok(TList.of(argDyn.requireValue("TypeMethodDynamic::call arg")));
+    var argCode = argDyn.requireValue("TypeMethodDynamic::call arg");
+    return EResult.ok(TList.of(withCastIfNeeded(loc, argCode, consume.consumeDynamicJvmClass())));
+  }
+
+  private static CodeDynamic withCastIfNeeded(
+      QExprId loc,
+      CodeDynamic code,
+      compilerxyz.eval.dynamic.JavaDataDescriptor targetDesc) {
+    var v = targetDesc.value();
+    if (!v.startsWith("L") || v.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+      return code;
+    }
+    var seq = new JavaBytecodeSequence();
+    seq.add(code);
+    seq.add(JavaBytecodeUtils.cast(loc, targetDesc));
+    return new CodeDynamic(loc, seq);
   }
 
   @Override

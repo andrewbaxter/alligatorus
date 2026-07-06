@@ -66,7 +66,7 @@ public record TypeUnique()
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class);
   }
 
   @Override

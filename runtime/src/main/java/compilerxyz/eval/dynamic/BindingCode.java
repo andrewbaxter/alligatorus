@@ -42,12 +42,28 @@ public final class BindingCode {
     return bindingSet(new CodeLoc.Some(loc), vx, id, value);
   }
 
+  private static JavaDataDescriptor descForBinding(EvalContext vx, BindingId id) {
+    return switch (id) {
+      case BindingId.Builtin builtin -> {
+        var key = ImportInstall.bindingIdDynamicKey(builtin);
+        var external = vx.ix.builtinDynamics.get(key);
+        yield external == null
+            ? JvmConstants.DESC_OBJECT
+            : JavaDataDescriptor.fromClass(external.externalHostClass());
+      }
+      case BindingId.Def ignored -> JvmConstants.DESC_OBJECT;
+      case BindingId.Local ignored ->
+          throw new AssertionError(
+              "BindingCode::descForBinding: local bindings do not have static field descriptors");
+    };
+  }
+
   private static CodeDynamic staticFieldForBinding(CodeLoc loc, EvalContext vx, BindingId id) {
     return JavaBytecodeUtils.accessStaticField(
         loc,
         JavaInternalName.of(vx.evalRootInternalName),
         ImportInstall.bindingIdDynamicKey(id),
-        JvmConstants.DESC_OBJECT);
+        descForBinding(vx, id));
   }
 
   private static CodeDynamic staticFieldSetForBinding(
@@ -56,6 +72,6 @@ public final class BindingCode {
         loc,
         JavaInternalName.of(vx.evalRootInternalName),
         ImportInstall.bindingIdDynamicKey(id),
-        JvmConstants.DESC_OBJECT);
+        descForBinding(vx, id));
   }
 }

@@ -118,7 +118,7 @@ public final class EvalRootEmitter {
       String binaryName,
       CodeDynamic rootCode,
       TList<EvalContext.ExternalEntry> externals,
-      TOrderedMap<String, Object> builtinDynamics) {
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
     return emit(target, binaryName, rootCode, externals, builtinDynamics, new TSet<>());
   }
 
@@ -127,7 +127,7 @@ public final class EvalRootEmitter {
       String binaryName,
       CodeDynamic rootCode,
       TList<EvalContext.ExternalEntry> externals,
-      TOrderedMap<String, Object> builtinDynamics,
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
       TSet<BindingId.Def> staticFunctionDefs) {
     var internalName = toInternalName(binaryName);
 
@@ -141,8 +141,10 @@ public final class EvalRootEmitter {
         null);
 
     var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-    for (var name : builtinDynamics.keySet()) {
-      fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
+    for (var entry : builtinDynamics.entrySet()) {
+      fieldDescriptors.put(
+          entry.getKey(),
+          JavaDataDescriptor.fromClass(entry.getValue().externalHostClass()));
     }
     fieldDescriptors.put(EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
     var externalFieldNames = new TList<String>(externals.size());
@@ -151,12 +153,7 @@ public final class EvalRootEmitter {
       var entry = externals.get(i);
       var fieldName = Prefixes.EXTERNAL_PREFIX + i;
       externalFieldNames.add(fieldName);
-      if (!(entry.type() instanceof compilerxyz.gen.AspectConsumeDynamic consume)) {
-        throw new IllegalStateException(
-            "External type " + entry.type().getClass().getName()
-                + " does not implement AspectConsumeDynamic — cannot determine field JVM class");
-      }
-      var desc = consume.consumeDynamicJvmClass();
+      var desc = JavaDataDescriptor.fromClass(entry.external().externalHostClass());
       externalFieldDescriptors.add(desc);
       fieldDescriptors.put(fieldName, desc);
     }
@@ -205,7 +202,9 @@ public final class EvalRootEmitter {
     var bytecode = cw.toByteArray();
 
     var staticFields = new TOrderedMap<String, Object>();
-    staticFields.putAll(builtinDynamics);
+    for (var entry : builtinDynamics.entrySet()) {
+      staticFields.put(entry.getKey(), entry.getValue().externalHostValue());
+    }
     for (int i = 0; i < externals.size(); i++) {
       staticFields.put(externalFieldNames.get(i), externals.get(i).external().externalHostValue());
     }

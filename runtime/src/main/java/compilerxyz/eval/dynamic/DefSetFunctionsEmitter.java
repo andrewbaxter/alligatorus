@@ -62,7 +62,7 @@ public final class DefSetFunctionsEmitter {
   public static EmittedFunctions emit(
       DefSetId defSet,
       TList<FunctionSpec> specs,
-      TOrderedMap<String, Object> builtinDynamics,
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
       TSet<BindingId.Def> staticFunctionDefs) {
     var binaryName = functionsBinaryName(defSet);
     var internalName = functionsInternalName(defSet);
@@ -76,48 +76,65 @@ public final class DefSetFunctionsEmitter {
         JvmConstants.INTNAME_OBJECT.value(),
         null);
 
-    var allFieldNames = new TOrderedSet<String>();
+    var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
     var staticFieldValues = new TOrderedMap<String, Object>();
 
     for (var spec : specs) {
       var prefix = functionFieldPrefix(spec.bindingIndex());
 
       for (var builtinId : EvalRootEmitter.referencedBuiltinIds(spec.bodyCode())) {
-        var name = prefix + Prefixes.BUILTIN_PREFIX + builtinId;
-        if (allFieldNames.add(name)) {
-          var v = builtinDynamics.get(Prefixes.BUILTIN_PREFIX + builtinId);
-          if (v != null) {
-            staticFieldValues.put(name, v);
-          }
+        var name = Prefixes.BUILTIN_PREFIX + builtinId;
+        var v = builtinDynamics.get(name);
+        if (v == null) {
+          throw new AssertionError(
+              "DefSetFunctionsEmitter::emit: no builtin registered for " + name);
         }
+        var desc = JavaDataDescriptor.fromClass(v.externalHostClass());
+        var prev = fieldDescriptors.put(name, desc);
+        if (prev != null && !prev.value().equals(desc.value())) {
+          throw new AssertionError(
+              "DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
+        }
+        staticFieldValues.put(name, v.externalHostValue());
       }
 
       for (int i = 0; i < spec.externals().size(); i++) {
         var entry = spec.externals().get(i);
         var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
-        if (allFieldNames.add(name)) {
-          staticFieldValues.put(name, entry.external().externalHostValue());
+        var external = entry.external();
+        var desc = JavaDataDescriptor.fromClass(external.externalHostClass());
+        var prev = fieldDescriptors.put(name, desc);
+        if (prev != null && !prev.value().equals(desc.value())) {
+          throw new AssertionError(
+              "DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
         }
+        staticFieldValues.put(name, external.externalHostValue());
       }
 
       for (var defId : EvalRootEmitter.referencedDefIds(spec.bodyCode())) {
         if (staticFunctionDefs.contains(defId)) {
           continue;
         }
-        var name = prefix + ImportInstall.bindingIdDynamicKey(defId);
-        allFieldNames.add(name);
-
+        var name = ImportInstall.bindingIdDynamicKey(defId);
+        fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
       }
     }
-    for (var name : allFieldNames) {
+    for (var entry : fieldDescriptors.entrySet()) {
       cw.visitField(
               Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-              name,
-              JvmConstants.DESC_OBJECT.value(),
+              entry.getKey(),
+              entry.getValue().value(),
               null,
               null)
           .visitEnd();
     }
+    cw.visitField(
+            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+            EvalRootEmitter.EXPR_CONTEXT_FIELD,
+            EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
+            null,
+            null)
+        .visitEnd();
 
     for (var spec : specs) {
       emitFunctionMethod(cw, internalName, spec, staticFunctionDefs);
@@ -154,9 +171,10 @@ public final class DefSetFunctionsEmitter {
     for (int i = 0; i < spec.externals().size(); i++) {
       var entry = spec.externals().get(i);
       var fieldName = prefix + Prefixes.EXTERNAL_PREFIX + i;
+      var fieldDesc =
+          JavaDataDescriptor.fromClass(entry.external().externalHostClass());
       seq.add(
-          JavaBytecodeUtils.accessStaticField(
-              loc, ownerInternal, fieldName, JvmConstants.DESC_OBJECT));
+          JavaBytecodeUtils.accessStaticField(loc, ownerInternal, fieldName, fieldDesc));
       seq.add(
           new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }

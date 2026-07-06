@@ -58,7 +58,7 @@ public final class DefinitionSet implements ExporterAny {
   }
 
   public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions(
-      TOrderedMap<String, Object> builtinDynamics, TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, External> builtinDynamics, TSet<BindingId.Def> staticFunctionDefs) {
     var specs = new TList<DefSetFunctionsEmitter.FunctionSpec>();
     var contributors = new TList<SourceFunctionData>();
     for (var func : functions) {

@@ -169,7 +169,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
+    var slotInfo = computeSlotInfo(fields);
+    var klass = CompositeClassEmitter.getOrEmit(slotInfo.sortedTypes());
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.of(klass.getName().replace('.', '/')));
   }
 
   @Override

@@ -9,10 +9,17 @@ public sealed interface External {
 
   Object externalHostValue();
 
+  Class<?> externalHostClass();
+
   record TypeExternal(Type type) implements External {
     @Override
     public Object externalHostValue() {
       return type;
+    }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return Type.class;
     }
   }
 
@@ -21,12 +28,22 @@ public sealed interface External {
     public Object externalHostValue() {
       return unique;
     }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return Unique.class;
+    }
   }
 
   record StageLiftCellExternal(StageLiftCell cell) implements External {
     @Override
     public Object externalHostValue() {
       return cell;
+    }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return StageLiftCell.class;
     }
   }
 
@@ -35,6 +52,11 @@ public sealed interface External {
     public Object externalHostValue() {
       return cell;
     }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return StagedExprCell.class;
+    }
   }
 
   record CodeValueExternCellExternal(CodeValueExternCell cell) implements External {
@@ -42,12 +64,22 @@ public sealed interface External {
     public Object externalHostValue() {
       return cell;
     }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return CodeValueExternCell.class;
+    }
   }
 
   record SourceInterfaceRefExternal(SourceInterfaceRef ref) implements External {
     @Override
     public Object externalHostValue() {
       return ref;
+    }
+
+    @Override
+    public Class<?> externalHostClass() {
+      return SourceInterfaceRef.class;
     }
   }
 }

@@ -63,14 +63,18 @@ public final class DynRuntime {
   }
 
   public static final TypeFunctionDynamic STAGE_TYPE =
-      fn(
+      new TypeFunctionDynamic(
+          ANY,
+          new compilerxyz.eval.value.expr.TypeExpr(),
+          INTNAME,
           "stage",
           desc(
               cls(StagedExprCell.class),
               cls(ExprContext.class),
               cls(StagedExprCell.class),
               JavaDataDescriptor.DESC_INT,
-              cls(Object[].class)));
+              cls(Object[].class)),
+          true);
 
   public static final TypeFunctionDynamic INTERFACE_REF_TO_TYPE_TYPE =
       fn(

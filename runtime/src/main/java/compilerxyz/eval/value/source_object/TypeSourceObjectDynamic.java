@@ -106,7 +106,7 @@ public final class TypeSourceObjectDynamic
       QExprId loc,
       long objectIndex,
       DefinitionSetClassLoader loader,
-      TOrderedMap<String, Object> builtinDynamics,
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
       TSet<BindingId.Def> staticFunctionDefs) {
     if (compiledBinaryName != null) {
       return EResult.ok(null);

@@ -96,7 +96,9 @@ public final class T0130DropThrowTest {
                                             mb.field(mb.scopeUse("arg"), mb.str("xx")),
                                             mb.stage(
                                                 mb.call(mb.log(), mb.str(dropMessage)))))))))),
-                mb.field(mb.scopeUse("u"), mb.str("new")))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("new")),
+                    mb.tupleOf()))),
         mb.literalNull());
   }
 

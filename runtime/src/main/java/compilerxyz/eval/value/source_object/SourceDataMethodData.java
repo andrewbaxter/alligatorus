@@ -49,7 +49,8 @@ public final class SourceDataMethodData {
       QExprId rootLoc,
       String dtName,
       Type underlyingType,
-      String dataField) {
+      String dataField,
+      String objectInternalName) {
     if (compiledBodyCode != null) {
       return EResult.ok(null);
     }
@@ -74,6 +75,7 @@ public final class SourceDataMethodData {
     }
 
     var innerVx = new EvalContext(xx.vx.ix);
+    innerVx.evalRootInternalName = objectInternalName;
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());

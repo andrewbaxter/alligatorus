@@ -16,6 +16,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
+import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.any.ValueAnyConst;
@@ -26,7 +27,14 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 public record TypeTypeSourceObjectNewDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, AspectLift, ExporterAny {
+    implements Type,
+        AspectBind,
+        AspectConsumeDynamic,
+        AspectDropDynamicLight,
+        AspectInitialBind,
+        AspectLift,
+        AspectStackValueDynamic,
+        ExporterAny {
 
   @Override
   public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID; }
@@ -53,7 +61,8 @@ public record TypeTypeSourceObjectNewDynamic()
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)) {
+        || key.equals(AspectLift.ID)
+        || key.equals(AspectStackValueDynamic.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -75,6 +84,11 @@ public record TypeTypeSourceObjectNewDynamic()
   @Override
   public Binding initialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public CodeValue toValue(QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
   @Override

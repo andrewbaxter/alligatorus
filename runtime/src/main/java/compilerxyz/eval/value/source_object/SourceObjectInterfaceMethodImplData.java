@@ -42,6 +42,8 @@ public final class SourceObjectInterfaceMethodImplData {
 
   public @Nullable TList<BindingId.Local> compiledArgParamIds;
 
+  public @Nullable TList<Type> compiledArgParamTypes;
+
   public boolean compiledIsArgMethod;
 
   public SourceObjectInterfaceMethodImplData(int interfaceMethodIndex) {
@@ -79,6 +81,17 @@ public final class SourceObjectInterfaceMethodImplData {
     }
 
     var innerVx = new EvalContext(xx.vx.ix);
+    if (dtData.setId == null) {
+      throw new AssertionError(
+          "SourceObjectInterfaceMethodImplData::finish: dtData.setId is null");
+    }
+    var objectIndex = dtData.set.objects.indexOf(dtData);
+    if (objectIndex < 0) {
+      throw new AssertionError(
+          "SourceObjectInterfaceMethodImplData::finish: dtData not in its owning set");
+    }
+    innerVx.evalRootInternalName =
+        compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dtData.setId, objectIndex);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
@@ -111,6 +124,7 @@ public final class SourceObjectInterfaceMethodImplData {
       bodyScope.values.put(
           new ConstKey.Str("arg"), argIbAspect.initialBind(selfId));
       argParamIds = TList.empty();
+      compiledArgParamTypes = TList.empty();
     } else if (iface.builtinKind == BuiltinInterfaceKind.BINDING
         || iface.builtinKind == BuiltinInterfaceKind.TARGET) {
       var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
@@ -167,6 +181,7 @@ public final class SourceObjectInterfaceMethodImplData {
       bodyScope.values.put(
           new ConstKey.Str("arg"), new ArgumentRecordBinding(argRecord));
       argParamIds = ids;
+      compiledArgParamTypes = paramTypes;
     } else {
 
       var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
@@ -181,6 +196,9 @@ public final class SourceObjectInterfaceMethodImplData {
         if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
           bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().initialBind(argId));
         }
+        compiledArgParamTypes = TList.of(argT);
+      } else {
+        compiledArgParamTypes = TList.empty();
       }
       argParamIds = TList.of(argId);
     }

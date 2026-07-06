@@ -112,7 +112,16 @@ public final class SourceFunctionData {
     }
 
     var innerVx = new EvalContext(xx.vx.ix);
-    innerVx.evalRootInternalName = xx.vx.evalRootInternalName;
+    // Source-function bodies reference their own Functions class's static fields (not the
+    // outer EvalRoot), because Functions is loaded in a separate class loader that can't reach
+    // EvalRoot. DefSetFunctionsEmitter registers builtins/defs on Functions with un-prefixed
+    // names matching the body's field references.
+    if (scopeId instanceof BindingId.Def defForOwner) {
+      innerVx.evalRootInternalName =
+          compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(defForOwner.defSet());
+    } else {
+      innerVx.evalRootInternalName = xx.vx.evalRootInternalName;
+    }
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
 

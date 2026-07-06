@@ -66,9 +66,16 @@ public final class ImportInstall {
         return EResult.err(
             loc, "Object '" + obj.name + "' underlying type not finalised before install");
       }
+      if (obj.setId == null) {
+        throw new AssertionError(
+            "ImportInstall: source object '" + obj.name + "' has null setId");
+      }
+      var objInternalName =
+          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId, objIdx);
       for (var method : obj.methods) {
         var nameStr = obj.name != null ? obj.name : "(unnamed)";
-        var finishResult = method.finish(xx, loc, nameStr, underlyingType, obj.dataField);
+        var finishResult =
+            method.finish(xx, loc, nameStr, underlyingType, obj.dataField, objInternalName);
         if (finishResult.hasErrors()) {
           return finishResult.reerr();
         }
@@ -95,9 +102,10 @@ public final class ImportInstall {
     var emittedFuncs = set.finishFunctions(xx.vx.ix.builtinDynamics, staticFunctionDefs);
     if (emittedFuncs != null) {
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
-      if (!emittedFuncs.staticFieldValues().isEmpty()) {
-        loader.registerExternals(emittedFuncs.binaryName(), emittedFuncs.staticFieldValues());
-      }
+      var funcStaticFields = new TOrderedMap<String, Object>();
+      funcStaticFields.putAll(emittedFuncs.staticFieldValues());
+      funcStaticFields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+      loader.registerExternals(emittedFuncs.binaryName(), funcStaticFields);
       try {
         Class.forName(emittedFuncs.binaryName(), true, loader);
       } catch (ClassNotFoundException e) {
