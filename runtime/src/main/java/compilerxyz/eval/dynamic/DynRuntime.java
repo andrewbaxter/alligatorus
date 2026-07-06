@@ -504,6 +504,11 @@ public final class DynRuntime {
     return null;
   }
 
+  public static compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic
+      srcObjectResultNew(ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor) {
+    return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic(sor.type_);
+  }
+
   public static compilerxyz.eval.value.source_interface.SourceInterfaceRef srcObjectImplAspect(
       ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object recordArg) {
     var record = recordToConstKeyExprMap(recordArg);

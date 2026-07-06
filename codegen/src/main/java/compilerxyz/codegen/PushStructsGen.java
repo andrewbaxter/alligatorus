@@ -663,6 +663,15 @@ public final class PushStructsGen {
             empty,
             "srcObjectImplAspect",
             retSourceInterfaceRef));
+    var retTypeSourceObjectNewConst = TypeRef.opaque(TYPE_SOURCE_OBJECT_NEW_CONST);
+    sourceObjectMethods.add(
+        new PushMethod(
+            "new_",
+            TList.of(),
+            dynExpr(TYPE_SOURCE_OBJECT_NEW_DYNAMIC),
+            empty,
+            "srcObjectResultNew",
+            retTypeSourceObjectNewConst));
     for (var traitSpec : traitSpecs) {
       if (traitSpec.registerInScope()) continue;
       var runtimeName =
@@ -677,7 +686,7 @@ public final class PushStructsGen {
       }
       sourceObjectMethods.add(
           new PushMethod(
-              "impl_" + traitSpec.name(),
+              traitSpec.name(),
               TList.of(new NamedTypeRef("record", recordArg)),
               "()",
               empty,
@@ -688,26 +697,14 @@ public final class PushStructsGen {
         new PushStructSpec(
             "SourceObjectBuilder",
             3006L,
-            TList.of(
-                new NamedTypeRef("type_", dataPath(SOURCE_OBJECT_REF)),
-                new NamedTypeRef(
-                    "new_",
-                    dataPath(TYPE_SOURCE_OBJECT_NEW_CONST),
-                    CodeBlock.of("new $T(type_)", TYPE_SOURCE_OBJECT_NEW_CONST))),
+            TList.of(new NamedTypeRef("type_", dataPath(SOURCE_OBJECT_REF))),
             TList.of(
                 new PushField(
-                    "type_",
+                    "type_ref_",
                     "type_",
                     ref(
                         SOURCE_OBJECT_REF,
                         CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_REF_DYNAMIC)),
-                    empty),
-                new PushField(
-                    "new_",
-                    "new_",
-                    ref(
-                        TYPE_SOURCE_OBJECT_NEW_CONST,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_NEW_DYNAMIC)),
                     empty)),
             TList.<PushMethod>from(sourceObjectMethods));
 
