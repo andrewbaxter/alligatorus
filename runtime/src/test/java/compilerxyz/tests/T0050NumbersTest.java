@@ -86,7 +86,7 @@ public final class T0050NumbersTest {
                     mb.log(),
                     mb.call(
                         mb.field(
-                            mb.call(mb.scopeUse("maybe_add"), mb.tupleOf(mb.num(4.0))),
+                            mb.call(mb.scopeUse("maybe_add"), mb.num(4.0)),
                             mb.str("to_string")),
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
