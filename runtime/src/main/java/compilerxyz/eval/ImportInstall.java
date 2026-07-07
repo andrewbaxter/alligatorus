@@ -93,7 +93,7 @@ public final class ImportInstall {
         loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
       }
       var objFinishResult =
-          obj.finish(loc, objIdx, loader, xx.vx.ix.builtinDynamics, staticFunctionDefs);
+          obj.finish(xx, loc, objIdx, loader, xx.vx.ix.builtinDynamics, staticFunctionDefs);
       if (objFinishResult.hasErrors()) {
         return objFinishResult.reerr();
       }

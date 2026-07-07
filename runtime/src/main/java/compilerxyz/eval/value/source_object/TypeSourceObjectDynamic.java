@@ -103,6 +103,7 @@ public final class TypeSourceObjectDynamic
   }
 
   public EResult<Void> finish(
+      compilerxyz.eval.ExprContext xx,
       QExprId loc,
       long objectIndex,
       DefinitionSetClassLoader loader,
@@ -124,9 +125,10 @@ public final class TypeSourceObjectDynamic
     compiledBytecode = emitted.bytecode();
     compiledStaticFieldValues = emitted.staticFieldValues();
     loader.registerClass(emitted.binaryName(), emitted.bytecode());
-    if (!emitted.staticFieldValues().isEmpty()) {
-      loader.registerExternals(emitted.binaryName(), emitted.staticFieldValues());
-    }
+    var fields = new TOrderedMap<String, Object>();
+    fields.putAll(emitted.staticFieldValues());
+    fields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+    loader.registerExternals(emitted.binaryName(), fields);
     return EResult.ok(null);
   }
 

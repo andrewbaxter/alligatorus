@@ -136,6 +136,33 @@ public final class DynRuntime {
     return m;
   }
 
+  public static JavaDataDescriptor sourceObjectConsumeDynamicJvmClass(Object self) {
+    var internal = self.getClass().getName().replace('.', '/');
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.of(internal));
+  }
+
+
+  public static Object wrapExprContextPush(Object xx) {
+    return new compilerxyz.eval.value.code_value_extern.ExprContextPush((ExprContext) xx);
+  }
+
+  public static Object wrapTypeRefPush(Object typeRef) {
+    return new compilerxyz.gen.TypeRefPush((Type) typeRef);
+  }
+
+  public static Object wrapCodeValueExternCell(Object cv) {
+    return new CodeValueExternCell((CodeValue) cv);
+  }
+
+  public static Object deriveSourceTypeFromCv(Object xx, Object cv) {
+    var cvValue = ((CodeValue) cv).value();
+    if (!(cvValue instanceof Opt.Some<Value> someVal)) {
+      throw new IllegalStateException(
+          "deriveSourceTypeFromCv: CodeValue has no compile-time value");
+    }
+    return new compilerxyz.gen.TypeRefPush(someVal.value().valueTypeOf());
+  }
+
   public static StagedExprCell stage(
       ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
     var treeValue = treeCell.take();
@@ -302,8 +329,34 @@ public final class DynRuntime {
     return new compilerxyz.gen.OptionPush(trp.type_ref.typeAspect(xx, unique).optIsSome());
   }
 
-  public static Object optionPushGet(compilerxyz.gen.OptionPush opt) {
+  public static Object optionPushGet(ExprContext xx, compilerxyz.gen.OptionPush opt) {
     return opt.is_some_inner;
+  }
+
+  public static compilerxyz.eval.EResult<CodeValue> eresultFromCvCell(Object cellObj) {
+    var cell = (CodeValueExternCell) cellObj;
+    return compilerxyz.eval.EResult.ok(cell.take());
+  }
+
+  public static compilerxyz.eval.EResult<compilerxyz.eval.Code> eresultCodeFromCvCell(
+      Object cellObj) {
+    var cell = (CodeValueExternCell) cellObj;
+    return compilerxyz.eval.EResult.ok(cell.take().code());
+  }
+
+  public static compilerxyz.eval.EResult<CodeValue> eresultFromCvCellRetagged(
+      Object cellObj, Object selfType) {
+    var cell = (CodeValueExternCell) cellObj;
+    var cv = cell.take();
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<Value> some)) {
+      return compilerxyz.eval.EResult.ok(cv);
+    }
+    var stackType = (Type) selfType;
+    return compilerxyz.eval.EResult.ok(
+        new CodeValue(
+            cv.code(),
+            compilerxyz.util.Opt.some(
+                compilerxyz.eval.value.ValueDynamic.stack(stackType))));
   }
 
   public static compilerxyz.gen.SourceFuncResult defSetBuilderFunc(
