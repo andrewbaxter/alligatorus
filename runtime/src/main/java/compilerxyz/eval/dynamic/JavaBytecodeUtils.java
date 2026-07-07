@@ -313,6 +313,11 @@ public class JavaBytecodeUtils {
     return methodCall(loc, INVOKESTATIC, klass, method, methodDesc, false);
   }
 
+  public static CodeDynamic callStaticInterfaceMethod(
+      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
+    return methodCall(loc, INVOKESTATIC, klass, method, methodDesc, true);
+  }
+
   public static CodeDynamic callStaticMethod(
       QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
     return callStaticMethod(lc(loc), klass, method, methodDesc);

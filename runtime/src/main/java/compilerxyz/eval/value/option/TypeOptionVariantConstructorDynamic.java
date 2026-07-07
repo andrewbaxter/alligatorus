@@ -123,8 +123,8 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
               underlyingJs);
     } else {
       newOpt =
-          JavaBytecodeUtils.callStaticMethod(
-              loc,
+          JavaBytecodeUtils.callStaticInterfaceMethod(
+              new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
               JavaInternalName.of("compilerxyz/util/Opt"),
               "none",
               JavaMethodDescriptor.fromParts(

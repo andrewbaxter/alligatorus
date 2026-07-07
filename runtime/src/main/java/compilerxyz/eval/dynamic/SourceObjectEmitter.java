@@ -132,8 +132,6 @@ public final class SourceObjectEmitter {
       JavaMethodDescriptor.fromParts(DESC_ERESULT, JvmConstants.DESC_OBJECT);
   private static final JavaMethodDescriptor MDESC_ERESULT_FROM_TWO =
       JavaMethodDescriptor.fromParts(DESC_ERESULT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
-  private static final JavaMethodDescriptor MDESC_DELEGATED_ASPECT =
-      JavaMethodDescriptor.fromParts(DESC_OPT, JvmConstants.DESC_OBJECT, DESC_UNIQUE);
 
   public record EmittedSourceObject(
       String binaryName,
@@ -630,8 +628,7 @@ public final class SourceObjectEmitter {
 
     ERESULT_CODE_FROM_CV_CELL,
 
-    ERESULT_FROM_CV_CELL_RETAGGED,
-    OPT_ASPECT_WITH_DELEGATE_FALLTHROUGH
+    ERESULT_FROM_CV_CELL_RETAGGED
   }
 
   private static @org.jspecify.annotations.Nullable HostMethodSpec hostMethodSpec(
@@ -662,7 +659,7 @@ public final class SourceObjectEmitter {
         case "aspect" -> new HostMethodSpec(
             "typeAspect",
             JavaMethodDescriptor.fromParts(DESC_OPT, DESC_EXPR_CONTEXT, DESC_UNIQUE),
-            ReturnKind.OPT_ASPECT_WITH_DELEGATE_FALLTHROUGH);
+            ReturnKind.OBJECT_CAST);
         default -> null;
       };
       case ASPECT_FUNCTION -> switch (sourceName) {
@@ -1045,21 +1042,6 @@ public final class SourceObjectEmitter {
         seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "eresultFromCvCellRetagged", MDESC_ERESULT_FROM_TWO));
         seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
       }
-      case OPT_ASPECT_WITH_DELEGATE_FALLTHROUGH -> {
-        seq.add(JavaBytecodeUtils.cast(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JavaDataDescriptor.fromInternalName(INTNAME_OPT)));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-        seq.add(JavaBytecodeUtils.instanceOf(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_OPT_SOME));
-        var fallthrough = new org.objectweb.asm.Label();
-        var fallthroughNode = new org.objectweb.asm.tree.LabelNode(fallthrough);
-        seq.add(JavaBytecodeUtils.wrapObj(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, new org.objectweb.asm.tree.JumpInsnNode(Opcodes.IFEQ, fallthroughNode)));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-        seq.add(JavaBytecodeUtils.wrapObj(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, fallthroughNode));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.POP));
-        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 2));
-        seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "sourceObjectDelegatedAspect", MDESC_DELEGATED_ASPECT));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-      }
     }
     JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
@@ -1086,62 +1068,112 @@ public final class SourceObjectEmitter {
       int paramSlotCount) {
 
     if (m.compiledIsArgMethod) {
+      var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
+      var argRecordType = ifaceMethod.argRecordType;
+      if (!(argRecordType instanceof compilerxyz.eval.value.record.Record argRecord)) {
+        throw new IllegalStateException(
+            "SourceObjectEmitter.emitArgPacking: isArgMethod true but argRecordType is not a Record: "
+                + (argRecordType == null ? "null" : argRecordType.typeDesc()));
+      }
+      var recordFieldTypes = argRecord.recordFieldTypes();
+      var slotSort = compilerxyz.eval.dynamic.CompositeSlotSort.sort(
+          recordFieldTypes, compilerxyz.eval.ConstKey.CANONICAL_ORDER);
+      var sortedTypes = slotSort.sortedTypes();
+      var compositeClass = compilerxyz.eval.dynamic.CompositeClassEmitter.getOrEmit(sortedTypes);
+      var compositeInternal =
+          compilerxyz.eval.dynamic.JavaInternalName.of(compositeClass.getName().replace('.', '/'));
+      var ctorArgDescs = new compilerxyz.util.TList<JavaDataDescriptor>(sortedTypes.size());
+      for (var t : sortedTypes) {
+        ctorArgDescs.add(compilerxyz.eval.dynamic.CompositeClassEmitter.slotDescriptor(t));
+      }
+      var ctorDesc =
+          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(ctorArgDescs);
 
-      seq.add(JavaBytecodeUtils.newInstance(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT));
       var dataFields = ifaceMethod.dataFieldNames;
       var sourceName = ifaceMethod.name;
       boolean isCastFrom = "cast_from".equals(sourceName);
       boolean isCanCastFrom = "can_cast_from".equals(sourceName);
+      var slotOfKey = slotSort.slotOfKey();
+      var slotValueSources = new java.util.HashMap<Integer, Runnable>();
       for (int i = 0; i < dataFields.size(); i++) {
         var fieldName = dataFields.get(i);
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-        seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, fieldName));
+        var ck = new compilerxyz.eval.ConstKey.Str(fieldName);
+        var slotIdxBoxed = slotOfKey.get(ck);
+        if (slotIdxBoxed == null) {
+          throw new IllegalStateException(
+              "SourceObjectEmitter.emitArgPacking: dataField '" + fieldName
+                  + "' not in argRecord fields");
+        }
+        int slotIdx = slotIdxBoxed;
         switch (fieldName) {
           case "xx" -> {
             if (firstParamIsExprContext) {
-              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 1));
-              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
+              slotValueSources.put(slotIdx, () -> {
+                seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 1));
+                seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
+              });
             } else {
-              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+              slotValueSources.put(slotIdx, () ->
+                  seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
             }
           }
           case "source_type" -> {
             if (isCanCastFrom && paramSlotCount >= 3) {
-
-              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 3));
-              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "wrapTypeRefPush", MDESC_WRAP_ONE_OBJ));
+              slotValueSources.put(slotIdx, () -> {
+                seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 3));
+                seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "wrapTypeRefPush", MDESC_WRAP_ONE_OBJ));
+              });
             } else if (isCastFrom && paramSlotCount >= 3) {
-
-              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 1));
-              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 3));
-              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "deriveSourceTypeFromCv", MDESC_WRAP_TWO_OBJ));
+              slotValueSources.put(slotIdx, () -> {
+                seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 1));
+                seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 3));
+                seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "deriveSourceTypeFromCv", MDESC_WRAP_TWO_OBJ));
+              });
             } else {
-              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+              slotValueSources.put(slotIdx, () ->
+                  seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
             }
           }
           case "cv" -> {
             if (isCastFrom && paramSlotCount >= 3) {
-              seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 3));
-              seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
+              slotValueSources.put(slotIdx, () -> {
+                seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 3));
+                seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
+              });
             } else {
-              seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+              slotValueSources.put(slotIdx, () ->
+                  seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
             }
           }
-          default -> seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+          default -> slotValueSources.put(slotIdx, () ->
+              seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
         }
-        seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.POP));
       }
 
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_1));
-      seq.add(JavaBytecodeUtils.wrapObj(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP_X1));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.SWAP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_0));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.SWAP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.AASTORE));
+      seq.add(JavaBytecodeUtils.newInstance(loc, compositeInternal));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      for (int slotIdx = 0; slotIdx < sortedTypes.size(); slotIdx++) {
+        var source = slotValueSources.get(slotIdx);
+        if (source == null) {
+          throw new IllegalStateException(
+              "SourceObjectEmitter.emitArgPacking: no value source for slot " + slotIdx);
+        }
+        source.run();
+        var slotDesc = ctorArgDescs.get(slotIdx);
+        if (slotDesc.value().startsWith("L")
+            && !slotDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+          seq.add(JavaBytecodeUtils.cast(loc, slotDesc));
+        }
+      }
+      seq.add(JavaBytecodeUtils.invokeSpecial(loc, compositeInternal, "<init>", ctorDesc));
+
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_1));
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP_X1));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.AASTORE));
     } else if (kind == BuiltinInterfaceKind.BINDING || kind == BuiltinInterfaceKind.TARGET) {
 
       var dataFields = ifaceMethod.dataFieldNames;
@@ -1167,43 +1199,75 @@ public final class SourceObjectEmitter {
     } else if ((kind == BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC
             || kind == BuiltinInterfaceKind.ASPECT_FIELD
             || kind == BuiltinInterfaceKind.ASPECT_FUNCTION)
-        && ifaceMethod.argRecordType != null) {
-
+        && ifaceMethod.argRecordType instanceof compilerxyz.eval.value.record.Record argRecord) {
+      var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
       pushIntConst(seq, 2);
-      seq.add(JavaBytecodeUtils.wrapObj(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_0));
-      seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.AASTORE));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_1));
-      seq.add(JavaBytecodeUtils.newInstance(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP));
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-      seq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP, "<init>", MDESC_HASHMAP_INIT));
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new org.objectweb.asm.tree.TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_0));
+      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.AASTORE));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_1));
+
+      var recordFieldTypes = argRecord.recordFieldTypes();
+      var slotSort = compilerxyz.eval.dynamic.CompositeSlotSort.sort(
+          recordFieldTypes, compilerxyz.eval.ConstKey.CANONICAL_ORDER);
+      var sortedTypes = slotSort.sortedTypes();
+      var compositeClass = compilerxyz.eval.dynamic.CompositeClassEmitter.getOrEmit(sortedTypes);
+      var compositeInternal =
+          compilerxyz.eval.dynamic.JavaInternalName.of(compositeClass.getName().replace('.', '/'));
+      var ctorArgDescs = new compilerxyz.util.TList<JavaDataDescriptor>(sortedTypes.size());
+      for (var t : sortedTypes) {
+        ctorArgDescs.add(compilerxyz.eval.dynamic.CompositeClassEmitter.slotDescriptor(t));
+      }
+      var ctorDesc =
+          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(ctorArgDescs);
+
+      seq.add(JavaBytecodeUtils.newInstance(loc, compositeInternal));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+
+      var slotOfKey = slotSort.slotOfKey();
+      var slotValueSources = new java.util.HashMap<Integer, Runnable>();
       int nextCvSlot = 3;
       for (var fieldName : ifaceMethod.dataFieldNames) {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DUP));
-        seq.add(JavaBytecodeUtils.literalString(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, fieldName));
+        int slotIdx = slotOfKey.get(new compilerxyz.eval.ConstKey.Str(fieldName));
+        int finalNextCvSlot = nextCvSlot;
         if ("xx".equals(fieldName)) {
           if (firstParamIsExprContext) {
-            seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 1));
-            seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
+            slotValueSources.put(slotIdx, () -> {
+              seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 1));
+              seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "wrapExprContextPush", MDESC_WRAP_ONE_OBJ));
+            });
           } else {
-            seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+            slotValueSources.put(slotIdx, () ->
+                seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
           }
         } else {
           if (nextCvSlot <= paramSlotCount) {
-            seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, nextCvSlot));
-            seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
+            slotValueSources.put(slotIdx, () -> {
+              seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, finalNextCvSlot));
+              seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_RUNTIME, "wrapCodeValueExternCell", MDESC_WRAP_ONE_OBJ));
+            });
             nextCvSlot++;
           } else {
-            seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ACONST_NULL));
+            slotValueSources.put(slotIdx, () ->
+                seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
           }
         }
-        seq.add(JavaBytecodeUtils.callMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_HASH_MAP, "put", MDESC_HASHMAP_PUT));
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.POP));
       }
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.AASTORE));
+      for (int slotIdx = 0; slotIdx < sortedTypes.size(); slotIdx++) {
+        var source = slotValueSources.get(slotIdx);
+        if (source == null) {
+          throw new IllegalStateException(
+              "SourceObjectEmitter.emitUserInterfaceStubs: no value source for slot " + slotIdx
+                  + " of composite type " + argRecord.typeDesc());
+        }
+        source.run();
+      }
+      seq.add(JavaBytecodeUtils.invokeSpecial(loc, compositeInternal, "<init>", ctorDesc));
+
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.AASTORE));
     } else {
 
       var argParamIds = m.compiledArgParamIds;
