@@ -22,14 +22,18 @@ public final class TraitsGen {
       ClassName.get("compilerxyz.eval.value.aspect", "TypeAspectDynamic");
   private static final ClassName TYPE_CODE_VALUE_EXTERN_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
-  private static final ClassName TYPE_EXPR_CONTEXT_PUSH_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextPushDynamic");
+  private static final ClassName EXPR_CONTEXT =
+      ClassName.get("compilerxyz.eval", "ExprContext");
+  private static final ClassName TYPE_EXPR_CONTEXT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic");
   private static final ClassName TYPE_REF_PUSH =
       ClassName.get("compilerxyz.gen", "TypeRefPush");
   private static final ClassName TYPE_UNIQUE =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
   private static final ClassName TYPE_OPTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
+  private static final ClassName TYPE_ERESULT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
 
   public static TList<InterfaceSpec> specs() {
     var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
@@ -37,7 +41,13 @@ public final class TraitsGen {
     var bool = TypeRef.unit(TYPE_BOOL_DYNAMIC);
     var aspect = TypeRef.unit(TYPE_ASPECT_DYNAMIC);
     var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
-    var xxRef = TypeRef.unit(TYPE_EXPR_CONTEXT_PUSH_DYNAMIC);
+    var eresultCve =
+        new TypeRef(
+            TYPE_ERESULT_DYNAMIC,
+            CodeBlock.of(
+                "new $T(new $T())", TYPE_ERESULT_DYNAMIC, TYPE_CODE_VALUE_EXTERN_DYNAMIC));
+    var xxRef =
+        new TypeRef(EXPR_CONTEXT, CodeBlock.of("new $T()", TYPE_EXPR_CONTEXT_DYNAMIC));
     var typeRefPush = TypeRef.viaPush(TYPE_REF_PUSH);
     var unique = TypeRef.unit(TYPE_UNIQUE);
 
@@ -79,7 +89,7 @@ public final class TraitsGen {
                             new NamedTypeRef("cv", cve)))),
                 new Method(
                     "cast_from",
-                    cve,
+                    eresultCve,
                     new MethodArgs.Source(
                         TList.of(
                             new NamedTypeRef("xx", xxRef),

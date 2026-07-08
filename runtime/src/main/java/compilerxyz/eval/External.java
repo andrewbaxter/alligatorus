@@ -1,7 +1,6 @@
 package compilerxyz.eval;
 
 import compilerxyz.eval.dynamic.StageLiftCell;
-import compilerxyz.eval.expr.CodeValueExternCell;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.source_interface.SourceInterfaceRef;
 
@@ -59,15 +58,15 @@ public sealed interface External {
     }
   }
 
-  record CodeValueExternCellExternal(CodeValueExternCell cell) implements External {
+  record CodeValueExternExternal(CodeValue codeValue) implements External {
     @Override
     public Object externalHostValue() {
-      return cell;
+      return codeValue;
     }
 
     @Override
     public Class<?> externalHostClass() {
-      return CodeValueExternCell.class;
+      return CodeValue.class;
     }
   }
 

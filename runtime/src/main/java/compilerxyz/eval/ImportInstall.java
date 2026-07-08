@@ -75,7 +75,7 @@ public final class ImportInstall {
       for (var method : obj.methods) {
         var nameStr = obj.name != null ? obj.name : "(unnamed)";
         var finishResult =
-            method.finish(xx, loc, nameStr, underlyingType, obj.dataField, objInternalName);
+            method.finish(xx, loc, nameStr, obj, underlyingType, obj.dataField, objInternalName);
         if (finishResult.hasErrors()) {
           return finishResult.reerr();
         }

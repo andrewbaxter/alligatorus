@@ -64,18 +64,31 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(
-                                    mb.evalConstEval(),
-                                    mb.tupleOf(
-                                        mb.field(mb.scopeUse("arg"), mb.str("xx")),
-                                        mb.stage(
-                                            mb.call(
-                                                mb.field(
-                                                    mb.graft(
+                                    mb.field(
+                                        mb.call(mb.typesEresult(), mb.typesCve()),
+                                        mb.str("ok")),
+                                    mb.call(
+                                        mb.evalCodevalue(),
+                                        mb.tupleOf(
+                                            mb.field(
+                                                mb.call(
+                                                    mb.evalConstEval(),
+                                                    mb.tupleOf(
                                                         mb.field(
-                                                            mb.scopeUse("arg"),
-                                                            mb.str("cv"))),
-                                                    mb.str("toUpperCase")),
-                                                mb.tupleOf()))))),
+                                                            mb.scopeUse("arg"), mb.str("xx")),
+                                                        mb.stage(
+                                                            mb.call(
+                                                                mb.field(
+                                                                    mb.graft(
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("cv"))),
+                                                                    mb.str("toUpperCase")),
+                                                                mb.tupleOf())))),
+                                                mb.str("code")),
+                                            mb.call(
+                                                mb.evalStack(),
+                                                mb.scopeUse("outer")))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.str("upper"))),
                             new TestMb.RecordPair(
                                 "aspect",

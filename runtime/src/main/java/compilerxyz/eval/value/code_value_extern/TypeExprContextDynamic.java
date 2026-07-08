@@ -8,43 +8,52 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
-import compilerxyz.util.Opt;
-import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.Opt;
 
-public record TypeExprContextPushDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, ExporterAny {
+public record TypeExprContextDynamic()
+    implements
+        Type,
+        AspectBind,
+        AspectConsumeDynamic,
+        AspectDropDynamicLight,
+        AspectInitialBind,
+        ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_EXPR_CONTEXT_PUSH_DYNAMIC_TYPE_ID; }
-
+  public TypeId typeId() {
+    return GenTypeIds.TYPE_EXPR_CONTEXT_DYNAMIC_TYPE_ID;
+  }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public JavaDataDescriptor consumeDynamicJvmClass() {
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
   }
 
   @Override
   public String typeDesc() {
-    return "ExprContextPush";
+    return "ExprContext";
   }
 
   @Override
   public Type valueTypeOf() {
-    return new TypeRoot.ExprContextPushDynamic();
+    return new TypeRoot.ExprContextDynamic();
   }
 
   @Override
@@ -68,8 +77,7 @@ public record TypeExprContextPushDynamic()
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(
-        loc, "TypeExprContextPushDynamic::toDynamic: CodeValue has no dynamic code");
+    return EResult.err(loc, "TypeExprContextDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -85,16 +93,13 @@ public record TypeExprContextPushDynamic()
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "TypeExprContextPushDynamic::typeCastFrom: CodeValue has no value");
+      return EResult.err(loc, "TypeExprContextDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueTypeOf();
     if (sourceType.typeAspect(xx, GenIdentities.EXPR_CONTEXT_REF_TYPE_IDENTITY).optIsSome()) {
-      return EResult.ok(
-          new CodeValue(
-              cv.code(),
-              Opt.some(ValueDynamic.stack(this))));
+      return EResult.ok(new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(this))));
     }
-    return EResult.err(loc, "Cannot convert to ExprContextPush");
+    return EResult.err(loc, "Cannot convert to ExprContext");
   }
 
   @Override
@@ -104,7 +109,7 @@ public record TypeExprContextPushDynamic()
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    return EResult.err(loc, "Cannot convert from ExprContextPush");
+    return EResult.err(loc, "Cannot convert from ExprContext");
   }
 
   @Override
@@ -118,11 +123,7 @@ public record TypeExprContextPushDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  public EResult<compilerxyz.eval.Code> dropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
   }
-
 }

@@ -42,7 +42,7 @@ public final class T0130DropThrowTest {
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("value")),
                     ifaceMethods(
-                        mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("inner"))))),
+                        mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("outer"))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("type")),
                     ifaceMethods(
@@ -65,14 +65,27 @@ public final class T0130DropThrowTest {
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(
-                                    mb.evalConstEval(),
-                                    mb.tupleOf(
-                                        mb.field(mb.scopeUse("arg"), mb.str("xx")),
-                                        mb.stage(
-                                            mb.graft(
-                                                mb.field(
-                                                    mb.scopeUse("arg"),
-                                                    mb.str("cv"))))))),
+                                    mb.field(
+                                        mb.call(mb.typesEresult(), mb.typesCve()),
+                                        mb.str("ok")),
+                                    mb.call(
+                                        mb.evalCodevalue(),
+                                        mb.tupleOf(
+                                            mb.field(
+                                                mb.call(
+                                                    mb.evalConstEval(),
+                                                    mb.tupleOf(
+                                                        mb.field(
+                                                            mb.scopeUse("arg"), mb.str("xx")),
+                                                        mb.stage(
+                                                            mb.graft(
+                                                                mb.field(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.str("cv")))))),
+                                                mb.str("code")),
+                                            mb.call(
+                                                mb.evalStack(),
+                                                mb.scopeUse("outer")))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.str(name))),
                             new TestMb.RecordPair(
                                 "aspect",
@@ -91,11 +104,33 @@ public final class T0130DropThrowTest {
                                 new TestMb.RecordPair(
                                     "drop",
                                     mb.call(
-                                        mb.evalConstEval(),
+                                        mb.field(
+                                            mb.call(mb.typesEresult(), mb.typesCode()),
+                                            mb.str("ok")),
+                                        mb.field(
+                                            mb.call(
+                                                mb.evalConstEval(),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("xx")),
+                                                    mb.stage(
+                                                        mb.call(mb.log(), mb.str(dropMessage))))),
+                                            mb.str("code")))))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalBinding(),
+                        ifaceMethods(
+                            mb,
+                            TList.of(
+                                new TestMb.RecordPair(
+                                    "bindingUse_",
+                                    mb.call(
+                                        mb.evalCodevalue(),
                                         mb.tupleOf(
-                                            mb.field(mb.scopeUse("arg"), mb.str("xx")),
-                                            mb.stage(
-                                                mb.call(mb.log(), mb.str(dropMessage)))))))))),
+                                            mb.field(mb.scopeUse("arg"), mb.str("code")),
+                                            mb.call(
+                                                mb.evalStack(),
+                                                mb.scopeUse("outer"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("new")),
                     mb.tupleOf()))),

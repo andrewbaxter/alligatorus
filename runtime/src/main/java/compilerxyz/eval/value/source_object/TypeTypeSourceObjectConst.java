@@ -211,7 +211,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               var objInternalName =
                   compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dt.setId, objectIndex);
               var finishRes = m.finish(xx, loc, dt.name == null ? "(unnamed)" : dt.name,
-                  underlying, dt.dataField, objInternalName);
+                  dt, underlying, dt.dataField, objInternalName);
               if (finishRes.hasErrors()) {
                 finishRes.drainInto(errors);
                 return EResult.errs(errors);

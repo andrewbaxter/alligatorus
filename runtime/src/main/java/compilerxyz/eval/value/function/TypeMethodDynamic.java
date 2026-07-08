@@ -88,7 +88,7 @@ public record TypeMethodDynamic(
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
-    var argsDynRes = destructureOrLower(xx, loc, arg, converted);
+    var argsDynRes = compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
     if (argsDynRes.hasErrors()) return argsDynRes.reerr();
     var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -105,56 +105,6 @@ public record TypeMethodDynamic(
             .toValue(loc, new CodeDynamic(loc, seq)));
   }
 
-  private static EResult<TList<CodeDynamic>> destructureOrLower(
-      ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
-    if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
-      if (!(converted.value() instanceof Opt.Some<Value> some)) {
-        return EResult.err(loc, "TypeMethodDynamic::destructure: arg has no compile-time value");
-      }
-      var elementTypes = tupleSome.value().elementTypes();
-      var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
-      if (elementTypes.size() != elemCvs.size()) {
-        throw new IllegalStateException(
-            "TypeMethodDynamic::destructure: elementTypes/takeElements size mismatch");
-      }
-      var out = new TList<CodeDynamic>(elementTypes.size());
-      for (int i = 0; i < elementTypes.size(); i++) {
-        var elemCvRes = elemCvs.get(i);
-        if (elemCvRes.hasErrors()) return elemCvRes.reerr();
-        var elemCv = elemCvRes.requireValue("TypeMethodDynamic::destructure element");
-        var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var consume = consumeRes.requireValue("TypeMethodDynamic::destructure consume");
-        var elemDyn = consume.toDynamic(xx, loc, elemCv);
-        if (elemDyn.hasErrors()) return elemDyn.reerr();
-        var elemCode = elemDyn.requireValue("TypeMethodDynamic::destructure elem toDynamic");
-        out.add(withCastIfNeeded(loc, elemCode, consume.consumeDynamicJvmClass()));
-      }
-      return EResult.ok(out);
-    }
-    var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
-    if (consumeRes.hasErrors()) return consumeRes.reerr();
-    var consume = consumeRes.requireValue("TypeMethodDynamic::call arg consume");
-    var argDyn = consume.toDynamic(xx, loc, converted);
-    if (argDyn.hasErrors()) return argDyn.reerr();
-    var argCode = argDyn.requireValue("TypeMethodDynamic::call arg");
-    return EResult.ok(TList.of(withCastIfNeeded(loc, argCode, consume.consumeDynamicJvmClass())));
-  }
-
-  private static CodeDynamic withCastIfNeeded(
-      QExprId loc,
-      CodeDynamic code,
-      compilerxyz.eval.dynamic.JavaDataDescriptor targetDesc) {
-    var v = targetDesc.value();
-    if (!v.startsWith("L") || v.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
-      return code;
-    }
-    var seq = new JavaBytecodeSequence();
-    seq.add(code);
-    seq.add(JavaBytecodeUtils.cast(loc, targetDesc));
-    return new CodeDynamic(loc, seq);
-  }
 
   @Override
   public Opt<Type> exceptionType() {

@@ -24,7 +24,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TargetCase;
-import compilerxyz.eval.expr.CodeValueExternCell;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.expr.TypeExprStagedPlaceholder;
@@ -550,9 +549,7 @@ public final class TargetDynamic implements Target {
     }
     for (var cv : graftValues) {
       if (cv.code().isNone()) {
-        var cell =
-            new CodeValueExternCell(
-                new CodeValue(Code.none(loc), cv.value()));
+        var graftCv = new CodeValue(Code.none(loc), cv.value());
         var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
         var graftType =
@@ -561,7 +558,7 @@ public final class TargetDynamic implements Target {
                 : new TypeNullDynamic();
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(
-                key, graftType, new External.CodeValueExternCellExternal(cell)));
+                key, graftType, new External.CodeValueExternExternal(graftCv)));
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {

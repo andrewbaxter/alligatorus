@@ -36,6 +36,7 @@ public final class SourceObjectInterfaceMethodImplData {
   public @Nullable byte[] compiledBytecode;
   public @Nullable BindingId bindingId;
   public @Nullable BindingId innerBindingId;
+  public @Nullable BindingId outerBindingId;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
   public @Nullable CodeDynamic compiledBodyCode;
@@ -97,6 +98,7 @@ public final class SourceObjectInterfaceMethodImplData {
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     innerBindingId = selfId;
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+    outerBindingId = outerId;
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));

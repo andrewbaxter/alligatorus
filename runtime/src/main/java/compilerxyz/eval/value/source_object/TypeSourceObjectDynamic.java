@@ -275,20 +275,41 @@ public final class TypeSourceObjectDynamic
     if (set != null) {
       xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
     }
+    if (!(retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+      return EResult.err(loc, "TypeSourceObjectDynamic::field: retType does not implement AspectConsumeDynamic");
+    }
+    var slotsRes = compilerxyz.eval.dynamic.DynUtil.argSignatureSlots(xx, loc, argType);
+    if (slotsRes.hasErrors()) return slotsRes.reerr();
+    var slots = slotsRes.requireValue("TypeSourceObjectDynamic::field argSignatureSlots");
+    var argDescs =
+        new TList<compilerxyz.eval.dynamic.JavaDataDescriptor>(slots.size());
+    for (var s : slots) argDescs.add(s.jvmDesc());
     var descObjObj =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-            TList.of(
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
+            retConsume.consumeDynamicJvmClass(),
+            argDescs);
+    if (setId == null) {
+      throw new AssertionError(
+          "TypeSourceObjectDynamic::field: setId is null on '"
+              + (name == null ? "(unnamed)" : name)
+              + "'");
+    }
+    var objectIndex = set.objects.indexOf(this);
+    if (objectIndex < 0) {
+      throw new AssertionError(
+          "TypeSourceObjectDynamic::field: this not in its owning set");
+    }
+    var objectInternalName =
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(setId, objectIndex));
     var fieldType =
-        new compilerxyz.eval.value.function.TypeFunctionDynamic(
+        new compilerxyz.eval.value.function.TypeMethodDynamic(
+            this,
             argType,
             retType,
-            compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_object_class"),
+            objectInternalName,
             fieldName,
-            descObjObj,
-            false);
+            descObjObj);
     return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(fieldType))));
   }
 

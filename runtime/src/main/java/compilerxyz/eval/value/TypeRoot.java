@@ -1117,13 +1117,213 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record ExprContextPushDynamic() implements TypeRoot {
+  record ExprContextDynamic() implements TypeRoot {
     @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_CONTEXT_PUSH_DYNAMIC_TYPE_ID; }
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_CONTEXT_DYNAMIC_TYPE_ID; }
 
     @Override
     public String typeDesc() {
-      return "type<ExprContextPush-dynamic>";
+      return "type<ExprContext-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record BindResultDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_BIND_RESULT_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<BindResult-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record QExprIdDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_QEXPR_ID_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<QExprId-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record EResultDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ERESULT_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<eresult-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record EResultVariantConstructorDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ERESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<eresult-variant-constructor-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record EResultConstructorConst() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_ERESULT_CONSTRUCTOR_CONST_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<eresult-constructor-const>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record CodeDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<code-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record ValueDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_VALUE_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<value-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record SourceDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<source-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record SourceVariantConstructorDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<source-variant-constructor-dynamic>";
+    }
+
+    @Override
+    public Type valueTypeOf() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+  }
+
+  record InterfaceSpec() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_INTERFACE_SPEC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<interface-spec>";
     }
 
     @Override

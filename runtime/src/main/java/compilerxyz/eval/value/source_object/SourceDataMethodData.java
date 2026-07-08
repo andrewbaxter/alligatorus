@@ -36,7 +36,8 @@ public final class SourceDataMethodData {
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
   public @Nullable CodeDynamic compiledBodyCode;
 
-  public BindingId.@Nullable Local compiledArgBindingId;
+  public @Nullable TList<compilerxyz.eval.dynamic.DynUtil.ArgSignatureSlot> compiledArgSlots;
+  public @Nullable TList<BindingId.Local> compiledArgSlotIds;
 
   public SourceDataMethodData(String name, String fieldName) {
     this.name = name;
@@ -48,6 +49,7 @@ public final class SourceDataMethodData {
       ExprContext xx,
       QExprId rootLoc,
       String dtName,
+      TypeSourceObjectDynamic outerType,
       Type underlyingType,
       String dataField,
       String objectInternalName) {
@@ -80,18 +82,72 @@ public final class SourceDataMethodData {
     innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     innerBindingId = selfId;
-    var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
 
+    var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
+    var outerIb = AspectInitialBind.getMaybe(xx, outerType);
+    if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
+      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().initialBind(outerId));
+    }
     var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
     if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
       bodyScope.values.put(new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
     }
+    TList<compilerxyz.eval.dynamic.DynUtil.ArgSignatureSlot> argSlots = null;
+    TList<BindingId.Local> argSlotIds = null;
     if (argType != null) {
-      var argIbMaybe = AspectInitialBind.getMaybe(xx, argType);
-      if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
-        bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().initialBind(argId));
+      var slotsRes = compilerxyz.eval.dynamic.DynUtil.argSignatureSlots(xx, rootLoc, argType);
+      if (slotsRes.hasErrors()) return slotsRes.reerr();
+      argSlots = slotsRes.requireValue("SourceDataMethodData::finish argSignatureSlots");
+      argSlotIds = new TList<>(argSlots.size());
+      var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+      var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+      if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+        var elemBindings = new TList<compilerxyz.eval.Binding>(argSlots.size());
+        for (var slot : argSlots) {
+          var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+          argSlotIds.add(slotId);
+          var ibMaybe = AspectInitialBind.getMaybe(xx, slot.elementType());
+          if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+            return EResult.err(rootLoc,
+                "SourceDataMethodData::finish tuple element type "
+                    + slot.elementType().typeDesc() + " missing AspectInitialBind");
+          }
+          elemBindings.add(ibSome.value().initialBind(slotId));
+        }
+        var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(
+            elemBindings, tupleSome.value().elementTypes());
+        bodyScope.values.put(new ConstKey.Str("arg"),
+            new compilerxyz.eval.value.argrecord.ArgumentTupleBinding(argTuple));
+      } else if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
+        var fields =
+            new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
+        int i = 0;
+        for (var entry : recordSome.value().recordFieldTypes().entrySet()) {
+          var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+          argSlotIds.add(slotId);
+          var ibMaybe = AspectInitialBind.getMaybe(xx, entry.getValue());
+          if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+            return EResult.err(rootLoc,
+                "SourceDataMethodData::finish record field type "
+                    + entry.getValue().typeDesc() + " missing AspectInitialBind");
+          }
+          fields.put(entry.getKey(),
+              new compilerxyz.eval.value.argrecord.ArgumentEntry(
+                  ibSome.value().initialBind(slotId), entry.getValue()));
+          i++;
+        }
+        var argRec = new compilerxyz.eval.value.argrecord.ArgumentRecord(fields);
+        bodyScope.values.put(new ConstKey.Str("arg"),
+            new compilerxyz.eval.value.argrecord.ArgumentRecordBinding(argRec));
+      } else {
+        var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        argSlotIds.add(slotId);
+        var argIbMaybe = AspectInitialBind.getMaybe(xx, argType);
+        if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
+          bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().initialBind(slotId));
+        }
       }
     }
     var methodXx =
@@ -137,10 +193,9 @@ public final class SourceDataMethodData {
     var captured = innerVx.externals;
     capturedExternals.addAll(captured);
 
-    var methodArgId = argType != null ? argId : null;
-
     compiledBodyCode = bodyCode;
-    compiledArgBindingId = methodArgId;
+    compiledArgSlots = argSlots;
+    compiledArgSlotIds = argSlotIds;
     return EResult.ok(null);
   }
 

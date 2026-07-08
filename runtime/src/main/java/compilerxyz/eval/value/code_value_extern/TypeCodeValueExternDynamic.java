@@ -22,7 +22,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.code.TypeCodeStructDynamic;
+import compilerxyz.eval.value.code_.TypeCodeDynamic;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -99,22 +99,55 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    return EResult.err(
-        loc,
-        "TypeCodeValueExternDynamic::field: CVE_GET_CODE_ENUM_FN_SCOPE_ID /"
-            + " CVE_GET_VALUE_FN_SCOPE_ID emission (deferred)");
+    var erb = new compilerxyz.eval.Erb(loc);
+    if (!(key.value() instanceof Opt.Some<compilerxyz.eval.Value> keySome)) {
+      return EResult.err(loc, "TypeCodeValueExternDynamic::field: key has no compile-time value");
+    }
+    var ckOpt = erb.mustRes(compilerxyz.eval.Eval.extractConstKey(xx, loc, keySome.value()));
+    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+    var ck = ckOpt.get();
+    if (!(ck instanceof ConstKey.Str keyStr)) {
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on CodeValueExtern");
+    }
+    if (!"code".equals(keyStr.value())) {
+      return EResult.err(loc, "Field '" + keyStr.value() + "' not found on CodeValueExtern");
+    }
+    var selfDyn = self.code().dynamic();
+    if (selfDyn == null) {
+      return EResult.err(loc, "TypeCodeValueExternDynamic::field: self has no dynamic code");
+    }
+    var codeType = new TypeCodeDynamic();
+    var codeValueInternal =
+        compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue");
+    var codeDesc =
+        compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+            compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/Code"));
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(selfDyn);
+    seq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+            loc,
+            compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(codeValueInternal)));
+    seq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+            loc,
+            codeValueInternal,
+            "code",
+            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(codeDesc, TList.of())));
+    var resultDyn = new CodeDynamic(loc, seq);
+    return EResult.ok(DynUtil.dynamicStackToValue(loc, resultDyn, codeType));
   }
 
   @Override
   public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TList<>();
+    return TList.of(new ConstKey.Str("code"));
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     return switch (s.value()) {
-      case "code" -> Opt.some(new TypeCodeStructDynamic());
+      case "code" -> Opt.some(new TypeCodeDynamic());
 
       default -> Opt.none();
     };

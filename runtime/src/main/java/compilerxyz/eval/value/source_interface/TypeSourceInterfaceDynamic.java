@@ -11,6 +11,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
@@ -20,6 +21,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -28,7 +30,14 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceInterfaceDynamic()
-    implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind, ExporterAny {
+    implements
+        Type,
+        AspectAspect,
+        AspectBind,
+        AspectConsumeDynamic,
+        AspectDropDynamicLight,
+        AspectInitialBind,
+        ExporterAny {
 
   @Override
   public TypeId typeId() { return GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID; }
@@ -53,6 +62,7 @@ public record TypeSourceInterfaceDynamic()
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(GenIdentities.INTERFACE_REF_TYPE_IDENTITY)
+        || key.equals(AspectAspect.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
@@ -60,6 +70,26 @@ public record TypeSourceInterfaceDynamic()
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public Unique getUnique(Value value) {
+    if (!(value instanceof SourceInterfaceRef ref)) {
+      throw new IllegalStateException(
+          "TypeSourceInterfaceDynamic::getUnique: expected SourceInterfaceRef, got "
+              + (value == null ? "null" : value.getClass()));
+    }
+    return ref.data().identity;
+  }
+
+  @Override
+  public SourceInterfaceData getIfaceData(Value value) {
+    if (!(value instanceof SourceInterfaceRef ref)) {
+      throw new IllegalStateException(
+          "TypeSourceInterfaceDynamic::getIfaceData: expected SourceInterfaceRef, got "
+              + (value == null ? "null" : value.getClass()));
+    }
+    return ref.data();
   }
 
   @Override
@@ -100,7 +130,8 @@ public record TypeSourceInterfaceDynamic()
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return destType.typeAspect(xx, GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
         || destType.typeAspect(xx, GenIdentities.INTERFACE_CONST_IDENTITY).optIsSome()
-        || destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome();
+        || destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()
+        || destType instanceof TypeInterfaceSpec;
   }
 
   @Override
@@ -144,6 +175,21 @@ public record TypeSourceInterfaceDynamic()
           new CodeValue(
               Code.of(loc, call),
               Opt.some(ValueDynamic.stack(destType))));
+    }
+    if (destType instanceof TypeInterfaceSpec) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc, "cast interface_ref → interface_spec: source has no runtime code");
+      }
+      var args = new TList<CodeDynamic>();
+      args.add(sourceCode);
+      var call =
+          compilerxyz.eval.dynamic.DynRuntime.SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
+              loc, xx.vx, args);
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, call), Opt.some(ValueDynamic.stack(new TypeInterfaceSpec()))));
     }
     return EResult.err(loc, "Cannot convert interface_ref");
   }

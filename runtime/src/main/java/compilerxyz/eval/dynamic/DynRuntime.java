@@ -1,18 +1,34 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.eval.expr.CodeValueExternCell;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.binding.BindingSourceObjectWrapper;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.SourceInterfaceRef;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.Binding;
 import compilerxyz.gen.Target;
@@ -81,6 +97,20 @@ public final class DynRuntime {
           "interfaceRefToType",
           desc(cls(Type.class), cls(ExprContext.class), cls(SourceInterfaceRef.class)));
 
+  public static final TypeFunctionDynamic OBJECT_TO_INTERFACE_SPEC =
+      fn(
+          "objectToInterfaceSpec",
+          desc(
+              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
+              cls(compilerxyz.eval.value.object_.TypeObjectDynamic.class)));
+
+  public static final TypeFunctionDynamic SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC =
+      fn(
+          "sourceInterfaceRefToInterfaceSpec",
+          desc(
+              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
+              cls(SourceInterfaceRef.class)));
+
   public static final TypeFunctionDynamic UNIQUE_EQ_TYPE =
       fn(
           "uniqueEq",
@@ -89,6 +119,39 @@ public final class DynRuntime {
               cls(ExprContext.class),
               cls(Unique.class),
               cls(Unique.class)));
+
+  public static compilerxyz.eval.value.interface_spec.InterfaceSpec objectToInterfaceSpec(
+      compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
+    if (!(obj.interfaceRepresented() instanceof Opt.Some<JavaInternalName> some)) {
+      throw new IllegalStateException(
+          "objectToInterfaceSpec: TypeObjectDynamic " + obj.typeDesc() + " has no interfaceRepresented");
+    }
+    var methods = new TList<compilerxyz.eval.value.interface_spec.InterfaceMethodSpec>();
+    for (var m : obj.methods()) {
+      var ft = m.funcType();
+      methods.add(
+          new compilerxyz.eval.value.interface_spec.InterfaceMethodSpec(
+              m.langName(),
+              ft.methodName(),
+              ft.arg(),
+              ft.ret(),
+              ft.descriptor()));
+    }
+    return new compilerxyz.eval.value.interface_spec.InterfaceSpec(some.value(), methods);
+  }
+
+  public static compilerxyz.eval.value.interface_spec.InterfaceSpec sourceInterfaceRefToInterfaceSpec(
+      SourceInterfaceRef ref) {
+    var data = ref.data();
+    var methods = new TList<compilerxyz.eval.value.interface_spec.InterfaceMethodSpec>();
+    var binName = data.compiledBinaryName;
+    if (binName == null) {
+      throw new IllegalStateException(
+          "sourceInterfaceRefToInterfaceSpec: SourceInterfaceData has no compiledBinaryName");
+    }
+    var jvmName = JavaInternalName.of(binName.replace('.', '/'));
+    return new compilerxyz.eval.value.interface_spec.InterfaceSpec(jvmName, methods);
+  }
 
   public static Object listPush(TList<Object> list, Object element) {
     list.add(element);
@@ -136,22 +199,88 @@ public final class DynRuntime {
     return m;
   }
 
+  public static Opt<Aspect> sourceObjectClaimedAspect(Object self, Object data, Unique key) {
+    var d = (TypeSourceObjectDynamic) data;
+    for (var impl : d.interfaceImpls) {
+      var kind = impl.interface_.builtinKind;
+      if (kind != null && claimedKindExposesAspect(kind, key)) {
+        return Opt.some((Aspect) self);
+      }
+    }
+    return Opt.none();
+  }
+
+  private static boolean claimedKindExposesAspect(BuiltinInterfaceKind kind, Unique key) {
+    return switch (kind) {
+      case ASPECT_DROP_DYNAMIC -> key.equals(AspectDropDynamic.ID);
+      case ASPECT_FIELD -> key.equals(AspectField.ID);
+      case ASPECT_FUNCTION -> key.equals(AspectFunction.ID);
+      case VALUE, TYPE, BINDING, TARGET, CODE_DYN -> false;
+    };
+  }
+
+  public static Opt<Aspect> optOr(Opt<Aspect> a, Opt<Aspect> b) {
+    return a instanceof Opt.Some ? a : b;
+  }
+
   public static JavaDataDescriptor sourceObjectConsumeDynamicJvmClass(Object self) {
     var internal = self.getClass().getName().replace('.', '/');
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of(internal));
   }
 
-
-  public static Object wrapExprContextPush(Object xx) {
-    return new compilerxyz.eval.value.code_value_extern.ExprContextPush((ExprContext) xx);
+  public static EResult<AspectBind.BindResult> sourceObjectBind(
+      Object data, Object self, ExprContext xx, QExprId loc, CodeValue cv) {
+    var d = (TypeSourceObjectDynamic) data;
+    var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
+    var bindDynOpt = AspectBindDynamic.getMaybe(xx, d);
+    if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
+      return EResult.err(loc, "sourceObjectBind: canary type missing AspectBindDynamic");
+    }
+    var subRes = bindDynSome.value().bindDynamic(xx, loc, canaryCv);
+    if (subRes.hasErrors()) return subRes.reerr();
+    var subOpt = subRes.requireValue("sourceObjectBind bindDynamic");
+    if (!(subOpt instanceof Opt.Some<TargetBindSub> subSome)) {
+      return EResult.err(loc, "sourceObjectBind: bindDynamic returned None");
+    }
+    var bound = xx.target.targetBind(loc, subSome.value());
+    Code wrappingCode = Code.of(loc, bound.code());
+    compilerxyz.eval.Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
+    compilerxyz.eval.Binding wrapped =
+        new BindingSourceObjectWrapper((compilerxyz.gen.Binding) self, underlyingBinding);
+    return EResult.ok(new AspectBind.BindResult(wrappingCode, wrapped));
   }
+
+  public static EResult<Opt<TargetBindSub>> sourceObjectBindDynamic(
+      Object data, ExprContext xx, QExprId loc, CodeValue cv) {
+    var d = (TypeSourceObjectDynamic) data;
+    var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
+    return DynUtil.bindDynamicDefault(xx, loc, canaryCv);
+  }
+
+  public static EResult<CodeDynamic> sourceObjectToDynamic(
+      Object data, ExprContext xx, QExprId loc, CodeValue cv) {
+    var dyn = cv.code().dynamic();
+    if (dyn == null) {
+      return EResult.err(loc, "sourceObjectToDynamic: CodeValue has no dynamic code");
+    }
+    return EResult.ok(dyn);
+  }
+
+  public static compilerxyz.eval.Binding sourceObjectInitialBind(
+      Object data, Object self, BindingId dynamicKey) {
+    var d = (TypeSourceObjectDynamic) data;
+    var ut = d.underlyingType;
+    if (ut == null) {
+      throw new IllegalStateException(
+          "sourceObjectInitialBind: object underlying type not finalised");
+    }
+    return new BindingSourceObjectWrapper(
+        (Binding) self, new BindingDynamicBinding(dynamicKey, ut));
+  }
+
 
   public static Object wrapTypeRefPush(Object typeRef) {
     return new compilerxyz.gen.TypeRefPush((Type) typeRef);
-  }
-
-  public static Object wrapCodeValueExternCell(Object cv) {
-    return new CodeValueExternCell((CodeValue) cv);
   }
 
   public static Object deriveSourceTypeFromCv(Object xx, Object cv) {
@@ -216,8 +345,7 @@ public final class DynRuntime {
     }
     var grafts = new TList<CodeValue>(rest.length - i);
     while (i < rest.length) {
-      var cell = (CodeValueExternCell) rest[i];
-      grafts.add(cell.take());
+      grafts.add((CodeValue) rest[i]);
       i += 1;
     }
     var valueIter = values.iterator();
@@ -246,19 +374,19 @@ public final class DynRuntime {
             + " + dynamic_value_to_type port");
   }
 
-  public static Value cveExtract(ExprContext xx, CodeValueExternCell cell) {
+  public static Value cveExtract(ExprContext xx, CodeValue cell) {
     throw new UnsupportedOperationException(
         "invisible builtin cve_extract: invisible_builtins.rs scope 7003 body pending"
             + " DynamicExprContextSlot.xx + aspect_string_const_get_maybe bridge");
   }
 
-  public static Object cveGetCodeEnum(ExprContext xx, CodeValueExternCell cell) {
+  public static Object cveGetCodeEnum(ExprContext xx, CodeValue cell) {
     throw new UnsupportedOperationException(
         "invisible builtin cve_get_code_enum: invisible_builtins.rs scope 7004 body pending Code Dyn"
             + " variant external-bridge + ConstKey-keyed v8 object equivalent on JVM");
   }
 
-  public static Value cveGetValue(ExprContext xx, CodeValueExternCell cell) {
+  public static Value cveGetValue(ExprContext xx, CodeValue cell) {
     throw new UnsupportedOperationException(
         "invisible builtin cve_get_value: invisible_builtins.rs scope 7005 body pending"
             + " rc_value_to_dynamic_ext analogue on JVM");
@@ -331,32 +459,6 @@ public final class DynRuntime {
 
   public static Object optionPushGet(ExprContext xx, compilerxyz.gen.OptionPush opt) {
     return opt.is_some_inner;
-  }
-
-  public static compilerxyz.eval.EResult<CodeValue> eresultFromCvCell(Object cellObj) {
-    var cell = (CodeValueExternCell) cellObj;
-    return compilerxyz.eval.EResult.ok(cell.take());
-  }
-
-  public static compilerxyz.eval.EResult<compilerxyz.eval.Code> eresultCodeFromCvCell(
-      Object cellObj) {
-    var cell = (CodeValueExternCell) cellObj;
-    return compilerxyz.eval.EResult.ok(cell.take().code());
-  }
-
-  public static compilerxyz.eval.EResult<CodeValue> eresultFromCvCellRetagged(
-      Object cellObj, Object selfType) {
-    var cell = (CodeValueExternCell) cellObj;
-    var cv = cell.take();
-    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<Value> some)) {
-      return compilerxyz.eval.EResult.ok(cv);
-    }
-    var stackType = (Type) selfType;
-    return compilerxyz.eval.EResult.ok(
-        new CodeValue(
-            cv.code(),
-            compilerxyz.util.Opt.some(
-                compilerxyz.eval.value.ValueDynamic.stack(stackType))));
   }
 
   public static compilerxyz.gen.SourceFuncResult defSetBuilderFunc(

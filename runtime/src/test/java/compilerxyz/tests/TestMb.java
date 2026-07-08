@@ -42,6 +42,18 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "binding");
   }
 
+  public SourceExpr evalAspectBind() {
+    return builtin("eval", "aspect_bind");
+  }
+
+  public SourceExpr evalAspectBindId() {
+    return builtin("eval", "aspect_bind_id");
+  }
+
+  public SourceExpr evalBindResult() {
+    return builtin("eval", "bind_result");
+  }
+
   public SourceExpr evalCastValue() {
     return builtin("eval", "cast_value");
   }
@@ -68,6 +80,10 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalNewExprContext() {
     return builtin("eval", "new_expr_context");
+  }
+
+  public SourceExpr evalStack() {
+    return builtin("eval", "stack");
   }
 
   public SourceExpr evalStrToJson() {
@@ -100,6 +116,14 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr typesCve() {
     return builtin("types", "cve");
+  }
+
+  public SourceExpr typesEresult() {
+    return builtin("types", "eresult");
+  }
+
+  public SourceExpr typesCode() {
+    return builtin("types", "code");
   }
 
   public SourceExpr typesExpr() {

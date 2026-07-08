@@ -122,9 +122,13 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     }
     var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, objectIndex);
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
+    compilerxyz.eval.dynamic.JavaDataDescriptor underlyingDesc =
+        underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
+            ? underlyingConsume.consumeDynamicJvmClass()
+            : compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT;
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            TList.of(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT));
+            TList.of(underlyingDesc));
     var newInstance =
         compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
     return EResult.ok(DynUtil.dynamicStackToValue(loc, newInstance, resultType));

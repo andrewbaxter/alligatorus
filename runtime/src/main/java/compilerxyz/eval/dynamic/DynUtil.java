@@ -27,6 +27,47 @@ public final class DynUtil {
     private DynUtil() {
     }
 
+    public record ArgSignatureSlot(Type elementType, JavaDataDescriptor jvmDesc) {}
+
+    public static EResult<TList<ArgSignatureSlot>> argSignatureSlots(
+            ExprContext xx, QExprId loc, Type argType) {
+        var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+        if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+            var elemTypes = tupleSome.value().elementTypes();
+            var out = new TList<ArgSignatureSlot>(elemTypes.size());
+            for (var et : elemTypes) {
+                var descRes = jvmDescFor(xx, loc, et);
+                if (descRes.hasErrors()) return descRes.reerr();
+                out.add(new ArgSignatureSlot(et,
+                        descRes.requireValue("DynUtil::argSignatureSlots tuple element")));
+            }
+            return EResult.ok(out);
+        }
+        var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+        if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
+            var fieldTypes = recordSome.value().recordFieldTypes();
+            var out = new TList<ArgSignatureSlot>(fieldTypes.size());
+            for (var entry : fieldTypes.entrySet()) {
+                var et = entry.getValue();
+                var descRes = jvmDescFor(xx, loc, et);
+                if (descRes.hasErrors()) return descRes.reerr();
+                out.add(new ArgSignatureSlot(et,
+                        descRes.requireValue("DynUtil::argSignatureSlots record field")));
+            }
+            return EResult.ok(out);
+        }
+        var descRes = jvmDescFor(xx, loc, argType);
+        if (descRes.hasErrors()) return descRes.reerr();
+        return EResult.ok(TList.of(new ArgSignatureSlot(argType,
+                descRes.requireValue("DynUtil::argSignatureSlots scalar"))));
+    }
+
+    private static EResult<JavaDataDescriptor> jvmDescFor(ExprContext xx, QExprId loc, Type t) {
+        var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
+        if (consumeRes.hasErrors()) return consumeRes.reerr();
+        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").consumeDynamicJvmClass());
+    }
+
     public record CallArgElement(CodeDynamic code, JavaDataDescriptor jvmDesc) {}
 
     /**
@@ -482,21 +523,32 @@ public final class DynUtil {
                 throw new IllegalStateException(
                         "DynUtil::destructurePositional: elementTypes/takeElements size mismatch");
             }
-            var out = new TList<CodeDynamic>(elementTypes.size());
-            for (int i = 0; i < elementTypes.size(); i++) {
-                var elemCvRes = elemCvs.get(i);
-                if (elemCvRes.hasErrors()) return elemCvRes.reerr();
-                var elemCv = elemCvRes.requireValue("DynUtil::destructurePositional element");
-                var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
-                if (consumeRes.hasErrors()) return consumeRes.reerr();
-                var elemDyn =
-                        consumeRes
-                                .requireValue("DynUtil::destructurePositional consume")
-                                .toDynamic(xx, loc, elemCv);
-                if (elemDyn.hasErrors()) return elemDyn.reerr();
-                out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
+            return destructureFromElements(xx, loc, elementTypes, elemCvs);
+        }
+        var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+        if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
+            if (!(converted.value() instanceof Opt.Some<Value> some)) {
+                return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
             }
-            return EResult.ok(out);
+            var fieldTypes = recordSome.value().recordFieldTypes();
+            var fieldCvs = recordSome.value().recordTakeFields(xx, loc, some.value());
+            if (fieldTypes.size() != fieldCvs.size()) {
+                throw new IllegalStateException(
+                        "DynUtil::destructurePositional: record fieldTypes/takeFields size mismatch");
+            }
+            var elemTypes = new TList<Type>(fieldTypes.size());
+            var elemCvs = new TList<EResult<CodeValue>>(fieldTypes.size());
+            for (var entry : fieldTypes.entrySet()) {
+                elemTypes.add(entry.getValue());
+                var cvRes = fieldCvs.get(entry.getKey());
+                if (cvRes == null) {
+                    return EResult.err(loc,
+                            "DynUtil::destructurePositional: record missing field '"
+                                    + entry.getKey().toCanonical() + "'");
+                }
+                elemCvs.add(cvRes);
+            }
+            return destructureFromElements(xx, loc, elemTypes, elemCvs);
         }
         var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
@@ -506,6 +558,28 @@ public final class DynUtil {
                         .toDynamic(xx, loc, converted);
         if (argDyn.hasErrors()) return argDyn.reerr();
         return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
+    }
+
+    private static EResult<TList<CodeDynamic>> destructureFromElements(
+            ExprContext xx,
+            QExprId loc,
+            TList<Type> elementTypes,
+            TList<EResult<CodeValue>> elemCvs) {
+        var out = new TList<CodeDynamic>(elementTypes.size());
+        for (int i = 0; i < elementTypes.size(); i++) {
+            var elemCvRes = elemCvs.get(i);
+            if (elemCvRes.hasErrors()) return elemCvRes.reerr();
+            var elemCv = elemCvRes.requireValue("DynUtil::destructurePositional element");
+            var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
+            if (consumeRes.hasErrors()) return consumeRes.reerr();
+            var elemDyn =
+                    consumeRes
+                            .requireValue("DynUtil::destructurePositional consume")
+                            .toDynamic(xx, loc, elemCv);
+            if (elemDyn.hasErrors()) return elemDyn.reerr();
+            out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
+        }
+        return EResult.ok(out);
     }
 
     /**

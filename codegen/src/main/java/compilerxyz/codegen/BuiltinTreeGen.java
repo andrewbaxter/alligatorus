@@ -111,6 +111,14 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
   private static final ClassName TYPE_OPTION_CONSTRUCTOR_CONST =
       ClassName.get("compilerxyz.eval.value.option", "TypeOptionConstructorConst");
+  private static final ClassName TYPE_ERESULT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
+  private static final ClassName TYPE_ERESULT_CONSTRUCTOR_CONST =
+      ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
+  private static final ClassName TYPE_CODE_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.code_", "TypeCodeDynamic");
+  private static final ClassName TYPE_VALUE_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.value_", "TypeValueDynamic");
 
   private static final ClassName EXTERNAL_UNIQUE =
       ClassName.get("compilerxyz.eval", "External", "UniqueExternal");
@@ -378,9 +386,16 @@ public final class BuiltinTreeGen {
     var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
     var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
     var xxRef =
-        TypeRef.unit(
-            ClassName.get(
-                "compilerxyz.eval.value.code_value_extern", "TypeExprContextPushDynamic"));
+        new TypeRef(
+            ClassName.get("compilerxyz.eval", "ExprContext"),
+            CodeBlock.of(
+                "new $T()",
+                ClassName.get(
+                    "compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic")));
+    var dropRet =
+        new TypeRef(
+            TYPE_ERESULT_DYNAMIC,
+            CodeBlock.of("new $T(new $T())", TYPE_ERESULT_DYNAMIC, TYPE_CODE_DYNAMIC));
 
     var aspectFunction =
         new InterfaceSpec(
@@ -433,7 +448,7 @@ public final class BuiltinTreeGen {
             TList.of(
                 new Method(
                     "drop",
-                    cve,
+                    dropRet,
                     new MethodArgs.Source(
                         TList.of(new NamedTypeRef("xx", xxRef), new NamedTypeRef("inner", cve))))));
 
@@ -441,12 +456,19 @@ public final class BuiltinTreeGen {
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
     var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
     var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var exprContextPushType =
-        ClassName.get("compilerxyz.eval.value.code_value_extern", "ExprContextPush");
+    var typeExprContextDynamic =
+        ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic");
+    var typeQExprIdDynamic =
+        ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeQExprIdDynamic");
 
-    var bindingXx = TypeRef.viaPushAs(exprContext, exprContextPushType);
-    var bindingLoc = TypeRef.viaPush(qexprId);
-    var bindingCode = TypeRef.viaPush(codeRef);
+    var bindingXx =
+        new TypeRef(exprContext, CodeBlock.of("new $T()", typeExprContextDynamic));
+    var bindingLoc =
+        new TypeRef(qexprId, CodeBlock.of("new $T()", typeQExprIdDynamic));
+    var bindingCode =
+        new TypeRef(
+            codeRef,
+            CodeBlock.of("new $T()", ClassName.get("compilerxyz.eval.value.code_", "TypeCodeDynamic")));
     var bindingCv = TypeRef.viaPush(codeValue);
 
     var binding =
@@ -471,7 +493,7 @@ public final class BuiltinTreeGen {
                                 new NamedTypeRef("loc", bindingLoc)),
                             TList.of(new NamedTypeRef("code", bindingCode)))))));
 
-    var targetBindSub =
+var targetBindSub =
         TypeRef.viaPush(
             ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"));
     var codeBindingTuple =
@@ -798,6 +820,26 @@ public final class BuiltinTreeGen {
                             "types.option",
                             "TypeOptionDynamic instantiation from dynamic AnyType arg")))),
             new Child(
+                "eresult",
+                new Leaf(
+                    new LeafSpec.Constructor(
+                        5014,
+                        TList.of(
+                            new NamedTypeRef(
+                                "element_type",
+                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType")))),
+                        TYPE_ERESULT_DYNAMIC,
+                        CodeBlock.of("new $T()", TYPE_ERESULT_DYNAMIC),
+                        CodeBlock.of("new $T()", TYPE_ERESULT_CONSTRUCTOR_CONST),
+                        pendingBody(
+                            5014,
+                            "types.eresult",
+                            "TypeEResultDynamic instantiation from dynamic AnyType arg")))),
+            new Child(
+                "code",
+                new Leaf(
+                    new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC)))),
+            new Child(
                 "string",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC)))),
             new Child(
@@ -868,12 +910,12 @@ public final class BuiltinTreeGen {
                             new NamedTypeRef(
                                 "xx_",
                                 new TypeRef(
-                                    TypeName.OBJECT,
+                                    ClassName.get("compilerxyz.eval", "ExprContext"),
                                     CodeBlock.of(
-                                        "$T.dynamicType()",
+                                        "new $T()",
                                         ClassName.get(
                                             "compilerxyz.eval.value.code_value_extern",
-                                            "ExprContextPush")))),
+                                            "TypeExprContextDynamic")))),
                             new NamedTypeRef(
                                 "staged",
                                 new TypeRef(
@@ -893,18 +935,39 @@ public final class BuiltinTreeGen {
                         5005,
                         TList.of(
                             new NamedTypeRef(
-                                "code", TypeRef.viaPush(ClassName.get("compilerxyz.eval", "Code"))),
+                                "code",
+                                new TypeRef(
+                                    ClassName.get("compilerxyz.eval", "Code"),
+                                    CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC))),
                             new NamedTypeRef(
                                 "value",
-                                TypeRef.viaPush(ClassName.get("compilerxyz.eval", "Value")))),
+                                new TypeRef(
+                                    ClassName.get("compilerxyz.eval", "Value"),
+                                    CodeBlock.of("new $T()", TYPE_VALUE_DYNAMIC)))),
                         ClassName.get(
                             "compilerxyz.eval.value.code_value_extern", "CodeValueExtern"),
                         CodeBlock.of("new $T()", TYPE_CODE_VALUE_EXTERN_DYNAMIC),
-                        pendingBody(
-                            5005,
-                            "codevalue",
-                            "CodeValueExtern construction from dynamic args requires Push"
-                                + " decode for Code + Value")))),
+                        CodeBlock.builder()
+                            .addStatement(
+                                "return new $T(code, $T.some(value))",
+                                ClassName.get("compilerxyz.eval", "CodeValue"),
+                                ClassName.get("compilerxyz.util", "Opt"))
+                            .build()))),
+            new Child(
+                "stack",
+                new Leaf(
+                    new LeafSpec.Function(
+                        5013,
+                        TList.of(
+                            new NamedTypeRef(
+                                "type", TypeRef.opaque(ClassName.get("compilerxyz.eval", "Type")))),
+                        ClassName.get("compilerxyz.eval", "Value"),
+                        CodeBlock.of("new $T()", TYPE_VALUE_DYNAMIC),
+                        CodeBlock.builder()
+                            .addStatement(
+                                "return $T.stack(type)",
+                                ClassName.get("compilerxyz.eval.value", "ValueDynamic"))
+                            .build()))),
             new Child(
                 "str_to_json",
                 new Leaf(
@@ -945,10 +1008,13 @@ public final class BuiltinTreeGen {
                         TList.of(
                             new NamedTypeRef(
                                 "_xx",
-                                TypeRef.viaPush(
-                                    ClassName.get(
-                                        "compilerxyz.eval.value.code_value_extern",
-                                        "ExprContextPush")))),
+                                new TypeRef(
+                                    ClassName.get("compilerxyz.eval", "ExprContext"),
+                                    CodeBlock.of(
+                                        "new $T()",
+                                        ClassName.get(
+                                            "compilerxyz.eval.value.code_value_extern",
+                                            "TypeExprContextDynamic"))))),
                         ClassName.get(String.class),
                         CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC),
                         pendingBody(
@@ -972,13 +1038,12 @@ public final class BuiltinTreeGen {
                                         ClassName.get("compilerxyz.util", "TMap"),
                                         ClassName.get("compilerxyz.eval", "ConstKey"),
                                         ClassName.get(GEN_PACKAGE, "Binding"))))),
-                        ClassName.get(
-                            "compilerxyz.eval.value.code_value_extern", "ExprContextPush"),
+                        ClassName.get("compilerxyz.eval", "ExprContext"),
                         CodeBlock.of(
-                            "$T.dynamicType()",
+                            "new $T()",
                             ClassName.get(
                                 "compilerxyz.eval.value.code_value_extern",
-                                "ExprContextPush")),
+                                "TypeExprContextDynamic")),
                         pendingBody(
                             5009,
                             "new_expr_context",
@@ -990,6 +1055,36 @@ public final class BuiltinTreeGen {
                 "aspect_drop_dynamic",
                 new Leaf(new LeafSpec.Interface(ifaceAspectDropDynamic))),
             new Child(
+                "bind_result",
+                new Leaf(
+                    new LeafSpec.Function(
+                        5015,
+                        TList.of(
+                            new NamedTypeRef(
+                                "code",
+                                new TypeRef(
+                                    ClassName.get("compilerxyz.eval", "Code"),
+                                    CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC))),
+                            new NamedTypeRef(
+                                "binding",
+                                new TypeRef(
+                                    ClassName.get("compilerxyz.eval", "Binding"),
+                                    CodeBlock.of(
+                                        "new $T()",
+                                        ClassName.get(
+                                            "compilerxyz.eval.value.binding",
+                                            "TypeAnyBindingDynamic"))))),
+                        ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
+                        CodeBlock.of(
+                            "new $T()",
+                            ClassName.get(
+                                "compilerxyz.eval.value.bind_result", "TypeBindResultDynamic")),
+                        CodeBlock.builder()
+                            .addStatement(
+                                "return new $T(code, binding)",
+                                ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"))
+                            .build()))),
+            new Child(
                 "aspect_string_dynamic",
                 new Leaf(new LeafSpec.AspectId(4001, "StringDynamic"))),
             new Child(
@@ -998,6 +1093,9 @@ public final class BuiltinTreeGen {
             new Child(
                 "aspect_field_id",
                 new Leaf(new LeafSpec.AspectId(4003, "Field"))),
+            new Child(
+                "aspect_bind_id",
+                new Leaf(new LeafSpec.AspectId(4004, "Bind"))),
             new Child("binding", new Leaf(new LeafSpec.Interface(ifaceBinding))),
             new Child("target", new Leaf(new LeafSpec.Interface(ifaceTarget))),
             new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn)))));
@@ -1014,23 +1112,18 @@ public final class BuiltinTreeGen {
 
   private static CodeBlock constEvalBody() {
     var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var exprContextPush =
-        ClassName.get("compilerxyz.eval.value.code_value_extern", "ExprContextPush");
     var stagedCell = ClassName.get("compilerxyz.eval.expr", "StagedExprCell");
     var expr = ClassName.get("compilerxyz.eval", "Expr");
     var constEval = ClassName.get("compilerxyz.eval", "ConstEval");
-    var codeValueExternCell = ClassName.get("compilerxyz.eval.expr", "CodeValueExternCell");
     var b = CodeBlock.builder();
     b.addStatement("$T targetXx", exprContext);
-    b.beginControlFlow("if (xx_ instanceof $T push)", exprContextPush);
-    b.addStatement("targetXx = push.context()");
-    b.nextControlFlow("else if (xx_ instanceof $T raw)", exprContext);
+    b.beginControlFlow("if (xx_ instanceof $T raw)", exprContext);
     b.addStatement("targetXx = raw");
     b.nextControlFlow("else");
     b.addStatement(
         "throw new $T($S + (xx_ == null ? $S : xx_.getClass()))",
         AssertionError.class,
-        "builtin 5008 (const_eval): xx is not ExprContextPush, got ",
+        "builtin 5008 (const_eval): xx is not ExprContext, got ",
         "null");
     b.endControlFlow();
     b.addStatement("Object stagedObj = staged");
@@ -1063,7 +1156,7 @@ public final class BuiltinTreeGen {
     b.addStatement(
         "var resCv = res.requireValue($S)",
         "BuiltinTreeGen builtin 5008 const_eval result");
-    b.addStatement("return new $T(resCv)", codeValueExternCell);
+    b.addStatement("return resCv");
     return b.build();
   }
 

@@ -14,6 +14,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
@@ -21,6 +22,9 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
+import compilerxyz.eval.value.source_interface.SourceInterfaceData;
+import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -37,9 +41,12 @@ public record TypeObjectDynamic(
     JavaDataDescriptor jvmClassDesc,
     TList<ObjectDataField> dataFields,
     TList<ObjectMethod> methods,
-    Opt<TypeObjectExtraAspect> extraAspect)
+    Opt<TypeObjectExtraAspect> extraAspect,
+    Opt<Unique> aspectUnique,
+    Opt<JavaInternalName> interfaceRepresented)
     implements
         Type,
+        AspectAspect,
         AspectField,
         AspectConsumeDynamic,
         AspectDropDynamic,
@@ -77,10 +84,57 @@ public record TypeObjectDynamic(
         || key.equals(AspectStackValueDynamic.ID)) {
       return Opt.some(this);
     }
+    if (aspectUnique instanceof Opt.Some && key.equals(AspectAspect.ID)) {
+      return Opt.some(this);
+    }
     if (extraAspect instanceof Opt.Some<TypeObjectExtraAspect> some) {
       return some.value().typeObjectExtraAspect(xx, key);
     }
     return Opt.none();
+  }
+
+  @Override
+  public Unique getUnique(Value value) {
+    if (!(aspectUnique instanceof Opt.Some<Unique> some)) {
+      throw new IllegalStateException(
+          typeDesc + "::getUnique: TypeObjectDynamic does not represent an aspect");
+    }
+    return some.value();
+  }
+
+  @Override
+  public SourceInterfaceData getIfaceData(Value value) {
+    throw new UnsupportedOperationException(
+        typeDesc + "::getIfaceData: TypeObjectDynamic has no SourceInterfaceData");
+  }
+
+  @Override
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+    if (interfaceRepresented instanceof Opt.Some
+        && destType instanceof TypeInterfaceSpec) {
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    if (interfaceRepresented instanceof Opt.Some
+        && destType instanceof TypeInterfaceSpec) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc,
+            "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
+      }
+      var args = new TList<CodeDynamic>();
+      args.add(sourceCode);
+      var call = DynRuntime.OBJECT_TO_INTERFACE_SPEC.emitInvocation(loc, xx.vx, args);
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, call), Opt.some(ValueDynamic.stack(new TypeInterfaceSpec()))));
+    }
+    return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
   }
 
   @Override

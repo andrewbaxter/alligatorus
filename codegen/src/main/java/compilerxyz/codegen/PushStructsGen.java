@@ -273,7 +273,7 @@ public final class PushStructsGen {
         .returns(TYPE)
         .beginControlFlow("if ($N == null)", fieldName)
         .addStatement(
-            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $L)",
+            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $L, $T.none(), $T.none())",
             fieldName,
             TYPE_OBJECT_DYNAMIC,
             TYPE_ID,
@@ -285,7 +285,9 @@ public final class PushStructsGen {
             specClass,
             dataFieldsList.build(),
             methodsList.build(),
-            extraAspect)
+            extraAspect,
+            OPT,
+            OPT)
         .endControlFlow()
         .addStatement("return $N", fieldName)
         .build();
