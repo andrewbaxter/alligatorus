@@ -230,6 +230,34 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
   }
 
   @Override
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+    return destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    if (destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc, "cast interface_const → interface_spec: source has no runtime code");
+      }
+      var args = new TList<CodeDynamic>();
+      args.add(sourceCode);
+      var call =
+          compilerxyz.eval.dynamic.DynRuntime.SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
+              loc, xx.vx, args);
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, call),
+              Opt.some(
+                  ValueDynamic.stack(
+                      new compilerxyz.eval.value.interface_spec.TypeInterfaceSpec()))));
+    }
+    return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
+  }
+
+  @Override
   public Binding initialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, new TypeSourceInterfaceConst(data));
   }

@@ -37,7 +37,8 @@ public record TypeMethodDynamic(
     Type ret,
     JavaInternalName klass,
     String methodName,
-    JavaMethodDescriptor descriptor)
+    JavaMethodDescriptor descriptor,
+    boolean isInterface)
     implements
         Type,
         AspectBind,
@@ -95,10 +96,22 @@ public record TypeMethodDynamic(
 
     var seq = new JavaBytecodeSequence();
     seq.add(receiverDyn);
-    for (var argCode : argsDynRes.requireValue("TypeMethodDynamic::call args")) {
-      seq.add(argCode);
+    var args = argsDynRes.requireValue("TypeMethodDynamic::call args");
+    var paramDescs = descriptor.parameterDescriptors();
+    for (int i = 0; i < args.size(); i++) {
+      seq.add(args.get(i));
+      if (i < paramDescs.size()) {
+        var expected = paramDescs.get(i);
+        if (expected.value().startsWith("L") && !expected.value().equals("Ljava/lang/Object;")) {
+          seq.add(JavaBytecodeUtils.cast(loc, expected));
+        }
+      }
     }
-    seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
+    if (isInterface) {
+      seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, klass, methodName, descriptor));
+    } else {
+      seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
+    }
     return EResult.ok(
         retStackRes
             .requireValue("TypeMethodDynamic::call ret stack")

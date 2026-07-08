@@ -226,6 +226,8 @@ public final class SourceObjectEmitter {
         if (hostInternal != null) {
           implementsInternalNames.add(hostInternal.value());
         }
+      } else if (iface.compiledBinaryName != null) {
+        implementsInternalNames.add(iface.compiledBinaryName.replace('.', '/'));
       }
     }
     var interfacesArr =
@@ -809,16 +811,22 @@ public final class SourceObjectEmitter {
       var impl = data.interfaceImpls.get(implIdx);
       var iface = impl.interface_;
       var kind = iface.builtinKind;
-      if (kind == null) {
-        continue;
-      }
       for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
         var m = impl.methodImpls.get(mIdx);
         if (m.compiledBodyCode == null) {
           continue;
         }
         var ifaceMethod = iface.methods.get(m.interfaceMethodIndex);
-        var spec = hostMethodSpec(kind, ifaceMethod.name);
+        HostMethodSpec spec;
+        if (kind != null) {
+          spec = hostMethodSpec(kind, ifaceMethod.name);
+        } else if (ifaceMethod.hostMethodName != null
+            && ifaceMethod.hostMethodDescriptor != null) {
+          spec = new HostMethodSpec(
+              ifaceMethod.hostMethodName, ifaceMethod.hostMethodDescriptor);
+        } else {
+          spec = null;
+        }
         if (spec == null) {
           continue;
         }
@@ -1179,6 +1187,8 @@ public final class SourceObjectEmitter {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
       }
+    } else if (ifaceMethod.hostMethodDescriptor != null) {
+      retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor);
     } else if (ifaceMethod.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
       retDesc = retConsume.consumeDynamicJvmClass();
     } else {
@@ -1212,7 +1222,8 @@ public final class SourceObjectEmitter {
       buildArgRecordComposite(
           seq, argRecord, ifaceMethod, firstParamIsExprContext, paramSlotCount);
     } else if (kind == BuiltinInterfaceKind.BINDING
-        || kind == BuiltinInterfaceKind.TARGET) {
+        || kind == BuiltinInterfaceKind.TARGET
+        || (kind == null && !ifaceMethod.dataFieldNames.isEmpty())) {
       var dataFields = ifaceMethod.dataFieldNames;
       for (int i = 0; i < dataFields.size(); i++) {
         var hostSlot = 1 + i;

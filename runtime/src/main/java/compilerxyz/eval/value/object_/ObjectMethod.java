@@ -1,5 +1,5 @@
 package compilerxyz.eval.value.object_;
 
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.eval.Type;
 
-public record ObjectMethod(String langName, TypeFunctionDynamic funcType) {}
+public record ObjectMethod(String langName, Type funcType) {}

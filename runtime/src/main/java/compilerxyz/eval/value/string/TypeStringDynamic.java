@@ -94,7 +94,8 @@ public record TypeStringDynamic()
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toLowerCase",
-                  DESC_TO_STR)),
+                  DESC_TO_STR,
+                  false)),
           new Pair<>(
               new ConstKey.Str("toUpperCase"),
               new compilerxyz.eval.value.function.TypeMethodDynamic(
@@ -103,7 +104,8 @@ public record TypeStringDynamic()
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toUpperCase",
-                  DESC_TO_STR)));
+                  DESC_TO_STR,
+                  false)));
 
   @Override
   public String typeDesc() {

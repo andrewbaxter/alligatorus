@@ -443,8 +443,7 @@ public final class PushStructsGen {
     var anyTypeArg = ref(ANY_TYPE, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
     var stagedExprArg = ref(STAGED_EXPR, CodeBlock.of("new $T()", TYPE_EXPR));
     var uniqueArg = ref(UNIQUE_RT, CodeBlock.of("new $T()", TYPE_UNIQUE_RT));
-    var ifaceRefArg =
-        ref(SOURCE_INTERFACE_REF, CodeBlock.of("new $T()", TYPE_SOURCE_INTERFACE_DYNAMIC));
+    var ifaceRefArg = ref(ClassName.OBJECT, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
     var recordArg =
         new TypeRef(
             ParameterizedTypeName.get(

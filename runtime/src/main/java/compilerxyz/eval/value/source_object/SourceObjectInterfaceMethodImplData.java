@@ -128,7 +128,8 @@ public final class SourceObjectInterfaceMethodImplData {
       argParamIds = TList.empty();
       compiledArgParamTypes = TList.empty();
     } else if (iface.builtinKind == BuiltinInterfaceKind.BINDING
-        || iface.builtinKind == BuiltinInterfaceKind.TARGET) {
+        || iface.builtinKind == BuiltinInterfaceKind.TARGET
+        || (iface.builtinKind == null && !ifaceMethod.dataFieldNames.isEmpty())) {
       var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
       if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
         bodyScope.values.put(
@@ -145,11 +146,25 @@ public final class SourceObjectInterfaceMethodImplData {
         paramTypes = TList.empty();
       } else if (dataFieldNames.size() == 1) {
         paramTypes = TList.of(methodArgType);
+      } else if (methodArgType instanceof compilerxyz.eval.value.record.Record rec) {
+        paramTypes = new TList<>(dataFieldNames.size());
+        for (var fieldName : dataFieldNames) {
+          var f = rec.fields().getOrNull(new ConstKey.Str(fieldName));
+          if (f == null) {
+            throw new AssertionError(
+                "Record method arg_type missing field '" + fieldName + "'");
+          }
+          if (!(f instanceof compilerxyz.eval.value.record.RecordField.Dynamic fd)) {
+            throw new AssertionError(
+                "Record method arg_type field '" + fieldName + "' is not Dynamic");
+          }
+          paramTypes.add(fd.type());
+        }
       } else {
         var tupleAspectOpt = AspectTuple.getMaybe(xx, methodArgType);
         if (!(tupleAspectOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
           throw new AssertionError(
-              "Multi-field builtin method arg_type must be a Tuple, got: " + methodArgType.typeDesc());
+              "Multi-field builtin method arg_type must be a Tuple or Record, got: " + methodArgType.typeDesc());
         }
         paramTypes = TList.from(tupleSome.value().elementTypes());
       }
@@ -254,7 +269,8 @@ public final class SourceObjectInterfaceMethodImplData {
     if (isArgMethod) {
       emitArgIds = TList.empty();
     } else if (iface.builtinKind == BuiltinInterfaceKind.BINDING
-        || iface.builtinKind == BuiltinInterfaceKind.TARGET) {
+        || iface.builtinKind == BuiltinInterfaceKind.TARGET
+        || (iface.builtinKind == null && !ifaceMethod.dataFieldNames.isEmpty())) {
       emitArgIds = argParamIds;
     } else {
       var methodArgT = ifaceMethod.argRecordType != null ? ifaceMethod.argRecordType : ifaceMethod.argType;

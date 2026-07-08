@@ -7,7 +7,9 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.TypeId;
+import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
+import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -15,6 +17,7 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.Opt;
 
 public record TypeInterfaceSpec()
     implements Type, AspectConsumeDynamic, ExporterAny {
@@ -35,6 +38,14 @@ public record TypeInterfaceSpec()
   @Override
   public Type valueTypeOf() {
     return new TypeRoot.InterfaceSpec();
+  }
+
+  @Override
+  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(AspectConsumeDynamic.ID)) {
+      return Opt.some(this);
+    }
+    return Opt.none();
   }
 
   @Override

@@ -164,6 +164,30 @@ public record TypeOptionDynamic(Type elementType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
+    if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
+      var selfDyn = self.code().dynamic();
+      if (selfDyn == null) {
+        return EResult.err(loc, "TypeOptionDynamic::field(value): self has no runtime code");
+      }
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(selfDyn);
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+              loc,
+              compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+                  compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some"))));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+              loc,
+              compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some"),
+              "value",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)));
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
+              Opt.some(ValueDynamic.stack(elementType))));
+    }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on option");

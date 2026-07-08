@@ -309,7 +309,8 @@ public final class TypeSourceObjectDynamic
             retType,
             objectInternalName,
             fieldName,
-            descObjObj);
+            descObjObj,
+            false);
     return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(fieldType))));
   }
 

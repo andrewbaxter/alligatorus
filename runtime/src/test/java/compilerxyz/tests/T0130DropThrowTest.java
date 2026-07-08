@@ -132,6 +132,38 @@ public final class T0130DropThrowTest {
                                                 mb.evalStack(),
                                                 mb.scopeUse("outer"))))))))),
                 mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalAspectBind(),
+                        ifaceMethods(
+                            mb,
+                            TList.of(
+                                new TestMb.RecordPair(
+                                    "bind",
+                                    mb.call(
+                                        mb.field(
+                                            mb.field(
+                                                mb.call(
+                                                    mb.evalAspectLookup(),
+                                                    mb.tupleOf(
+                                                        mb.typesString(),
+                                                        mb.evalAspectBind(),
+                                                        mb.field(
+                                                            mb.scopeUse("arg"), mb.str("xx")))),
+                                                mb.str("value")),
+                                            mb.str("bind")),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx",
+                                                    mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                new TestMb.RecordPair(
+                                                    "loc",
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                                new TestMb.RecordPair(
+                                                    "cv",
+                                                    mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))),
+                mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("new")),
                     mb.tupleOf()))),
         mb.literalNull());
