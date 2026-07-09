@@ -233,7 +233,7 @@ public final class DynRuntime {
       argRecordFields.put(
           new compilerxyz.eval.ConstKey.Str("xx"),
           new compilerxyz.eval.value.record.RecordField.Dynamic(
-              new compilerxyz.eval.value.code_value_extern.TypeExprContextDynamic()));
+              compilerxyz.eval.ExprContext.dynamicType()));
       argRecordFields.put(
           new compilerxyz.eval.ConstKey.Str("loc"),
           new compilerxyz.eval.value.record.RecordField.Dynamic(

@@ -24,8 +24,6 @@ public final class TraitsGen {
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
   private static final ClassName EXPR_CONTEXT =
       ClassName.get("compilerxyz.eval", "ExprContext");
-  private static final ClassName TYPE_EXPR_CONTEXT_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic");
   private static final ClassName TYPE_REF_PUSH =
       ClassName.get("compilerxyz.gen", "TypeRefPush");
   private static final ClassName TYPE_UNIQUE =
@@ -46,8 +44,7 @@ public final class TraitsGen {
             TYPE_ERESULT_DYNAMIC,
             CodeBlock.of(
                 "new $T(new $T())", TYPE_ERESULT_DYNAMIC, TYPE_CODE_VALUE_EXTERN_DYNAMIC));
-    var xxRef =
-        new TypeRef(EXPR_CONTEXT, CodeBlock.of("new $T()", TYPE_EXPR_CONTEXT_DYNAMIC));
+    var xxRef = TypeRef.viaPush(EXPR_CONTEXT);
     var typeRefPush = TypeRef.viaPush(TYPE_REF_PUSH);
     var unique = TypeRef.unit(TYPE_UNIQUE);
 

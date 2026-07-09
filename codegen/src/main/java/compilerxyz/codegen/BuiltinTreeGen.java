@@ -386,9 +386,7 @@ public final class BuiltinTreeGen {
         new TypeRef(
             ClassName.get("compilerxyz.eval", "ExprContext"),
             CodeBlock.of(
-                "new $T()",
-                ClassName.get(
-                    "compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic")));
+                "$T.dynamicType()", ClassName.get("compilerxyz.eval", "ExprContext")));
     var dropRet =
         new TypeRef(
             TYPE_ERESULT_DYNAMIC,
@@ -453,13 +451,11 @@ public final class BuiltinTreeGen {
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
     var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
     var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var typeExprContextDynamic =
-        ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeExprContextDynamic");
     var typeQExprIdDynamic =
         ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeQExprIdDynamic");
 
     var bindingXx =
-        new TypeRef(exprContext, CodeBlock.of("new $T()", typeExprContextDynamic));
+        new TypeRef(exprContext, CodeBlock.of("$T.dynamicType()", exprContext));
     var bindingLoc =
         new TypeRef(qexprId, CodeBlock.of("new $T()", typeQExprIdDynamic));
     var bindingCode =
@@ -925,10 +921,8 @@ var targetBindSub =
                                 new TypeRef(
                                     ClassName.get("compilerxyz.eval", "ExprContext"),
                                     CodeBlock.of(
-                                        "new $T()",
-                                        ClassName.get(
-                                            "compilerxyz.eval.value.code_value_extern",
-                                            "TypeExprContextDynamic")))),
+                                        "$T.dynamicType()",
+                                        ClassName.get("compilerxyz.eval", "ExprContext")))),
                             new NamedTypeRef(
                                 "staged",
                                 new TypeRef(
@@ -1024,10 +1018,8 @@ var targetBindSub =
                                 new TypeRef(
                                     ClassName.get("compilerxyz.eval", "ExprContext"),
                                     CodeBlock.of(
-                                        "new $T()",
-                                        ClassName.get(
-                                            "compilerxyz.eval.value.code_value_extern",
-                                            "TypeExprContextDynamic"))))),
+                                        "$T.dynamicType()",
+                                        ClassName.get("compilerxyz.eval", "ExprContext"))))),
                         ClassName.get(String.class),
                         CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC),
                         pendingBody(
@@ -1053,10 +1045,8 @@ var targetBindSub =
                                         ClassName.get("compilerxyz.eval", "Binding"))))),
                         ClassName.get("compilerxyz.eval", "ExprContext"),
                         CodeBlock.of(
-                            "new $T()",
-                            ClassName.get(
-                                "compilerxyz.eval.value.code_value_extern",
-                                "TypeExprContextDynamic")),
+                            "$T.dynamicType()",
+                            ClassName.get("compilerxyz.eval", "ExprContext")),
                         pendingBody(
                             5009,
                             "new_expr_context",

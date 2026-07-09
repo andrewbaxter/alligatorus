@@ -1037,26 +1037,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record ExprContextDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_EXPR_CONTEXT_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "type<ExprContext-dynamic>";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
   record BindResultDynamic() implements TypeRoot {
     @Override
     public TypeId typeId() { return GenTypeIds.TYPE_ROOT_BIND_RESULT_DYNAMIC_TYPE_ID; }
