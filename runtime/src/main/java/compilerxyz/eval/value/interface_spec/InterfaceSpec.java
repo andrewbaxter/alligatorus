@@ -5,7 +5,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.SourceInterfaceRef;
+import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -14,7 +14,7 @@ public record InterfaceSpec(
     Unique identity,
     Opt<BuiltinInterfaceKind> builtinKind,
     TList<InterfaceMethodSpec> methods,
-    Opt<SourceInterfaceRef> sourceRef)
+    Opt<InterfaceData> sourceRef)
     implements Value {
 
   @Override

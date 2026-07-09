@@ -11,7 +11,9 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
@@ -29,6 +31,7 @@ import compilerxyz.gen.GenTypeIds;
 public record TypeTypeSourceObjectNewDynamic()
     implements Type,
         AspectBind,
+        AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectInitialBind,
@@ -58,6 +61,7 @@ public record TypeTypeSourceObjectNewDynamic()
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBind.ID)
+        || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectInitialBind.ID)
@@ -71,6 +75,11 @@ public record TypeTypeSourceObjectNewDynamic()
   @Override
   public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindViaTarget(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Opt<TargetBindSub>> bindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
   }
 
   @Override

@@ -29,7 +29,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-public record TypeSourceInterfaceDynamic()
+public record TypeAnyInterfaceDynamic()
     implements
         Type,
         AspectAspect,
@@ -46,7 +46,7 @@ public record TypeSourceInterfaceDynamic()
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
-        compilerxyz.eval.value.source_interface.SourceInterfaceRef.class);
+        compilerxyz.eval.value.source_interface.InterfaceData.class);
   }
 
   @Override
@@ -73,23 +73,13 @@ public record TypeSourceInterfaceDynamic()
   }
 
   @Override
-  public Unique getUnique(Value value) {
-    if (!(value instanceof SourceInterfaceRef ref)) {
-      throw new IllegalStateException(
-          "TypeSourceInterfaceDynamic::getUnique: expected SourceInterfaceRef, got "
-              + (value == null ? "null" : value.getClass()));
-    }
-    return ref.data().identity;
+  public Unique getUnique(InterfaceData value) {
+    return value.identity;
   }
 
   @Override
-  public SourceInterfaceData getIfaceData(Value value) {
-    if (!(value instanceof SourceInterfaceRef ref)) {
-      throw new IllegalStateException(
-          "TypeSourceInterfaceDynamic::getIfaceData: expected SourceInterfaceRef, got "
-              + (value == null ? "null" : value.getClass()));
-    }
-    return ref.data();
+  public InterfaceData getIfaceData(InterfaceData value) {
+    return value;
   }
 
   @Override
@@ -102,7 +92,7 @@ public record TypeSourceInterfaceDynamic()
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeAnyInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -137,7 +127,7 @@ public record TypeSourceInterfaceDynamic()
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "TypeSourceInterfaceDynamic::typeCastFrom: CodeValue has no value");
+      return EResult.err(loc, "TypeAnyInterfaceDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueTypeOf();
     if (sourceType.typeAspect(xx, GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
@@ -185,7 +175,7 @@ public record TypeSourceInterfaceDynamic()
       var args = new TList<CodeDynamic>();
       args.add(sourceCode);
       var call =
-          compilerxyz.eval.dynamic.DynRuntime.SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
+          compilerxyz.eval.dynamic.DynRuntime.INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
               loc, xx.vx, args);
       return EResult.ok(
           new CodeValue(

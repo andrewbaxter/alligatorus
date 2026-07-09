@@ -50,7 +50,7 @@ final class AspectsGen {
       ClassName.get("compilerxyz.artifact", "ArtifactExporter");
   private static final ClassName SOURCE_INTERFACE_DATA =
       ClassName.get(
-          "compilerxyz.eval.value.source_interface", "SourceInterfaceData");
+          "compilerxyz.eval.value.source_interface", "InterfaceData");
   private static final ClassName VALUE_DYNAMIC_SOURCE =
       ClassName.get("compilerxyz.eval.value", "ValueDynamic", "Source");
 
@@ -688,12 +688,12 @@ final class AspectsGen {
                 new AspectMethod(
                     "",
                     "getUnique",
-                    TList.of(new Param("value", VALUE)),
+                    TList.of(new Param("value", SOURCE_INTERFACE_DATA)),
                     UNIQUE),
                 new AspectMethod(
                     "",
                     "getIfaceData",
-                    TList.of(new Param("value", VALUE)),
+                    TList.of(new Param("value", SOURCE_INTERFACE_DATA)),
                     SOURCE_INTERFACE_DATA))));
   }
 }

@@ -15,9 +15,12 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.TypeRoot;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 
 public record TypeInterfaceSpec()
     implements Type, AspectConsumeDynamic, ExporterAny {
@@ -56,6 +59,31 @@ public record TypeInterfaceSpec()
   @Override
   public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+  }
+
+  @Override
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+    return destType instanceof TypeAnyInterfaceDynamic;
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    if (destType instanceof TypeAnyInterfaceDynamic) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc, "cast interface_spec → interface_ref: source has no runtime code");
+      }
+      var args = new TList<CodeDynamic>();
+      args.add(sourceCode);
+      var call =
+          compilerxyz.eval.dynamic.DynRuntime.SPEC_TO_INTERFACE_DATA.emitInvocation(
+              loc, xx.vx, args);
+      return EResult.ok(
+          new CodeValue(
+              compilerxyz.eval.Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
+    }
+    return EResult.err(loc, "Cannot cast interface_spec to " + destType.typeDesc());
   }
 
   @Override

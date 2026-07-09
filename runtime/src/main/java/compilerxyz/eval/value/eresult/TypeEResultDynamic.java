@@ -21,6 +21,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
@@ -32,6 +33,7 @@ public record TypeEResultDynamic(Type elementType)
         Type,
         AspectConsumeDynamic,
         AspectField,
+        AspectStackValueDynamic,
         ExporterAny {
 
   @Override
@@ -57,10 +59,17 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID) || key.equals(AspectField.ID)) {
+    if (key.equals(AspectConsumeDynamic.ID)
+        || key.equals(AspectField.ID)
+        || key.equals(AspectStackValueDynamic.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public CodeValue toValue(QExprId loc, CodeDynamic value) {
+    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(loc, value, this);
   }
 
   private sealed interface FieldSpec {
@@ -93,6 +102,35 @@ public record TypeEResultDynamic(Type elementType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
+    if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
+      var selfDyn = self.code().dynamic();
+      if (selfDyn == null) {
+        return EResult.err(loc, "TypeEResultDynamic::field(value): self has no runtime code");
+      }
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(selfDyn);
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.literalString(
+              new compilerxyz.eval.dynamic.CodeLoc.Some(loc), "eresult.value"));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.of("compilerxyz/eval/EResult"),
+              "requireValue",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
+                  JavaDataDescriptor.fromClass(String.class))));
+      if (elementType instanceof AspectConsumeDynamic elemConsume) {
+        var elemDesc = elemConsume.consumeDynamicJvmClass();
+        if (elemDesc.value().startsWith("L")
+            && !elemDesc.value().equals("Ljava/lang/Object;")) {
+          seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+        }
+      }
+      return EResult.ok(new CodeValue(
+          Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
+          Opt.some(compilerxyz.eval.value.ValueDynamic.stack(elementType))));
+    }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on eresult");

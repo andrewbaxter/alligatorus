@@ -12,8 +12,8 @@ import compilerxyz.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.eval.value.source_interface.SourceInterfaceData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
@@ -36,7 +36,7 @@ public final class DefinitionSet implements ExporterAny {
   public final TOrderedMap<DefSetId, DefinitionSet> dependencies;
   public boolean finished;
   public final TList<SourceFunctionData> functions;
-  public final TList<SourceInterfaceData> interfaces;
+  public final TList<InterfaceData> interfaces;
   public final Counter nextEntryId;
   public final Counter nextFieldId;
   public final Counter nextInterfaceMethodId;
@@ -161,7 +161,7 @@ public final class DefinitionSet implements ExporterAny {
           }
           var interfaces = new TList<Artifact>(set.interfaces.size());
           for (var i : set.interfaces) {
-            var iConst = new TypeSourceInterfaceConst(i);
+            var iConst = new TypeInterfaceConst(i);
             var artRes = ArtifactSupport.exportArtifact(xx, loc, iConst);
             if (artRes.hasErrors()) {
               artRes.drainInto(errors);
@@ -262,7 +262,7 @@ public final class DefinitionSet implements ExporterAny {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
                         var v = any.requireValue("DefinitionSet::finalizer interface artifact");
-                        if (!(v instanceof TypeSourceInterfaceConst iConst)) {
+                        if (!(v instanceof TypeInterfaceConst iConst)) {
                           throw new IllegalStateException(
                               "def-set interface artifact had wrong type: " + v.getClass());
                         }

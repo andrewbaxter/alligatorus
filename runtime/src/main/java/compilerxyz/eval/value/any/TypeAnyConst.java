@@ -100,6 +100,7 @@ public record TypeAnyConst()
         "TypeAnyConst::type_: expected ValueAnyConst, got " + value.getClass());
   }
 
+
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     if (!(self.value() instanceof Opt.Some<Value> some)

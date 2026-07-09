@@ -365,12 +365,12 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionConst");
   private static final ClassName TYPE_SOURCE_FUNCTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionDynamic");
-  private static final ClassName SOURCE_INTERFACE_REF =
-      ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceRef");
+  private static final ClassName INTERFACE_REF =
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
   private static final ClassName TYPE_SOURCE_INTERFACE_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceDynamic");
+      ClassName.get("compilerxyz.eval.value.source_interface", "TypeAnyInterfaceDynamic");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
-      ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceMethodData");
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
   private static final ClassName SOURCE_OBJECT_REF =
       ClassName.get("compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic");
   private static final ClassName SOURCE_DATA_METHOD_DATA =
@@ -467,7 +467,7 @@ public final class PushStructsGen {
     var retDefinitionSetBuilder =
         TypeRef.opaque(ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"));
     var retOptionPush = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "OptionPush"));
-    var retSourceInterfaceRef = TypeRef.opaque(SOURCE_INTERFACE_REF);
+    var retInterfaceRef = TypeRef.opaque(INTERFACE_REF);
     var retSourceUnionNewRef = TypeRef.opaque(SOURCE_UNION_NEW_REF);
 
     var definitionSetBuilder =
@@ -589,13 +589,13 @@ public final class PushStructsGen {
         new PushStructSpec(
             "SourceInterfaceResult",
             3005L,
-            TList.of(new NamedTypeRef("interface_ref", dataPath(SOURCE_INTERFACE_REF))),
+            TList.of(new NamedTypeRef("interface_ref", dataPath(INTERFACE_REF))),
             TList.of(
                 new PushField(
                     "type_",
                     "interface_ref",
                     ref(
-                        SOURCE_INTERFACE_REF,
+                        INTERFACE_REF,
                         CodeBlock.of("new $T()", TYPE_SOURCE_INTERFACE_DYNAMIC)),
                     empty)),
             TList.of(
@@ -663,7 +663,7 @@ public final class PushStructsGen {
             "new " + TYPE_SOURCE_INTERFACE_DYNAMIC.canonicalName() + "()",
             empty,
             "srcObjectImplAspect",
-            retSourceInterfaceRef));
+            retInterfaceRef));
     var retTypeSourceObjectNewConst = TypeRef.opaque(TYPE_SOURCE_OBJECT_NEW_CONST);
     sourceObjectMethods.add(
         new PushMethod(

@@ -27,11 +27,56 @@ public final class T0130DropThrowTest {
         mb.recordOf(staged));
   }
 
-  private static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
+  private static SourceExpr canaryBindBody(TestMb mb) {
+    return mb.call(
+        mb.field(
+            mb.field(
+                mb.call(
+                    mb.evalAspectLookup(),
+                    mb.tupleOf(
+                        mb.typesString(),
+                        mb.evalAspectBind(),
+                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                mb.str("value")),
+            mb.str("bind")),
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
+  }
+
+private static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
     return mb.call(
         mb.lower(
             mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                mb.bind(
+                    "cb",
+                    mb.call(
+                        mb.field(mb.scopeUse("d"), mb.str("object")),
+                        mb.str(name + "Binding"))),
+                mb.call(
+                    mb.field(mb.scopeUse("cb"), mb.str("set_inner")), mb.typesAny()),
+                mb.call(
+                    mb.field(mb.scopeUse("cb"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalBinding(),
+                        ifaceMethods(
+                            mb,
+                            TList.of(
+                                new TestMb.RecordPair(
+                                    "bindingUse_",
+                                    mb.call(
+                                        mb.evalCodevalue(),
+                                        mb.tupleOf(
+                                            mb.field(mb.scopeUse("arg"), mb.str("code")),
+                                            mb.call(
+                                                mb.evalStack(),
+                                                mb.scopeUse("inner"))))))))),
+                mb.bind(
+                    "cbnew",
+                    mb.call(mb.field(mb.scopeUse("cb"), mb.str("new")), mb.tupleOf())),
                 mb.bind(
                     "u",
                     mb.call(
@@ -138,31 +183,7 @@ public final class T0130DropThrowTest {
                         ifaceMethods(
                             mb,
                             TList.of(
-                                new TestMb.RecordPair(
-                                    "bind",
-                                    mb.call(
-                                        mb.field(
-                                            mb.field(
-                                                mb.call(
-                                                    mb.evalAspectLookup(),
-                                                    mb.tupleOf(
-                                                        mb.typesString(),
-                                                        mb.evalAspectBind(),
-                                                        mb.field(
-                                                            mb.scopeUse("arg"), mb.str("xx")))),
-                                                mb.str("value")),
-                                            mb.str("bind")),
-                                        mb.recordOf(
-                                            TList.of(
-                                                new TestMb.RecordPair(
-                                                    "xx",
-                                                    mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                                new TestMb.RecordPair(
-                                                    "loc",
-                                                    mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                                new TestMb.RecordPair(
-                                                    "cv",
-                                                    mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))),
+                                new TestMb.RecordPair("bind", canaryBindBody(mb)))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("new")),
                     mb.tupleOf()))),
@@ -613,5 +634,108 @@ public final class T0130DropThrowTest {
     var msg = res.toString();
     assertTrue(
         msg.contains("Unreachable"), () -> "expected Unreachable error message, got: " + msg);
+  }
+
+  private static SourceExpr canaryInstance(TestMb mb, String canaryScope, String textLiteral) {
+    return mb.as_(
+        mb.as_(mb.str(textLiteral), mb.typesString()), mb.scopeUse(canaryScope));
+  }
+
+  @Test
+  public void test01490TupleSourcelessDropReverseOrder() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.tupleOf(
+                    canaryInstance(mb, "cA", "a"),
+                    mb.str("const_b"),
+                    canaryInstance(mb, "cC", "c")),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("drop_C", "drop_A", "after"),
+        messages(res),
+        () -> "sourceless tuple drop should reverse construction order; got " + messages(res));
+  }
+
+  @Test
+  public void test01500TupleSourcedDropReverseOrder() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.bind(
+                    "t",
+                    mb.tupleOf(
+                        canaryInstance(mb, "cA", "a"),
+                        mb.str("const_b"),
+                        canaryInstance(mb, "cC", "c"))),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("after", "drop_C", "drop_A"),
+        messages(res),
+        () -> "sourced tuple drop should reverse construction order at end of scope; got "
+            + messages(res));
+  }
+
+  @Test
+  public void test01510RecordSourcelessDropReverseOrder() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                        new TestMb.RecordPair("b", mb.str("const_b")),
+                        new TestMb.RecordPair("c", canaryInstance(mb, "cC", "c")))),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("drop_C", "drop_A", "after"),
+        messages(res),
+        () ->
+            "sourceless record drop should reverse construction order (canonical: a,b,c); got "
+                + messages(res));
+  }
+
+  @Test
+  public void test01520RecordSourcedDropReverseOrder() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.bind(
+                    "r",
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                            new TestMb.RecordPair("b", mb.str("const_b")),
+                            new TestMb.RecordPair("c", canaryInstance(mb, "cC", "c"))))),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("after", "drop_C", "drop_A"),
+        messages(res),
+        () -> "sourced record drop should reverse construction order at end of scope; got "
+            + messages(res));
   }
 }

@@ -106,6 +106,14 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "bool");
   }
 
+  public SourceExpr typesBinding() {
+    return builtin("types", "binding");
+  }
+
+  public SourceExpr typesBindResult() {
+    return builtin("types", "bind_result");
+  }
+
   public SourceExpr typesCodedyn() {
     return builtin("types", "codedyn");
   }

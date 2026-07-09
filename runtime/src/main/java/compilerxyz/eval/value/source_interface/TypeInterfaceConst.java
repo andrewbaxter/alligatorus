@@ -42,7 +42,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
-public record TypeSourceInterfaceConst(SourceInterfaceData data)
+public record TypeInterfaceConst(InterfaceData data)
     implements
         Type,
         AspectArtifact,
@@ -70,7 +70,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
-        compilerxyz.eval.value.source_interface.SourceInterfaceRef.class);
+        compilerxyz.eval.value.source_interface.InterfaceData.class);
   }
 
   @Override
@@ -119,7 +119,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
             Function<JsonValue, ArtifactBody> makeBody) {
           return EResult.err(
               loc,
-              "TypeSourceInterfaceConst::exporterRootDelegateSelfExport: recursive export_artifact + "
+              "TypeInterfaceConst::exporterRootDelegateSelfExport: recursive export_artifact + "
                   + "type_source_exports port deferred");
         }
 
@@ -128,7 +128,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return EResult.err(
               loc,
-              "TypeSourceInterfaceConst::exporterRootDelegateSelfFromArtifactData: recursive "
+              "TypeInterfaceConst::exporterRootDelegateSelfFromArtifactData: recursive "
                   + "import_independent_artifact + type_source_exports port deferred");
         }
       };
@@ -137,7 +137,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, "TypeSourceInterfaceConst::field: key has no compile-time value");
+      return EResult.err(loc, "TypeInterfaceConst::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -146,7 +146,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on interface");
     }
     String keyName = keyStr.value();
-    SourceInterfaceMethodData match = null;
+    InterfaceMethodData match = null;
     for (var m : data.methods) {
       if (m.name.equals(keyName)) {
         match = m;
@@ -226,12 +226,13 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeSourceInterfaceConst::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeInterfaceConst::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
+    return destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec
+        || destType instanceof TypeAnyInterfaceDynamic;
   }
 
   @Override
@@ -245,7 +246,7 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
       var args = new TList<CodeDynamic>();
       args.add(sourceCode);
       var call =
-          compilerxyz.eval.dynamic.DynRuntime.SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
+          compilerxyz.eval.dynamic.DynRuntime.INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
               loc, xx.vx, args);
       return EResult.ok(
           new CodeValue(
@@ -254,17 +255,21 @@ public record TypeSourceInterfaceConst(SourceInterfaceData data)
                   ValueDynamic.stack(
                       new compilerxyz.eval.value.interface_spec.TypeInterfaceSpec()))));
     }
+    if (destType instanceof TypeAnyInterfaceDynamic) {
+      return EResult.ok(
+          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(destType))));
+    }
     return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
   }
 
   @Override
   public Binding initialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeSourceInterfaceConst(data));
+    return new BindingDynamicBinding(dynamicKey, new TypeInterfaceConst(data));
   }
 
   @Override
   public Type type_(Value value) {
-    return new TypeSourceInterfaceDynamic();
+    return new TypeAnyInterfaceDynamic();
   }
 
   @Override

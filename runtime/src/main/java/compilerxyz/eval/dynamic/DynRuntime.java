@@ -19,8 +19,8 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.SourceInterfaceRef;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
@@ -30,8 +30,7 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.Binding;
-import compilerxyz.gen.Target;
+import compilerxyz.eval.Binding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.ArrayList;
@@ -95,7 +94,7 @@ public final class DynRuntime {
   public static final TypeFunctionDynamic INTERFACE_REF_TO_TYPE_TYPE =
       fn(
           "interfaceRefToType",
-          desc(cls(Type.class), cls(ExprContext.class), cls(SourceInterfaceRef.class)));
+          desc(cls(Type.class), cls(ExprContext.class), cls(InterfaceData.class)));
 
   public static final TypeFunctionDynamic OBJECT_TO_INTERFACE_SPEC =
       fn(
@@ -104,12 +103,26 @@ public final class DynRuntime {
               cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
               cls(compilerxyz.eval.value.object_.TypeObjectDynamic.class)));
 
-  public static final TypeFunctionDynamic SOURCE_INTERFACE_REF_TO_INTERFACE_SPEC =
+  public static final TypeFunctionDynamic OBJECT_TO_INTERFACE_DATA =
       fn(
-          "sourceInterfaceRefToInterfaceSpec",
+          "objectToInterfaceData",
+          desc(
+              cls(InterfaceData.class),
+              cls(compilerxyz.eval.value.object_.TypeObjectDynamic.class)));
+
+  public static final TypeFunctionDynamic SPEC_TO_INTERFACE_DATA =
+      fn(
+          "specToInterfaceData",
+          desc(
+              cls(InterfaceData.class),
+              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class)));
+
+  public static final TypeFunctionDynamic INTERFACE_REF_TO_INTERFACE_SPEC =
+      fn(
+          "interfaceRefToInterfaceSpec",
           desc(
               cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
-              cls(SourceInterfaceRef.class)));
+              cls(InterfaceData.class)));
 
   public static final TypeFunctionDynamic UNIQUE_EQ_TYPE =
       fn(
@@ -120,23 +133,23 @@ public final class DynRuntime {
               cls(Unique.class),
               cls(Unique.class)));
 
-  private static compilerxyz.eval.value.source_interface.SourceInterfaceData
-      synthesizeSourceInterfaceDataFromObject(
+  private static compilerxyz.eval.value.source_interface.InterfaceData
+      synthesizeInterfaceDataFromObject(
           compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
     if (!(obj.aspectUnique() instanceof Opt.Some<Unique> auq)) {
       throw new IllegalStateException(
-          "synthesizeSourceInterfaceDataFromObject: TypeObjectDynamic "
+          "synthesizeInterfaceDataFromObject: TypeObjectDynamic "
               + obj.typeDesc()
               + " has no aspectUnique");
     }
     if (!(obj.interfaceRepresented() instanceof Opt.Some<JavaInternalName> ir)) {
       throw new IllegalStateException(
-          "synthesizeSourceInterfaceDataFromObject: TypeObjectDynamic "
+          "synthesizeInterfaceDataFromObject: TypeObjectDynamic "
               + obj.typeDesc()
               + " has no interfaceRepresented");
     }
     var data =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceData(null, auq.value(), null);
+        new compilerxyz.eval.value.source_interface.InterfaceData(null, auq.value(), null);
     data.description = obj.typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
     int idx = 0;
@@ -152,10 +165,10 @@ public final class DynRuntime {
         retType = mt.ret();
       } else {
         throw new IllegalStateException(
-            "synthesizeSourceInterfaceDataFromObject: unsupported funcType " + m.funcType());
+            "synthesizeInterfaceDataFromObject: unsupported funcType " + m.funcType());
       }
       var md =
-          new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(
+          new compilerxyz.eval.value.source_interface.InterfaceMethodData(
               m.langName(), "_im_" + obj.typeDesc() + idx++);
       md.argType = argType;
       md.retType = retType;
@@ -181,16 +194,16 @@ public final class DynRuntime {
     return data;
   }
 
-  private static compilerxyz.eval.value.source_interface.SourceInterfaceData
-      synthesizeSourceInterfaceDataFromSpec(
+  private static compilerxyz.eval.value.source_interface.InterfaceData
+      synthesizeInterfaceDataFromSpec(
           compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
     var data =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceData(
+        new compilerxyz.eval.value.source_interface.InterfaceData(
             null, spec.identity(), null);
     data.compiledBinaryName = spec.jvmInterfaceName().value().replace('/', '.');
     for (var m : spec.methods()) {
       var md =
-          new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(
+          new compilerxyz.eval.value.source_interface.InterfaceMethodData(
               m.name(), m.fieldName());
       if (m.argType() instanceof Opt.Some<Type> at) md.argType = at.value();
       if (m.argRecordType() instanceof Opt.Some<Type> art) md.argRecordType = art.value();
@@ -230,7 +243,9 @@ public final class DynRuntime {
               new compilerxyz.eval.value.code_value_extern.TypeCodeValueExternDynamic()));
       var argRecord =
           new compilerxyz.eval.value.record.Record(Opt.none(), argRecordFields);
-      var retType = new compilerxyz.eval.value.bind_result.TypeBindResultDynamic();
+      var retType =
+          new compilerxyz.eval.value.eresult.TypeEResultDynamic(
+              new compilerxyz.eval.value.bind_result.TypeBindResultDynamic());
       var bindMethod =
           new compilerxyz.eval.value.function.TypeMethodDynamic(
               ANY, argRecord, retType, jvmInterface, "bind", bindDesc, true);
@@ -297,9 +312,21 @@ public final class DynRuntime {
         some.value(), (Unique) identity, Opt.none(), methods, Opt.none());
   }
 
-  public static compilerxyz.eval.value.interface_spec.InterfaceSpec sourceInterfaceRefToInterfaceSpec(
-      SourceInterfaceRef ref) {
-    var data = ref.data();
+  public static InterfaceData objectToInterfaceData(
+      compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
+    return synthesizeInterfaceDataFromObject(obj);
+  }
+
+  public static InterfaceData specToInterfaceData(
+      compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
+    if (spec.sourceRef() instanceof Opt.Some<InterfaceData> some) {
+      return some.value();
+    }
+    return synthesizeInterfaceDataFromSpec(spec);
+  }
+
+  public static compilerxyz.eval.value.interface_spec.InterfaceSpec interfaceRefToInterfaceSpec(
+      InterfaceData data) {
     var methods = new TList<compilerxyz.eval.value.interface_spec.InterfaceMethodSpec>();
     for (var m : data.methods) {
       methods.add(
@@ -321,7 +348,7 @@ public final class DynRuntime {
     Opt<BuiltinInterfaceKind> kind =
         data.builtinKind == null ? Opt.none() : Opt.some(data.builtinKind);
     return new compilerxyz.eval.value.interface_spec.InterfaceSpec(
-        jvmName, data.identity, kind, methods, Opt.some(ref));
+        jvmName, data.identity, kind, methods, Opt.some(data));
   }
 
   public static Object listPush(TList<Object> list, Object element) {
@@ -422,7 +449,7 @@ public final class DynRuntime {
     Code wrappingCode = Code.of(loc, bound.code());
     compilerxyz.eval.Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
     compilerxyz.eval.Binding wrapped =
-        new BindingSourceObjectWrapper((compilerxyz.gen.Binding) self, underlyingBinding);
+        new BindingSourceObjectWrapper((compilerxyz.eval.Binding) self, underlyingBinding);
     return EResult.ok(new AspectBind.BindResult(wrappingCode, wrapped));
   }
 
@@ -530,8 +557,8 @@ public final class DynRuntime {
     return new StagedExprCell(newTree);
   }
 
-  public static Type interfaceRefToType(ExprContext xx, SourceInterfaceRef ref) {
-    return new TypeSourceInterfaceConst(ref.data());
+  public static Type interfaceRefToType(ExprContext xx, InterfaceData data) {
+    return new TypeInterfaceConst(data);
   }
 
   public static boolean uniqueEq(ExprContext xx, Unique a, Unique b) {
@@ -672,11 +699,10 @@ public final class DynRuntime {
       ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
     var identity = freshUnique(xx);
     var iface =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceData(
+        new compilerxyz.eval.value.source_interface.InterfaceData(
             dsb.inner.defSetId, identity, null, dsb.inner);
     dsb.inner.interfaces.add(iface);
-    return new compilerxyz.gen.SourceInterfaceResult(
-        new compilerxyz.eval.value.source_interface.SourceInterfaceRef(iface));
+    return new compilerxyz.gen.SourceInterfaceResult(iface);
   }
 
   public static Object defSetBuilderFinish(
@@ -730,35 +756,35 @@ public final class DynRuntime {
     return null;
   }
 
-  public static compilerxyz.eval.value.source_interface.SourceInterfaceRef srcInterfaceGetRef(
+  public static compilerxyz.eval.value.source_interface.InterfaceData srcInterfaceGetRef(
       compilerxyz.gen.SourceInterfaceResult sir) {
     return sir.interface_ref;
   }
 
   public static Object srcInterfaceSetDescription(
       ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, String description) {
-    if (sir.interface_ref.data().description != null) {
+    if (sir.interface_ref.description != null) {
       throw new IllegalStateException("Interface already has a description");
     }
-    sir.interface_ref.data().description = description;
+    sir.interface_ref.description = description;
     return null;
   }
 
   public static compilerxyz.gen.SourceInterfaceMethodResult srcInterfaceAddMethod(
       ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, String name) {
-    var ifaceData = sir.interface_ref.data();
+    var ifaceData = sir.interface_ref;
     var ds = lookupDefSet(xx, ifaceData.setId);
     var fieldName =
         "_im" + compilerxyz.eval.DefinitionSet.nextInterfaceMethodId(ds);
     var method =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(name, fieldName);
+        new compilerxyz.eval.value.source_interface.InterfaceMethodData(name, fieldName);
     ifaceData.methods.add(method);
     return new compilerxyz.gen.SourceInterfaceMethodResult(method);
   }
 
   public static Object srcInterfaceSetIsAspect(
       ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, Boolean isAspect) {
-    sir.interface_ref.data().isAspect = isAspect;
+    sir.interface_ref.isAspect = isAspect;
     return null;
   }
 
@@ -815,21 +841,20 @@ public final class DynRuntime {
       Object ifaceArg,
       java.util.Map<Object, Object> recordArg) {
     var record = recordToConstKeyExprMap(recordArg);
-    compilerxyz.eval.value.source_interface.SourceInterfaceData ifaceData;
-    if (ifaceArg instanceof compilerxyz.eval.value.source_interface.SourceInterfaceRef sref) {
-      ifaceData = sref.data();
+    InterfaceData ifaceData;
+    if (ifaceArg instanceof InterfaceData sdata) {
+      ifaceData = sdata;
     } else if (ifaceArg instanceof compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
-      if (spec.sourceRef() instanceof Opt.Some<
-          compilerxyz.eval.value.source_interface.SourceInterfaceRef> some) {
-        ifaceData = some.value().data();
+      if (spec.sourceRef() instanceof Opt.Some<InterfaceData> some) {
+        ifaceData = some.value();
       } else {
-        ifaceData = synthesizeSourceInterfaceDataFromSpec(spec);
+        ifaceData = synthesizeInterfaceDataFromSpec(spec);
       }
     } else if (ifaceArg instanceof compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-      ifaceData = synthesizeSourceInterfaceDataFromObject(obj);
+      ifaceData = synthesizeInterfaceDataFromObject(obj);
     } else {
       throw new IllegalStateException(
-          "srcObjectImplInterface: expected SourceInterfaceRef / InterfaceSpec / TypeObjectDynamic,"
+          "srcObjectImplInterface: expected InterfaceData / InterfaceSpec / TypeObjectDynamic,"
               + " got "
               + (ifaceArg == null ? "null" : ifaceArg.getClass()));
     }
@@ -862,14 +887,14 @@ public final class DynRuntime {
     return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic(sor.type_);
   }
 
-  public static compilerxyz.eval.value.source_interface.SourceInterfaceRef srcObjectImplAspect(
+  public static compilerxyz.eval.value.source_interface.InterfaceData srcObjectImplAspect(
       ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object recordArg) {
     var record = recordToConstKeyExprMap(recordArg);
     var dtData = sor.type_;
     var ds = lookupDefSet(xx, dtData.setId);
     var identity = freshUnique(xx);
     var ifaceData =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceData(
+        new compilerxyz.eval.value.source_interface.InterfaceData(
             ds.defSetId, identity, null, ds);
     ds.interfaces.add(ifaceData);
     ifaceData.isAspect = true;
@@ -885,7 +910,7 @@ public final class DynRuntime {
       var fieldName =
           "_im" + compilerxyz.eval.DefinitionSet.nextInterfaceMethodId(ds);
       var im =
-          new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(imName, fieldName);
+          new compilerxyz.eval.value.source_interface.InterfaceMethodData(imName, fieldName);
       im.argType = new compilerxyz.eval.value.any.TypeAnyDynamic();
       im.retType = new compilerxyz.eval.value.any.TypeAnyDynamic();
       ifaceData.methods.add(im);
@@ -893,7 +918,7 @@ public final class DynRuntime {
     var aspectUniqueField =
         "_im" + compilerxyz.eval.DefinitionSet.nextInterfaceMethodId(ds);
     var aspectIdMethod =
-        new compilerxyz.eval.value.source_interface.SourceInterfaceMethodData(
+        new compilerxyz.eval.value.source_interface.InterfaceMethodData(
             "aspect_id", aspectUniqueField);
     aspectIdMethod.argType = new compilerxyz.eval.value.tuple.Tuple(compilerxyz.util.Opt.none(), new compilerxyz.util.TList<>());
     aspectIdMethod.retType = new compilerxyz.eval.value.unique.TypeUnique();
@@ -935,7 +960,7 @@ public final class DynRuntime {
       impl.methodImpls.add(mImpl);
     }
     dtData.interfaceImpls.add(impl);
-    return new compilerxyz.eval.value.source_interface.SourceInterfaceRef(ifaceData);
+    return ifaceData;
   }
 
   public static Object srcObjectImplValue(
@@ -993,10 +1018,10 @@ public final class DynRuntime {
     var vx = xx.vx;
     var builtinIfaces =
         compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry.bundle(vx.ix.importState);
-    compilerxyz.eval.value.source_interface.SourceInterfaceData ifaceData;
+    compilerxyz.eval.value.source_interface.InterfaceData ifaceData;
     try {
       ifaceData =
-          (compilerxyz.eval.value.source_interface.SourceInterfaceData)
+          (compilerxyz.eval.value.source_interface.InterfaceData)
               compilerxyz.gen.GenBuiltinInterfaces.class.getField(ifaceField).get(builtinIfaces);
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(

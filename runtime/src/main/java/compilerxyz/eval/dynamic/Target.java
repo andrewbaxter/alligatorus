@@ -13,6 +13,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TargetCase;
+import compilerxyz.eval.value.binding.TypeAnyTargetDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.eval.value.tuple.Tuple;
@@ -23,6 +24,10 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 
 public interface Target {
+
+  static Type dynamicType() {
+    return new TypeAnyTargetDynamic();
+  }
 
   default BindResult targetBind(QExprId loc, TargetBindSub sub) {
     throw new AssertionError(

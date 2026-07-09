@@ -59,7 +59,7 @@ final class InterfacesGenTest {
     assertTrue(Files.exists(trait), "trait file missing");
 
     var holderSrc = Files.readString(holder);
-    assertTrue(holderSrc.contains("public final SourceInterfaceData demo;"), holderSrc);
+    assertTrue(holderSrc.contains("public final InterfaceData demo;"), holderSrc);
     assertTrue(
         holderSrc.contains("IM_DEMO_DO_THING_FIELD = \"_im_d0\""),
         "missing field-name constant: " + holderSrc);
@@ -187,7 +187,7 @@ final class InterfacesGenTest {
             TList.of(new Method("m", any, new MethodArgs.Source(TList.of()))));
     InterfacesGen.run(tmp, FORMATTER, TList.of(spec), new TSet<Long>(), new TSet<Long>());
     var src = Files.readString(tmp.resolve("compilerxyz/gen/GenBuiltinInterfaces.java"));
-    assertTrue(src.contains("public final SourceInterfaceData type_;"), src);
+    assertTrue(src.contains("public final InterfaceData type_;"), src);
 
     assertTrue(src.contains("builtinTypeIfaceIdentity"), src);
     assertEquals(1, count(src, "IM_TYPE_M_FIELD"));

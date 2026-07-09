@@ -1,6 +1,7 @@
 package compilerxyz.codegen;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -97,8 +98,8 @@ final class BuiltinTreeGenTest {
 
     assertTrue(
         src.contains(
-            "new External.SourceInterfaceRefExternal( new SourceInterfaceRef(interfaces.aspect_function))"),
-        "interface leaf must inline the SourceInterfaceRefExternal: " + src);
+            "new External.InterfaceRefExternal( interfaces.aspect_function)"),
+        "interface leaf must inline the InterfaceRefExternal: " + src);
 
     assertTrue(
         src.contains("new External.UniqueExternal(AspectStringDynamic.ID)"),
@@ -142,12 +143,12 @@ final class BuiltinTreeGenTest {
         case "binding" -> {
           assertEquals(2005, s.builtinUniqueId());
           assertEquals(3005, s.scopeId());
-          assertEquals("Binding", s.javaTraitName());
+          assertNull(s.javaTraitName());
         }
         case "target" -> {
           assertEquals(2006, s.builtinUniqueId());
           assertEquals(3006, s.scopeId());
-          assertEquals("Target", s.javaTraitName());
+          assertNull(s.javaTraitName());
         }
         case "code_dyn" -> {
           assertEquals(2007, s.builtinUniqueId());

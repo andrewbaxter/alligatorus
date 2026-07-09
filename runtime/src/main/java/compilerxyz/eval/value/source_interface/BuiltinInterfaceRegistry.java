@@ -14,7 +14,7 @@ public final class BuiltinInterfaceRegistry {
     return CACHE.computeIfAbsent(importState, GenBuiltinInterfaces::build);
   }
 
-  public static SourceInterfaceData resolve(
+  public static InterfaceData resolve(
       ImportStateId importState, BuiltinInterfaceKind kind) {
     var ifaces = bundle(importState);
     return switch (kind) {

@@ -27,9 +27,9 @@ public final class InterfacesGen {
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
   private static final ClassName SOURCE_INTERFACE_DATA =
-      ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceData");
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
-      ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceMethodData");
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
   private static final ClassName BUILTIN_INTERFACE_KIND =
       ClassName.get("compilerxyz.eval.value.source_interface", "BuiltinInterfaceKind");
 

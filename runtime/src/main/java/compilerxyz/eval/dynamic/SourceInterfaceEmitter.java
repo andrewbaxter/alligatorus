@@ -1,7 +1,7 @@
 package compilerxyz.eval.dynamic;
 
 import compilerxyz.eval.DefSetId;
-import compilerxyz.eval.value.source_interface.SourceInterfaceData;
+import compilerxyz.eval.value.source_interface.InterfaceData;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
@@ -29,7 +29,7 @@ public final class SourceInterfaceEmitter {
     return binaryNameFor(defSet, interfaceIndex).replace('.', '/');
   }
 
-  public static EmittedInterface emit(DefSetId defSet, long interfaceIndex, SourceInterfaceData data) {
+  public static EmittedInterface emit(DefSetId defSet, long interfaceIndex, InterfaceData data) {
     var binaryName = binaryNameFor(defSet, interfaceIndex);
     var internalName = binaryName.replace('.', '/');
 

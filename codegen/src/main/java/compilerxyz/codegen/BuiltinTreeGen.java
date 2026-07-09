@@ -62,10 +62,8 @@ public final class BuiltinTreeGen {
   private static final ClassName EXTERNAL = ClassName.get("compilerxyz.eval", "External");
   private static final ClassName EXTERNAL_FUNCTION =
       ClassName.get("compilerxyz.eval", "External", "FunctionExternal");
-  private static final ClassName EXTERNAL_SOURCE_INTERFACE_REF =
-      ClassName.get("compilerxyz.eval", "External", "SourceInterfaceRefExternal");
-  private static final ClassName SOURCE_INTERFACE_REF =
-      ClassName.get("compilerxyz.eval.value.source_interface", "SourceInterfaceRef");
+  private static final ClassName EXTERNAL_INTERFACE_REF =
+      ClassName.get("compilerxyz.eval", "External", "InterfaceRefExternal");
 
   private static final ClassName GEN_BUILTIN_INTERFACES =
       ClassName.get(GEN_PACKAGE, "GenBuiltinInterfaces");
@@ -335,18 +333,17 @@ public final class BuiltinTreeGen {
   private static CodeBlock interfaceLeafExpr(InterfaceSpec spec) {
 
     var sourceInterfaceConst =
-        ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
+        ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
     return CodeBlock.of(
         "new $T(new $T($LL), ($T) new $T(interfaces.$N),"
-            + " new $T(new $T(interfaces.$N)))",
+            + " new $T(interfaces.$N))",
         BUILTIN_LEAF_INTERFACE,
         BINDING_ID_BUILTIN,
         (long) spec.scopeId(),
         TYPE,
         sourceInterfaceConst,
         ifaceHolderFieldName(spec),
-        EXTERNAL_SOURCE_INTERFACE_REF,
-        SOURCE_INTERFACE_REF,
+        EXTERNAL_INTERFACE_REF,
         ifaceHolderFieldName(spec));
   }
 
@@ -480,7 +477,7 @@ public final class BuiltinTreeGen {
             "Binding",
             null,
             true,
-            "Binding",
+            null,
             ClassName.get("compilerxyz.eval.value.binding", "TypeAnyBindingDynamic"),
             TList.of(
                 new Method(
@@ -562,7 +559,7 @@ var targetBindSub =
             "Target",
             null,
             true,
-            "Target",
+            null,
             ClassName.get("compilerxyz.eval.value.binding", "TypeAnyTargetDynamic"),
             TList.of(
                 new Method(
@@ -852,6 +849,24 @@ var targetBindSub =
                 "bool",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC)))),
             new Child(
+                "binding",
+                new Leaf(
+                    new LeafSpec.AnyConst(
+                        CodeBlock.of(
+                            "new $T()",
+                            ClassName.get(
+                                "compilerxyz.eval.value.binding",
+                                "TypeAnyBindingDynamic"))))),
+            new Child(
+                "bind_result",
+                new Leaf(
+                    new LeafSpec.AnyConst(
+                        CodeBlock.of(
+                            "new $T()",
+                            ClassName.get(
+                                "compilerxyz.eval.value.bind_result",
+                                "TypeBindResultDynamic"))))),
+            new Child(
                 "any",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC)))),
             new Child(
@@ -1030,14 +1045,14 @@ var targetBindSub =
                         TList.of(
                             new NamedTypeRef(
                                 "target_arg",
-                                TypeRef.viaPush(ClassName.get(GEN_PACKAGE, "Target"))),
+                                TypeRef.viaPush(ClassName.get("compilerxyz.eval.dynamic", "Target"))),
                             new NamedTypeRef(
                                 "scope_arg",
                                 TypeRef.opaque(
                                     ParameterizedTypeName.get(
                                         ClassName.get("compilerxyz.util", "TMap"),
                                         ClassName.get("compilerxyz.eval", "ConstKey"),
-                                        ClassName.get(GEN_PACKAGE, "Binding"))))),
+                                        ClassName.get("compilerxyz.eval", "Binding"))))),
                         ClassName.get("compilerxyz.eval", "ExprContext"),
                         CodeBlock.of(
                             "new $T()",

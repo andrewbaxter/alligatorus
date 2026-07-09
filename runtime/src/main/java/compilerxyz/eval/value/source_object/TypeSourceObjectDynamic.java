@@ -38,7 +38,7 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.binding.TypeAnyBindingDynamic;
 import compilerxyz.eval.value.binding.TypeAnyTargetDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -57,6 +57,7 @@ public final class TypeSourceObjectDynamic
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
+        compilerxyz.gen.AspectType,
         AspectInitialBind,
         AspectLift,
         ExporterAny {
@@ -188,6 +189,18 @@ public final class TypeSourceObjectDynamic
     for (var impl : interfaceImpls) {
       if (key.equals(impl.interface_.identity)) {
         return Opt.some(this);
+      }
+      var kind = impl.interface_.builtinKind;
+      if (kind != null) {
+        boolean exposes = switch (kind) {
+          case ASPECT_DROP_DYNAMIC -> key.equals(compilerxyz.gen.AspectDropDynamic.ID);
+          case ASPECT_FIELD -> key.equals(compilerxyz.gen.AspectField.ID);
+          case ASPECT_FUNCTION -> key.equals(compilerxyz.gen.AspectFunction.ID);
+          case BINDING -> key.equals(AspectBindDynamic.ID);
+          case TYPE -> key.equals(compilerxyz.gen.AspectType.ID);
+          case VALUE, TARGET, CODE_DYN -> false;
+        };
+        if (exposes) return Opt.some(this);
       }
     }
     return Opt.none();
@@ -362,10 +375,7 @@ public final class TypeSourceObjectDynamic
             e);
       }
     } else {
-      return EResult.err(
-          loc,
-          "TypeSourceObjectDynamic::lift: expected SourceObjectInstance, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+      underlyingHost = externalHostValue;
     }
     return underlyingLift
         .lift(xx, loc, underlyingHost)
@@ -455,7 +465,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(ValueDynamic.stack(new TypeSourceInterfaceConst(impl.interface_)))));
+                Opt.some(ValueDynamic.stack(new TypeInterfaceConst(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
@@ -495,4 +505,13 @@ public final class TypeSourceObjectDynamic
       compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
+
+  @Override
+  public Type type_(Value value) {
+    if (value instanceof compilerxyz.eval.value.value_source_object.ValueSourceObjectConst inst) {
+      return new TypeTypeSourceObjectConst(inst.data()).type_(value);
+    }
+    return this;
+  }
+
 }

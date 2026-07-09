@@ -23,7 +23,7 @@ import compilerxyz.gen.AspectTuple;
 import compilerxyz.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.SourceInterfaceData;
+import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
@@ -55,7 +55,7 @@ public final class SourceObjectInterfaceMethodImplData {
   public EResult<Void> finish(
       ExprContext xx,
       QExprId rootLoc,
-      SourceInterfaceData iface,
+      InterfaceData iface,
       TypeSourceObjectDynamic dtData,
       Type underlyingType,
       String dataField) {

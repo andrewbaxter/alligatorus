@@ -38,8 +38,8 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.SourceInterfaceData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
@@ -273,7 +273,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
             BuiltinInterfaceKind kind = impl.interface_.builtinKind;
             Artifact userIface = null;
             if (kind == null) {
-              var ifaceConst = new TypeSourceInterfaceConst(impl.interface_);
+              var ifaceConst = new TypeInterfaceConst(impl.interface_);
               var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
               if (ifaceArtRes.hasErrors()) {
                 ifaceArtRes.drainInto(errors);
@@ -465,7 +465,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         md.capturedExternals.addAll(extVal);
                       }
                       for (var impl : body.interfaceImpls()) {
-                        SourceInterfaceData iface;
+                        InterfaceData iface;
                         if (impl.builtinKind() != null) {
                           iface =
                               BuiltinInterfaceRegistry
@@ -483,7 +483,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           var ifaceVal =
                               ifaceAny.requireValue(
                                   "TypeTypeSourceObjectConst::finalizer user iface artifact");
-                          if (!(ifaceVal instanceof TypeSourceInterfaceConst ic)) {
+                          if (!(ifaceVal instanceof TypeInterfaceConst ic)) {
                             throw new IllegalStateException(
                                 "TypeTypeSourceObjectConst finalizer: user iface artifact resolved to "
                                     + ifaceVal.getClass());
@@ -516,7 +516,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         }
       };
 
-  private static SourceInterfaceData builtinInterfaceOf(
+  private static InterfaceData builtinInterfaceOf(
       GenBuiltinInterfaces ifaces, BuiltinInterfaceKind kind) {
     return switch (kind) {
       case VALUE -> ifaces.value;

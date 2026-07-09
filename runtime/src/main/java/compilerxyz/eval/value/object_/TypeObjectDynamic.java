@@ -23,7 +23,7 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
-import compilerxyz.eval.value.source_interface.SourceInterfaceData;
+import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
@@ -94,7 +94,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public Unique getUnique(Value value) {
+  public Unique getUnique(InterfaceData value) {
     if (!(aspectUnique instanceof Opt.Some<Unique> some)) {
       throw new IllegalStateException(
           typeDesc + "::getUnique: TypeObjectDynamic does not represent an aspect");
@@ -103,15 +103,17 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public SourceInterfaceData getIfaceData(Value value) {
+  public InterfaceData getIfaceData(InterfaceData value) {
     throw new UnsupportedOperationException(
-        typeDesc + "::getIfaceData: TypeObjectDynamic has no SourceInterfaceData");
+        typeDesc + "::getIfaceData: TypeObjectDynamic has no InterfaceData");
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     if (interfaceRepresented instanceof Opt.Some
-        && destType instanceof TypeInterfaceSpec) {
+        && (destType instanceof TypeInterfaceSpec
+            || destType
+                instanceof compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic)) {
       return true;
     }
     return false;
@@ -119,20 +121,36 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (interfaceRepresented instanceof Opt.Some
-        && destType instanceof TypeInterfaceSpec) {
-      var sourceCode = cv.code().dynamic();
-      if (sourceCode == null) {
-        return EResult.err(
-            loc,
-            "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
+    if (interfaceRepresented instanceof Opt.Some) {
+      if (destType instanceof TypeInterfaceSpec) {
+        var sourceCode = cv.code().dynamic();
+        if (sourceCode == null) {
+          return EResult.err(
+              loc,
+              "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
+        }
+        var args = new TList<CodeDynamic>();
+        args.add(sourceCode);
+        var call = DynRuntime.OBJECT_TO_INTERFACE_SPEC.emitInvocation(loc, xx.vx, args);
+        return EResult.ok(
+            new CodeValue(
+                Code.of(loc, call), Opt.some(ValueDynamic.stack(new TypeInterfaceSpec()))));
       }
-      var args = new TList<CodeDynamic>();
-      args.add(sourceCode);
-      var call = DynRuntime.OBJECT_TO_INTERFACE_SPEC.emitInvocation(loc, xx.vx, args);
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, call), Opt.some(ValueDynamic.stack(new TypeInterfaceSpec()))));
+      if (destType
+          instanceof compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic) {
+        var sourceCode = cv.code().dynamic();
+        if (sourceCode == null) {
+          return EResult.err(
+              loc,
+              "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
+        }
+        var args = new TList<CodeDynamic>();
+        args.add(sourceCode);
+        var call = DynRuntime.OBJECT_TO_INTERFACE_DATA.emitInvocation(loc, xx.vx, args);
+        return EResult.ok(
+            new CodeValue(
+                Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
+      }
     }
     return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
   }

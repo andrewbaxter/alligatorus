@@ -11,7 +11,7 @@ import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-public final class SourceInterfaceData {
+public final class InterfaceData {
   public @Nullable DefSetId setId;
 
   @SuppressWarnings("NullAway.Init")
@@ -20,14 +20,14 @@ public final class SourceInterfaceData {
   public final @Nullable BuiltinInterfaceKind builtinKind;
   public @Nullable String description;
   public boolean isAspect;
-  public final TList<SourceInterfaceMethodData> methods;
+  public final TList<InterfaceMethodData> methods;
   public @Nullable ArtifactIdSource artifactId;
 
   public @Nullable String compiledBinaryName;
 
   public byte @Nullable [] compiledBytecode;
 
-  public SourceInterfaceData(
+  public InterfaceData(
       DefSetId setId,
       Unique identity,
       @Nullable BuiltinInterfaceKind builtinKind,
@@ -40,7 +40,7 @@ public final class SourceInterfaceData {
   }
 
   @SuppressWarnings("NullAway")
-  public SourceInterfaceData(
+  public InterfaceData(
       @Nullable DefSetId setId, Unique identity, @Nullable BuiltinInterfaceKind builtinKind) {
     this.setId = setId;
     this.set = (DefinitionSet) null;
@@ -72,7 +72,7 @@ public final class SourceInterfaceData {
     }
     if (setId == null) {
       return EResult.err(
-          loc, "SourceInterfaceData.finish: setId is null for user-declared interface '" + name + "'");
+          loc, "InterfaceData.finish: setId is null for user-declared interface '" + name + "'");
     }
     var emitted = SourceInterfaceEmitter.emit(setId, interfaceIndex, this);
     compiledBinaryName = emitted.binaryName();
@@ -83,12 +83,12 @@ public final class SourceInterfaceData {
 
   public void initSetReflectively(DefinitionSet set) {
     try {
-      var f = SourceInterfaceData.class.getDeclaredField("set");
+      var f = InterfaceData.class.getDeclaredField("set");
       f.setAccessible(true);
       f.set(this, set);
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(
-          "SourceInterfaceData.initSetReflectively: failed to write final 'set' field", e);
+          "InterfaceData.initSetReflectively: failed to write final 'set' field", e);
     }
   }
 }

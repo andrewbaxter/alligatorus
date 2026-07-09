@@ -5,7 +5,7 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-public final class SourceInterfaceMethodData {
+public final class InterfaceMethodData {
   public final String name;
   public final String fieldName;
   public final TList<String> dataFieldNames;
@@ -16,7 +16,7 @@ public final class SourceInterfaceMethodData {
   public @Nullable String hostMethodName;
   public @Nullable JavaMethodDescriptor hostMethodDescriptor;
 
-  public SourceInterfaceMethodData(String name, String fieldName) {
+  public InterfaceMethodData(String name, String fieldName) {
     this.name = name;
     this.fieldName = fieldName;
     this.dataFieldNames = new TList<>();

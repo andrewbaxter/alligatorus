@@ -13,7 +13,7 @@ import compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.ConstKey;
-import compilerxyz.eval.value.source_interface.SourceInterfaceMethodData;
+import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
@@ -189,8 +189,8 @@ public final class SourceObjectEmitter {
       case ASPECT_FIELD -> INTNAME_ASPECT_FIELD;
       case ASPECT_FUNCTION -> JavaInternalName.of("compilerxyz/gen/AspectFunction");
       case ASPECT_DROP_DYNAMIC -> JavaInternalName.of("compilerxyz/gen/AspectDropDynamic");
-      case BINDING -> JavaInternalName.of("compilerxyz/gen/Binding");
-      case TARGET -> JavaInternalName.of("compilerxyz/gen/Target");
+      case BINDING -> JavaInternalName.of("compilerxyz/eval/Binding");
+      case TARGET -> JavaInternalName.of("compilerxyz/eval/dynamic/Target");
       case CODE_DYN -> null;
     };
   }
@@ -528,7 +528,7 @@ public final class SourceObjectEmitter {
       JavaInternalName internalName,
       int implIdx,
       int mIdx,
-      compilerxyz.eval.value.source_interface.SourceInterfaceData iface,
+      compilerxyz.eval.value.source_interface.InterfaceData iface,
       SourceObjectInterfaceMethodImplData m,
       compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
       CodeDynamic bodyCode,
@@ -714,7 +714,7 @@ public final class SourceObjectEmitter {
       };
       case BINDING -> switch (sourceName) {
         case "bindingUse_" -> new HostMethodSpec(
-            "bindingUse",
+            "bindingUse_",
             JavaMethodDescriptor.fromParts(
                 DESC_CODE_VALUE, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE));
         default -> null;
@@ -727,29 +727,29 @@ public final class SourceObjectEmitter {
   private static @org.jspecify.annotations.Nullable HostMethodSpec targetHostSpec(String sourceName) {
     return switch (sourceName) {
       case "bind" -> new HostMethodSpec(
-          "bind",
+          "targetBind",
           JavaMethodDescriptor.fromParts(
               DESC_PAIR, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_TARGET_BIND_SUB));
       case "bind_sub_record" -> new HostMethodSpec(
-          "bind_sub_record",
+          "targetBindSubRecord",
           JavaMethodDescriptor.fromParts(
               DESC_TARGET_BIND_SUB, DESC_QEXPR_ID, DESC_CODE, DESC_LIST));
       case "bind_sub_tuple" -> new HostMethodSpec(
-          "bind_sub_tuple",
+          "targetBindSubTuple",
           JavaMethodDescriptor.fromParts(
               DESC_TARGET_BIND_SUB, DESC_QEXPR_ID, DESC_CODE, DESC_LIST));
       case "seq" -> new HostMethodSpec(
-          "seq",
+          "targetSeq",
           JavaMethodDescriptor.fromParts(DESC_ERESULT, DESC_QEXPR_ID, DESC_LIST));
       case "code_to_bind_sub" -> new HostMethodSpec(
-          "code_to_bind_sub",
+          "targetCodeToBindSub",
           JavaMethodDescriptor.fromParts(DESC_ERESULT, DESC_QEXPR_ID, DESC_CODE, DESC_TYPE));
       case "if_" -> new HostMethodSpec(
-          "if_",
+          "targetIf_",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_LIST, DESC_OPT));
       case "match_" -> new HostMethodSpec(
-          "match",
+          "targetMatch_",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT,
               DESC_EXPR_CONTEXT,
@@ -759,15 +759,15 @@ public final class SourceObjectEmitter {
               DESC_LIST,
               DESC_OPT));
       case "maybe_bind_sub" -> new HostMethodSpec(
-          "maybe_bind_sub",
+          "targetMaybeBindSub",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE));
       case "stage" -> new HostMethodSpec(
-          "stage",
+          "targetStage",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_EXPR, DESC_LIST, DESC_LIST));
       case "cast_exception" -> new HostMethodSpec(
-          "cast_exception",
+          "targetCastException",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT,
               DESC_EXPR_CONTEXT,
@@ -776,11 +776,11 @@ public final class SourceObjectEmitter {
               DESC_BINDING_ID,
               DESC_CODE_VALUE));
       case "drop" -> new HostMethodSpec(
-          "drop",
+          "targetDrop",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE));
       case "try_finally" -> new HostMethodSpec(
-          "try_finally",
+          "targetTryFinally",
           JavaMethodDescriptor.fromParts(DESC_ERESULT, DESC_QEXPR_ID, DESC_CODE, DESC_CODE));
       default -> null;
     };
@@ -1092,7 +1092,7 @@ public final class SourceObjectEmitter {
       int implIdx,
       int mIdx,
       SourceObjectInterfaceMethodImplData m,
-      SourceInterfaceMethodData ifaceMethod,
+      InterfaceMethodData ifaceMethod,
       BuiltinInterfaceKind kind,
       HostMethodSpec spec) {
     var mv = cw.visitMethod(
@@ -1151,7 +1151,7 @@ public final class SourceObjectEmitter {
 
   private static JavaMethodDescriptor interfaceMethodMethodDescriptor(
       SourceObjectInterfaceMethodImplData m,
-      SourceInterfaceMethodData ifaceMethod,
+      InterfaceMethodData ifaceMethod,
       compilerxyz.eval.value.source_interface.@org.jspecify.annotations.Nullable BuiltinInterfaceKind kind) {
     var jvmParamDescs = new TList<JavaDataDescriptor>();
     if (m.compiledIsArgMethod) {
@@ -1208,7 +1208,7 @@ public final class SourceObjectEmitter {
       JavaBytecodeSequence seq,
       BuiltinInterfaceKind kind,
       SourceObjectInterfaceMethodImplData m,
-      SourceInterfaceMethodData ifaceMethod,
+      InterfaceMethodData ifaceMethod,
       boolean firstParamIsExprContext,
       int paramSlotCount) {
 
@@ -1249,7 +1249,7 @@ public final class SourceObjectEmitter {
   private static void buildArgRecordComposite(
       JavaBytecodeSequence seq,
       compilerxyz.eval.value.record.Record argRecord,
-      SourceInterfaceMethodData ifaceMethod,
+      InterfaceMethodData ifaceMethod,
       boolean firstParamIsExprContext,
       int paramSlotCount) {
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
