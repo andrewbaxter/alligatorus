@@ -67,7 +67,7 @@ public record TypeSourceVariantConstructorDynamic(SourceKind kind)
   @Override
   public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
-    Type resultType = new TypeSourceDynamic();
+    Type resultType = compilerxyz.eval.value.ValueDynamic.sourceDynamicType();
     JavaInternalName sourceName =
         JavaInternalName.of("compilerxyz/eval/value/ValueDynamic$Source");
     switch (kind) {
@@ -76,7 +76,7 @@ public record TypeSourceVariantConstructorDynamic(SourceKind kind)
             new Tuple(
                 Opt.none(),
                 TList.of(
-                    new TupleElement.Dynamic(new TypeSourceDynamic()),
+                    new TupleElement.Dynamic(compilerxyz.eval.value.ValueDynamic.sourceDynamicType()),
                     new TupleElement.Dynamic(new TypeStringDynamic())));
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -104,7 +104,7 @@ public record TypeSourceVariantConstructorDynamic(SourceKind kind)
         return EResult.ok(DynUtil.dynamicStackToValue(loc, newSource, resultType));
       }
       case DUP -> {
-        Type baseType = new TypeSourceDynamic();
+        Type baseType = compilerxyz.eval.value.ValueDynamic.sourceDynamicType();
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, baseType, argument));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
         var baseJsOpt =

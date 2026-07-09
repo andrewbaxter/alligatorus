@@ -11,7 +11,20 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.value.object_.ObjectAspectSource;
+import compilerxyz.eval.value.object_.ObjectDataField;
+import compilerxyz.eval.value.object_.ObjectDropKind;
+import compilerxyz.eval.value.object_.ObjectMethod;
+import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
+import compilerxyz.eval.value.object_.TypeObjectCastRule;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 
 public record ValueDynamic(Source source, Type type_) implements Value {
@@ -27,6 +40,33 @@ public record ValueDynamic(Source source, Type type_) implements Value {
    */
   public static ValueDynamic stack(Type type_) {
     return new ValueDynamic(Source.Expr.stackFor(type_), type_);
+  }
+
+  public static Type sourceDynamicType() {
+    return SourceDynamicType.INSTANCE;
+  }
+
+  final class SourceDynamicType {
+    static final TypeObjectDynamic INSTANCE = build();
+
+    private SourceDynamicType() {}
+
+    private static TypeObjectDynamic build() {
+      var jvmClass = JavaInternalName.of("compilerxyz/eval/value/ValueDynamic$Source");
+      return new TypeObjectDynamic(
+          GenTypeIds.TYPE_SOURCE_DYNAMIC_TYPE_ID,
+          "source",
+          jvmClass,
+          JavaDataDescriptor.fromInternalName(jvmClass),
+          new TList<ObjectDataField>(),
+          new TList<ObjectMethod>(),
+          ObjectDropKind.DYNAMIC_LIGHT,
+          new TList<Unique>(),
+          new TList<TypeObjectCastRule>(),
+          new TList<TypeObjectCastFromRule>(),
+          Opt.<ObjectAspectSource>none(),
+          Opt.<JavaInternalName>none());
+    }
   }
 
   public sealed interface Source {
