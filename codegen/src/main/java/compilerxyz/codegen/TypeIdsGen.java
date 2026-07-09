@@ -153,7 +153,6 @@ final class TypeIdsGen {
       "type_eresult_constructor_const",
       "type_root_eresult_constructor_const",
       "type_value_dynamic",
-      "type_root_value_dynamic",
       "type_interface_spec",
       "type_root_interface_spec"
     };
