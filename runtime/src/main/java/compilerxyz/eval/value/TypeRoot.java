@@ -677,26 +677,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record CodeEnumDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_ENUM_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "Code enum type (dynamic)";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
   record SourceFunctionConst() implements TypeRoot {
     @Override
     public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_FUNCTION_CONST_TYPE_ID; }
@@ -924,26 +904,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     @Override
     public String typeDesc() {
       return "type<eresult-constructor-const>";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
-  record SourceVariantConstructorDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "type<source-variant-constructor-dynamic>";
     }
 
     @Override
