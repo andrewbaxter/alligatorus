@@ -560,7 +560,7 @@ var targetBindSub =
             null,
             true,
             null,
-            ClassName.get("compilerxyz.eval.value.binding", "TypeAnyTargetDynamic"),
+            null,
             TList.of(
                 new Method(
                     "bind",

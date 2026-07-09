@@ -35,7 +35,6 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.aspect.TypeAspectDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.binding.TypeAnyTargetDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.gen.GenIdentities;
@@ -433,7 +432,7 @@ public final class TypeSourceObjectDynamic
         if (builtinKind != null) {
           switch (builtinKind) {
             case TYPE -> resultType = new TypeAnyDynamic();
-            case TARGET -> resultType = new TypeAnyTargetDynamic();
+            case TARGET -> resultType = compilerxyz.eval.dynamic.Target.dynamicType();
             case BINDING -> resultType = compilerxyz.eval.Binding.dynamicType();
             case CODE_DYN -> {
               return EResult.err(

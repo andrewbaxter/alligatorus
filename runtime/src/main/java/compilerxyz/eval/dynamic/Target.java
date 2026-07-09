@@ -10,10 +10,16 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.value.object_.ObjectDataField;
+import compilerxyz.eval.value.object_.ObjectDropKind;
+import compilerxyz.eval.value.object_.ObjectMethod;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.GenBuiltinInterfaces;
+import compilerxyz.gen.GenTypeIds;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TargetCase;
-import compilerxyz.eval.value.binding.TypeAnyTargetDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.eval.value.tuple.Tuple;
@@ -26,7 +32,30 @@ import compilerxyz.util.TOrderedMap;
 public interface Target {
 
   static Type dynamicType() {
-    return new TypeAnyTargetDynamic();
+    return TargetDynamicType.INSTANCE;
+  }
+
+  final class TargetDynamicType {
+    static final TypeObjectDynamic INSTANCE = build();
+
+    private TargetDynamicType() {}
+
+    private static TypeObjectDynamic build() {
+      var jvmClass = JvmConstants.INTNAME_OBJECT;
+      var identityAspects = new TList<Unique>();
+      identityAspects.add(GenBuiltinInterfaces.builtinTargetIfaceIdentity());
+      return new TypeObjectDynamic(
+          GenTypeIds.TYPE_ANY_TARGET_DYNAMIC_TYPE_ID,
+          "target",
+          jvmClass,
+          JavaDataDescriptor.fromInternalName(jvmClass),
+          new TList<ObjectDataField>(),
+          new TList<ObjectMethod>(),
+          ObjectDropKind.DYNAMIC_LIGHT,
+          identityAspects,
+          Opt.<Unique>none(),
+          Opt.<JavaInternalName>none());
+    }
   }
 
   default BindResult targetBind(QExprId loc, TargetBindSub sub) {
