@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.code_.TypeCodeDynamic;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
@@ -97,7 +96,7 @@ public record TypeBindResultDynamic()
                 JavaDataDescriptor.fromClass(Code.class))));
         return EResult.ok(new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
-            Opt.some(ValueDynamic.stack(new TypeCodeDynamic()))));
+            Opt.some(ValueDynamic.stack(compilerxyz.eval.Code.dynamicType()))));
       }
       case "binding" -> {
         var seq = new JavaBytecodeSequence();
@@ -122,7 +121,7 @@ public record TypeBindResultDynamic()
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     return switch (s.value()) {
-      case "code" -> Opt.some(new TypeCodeDynamic());
+      case "code" -> Opt.some(compilerxyz.eval.Code.dynamicType());
       case "binding" -> Opt.some(compilerxyz.eval.Binding.dynamicType());
       default -> Opt.none();
     };

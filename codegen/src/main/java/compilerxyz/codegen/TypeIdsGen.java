@@ -148,7 +148,6 @@ final class TypeIdsGen {
       "type_source_variant_constructor_dynamic",
       "type_root_eresult_dynamic",
       "type_root_eresult_variant_constructor_dynamic",
-      "type_root_code_dynamic",
       "type_root_source_dynamic",
       "type_root_source_variant_constructor_dynamic",
       "type_eresult_constructor_const",

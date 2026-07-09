@@ -113,8 +113,7 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
   private static final ClassName TYPE_ERESULT_CONSTRUCTOR_CONST =
       ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
-  private static final ClassName TYPE_CODE_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.code_", "TypeCodeDynamic");
+  private static final ClassName CODE_INTERFACE = ClassName.get("compilerxyz.eval", "Code");
   private static final ClassName TYPE_VALUE_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.value_", "TypeValueDynamic");
 
@@ -390,7 +389,7 @@ public final class BuiltinTreeGen {
     var dropRet =
         new TypeRef(
             TYPE_ERESULT_DYNAMIC,
-            CodeBlock.of("new $T(new $T())", TYPE_ERESULT_DYNAMIC, TYPE_CODE_DYNAMIC));
+            CodeBlock.of("new $T($T.dynamicType())", TYPE_ERESULT_DYNAMIC, CODE_INTERFACE));
 
     var aspectFunction =
         new InterfaceSpec(
@@ -461,7 +460,7 @@ public final class BuiltinTreeGen {
     var bindingCode =
         new TypeRef(
             codeRef,
-            CodeBlock.of("new $T()", ClassName.get("compilerxyz.eval.value.code_", "TypeCodeDynamic")));
+            CodeBlock.of("$T.dynamicType()", CODE_INTERFACE));
     var bindingCv = TypeRef.viaPush(codeValue);
 
     var binding =
@@ -831,7 +830,7 @@ var targetBindSub =
             new Child(
                 "code",
                 new Leaf(
-                    new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC)))),
+                    new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", CODE_INTERFACE)))),
             new Child(
                 "string",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC)))),
@@ -945,7 +944,7 @@ var targetBindSub =
                                 "code",
                                 new TypeRef(
                                     ClassName.get("compilerxyz.eval", "Code"),
-                                    CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC))),
+                                    CodeBlock.of("$T.dynamicType()", CODE_INTERFACE))),
                             new NamedTypeRef(
                                 "value",
                                 new TypeRef(
@@ -1067,7 +1066,7 @@ var targetBindSub =
                                 "code",
                                 new TypeRef(
                                     ClassName.get("compilerxyz.eval", "Code"),
-                                    CodeBlock.of("new $T()", TYPE_CODE_DYNAMIC))),
+                                    CodeBlock.of("$T.dynamicType()", CODE_INTERFACE))),
                             new NamedTypeRef(
                                 "binding",
                                 new TypeRef(

@@ -22,7 +22,6 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.code_.TypeCodeDynamic;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -116,7 +115,7 @@ public record TypeCodeValueExternDynamic()
     if (selfDyn == null) {
       return EResult.err(loc, "TypeCodeValueExternDynamic::field: self has no dynamic code");
     }
-    var codeType = new TypeCodeDynamic();
+    var codeType = compilerxyz.eval.Code.dynamicType();
     var codeValueInternal =
         compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue");
     var codeDesc =
@@ -147,7 +146,7 @@ public record TypeCodeValueExternDynamic()
   public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     return switch (s.value()) {
-      case "code" -> Opt.some(new TypeCodeDynamic());
+      case "code" -> Opt.some(compilerxyz.eval.Code.dynamicType());
 
       default -> Opt.none();
     };
