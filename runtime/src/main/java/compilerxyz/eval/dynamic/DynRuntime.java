@@ -246,7 +246,7 @@ public final class DynRuntime {
           new compilerxyz.eval.value.record.Record(Opt.none(), argRecordFields);
       var retType =
           new compilerxyz.eval.value.eresult.TypeEResultDynamic(
-              new compilerxyz.eval.value.bind_result.TypeBindResultDynamic());
+              compilerxyz.eval.value.bind_result.BindResultType.dynamicType());
       var bindMethod =
           new compilerxyz.eval.value.function.TypeMethodDynamic(
               ANY, argRecord, retType, jvmInterface, "bind", bindDesc, true);

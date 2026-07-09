@@ -851,10 +851,9 @@ var targetBindSub =
                 new Leaf(
                     new LeafSpec.AnyConst(
                         CodeBlock.of(
-                            "new $T()",
+                            "$T.dynamicType()",
                             ClassName.get(
-                                "compilerxyz.eval.value.bind_result",
-                                "TypeBindResultDynamic"))))),
+                                "compilerxyz.eval.value.bind_result", "BindResultType"))))),
             new Child(
                 "any",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC)))),
@@ -1072,9 +1071,9 @@ var targetBindSub =
                                         ClassName.get("compilerxyz.eval", "Binding"))))),
                         ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
                         CodeBlock.of(
-                            "new $T()",
+                            "$T.dynamicType()",
                             ClassName.get(
-                                "compilerxyz.eval.value.bind_result", "TypeBindResultDynamic")),
+                                "compilerxyz.eval.value.bind_result", "BindResultType")),
                         CodeBlock.builder()
                             .addStatement(
                                 "return new $T(code, binding)",
