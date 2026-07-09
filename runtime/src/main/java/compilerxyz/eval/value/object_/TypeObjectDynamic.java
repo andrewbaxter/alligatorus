@@ -46,6 +46,7 @@ public record TypeObjectDynamic(
     Opt<JavaInternalName> interfaceRepresented)
     implements
         Type,
+        compilerxyz.eval.TypeAspect,
         AspectAspect,
         AspectField,
         AspectConsumeDynamic,
@@ -53,6 +54,15 @@ public record TypeObjectDynamic(
         AspectBind,
         AspectBindDynamic,
         AspectStackValueDynamic {
+
+  @Override
+  public Unique id() {
+    if (!(aspectUnique instanceof Opt.Some<Unique> some)) {
+      throw new IllegalStateException(
+          typeDesc + "::id: TypeObjectDynamic has no aspectUnique — not an aspect metatype");
+    }
+    return some.value();
+  }
 
   @Override
   public boolean equals(Object other) {

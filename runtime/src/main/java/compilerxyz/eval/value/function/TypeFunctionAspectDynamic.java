@@ -102,15 +102,12 @@ public record TypeFunctionAspectDynamic()
     if (aspectTypeVal instanceof compilerxyz.eval.value.any.ValueAnyConst wrap) {
       aspectTypeVal = wrap.inner();
     }
-    if (!(aspectTypeVal instanceof compilerxyz.eval.value.object_.TypeObjectDynamic aspObj)) {
+    if (!(aspectTypeVal instanceof compilerxyz.eval.TypeAspect aspTa)) {
       return EResult.err(
           loc,
-          "aspect_lookup: aspect_type must be a TypeObjectDynamic representing a Java aspect, got "
-              + aspectTypeVal.getClass());
+          "aspect_lookup: aspect_type must implement TypeAspect, got " + aspectTypeVal.getClass());
     }
-    if (!(aspObj.aspectUnique() instanceof Opt.Some<Unique> auq)) {
-      return EResult.err(loc, "aspect_lookup: aspect_type has no aspectUnique");
-    }
+    var auq = aspTa.id();
 
     var anyDyn = new compilerxyz.eval.value.any.TypeAnyDynamic();
     var subjectConvertedRes =
@@ -135,7 +132,7 @@ public record TypeFunctionAspectDynamic()
     var uniqueKey = new JavaBytecodeBindingKey();
     var uniqueId = new BindingId.Local(uniqueKey);
     xx.vx.externals.add(
-        new EvalContext.ExternalEntry(uniqueKey, this, new External.UniqueExternal(auq.value())));
+        new EvalContext.ExternalEntry(uniqueKey, this, new External.UniqueExternal(auq)));
     var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, uniqueId);
 
     var seq = new JavaBytecodeSequence();
@@ -148,7 +145,7 @@ public record TypeFunctionAspectDynamic()
         new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
             Opt.some(
-                compilerxyz.eval.value.ValueDynamic.stack(new TypeOptionDynamic(aspObj)))));
+                compilerxyz.eval.value.ValueDynamic.stack(new TypeOptionDynamic(aspTa)))));
   }
 
   @Override
