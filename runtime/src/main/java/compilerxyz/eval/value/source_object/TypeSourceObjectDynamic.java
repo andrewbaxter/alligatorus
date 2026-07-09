@@ -33,7 +33,6 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.any.TypeAnyDynamic;
-import compilerxyz.eval.value.aspect.TypeAspectDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
@@ -471,7 +470,7 @@ public final class TypeSourceObjectDynamic
       if (sourceCode == null) {
         return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
       }
-      return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAspectDynamic()));
+      return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.eval.aspect.Aspect.dynamicType()));
     }
     return EResult.err(loc, "Cannot convert " + typeDesc());
   }

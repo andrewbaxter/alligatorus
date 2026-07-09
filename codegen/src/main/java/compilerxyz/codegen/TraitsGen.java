@@ -18,8 +18,8 @@ public final class TraitsGen {
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-  private static final ClassName TYPE_ASPECT_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.aspect", "TypeAspectDynamic");
+  private static final ClassName ASPECT_INTERFACE =
+      ClassName.get("compilerxyz.eval.aspect", "Aspect");
   private static final ClassName TYPE_CODE_VALUE_EXTERN_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
   private static final ClassName EXPR_CONTEXT =
@@ -39,7 +39,7 @@ public final class TraitsGen {
     var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
     var string = TypeRef.unit(TYPE_STRING_DYNAMIC);
     var bool = TypeRef.unit(TYPE_BOOL_DYNAMIC);
-    var aspect = TypeRef.unit(TYPE_ASPECT_DYNAMIC);
+    var aspect = TypeRef.viaPush(ASPECT_INTERFACE);
     var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
     var eresultCve =
         new TypeRef(

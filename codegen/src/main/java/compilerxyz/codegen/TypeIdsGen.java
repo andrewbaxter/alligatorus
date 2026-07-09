@@ -117,7 +117,6 @@ final class TypeIdsGen {
       "type_root_option_dynamic",
       "type_root_option_variant_constructor_dynamic",
       "type_root_option_constructor_const",
-      "type_root_aspect_dynamic",
       "type_root_panic_dynamic",
       "type_root_throw_dynamic",
       "type_root_code_dyn_cast_fn",
