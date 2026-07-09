@@ -88,7 +88,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
         new Tuple(
             Opt.none(),
             TList.of(
-                new TupleElement.Dynamic(QExprId.dynamicType()),
+                new TupleElement.Dynamic(new TypeStringDynamic()),
                 new TupleElement.Dynamic(new TypeStringDynamic())));
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
     if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());

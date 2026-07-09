@@ -449,13 +449,10 @@ public final class BuiltinTreeGen {
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
     var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
     var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var typeQExprIdDynamic =
-        ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeQExprIdDynamic");
-
     var bindingXx =
         new TypeRef(exprContext, CodeBlock.of("$T.dynamicType()", exprContext));
     var bindingLoc =
-        new TypeRef(qexprId, CodeBlock.of("new $T()", typeQExprIdDynamic));
+        new TypeRef(qexprId, CodeBlock.of("$T.dynamicType()", qexprId));
     var bindingCode =
         new TypeRef(
             codeRef,

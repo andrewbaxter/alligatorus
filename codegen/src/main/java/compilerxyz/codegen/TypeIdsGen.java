@@ -137,7 +137,6 @@ final class TypeIdsGen {
       "type_root_source_union_new_const",
       "type_root_source_union_new_dynamic",
       "type_root_code_value_extern_dynamic",
-      "type_root_qexpr_id_dynamic",
       "type_root_bind_result_dynamic",
       "type_root_source_exports_lifted_const",
       "argument_tuple",
