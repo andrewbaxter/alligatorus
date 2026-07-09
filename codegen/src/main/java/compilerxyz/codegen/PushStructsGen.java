@@ -348,8 +348,8 @@ public final class PushStructsGen {
 
   private static final ClassName TYPE_SOURCE_FUNCTION_CONST =
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionConst");
-  private static final ClassName TYPE_SOURCE_FUNCTION_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionDynamic");
+  private static final ClassName SOURCE_FUNCTION_TYPE =
+      ClassName.get("compilerxyz.eval.value.source_function", "SourceFunctionType");
   private static final ClassName INTERFACE_REF =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
@@ -521,7 +521,7 @@ public final class PushStructsGen {
                     "func_ref",
                     ref(
                         TYPE_SOURCE_FUNCTION_CONST,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_FUNCTION_DYNAMIC)),
+                        CodeBlock.of("$T.dynamicType()", SOURCE_FUNCTION_TYPE)),
                     empty)),
             TList.of(
                 new PushMethod(

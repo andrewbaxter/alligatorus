@@ -119,7 +119,6 @@ final class TypeIdsGen {
       "type_root_throw_dynamic",
       "type_root_code_enum_dynamic",
       "type_root_source_function_const",
-      "type_root_source_function_dynamic",
       "type_root_source_interface_const",
       "type_root_source_object_const",
       "type_root_source_object_dynamic",
