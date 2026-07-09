@@ -677,46 +677,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record CodeDynCastFn() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_DYN_CAST_FN_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "Code dyn cast fn type";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
-  record CodeDynHandleDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_DYN_HANDLE_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "Code dyn handle type (dynamic)";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
   record CodeEnumDynamic() implements TypeRoot {
     @Override
     public TypeId typeId() { return GenTypeIds.TYPE_ROOT_CODE_ENUM_DYNAMIC_TYPE_ID; }

@@ -93,8 +93,8 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");
   private static final ClassName ASPECT_INTERFACE =
       ClassName.get("compilerxyz.eval.aspect", "Aspect");
-  private static final ClassName TYPE_CODE_DYN_HANDLE_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.code", "TypeCodeDynHandleDynamic");
+  private static final ClassName CODE_DYN_HANDLE_TYPE =
+      ClassName.get("compilerxyz.eval.value.code", "CodeDynHandleType");
   private static final ClassName TYPE_CODE_VALUE_EXTERN_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
   private static final ClassName TYPE_LIST_DYNAMIC =
@@ -872,7 +872,7 @@ var targetBindSub =
                 "codedyn",
                 new Leaf(
                     new LeafSpec.AnyConst(
-                        CodeBlock.of("new $T()", TYPE_CODE_DYN_HANDLE_DYNAMIC)))),
+                        CodeBlock.of("$T.dynamicType()", CODE_DYN_HANDLE_TYPE)))),
             new Child(
                 "cve",
                 new Leaf(
