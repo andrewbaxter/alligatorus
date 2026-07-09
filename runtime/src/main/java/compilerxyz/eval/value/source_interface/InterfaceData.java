@@ -6,8 +6,21 @@ import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.QExprId;
+import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
+import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
+import compilerxyz.eval.value.object_.ObjectAspectSource;
+import compilerxyz.eval.value.object_.ObjectDataField;
+import compilerxyz.eval.value.object_.ObjectDropKind;
+import compilerxyz.eval.value.object_.ObjectMethod;
+import compilerxyz.eval.value.object_.TypeObjectCastRule;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
@@ -79,6 +92,42 @@ public final class InterfaceData {
     compiledBytecode = emitted.bytecode();
     loader.registerClass(emitted.binaryName(), emitted.bytecode());
     return EResult.ok(null);
+  }
+
+  public static Type dynamicType() {
+    return InterfaceDataDynamicType.INSTANCE;
+  }
+
+  static final class InterfaceDataDynamicType {
+    static final TypeObjectDynamic INSTANCE = build();
+
+    private InterfaceDataDynamicType() {}
+
+    private static TypeObjectDynamic build() {
+      var jvmClass = JavaInternalName.of("compilerxyz/eval/value/source_interface/InterfaceData");
+      var identityAspects = new TList<Unique>();
+      identityAspects.add(GenIdentities.INTERFACE_REF_TYPE_IDENTITY);
+      var castRules = new TList<TypeObjectCastRule>();
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_REF_TYPE_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_CONST_IDENTITY));
+      castRules.add(
+          new TypeObjectCastRule.CallByDestIdentity(
+              GenIdentities.TYPE_TYPE_IDENTITY, DynRuntime.INTERFACE_REF_TO_TYPE_TYPE));
+      castRules.add(
+          new TypeObjectCastRule.CallToInterfaceSpec(DynRuntime.INTERFACE_REF_TO_INTERFACE_SPEC));
+      return new TypeObjectDynamic(
+          GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID,
+          "definition_set_interface_ref",
+          jvmClass,
+          JavaDataDescriptor.fromClass(InterfaceData.class),
+          new TList<ObjectDataField>(),
+          new TList<ObjectMethod>(),
+          ObjectDropKind.DYNAMIC_LIGHT,
+          identityAspects,
+          castRules,
+          Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData()),
+          Opt.<JavaInternalName>none());
+    }
   }
 
   public void initSetReflectively(DefinitionSet set) {

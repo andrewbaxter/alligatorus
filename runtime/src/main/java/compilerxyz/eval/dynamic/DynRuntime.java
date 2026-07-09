@@ -259,7 +259,8 @@ public final class DynRuntime {
           new compilerxyz.eval.value.object_.TypeObjectCastRule.CallToInterfaceSpec(
               OBJECT_TO_INTERFACE_SPEC));
       castRules.add(
-          new compilerxyz.eval.value.object_.TypeObjectCastRule.CallToInterfaceDynamic(
+          new compilerxyz.eval.value.object_.TypeObjectCastRule.CallByDestIdentity(
+              compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY,
               OBJECT_TO_INTERFACE_DATA));
       ASPECT_BIND_OBJECT =
           new compilerxyz.eval.value.object_.TypeObjectDynamic(

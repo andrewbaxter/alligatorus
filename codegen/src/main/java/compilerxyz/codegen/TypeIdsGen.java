@@ -127,7 +127,6 @@ final class TypeIdsGen {
       "type_root_source_function_const",
       "type_root_source_function_dynamic",
       "type_root_source_interface_const",
-      "type_root_source_interface_dynamic",
       "type_root_source_object_const",
       "type_root_source_object_dynamic",
       "type_root_source_object_ref_dynamic",

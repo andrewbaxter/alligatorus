@@ -16,7 +16,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
@@ -63,12 +62,12 @@ public record TypeInterfaceSpec()
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType instanceof TypeAnyInterfaceDynamic;
+    return destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType instanceof TypeAnyInterfaceDynamic) {
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
         return EResult.err(

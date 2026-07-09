@@ -347,8 +347,6 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionDynamic");
   private static final ClassName INTERFACE_REF =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
-  private static final ClassName TYPE_SOURCE_INTERFACE_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_interface", "TypeAnyInterfaceDynamic");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
   private static final ClassName SOURCE_OBJECT_REF =
@@ -575,7 +573,7 @@ public final class PushStructsGen {
                     "interface_ref",
                     ref(
                         INTERFACE_REF,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_INTERFACE_DYNAMIC)),
+                        CodeBlock.of("$T.dynamicType()", INTERFACE_REF)),
                     empty)),
             TList.of(
                 new PushMethod(
@@ -639,7 +637,7 @@ public final class PushStructsGen {
         new PushMethod(
             "aspect",
             TList.of(new NamedTypeRef("record", recordArg)),
-            "new " + TYPE_SOURCE_INTERFACE_DYNAMIC.canonicalName() + "()",
+            INTERFACE_REF.canonicalName() + ".dynamicType()",
             empty,
             "srcObjectImplAspect",
             retInterfaceRef));

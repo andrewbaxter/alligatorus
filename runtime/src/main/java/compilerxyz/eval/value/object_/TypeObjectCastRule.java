@@ -61,21 +61,7 @@ public sealed interface TypeObjectCastRule {
     }
   }
 
-  record CallToInterfaceDynamic(TypeFunctionDynamic method) implements TypeObjectCastRule {
-    @Override
-    public boolean matches(ExprContext xx, Type destType) {
-      return destType
-          instanceof compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic;
-    }
-
-    @Override
-    public EResult<CodeValue> apply(
-        ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return emitRuntimeCall(xx, source, loc, cv, destType, method);
-    }
-  }
-
-  private static EResult<CodeValue> emitRuntimeCall(
+private static EResult<CodeValue> emitRuntimeCall(
       ExprContext xx,
       TypeObjectDynamic source,
       QExprId loc,
