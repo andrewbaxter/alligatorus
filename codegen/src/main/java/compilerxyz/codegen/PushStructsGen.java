@@ -358,8 +358,8 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic");
   private static final ClassName SOURCE_DATA_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_object", "SourceDataMethodData");
-  private static final ClassName TYPE_SOURCE_OBJECT_REF_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_object", "TypeTypeSourceObjectDynamic");
+  private static final ClassName SOURCE_OBJECT_REF_TYPE =
+      ClassName.get("compilerxyz.eval.value.source_object", "SourceObjectRefType");
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_CONST =
       ClassName.get("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewDynamic");
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_DYNAMIC =
@@ -687,7 +687,7 @@ public final class PushStructsGen {
                     "type_",
                     ref(
                         SOURCE_OBJECT_REF,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_OBJECT_REF_DYNAMIC)),
+                        CodeBlock.of("$T.dynamicType()", SOURCE_OBJECT_REF_TYPE)),
                     empty)),
             TList.<PushMethod>from(sourceObjectMethods));
 
