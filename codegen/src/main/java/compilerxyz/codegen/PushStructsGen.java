@@ -86,6 +86,8 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
   private static final ClassName OBJECT_DROP_KIND =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
+  private static final ClassName TYPE_OBJECT_CAST_RULE =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
   private static final ClassName OBJECT_DATA_FIELD =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
   private static final ClassName OBJECT_METHOD =
@@ -247,7 +249,7 @@ public final class PushStructsGen {
         .returns(TYPE)
         .beginControlFlow("if ($N == null)", fieldName)
         .addStatement(
-            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.none(), $T.none())",
+            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.<$T>of(), $T.none(), $T.none())",
             fieldName,
             TYPE_OBJECT_DYNAMIC,
             TYPE_ID,
@@ -262,6 +264,8 @@ public final class PushStructsGen {
             OBJECT_DROP_KIND,
             TLIST,
             UNIQUE,
+            TLIST,
+            TYPE_OBJECT_CAST_RULE,
             OPT,
             OPT)
         .endControlFlow()

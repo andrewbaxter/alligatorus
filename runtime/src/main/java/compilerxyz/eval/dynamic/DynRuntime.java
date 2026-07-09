@@ -252,6 +252,14 @@ public final class DynRuntime {
       var methods =
           new TList<compilerxyz.eval.value.object_.ObjectMethod>();
       methods.add(new compilerxyz.eval.value.object_.ObjectMethod("bind", bindMethod));
+      var castRules =
+          new TList<compilerxyz.eval.value.object_.TypeObjectCastRule>();
+      castRules.add(
+          new compilerxyz.eval.value.object_.TypeObjectCastRule.CallToInterfaceSpec(
+              OBJECT_TO_INTERFACE_SPEC));
+      castRules.add(
+          new compilerxyz.eval.value.object_.TypeObjectCastRule.CallToInterfaceDynamic(
+              OBJECT_TO_INTERFACE_DATA));
       ASPECT_BIND_OBJECT =
           new compilerxyz.eval.value.object_.TypeObjectDynamic(
               new compilerxyz.eval.TypeId.Builtin(9101L),
@@ -262,6 +270,7 @@ public final class DynRuntime {
               methods,
               compilerxyz.eval.value.object_.ObjectDropKind.DYNAMIC,
               new TList<>(),
+              castRules,
               Opt.some(compilerxyz.gen.AspectBind.ID),
               Opt.some(jvmInterface));
     }

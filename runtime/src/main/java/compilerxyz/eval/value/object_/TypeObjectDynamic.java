@@ -16,7 +16,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
@@ -25,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
@@ -48,6 +46,7 @@ public record TypeObjectDynamic(
     TList<ObjectMethod> methods,
     ObjectDropKind dropKind,
     TList<Unique> identityAspects,
+    TList<TypeObjectCastRule> castRules,
     Opt<Unique> aspectUnique,
     Opt<JavaInternalName> interfaceRepresented)
     implements
@@ -138,46 +137,17 @@ public record TypeObjectDynamic(
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    if (interfaceRepresented instanceof Opt.Some
-        && (destType instanceof TypeInterfaceSpec
-            || destType
-                instanceof compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic)) {
-      return true;
+    for (var rule : castRules) {
+      if (rule.matches(xx, destType)) return true;
     }
     return false;
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (interfaceRepresented instanceof Opt.Some) {
-      if (destType instanceof TypeInterfaceSpec) {
-        var sourceCode = cv.code().dynamic();
-        if (sourceCode == null) {
-          return EResult.err(
-              loc,
-              "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
-        }
-        var args = new TList<CodeDynamic>();
-        args.add(sourceCode);
-        var call = DynRuntime.OBJECT_TO_INTERFACE_SPEC.emitInvocation(loc, xx.vx, args);
-        return EResult.ok(
-            new CodeValue(
-                Code.of(loc, call), Opt.some(ValueDynamic.stack(new TypeInterfaceSpec()))));
-      }
-      if (destType
-          instanceof compilerxyz.eval.value.source_interface.TypeAnyInterfaceDynamic) {
-        var sourceCode = cv.code().dynamic();
-        if (sourceCode == null) {
-          return EResult.err(
-              loc,
-              "cast " + typeDesc + " → " + destType.typeDesc() + ": source has no runtime code");
-        }
-        var args = new TList<CodeDynamic>();
-        args.add(sourceCode);
-        var call = DynRuntime.OBJECT_TO_INTERFACE_DATA.emitInvocation(loc, xx.vx, args);
-        return EResult.ok(
-            new CodeValue(
-                Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
+    for (var rule : castRules) {
+      if (rule.matches(xx, destType)) {
+        return rule.apply(xx, this, loc, cv, destType);
       }
     }
     return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
