@@ -41,6 +41,7 @@ public interface Aspect {
           ObjectDropKind.DYNAMIC_LIGHT,
           identityAspects,
           new TList<TypeObjectCastRule>(),
+          new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }

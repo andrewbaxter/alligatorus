@@ -125,6 +125,7 @@ public final class InterfaceData {
           ObjectDropKind.DYNAMIC_LIGHT,
           identityAspects,
           castRules,
+          new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
           Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData()),
           Opt.<JavaInternalName>none());
     }

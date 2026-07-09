@@ -273,6 +273,7 @@ public final class DynRuntime {
               compilerxyz.eval.value.object_.ObjectDropKind.DYNAMIC,
               new TList<>(),
               castRules,
+              new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
               Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>some(
                   new compilerxyz.eval.value.object_.ObjectAspectSource.Static(
                       compilerxyz.gen.AspectBind.ID)),

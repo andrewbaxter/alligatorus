@@ -47,6 +47,7 @@ public record TypeObjectDynamic(
     ObjectDropKind dropKind,
     TList<Unique> identityAspects,
     TList<TypeObjectCastRule> castRules,
+    TList<TypeObjectCastFromRule> castFromRules,
     Opt<ObjectAspectSource> aspectSource,
     Opt<JavaInternalName> interfaceRepresented)
     implements
@@ -148,6 +149,28 @@ public record TypeObjectDynamic(
               typeDesc + "::getIfaceData: static aspect has no InterfaceData");
       case ObjectAspectSource.FromInterfaceData ignored -> value;
     };
+  }
+
+  @Override
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    for (var rule : castFromRules) {
+      if (rule.matches(xx, sourceType)) return true;
+    }
+    return false;
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      return EResult.err(loc, typeDesc + "::typeCastFrom: CodeValue has no value");
+    }
+    var sourceType = some.value().valueTypeOf();
+    for (var rule : castFromRules) {
+      if (rule.matches(xx, sourceType)) {
+        return rule.apply(xx, this, loc, cv, sourceType);
+      }
+    }
+    return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc);
   }
 
   @Override
