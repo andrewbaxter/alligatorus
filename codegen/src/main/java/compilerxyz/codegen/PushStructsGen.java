@@ -251,7 +251,7 @@ public final class PushStructsGen {
         .returns(TYPE)
         .beginControlFlow("if ($N == null)", fieldName)
         .addStatement(
-            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none(), $T.none())",
+            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none(), $T.none(), $T.none())",
             fieldName,
             TYPE_OBJECT_DYNAMIC,
             TYPE_ID,
@@ -270,6 +270,7 @@ public final class PushStructsGen {
             TYPE_OBJECT_CAST_RULE,
             TLIST,
             TYPE_OBJECT_CAST_FROM_RULE,
+            OPT,
             OPT,
             OPT)
         .endControlFlow()

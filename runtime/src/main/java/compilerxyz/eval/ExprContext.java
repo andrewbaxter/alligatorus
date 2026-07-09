@@ -10,6 +10,7 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
@@ -72,6 +73,7 @@ public final class ExprContext {
           identityAspects,
           new TList<TypeObjectCastRule>(),
           castFromRules,
+          Opt.<TypeObjectLift>none(),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }

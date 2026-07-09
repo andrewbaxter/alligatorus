@@ -48,6 +48,7 @@ public record TypeObjectDynamic(
     TList<Unique> identityAspects,
     TList<TypeObjectCastRule> castRules,
     TList<TypeObjectCastFromRule> castFromRules,
+    Opt<TypeObjectLift> lift,
     Opt<ObjectAspectSource> aspectSource,
     Opt<JavaInternalName> interfaceRepresented)
     implements
@@ -61,6 +62,7 @@ public record TypeObjectDynamic(
         AspectBind,
         AspectBindDynamic,
         AspectInitialBind,
+        compilerxyz.gen.AspectLift,
         AspectStackValueDynamic {
 
   @Override
@@ -109,6 +111,9 @@ public record TypeObjectDynamic(
       return Opt.some(this);
     }
     if (aspectSource instanceof Opt.Some && key.equals(AspectAspect.ID)) {
+      return Opt.some(this);
+    }
+    if (lift instanceof Opt.Some && key.equals(compilerxyz.gen.AspectLift.ID)) {
       return Opt.some(this);
     }
     switch (dropKind) {
@@ -287,5 +292,14 @@ public record TypeObjectDynamic(
   @Override
   public CodeValue toValue(QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(loc, value, this);
+  }
+
+  @Override
+  public EResult<Value> lift(
+      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
+    if (!(lift instanceof Opt.Some<TypeObjectLift> some)) {
+      return EResult.err(loc, typeDesc + "::lift: no lift impl registered");
+    }
+    return some.value().typeObjectLift(xx, loc, externalHostValue);
   }
 }

@@ -126,6 +126,7 @@ public final class InterfaceData {
           identityAspects,
           castRules,
           new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
+          Opt.<compilerxyz.eval.value.object_.TypeObjectLift>none(),
           Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData()),
           Opt.<JavaInternalName>none());
     }

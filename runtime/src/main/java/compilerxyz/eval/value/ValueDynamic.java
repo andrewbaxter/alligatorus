@@ -22,6 +22,7 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -64,6 +65,7 @@ public record ValueDynamic(Source source, Type type_) implements Value {
           new TList<Unique>(),
           new TList<TypeObjectCastRule>(),
           new TList<TypeObjectCastFromRule>(),
+          Opt.<TypeObjectLift>none(),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }

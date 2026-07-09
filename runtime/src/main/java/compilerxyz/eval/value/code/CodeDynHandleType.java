@@ -12,6 +12,7 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
@@ -45,6 +46,7 @@ public final class CodeDynHandleType {
           identityAspects,
           new TList<TypeObjectCastRule>(),
           new TList<TypeObjectCastFromRule>(),
+          Opt.<TypeObjectLift>none(),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }

@@ -55,6 +55,7 @@ public interface Target {
           identityAspects,
           new TList<compilerxyz.eval.value.object_.TypeObjectCastRule>(),
           new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
+          Opt.<compilerxyz.eval.value.object_.TypeObjectLift>none(),
           Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }

@@ -11,6 +11,7 @@ import compilerxyz.eval.value.object_.ObjectDropKind;
 import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
@@ -42,6 +43,7 @@ public interface Aspect {
           identityAspects,
           new TList<TypeObjectCastRule>(),
           new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
+          Opt.<TypeObjectLift>none(),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
