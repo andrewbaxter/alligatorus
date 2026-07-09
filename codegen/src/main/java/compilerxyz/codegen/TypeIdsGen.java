@@ -120,7 +120,6 @@ final class TypeIdsGen {
       "type_root_aspect_dynamic",
       "type_root_panic_dynamic",
       "type_root_throw_dynamic",
-      "type_root_any_binding_dynamic",
       "type_root_any_target_dynamic",
       "type_root_code_dyn_cast_fn",
       "type_root_code_dyn_handle_dynamic",

@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.binding.TypeAnyBindingDynamic;
 import compilerxyz.eval.value.code_.TypeCodeDynamic;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -111,7 +110,7 @@ public record TypeBindResultDynamic()
                 JavaDataDescriptor.fromClass(compilerxyz.eval.Binding.class))));
         return EResult.ok(new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
-            Opt.some(ValueDynamic.stack(new TypeAnyBindingDynamic()))));
+            Opt.some(ValueDynamic.stack(compilerxyz.eval.Binding.dynamicType()))));
       }
       default -> {
         return EResult.err(loc, "BindResult: unknown field '" + s.value() + "'");
@@ -124,7 +123,7 @@ public record TypeBindResultDynamic()
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     return switch (s.value()) {
       case "code" -> Opt.some(new TypeCodeDynamic());
-      case "binding" -> Opt.some(new TypeAnyBindingDynamic());
+      case "binding" -> Opt.some(compilerxyz.eval.Binding.dynamicType());
       default -> Opt.none();
     };
   }

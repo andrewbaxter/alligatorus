@@ -478,7 +478,7 @@ public final class BuiltinTreeGen {
             null,
             true,
             null,
-            ClassName.get("compilerxyz.eval.value.binding", "TypeAnyBindingDynamic"),
+            null,
             TList.of(
                 new Method(
                     "bindingUse_",
@@ -853,10 +853,8 @@ var targetBindSub =
                 new Leaf(
                     new LeafSpec.AnyConst(
                         CodeBlock.of(
-                            "new $T()",
-                            ClassName.get(
-                                "compilerxyz.eval.value.binding",
-                                "TypeAnyBindingDynamic"))))),
+                            "$T.dynamicType()",
+                            ClassName.get("compilerxyz.eval", "Binding"))))),
             new Child(
                 "bind_result",
                 new Leaf(
@@ -1085,10 +1083,8 @@ var targetBindSub =
                                 new TypeRef(
                                     ClassName.get("compilerxyz.eval", "Binding"),
                                     CodeBlock.of(
-                                        "new $T()",
-                                        ClassName.get(
-                                            "compilerxyz.eval.value.binding",
-                                            "TypeAnyBindingDynamic"))))),
+                                        "$T.dynamicType()",
+                                        ClassName.get("compilerxyz.eval", "Binding"))))),
                         ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
                         CodeBlock.of(
                             "new $T()",
