@@ -260,7 +260,8 @@ public final class DynRuntime {
               jvmInterfaceDesc,
               new TList<>(),
               methods,
-              Opt.none(),
+              compilerxyz.eval.value.object_.ObjectDropKind.DYNAMIC,
+              new TList<>(),
               Opt.some(compilerxyz.gen.AspectBind.ID),
               Opt.some(jvmInterface));
     }

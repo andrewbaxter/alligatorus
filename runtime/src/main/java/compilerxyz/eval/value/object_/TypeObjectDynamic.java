@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.eval.Binding;
+import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
@@ -22,6 +24,7 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
@@ -29,7 +32,9 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -41,7 +46,8 @@ public record TypeObjectDynamic(
     JavaDataDescriptor jvmClassDesc,
     TList<ObjectDataField> dataFields,
     TList<ObjectMethod> methods,
-    Opt<TypeObjectExtraAspect> extraAspect,
+    ObjectDropKind dropKind,
+    TList<Unique> identityAspects,
     Opt<Unique> aspectUnique,
     Opt<JavaInternalName> interfaceRepresented)
     implements
@@ -51,8 +57,10 @@ public record TypeObjectDynamic(
         AspectField,
         AspectConsumeDynamic,
         AspectDropDynamic,
+        AspectDropDynamicLight,
         AspectBind,
         AspectBindDynamic,
+        AspectInitialBind,
         AspectStackValueDynamic {
 
   @Override
@@ -86,19 +94,29 @@ public record TypeObjectDynamic(
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectField.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
+    if (key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
+        || key.equals(AspectInitialBind.ID)
         || key.equals(AspectStackValueDynamic.ID)) {
+      return Opt.some(this);
+    }
+    if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(AspectField.ID)) {
       return Opt.some(this);
     }
     if (aspectUnique instanceof Opt.Some && key.equals(AspectAspect.ID)) {
       return Opt.some(this);
     }
-    if (extraAspect instanceof Opt.Some<TypeObjectExtraAspect> some) {
-      return some.value().typeObjectExtraAspect(xx, key);
+    switch (dropKind) {
+      case DYNAMIC -> {
+        if (key.equals(AspectDropDynamic.ID)) return Opt.some(this);
+      }
+      case DYNAMIC_LIGHT -> {
+        if (key.equals(AspectDropDynamicLight.ID)) return Opt.some(this);
+      }
+    }
+    for (var idAspect : identityAspects) {
+      if (key.equals(idAspect)) return Opt.some(this);
     }
     return Opt.none();
   }
@@ -239,6 +257,11 @@ public record TypeObjectDynamic(
   }
 
   @Override
+  public EResult<Code> dropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
+  }
+
+  @Override
   public EResult<AspectBind.BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindViaTarget(xx, loc, cv);
   }
@@ -246,6 +269,11 @@ public record TypeObjectDynamic(
   @Override
   public EResult<Opt<TargetBindSub>> bindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindDynamicDefault(xx, loc, cv);
+  }
+
+  @Override
+  public Binding initialBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override

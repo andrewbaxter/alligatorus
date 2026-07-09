@@ -19,7 +19,6 @@ import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
-import org.jspecify.annotations.Nullable;
 
 public final class PushStructsGen {
   private PushStructsGen() {}
@@ -85,6 +84,8 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeUtils");
   private static final ClassName TYPE_OBJECT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName OBJECT_DROP_KIND =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
   private static final ClassName OBJECT_DATA_FIELD =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
   private static final ClassName OBJECT_METHOD =
@@ -105,18 +106,7 @@ public final class PushStructsGen {
       long builtinUniqueId,
       TList<NamedTypeRef> dataFields,
       TList<PushField> fields,
-      TList<PushMethod> methods,
-      @Nullable String extraAspectFn) {
-
-    public PushStructSpec(
-        String name,
-        long builtinUniqueId,
-        TList<NamedTypeRef> dataFields,
-        TList<PushField> fields,
-        TList<PushMethod> methods) {
-      this(name, builtinUniqueId, dataFields, fields, methods, null);
-    }
-  }
+      TList<PushMethod> methods) {}
 
   public static void run(
       Path outRoot,
@@ -218,22 +208,6 @@ public final class PushStructsGen {
     var specClass = ClassName.get(GEN_PACKAGE, spec.name());
     var jvmInternal = specClass.canonicalName().replace('.', '/');
 
-    CodeBlock extraAspect;
-    if (spec.extraAspectFn() != null) {
-      var fn = spec.extraAspectFn();
-      var lastDot = fn.lastIndexOf('.');
-      if (lastDot < 0) {
-        throw new IllegalStateException(
-            "extraAspectFn must be a fully-qualified Class.method reference, got: " + fn);
-      }
-      var className = ClassName.bestGuess(fn.substring(0, lastDot));
-      var methodName = fn.substring(lastDot + 1);
-      extraAspect =
-          CodeBlock.of("$T.some($T::$L)", OPT, className, methodName);
-    } else {
-      extraAspect = CodeBlock.of("$T.none()", OPT);
-    }
-
     var dataFieldsList = CodeBlock.builder();
     dataFieldsList.add("$T.<$T>of(", TLIST, OBJECT_DATA_FIELD);
     for (int i = 0; i < spec.fields().size(); i++) {
@@ -273,7 +247,7 @@ public final class PushStructsGen {
         .returns(TYPE)
         .beginControlFlow("if ($N == null)", fieldName)
         .addStatement(
-            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $L, $T.none(), $T.none())",
+            "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.none(), $T.none())",
             fieldName,
             TYPE_OBJECT_DYNAMIC,
             TYPE_ID,
@@ -285,7 +259,9 @@ public final class PushStructsGen {
             specClass,
             dataFieldsList.build(),
             methodsList.build(),
-            extraAspect,
+            OBJECT_DROP_KIND,
+            TLIST,
+            UNIQUE,
             OPT,
             OPT)
         .endControlFlow()
@@ -499,8 +475,7 @@ public final class PushStructsGen {
                     "defSetBuilderInterface", retSourceInterfaceResult),
                 new PushMethod(
                     "finish", TList.of(), "()", empty,
-                    "defSetBuilderFinish", retObject)),
-            "compilerxyz.eval.definition_set.DefinitionSetExtraAspect.extraAspect");
+                    "defSetBuilderFinish", retObject)));
 
     var optionPush =
         new PushStructSpec(
