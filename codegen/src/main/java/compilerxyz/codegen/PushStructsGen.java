@@ -368,12 +368,12 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_REF =
       ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
-  private static final ClassName TYPE_SOURCE_UNION_REF_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_union", "TypeTypeSourceUnionDynamic");
+  private static final ClassName SOURCE_UNION_REF_TYPE =
+      ClassName.get("compilerxyz.eval.value.source_union", "SourceUnionRefType");
   private static final ClassName SOURCE_UNION_NEW_REF =
       ClassName.get("compilerxyz.eval.value.source_union_new", "TypeSourceUnionNewDynamic");
-  private static final ClassName TYPE_SOURCE_UNION_NEW_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_union_new", "TypeTypeSourceUnionNewDynamic");
+  private static final ClassName SOURCE_UNION_NEW_REF_TYPE =
+      ClassName.get("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
   private static final ClassName TYPE_STRING_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName VALUE_STRING_CONST =
@@ -702,7 +702,7 @@ public final class PushStructsGen {
                     "type_",
                     ref(
                         SOURCE_UNION_REF,
-                        CodeBlock.of("new $T()", TYPE_SOURCE_UNION_REF_DYNAMIC)),
+                        CodeBlock.of("$T.dynamicType()", SOURCE_UNION_REF_TYPE)),
                     empty)),
             TList.of(
                 new PushMethod(
@@ -710,7 +710,7 @@ public final class PushStructsGen {
                     TList.of(
                         new NamedTypeRef("tag", string),
                         new NamedTypeRef("type_ref", anyTypeArg)),
-                    "new " + TYPE_SOURCE_UNION_NEW_DYNAMIC.canonicalName() + "()",
+                    SOURCE_UNION_NEW_REF_TYPE.canonicalName() + ".dynamicType()",
                     empty,
                     "srcUnionAddVariant",
                     retSourceUnionNewRef)));

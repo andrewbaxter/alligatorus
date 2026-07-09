@@ -837,26 +837,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record SourceUnionRefDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_REF_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "type<union-ref>";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
-    }
-  }
-
   record SourceUnionNewConst() implements TypeRoot {
     @Override
     public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_NEW_CONST_TYPE_ID; }
@@ -874,26 +854,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     @Override
     public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
       return Opt.some(ExporterRoot.SOURCE_UNION_NEW_CONST);
-    }
-  }
-
-  record SourceUnionNewDynamic() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "type<union_new-dynamic>";
-    }
-
-    @Override
-    public Type valueTypeOf() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.none();
     }
   }
 
