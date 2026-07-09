@@ -47,7 +47,7 @@ public record TypeObjectDynamic(
     ObjectDropKind dropKind,
     TList<Unique> identityAspects,
     TList<TypeObjectCastRule> castRules,
-    Opt<Unique> aspectUnique,
+    Opt<ObjectAspectSource> aspectSource,
     Opt<JavaInternalName> interfaceRepresented)
     implements
         Type,
@@ -64,11 +64,15 @@ public record TypeObjectDynamic(
 
   @Override
   public Unique id() {
-    if (!(aspectUnique instanceof Opt.Some<Unique> some)) {
+    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(
-          typeDesc + "::id: TypeObjectDynamic has no aspectUnique — not an aspect metatype");
+          typeDesc + "::id: TypeObjectDynamic is not an aspect metatype");
     }
-    return some.value();
+    if (!(some.value() instanceof ObjectAspectSource.Static staticSrc)) {
+      throw new IllegalStateException(
+          typeDesc + "::id: aspect id is not statically known");
+    }
+    return staticSrc.id();
   }
 
   @Override
@@ -103,7 +107,7 @@ public record TypeObjectDynamic(
     if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(AspectField.ID)) {
       return Opt.some(this);
     }
-    if (aspectUnique instanceof Opt.Some && key.equals(AspectAspect.ID)) {
+    if (aspectSource instanceof Opt.Some && key.equals(AspectAspect.ID)) {
       return Opt.some(this);
     }
     switch (dropKind) {
@@ -122,17 +126,28 @@ public record TypeObjectDynamic(
 
   @Override
   public Unique getUnique(InterfaceData value) {
-    if (!(aspectUnique instanceof Opt.Some<Unique> some)) {
+    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(
           typeDesc + "::getUnique: TypeObjectDynamic does not represent an aspect");
     }
-    return some.value();
+    return switch (some.value()) {
+      case ObjectAspectSource.Static staticSrc -> staticSrc.id();
+      case ObjectAspectSource.FromInterfaceData ignored -> value.identity;
+    };
   }
 
   @Override
   public InterfaceData getIfaceData(InterfaceData value) {
-    throw new UnsupportedOperationException(
-        typeDesc + "::getIfaceData: TypeObjectDynamic has no InterfaceData");
+    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
+      throw new UnsupportedOperationException(
+          typeDesc + "::getIfaceData: TypeObjectDynamic has no aspect source");
+    }
+    return switch (some.value()) {
+      case ObjectAspectSource.Static ignored ->
+          throw new UnsupportedOperationException(
+              typeDesc + "::getIfaceData: static aspect has no InterfaceData");
+      case ObjectAspectSource.FromInterfaceData ignored -> value;
+    };
   }
 
   @Override

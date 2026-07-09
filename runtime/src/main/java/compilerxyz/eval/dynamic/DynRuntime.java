@@ -136,11 +136,12 @@ public final class DynRuntime {
   private static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromObject(
           compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-    if (!(obj.aspectUnique() instanceof Opt.Some<Unique> auq)) {
+    if (!(obj.aspectSource() instanceof Opt.Some<compilerxyz.eval.value.object_.ObjectAspectSource> some)
+        || !(some.value() instanceof compilerxyz.eval.value.object_.ObjectAspectSource.Static staticSrc)) {
       throw new IllegalStateException(
           "synthesizeInterfaceDataFromObject: TypeObjectDynamic "
               + obj.typeDesc()
-              + " has no aspectUnique");
+              + " has no static aspect id");
     }
     if (!(obj.interfaceRepresented() instanceof Opt.Some<JavaInternalName> ir)) {
       throw new IllegalStateException(
@@ -149,7 +150,7 @@ public final class DynRuntime {
               + " has no interfaceRepresented");
     }
     var data =
-        new compilerxyz.eval.value.source_interface.InterfaceData(null, auq.value(), null);
+        new compilerxyz.eval.value.source_interface.InterfaceData(null, staticSrc.id(), null);
     data.description = obj.typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
     int idx = 0;
@@ -271,7 +272,9 @@ public final class DynRuntime {
               compilerxyz.eval.value.object_.ObjectDropKind.DYNAMIC,
               new TList<>(),
               castRules,
-              Opt.some(compilerxyz.gen.AspectBind.ID),
+              Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>some(
+                  new compilerxyz.eval.value.object_.ObjectAspectSource.Static(
+                      compilerxyz.gen.AspectBind.ID)),
               Opt.some(jvmInterface));
     }
     return ASPECT_BIND_OBJECT;
@@ -316,8 +319,13 @@ public final class DynRuntime {
               mDesc,
               new TList<>()));
     }
-    var identity =
-        obj.aspectUnique() instanceof Opt.Some<Unique> auq ? auq.value() : obj.typeId();
+    Object identity;
+    if (obj.aspectSource() instanceof Opt.Some<compilerxyz.eval.value.object_.ObjectAspectSource> aspSome
+        && aspSome.value() instanceof compilerxyz.eval.value.object_.ObjectAspectSource.Static staticSrc) {
+      identity = staticSrc.id();
+    } else {
+      identity = obj.typeId();
+    }
     return new compilerxyz.eval.value.interface_spec.InterfaceSpec(
         some.value(), (Unique) identity, Opt.none(), methods, Opt.none());
   }

@@ -54,7 +54,7 @@ public interface Target {
           ObjectDropKind.DYNAMIC_LIGHT,
           identityAspects,
           new TList<compilerxyz.eval.value.object_.TypeObjectCastRule>(),
-          Opt.<Unique>none(),
+          Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }
