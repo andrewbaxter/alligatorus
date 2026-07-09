@@ -362,8 +362,8 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_object", "SourceObjectRefType");
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_CONST =
       ClassName.get("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewDynamic");
-  private static final ClassName TYPE_SOURCE_OBJECT_NEW_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.source_object_new", "TypeTypeSourceObjectNewDynamic");
+  private static final ClassName SOURCE_OBJECT_NEW_REF_TYPE =
+      ClassName.get("compilerxyz.eval.value.source_object_new", "SourceObjectNewRefType");
   private static final ClassName SOURCE_UNION_DATA =
       ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_REF =
@@ -651,7 +651,7 @@ public final class PushStructsGen {
         new PushMethod(
             "new_",
             TList.of(),
-            dynExpr(TYPE_SOURCE_OBJECT_NEW_DYNAMIC),
+            SOURCE_OBJECT_NEW_REF_TYPE.canonicalName() + ".dynamicType()",
             empty,
             "srcObjectResultNew",
             retTypeSourceObjectNewConst));
