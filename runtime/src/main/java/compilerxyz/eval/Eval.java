@@ -10,7 +10,6 @@ import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.string.TypeStringConst;
-import compilerxyz.eval.value.any.TypeAnyConst;
 import compilerxyz.eval.value.any.ValueAnyConst;
 import compilerxyz.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.eval.value.argrecord.ArgumentRecord;

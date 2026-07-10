@@ -14,7 +14,7 @@ public record ValueTypeAnyConst() implements Value, ExporterAny {
 
   @Override
   public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(new TypeAnyConst());
+    return EResult.ok(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType());
   }
 
   @Override
