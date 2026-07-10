@@ -316,7 +316,7 @@ public final class DynRuntime {
     if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
       return EResult.err(loc, "sourceObjectBind: canary type missing AspectBindDynamic");
     }
-    var subRes = bindDynSome.value().bindDynamic(xx, loc, canaryCv);
+    var subRes = bindDynSome.value().aspectBindDynamicBindDynamic(xx, loc, canaryCv);
     if (subRes.hasErrors()) return subRes.reerr();
     var subOpt = subRes.requireValue("sourceObjectBind bindDynamic");
     if (!(subOpt instanceof Opt.Some<TargetBindSub> subSome)) {

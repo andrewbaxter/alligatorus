@@ -622,7 +622,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     if (!(bindDynOpt instanceof Opt.Some<compilerxyz.gen.AspectBindDynamic> bindDynSome)) {
       return EResult.ok(Opt.none());
     }
-    return bindDynSome.value().bindDynamic(xx, loc, cv);
+    return bindDynSome.value().aspectBindDynamicBindDynamic(xx, loc, cv);
   }
 
   @Override

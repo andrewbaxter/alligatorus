@@ -261,7 +261,7 @@ public final class DynUtil {
         if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
             return EResult.err(loc, "Type (" + vtype.typeDesc() + ") is missing aspect AspectBindDynamic");
         }
-        var subRes = bindDynSome.value().bindDynamic(xx, loc, cv);
+        var subRes = bindDynSome.value().aspectBindDynamicBindDynamic(xx, loc, cv);
         if (subRes.hasErrors()) {
             return subRes.reerr();
         }

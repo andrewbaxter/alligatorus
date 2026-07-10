@@ -169,7 +169,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public EResult<Opt<TargetBindSub>> bindDynamic(
+  public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindDynamicDefault(xx, loc, cv);
   }

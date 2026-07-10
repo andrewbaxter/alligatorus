@@ -870,7 +870,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_BIND),
       new InlineHelperSpec(
-          "bindDynamic",
+          "aspectBindDynamicBindDynamic",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
           "sourceObjectBindDynamic",
