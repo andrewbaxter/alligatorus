@@ -24,123 +24,116 @@ final class TypeIdsGen {
 
   private static TList<TypeIdSpec> specs() {
     var list = new TList<TypeIdSpec>();
-    long id = 7001L;
-    String[] names = {
-      "type_number_const",
-      "type_number_dynamic",
-      "type_number_dynamic_box",
-      "type_bool_const",
-      "type_bool_dynamic",
-      "type_bool_dynamic_box",
-      "type_string_const",
-      "type_string_dynamic",
-      "type_null_const",
-      "type_null_dynamic",
-      "type_any_const",
-      "type_type_dynamic",
-      "type_aspect_dynamic",
-      "type_constkey_dynamic",
-      "type_unique",
-      "type_expr",
-      "type_expr_staged_placeholder",
-      "type_throw_dynamic",
-      "type_panic_dynamic",
-      "type_code_value_extern_dynamic",
-      "type_expr_context_dynamic",
-      "type_qexpr_id_dynamic",
-      "type_bind_result_dynamic",
-      "type_any_target_dynamic",
-      "type_any_binding_dynamic",
-      "type_code_dyn_handle_dynamic",
-      "type_list_dynamic",
-      "type_list_new_dynamic",
-      "type_list_constructor_const",
-      "type_map_dynamic",
-      "type_map_new_dynamic",
-      "type_map_constructor_const",
-      "type_map_entry_dynamic",
-      "type_map_get_fn_dynamic",
-      "type_option_dynamic",
-      "type_option_constructor_const",
-      "type_option_variant_constructor_dynamic",
-      "type_function_dynamic",
-      "type_function_aspect_dynamic",
-      "type_function_cast_value_dynamic",
-      "type_method_dynamic",
-      "record",
-      "tuple",
-      "type_source_object_dynamic",
-      "type_source_object_const",
-      "type_source_object_ref_dynamic",
-      "type_source_object_new_const",
-      "type_source_object_new_dynamic",
-      "type_source_interface_const",
-      "type_source_interface_dynamic",
-      "type_source_union_const",
-      "type_source_union_dynamic",
-      "type_source_union_ref_dynamic",
-      "type_source_union_new_const",
-      "type_source_union_new_dynamic",
-      "type_source_function_const",
-      "type_source_function_dynamic",
-      "type_source_exports_lifted_const",
-      "type_root_string_const",
-      "type_root_null_const",
-      "type_root_null_dynamic",
-      "type_root_bool_const",
-      "type_root_bool_dynamic",
-      "type_root_number_const",
-      "type_root_number_dynamic",
-      "type_root_number_dynamic_box",
-      "type_root_bool_dynamic_box",
-      "type_root_string_dynamic",
-      "type_root_any_dynamic",
-      "type_root_constkey_dynamic",
-      "type_root_unique",
-      "type_root_expr",
-      "type_root_expr_staged_placeholder",
-      "type_root_function_dynamic",
-      "type_root_function_aspect_dynamic",
-      "type_root_function_cast_value_dynamic",
-      "type_root_list_dynamic",
-      "type_root_list_new_dynamic",
-      "type_root_list_constructor_const",
-      "type_root_map_dynamic",
-      "type_root_map_new_dynamic",
-      "type_root_map_get_fn_dynamic",
-      "type_root_map_entry_dynamic",
-      "type_root_map_constructor_const",
-      "type_root_option_dynamic",
-      "type_root_option_variant_constructor_dynamic",
-      "type_root_option_constructor_const",
-      "type_root_panic_dynamic",
-      "type_root_throw_dynamic",
-      "type_root_source_function_const",
-      "type_root_source_interface_const",
-      "type_root_source_object_const",
-      "type_root_source_object_dynamic",
-      "type_root_source_object_new_const",
-      "type_root_source_union_const",
-      "type_root_source_union_dynamic",
-      "type_root_source_union_new_const",
-      "type_root_code_value_extern_dynamic",
-      "type_root_source_exports_lifted_const",
-      "argument_tuple",
-      "type_eresult_dynamic",
-      "type_eresult_variant_constructor_dynamic",
-      "type_code_dynamic",
-      "type_source_dynamic",
-      "type_root_eresult_dynamic",
-      "type_root_eresult_variant_constructor_dynamic",
-      "type_eresult_constructor_const",
-      "type_root_eresult_constructor_const",
-      "type_value_dynamic",
-      "type_interface_spec",
-      "type_root_interface_spec"
-    };
-    for (var n : names) {
-      list.add(new TypeIdSpec(n, id++));
-    }
+    list.add(new TypeIdSpec("type_number_const", 7001L));
+    list.add(new TypeIdSpec("type_number_dynamic", 7002L));
+    list.add(new TypeIdSpec("type_number_dynamic_box", 7003L));
+    list.add(new TypeIdSpec("type_bool_const", 7004L));
+    list.add(new TypeIdSpec("type_bool_dynamic", 7005L));
+    list.add(new TypeIdSpec("type_bool_dynamic_box", 7006L));
+    list.add(new TypeIdSpec("type_string_const", 7007L));
+    list.add(new TypeIdSpec("type_string_dynamic", 7008L));
+    list.add(new TypeIdSpec("type_null_const", 7009L));
+    list.add(new TypeIdSpec("type_null_dynamic", 7010L));
+    list.add(new TypeIdSpec("type_any_const", 7011L));
+    list.add(new TypeIdSpec("type_type_dynamic", 7012L));
+    list.add(new TypeIdSpec("type_aspect_dynamic", 7013L));
+    list.add(new TypeIdSpec("type_constkey_dynamic", 7014L));
+    list.add(new TypeIdSpec("type_unique", 7015L));
+    list.add(new TypeIdSpec("type_expr", 7016L));
+    list.add(new TypeIdSpec("type_expr_staged_placeholder", 7017L));
+    list.add(new TypeIdSpec("type_throw_dynamic", 7018L));
+    list.add(new TypeIdSpec("type_panic_dynamic", 7019L));
+    list.add(new TypeIdSpec("type_code_value_extern_dynamic", 7020L));
+    list.add(new TypeIdSpec("type_expr_context_dynamic", 7021L));
+    list.add(new TypeIdSpec("type_qexpr_id_dynamic", 7022L));
+    list.add(new TypeIdSpec("type_bind_result_dynamic", 7023L));
+    list.add(new TypeIdSpec("type_any_target_dynamic", 7024L));
+    list.add(new TypeIdSpec("type_any_binding_dynamic", 7025L));
+    list.add(new TypeIdSpec("type_code_dyn_handle_dynamic", 7026L));
+    list.add(new TypeIdSpec("type_list_dynamic", 7027L));
+    list.add(new TypeIdSpec("type_list_new_dynamic", 7028L));
+    list.add(new TypeIdSpec("type_list_constructor_const", 7029L));
+    list.add(new TypeIdSpec("type_map_dynamic", 7030L));
+    list.add(new TypeIdSpec("type_map_new_dynamic", 7031L));
+    list.add(new TypeIdSpec("type_map_constructor_const", 7032L));
+    list.add(new TypeIdSpec("type_map_entry_dynamic", 7033L));
+    list.add(new TypeIdSpec("type_map_get_fn_dynamic", 7034L));
+    list.add(new TypeIdSpec("type_option_dynamic", 7035L));
+    list.add(new TypeIdSpec("type_option_constructor_const", 7036L));
+    list.add(new TypeIdSpec("type_option_variant_constructor_dynamic", 7037L));
+    list.add(new TypeIdSpec("type_function_dynamic", 7038L));
+    list.add(new TypeIdSpec("type_function_aspect_dynamic", 7039L));
+    list.add(new TypeIdSpec("type_function_cast_value_dynamic", 7040L));
+    list.add(new TypeIdSpec("type_method_dynamic", 7041L));
+    list.add(new TypeIdSpec("record", 7042L));
+    list.add(new TypeIdSpec("tuple", 7043L));
+    list.add(new TypeIdSpec("type_source_object_dynamic", 7044L));
+    list.add(new TypeIdSpec("type_source_object_const", 7045L));
+    list.add(new TypeIdSpec("type_source_object_ref_dynamic", 7046L));
+    list.add(new TypeIdSpec("type_source_object_new_const", 7047L));
+    list.add(new TypeIdSpec("type_source_object_new_dynamic", 7048L));
+    list.add(new TypeIdSpec("type_source_interface_const", 7049L));
+    list.add(new TypeIdSpec("type_source_interface_dynamic", 7050L));
+    list.add(new TypeIdSpec("type_source_union_const", 7051L));
+    list.add(new TypeIdSpec("type_source_union_dynamic", 7052L));
+    list.add(new TypeIdSpec("type_source_union_ref_dynamic", 7053L));
+    list.add(new TypeIdSpec("type_source_union_new_const", 7054L));
+    list.add(new TypeIdSpec("type_source_union_new_dynamic", 7055L));
+    list.add(new TypeIdSpec("type_source_function_const", 7056L));
+    list.add(new TypeIdSpec("type_source_function_dynamic", 7057L));
+    list.add(new TypeIdSpec("type_source_exports_lifted_const", 7058L));
+    list.add(new TypeIdSpec("type_root_string_const", 7059L));
+    list.add(new TypeIdSpec("type_root_null_const", 7060L));
+    list.add(new TypeIdSpec("type_root_null_dynamic", 7061L));
+    list.add(new TypeIdSpec("type_root_bool_const", 7062L));
+    list.add(new TypeIdSpec("type_root_bool_dynamic", 7063L));
+    list.add(new TypeIdSpec("type_root_number_const", 7064L));
+    list.add(new TypeIdSpec("type_root_number_dynamic", 7065L));
+    list.add(new TypeIdSpec("type_root_number_dynamic_box", 7066L));
+    list.add(new TypeIdSpec("type_root_bool_dynamic_box", 7067L));
+    list.add(new TypeIdSpec("type_root_string_dynamic", 7068L));
+    list.add(new TypeIdSpec("type_root_constkey_dynamic", 7070L));
+    list.add(new TypeIdSpec("type_root_unique", 7071L));
+    list.add(new TypeIdSpec("type_root_expr", 7072L));
+    list.add(new TypeIdSpec("type_root_expr_staged_placeholder", 7073L));
+    list.add(new TypeIdSpec("type_root_function_dynamic", 7074L));
+    list.add(new TypeIdSpec("type_root_function_aspect_dynamic", 7075L));
+    list.add(new TypeIdSpec("type_root_function_cast_value_dynamic", 7076L));
+    list.add(new TypeIdSpec("type_root_list_dynamic", 7077L));
+    list.add(new TypeIdSpec("type_root_list_new_dynamic", 7078L));
+    list.add(new TypeIdSpec("type_root_list_constructor_const", 7079L));
+    list.add(new TypeIdSpec("type_root_map_dynamic", 7080L));
+    list.add(new TypeIdSpec("type_root_map_new_dynamic", 7081L));
+    list.add(new TypeIdSpec("type_root_map_get_fn_dynamic", 7082L));
+    list.add(new TypeIdSpec("type_root_map_entry_dynamic", 7083L));
+    list.add(new TypeIdSpec("type_root_map_constructor_const", 7084L));
+    list.add(new TypeIdSpec("type_root_option_dynamic", 7085L));
+    list.add(new TypeIdSpec("type_root_option_variant_constructor_dynamic", 7086L));
+    list.add(new TypeIdSpec("type_root_option_constructor_const", 7087L));
+    list.add(new TypeIdSpec("type_root_panic_dynamic", 7088L));
+    list.add(new TypeIdSpec("type_root_throw_dynamic", 7089L));
+    list.add(new TypeIdSpec("type_root_source_function_const", 7090L));
+    list.add(new TypeIdSpec("type_root_source_interface_const", 7091L));
+    list.add(new TypeIdSpec("type_root_source_object_const", 7092L));
+    list.add(new TypeIdSpec("type_root_source_object_dynamic", 7093L));
+    list.add(new TypeIdSpec("type_root_source_object_new_const", 7094L));
+    list.add(new TypeIdSpec("type_root_source_union_const", 7095L));
+    list.add(new TypeIdSpec("type_root_source_union_dynamic", 7096L));
+    list.add(new TypeIdSpec("type_root_source_union_new_const", 7097L));
+    list.add(new TypeIdSpec("type_root_code_value_extern_dynamic", 7098L));
+    list.add(new TypeIdSpec("type_root_source_exports_lifted_const", 7099L));
+    list.add(new TypeIdSpec("argument_tuple", 7100L));
+    list.add(new TypeIdSpec("type_eresult_dynamic", 7101L));
+    list.add(new TypeIdSpec("type_eresult_variant_constructor_dynamic", 7102L));
+    list.add(new TypeIdSpec("type_code_dynamic", 7103L));
+    list.add(new TypeIdSpec("type_source_dynamic", 7104L));
+    list.add(new TypeIdSpec("type_root_eresult_dynamic", 7105L));
+    list.add(new TypeIdSpec("type_root_eresult_variant_constructor_dynamic", 7106L));
+    list.add(new TypeIdSpec("type_eresult_constructor_const", 7107L));
+    list.add(new TypeIdSpec("type_root_eresult_constructor_const", 7108L));
+    list.add(new TypeIdSpec("type_value_dynamic", 7109L));
+    list.add(new TypeIdSpec("type_interface_spec", 7110L));
+    list.add(new TypeIdSpec("type_root_interface_spec", 7111L));
     return list;
   }
 
