@@ -138,7 +138,12 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     mb.field(
                                         mb.call(mb.typesOption(), mb.typesAspect()),
                                         mb.str("none")),
-                                    mb.literalNull()))))),
+                                    mb.literalNull())),
+                            new TestMb.RecordPair("id", mb.panic(mb.str("unimpl id"))),
+                            new TestMb.RecordPair(
+                                "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
+                            new TestMb.RecordPair(
+                                "cast_to", mb.panic(mb.str("unimpl cast_to")))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.tupleOf(

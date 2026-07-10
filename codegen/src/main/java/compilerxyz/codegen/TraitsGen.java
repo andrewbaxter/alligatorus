@@ -65,6 +65,9 @@ public final class TraitsGen {
             "TYPE_VALUE_DYNAMIC_TYPE_ID",
             TList.of(new Method("type", any, new MethodArgs(TList.of()))));
 
+    var qexprIdRef = TypeRef.viaPush(ClassName.get("compilerxyz.eval", "QExprId"));
+    var typeIdRef =
+        TypeRef.opaque(ClassName.get("compilerxyz.eval", "TypeId"));
     var typeSpec =
         new InterfaceSpec(
             "type",
@@ -82,21 +85,42 @@ public final class TraitsGen {
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("source_type", typeRefPush),
-                            new NamedTypeRef("cv", cve)))),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("source_type", typeRefPush)))),
                 new Method(
                     "cast_from",
                     eresultCve,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("source_type", typeRefPush),
+                            new NamedTypeRef("loc", qexprIdRef),
                             new NamedTypeRef("cv", cve)))),
+                new Method(
+                    "can_cast_to",
+                    bool,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("dest_type", typeRefPush)))),
+                new Method(
+                    "cast_to",
+                    eresultCve,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("cv", cve),
+                            new NamedTypeRef("dest_type", typeRefPush)))),
                 new Method("desc", string, new MethodArgs(TList.of())),
+                new Method("id", typeIdRef, new MethodArgs(TList.of())),
                 new Method(
                     "aspect",
                     aspectOption,
-                    new MethodArgs(TList.of(new NamedTypeRef("key", unique))))));
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("key", unique))))));
 
     return TList.of(valueSpec, typeSpec);
   }

@@ -1293,6 +1293,10 @@ public final class SourceObjectEmitter {
                 seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL)));
           }
         }
+        case "loc" -> {
+          slotValueSources.put(slotIdx, () ->
+              seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 2)));
+        }
         case "source_type" -> {
           if (isCanCastFrom && paramSlotCount >= 3) {
             slotValueSources.put(slotIdx, () -> {
