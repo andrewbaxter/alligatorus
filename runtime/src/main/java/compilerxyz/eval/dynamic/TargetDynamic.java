@@ -605,4 +605,107 @@ public final class TargetDynamic implements Target {
     }
     return ctx.allocSlot(id);
   }
+
+  @Override
+  public EResult<Opt<TargetBindSub>> targetMaybeBindSub(ExprContext xx, QExprId loc, CodeValue cv) {
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      throw new IllegalStateException(
+          "Target::maybeBindSub: CodeValue has no value; Rust unwraps unconditionally");
+    }
+    var vtype = some.value().valueTypeOf();
+    var bindDynOpt = compilerxyz.gen.AspectBindDynamic.getMaybe(xx, vtype);
+    if (!(bindDynOpt instanceof Opt.Some<compilerxyz.gen.AspectBindDynamic> bindDynSome)) {
+      return EResult.ok(Opt.none());
+    }
+    return bindDynSome.value().bindDynamic(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<TargetBindSub> targetCodeToBindSub(
+      QExprId loc, Code code, compilerxyz.eval.Type type_) {
+    var dyn = code.dynamic();
+    if (dyn == null) {
+      return EResult.err(loc, "Target::codeToBindSub: code is not dynamic");
+    }
+    return EResult.ok(new TargetBindSub(dyn, type_));
+  }
+
+  @Override
+  public TargetBindSub targetBindSubRecord(
+      ExprContext xx, QExprId loc, Code carry, TList<Target.RecordBindField> fields) {
+    var entries = new compilerxyz.util.TOrderedMap<ConstKey, TargetBindSub>();
+    for (var f : fields) entries.put(f.key(), f.sub());
+    var sortedSubs = sortBindSubs(entries, ConstKey.CANONICAL_ORDER);
+    var dynamicFields =
+        new compilerxyz.util.TOrderedMap<ConstKey, compilerxyz.eval.value.record.RecordField>();
+    for (var f : fields) {
+      dynamicFields.put(
+          f.key(), new compilerxyz.eval.value.record.RecordField.Dynamic(f.sub().type()));
+    }
+    compilerxyz.eval.Type recordType =
+        new compilerxyz.eval.value.record.Record(Opt.none(), dynamicFields);
+    var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
+    return new TargetBindSub(dynamicCode, recordType);
+  }
+
+  @Override
+  public TargetBindSub targetBindSubTuple(
+      ExprContext xx, QExprId loc, Code carry, TList<Target.TupleBindSlot> slots) {
+    var entries = new compilerxyz.util.TOrderedMap<Integer, TargetBindSub>();
+    for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub());
+    var sortedSubs = sortBindSubs(entries, Integer::compare);
+    var dynamicElements =
+        new TList<compilerxyz.eval.value.tuple.TupleElement>(slots.size());
+    for (var slot : slots) {
+      dynamicElements.add(
+          new compilerxyz.eval.value.tuple.TupleElement.Dynamic(slot.sub().type()));
+    }
+    compilerxyz.eval.Type tupleType =
+        new compilerxyz.eval.value.tuple.Tuple(
+            Opt.<compilerxyz.eval.value.tuple.TupleBaseDynamic>none(), dynamicElements);
+    var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
+    return new TargetBindSub(dynamicCode, tupleType);
+  }
+
+  @Override
+  public EResult<Code> targetCastException(
+      ExprContext xx,
+      QExprId loc,
+      Code callCode,
+      BindingId catchBinding,
+      CodeValue castCv) {
+    throw new UnsupportedOperationException(
+        "TargetDynamic::targetCastException: not implemented");
+  }
+
+  private static <K> TList<TargetBindSub> sortBindSubs(
+      compilerxyz.util.TOrderedMap<K, TargetBindSub> entries,
+      java.util.Comparator<K> tiebreaker) {
+    var typeEntries = new compilerxyz.util.TOrderedMap<K, compilerxyz.eval.Type>();
+    for (var e : entries.entrySet()) typeEntries.put(e.getKey(), e.getValue().type());
+    var sort = CompositeSlotSort.sort(typeEntries, tiebreaker);
+    var out = new TList<TargetBindSub>(entries.size());
+    for (var e : entries.entrySet()) out.add(null);
+    for (var e : entries.entrySet()) {
+      out.set(sort.slotOfKey().get(e.getKey()), e.getValue());
+    }
+    return out;
+  }
+
+  private static CodeDynamic emitCompositeInstantiation(
+      ExprContext xx, QExprId loc, Code carry, TList<TargetBindSub> sortedSubs) {
+    var sortedTypes = new TList<compilerxyz.eval.Type>(sortedSubs.size());
+    var argSeq = new JavaBytecodeSequence();
+    for (var sub : sortedSubs) {
+      sortedTypes.add(sub.type());
+      argSeq.add(sub.data());
+    }
+    var klass =
+        JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
+    var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
+    return DynUtil.wrapWithCarry(
+        loc,
+        carry,
+        JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, new CodeDynamic(loc, argSeq)));
+  }
 }
