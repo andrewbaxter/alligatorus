@@ -371,7 +371,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       };
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     var subRes = bindSub(xx, loc, cv);
     if (subRes.hasErrors()) {
       return subRes.reerr();
@@ -489,7 +489,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           continue;
         }
         var bind = bindRes.requireValue("Record::bindSub AspectBind");
-        var fieldBindRes = bind.bind(xx, loc, fieldCv);
+        var fieldBindRes = bind.aspectBindBind(xx, loc, fieldCv);
         if (fieldBindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(fieldBindRes.errorsOrNull()));
           continue;
@@ -518,7 +518,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           continue;
         }
         var bind = bindRes.requireValue("Record::bindSub AspectBind");
-        var fieldBindRes = bind.bind(xx, loc, fieldCv);
+        var fieldBindRes = bind.aspectBindBind(xx, loc, fieldCv);
         if (fieldBindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(fieldBindRes.errorsOrNull()));
           continue;

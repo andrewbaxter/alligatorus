@@ -726,7 +726,7 @@ public final class SourceObjectEmitter {
 
   private static @org.jspecify.annotations.Nullable HostMethodSpec targetHostSpec(String sourceName) {
     return switch (sourceName) {
-      case "bind" -> new HostMethodSpec(
+      case "aspectBindBind" -> new HostMethodSpec(
           "targetBind",
           JavaMethodDescriptor.fromParts(
               DESC_PAIR, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_TARGET_BIND_SUB));
@@ -853,7 +853,7 @@ public final class SourceObjectEmitter {
 
   private static final TList<InlineHelperSpec> INLINE_HELPER_METHODS = TList.of(
       new InlineHelperSpec(
-          "bind",
+          "aspectBindBind",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
           "sourceObjectBind",

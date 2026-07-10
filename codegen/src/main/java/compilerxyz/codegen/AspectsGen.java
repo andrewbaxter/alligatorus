@@ -86,7 +86,8 @@ final class AspectsGen {
       "Field",
       "OperatorAdd",
       "OperatorEq",
-      "OperatorLt");
+      "OperatorLt",
+      "Bind");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

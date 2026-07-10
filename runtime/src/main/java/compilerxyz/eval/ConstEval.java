@@ -290,7 +290,7 @@ public final class ConstEval {
         var valType = valV.value().valueTypeOf();
         var bindAspectOpt = erb.mustEr(AspectBind.get(childXx, sub.loc(), valType));
         if (bindAspectOpt.isEmpty()) return EResult.errs(erb.errors());
-        var brOpt = erb.mustEr(bindAspectOpt.get().bind(childXx, sub.loc(), value));
+        var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(childXx, sub.loc(), value));
         if (brOpt.isEmpty()) return EResult.errs(erb.errors());
         var br = brOpt.get();
         var bindingUseCv = br.binding().bindingUse(childXx, sub.loc(), Code.none(sub.loc()));

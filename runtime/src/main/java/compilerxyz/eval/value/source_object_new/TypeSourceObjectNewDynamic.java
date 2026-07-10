@@ -84,7 +84,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(
           loc, "TypeSourceObjectNewDynamic::bind: CodeValue has no compile-time value");

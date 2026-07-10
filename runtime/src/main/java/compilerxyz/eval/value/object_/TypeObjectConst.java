@@ -227,7 +227,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public EResult<AspectBind.BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<AspectBind.BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindViaTarget(xx, loc, cv);
   }
 

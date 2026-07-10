@@ -375,7 +375,7 @@ public final class BuiltinTreeGen {
     st.body.addStatement("return $N.reerr()", bindRes);
     st.body.endControlFlow();
     st.body.addStatement(
-        "var $N = $N.requireValue($S).bind(xx, loc, $N)",
+        "var $N = $N.requireValue($S).aspectBindBind(xx, loc, $N)",
         br,
         bindRes,
         "installRoot AnyConst bind aspect",

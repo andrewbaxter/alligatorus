@@ -122,7 +122,7 @@ public record TypeStringConst()
       };
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some) {
       return EResult.ok(new BindResult(Code.none(loc), new BindingValue(some.value())));
     }

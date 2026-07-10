@@ -523,7 +523,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       new java.util.concurrent.ConcurrentHashMap<>();
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     var subRes = bindSub(xx, loc, cv);
     if (subRes.hasErrors()) {
       return subRes.reerr();
@@ -650,7 +650,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           continue;
         }
         var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
-        var elemBindRes = bind.bind(xx, loc, elemCv);
+        var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
         if (elemBindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull()));
           continue;
@@ -679,7 +679,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           continue;
         }
         var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
-        var elemBindRes = bind.bind(xx, loc, elemCv);
+        var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
         if (elemBindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull()));
           continue;

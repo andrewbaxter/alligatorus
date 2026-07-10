@@ -309,7 +309,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       };
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeSourceFunctionConst::bind: CodeValue has no compile-time value");
     }

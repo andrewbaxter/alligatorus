@@ -57,8 +57,8 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
   }
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
-    return asCtor().bind(xx, loc, cv);
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
+    return asCtor().aspectBindBind(xx, loc, cv);
   }
 
   @Override

@@ -203,7 +203,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public EResult<BindResult> bind(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindViaTarget(xx, loc, cv);
   }
 
