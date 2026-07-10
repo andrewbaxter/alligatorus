@@ -744,11 +744,11 @@ public final class SourceObjectEmitter {
       case "code_to_bind_sub" -> new HostMethodSpec(
           "targetCodeToBindSub",
           JavaMethodDescriptor.fromParts(DESC_ERESULT, DESC_QEXPR_ID, DESC_CODE, DESC_TYPE));
-      case "if_" -> new HostMethodSpec(
+      case "if" -> new HostMethodSpec(
           "targetIf",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_LIST, DESC_OPT));
-      case "match_" -> new HostMethodSpec(
+      case "match" -> new HostMethodSpec(
           "targetMatch",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT,
