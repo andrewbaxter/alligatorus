@@ -177,7 +177,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeMapDynamic::field: key has no compile-time value");
@@ -219,12 +219,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs().keySet());
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs().getOrNull(key);
     if (spec != null) return Opt.some(spec.fieldType());
     if (key instanceof ConstKey.Str) return Opt.some(valueType);

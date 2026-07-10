@@ -136,7 +136,7 @@ public final class ConstEval {
         var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectField = aspectFieldOpt.get();
-        var primaryOpt = erb.mustEr(aspectField.field(xx, loc, base, field));
+        var primaryOpt = erb.mustEr(aspectField.aspectFieldField(xx, loc, base, field));
         if (primaryOpt.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(primaryOpt.get());
       }

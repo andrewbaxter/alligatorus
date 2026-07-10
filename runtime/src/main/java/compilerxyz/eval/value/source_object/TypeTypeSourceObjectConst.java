@@ -613,10 +613,10 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     TypeSourceObjectDynamic dynType = type_;
     if (!self.code().isNone()) {
-      return dynType.field(xx, loc, self, key);
+      return dynType.aspectFieldField(xx, loc, self, key);
     }
     var selfCodeRes = aspectConsumeDynamicToDynamic(xx, loc, self);
     if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
@@ -625,16 +625,16 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         new CodeValue(
             Code.of(loc, selfCode),
             Opt.some(ValueDynamic.stack(dynType)));
-    return dynType.field(xx, loc, selfDynamic, key);
+    return dynType.aspectFieldField(xx, loc, selfDynamic, key);
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
     return Opt.none();
   }
 

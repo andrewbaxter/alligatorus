@@ -696,12 +696,12 @@ public final class SourceObjectEmitter {
         default -> null;
       };
       case ASPECT_FIELD -> switch (sourceName) {
-        case "field" -> new HostMethodSpec(
-            "field",
+        case "aspectFieldField" -> new HostMethodSpec(
+            "aspectFieldField",
             JavaMethodDescriptor.fromParts(
                 DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE));
         case "field_type_opt" -> new HostMethodSpec(
-            "fieldTypeOpt",
+            "aspectFieldFieldTypeOpt",
             JavaMethodDescriptor.fromParts(DESC_OPT, DESC_EXPR_CONTEXT, DESC_CONST_KEY));
         default -> null;
       };
@@ -894,7 +894,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_CONSUME_DYNAMIC),
       new InlineHelperSpec(
-          "field",
+          "aspectFieldField",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE),
           "sourceObjectField",
@@ -911,7 +911,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_FIELD),
       new InlineHelperSpec(
-          "fieldKeys",
+          "aspectFieldFieldKeys",
           JavaMethodDescriptor.fromParts(DESC_TLIST, DESC_EXPR_CONTEXT),
           "sourceObjectFieldKeys",
           JavaMethodDescriptor.fromParts(DESC_TLIST, JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT),
@@ -921,7 +921,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_FIELD),
       new InlineHelperSpec(
-          "fieldTypeOpt",
+          "aspectFieldFieldTypeOpt",
           JavaMethodDescriptor.fromParts(DESC_OPT, DESC_EXPR_CONTEXT, DESC_CONST_KEY),
           "sourceObjectFieldTypeOpt",
           JavaMethodDescriptor.fromParts(

@@ -197,7 +197,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, typeDesc + "::field: key has no compile-time value");
@@ -235,7 +235,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str keyStr)) {
       return Opt.none();
     }
@@ -250,7 +250,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 

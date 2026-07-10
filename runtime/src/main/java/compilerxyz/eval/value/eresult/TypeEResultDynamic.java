@@ -94,7 +94,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeEResultDynamic::field: key has no compile-time value");
@@ -105,7 +105,7 @@ public record TypeEResultDynamic(Type elementType)
     if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
       var selfDyn = self.code().dynamic();
       if (selfDyn == null) {
-        return EResult.err(loc, "TypeEResultDynamic::field(value): self has no runtime code");
+        return EResult.err(loc, "TypeEResultDynamic::aspectFieldField(value): self has no runtime code");
       }
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
       seq.add(selfDyn);
@@ -142,12 +142,12 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs().keySet());
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs().getOrNull(key);
     return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }

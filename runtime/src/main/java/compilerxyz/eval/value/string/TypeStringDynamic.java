@@ -192,7 +192,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
       return EResult.err(loc, "TypeStringDynamic::field: key has no compile-time value");
@@ -200,7 +200,7 @@ public record TypeStringDynamic()
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
-    if (!(fieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
+    if (!(aspectFieldFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic string");
     }
     return EResult.ok(
@@ -210,12 +210,12 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return TList.from(METHOD_FIELDS.keySet());
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
     return METHOD_FIELDS.getOpt(key);
   }
 

@@ -220,23 +220,23 @@ public record TypeNumberConst()
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var dyn = new TypeNumberDynamic();
     var convertedRes = dyn.typeCastFrom(xx, loc, self_);
     if (convertedRes.hasErrors()) {
       return convertedRes.reerr();
     }
-    return dyn.field(xx, loc, convertedRes.requireValue("TypeNumberDynamic::typeCastFrom"), key);
+    return dyn.aspectFieldField(xx, loc, convertedRes.requireValue("TypeNumberDynamic::typeCastFrom"), key);
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    return new TypeNumberDynamic().fieldTypeOpt(xx, key);
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+    return new TypeNumberDynamic().aspectFieldFieldTypeOpt(xx, key);
   }
 
   @Override

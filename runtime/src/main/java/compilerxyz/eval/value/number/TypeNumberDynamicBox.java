@@ -176,7 +176,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var unboxed = new TypeNumberDynamic();
     var selfDyn = self_.code().dynamic();
     if (selfDyn == null) {
@@ -189,17 +189,17 @@ public record TypeNumberDynamicBox()
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
             Opt.some(ValueDynamic.stack(unboxed)));
-    return unboxed.field(xx, loc, unboxedSelf, key);
+    return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
   }
 
   @Override
-  public TList<ConstKey> fieldKeys(ExprContext xx) {
-    return new TypeNumberDynamic().fieldKeys(xx);
+  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+    return new TypeNumberDynamic().aspectFieldFieldKeys(xx);
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, ConstKey key) {
-    return new TypeNumberDynamic().fieldTypeOpt(xx, key);
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+    return new TypeNumberDynamic().aspectFieldFieldTypeOpt(xx, key);
   }
 
   private static CodeDynamic doubleValueUnbox(QExprId loc) {

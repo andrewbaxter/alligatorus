@@ -277,22 +277,22 @@ public record TypeObjectConst(
   // Field / Function / Type: toDynamic + delegate to deferDynamic.
 
   @Override
-  public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var innerRes = extractInnerType(loc, self, "field");
     if (innerRes.hasErrors()) return innerRes.reerr();
     var inner = innerRes.requireValue(typeDesc + "::field inner");
     var asp = AspectField.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc + "::field inner AspectField").field(xx, loc, self, key);
+    return asp.requireValue(typeDesc + "::field inner AspectField").aspectFieldField(xx, loc, self, key);
   }
 
   @Override
-  public Opt<Type> fieldTypeOpt(ExprContext xx, compilerxyz.eval.ConstKey key) {
+  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, compilerxyz.eval.ConstKey key) {
     return Opt.none();
   }
 
   @Override
-  public TList<compilerxyz.eval.ConstKey> fieldKeys(ExprContext xx) {
+  public TList<compilerxyz.eval.ConstKey> aspectFieldFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
@@ -354,7 +354,7 @@ public record TypeObjectConst(
     var asp = AspectField.get(xx, loc, target);
     if (asp.hasErrors()) return asp.reerr();
     return asp.requireValue(typeDesc + "::field target AspectField")
-        .field(xx, loc, dyn.requireValue(typeDesc + "::field dyn self"), key);
+        .aspectFieldField(xx, loc, dyn.requireValue(typeDesc + "::field dyn self"), key);
   }
 
   private EResult<CodeValue> deferCall(
