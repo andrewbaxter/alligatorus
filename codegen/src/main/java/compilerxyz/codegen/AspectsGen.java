@@ -56,6 +56,13 @@ final class AspectsGen {
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
+  /**
+   * Aspects whose Java trait methods are prefixed with the interface name (per the naming
+   * convention). Add each aspect here once its impls and callers have been renamed.
+   */
+  private static final TSet<String> PREFIXED_ASPECTS = TSet.of(
+      "PostDeserialize");
+
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 
   private static final TypeName OPT_TYPE = ParameterizedTypeName.get(OPT, TYPE);
@@ -128,16 +135,23 @@ final class AspectsGen {
       typeBuilder.addType(buildNestedRecord(nested));
     }
 
+    var prefixed = PREFIXED_ASPECTS.contains(spec.name);
+    var prefix = "aspect" + spec.name;
     for (var m : spec.methods) {
+      var javaName = m.name;
+      if (prefixed) {
+        javaName = InterfacesGen.escapeJavaKeyword(
+            prefix + Character.toUpperCase(m.name.charAt(0)) + m.name.substring(1));
+      }
       var method =
-          MethodSpec.methodBuilder(m.name)
+          MethodSpec.methodBuilder(javaName)
               .returns(m.ret)
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
       if (m.javadoc != null && !m.javadoc.isEmpty()) {
         method.addJavadoc(m.javadoc + "\n");
       }
       for (var p : m.params) {
-        var pb = ParameterSpec.builder(p.type, p.name);
+        var pb = ParameterSpec.builder(p.type, InterfacesGen.escapeJavaKeyword(p.name));
         if (p.nullable) {
           pb.addAnnotation(AnnotationSpec.builder(NULLABLE).build());
         }

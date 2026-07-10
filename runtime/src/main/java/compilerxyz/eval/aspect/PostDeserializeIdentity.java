@@ -12,7 +12,7 @@ public final class PostDeserializeIdentity implements AspectPostDeserialize {
   private PostDeserializeIdentity() {}
 
   @Override
-  public EResult<CodeValue> postDeserialize(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> aspectPostDeserializePostDeserialize(ExprContext xx, QExprId loc, CodeValue cv) {
     return EResult.ok(cv);
   }
 }

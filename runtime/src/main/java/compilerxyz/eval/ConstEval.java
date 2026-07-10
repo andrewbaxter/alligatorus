@@ -607,7 +607,7 @@ public final class ConstEval {
     var valueType = valueRes.get().valueTypeOf();
     var pdRes = erb.mustEr(AspectPostDeserialize.get(xx, loc, valueType));
     if (pdRes.isEmpty()) return EResult.errs(erb.errors());
-    var finalRes = erb.mustEr(pdRes.get().postDeserialize(xx, loc, cv));
+    var finalRes = erb.mustEr(pdRes.get().aspectPostDeserializePostDeserialize(xx, loc, cv));
     if (finalRes.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(finalRes.get());
   }

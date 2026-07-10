@@ -467,7 +467,7 @@ public final class InterfacesGen {
     return out.toString();
   }
 
-  private static String escapeJavaKeyword(String s) {
+  static String escapeJavaKeyword(String s) {
     return switch (s) {
       case "type",
               "class",
