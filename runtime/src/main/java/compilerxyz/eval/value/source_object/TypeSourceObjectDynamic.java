@@ -430,7 +430,7 @@ public final class TypeSourceObjectDynamic
         if (builtinKind != null) {
           switch (builtinKind) {
             case TYPE -> resultType = Type.dynamicType();
-            case TARGET -> resultType = compilerxyz.eval.dynamic.Target.dynamicType();
+            case TARGET -> resultType = compilerxyz.gen.Target.dynamicType();
             case BINDING -> resultType = compilerxyz.gen.Binding.dynamicType();
             case CODE_DYN -> {
               return EResult.err(

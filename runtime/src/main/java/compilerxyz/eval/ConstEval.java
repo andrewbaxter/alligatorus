@@ -19,7 +19,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecode;
-import compilerxyz.eval.dynamic.Target;
+import compilerxyz.gen.Target;
 import compilerxyz.eval.dynamic.target.IfBranch;
 import compilerxyz.eval.dynamic.target.TargetCase;
 import compilerxyz.eval.dynamic.target.TryCatchClause;

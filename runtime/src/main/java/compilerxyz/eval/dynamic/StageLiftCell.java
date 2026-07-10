@@ -5,6 +5,7 @@ import compilerxyz.eval.ImportStateId;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Scope;
 import compilerxyz.eval.Type;
+import compilerxyz.gen.Target;
 import org.jspecify.annotations.Nullable;
 
 public record StageLiftCell(

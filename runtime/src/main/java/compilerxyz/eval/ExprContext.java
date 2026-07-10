@@ -2,7 +2,7 @@ package compilerxyz.eval;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.Target;
+import compilerxyz.gen.Target;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;

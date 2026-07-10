@@ -595,7 +595,7 @@ public final class BuiltinTreeGen {
             "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID",
             TList.of(
                 new Method(
-                    "bindingUse_",
+                    "use_",
                     bindingCv,
                     new MethodArgs(
                         TList.of(
@@ -603,12 +603,14 @@ public final class BuiltinTreeGen {
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("code", bindingCode))))));
 
-var targetBindSub =
-        TypeRef.viaPush(
-            ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"));
-    var codeBindingTuple =
+var targetBindSubCls =
+        ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub");
+    var targetBindSub = TypeRef.opaque(targetBindSubCls);
+    var codeDynamicCls = ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
+    var bindResult =
         TypeRef.opaque(
-            ParameterizedTypeName.get(ClassName.get("compilerxyz.util", "Pair"), codeRef, BINDING_ID));
+            ClassName.get("compilerxyz.eval.dynamic.target", "BindResult"));
+    var codeDynamic = TypeRef.opaque(codeDynamicCls);
     var eresultCode =
         TypeRef.opaque(
             ParameterizedTypeName.get(ClassName.get("compilerxyz.eval", "EResult"), codeRef));
@@ -616,52 +618,66 @@ var targetBindSub =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.eval", "EResult"), codeValue));
+    var eresultCodeDynamic =
+        TypeRef.opaque(
+            ParameterizedTypeName.get(
+                ClassName.get("compilerxyz.eval", "EResult"), codeDynamicCls));
     var eresultTargetBindSub =
         TypeRef.opaque(
             ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.eval", "EResult"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub")));
+                ClassName.get("compilerxyz.eval", "EResult"), targetBindSubCls));
     var eresultOptionTargetBindSub =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.eval", "EResult"),
                 ParameterizedTypeName.get(
-                    ClassName.get("compilerxyz.util", "Opt"),
-                    ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"))));
+                    ClassName.get("compilerxyz.util", "Opt"), targetBindSubCls)));
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
     var expr = ClassName.get("compilerxyz.eval", "Expr");
-    var listFields =
+    var listRecordBindField =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.util", "TList"),
-                ParameterizedTypeName.get(
-                    ClassName.get("compilerxyz.util", "Pair"),
-                    constKey,
-                    ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"))));
-    var listElements =
+                ClassName.get("compilerxyz.eval.dynamic.target", "RecordBindField")));
+    var listTupleBindSlot =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.util", "TList"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub")));
+                ClassName.get("compilerxyz.eval.dynamic.target", "TupleBindSlot")));
     var listEntries =
         TypeRef.opaque(
             ParameterizedTypeName.get(ClassName.get("compilerxyz.util", "TList"), codeRef));
+    var listCodeValue =
+        TypeRef.opaque(
+            ParameterizedTypeName.get(
+                ClassName.get("compilerxyz.util", "TList"), codeValue));
     var typeOpaque = TypeRef.opaque(TYPE);
-    var listConditions =
+    var listIfBranch =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.util", "TList"),
-                ParameterizedTypeName.get(
-                    ClassName.get("compilerxyz.util", "Pair"), codeValue, expr)));
+                ClassName.get("compilerxyz.eval.dynamic.target", "IfBranch")));
     var optExpr =
         TypeRef.opaque(
             ParameterizedTypeName.get(ClassName.get("compilerxyz.util", "Opt"), expr));
+    var optTryCatchClause =
+        TypeRef.opaque(
+            ParameterizedTypeName.get(
+                ClassName.get("compilerxyz.util", "Opt"),
+                ClassName.get("compilerxyz.eval.dynamic.target", "TryCatchClause")));
+    var optCodeDynamic =
+        TypeRef.opaque(
+            ParameterizedTypeName.get(
+                ClassName.get("compilerxyz.util", "Opt"), codeDynamicCls));
     var caseListOpaque =
         TypeRef.opaque(
             ParameterizedTypeName.get(
                 ClassName.get("compilerxyz.util", "TList"),
                 ClassName.get("compilerxyz.eval.dynamic.target", "TargetCase")));
     var codeValueOpaque = TypeRef.opaque(codeValue);
+    var exprOpaque = TypeRef.opaque(expr);
+    var constKeyOpaque = TypeRef.opaque(constKey);
+    var bindingIdOpaque = TypeRef.opaque(BINDING_ID);
 
     var target =
         new InterfaceSpec(
@@ -672,40 +688,24 @@ var targetBindSub =
             "Target",
             null,
             true,
-            null,
-            null,
+            "Target",
+            "TYPE_ANY_TARGET_DYNAMIC_TYPE_ID",
             TList.of(
                 new Method(
                     "bind",
-                    codeBindingTuple,
+                    bindResult,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("sub", targetBindSub)))),
+                new Method(
+                    "maybe_bind_sub",
+                    eresultOptionTargetBindSub,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("sub", targetBindSub)))),
-                new Method(
-                    "bind_sub_record",
-                    targetBindSub,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("carry", bindingCode),
-                            new NamedTypeRef("fields", listFields)))),
-                new Method(
-                    "bind_sub_tuple",
-                    targetBindSub,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("carry", bindingCode),
-                            new NamedTypeRef("elements", listElements)))),
-                new Method(
-                    "seq",
-                    eresultCode,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("entries", listEntries)))),
+                            new NamedTypeRef("cv", codeValueOpaque)))),
                 new Method(
                     "code_to_bind_sub",
                     eresultTargetBindSub,
@@ -715,29 +715,51 @@ var targetBindSub =
                             new NamedTypeRef("code", bindingCode),
                             new NamedTypeRef("type_", typeOpaque)))),
                 new Method(
-                    "if_",
-                    eresultCodeValue,
+                    "bind_sub_record",
+                    targetBindSub,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("conditions", listConditions),
-                            new NamedTypeRef("else_", optExpr)))),
+                            new NamedTypeRef("carry", bindingCode),
+                            new NamedTypeRef("fields", listRecordBindField)))),
                 new Method(
-                    "match_",
-                    eresultCodeValue,
+                    "bind_sub_tuple",
+                    targetBindSub,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("base", codeValueOpaque),
-                            new NamedTypeRef(
-                                "element_key", TypeRef.viaPush(constKey)),
-                            new NamedTypeRef("cases", caseListOpaque),
-                            new NamedTypeRef("fallback", optExpr)))),
+                            new NamedTypeRef("carry", bindingCode),
+                            new NamedTypeRef("slots", listTupleBindSlot)))),
                 new Method(
-                    "maybe_bind_sub",
-                    eresultOptionTargetBindSub,
+                    "cast_exception",
+                    eresultCode,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("callCode", bindingCode),
+                            new NamedTypeRef("catchBinding", bindingIdOpaque),
+                            new NamedTypeRef("castCv", codeValueOpaque)))),
+                new Method(
+                    "seq",
+                    eresultCode,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("entries", listEntries)))),
+                new Method(
+                    "try_finally",
+                    eresultCode,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("body", bindingCode),
+                            new NamedTypeRef("finally_", bindingCode)))),
+                new Method(
+                    "drop",
+                    eresultCode,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
@@ -750,43 +772,38 @@ var targetBindSub =
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("tree", TypeRef.viaPush(expr)),
-                            new NamedTypeRef(
-                                "lower_values",
-                                TypeRef.opaque(
-                                    ParameterizedTypeName.get(
-                                        ClassName.get("compilerxyz.util", "TList"), codeValue))),
-                            new NamedTypeRef(
-                                "graft_values",
-                                TypeRef.opaque(
-                                    ParameterizedTypeName.get(
-                                        ClassName.get("compilerxyz.util", "TList"), codeValue)))))),
+                            new NamedTypeRef("tree", exprOpaque),
+                            new NamedTypeRef("lowerValues", listCodeValue),
+                            new NamedTypeRef("graftValues", listCodeValue)))),
                 new Method(
-                    "cast_exception",
-                    eresultCode,
+                    "if_",
+                    eresultCodeValue,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("call_code", bindingCode),
-                            new NamedTypeRef("catch_binding", TypeRef.opaque(BINDING_ID)),
-                            new NamedTypeRef("cast_cv", codeValueOpaque)))),
+                            new NamedTypeRef("conditions", listIfBranch),
+                            new NamedTypeRef("else_", optExpr)))),
                 new Method(
-                    "drop",
-                    eresultCode,
+                    "try_catch_finally",
+                    eresultCodeDynamic,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("body", codeDynamic),
+                            new NamedTypeRef("catch_", optTryCatchClause),
+                            new NamedTypeRef("finally_", optCodeDynamic)))),
+                new Method(
+                    "match_",
+                    eresultCodeValue,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("cv", codeValueOpaque)))),
-                new Method(
-                    "try_finally",
-                    eresultCode,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("loc", bindingLoc),
-                            new NamedTypeRef("body", bindingCode),
-                            new NamedTypeRef("finally_", bindingCode))))));
+                            new NamedTypeRef("base", codeValueOpaque),
+                            new NamedTypeRef("elementKey", constKeyOpaque),
+                            new NamedTypeRef("cases", caseListOpaque),
+                            new NamedTypeRef("fallback", optExpr))))));
 
     var codeDyn =
         new InterfaceSpec(
@@ -1133,7 +1150,7 @@ var targetBindSub =
                         TList.of(
                             new NamedTypeRef(
                                 "target_arg",
-                                TypeRef.viaPush(ClassName.get("compilerxyz.eval.dynamic", "Target"))),
+                                TypeRef.viaPush(ClassName.get("compilerxyz.gen", "Target"))),
                             new NamedTypeRef(
                                 "scope_arg",
                                 TypeRef.opaque(

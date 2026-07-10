@@ -66,7 +66,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb,
                             TList.of(
                                 new TestMb.RecordPair(
-                                    "bindingUse_",
+                                    "use_",
                                     mb.call(
                                         mb.evalCodevalue(),
                                         mb.tupleOf(
@@ -168,7 +168,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb,
                             TList.of(
                                 new TestMb.RecordPair(
-                                    "bindingUse_",
+                                    "use_",
                                     mb.call(
                                         mb.evalCodevalue(),
                                         mb.tupleOf(

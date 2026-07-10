@@ -50,7 +50,7 @@ import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
-public final class TargetDynamic implements Target {
+public final class TargetDynamic implements compilerxyz.gen.Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
       JavaInternalName.fromClass(DynRuntime.DynException.class);
   private static final JavaInternalName INTNAME_EXPR_CONTEXT =

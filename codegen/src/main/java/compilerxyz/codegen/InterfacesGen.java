@@ -292,7 +292,7 @@ public final class InterfacesGen {
 
     for (var m : spec.methods()) {
       var method =
-          MethodSpec.methodBuilder(escapeJavaKeyword(m.name()))
+          MethodSpec.methodBuilder(javaTraitMethodName(spec, m))
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
               .returns(m.retType().path());
       for (var p : m.args().fields()) {
@@ -421,6 +421,35 @@ public final class InterfacesGen {
 
   private static String javaMethodName(String name) {
     return escapeJavaKeyword(stripTrailingUnderscore(name));
+  }
+
+  private static String javaTraitMethodName(InterfaceSpec spec, Method m) {
+    var prefix = snakeToCamel(spec.name());
+    var body = m.name();
+    var trail = new StringBuilder();
+    var i = body.length();
+    while (i > 0 && body.charAt(i - 1) == '_') {
+      trail.append('_');
+      i--;
+    }
+    var base = body.substring(0, i);
+    return prefix + snakeToPascal(base) + trail;
+  }
+
+  private static String snakeToCamel(String s) {
+    var parts = s.split("_");
+    var out = new StringBuilder(parts[0]);
+    for (var i = 1; i < parts.length; i++) {
+      if (parts[i].isEmpty()) continue;
+      out.append(Character.toUpperCase(parts[i].charAt(0))).append(parts[i].substring(1));
+    }
+    return out.toString();
+  }
+
+  private static String snakeToPascal(String s) {
+    if (s.isEmpty()) return s;
+    var camel = snakeToCamel(s);
+    return Character.toUpperCase(camel.charAt(0)) + camel.substring(1);
   }
 
   private static String stripTrailingUnderscore(String s) {

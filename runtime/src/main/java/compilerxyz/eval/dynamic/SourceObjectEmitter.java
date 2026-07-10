@@ -190,7 +190,7 @@ public final class SourceObjectEmitter {
       case ASPECT_FUNCTION -> JavaInternalName.of("compilerxyz/gen/AspectFunction");
       case ASPECT_DROP_DYNAMIC -> JavaInternalName.of("compilerxyz/gen/AspectDropDynamic");
       case BINDING -> JavaInternalName.of("compilerxyz/gen/Binding");
-      case TARGET -> JavaInternalName.of("compilerxyz/eval/dynamic/Target");
+      case TARGET -> JavaInternalName.of("compilerxyz/gen/Target");
       case CODE_DYN -> null;
     };
   }
@@ -713,7 +713,7 @@ public final class SourceObjectEmitter {
         default -> null;
       };
       case BINDING -> switch (sourceName) {
-        case "bindingUse_" -> new HostMethodSpec(
+        case "use_" -> new HostMethodSpec(
             "bindingUse_",
             JavaMethodDescriptor.fromParts(
                 DESC_CODE_VALUE, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE));

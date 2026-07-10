@@ -42,7 +42,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.dynamic.Target;
+import compilerxyz.gen.Target;
 import compilerxyz.eval.dynamic.target.BindResult;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TupleBindSlot;
