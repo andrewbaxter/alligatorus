@@ -96,7 +96,7 @@ final class InterfacesGenTest {
                     new MethodArgs.Source(TList.of(new NamedTypeRef("alpha", any))))));
     InterfacesGen.run(tmp, FORMATTER, TList.of(spec), new TSet<Long>(), new TSet<Long>());
     var src = Files.readString(tmp.resolve("compilerxyz/gen/GenBuiltinInterfaces.java"));
-    assertTrue(src.contains("argRecordType = new Record"), src);
+    assertTrue(src.contains("argType = new Record"), src);
     assertTrue(src.contains("ConstKey.Str(\"alpha\")"), src);
     assertTrue(src.contains("dataFieldNames.add(\"alpha\")"), src);
   }

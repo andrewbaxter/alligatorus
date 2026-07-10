@@ -556,7 +556,7 @@ public final class SourceObjectEmitter {
     var jvmParamKeys = new TList<compilerxyz.eval.dynamic.JavaBytecodeBindingKey>();
     var jvmParamWides = new TList<Boolean>();
     if (isArgMethod) {
-      var argRecordConsume = (compilerxyz.gen.AspectConsumeDynamic) ifaceMethod.argRecordType;
+      var argRecordConsume = (compilerxyz.gen.AspectConsumeDynamic) ifaceMethod.argType;
       var argDesc = argRecordConsume.consumeDynamicJvmClass();
       jvmParamKeys.add(selfId.key());
       jvmParamWides.add(slotWidth(argDesc) == 2);
@@ -1155,7 +1155,7 @@ public final class SourceObjectEmitter {
       compilerxyz.eval.value.source_interface.@org.jspecify.annotations.Nullable BuiltinInterfaceKind kind) {
     var jvmParamDescs = new TList<JavaDataDescriptor>();
     if (m.compiledIsArgMethod) {
-      var argRecordType = ifaceMethod.argRecordType;
+      var argRecordType = ifaceMethod.argType;
       if (!(argRecordType instanceof compilerxyz.gen.AspectConsumeDynamic argRecordConsume)) {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: argRecordType does not implement AspectConsumeDynamic");
@@ -1217,8 +1217,8 @@ public final class SourceObjectEmitter {
         || ((kind == BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC
                 || kind == BuiltinInterfaceKind.ASPECT_FIELD
                 || kind == BuiltinInterfaceKind.ASPECT_FUNCTION)
-            && ifaceMethod.argRecordType instanceof compilerxyz.eval.value.record.Record)) {
-      var argRecord = (compilerxyz.eval.value.record.Record) ifaceMethod.argRecordType;
+            && ifaceMethod.argType instanceof compilerxyz.eval.value.record.Record)) {
+      var argRecord = (compilerxyz.eval.value.record.Record) ifaceMethod.argType;
       buildArgRecordComposite(
           seq, argRecord, ifaceMethod, firstParamIsExprContext, paramSlotCount);
     } else if (kind == BuiltinInterfaceKind.BINDING

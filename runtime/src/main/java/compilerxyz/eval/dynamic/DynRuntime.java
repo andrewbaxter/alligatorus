@@ -109,7 +109,6 @@ public final class DynRuntime {
         md.hostMethodDescriptor = ft2.descriptor();
       }
       if (argType instanceof compilerxyz.eval.value.record.Record rec) {
-        md.argRecordType = rec;
         for (var key : rec.fields().keySet()) {
           if (key instanceof compilerxyz.eval.ConstKey.Str s) {
             md.dataFieldNames.add(s.value());
@@ -135,7 +134,6 @@ public final class DynRuntime {
           new compilerxyz.eval.value.source_interface.InterfaceMethodData(
               m.name(), m.fieldName());
       if (m.argType() instanceof Opt.Some<Type> at) md.argType = at.value();
-      if (m.argRecordType() instanceof Opt.Some<Type> art) md.argRecordType = art.value();
       md.retType = m.retType();
       for (var f : m.dataFieldNames()) md.dataFieldNames.add(f);
       data.methods.add(md);
@@ -177,7 +175,6 @@ public final class DynRuntime {
               hostMethodName,
               "_im_" + obj.typeDesc() + idx++,
               Opt.some(argType),
-              Opt.none(),
               retType,
               mDesc,
               new TList<>()));
@@ -216,7 +213,6 @@ public final class DynRuntime {
               m.name,
               m.fieldName,
               m.argType == null ? Opt.none() : Opt.some(m.argType),
-              m.argRecordType == null ? Opt.none() : Opt.some(m.argRecordType),
               m.retType == null ? new compilerxyz.eval.value.null_.TypeNullDynamic() : m.retType,
               JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT),
               m.dataFieldNames));

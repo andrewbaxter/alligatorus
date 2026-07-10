@@ -10,7 +10,6 @@ public final class InterfaceMethodData {
   public final String fieldName;
   public final TList<String> dataFieldNames;
   public @Nullable Type argType;
-  public @Nullable Type argRecordType;
   public @Nullable Type retType;
 
   public @Nullable String hostMethodName;

@@ -111,7 +111,7 @@ public final class SourceObjectInterfaceMethodImplData {
     boolean isArgMethod = iface.builtinKind == BuiltinInterfaceKind.TYPE;
     TList<BindingId.Local> argParamIds;
     if (iface.builtinKind == BuiltinInterfaceKind.TYPE) {
-      var argType = ifaceMethod.argRecordType;
+      var argType = ifaceMethod.argType;
       if (argType == null) {
         throw new AssertionError(
             "Builtin Type interface method missing arg_record_type");
@@ -207,7 +207,7 @@ public final class SourceObjectInterfaceMethodImplData {
             new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
       }
       var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-      var argT = ifaceMethod.argRecordType != null ? ifaceMethod.argRecordType : ifaceMethod.argType;
+      var argT = ifaceMethod.argType;
       if (argT != null) {
         var argIbMaybe = AspectInitialBind.getMaybe(xx, argT);
         if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
@@ -273,7 +273,7 @@ public final class SourceObjectInterfaceMethodImplData {
         || (iface.builtinKind == null && !ifaceMethod.dataFieldNames.isEmpty())) {
       emitArgIds = argParamIds;
     } else {
-      var methodArgT = ifaceMethod.argRecordType != null ? ifaceMethod.argRecordType : ifaceMethod.argType;
+      var methodArgT = ifaceMethod.argType;
       emitArgIds = methodArgT != null ? argParamIds : TList.empty();
     }
 

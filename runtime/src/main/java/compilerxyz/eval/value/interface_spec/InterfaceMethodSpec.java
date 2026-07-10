@@ -10,7 +10,6 @@ public record InterfaceMethodSpec(
     String hostMethodName,
     String fieldName,
     Opt<Type> argType,
-    Opt<Type> argRecordType,
     Type retType,
     JavaMethodDescriptor jvmDescriptor,
     TList<String> dataFieldNames) {}

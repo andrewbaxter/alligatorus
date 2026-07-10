@@ -214,18 +214,13 @@ public final class InterfacesGen {
         }
 
         switch (m.args()) {
-          case MethodArgs.Source src -> {
-            build.addStatement(
-                "$N.argType = $T.dynamicType()", methodVar, TYPE);
-            build.addCode(buildSourceArgRecordType(methodVar, src));
-          }
+          case MethodArgs.Source src -> build.addCode(buildSourceArgRecordType(methodVar, src));
           case MethodArgs.Rust rs -> {
             var dyns = new TList<CodeBlock>();
             for (var p : rs.sig().context()) dyns.add(p.type().dynamicType());
             for (var p : rs.sig().data()) dyns.add(p.type().dynamicType());
             build.addStatement(
                 "$N.argType = $L", methodVar, argDynamicTypeExpr(dyns));
-            build.addStatement("$N.argRecordType = null", methodVar);
           }
         }
 
@@ -266,7 +261,7 @@ public final class InterfacesGen {
           asTypeExpr(field.type().dynamicType()));
     }
     b.addStatement(
-        "$N.argRecordType = new $T($T.none(), $N)",
+        "$N.argType = new $T($T.none(), $N)",
         methodVar,
         RECORD,
         OPT,
