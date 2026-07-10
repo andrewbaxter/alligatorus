@@ -407,7 +407,7 @@ public final class BuiltinTreeGen {
     st.body.addStatement("return $N.reerr()", ib);
     st.body.endControlFlow();
     st.body.addStatement(
-        "$T $N = $N.requireValue($S).initialBind(new $T($LL))",
+        "$T $N = $N.requireValue($S).aspectInitialBindInitialBind(new $T($LL))",
         BINDING,
         binding,
         ib,

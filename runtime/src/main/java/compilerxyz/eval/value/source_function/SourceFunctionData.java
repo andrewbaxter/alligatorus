@@ -141,7 +141,7 @@ public final class SourceFunctionData {
         if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
           return EResult.err(rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBind");
         }
-        elemBindings.add(ibSome.value().initialBind(slotId));
+        elemBindings.add(ibSome.value().aspectInitialBindInitialBind(slotId));
       }
       var argTuple = new ArgumentTuple(elemBindings, elemTypes);
       bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
@@ -156,7 +156,7 @@ public final class SourceFunctionData {
         if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
           return EResult.err(rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBind");
         }
-        fields.put(entry.getKey(), new ArgumentEntry(ibSome.value().initialBind(slotId), et));
+        fields.put(entry.getKey(), new ArgumentEntry(ibSome.value().aspectInitialBindInitialBind(slotId), et));
       }
       var argRec = new ArgumentRecord(fields);
       bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
@@ -165,7 +165,7 @@ public final class SourceFunctionData {
       argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
       var ibMaybe = AspectInitialBind.getMaybe(xx, argT);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        bodyScope.values.put(new ConstKey.Str("arg"), ibSome.value().initialBind(slotId));
+        bodyScope.values.put(new ConstKey.Str("arg"), ibSome.value().aspectInitialBindInitialBind(slotId));
       }
     }
     var funcXx =

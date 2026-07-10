@@ -192,7 +192,7 @@ public record TypeExpr()
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     throw new UnsupportedOperationException(
         "TypeExpr::initialBind: needs BindingDynamicBinding port (deferred)");
   }

@@ -865,7 +865,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     var typeFields = new TOrderedMap<ConstKey, Type>();
     for (var entry : fields.entrySet()) {
       if (!(entry.getValue() instanceof RecordField.Dynamic d)) {

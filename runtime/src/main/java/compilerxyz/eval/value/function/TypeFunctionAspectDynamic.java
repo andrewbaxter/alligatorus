@@ -154,7 +154,7 @@ public record TypeFunctionAspectDynamic()
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
 

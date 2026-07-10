@@ -429,7 +429,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       var caseScope = new compilerxyz.eval.Scope(xx.scope);
       var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        caseScope.values.put(elementKey, ibSome.value().initialBind(payloadBinding));
+        caseScope.values.put(elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
       }
       var caseXx = xx.child(caseScope);
       var bodyCvOpt = erb.mustEr(ConstEval.constEval(caseXx, branch.body()));

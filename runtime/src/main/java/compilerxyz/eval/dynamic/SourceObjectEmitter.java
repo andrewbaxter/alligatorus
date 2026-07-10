@@ -932,7 +932,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_FIELD),
       new InlineHelperSpec(
-          "initialBind",
+          "aspectInitialBindInitialBind",
           JavaMethodDescriptor.fromParts(DESC_BINDING, DESC_BINDING_ID),
           "sourceObjectInitialBind",
           JavaMethodDescriptor.fromParts(

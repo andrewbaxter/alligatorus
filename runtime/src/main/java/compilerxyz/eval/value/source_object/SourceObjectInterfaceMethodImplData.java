@@ -105,7 +105,7 @@ public final class SourceObjectInterfaceMethodImplData {
     TypeSourceObjectDynamic outerType = dtData;
     var outerIb = AspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
-      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().initialBind(outerId));
+      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
     }
 
     boolean isArgMethod = iface.builtinKind == BuiltinInterfaceKind.TYPE;
@@ -124,7 +124,7 @@ public final class SourceObjectInterfaceMethodImplData {
           argIbResult.requireValue(
               "SourceObjectInterfaceMethodImplData::compile arg InitialBind");
       bodyScope.values.put(
-          new ConstKey.Str("arg"), argIbAspect.initialBind(selfId));
+          new ConstKey.Str("arg"), argIbAspect.aspectInitialBindInitialBind(selfId));
       argParamIds = TList.empty();
       compiledArgParamTypes = TList.empty();
     } else if (iface.builtinKind == BuiltinInterfaceKind.BINDING
@@ -133,7 +133,7 @@ public final class SourceObjectInterfaceMethodImplData {
       var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
       if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
         bodyScope.values.put(
-            new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
+            new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
       }
       var methodArgType = ifaceMethod.argType;
       if (methodArgType == null) {
@@ -192,7 +192,7 @@ public final class SourceObjectInterfaceMethodImplData {
         fields.put(
             new ConstKey.Str(dataFieldNames.get(i)),
             new compilerxyz.eval.value.argrecord.ArgumentEntry(
-                ibAspect.initialBind(pid), paramType));
+                ibAspect.aspectInitialBindInitialBind(pid), paramType));
       }
       var argRecord = new ArgumentRecord(fields);
       bodyScope.values.put(
@@ -204,14 +204,14 @@ public final class SourceObjectInterfaceMethodImplData {
       var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
       if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
         bodyScope.values.put(
-            new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
+            new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
       }
       var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       var argT = ifaceMethod.argType;
       if (argT != null) {
         var argIbMaybe = AspectInitialBind.getMaybe(xx, argT);
         if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
-          bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().initialBind(argId));
+          bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(argId));
         }
         compiledArgParamTypes = TList.of(argT);
       } else {

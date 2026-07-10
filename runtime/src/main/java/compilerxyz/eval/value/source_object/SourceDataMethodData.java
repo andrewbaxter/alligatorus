@@ -88,11 +88,11 @@ public final class SourceDataMethodData {
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
     var outerIb = AspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
-      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().initialBind(outerId));
+      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
     }
     var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
     if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
-      bodyScope.values.put(new ConstKey.Str("inner"), selfIbSome.value().initialBind(selfId));
+      bodyScope.values.put(new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
     }
     TList<compilerxyz.eval.dynamic.DynUtil.ArgSignatureSlot> argSlots = null;
     TList<BindingId.Local> argSlotIds = null;
@@ -114,7 +114,7 @@ public final class SourceDataMethodData {
                 "SourceDataMethodData::finish tuple element type "
                     + slot.elementType().typeDesc() + " missing AspectInitialBind");
           }
-          elemBindings.add(ibSome.value().initialBind(slotId));
+          elemBindings.add(ibSome.value().aspectInitialBindInitialBind(slotId));
         }
         var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(
             elemBindings, tupleSome.value().elementTypes());
@@ -135,7 +135,7 @@ public final class SourceDataMethodData {
           }
           fields.put(entry.getKey(),
               new compilerxyz.eval.value.argrecord.ArgumentEntry(
-                  ibSome.value().initialBind(slotId), entry.getValue()));
+                  ibSome.value().aspectInitialBindInitialBind(slotId), entry.getValue()));
           i++;
         }
         var argRec = new compilerxyz.eval.value.argrecord.ArgumentRecord(fields);
@@ -146,7 +146,7 @@ public final class SourceDataMethodData {
         argSlotIds.add(slotId);
         var argIbMaybe = AspectInitialBind.getMaybe(xx, argType);
         if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
-          bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().initialBind(slotId));
+          bodyScope.values.put(new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(slotId));
         }
       }
     }

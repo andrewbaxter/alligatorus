@@ -265,7 +265,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     return new BindingFunctionDynamic(dynamicKey, this);
   }
 

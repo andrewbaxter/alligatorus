@@ -639,7 +639,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceObjectConst(type_));
   }
 

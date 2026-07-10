@@ -252,7 +252,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
 

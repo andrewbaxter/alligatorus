@@ -779,7 +779,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     var elementTypes = new TList<Type>(elements.size());
     for (int i = 0; i < elements.size(); i++) {
       var e = elements.get(i);

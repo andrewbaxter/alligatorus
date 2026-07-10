@@ -717,7 +717,7 @@ public final class ConstEval {
       var catchScope = new Scope(xx.scope);
       var ibMaybe = AspectInitialBind.getMaybe(xx, bodyExcType);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        catchScope.values.put(bnCkOpt.get(), ibSome.value().initialBind(bindingId));
+        catchScope.values.put(bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
       }
       var catchXx = xx.child(catchScope);
       var catchCvOpt = erb.mustEr(constEval(catchXx, catchObj.body()));

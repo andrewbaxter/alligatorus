@@ -117,7 +117,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public Binding initialBind(BindingId dynamicKey) {
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
 
@@ -231,7 +231,7 @@ public record TypeNumberDynamicBox()
 
   @Override
   public compilerxyz.gen.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return initialBind(dynamicKey);
+    return aspectInitialBindInitialBind(dynamicKey);
   }
 
 }

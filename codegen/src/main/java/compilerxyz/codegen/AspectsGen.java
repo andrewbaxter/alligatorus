@@ -64,7 +64,8 @@ final class AspectsGen {
       "PostDeserialize",
       "Artifact",
       "Aspect",
-      "BindDynamic");
+      "BindDynamic",
+      "InitialBind");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 
