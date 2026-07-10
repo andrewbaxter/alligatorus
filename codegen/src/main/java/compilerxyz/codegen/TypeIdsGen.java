@@ -94,7 +94,6 @@ final class TypeIdsGen {
       "type_root_number_dynamic_box",
       "type_root_bool_dynamic_box",
       "type_root_string_dynamic",
-      "type_root_any_const",
       "type_root_any_dynamic",
       "type_root_constkey_dynamic",
       "type_root_unique",
