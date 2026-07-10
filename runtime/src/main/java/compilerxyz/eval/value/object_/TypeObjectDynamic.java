@@ -131,7 +131,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public Unique getUnique(InterfaceData value) {
+  public Unique aspectAspectGetUnique(InterfaceData value) {
     if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(
           typeDesc + "::getUnique: TypeObjectDynamic does not represent an aspect");
@@ -143,7 +143,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public InterfaceData getIfaceData(InterfaceData value) {
+  public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
     if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new UnsupportedOperationException(
           typeDesc + "::getIfaceData: TypeObjectDynamic has no aspect source");

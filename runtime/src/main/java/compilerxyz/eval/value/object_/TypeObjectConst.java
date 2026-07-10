@@ -130,7 +130,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public Unique getUnique(InterfaceData value) {
+  public Unique aspectAspectGetUnique(InterfaceData value) {
     if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(typeDesc + "::getUnique: no aspect source");
     }
@@ -141,7 +141,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public InterfaceData getIfaceData(InterfaceData value) {
+  public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
     if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new UnsupportedOperationException(typeDesc + "::getIfaceData: no aspect source");
     }

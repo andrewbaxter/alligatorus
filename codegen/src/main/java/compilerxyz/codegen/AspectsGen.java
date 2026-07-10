@@ -62,7 +62,8 @@ final class AspectsGen {
    */
   private static final TSet<String> PREFIXED_ASPECTS = TSet.of(
       "PostDeserialize",
-      "Artifact");
+      "Artifact",
+      "Aspect");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 
