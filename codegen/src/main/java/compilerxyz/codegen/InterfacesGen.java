@@ -213,16 +213,7 @@ public final class InterfacesGen {
           build.addStatement("$N.dataFieldNames.add($S)", methodVar, dfn);
         }
 
-        switch (m.args()) {
-          case MethodArgs.Source src -> build.addCode(buildSourceArgRecordType(methodVar, src));
-          case MethodArgs.Rust rs -> {
-            var dyns = new TList<CodeBlock>();
-            for (var p : rs.sig().context()) dyns.add(p.type().dynamicType());
-            for (var p : rs.sig().data()) dyns.add(p.type().dynamicType());
-            build.addStatement(
-                "$N.argType = $L", methodVar, argDynamicTypeExpr(dyns));
-          }
-        }
+        build.addCode(buildSourceArgRecordType(methodVar, m.args()));
 
         build.addStatement(
             "$N.retType = $L", methodVar, asTypeExpr(m.retType().dynamicType()));
@@ -246,7 +237,7 @@ public final class InterfacesGen {
     return build.build();
   }
 
-  private static CodeBlock buildSourceArgRecordType(String methodVar, MethodArgs.Source src) {
+  private static CodeBlock buildSourceArgRecordType(String methodVar, MethodArgs src) {
     var b = CodeBlock.builder();
     var mapVar = methodVar + "ArgFields";
     b.addStatement(
@@ -289,15 +280,7 @@ public final class InterfacesGen {
 
   private static TList<String> dataFieldNames(Method m) {
     var out = new TList<String>();
-    switch (m.args()) {
-      case MethodArgs.Source src -> {
-        for (var f : src.fields()) out.add(stripTrailingUnderscore(f.name()));
-      }
-      case MethodArgs.Rust rs -> {
-        for (var p : rs.sig().context()) out.add(stripTrailingUnderscore(p.name()));
-        for (var p : rs.sig().data()) out.add(stripTrailingUnderscore(p.name()));
-      }
-    }
+    for (var f : m.args().fields()) out.add(stripTrailingUnderscore(f.name()));
     return out;
   }
 
@@ -308,22 +291,14 @@ public final class InterfacesGen {
                       .addModifiers(Modifier.PUBLIC);
 
     for (var m : spec.methods()) {
-      switch (m.args()) {
-        case MethodArgs.Source ignored -> {}
-        case MethodArgs.Rust rs -> {
-          var method =
-              MethodSpec.methodBuilder(javaMethodName(m.name()))
-                  .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                  .returns(m.retType().path());
-          for (var p : rs.sig().context()) {
-            method.addParameter(ParameterSpec.builder(p.type().path(), p.name()).build());
-          }
-          for (var p : rs.sig().data()) {
-            method.addParameter(ParameterSpec.builder(p.type().path(), p.name()).build());
-          }
-          trait.addMethod(method.build());
-        }
+      var method =
+          MethodSpec.methodBuilder(javaMethodName(m.name()))
+              .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
+              .returns(m.retType().path());
+      for (var p : m.args().fields()) {
+        method.addParameter(ParameterSpec.builder(p.type().path(), p.name()).build());
       }
+      trait.addMethod(method.build());
     }
 
     if (spec.javaDynamicTypeClass() != null) {
@@ -441,7 +416,7 @@ public final class InterfacesGen {
   }
 
   @SuppressWarnings("unused")
-  private static TList<NamedTypeRef> sourceFieldList(MethodArgs.Source src) {
+  private static TList<NamedTypeRef> sourceFieldList(MethodArgs src) {
     return src.fields();
   }
 }

@@ -12,7 +12,6 @@ import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.InterfaceSpec;
 import compilerxyz.codegen.util.Method;
 import compilerxyz.codegen.util.MethodArgs;
-import compilerxyz.codegen.util.MethodSig;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.util.TList;
@@ -528,7 +527,7 @@ public final class BuiltinTreeGen {
                 new Method(
                     "call",
                     cve,
-                    new MethodArgs.Source(
+                    new MethodArgs(
                         TList.of(new NamedTypeRef("inner", cve), new NamedTypeRef("argument", cve))))));
 
     var aspectField =
@@ -545,12 +544,12 @@ public final class BuiltinTreeGen {
                 new Method(
                     "field",
                     cve,
-                    new MethodArgs.Source(
+                    new MethodArgs(
                         TList.of(new NamedTypeRef("inner", cve), new NamedTypeRef("key", cve)))),
                 new Method(
                     "field_type_opt",
                     any,
-                    new MethodArgs.Source(TList.of(new NamedTypeRef("key", cve))))));
+                    new MethodArgs(TList.of(new NamedTypeRef("key", cve))))));
 
     var aspectDropDynamic =
         new InterfaceSpec(
@@ -566,7 +565,7 @@ public final class BuiltinTreeGen {
                 new Method(
                     "drop",
                     dropRet,
-                    new MethodArgs.Source(
+                    new MethodArgs(
                         TList.of(new NamedTypeRef("xx", xxRef), new NamedTypeRef("inner", cve))))));
 
     var codeRef = ClassName.get("compilerxyz.eval", "Code");
@@ -598,12 +597,11 @@ public final class BuiltinTreeGen {
                 new Method(
                     "bindingUse_",
                     bindingCv,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(new NamedTypeRef("code", bindingCode)))))));
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("code", bindingCode))))));
 
 var targetBindSub =
         TypeRef.viaPush(
@@ -680,130 +678,115 @@ var targetBindSub =
                 new Method(
                     "bind",
                     codeBindingTuple,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(new NamedTypeRef("sub", targetBindSub))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("sub", targetBindSub)))),
                 new Method(
                     "bind_sub_record",
                     targetBindSub,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("carry", bindingCode),
-                                new NamedTypeRef("fields", listFields))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("carry", bindingCode),
+                            new NamedTypeRef("fields", listFields)))),
                 new Method(
                     "bind_sub_tuple",
                     targetBindSub,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("carry", bindingCode),
-                                new NamedTypeRef("elements", listElements))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("carry", bindingCode),
+                            new NamedTypeRef("elements", listElements)))),
                 new Method(
                     "seq",
                     eresultCode,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(new NamedTypeRef("entries", listEntries))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("entries", listEntries)))),
                 new Method(
                     "code_to_bind_sub",
                     eresultTargetBindSub,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("code", bindingCode),
-                                new NamedTypeRef("type_", typeOpaque))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("code", bindingCode),
+                            new NamedTypeRef("type_", typeOpaque)))),
                 new Method(
                     "if_",
                     eresultCodeValue,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("conditions", listConditions),
-                                new NamedTypeRef("else_", optExpr))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("conditions", listConditions),
+                            new NamedTypeRef("else_", optExpr)))),
                 new Method(
                     "match_",
                     eresultCodeValue,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("base", codeValueOpaque),
-                                new NamedTypeRef(
-                                    "element_key", TypeRef.viaPush(constKey)),
-                                new NamedTypeRef("cases", caseListOpaque),
-                                new NamedTypeRef("fallback", optExpr))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("base", codeValueOpaque),
+                            new NamedTypeRef(
+                                "element_key", TypeRef.viaPush(constKey)),
+                            new NamedTypeRef("cases", caseListOpaque),
+                            new NamedTypeRef("fallback", optExpr)))),
                 new Method(
                     "maybe_bind_sub",
                     eresultOptionTargetBindSub,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(new NamedTypeRef("cv", codeValueOpaque))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("cv", codeValueOpaque)))),
                 new Method(
                     "stage",
                     eresultCodeValue,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("tree", TypeRef.viaPush(expr)),
-                                new NamedTypeRef(
-                                    "lower_values",
-                                    TypeRef.opaque(
-                                        ParameterizedTypeName.get(
-                                            ClassName.get("compilerxyz.util", "TList"), codeValue))),
-                                new NamedTypeRef(
-                                    "graft_values",
-                                    TypeRef.opaque(
-                                        ParameterizedTypeName.get(
-                                            ClassName.get("compilerxyz.util", "TList"), codeValue))))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("tree", TypeRef.viaPush(expr)),
+                            new NamedTypeRef(
+                                "lower_values",
+                                TypeRef.opaque(
+                                    ParameterizedTypeName.get(
+                                        ClassName.get("compilerxyz.util", "TList"), codeValue))),
+                            new NamedTypeRef(
+                                "graft_values",
+                                TypeRef.opaque(
+                                    ParameterizedTypeName.get(
+                                        ClassName.get("compilerxyz.util", "TList"), codeValue)))))),
                 new Method(
                     "cast_exception",
                     eresultCode,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("call_code", bindingCode),
-                                new NamedTypeRef("catch_binding", TypeRef.opaque(BINDING_ID)),
-                                new NamedTypeRef("cast_cv", codeValueOpaque))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("call_code", bindingCode),
+                            new NamedTypeRef("catch_binding", TypeRef.opaque(BINDING_ID)),
+                            new NamedTypeRef("cast_cv", codeValueOpaque)))),
                 new Method(
                     "drop",
                     eresultCode,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(
-                                new NamedTypeRef("xx", bindingXx),
-                                new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(new NamedTypeRef("cv", codeValueOpaque))))),
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", bindingXx),
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("cv", codeValueOpaque)))),
                 new Method(
                     "try_finally",
                     eresultCode,
-                    new MethodArgs.Rust(
-                        new MethodSig(
-                            TList.of(new NamedTypeRef("loc", bindingLoc)),
-                            TList.of(
-                                new NamedTypeRef("body", bindingCode),
-                                new NamedTypeRef("finally_", bindingCode)))))));
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("loc", bindingLoc),
+                            new NamedTypeRef("body", bindingCode),
+                            new NamedTypeRef("finally_", bindingCode))))));
 
     var codeDyn =
         new InterfaceSpec(
