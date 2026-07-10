@@ -16,7 +16,7 @@ import compilerxyz.util.Opt;
 
 public record BindingUniqueDualMode(BindingId dynamicKey, Unique unique) implements Binding {
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     var dyn = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey);
     return new CodeValue(Code.of(loc, dyn), Opt.some(new ValueUnique(unique)));
   }

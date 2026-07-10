@@ -17,7 +17,7 @@ public record BindingTupleDynamic(BindingId dynamicKey, TList<Type> elements)
     implements Binding {
 
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     var resultElements = new TList<TupleElement>(elements.size());
     for (var t : elements) {
       resultElements.add(new TupleElement.Dynamic(t));

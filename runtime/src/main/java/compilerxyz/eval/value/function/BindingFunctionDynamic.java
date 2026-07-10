@@ -16,7 +16,7 @@ import compilerxyz.util.Opt;
 public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic type_)
     implements Binding {
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
     return new CodeValue(Code.none(loc), Opt.some(value));
   }

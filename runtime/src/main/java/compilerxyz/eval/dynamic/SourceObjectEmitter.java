@@ -713,8 +713,8 @@ public final class SourceObjectEmitter {
         default -> null;
       };
       case BINDING -> switch (sourceName) {
-        case "use_" -> new HostMethodSpec(
-            "bindingUse_",
+        case "use" -> new HostMethodSpec(
+            "bindingUse",
             JavaMethodDescriptor.fromParts(
                 DESC_CODE_VALUE, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE));
         default -> null;
@@ -745,11 +745,11 @@ public final class SourceObjectEmitter {
           "targetCodeToBindSub",
           JavaMethodDescriptor.fromParts(DESC_ERESULT, DESC_QEXPR_ID, DESC_CODE, DESC_TYPE));
       case "if_" -> new HostMethodSpec(
-          "targetIf_",
+          "targetIf",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_LIST, DESC_OPT));
       case "match_" -> new HostMethodSpec(
-          "targetMatch_",
+          "targetMatch",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT,
               DESC_EXPR_CONTEXT,

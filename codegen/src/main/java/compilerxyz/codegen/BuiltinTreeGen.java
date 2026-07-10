@@ -595,7 +595,7 @@ public final class BuiltinTreeGen {
             "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID",
             TList.of(
                 new Method(
-                    "use_",
+                    "use",
                     bindingCv,
                     new MethodArgs(
                         TList.of(
@@ -713,7 +713,7 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("code", bindingCode),
-                            new NamedTypeRef("type_", typeOpaque)))),
+                            new NamedTypeRef("type", typeOpaque)))),
                 new Method(
                     "bind_sub_record",
                     targetBindSub,
@@ -756,7 +756,7 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("body", bindingCode),
-                            new NamedTypeRef("finally_", bindingCode)))),
+                            new NamedTypeRef("finally", bindingCode)))),
                 new Method(
                     "drop",
                     eresultCode,
@@ -776,14 +776,14 @@ var targetBindSubCls =
                             new NamedTypeRef("lowerValues", listCodeValue),
                             new NamedTypeRef("graftValues", listCodeValue)))),
                 new Method(
-                    "if_",
+                    "if",
                     eresultCodeValue,
                     new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("conditions", listIfBranch),
-                            new NamedTypeRef("else_", optExpr)))),
+                            new NamedTypeRef("else", optExpr)))),
                 new Method(
                     "try_catch_finally",
                     eresultCodeDynamic,
@@ -791,10 +791,10 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("body", codeDynamic),
-                            new NamedTypeRef("catch_", optTryCatchClause),
-                            new NamedTypeRef("finally_", optCodeDynamic)))),
+                            new NamedTypeRef("catch", optTryCatchClause),
+                            new NamedTypeRef("finally", optCodeDynamic)))),
                 new Method(
-                    "match_",
+                    "match",
                     eresultCodeValue,
                     new MethodArgs(
                         TList.of(

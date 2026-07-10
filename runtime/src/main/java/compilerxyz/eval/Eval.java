@@ -84,7 +84,7 @@ public final class Eval {
       return EResult.errs(erb.errors());
     }
     var binding = initialBindOpt.get().initialBind(catchBinding);
-    var boundCv = binding.bindingUse_(xx, loc, Code.none(loc));
+    var boundCv = binding.bindingUse(xx, loc, Code.none(loc));
     var castCvOpt = erb.mustEr(calleeExcType.typeCastTo(xx, loc, boundCv, callerExc));
     if (castCvOpt.isEmpty()) {
       return EResult.errs(erb.errors());

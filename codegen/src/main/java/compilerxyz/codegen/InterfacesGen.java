@@ -296,7 +296,8 @@ public final class InterfacesGen {
               .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
               .returns(m.retType().path());
       for (var p : m.args().fields()) {
-        method.addParameter(ParameterSpec.builder(p.type().path(), p.name()).build());
+        method.addParameter(
+            ParameterSpec.builder(p.type().path(), escapeJavaKeyword(p.name())).build());
       }
       trait.addMethod(method.build());
     }
@@ -425,15 +426,7 @@ public final class InterfacesGen {
 
   private static String javaTraitMethodName(InterfaceSpec spec, Method m) {
     var prefix = snakeToCamel(spec.name());
-    var body = m.name();
-    var trail = new StringBuilder();
-    var i = body.length();
-    while (i > 0 && body.charAt(i - 1) == '_') {
-      trail.append('_');
-      i--;
-    }
-    var base = body.substring(0, i);
-    return prefix + snakeToPascal(base) + trail;
+    return escapeJavaKeyword(prefix + snakeToPascal(m.name()));
   }
 
   private static String snakeToCamel(String s) {

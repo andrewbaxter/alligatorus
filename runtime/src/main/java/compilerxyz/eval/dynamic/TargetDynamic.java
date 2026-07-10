@@ -314,7 +314,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   @Override
-  public EResult<CodeValue> targetIf_(
+  public EResult<CodeValue> targetIf(
       ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<Expr> else_) {
     var erb = new Erb(loc);
     var seq = new JavaBytecodeSequence();
@@ -375,7 +375,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   @Override
-  public EResult<CodeValue> targetMatch_(
+  public EResult<CodeValue> targetMatch(
       ExprContext xx,
       QExprId loc,
       CodeValue base,

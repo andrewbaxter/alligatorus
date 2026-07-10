@@ -21,7 +21,7 @@ public record BindingRecordBound(
     TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey) implements Binding {
 
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     boolean hasDynamic = fields.values().stream().anyMatch(f -> f instanceof RecordScopeField.Dynamic);
     Code useCode;
     Opt<RecordBaseDynamic> base;
@@ -41,7 +41,7 @@ public record BindingRecordBound(
       RecordField rf =
           switch (entry.getValue()) {
             case RecordScopeField.Scope s -> new RecordField.EvalRes(
-                EResult.ok(s.binding().bindingUse_(xx, loc, Code.none(loc))));
+                EResult.ok(s.binding().bindingUse(xx, loc, Code.none(loc))));
             case RecordScopeField.Dynamic d -> new RecordField.Dynamic(d.type());
             case RecordScopeField.Error e -> new RecordField.EvalRes(EResult.errs(e.errors()));
           };

@@ -75,7 +75,7 @@ public final class ConstEval {
           erb.errPush("No bound value with id [" + ck + "]");
           yield EResult.errs(erb.errors());
         }
-        yield EResult.ok(found.bindingUse_(xx, loc, key.code()));
+        yield EResult.ok(found.bindingUse(xx, loc, key.code()));
       }
       case Expr.Call p -> {
         var erb = new Erb(loc);
@@ -293,7 +293,7 @@ public final class ConstEval {
         var brOpt = erb.mustEr(bindAspectOpt.get().bind(childXx, sub.loc(), value));
         if (brOpt.isEmpty()) return EResult.errs(erb.errors());
         var br = brOpt.get();
-        var bindingUseCv = br.binding().bindingUse_(childXx, sub.loc(), Code.none(sub.loc()));
+        var bindingUseCv = br.binding().bindingUse(childXx, sub.loc(), Code.none(sub.loc()));
         var dropOpt = erb.mustEr(childXx.target.targetDrop(childXx, sub.loc(), bindingUseCv));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(br.code());
@@ -507,7 +507,7 @@ public final class ConstEval {
       matchCases.add(
           new TargetCase(info.jsTag(), info.type(), e.cases().get(i).body()));
     }
-    var out = erb.mustEr(xx.target.targetMatch_(xx, loc, base, elementKey, matchCases, e.fallback()));
+    var out = erb.mustEr(xx.target.targetMatch(xx, loc, base, elementKey, matchCases, e.fallback()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(out.get());
   }
@@ -653,7 +653,7 @@ public final class ConstEval {
       for (var ie : conditionsEvaluated) {
         branches.add(new IfBranch(ie.cond, ie.body));
       }
-      var out = erb.mustEr(xx.target.targetIf_(xx, loc, branches, e.else_()));
+      var out = erb.mustEr(xx.target.targetIf(xx, loc, branches, e.else_()));
       if (out.isEmpty()) return EResult.errs(erb.errors());
       return EResult.ok(out.get());
     }

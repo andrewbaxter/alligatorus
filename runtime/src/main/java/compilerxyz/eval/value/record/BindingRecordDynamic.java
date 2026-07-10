@@ -21,7 +21,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
     implements Binding {
 
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     var resultFields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
       resultFields.put(entry.getKey(), new RecordField.Dynamic(entry.getValue()));

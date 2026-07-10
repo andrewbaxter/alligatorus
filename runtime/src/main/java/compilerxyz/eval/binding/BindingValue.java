@@ -10,7 +10,7 @@ import compilerxyz.util.Opt;
 
 public record BindingValue(Value value) implements Binding {
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     return new CodeValue(Code.none(loc), Opt.some(value));
   }
 }

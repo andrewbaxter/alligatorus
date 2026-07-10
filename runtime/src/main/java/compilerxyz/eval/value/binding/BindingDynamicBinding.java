@@ -18,7 +18,7 @@ import compilerxyz.util.Opt;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
   @Override
-  public CodeValue bindingUse_(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     CodeDynamic dyn;
     if (dynamicKey instanceof BindingId.Local local) {
       // Local slot: pick the typed load opcode from the binding's own type so a

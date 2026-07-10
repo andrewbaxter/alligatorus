@@ -55,7 +55,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     if (entry == null) {
       return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on argument record");
     }
-    return EResult.ok(entry.binding().bindingUse_(xx, loc, Code.none(loc)));
+    return EResult.ok(entry.binding().bindingUse(xx, loc, Code.none(loc)));
   }
 
   @Override
