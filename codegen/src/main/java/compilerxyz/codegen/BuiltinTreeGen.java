@@ -31,27 +31,42 @@ public final class BuiltinTreeGen {
   static final long THROW_COMPILE_SCOPE_ID = 7025;
   static final long PANIC_COMPILE_SCOPE_ID = 7026;
 
-  private static final ClassName BUILTIN_TREE = ClassName.get("compilerxyz.eval", "BuiltinTree");
-  private static final ClassName BUILTIN_TREE_BRANCH =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "Branch");
-  private static final ClassName BUILTIN_TREE_LEAF =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "Leaf");
-  private static final ClassName BUILTIN_TREE_CHILD =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "Child");
-  private static final ClassName BUILTIN_LEAF_ANY_CONST =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "AnyConst");
-  private static final ClassName BUILTIN_LEAF_INITIAL_BIND =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "InitialBind");
-  private static final ClassName BUILTIN_LEAF_ASPECT_ID =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "AspectId");
-  private static final ClassName BUILTIN_LEAF_INTERFACE =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "Interface");
-  private static final ClassName BUILTIN_LEAF_FUNCTION =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "Function");
-  private static final ClassName BUILTIN_LEAF_CONSTRUCTOR =
-      ClassName.get("compilerxyz.eval", "BuiltinTree", "BuiltinLeaf", "Constructor");
-
   private static final ClassName BINDING_ID = ClassName.get("compilerxyz.eval", "BindingId");
+  private static final ClassName BINDING = ClassName.get("compilerxyz.eval", "Binding");
+  private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
+  private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.eval", "QExprId");
+  private static final ClassName CODE_RT = ClassName.get("compilerxyz.eval", "Code");
+  private static final ClassName CODE_VALUE = ClassName.get("compilerxyz.eval", "CodeValue");
+  private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
+  private static final ClassName CONST_KEY = ClassName.get("compilerxyz.eval", "ConstKey");
+  private static final ClassName CONST_KEY_STR =
+      ClassName.get("compilerxyz.eval", "ConstKey", "Str");
+  private static final ClassName TORDERED_MAP =
+      ClassName.get("compilerxyz.util", "TOrderedMap");
+  private static final ClassName ARGUMENT_ENTRY =
+      ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentEntry");
+  private static final ClassName ARGUMENT_RECORD =
+      ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentRecord");
+  private static final ClassName ARGUMENT_RECORD_BINDING =
+      ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentRecordBinding");
+  private static final ClassName BINDING_UNIQUE_DUAL_MODE =
+      ClassName.get("compilerxyz.eval.value.unique", "BindingUniqueDualMode");
+  private static final ClassName TYPE_UNIQUE_RT =
+      ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
+  private static final ClassName ASPECT_BIND =
+      ClassName.get("compilerxyz.gen", "AspectBind");
+  private static final ClassName ASPECT_INITIAL_BIND =
+      ClassName.get("compilerxyz.gen", "AspectInitialBind");
+  private static final ClassName VALUE_ANY_CONST =
+      ClassName.get("compilerxyz.eval.value.any", "ValueAnyConst");
+  private static final ClassName OBJECT_CONST_OF_TYPE =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectConstOfType");
+  private static final ClassName IMPORT_INSTALL =
+      ClassName.get("compilerxyz.eval", "ImportInstall");
+  private static final ClassName TYPE_INTERFACE_CONST =
+      ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
+  private static final ClassName TYPE_FUNCTION_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
   private static final ClassName BINDING_ID_BUILTIN =
       ClassName.get("compilerxyz.eval", "BindingId", "Builtin");
   private static final ClassName IMPORT_STATE_ID =
@@ -164,7 +179,7 @@ public final class BuiltinTreeGen {
 
     cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
-    cls.addMethod(buildFactory(spec));
+    cls.addMethod(installRootFactory(spec));
 
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
@@ -234,114 +249,226 @@ public final class BuiltinTreeGen {
     return m.build();
   }
 
-  private static MethodSpec buildFactory(NodeSpec root) {
-    var build =
-            MethodSpec.methodBuilder("build")
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .returns(BUILTIN_TREE)
-                    .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build())
-                    .addParameter(ParameterSpec.builder(GEN_BUILTIN_INTERFACES, "interfaces").build());
+  /**
+   * Mutable counter for allocating unique local-variable names in the
+   * generated installRoot method. Each emit method appends statements to
+   * the shared body and returns the names of the (binding, type) locals it
+   * left in scope.
+   */
+  private static final class EmitState {
+    int counter = 0;
+    final CodeBlock.Builder body = CodeBlock.builder();
 
-    build.addCode("return $L;\n", nodeExpr(root));
-    return build.build();
+    String next(String prefix) {
+      return "_" + prefix + counter++;
+    }
   }
 
-  private static CodeBlock nodeExpr(NodeSpec node) {
+  private static MethodSpec installRootFactory(NodeSpec root) {
+    var m =
+        MethodSpec.methodBuilder("installRoot")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(ParameterizedTypeName.get(ERESULT, BINDING))
+            .addParameter(ParameterSpec.builder(EXPR_CONTEXT, "xx").build())
+            .addParameter(ParameterSpec.builder(QEXPR_ID, "loc").build())
+            .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build())
+            .addParameter(ParameterSpec.builder(GEN_BUILTIN_INTERFACES, "interfaces").build())
+            .addParameter(ParameterSpec.builder(TypeName.BOOLEAN, "registerDynamic").build());
+
+    // Dynamic registration for Interface + AspectId leaves.
+    var dynBlock = CodeBlock.builder();
+    emitDynamicRegistrations(root, dynBlock);
+    if (!dynBlock.build().isEmpty()) {
+      m.beginControlFlow("if (registerDynamic)");
+      m.addCode(dynBlock.build());
+      m.endControlFlow();
+    }
+
+    // Emit the whole tree inline; result is (binding, type) local names.
+    var st = new EmitState();
+    var vars = emitNode(root, st);
+    m.addCode(st.body.build());
+    m.addStatement("return $T.ok($N)", ERESULT, vars[0]);
+    return m.build();
+  }
+
+  /** Emit inline statements for a node; return [bindingVarName, typeVarName]. */
+  private static String[] emitNode(NodeSpec node, EmitState st) {
     return switch (node) {
-      case Branch b -> branchExpr(b);
-      case Leaf l -> leafExpr(l);
+      case Branch b -> emitBranch(b, st);
+      case Leaf l -> emitLeaf(l.leaf(), st);
     };
   }
 
-  private static CodeBlock branchExpr(Branch b) {
-    var inner = CodeBlock.builder();
-    inner.add("$T.<$T>of(", TLIST, BUILTIN_TREE_CHILD);
-    for (var i = 0; i < b.children().size(); i++) {
-      var c = b.children().get(i);
-      if (i > 0) inner.add(", ");
-      inner.add("new $T($S, $L)", BUILTIN_TREE_CHILD, c.name(), nodeExpr(c.node()));
+  private static String[] emitBranch(Branch b, EmitState st) {
+    var fields = st.next("fields");
+    st.body.addStatement(
+        "var $N = new $T<$T, $T>()", fields, TORDERED_MAP, CONST_KEY, ARGUMENT_ENTRY);
+    for (var c : b.children()) {
+      var childVars = emitNode(c.node(), st);
+      st.body.addStatement(
+          "$N.put(new $T($S), new $T($N, $N))",
+          fields,
+          CONST_KEY_STR,
+          c.name(),
+          ARGUMENT_ENTRY,
+          childVars[0],
+          childVars[1]);
     }
-    inner.add(")");
-    return CodeBlock.of("new $T($L)", BUILTIN_TREE_BRANCH, inner.build());
+    var record = st.next("record");
+    var binding = st.next("binding");
+    var type = st.next("type");
+    st.body.addStatement("var $N = new $T($N)", record, ARGUMENT_RECORD, fields);
+    st.body.addStatement("$T $N = new $T($N)", BINDING, binding, ARGUMENT_RECORD_BINDING, record);
+    st.body.addStatement("$T $N = $N", TYPE, type, record);
+    return new String[] {binding, type};
   }
 
-  private static CodeBlock leafExpr(Leaf l) {
-    return CodeBlock.of("new $T($L)", BUILTIN_TREE_LEAF, leafSpecExpr(l.leaf()));
-  }
-
-  private static CodeBlock leafSpecExpr(LeafSpec spec) {
+  private static String[] emitLeaf(LeafSpec spec, EmitState st) {
     return switch (spec) {
-      case LeafSpec.AnyConst a ->
-          CodeBlock.of("new $T(($T) $L)", BUILTIN_LEAF_ANY_CONST, TYPE, a.typeExpr());
+      case LeafSpec.AnyConst a -> emitAnyConstLeaf(a.typeExpr(), st);
       case LeafSpec.InitialBind ib ->
-          CodeBlock.of(
-              "new $T(new $T($LL), ($T) $L)",
-              BUILTIN_LEAF_INITIAL_BIND,
-              BINDING_ID_BUILTIN,
-              ib.dynamicKeyScopeId(),
-              TYPE,
-              ib.typeExpr());
-      case LeafSpec.AspectId ai -> {
-        var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
-        yield CodeBlock.of(
-            "new $T(new $T($LL), $T.ID, new $T($T.class, $T.ID))",
-            BUILTIN_LEAF_ASPECT_ID,
-            BINDING_ID_BUILTIN,
-            ai.builtinScopeId(),
-            aspectClass,
-            EXTERNAL,
-            UNIQUE_CLASS,
-            aspectClass);
+          emitInitialBindLike(ib.typeExpr(), ib.dynamicKeyScopeId(), st, "InitialBind");
+      case LeafSpec.AspectId ai -> emitAspectIdLeaf(ai, st);
+      case LeafSpec.Interface ifc -> {
+        var typeExpr =
+            CodeBlock.of(
+                "new $T(interfaces.$N)",
+                TYPE_INTERFACE_CONST,
+                ifaceHolderFieldName(ifc.spec()));
+        yield emitInitialBindLike(typeExpr, (long) ifc.spec().scopeId(), st, "Interface");
       }
-      case LeafSpec.Interface ifc ->
-          CodeBlock.of(
-
-              "$L",
-              interfaceLeafExpr(ifc.spec()));
       case LeafSpec.Function fn -> {
-        var helperClass = ClassName.get(GEN_PACKAGE, builtinHelperName(fn.builtinScopeId()));
         var helperInternalName =
             (GEN_PACKAGE + "." + builtinHelperName(fn.builtinScopeId())).replace('.', '/');
-        yield CodeBlock.of(
-            "new $T(new $T($LL), ($T) $T.builtinWithCtx($S, $S, $L, $L))",
-            BUILTIN_LEAF_FUNCTION,
-            BINDING_ID_BUILTIN,
-            fn.builtinScopeId(),
-            TYPE,
-            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic"),
-            helperInternalName,
-            "invoke",
-            argDynamicTypeExpr(fn.args()),
-            fn.retDynamicType());
+        var typeExpr =
+            CodeBlock.of(
+                "$T.builtinWithCtx($S, $S, $L, $L)",
+                TYPE_FUNCTION_DYNAMIC,
+                helperInternalName,
+                "invoke",
+                argDynamicTypeExpr(fn.args()),
+                fn.retDynamicType());
+        yield emitInitialBindLike(typeExpr, fn.builtinScopeId(), st, "Function");
       }
-      case LeafSpec.Constructor c -> {
-        yield CodeBlock.of(
-            "new $T(new $T($LL), ($T) $L)",
-            BUILTIN_LEAF_CONSTRUCTOR,
-            BINDING_ID_BUILTIN,
-            c.builtinScopeId(),
-            TYPE,
-            c.typeExpr());
-      }
+      case LeafSpec.Constructor c ->
+          emitInitialBindLike(c.typeExpr(), c.builtinScopeId(), st, "Constructor");
     };
   }
 
-  private static CodeBlock interfaceLeafExpr(InterfaceSpec spec) {
+  private static String[] emitAnyConstLeaf(CodeBlock typeExpr, EmitState st) {
+    var type = st.next("type");
+    var wrapper = st.next("wrapper");
+    var cv = st.next("cv");
+    var bindRes = st.next("bindRes");
+    var br = st.next("br");
+    var binding = st.next("binding");
+    st.body.addStatement("$T $N = ($T) $L", TYPE, type, TYPE, typeExpr);
+    st.body.addStatement("$T $N = $T.dynamicType()", TYPE, wrapper, OBJECT_CONST_OF_TYPE);
+    st.body.addStatement(
+        "var $N = new $T($T.none(loc), $T.some(new $T($N)))",
+        cv,
+        CODE_VALUE,
+        CODE_RT,
+        OPT,
+        VALUE_ANY_CONST,
+        type);
+    st.body.addStatement("var $N = $T.get(xx, loc, $N)", bindRes, ASPECT_BIND, wrapper);
+    st.body.beginControlFlow("if ($N.hasErrors())", bindRes);
+    st.body.addStatement("return $N.reerr()", bindRes);
+    st.body.endControlFlow();
+    st.body.addStatement(
+        "var $N = $N.requireValue($S).bind(xx, loc, $N)",
+        br,
+        bindRes,
+        "installRoot AnyConst bind aspect",
+        cv);
+    st.body.beginControlFlow("if ($N.hasErrors())", br);
+    st.body.addStatement("return $N.reerr()", br);
+    st.body.endControlFlow();
+    st.body.addStatement(
+        "$T $N = $N.requireValue($S).binding()",
+        BINDING,
+        binding,
+        br,
+        "installRoot AnyConst bind result");
+    return new String[] {binding, wrapper};
+  }
 
-    var sourceInterfaceConst =
-        ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
-    return CodeBlock.of(
-        "new $T(new $T($LL), ($T) new $T(interfaces.$N),"
-            + " new $T($T.class, interfaces.$N))",
-        BUILTIN_LEAF_INTERFACE,
+  /**
+   * Shared emit for InitialBind / Function / Constructor / Interface — all
+   * follow the pattern "AspectInitialBind.get(type).initialBind(key)".
+   */
+  private static String[] emitInitialBindLike(
+      CodeBlock typeExpr, long dynamicKeyScopeId, EmitState st, String tag) {
+    var type = st.next("type");
+    var ib = st.next("ib");
+    var binding = st.next("binding");
+    st.body.addStatement("$T $N = ($T) $L", TYPE, type, TYPE, typeExpr);
+    st.body.addStatement("var $N = $T.get(xx, loc, $N)", ib, ASPECT_INITIAL_BIND, type);
+    st.body.beginControlFlow("if ($N.hasErrors())", ib);
+    st.body.addStatement("return $N.reerr()", ib);
+    st.body.endControlFlow();
+    st.body.addStatement(
+        "$T $N = $N.requireValue($S).initialBind(new $T($LL))",
+        BINDING,
+        binding,
+        ib,
+        "installRoot " + tag,
         BINDING_ID_BUILTIN,
-        (long) spec.scopeId(),
-        TYPE,
-        sourceInterfaceConst,
-        ifaceHolderFieldName(spec),
-        EXTERNAL,
-        INTERFACE_DATA,
-        ifaceHolderFieldName(spec));
+        dynamicKeyScopeId);
+    return new String[] {binding, type};
+  }
+
+  private static String[] emitAspectIdLeaf(LeafSpec.AspectId ai, EmitState st) {
+    var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
+    var binding = st.next("binding");
+    var type = st.next("type");
+    st.body.addStatement(
+        "$T $N = new $T(new $T($LL), $T.ID)",
+        BINDING,
+        binding,
+        BINDING_UNIQUE_DUAL_MODE,
+        BINDING_ID_BUILTIN,
+        ai.builtinScopeId(),
+        aspectClass);
+    st.body.addStatement("$T $N = new $T()", TYPE, type, TYPE_UNIQUE_RT);
+    return new String[] {binding, type};
+  }
+
+  private static void emitDynamicRegistrations(NodeSpec node, CodeBlock.Builder out) {
+    switch (node) {
+      case Branch b -> {
+        for (var c : b.children()) emitDynamicRegistrations(c.node(), out);
+      }
+      case Leaf l -> {
+        switch (l.leaf()) {
+          case LeafSpec.Interface ifc ->
+              out.addStatement(
+                  "xx.vx.ix.builtinDynamics.put($T.bindingIdDynamicKey(new $T($LL)),"
+                      + " new $T($T.class, interfaces.$N))",
+                  IMPORT_INSTALL,
+                  BINDING_ID_BUILTIN,
+                  (long) ifc.spec().scopeId(),
+                  EXTERNAL,
+                  INTERFACE_DATA,
+                  ifaceHolderFieldName(ifc.spec()));
+          case LeafSpec.AspectId ai -> {
+            var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
+            out.addStatement(
+                "xx.vx.ix.builtinDynamics.put($T.bindingIdDynamicKey(new $T($LL)),"
+                    + " new $T($T.class, $T.ID))",
+                IMPORT_INSTALL,
+                BINDING_ID_BUILTIN,
+                ai.builtinScopeId(),
+                EXTERNAL,
+                UNIQUE_CLASS,
+                aspectClass);
+          }
+          default -> {}
+        }
+      }
+    }
   }
 
   private static CodeBlock argDynamicTypeExpr(TList<NamedTypeRef> args) {
