@@ -75,7 +75,12 @@ final class AspectsGen {
       "DropDynamicLight",
       "ConsumeDynamic",
       "MapDynamic",
-      "Iterable");
+      "Iterable",
+      "FieldUseConst",
+      "FieldUseDynamic",
+      "ElementUseConst",
+      "ElementUseDynamic",
+      "ElementUseDynamicBind");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

@@ -418,7 +418,7 @@ public final class ConstEval {
     var elementBinding =
         elemBindRes
             .requireValue("Foreach: AspectElementUseDynamicBind")
-            .elementUseDynamicBind(elementScopeId);
+            .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
     var childScope = new Scope(xx.scope);
     childScope.values.put(ekOpt.get(), elementBinding);
     var childXx = xx.child(childScope);

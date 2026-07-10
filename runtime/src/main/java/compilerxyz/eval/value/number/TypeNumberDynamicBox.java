@@ -230,7 +230,7 @@ public record TypeNumberDynamicBox()
 
 
   @Override
-  public compilerxyz.gen.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
     return aspectInitialBindInitialBind(dynamicKey);
   }
 

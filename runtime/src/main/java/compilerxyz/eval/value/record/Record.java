@@ -292,7 +292,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             : entryType;
         var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
         if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
-          yield useConstSome.value().fieldUseConst(xx, loc, childCv);
+          yield useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, childCv);
         }
         yield EResult.ok(childCv);
       }
@@ -302,7 +302,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public EResult<CodeValue> fieldUseDynamic(
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
       compilerxyz.eval.value.ValueDynamic.Source baseSource,
