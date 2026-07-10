@@ -25,7 +25,7 @@ import compilerxyz.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.eval.value.argrecord.ArgumentRecordBinding;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.util.Opt;

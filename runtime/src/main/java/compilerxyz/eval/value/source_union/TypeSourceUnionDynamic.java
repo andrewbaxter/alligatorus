@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source_union;
 
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.Counter;

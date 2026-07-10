@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.source_object;
 
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.ConstEval;
 import compilerxyz.eval.ConstKey;

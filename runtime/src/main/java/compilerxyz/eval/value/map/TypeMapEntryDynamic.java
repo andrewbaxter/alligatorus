@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.map;
 
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -205,7 +205,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+  public compilerxyz.gen.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
     return initialBind(dynamicKey);
   }
 

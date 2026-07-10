@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.argrecord;
 
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;

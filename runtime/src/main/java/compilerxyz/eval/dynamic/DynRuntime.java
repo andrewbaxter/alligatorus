@@ -29,7 +29,7 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.ArrayList;
@@ -324,9 +324,9 @@ public final class DynRuntime {
     }
     var bound = xx.target.targetBind(loc, subSome.value());
     Code wrappingCode = Code.of(loc, bound.code());
-    compilerxyz.eval.Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
-    compilerxyz.eval.Binding wrapped =
-        new BindingSourceObjectWrapper((compilerxyz.eval.Binding) self, underlyingBinding);
+    compilerxyz.gen.Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
+    compilerxyz.gen.Binding wrapped =
+        new BindingSourceObjectWrapper((compilerxyz.gen.Binding) self, underlyingBinding);
     return EResult.ok(new AspectBind.BindResult(wrappingCode, wrapped));
   }
 
@@ -346,7 +346,7 @@ public final class DynRuntime {
     return EResult.ok(dyn);
   }
 
-  public static compilerxyz.eval.Binding sourceObjectInitialBind(
+  public static compilerxyz.gen.Binding sourceObjectInitialBind(
       Object data, Object self, BindingId dynamicKey) {
     var d = (TypeSourceObjectDynamic) data;
     var ut = d.underlyingType;

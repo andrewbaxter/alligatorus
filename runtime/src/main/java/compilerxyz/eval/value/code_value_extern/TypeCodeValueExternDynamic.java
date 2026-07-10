@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.code_value_extern;
 
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;

@@ -104,7 +104,7 @@ public final class SourceDataMethodData {
       var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
       var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
       if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
-        var elemBindings = new TList<compilerxyz.eval.Binding>(argSlots.size());
+        var elemBindings = new TList<compilerxyz.gen.Binding>(argSlots.size());
         for (var slot : argSlots) {
           var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
           argSlotIds.add(slotId);

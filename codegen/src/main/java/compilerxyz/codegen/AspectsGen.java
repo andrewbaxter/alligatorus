@@ -35,7 +35,7 @@ final class AspectsGen {
   private static final ClassName CODE = ClassName.get("compilerxyz.eval", "Code");
   private static final ClassName CONST_KEY = ClassName.get("compilerxyz.eval", "ConstKey");
   private static final ClassName BINDING_ID = ClassName.get("compilerxyz.eval", "BindingId");
-  private static final ClassName BINDING = ClassName.get("compilerxyz.eval", "Binding");
+  private static final ClassName BINDING = ClassName.get("compilerxyz.gen", "Binding");
   private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");

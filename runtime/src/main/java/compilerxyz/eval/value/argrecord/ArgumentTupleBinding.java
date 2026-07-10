@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.argrecord;
 
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ExprContext;

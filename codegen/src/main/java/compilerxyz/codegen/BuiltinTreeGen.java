@@ -31,7 +31,7 @@ public final class BuiltinTreeGen {
   static final long PANIC_COMPILE_SCOPE_ID = 7026;
 
   private static final ClassName BINDING_ID = ClassName.get("compilerxyz.eval", "BindingId");
-  private static final ClassName BINDING = ClassName.get("compilerxyz.eval", "Binding");
+  private static final ClassName BINDING = ClassName.get("compilerxyz.gen", "Binding");
   private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
   private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.eval", "QExprId");
   private static final ClassName CODE_RT = ClassName.get("compilerxyz.eval", "Code");
@@ -591,8 +591,8 @@ public final class BuiltinTreeGen {
             "Binding",
             null,
             true,
-            null,
-            null,
+            "Binding",
+            "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID",
             TList.of(
                 new Method(
                     "bindingUse_",
@@ -952,7 +952,7 @@ var targetBindSub =
                     new LeafSpec.AnyConst(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get("compilerxyz.eval", "Binding"))))),
+                            ClassName.get("compilerxyz.gen", "Binding"))))),
             new Child(
                 "bind_result",
                 new Leaf(
@@ -1140,7 +1140,7 @@ var targetBindSub =
                                     ParameterizedTypeName.get(
                                         ClassName.get("compilerxyz.util", "TMap"),
                                         ClassName.get("compilerxyz.eval", "ConstKey"),
-                                        ClassName.get("compilerxyz.eval", "Binding"))))),
+                                        ClassName.get("compilerxyz.gen", "Binding"))))),
                         ClassName.get("compilerxyz.eval", "ExprContext"),
                         CodeBlock.of(
                             "$T.dynamicType()",
@@ -1169,10 +1169,10 @@ var targetBindSub =
                             new NamedTypeRef(
                                 "binding",
                                 new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "Binding"),
+                                    ClassName.get("compilerxyz.gen", "Binding"),
                                     CodeBlock.of(
                                         "$T.dynamicType()",
-                                        ClassName.get("compilerxyz.eval", "Binding"))))),
+                                        ClassName.get("compilerxyz.gen", "Binding"))))),
                         ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
                         CodeBlock.of(
                             "$T.dynamicType()",

@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.tuple;
 
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.Type;
 import compilerxyz.util.TList;

@@ -9,7 +9,7 @@ import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.dynamic.CompositeSlotSort;
 import compilerxyz.eval.dynamic.CompositeClassEmitter;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;

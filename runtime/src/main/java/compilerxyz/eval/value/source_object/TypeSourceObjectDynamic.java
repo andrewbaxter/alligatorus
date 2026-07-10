@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source_object;
 
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -431,7 +431,7 @@ public final class TypeSourceObjectDynamic
           switch (builtinKind) {
             case TYPE -> resultType = Type.dynamicType();
             case TARGET -> resultType = compilerxyz.eval.dynamic.Target.dynamicType();
-            case BINDING -> resultType = compilerxyz.eval.Binding.dynamicType();
+            case BINDING -> resultType = compilerxyz.gen.Binding.dynamicType();
             case CODE_DYN -> {
               return EResult.err(
                   loc,

@@ -62,7 +62,7 @@ public final class TraitsGen {
             null,
             false,
             null,
-            TList.of(new Method("type", any, new MethodArgs.Source(TList.of()))));
+            TList.of(new Method("type", any, new MethodArgs(TList.of()))));
 
     var typeSpec =
         new InterfaceSpec(
@@ -78,7 +78,7 @@ public final class TraitsGen {
                 new Method(
                     "can_cast_from",
                     bool,
-                    new MethodArgs.Source(
+                    new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", xxRef),
                             new NamedTypeRef("source_type", typeRefPush),
@@ -86,16 +86,16 @@ public final class TraitsGen {
                 new Method(
                     "cast_from",
                     eresultCve,
-                    new MethodArgs.Source(
+                    new MethodArgs(
                         TList.of(
                             new NamedTypeRef("xx", xxRef),
                             new NamedTypeRef("source_type", typeRefPush),
                             new NamedTypeRef("cv", cve)))),
-                new Method("desc", string, new MethodArgs.Source(TList.of())),
+                new Method("desc", string, new MethodArgs(TList.of())),
                 new Method(
                     "aspect",
                     aspectOption,
-                    new MethodArgs.Source(TList.of(new NamedTypeRef("key", unique))))));
+                    new MethodArgs(TList.of(new NamedTypeRef("key", unique))))));
 
     return TList.of(valueSpec, typeSpec);
   }

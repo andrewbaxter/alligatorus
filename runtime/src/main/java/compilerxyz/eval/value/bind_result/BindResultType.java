@@ -41,8 +41,8 @@ public final class BindResultType {
           new ObjectDataField(
               "binding",
               "binding",
-              JavaDataDescriptor.fromClass(compilerxyz.eval.Binding.class),
-              compilerxyz.eval.Binding.dynamicType()));
+              JavaDataDescriptor.fromClass(compilerxyz.gen.Binding.class),
+              compilerxyz.gen.Binding.dynamicType()));
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_BIND_RESULT_DYNAMIC_TYPE_ID,
           "BindResult",

@@ -1,5 +1,7 @@
 package compilerxyz.eval;
 
+import compilerxyz.gen.Binding;
+
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInitialBind;

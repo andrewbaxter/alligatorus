@@ -46,7 +46,7 @@ public final class SourceObjectEmitter {
   private static final JavaInternalName INTNAME_BINDING_ID =
       JavaInternalName.of("compilerxyz/eval/BindingId");
   private static final JavaInternalName INTNAME_BINDING =
-      JavaInternalName.of("compilerxyz/eval/Binding");
+      JavaInternalName.of("compilerxyz/gen/Binding");
   private static final JavaInternalName INTNAME_PAIR =
       JavaInternalName.of("compilerxyz/util/Pair");
   private static final JavaInternalName INTNAME_OPT =
@@ -189,7 +189,7 @@ public final class SourceObjectEmitter {
       case ASPECT_FIELD -> INTNAME_ASPECT_FIELD;
       case ASPECT_FUNCTION -> JavaInternalName.of("compilerxyz/gen/AspectFunction");
       case ASPECT_DROP_DYNAMIC -> JavaInternalName.of("compilerxyz/gen/AspectDropDynamic");
-      case BINDING -> JavaInternalName.of("compilerxyz/eval/Binding");
+      case BINDING -> JavaInternalName.of("compilerxyz/gen/Binding");
       case TARGET -> JavaInternalName.of("compilerxyz/eval/dynamic/Target");
       case CODE_DYN -> null;
     };

@@ -1,5 +1,7 @@
 package compilerxyz.eval;
 
+import compilerxyz.gen.Binding;
+
 import compilerxyz.util.TMap;
 import org.jspecify.annotations.Nullable;
 

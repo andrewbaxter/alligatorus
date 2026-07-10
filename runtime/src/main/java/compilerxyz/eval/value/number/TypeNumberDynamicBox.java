@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.number;
 
-import compilerxyz.eval.Binding;
+import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -230,7 +230,7 @@ public record TypeNumberDynamicBox()
 
 
   @Override
-  public compilerxyz.eval.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+  public compilerxyz.gen.Binding elementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
     return initialBind(dynamicKey);
   }
 

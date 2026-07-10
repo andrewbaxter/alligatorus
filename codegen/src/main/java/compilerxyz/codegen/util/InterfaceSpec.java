@@ -1,6 +1,5 @@
 package compilerxyz.codegen.util;
 
-import com.squareup.javapoet.ClassName;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
@@ -13,7 +12,7 @@ public record InterfaceSpec(
     @Nullable String description,
     boolean registerInScope,
     @Nullable String javaTraitName,
-    @Nullable ClassName javaDynamicTypeClass,
+    @Nullable String typeIdConstantName,
     TList<Method> methods) {
   public InterfaceSpec(
       String name,
