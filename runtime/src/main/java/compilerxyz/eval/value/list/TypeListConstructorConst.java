@@ -17,7 +17,7 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -73,7 +73,7 @@ public record TypeListConstructorConst()
     elementType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType);
     Type listType = new TypeListDynamic(elementType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(listType))));
+        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(listType))));
   }
 
   @Override

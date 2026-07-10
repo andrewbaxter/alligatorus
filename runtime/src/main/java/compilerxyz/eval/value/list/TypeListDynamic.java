@@ -44,7 +44,7 @@ import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.dynamic.DynRuntime;
@@ -225,7 +225,7 @@ public record TypeListDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+              new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
       case FieldSpec.Method m ->
           EResult.ok(
               new CodeValue(

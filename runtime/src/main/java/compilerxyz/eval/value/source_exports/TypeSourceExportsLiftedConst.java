@@ -25,7 +25,7 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectField;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import compilerxyz.safejson.JsonValue;
@@ -198,14 +198,14 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
       if (keyName.equals(funcData.name)) {
         Type funcType = new TypeSourceFunctionConst(funcData);
         return EResult.ok(
-            new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(funcType))));
+            new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(funcType))));
       }
     }
     for (var objData : set.objects) {
       if (keyName.equals(objData.name)) {
         Type ctorType = new TypeSourceObjectNewDynamic(objData);
         return EResult.ok(
-            new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(ctorType))));
+            new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(ctorType))));
       }
     }
     return EResult.err(loc, "'" + keyName + "' not found in definition set");

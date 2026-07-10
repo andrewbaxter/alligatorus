@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -42,7 +42,7 @@ public final class SourceObjectNewRefType {
                       + (host == null ? "null" : host.getClass().getName()));
             }
             return EResult.ok(
-                new ValueAnyConst(new TypeTypeSourceObjectNewConst(ctorType.type_())));
+                new ValueObjectConst(new TypeTypeSourceObjectNewConst(ctorType.type_())));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID,

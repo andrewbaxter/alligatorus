@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -41,7 +41,7 @@ public final class SourceObjectRefType {
                   "definition_set_object_ref::lift: expected TypeSourceObjectDynamic, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueAnyConst(new TypeTypeSourceObjectConst(dt)));
+            return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectConst(dt)));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_OBJECT_REF_DYNAMIC_TYPE_ID,

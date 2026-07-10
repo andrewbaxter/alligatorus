@@ -18,7 +18,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectStackValueDynamic;
@@ -137,7 +137,7 @@ public record TypeEResultDynamic(Type elementType)
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
-          EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+          EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
     };
   }
 

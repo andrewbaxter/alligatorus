@@ -15,7 +15,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
@@ -72,7 +72,7 @@ public record TypeEResultConstructorConst()
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .type_(argValue);
     Type eresultType = new TypeEResultDynamic(elementType);
-    return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(eresultType))));
+    return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(eresultType))));
   }
 
   @Override

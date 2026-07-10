@@ -99,7 +99,7 @@ public record TypeFunctionAspectDynamic()
       return EResult.err(loc, "aspect_lookup: aspect_type has no compile-time value");
     }
     var aspectTypeVal = atSome.value();
-    if (aspectTypeVal instanceof compilerxyz.eval.value.any.ValueAnyConst wrap) {
+    if (aspectTypeVal instanceof compilerxyz.eval.value.object_.ValueObjectConst wrap) {
       aspectTypeVal = wrap.inner();
     }
     if (!(aspectTypeVal instanceof compilerxyz.eval.TypeAspect aspTa)) {

@@ -240,9 +240,9 @@ public record TypeObjectConst(
   @Override
   public EResult<compilerxyz.artifact.Artifact> artifactExporterExport(
       ExprContext xx, QExprId loc, compilerxyz.artifact.ExporterAny self) {
-    if (!(self instanceof compilerxyz.eval.value.any.ValueAnyConst wrapper)) {
+    if (!(self instanceof compilerxyz.eval.value.object_.ValueObjectConst wrapper)) {
       return EResult.err(
-          loc, typeDesc + "::artifactExporterExport: expected ValueAnyConst, got " + self.getClass());
+          loc, typeDesc + "::artifactExporterExport: expected ValueObjectConst, got " + self.getClass());
     }
     return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, wrapper.inner());
   }
@@ -304,7 +304,7 @@ public record TypeObjectConst(
       return EResult.err(loc, typeDesc + "::" + op + ": self has no compile-time value");
     }
     var v = some.value();
-    if (v instanceof compilerxyz.eval.value.any.ValueAnyConst wrap) {
+    if (v instanceof compilerxyz.eval.value.object_.ValueObjectConst wrap) {
       return EResult.ok(wrap.inner());
     }
     if (v instanceof Type t) {
@@ -312,7 +312,7 @@ public record TypeObjectConst(
     }
     return EResult.err(
         loc,
-        typeDesc + "::" + op + ": expected Type or ValueAnyConst, got " + v.getClass());
+        typeDesc + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
   }
 
   @Override
@@ -324,14 +324,14 @@ public record TypeObjectConst(
 
   @Override
   public Type type_(Value value) {
-    if (value instanceof compilerxyz.eval.value.any.ValueAnyConst v) {
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v) {
       return v.inner();
     }
     if (value instanceof Type t) {
       return t;
     }
     throw new IllegalArgumentException(
-        typeDesc + "::type_: expected Type or ValueAnyConst, got " + value.getClass());
+        typeDesc + "::type_: expected Type or ValueObjectConst, got " + value.getClass());
   }
 
   private EResult<CodeValue> deferField(

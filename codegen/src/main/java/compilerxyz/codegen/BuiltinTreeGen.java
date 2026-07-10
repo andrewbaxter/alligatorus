@@ -57,8 +57,8 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.gen", "AspectBind");
   private static final ClassName ASPECT_INITIAL_BIND =
       ClassName.get("compilerxyz.gen", "AspectInitialBind");
-  private static final ClassName VALUE_ANY_CONST =
-      ClassName.get("compilerxyz.eval.value.any", "ValueAnyConst");
+  private static final ClassName VALUE_OBJECT_CONST =
+      ClassName.get("compilerxyz.eval.value.object_", "ValueObjectConst");
   private static final ClassName OBJECT_CONST_OF_TYPE =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectConstOfType");
   private static final ClassName IMPORT_INSTALL =
@@ -371,7 +371,7 @@ public final class BuiltinTreeGen {
         CODE_VALUE,
         CODE_RT,
         OPT,
-        VALUE_ANY_CONST,
+        VALUE_OBJECT_CONST,
         type);
     st.body.addStatement("var $N = $T.get(xx, loc, $N)", bindRes, ASPECT_BIND, wrapper);
     st.body.beginControlFlow("if ($N.hasErrors())", bindRes);

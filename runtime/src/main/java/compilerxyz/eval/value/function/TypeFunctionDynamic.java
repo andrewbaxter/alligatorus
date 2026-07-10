@@ -57,7 +57,7 @@ public record TypeFunctionDynamic(
     // The externalHostValue can be either an actual TypeFunctionDynamic (rare) or the JVM
     // receiver value for a method-value access. Either way, the compile-time type is the
     // TypeFunctionDynamic itself, so wrap `this` as the const value.
-    return EResult.ok(new compilerxyz.eval.value.any.ValueAnyConst(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(this));
   }
 
   @Override

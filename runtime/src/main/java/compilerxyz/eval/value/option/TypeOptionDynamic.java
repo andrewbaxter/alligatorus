@@ -30,7 +30,7 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
@@ -195,7 +195,7 @@ public record TypeOptionDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+              new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
     };
   }
 

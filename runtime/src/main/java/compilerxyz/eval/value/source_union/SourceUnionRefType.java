@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -44,7 +44,7 @@ public final class SourceUnionRefType {
                   "union_ref::lift: expected TypeSourceUnionDynamic, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueAnyConst(new TypeTypeSourceUnionConst(ut)));
+            return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionConst(ut)));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_UNION_REF_DYNAMIC_TYPE_ID,

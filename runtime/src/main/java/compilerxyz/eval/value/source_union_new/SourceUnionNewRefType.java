@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -42,7 +42,7 @@ public final class SourceUnionNewRefType {
                       + (host == null ? "null" : host.getClass().getName()));
             }
             return EResult.ok(
-                new ValueAnyConst(
+                new ValueObjectConst(
                     new TypeTypeSourceUnionNewConst(newType.type_(), newType.variantIndex())));
           };
       return new TypeObjectDynamic(

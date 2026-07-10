@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -41,7 +41,7 @@ public final class SourceFunctionType {
                   "definition_set_function::lift: expected TypeSourceFunctionConst, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueAnyConst(funcType));
+            return EResult.ok(new ValueObjectConst(funcType));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_FUNCTION_DYNAMIC_TYPE_ID,

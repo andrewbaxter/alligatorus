@@ -44,7 +44,7 @@ import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.number.ValueNumberConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -190,7 +190,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return switch (spec) {
         case FieldSpec.Factory f ->
             EResult.ok(
-                new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(f.type()))));
+                new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
         case FieldSpec.GetFn g -> {
           var selfDyn = self.code().dynamic();
           if (selfDyn == null) {

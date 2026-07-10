@@ -32,7 +32,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.any.ValueAnyConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
@@ -426,7 +426,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new ValueAnyConst(new TypeSourceFunctionConst(data)));
+      return EResult.ok(new ValueObjectConst(new TypeSourceFunctionConst(data)));
     }
   }
 }
