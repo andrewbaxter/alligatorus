@@ -182,8 +182,8 @@ public record TypeFunctionDynamic(
       if (!(converted.value() instanceof Opt.Some<Value> some)) {
         return EResult.err(loc, "TypeFunctionDynamic::destructure: arg has no compile-time value");
       }
-      var elementTypes = tupleSome.value().elementTypes();
-      var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
+      var elementTypes = tupleSome.value().aspectTupleElementTypes();
+      var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, some.value());
       if (elementTypes.size() != elemCvs.size()) {
         throw new IllegalStateException(
             "TypeFunctionDynamic::destructure: elementTypes/takeElements size mismatch");
@@ -280,7 +280,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {

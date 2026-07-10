@@ -263,7 +263,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (!sourceTuple.optIsSome()) {
       return false;
     }
-    return ((Opt.Some<AspectTuple>) sourceTuple).value().elementTypes().size() == elements.size();
+    return ((Opt.Some<AspectTuple>) sourceTuple).value().aspectTupleElementTypes().size() == elements.size();
   }
 
   @Override
@@ -332,7 +332,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public TList<Type> elementTypes() {
+  public TList<Type> aspectTupleElementTypes() {
     var out = new TList<Type>(elements.size());
     for (var e : elements) {
       if (!(e instanceof TupleElement.Dynamic d)) {
@@ -344,7 +344,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public TList<EResult<CodeValue>> takeElements(ExprContext xx, QExprId loc, Value value) {
+  public TList<EResult<CodeValue>> aspectTupleTakeElements(ExprContext xx, QExprId loc, Value value) {
     if (!(value instanceof Tuple t)) {
       throw new IllegalArgumentException(
           "Tuple::takeElements: expected Tuple value, got " + value.getClass());

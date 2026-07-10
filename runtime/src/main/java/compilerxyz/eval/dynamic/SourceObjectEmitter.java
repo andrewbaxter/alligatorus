@@ -1253,7 +1253,7 @@ public final class SourceObjectEmitter {
       boolean firstParamIsExprContext,
       int paramSlotCount) {
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
-    var recordFieldTypes = argRecord.recordFieldTypes();
+    var recordFieldTypes = argRecord.aspectRecordRecordFieldTypes();
     var slotSort = compilerxyz.eval.dynamic.CompositeSlotSort.sort(
         recordFieldTypes, compilerxyz.eval.ConstKey.CANONICAL_ORDER);
     var sortedTypes = slotSort.sortedTypes();

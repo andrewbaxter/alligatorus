@@ -132,7 +132,7 @@ public final class SourceFunctionData {
     var tupleOpt = AspectTuple.getMaybe(xx, argT);
     var recordOpt = AspectRecord.getMaybe(xx, argT);
     if (tupleOpt.optIsSome()) {
-      var elemTypes = tupleOpt.optUnwrap().elementTypes();
+      var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
       var elemBindings = new TList<Binding>();
       for (var et : elemTypes) {
         var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
@@ -146,7 +146,7 @@ public final class SourceFunctionData {
       var argTuple = new ArgumentTuple(elemBindings, elemTypes);
       bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
     } else if (recordOpt.optIsSome()) {
-      var fieldTypes = recordOpt.optUnwrap().recordFieldTypes();
+      var fieldTypes = recordOpt.optUnwrap().aspectRecordRecordFieldTypes();
       var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
       for (var entry : fieldTypes.entrySet()) {
         var et = entry.getValue();

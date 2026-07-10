@@ -117,14 +117,14 @@ public final class SourceDataMethodData {
           elemBindings.add(ibSome.value().aspectInitialBindInitialBind(slotId));
         }
         var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(
-            elemBindings, tupleSome.value().elementTypes());
+            elemBindings, tupleSome.value().aspectTupleElementTypes());
         bodyScope.values.put(new ConstKey.Str("arg"),
             new compilerxyz.eval.value.argrecord.ArgumentTupleBinding(argTuple));
       } else if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
         var fields =
             new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
         int i = 0;
-        for (var entry : recordSome.value().recordFieldTypes().entrySet()) {
+        for (var entry : recordSome.value().aspectRecordRecordFieldTypes().entrySet()) {
           var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
           argSlotIds.add(slotId);
           var ibMaybe = AspectInitialBind.getMaybe(xx, entry.getValue());

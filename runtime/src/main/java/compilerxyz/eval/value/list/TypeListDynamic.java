@@ -338,7 +338,7 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public EResult<Code> dropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dropDefault(xx, loc, cv);
   }
 

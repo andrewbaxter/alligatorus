@@ -66,7 +66,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
     var argType = argSome.value().valueTypeOf();
     var argTupleOpt = AspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome
-        && argTupleSome.value().elementTypes().isEmpty()) {
+        && argTupleSome.value().aspectTupleElementTypes().isEmpty()) {
       var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
       if (retStackRes.hasErrors()) return retStackRes.reerr();
 

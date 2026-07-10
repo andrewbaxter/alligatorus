@@ -138,7 +138,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TOrderedMap<ConstKey, Type> recordFieldTypes() {
+  public TOrderedMap<ConstKey, Type> aspectRecordRecordFieldTypes() {
     var out = new TOrderedMap<ConstKey, Type>();
     for (var entry : fields.entrySet()) {
       if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
@@ -152,7 +152,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TOrderedMap<ConstKey, EResult<CodeValue>> recordTakeFields(ExprContext xx, QExprId loc, Value value) {
+  public TOrderedMap<ConstKey, EResult<CodeValue>> aspectRecordRecordTakeFields(ExprContext xx, QExprId loc, Value value) {
     if (!(value instanceof Record r)) {
       throw new IllegalArgumentException(
           "Record::recordTakeFields: expected Record value, got " + value.getClass());
@@ -548,7 +548,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (!(srcAsp instanceof Opt.Some<AspectRecord> srcSome)) {
       return false;
     }
-    var srcTypes = srcSome.value().recordFieldTypes();
+    var srcTypes = srcSome.value().aspectRecordRecordFieldTypes();
     if (srcTypes.size() != fields.size()) {
       return false;
     }
@@ -575,7 +575,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     var srcAsp = srcAspSome.value();
 
     if (srcValue instanceof Record srcRec && srcRec.base instanceof Opt.None<RecordBaseDynamic>) {
-      var srcTakenFields = srcAsp.recordTakeFields(xx, loc, srcValue);
+      var srcTakenFields = srcAsp.aspectRecordRecordTakeFields(xx, loc, srcValue);
       var erb = new Erb(loc);
       var convertedFields = new TOrderedMap<ConstKey, RecordField>();
       for (var destEntry : fields.entrySet()) {
@@ -617,7 +617,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           "Record::typeCastFrom: unexpected source value class: " + srcValue.getClass());
     }
 
-    var srcFieldTypes = srcAsp.recordFieldTypes();
+    var srcFieldTypes = srcAsp.aspectRecordRecordFieldTypes();
     var srcSlotInfo = computeSlotInfoFromTypes(srcFieldTypes);
     var destSlotInfo = computeSlotInfoFromTypes(recordFieldTypesRaw(fields));
 

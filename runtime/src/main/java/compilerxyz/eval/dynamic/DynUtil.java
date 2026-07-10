@@ -33,7 +33,7 @@ public final class DynUtil {
             ExprContext xx, QExprId loc, Type argType) {
         var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
         if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
-            var elemTypes = tupleSome.value().elementTypes();
+            var elemTypes = tupleSome.value().aspectTupleElementTypes();
             var out = new TList<ArgSignatureSlot>(elemTypes.size());
             for (var et : elemTypes) {
                 var descRes = jvmDescFor(xx, loc, et);
@@ -45,7 +45,7 @@ public final class DynUtil {
         }
         var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
         if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
-            var fieldTypes = recordSome.value().recordFieldTypes();
+            var fieldTypes = recordSome.value().aspectRecordRecordFieldTypes();
             var out = new TList<ArgSignatureSlot>(fieldTypes.size());
             for (var entry : fieldTypes.entrySet()) {
                 var et = entry.getValue();
@@ -89,8 +89,8 @@ public final class DynUtil {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructureCallArg: tuple arg has no compile-time value");
             }
-            var elementTypes = tupleSome.value().elementTypes();
-            var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
+            var elementTypes = tupleSome.value().aspectTupleElementTypes();
+            var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, some.value());
             if (elementTypes.size() != elemCvs.size()) {
                 throw new IllegalStateException(
                         "DynUtil::destructureCallArg: tuple elementTypes/takeElements size mismatch");
@@ -111,8 +111,8 @@ public final class DynUtil {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructureCallArg: record arg has no compile-time value");
             }
-            var fieldTypes = recordSome.value().recordFieldTypes();
-            var fieldCvs = recordSome.value().recordTakeFields(xx, loc, some.value());
+            var fieldTypes = recordSome.value().aspectRecordRecordFieldTypes();
+            var fieldCvs = recordSome.value().aspectRecordRecordTakeFields(xx, loc, some.value());
             var out = new TList<CallArgElement>(fieldTypes.size());
             for (var entry : fieldTypes.entrySet()) {
                 var fkey = entry.getKey();
@@ -517,8 +517,8 @@ public final class DynUtil {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
             }
-            var elementTypes = tupleSome.value().elementTypes();
-            var elemCvs = tupleSome.value().takeElements(xx, loc, some.value());
+            var elementTypes = tupleSome.value().aspectTupleElementTypes();
+            var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, some.value());
             if (elementTypes.size() != elemCvs.size()) {
                 throw new IllegalStateException(
                         "DynUtil::destructurePositional: elementTypes/takeElements size mismatch");
@@ -530,8 +530,8 @@ public final class DynUtil {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
             }
-            var fieldTypes = recordSome.value().recordFieldTypes();
-            var fieldCvs = recordSome.value().recordTakeFields(xx, loc, some.value());
+            var fieldTypes = recordSome.value().aspectRecordRecordFieldTypes();
+            var fieldCvs = recordSome.value().aspectRecordRecordTakeFields(xx, loc, some.value());
             if (fieldTypes.size() != fieldCvs.size()) {
                 throw new IllegalStateException(
                         "DynUtil::destructurePositional: record fieldTypes/takeFields size mismatch");

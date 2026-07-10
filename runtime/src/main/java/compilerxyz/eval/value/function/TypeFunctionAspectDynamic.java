@@ -82,7 +82,7 @@ public record TypeFunctionAspectDynamic()
     if (!(tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome)) {
       return EResult.err(loc, "aspect_lookup: expected 3-tuple arg (subject, aspect_type, xx)");
     }
-    var elemCvs = tupleSome.value().takeElements(xx, loc, argVal);
+    var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, argVal);
     if (elemCvs.size() != 3) {
       return EResult.err(
           loc,

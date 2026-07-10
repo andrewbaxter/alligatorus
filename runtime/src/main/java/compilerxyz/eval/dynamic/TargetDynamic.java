@@ -120,7 +120,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
     var lightAspect = AspectDropDynamicLight.getMaybe(xx, vtype);
     if (lightAspect.optIsSome()) {
-      return lightAspect.optUnwrap().dropDynamicLight(xx, loc, cv);
+      return lightAspect.optUnwrap().aspectDropDynamicLightDropDynamicLight(xx, loc, cv);
     }
     return EResult.ok(Code.none(loc));
   }

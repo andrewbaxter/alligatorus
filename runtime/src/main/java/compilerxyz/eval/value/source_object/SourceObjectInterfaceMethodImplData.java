@@ -166,7 +166,7 @@ public final class SourceObjectInterfaceMethodImplData {
           throw new AssertionError(
               "Multi-field builtin method arg_type must be a Tuple or Record, got: " + methodArgType.typeDesc());
         }
-        paramTypes = TList.from(tupleSome.value().elementTypes());
+        paramTypes = TList.from(tupleSome.value().aspectTupleElementTypes());
       }
       if (paramTypes.size() != dataFieldNames.size()) {
         throw new AssertionError(

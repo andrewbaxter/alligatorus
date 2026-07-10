@@ -69,7 +69,7 @@ public record TypeListNewDynamic(Type elementType)
     var dynamicElements = new TList<CodeDynamic>();
     var argTupleOpt = AspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome) {
-      var elements = argTupleSome.value().takeElements(xx, loc, argSome.value());
+      var elements = argTupleSome.value().aspectTupleTakeElements(xx, loc, argSome.value());
       for (var elemRes : elements) {
         if (elemRes.hasErrors()) return elemRes.reerr();
         var elemCv = elemRes.requireValue("takeElements");

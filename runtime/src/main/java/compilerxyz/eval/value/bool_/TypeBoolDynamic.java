@@ -231,7 +231,7 @@ public record TypeBoolDynamic()
       };
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {

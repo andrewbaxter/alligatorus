@@ -121,7 +121,7 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public TList<AspectUnion.Variant> variants() {
+  public TList<AspectUnion.Variant> aspectUnionVariants() {
     var out = new TList<AspectUnion.Variant>();
     for (var v : variants) {
       out.add(new AspectUnion.Variant(v.tag, v.jsTag, v.type));
@@ -140,7 +140,7 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> dropDynamicLight(
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {

@@ -450,7 +450,7 @@ public final class ConstEval {
     var baseType = bv.value().valueTypeOf();
     var unionOpt = erb.mustEr(AspectUnion.get(xx, loc, baseType));
     if (unionOpt.isEmpty()) return EResult.errs(erb.errors());
-    var variants = unionOpt.get().variants();
+    var variants = unionOpt.get().aspectUnionVariants();
     var caseTags = new TList<ConstKey>();
     for (var c : e.cases()) {
       var condOpt = erb.mustEr(constEval(xx, c.condition()));

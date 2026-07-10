@@ -69,7 +69,7 @@ public record TypeMapConstructorConst()
     if (!(aspectTupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
       return EResult.err(loc, "map() requires a tuple of (key_type, value_type)");
     }
-    var elements = tupleSome.value().takeElements(xx, loc, argValue);
+    var elements = tupleSome.value().aspectTupleTakeElements(xx, loc, argValue);
     if (elements.size() != 2) {
       return EResult.err(
           loc,
