@@ -577,7 +577,7 @@ public final class TargetDynamic implements Target {
     stageArgs.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
     stageArgs.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
     var stageCall =
-        compilerxyz.eval.dynamic.DynRuntime.STAGE_TYPE.emitInvocation(
+        compilerxyz.gen.GenDynMethods.STAGE_TYPE.emitInvocation(
             loc, xx.vx, stageArgs);
     var resultValue =
         ValueDynamic.stack(new TypeExprStagedPlaceholder());

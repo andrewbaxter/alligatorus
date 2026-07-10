@@ -112,9 +112,9 @@ public final class InterfaceData {
       castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_CONST_IDENTITY));
       castRules.add(
           new TypeObjectCastRule.CallByDestIdentity(
-              GenIdentities.TYPE_TYPE_IDENTITY, DynRuntime.INTERFACE_REF_TO_TYPE_TYPE));
+              GenIdentities.TYPE_TYPE_IDENTITY, compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_TYPE_TYPE));
       castRules.add(
-          new TypeObjectCastRule.CallToInterfaceSpec(DynRuntime.INTERFACE_REF_TO_INTERFACE_SPEC));
+          new TypeObjectCastRule.CallToInterfaceSpec(compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_INTERFACE_SPEC));
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID,
           "definition_set_interface_ref",

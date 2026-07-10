@@ -247,7 +247,7 @@ public record TypeInterfaceConst(InterfaceData data)
       var args = new TList<CodeDynamic>();
       args.add(sourceCode);
       var call =
-          compilerxyz.eval.dynamic.DynRuntime.INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
+          compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
               loc, xx.vx, args);
       return EResult.ok(
           new CodeValue(

@@ -226,7 +226,7 @@ public record TypeUnique()
     var refDyn = toDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
     var call =
-        compilerxyz.eval.dynamic.DynRuntime.UNIQUE_EQ_TYPE.emitInvocation(
+        compilerxyz.gen.GenDynMethods.UNIQUE_EQ_TYPE.emitInvocation(
             loc,
             xx.vx,
             TList.of(

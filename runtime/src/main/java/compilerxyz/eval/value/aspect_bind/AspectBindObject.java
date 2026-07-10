@@ -47,10 +47,10 @@ public final class AspectBindObject {
 
       var methods = new TList<ObjectMethod>();
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.CallToInterfaceSpec(DynRuntime.OBJECT_TO_INTERFACE_SPEC));
+      castRules.add(new TypeObjectCastRule.CallToInterfaceSpec(compilerxyz.gen.GenDynMethods.OBJECT_TO_INTERFACE_SPEC));
       castRules.add(
           new TypeObjectCastRule.CallByDestIdentity(
-              GenIdentities.INTERFACE_REF_TYPE_IDENTITY, DynRuntime.OBJECT_TO_INTERFACE_DATA));
+              GenIdentities.INTERFACE_REF_TYPE_IDENTITY, compilerxyz.gen.GenDynMethods.OBJECT_TO_INTERFACE_DATA));
 
       var instance =
           new TypeObjectDynamic(

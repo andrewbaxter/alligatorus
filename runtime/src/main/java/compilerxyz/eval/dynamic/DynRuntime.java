@@ -61,77 +61,6 @@ public final class DynRuntime {
     }
   }
 
-  private static final JavaInternalName INTNAME = JavaInternalName.fromClass(DynRuntime.class);
-  private static final Type ANY = Type.dynamicType();
-
-  private static JavaMethodDescriptor desc(JavaDataDescriptor ret, JavaDataDescriptor... args) {
-    return JavaMethodDescriptor.fromParts(ret, TList.of(args));
-  }
-
-  private static JavaDataDescriptor cls(Class<?> c) {
-    return JavaDataDescriptor.fromClass(c);
-  }
-
-  private static TypeFunctionDynamic fn(String methodName, JavaMethodDescriptor d) {
-    return new TypeFunctionDynamic(ANY, ANY, INTNAME, methodName, d, true);
-  }
-
-  public static final TypeFunctionDynamic STAGE_TYPE =
-      new TypeFunctionDynamic(
-          ANY,
-          new compilerxyz.eval.value.expr.TypeExpr(),
-          INTNAME,
-          "stage",
-          desc(
-              cls(StagedExprCell.class),
-              cls(ExprContext.class),
-              cls(StagedExprCell.class),
-              JavaDataDescriptor.DESC_INT,
-              cls(Object[].class)),
-          true);
-
-  public static final TypeFunctionDynamic INTERFACE_REF_TO_TYPE_TYPE =
-      fn(
-          "interfaceRefToType",
-          desc(cls(Type.class), cls(ExprContext.class), cls(InterfaceData.class)));
-
-  public static final TypeFunctionDynamic OBJECT_TO_INTERFACE_SPEC =
-      fn(
-          "objectToInterfaceSpec",
-          desc(
-              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
-              cls(compilerxyz.eval.value.object_.TypeObjectDynamic.class)));
-
-  public static final TypeFunctionDynamic OBJECT_TO_INTERFACE_DATA =
-      fn(
-          "objectToInterfaceData",
-          desc(
-              cls(InterfaceData.class),
-              cls(compilerxyz.eval.value.object_.TypeObjectDynamic.class)));
-
-  public static final TypeFunctionDynamic SPEC_TO_INTERFACE_DATA =
-      fn(
-          "specToInterfaceData",
-          desc(
-              cls(InterfaceData.class),
-              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class)));
-
-  public static final TypeFunctionDynamic INTERFACE_REF_TO_INTERFACE_SPEC =
-      fn(
-          "interfaceRefToInterfaceSpec",
-          desc(
-              cls(compilerxyz.eval.value.interface_spec.InterfaceSpec.class),
-              cls(InterfaceData.class)));
-
-  public static final TypeFunctionDynamic UNIQUE_EQ_TYPE =
-      fn(
-          "uniqueEq",
-          desc(
-              JavaDataDescriptor.DESC_BOOL,
-              cls(ExprContext.class),
-              cls(Unique.class),
-              cls(Unique.class)));
-
   private static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromObject(
           compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
@@ -197,7 +126,7 @@ public final class DynRuntime {
   private static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromSpec(
           compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
-    var data =
+    var data=
         new compilerxyz.eval.value.source_interface.InterfaceData(
             null, spec.identity(), null);
     data.compiledBinaryName = spec.jvmInterfaceName().value().replace('/', '.');
