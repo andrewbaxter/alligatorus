@@ -74,7 +74,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         ExporterAny {
 
   @Override
-  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Record::drop: called on absent CodeValue");
     }
@@ -110,7 +110,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var fieldType = fieldSome.value().valueTypeOf();
       var fieldDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
       if (!(fieldDropOpt instanceof Opt.Some<AspectDropDynamic> fieldDropSome)) continue;
-      var fieldDropRes = fieldDropSome.value().drop(xx, loc, fieldCv);
+      var fieldDropRes = fieldDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
       if (fieldDropRes.hasErrors()) return fieldDropRes.reerr();
       var fieldDrop = fieldDropRes.requireValue("Record::dropSourceless field drop").dynamic();
       if (fieldDrop != null) seq.add(fieldDrop);

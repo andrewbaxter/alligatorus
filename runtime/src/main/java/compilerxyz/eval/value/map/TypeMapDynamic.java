@@ -445,7 +445,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     var keyDropOpt = AspectDropDynamic.getMaybe(xx, keyType);
     var valDropOpt = AspectDropDynamic.getMaybe(xx, valueType);
     if (!(cv.value() instanceof Opt.Some<Value> some)
@@ -474,7 +474,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
               Opt.some(compilerxyz.eval.value.ValueDynamic.stack(keyType)));
-      var keyDropRes = keyDropSome.value().drop(xx, loc, keyCv);
+      var keyDropRes = keyDropSome.value().aspectDropDynamicDrop(xx, loc, keyCv);
       if (keyDropRes.hasErrors()) return keyDropRes.reerr();
       var keyDropDyn = keyDropRes.requireValue("map key drop").dynamic();
       if (keyDropDyn != null) bodySeq.add(keyDropDyn);
@@ -496,7 +496,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadValSeq)),
               Opt.some(compilerxyz.eval.value.ValueDynamic.stack(valueType)));
-      var valDropRes = valDropSome.value().drop(xx, loc, valCv);
+      var valDropRes = valDropSome.value().aspectDropDynamicDrop(xx, loc, valCv);
       if (valDropRes.hasErrors()) return valDropRes.reerr();
       var valDropDyn = valDropRes.requireValue("map value drop").dynamic();
       if (valDropDyn != null) bodySeq.add(valDropDyn);

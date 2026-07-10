@@ -62,7 +62,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> drop(
+  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicDrop(
       compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.QExprId loc,
       compilerxyz.eval.CodeValue cv) {

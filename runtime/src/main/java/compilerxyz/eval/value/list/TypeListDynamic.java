@@ -343,7 +343,7 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     var elemDropRes = AspectDropDynamic.get(xx, loc, elementType);
     if (elemDropRes.hasErrors()) return elemDropRes.reerr();
     var elemDrop = elemDropRes.requireValue("TypeListDynamic::drop element AspectDropDynamic");
@@ -361,7 +361,7 @@ public record TypeListDynamic(Type elementType)
         new CodeValue(
             Code.of(loc, loadElement),
             Opt.some(compilerxyz.eval.value.ValueDynamic.stack(elementType)));
-    var elemDropCodeRes = elemDrop.drop(xx, loc, elementCv);
+    var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
 

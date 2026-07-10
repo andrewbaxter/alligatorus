@@ -689,14 +689,14 @@ public final class SourceObjectEmitter {
         default -> null;
       };
       case ASPECT_FUNCTION -> switch (sourceName) {
-        case "aspectFunctionCall" -> new HostMethodSpec(
+        case "call" -> new HostMethodSpec(
             "aspectFunctionCall",
             JavaMethodDescriptor.fromParts(
                 DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE));
         default -> null;
       };
       case ASPECT_FIELD -> switch (sourceName) {
-        case "aspectFieldField" -> new HostMethodSpec(
+        case "field" -> new HostMethodSpec(
             "aspectFieldField",
             JavaMethodDescriptor.fromParts(
                 DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE));
@@ -707,7 +707,7 @@ public final class SourceObjectEmitter {
       };
       case ASPECT_DROP_DYNAMIC -> switch (sourceName) {
         case "drop" -> new HostMethodSpec(
-            "drop",
+            "aspectDropDynamicDrop",
             JavaMethodDescriptor.fromParts(
                 DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE));
         default -> null;
@@ -726,7 +726,7 @@ public final class SourceObjectEmitter {
 
   private static @org.jspecify.annotations.Nullable HostMethodSpec targetHostSpec(String sourceName) {
     return switch (sourceName) {
-      case "aspectBindBind" -> new HostMethodSpec(
+      case "bind" -> new HostMethodSpec(
           "targetBind",
           JavaMethodDescriptor.fromParts(
               DESC_PAIR, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_TARGET_BIND_SUB));

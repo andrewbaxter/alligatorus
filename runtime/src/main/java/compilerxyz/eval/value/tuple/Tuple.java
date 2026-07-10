@@ -74,7 +74,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         ExporterAny {
 
   @Override
-  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Tuple::drop: called on absent CodeValue");
     }
@@ -108,7 +108,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       var elemDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, elemType);
       if (!(elemDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> elemDropSome))
         continue;
-      var elemDropRes = elemDropSome.value().drop(xx, loc, elemCv);
+      var elemDropRes = elemDropSome.value().aspectDropDynamicDrop(xx, loc, elemCv);
       if (elemDropRes.hasErrors()) return elemDropRes.reerr();
       var elemDrop = elemDropRes.requireValue("Tuple::dropSourceless element drop").dynamic();
       if (elemDrop != null) seq.add(elemDrop);

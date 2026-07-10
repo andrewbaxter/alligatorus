@@ -265,7 +265,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public EResult<Code> drop(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dropDefault(xx, loc, cv);
   }
 

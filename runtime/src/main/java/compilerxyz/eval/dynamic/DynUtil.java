@@ -323,7 +323,7 @@ public final class DynUtil {
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
                             Opt.some(ValueDynamic.stack(child.childType())));
-            var childDropRes = childDropSome.value().drop(xx, loc, childCv);
+            var childDropRes = childDropSome.value().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
             }

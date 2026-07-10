@@ -753,7 +753,7 @@ public final class ConstEval {
         var finType = finV.value().valueTypeOf();
         var dropMaybe = AspectDropDynamic.getMaybe(xx, finType);
         if (dropMaybe instanceof Opt.Some<AspectDropDynamic> dropSome) {
-          var dropOpt = erb.mustEr(dropSome.value().drop(xx, loc, finCv));
+          var dropOpt = erb.mustEr(dropSome.value().aspectDropDynamicDrop(xx, loc, finCv));
           if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
           finallyDropCode = dropOpt.get();
         }
