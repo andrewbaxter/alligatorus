@@ -360,7 +360,7 @@ public final class Eval {
         return new CompileImport.EvalOutcome.Err(liftRes.errorsOrNull());
       }
       var liftAspect = liftRes.requireValue("Eval::eval lift aspect");
-      var liftedRes = liftAspect.lift(xx, rootLoc, rawResult);
+      var liftedRes = liftAspect.aspectLiftLift(xx, rootLoc, rawResult);
       if (liftedRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(liftedRes.errorsOrNull());
       }

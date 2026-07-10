@@ -80,7 +80,8 @@ final class AspectsGen {
       "FieldUseDynamic",
       "ElementUseConst",
       "ElementUseDynamic",
-      "ElementUseDynamicBind");
+      "ElementUseDynamicBind",
+      "Lift");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

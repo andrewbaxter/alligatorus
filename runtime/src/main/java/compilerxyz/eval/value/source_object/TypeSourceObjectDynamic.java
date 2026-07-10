@@ -339,7 +339,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
     var ut = underlyingType;
     if (ut == null) {
@@ -374,7 +374,7 @@ public final class TypeSourceObjectDynamic
       underlyingHost = externalHostValue;
     }
     return underlyingLift
-        .lift(xx, loc, underlyingHost)
+        .aspectLiftLift(xx, loc, underlyingHost)
         .map(underlying -> new ValueSourceObjectConst(this, underlying));
   }
 

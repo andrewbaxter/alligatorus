@@ -266,7 +266,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(lift instanceof Opt.Some<TypeObjectLift> some)) {
       return EResult.err(loc, typeDesc + "::lift: no lift impl registered");

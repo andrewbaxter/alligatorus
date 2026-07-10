@@ -906,7 +906,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
 
     @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
       var sortedTypes = new TList<Type>(entryLifts.size());
       for (var entry : entryLifts) sortedTypes.add(entry.type());
@@ -949,7 +949,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                   + "'",
               e);
         }
-        var lifted = entry.lift().lift(xx, loc, fieldValue);
+        var lifted = entry.lift().aspectLiftLift(xx, loc, fieldValue);
         if (lifted.hasErrors()) {
           if (errors == null) errors = new TList<>();
           lifted.drainInto(errors);

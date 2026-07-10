@@ -170,7 +170,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(externalHostValue instanceof String s)) {
       return EResult.err(

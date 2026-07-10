@@ -803,7 +803,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
 
     @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
         ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
 
       if (externalHostValue == null && elementLifts.isEmpty()) {
@@ -844,7 +844,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           throw new AssertionError(
               "Tuple TupleLift::lift: cannot read slot field _" + i, e);
         }
-        var lifted = elemLift.lift(xx, loc, slotValue);
+        var lifted = elemLift.aspectLiftLift(xx, loc, slotValue);
         if (lifted.hasErrors()) {
           if (errors == null) errors = new TList<>();
           lifted.drainInto(errors);

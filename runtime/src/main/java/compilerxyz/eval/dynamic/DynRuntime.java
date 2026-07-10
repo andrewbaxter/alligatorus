@@ -411,7 +411,7 @@ public final class DynRuntime {
                   + liftRes.errorsOrNull());
         }
         var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
-        var liftedRes = liftAspect.lift(liftXx, liftCell.loc(), valArg);
+        var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), valArg);
         if (liftedRes.hasErrors()) {
           throw new IllegalStateException(
               "__stage: AspectLift.lift failed for source type "

@@ -943,7 +943,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_INITIAL_BIND),
       new InlineHelperSpec(
-          "lift",
+          "aspectLiftLift",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
           "sourceObjectLift",
@@ -955,7 +955,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_LIFT),
       new InlineHelperSpec(
-          "lift",
+          "aspectLiftLift",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, JvmConstants.DESC_OBJECT),
           "sourceObjectLiftRuntime",

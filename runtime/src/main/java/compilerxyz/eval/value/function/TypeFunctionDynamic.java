@@ -52,7 +52,7 @@ public record TypeFunctionDynamic(
         ExporterAny {
 
   @Override
-  public EResult<Value> lift(
+  public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     // The externalHostValue can be either an actual TypeFunctionDynamic (rare) or the JVM
     // receiver value for a method-value access. Either way, the compile-time type is the
