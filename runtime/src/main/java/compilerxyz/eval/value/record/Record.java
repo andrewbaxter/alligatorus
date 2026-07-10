@@ -44,6 +44,8 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.Target;
+import compilerxyz.eval.dynamic.target.BindResult;
+import compilerxyz.eval.dynamic.target.RecordBindField;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
@@ -498,11 +500,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       return EResult.ok(new BindSub(scopeFields, Opt.none()));
     }
     var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
-    var targetFields = new TList<Target.RecordBindField>(bindResults.size());
+    var targetFields = new TList<RecordBindField>(bindResults.size());
     for (var br : bindResults) {
       if (br.targetSub() instanceof Opt.Some<TargetBindSub> targetSome) {
         scopeFields.put(br.key(), new RecordScopeField.Dynamic(targetSome.value().type()));
-        targetFields.add(new Target.RecordBindField(br.key(), targetSome.value()));
+        targetFields.add(new RecordBindField(br.key(), targetSome.value()));
       } else if (br.constCv() instanceof Opt.Some<CodeValue> constSome) {
         var fieldCv = constSome.value();
         if (!(fieldCv.value() instanceof Opt.Some<Value> fieldSome)) {

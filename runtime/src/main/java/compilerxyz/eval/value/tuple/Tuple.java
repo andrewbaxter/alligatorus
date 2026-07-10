@@ -43,7 +43,9 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.Target;
+import compilerxyz.eval.dynamic.target.BindResult;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.eval.dynamic.target.TupleBindSlot;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -659,11 +661,11 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.ok(new BindSub(scopeFields, Opt.none()));
     }
     var scopeFields = new TList<TupleScopeField>(bindResults.size());
-    var targetSlots = new TList<Target.TupleBindSlot>(bindResults.size());
+    var targetSlots = new TList<TupleBindSlot>(bindResults.size());
     for (var br : bindResults) {
       if (br.targetSub() instanceof Opt.Some<TargetBindSub> targetSome) {
         scopeFields.add(new TupleScopeField.Dynamic(targetSome.value().type()));
-        targetSlots.add(new Target.TupleBindSlot(targetSome.value()));
+        targetSlots.add(new TupleBindSlot(targetSome.value()));
       } else if (br.constCv() instanceof Opt.Some<CodeValue> constSome) {
         var elemCv = constSome.value();
         if (!(elemCv.value() instanceof Opt.Some<Value> elemSome)) {

@@ -20,7 +20,9 @@ import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.Target;
+import compilerxyz.eval.dynamic.target.IfBranch;
 import compilerxyz.eval.dynamic.target.TargetCase;
+import compilerxyz.eval.dynamic.target.TryCatchClause;
 import compilerxyz.eval.value.null_.ValueNullConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -647,9 +649,9 @@ public final class ConstEval {
       }
       return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueNullConst())));
     } else {
-      var branches = new TList<Target.IfBranch>(conditionsEvaluated.size());
+      var branches = new TList<IfBranch>(conditionsEvaluated.size());
       for (var ie : conditionsEvaluated) {
-        branches.add(new Target.IfBranch(ie.cond, ie.body));
+        branches.add(new IfBranch(ie.cond, ie.body));
       }
       var out = erb.mustEr(xx.target.targetIf_(xx, loc, branches, e.else_()));
       if (out.isEmpty()) return EResult.errs(erb.errors());
@@ -698,7 +700,7 @@ public final class ConstEval {
       return EResult.errs(erb.errors());
     }
     Opt<Value> resultValue = bodyCv.value();
-    Opt<Target.TryCatchClause> catch_ = Opt.none();
+    Opt<TryCatchClause> catch_ = Opt.none();
     if (e.catchClause() instanceof Opt.Some<Expr.TryCatch> catchSome2) {
       var catchObj = catchSome2.value();
       var bnCvOpt = erb.mustEr(constEval(xx, catchObj.bindingName()));
@@ -734,7 +736,7 @@ public final class ConstEval {
         erb.errPush("Try catch body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
-      catch_ = Opt.some(new Target.TryCatchClause(bindingId, catchCd));
+      catch_ = Opt.some(new TryCatchClause(bindingId, catchCd));
     }
     Opt<CodeDynamic> finally_ = Opt.none();
     if (e.finallyBlock() instanceof Opt.Some<Expr> finSome) {

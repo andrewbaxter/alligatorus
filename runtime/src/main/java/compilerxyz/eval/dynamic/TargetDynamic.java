@@ -22,7 +22,12 @@ import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
+import compilerxyz.eval.dynamic.target.BindResult;
+import compilerxyz.eval.dynamic.target.IfBranch;
+import compilerxyz.eval.dynamic.target.RecordBindField;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.eval.dynamic.target.TryCatchClause;
+import compilerxyz.eval.dynamic.target.TupleBindSlot;
 import compilerxyz.eval.dynamic.target.TargetCase;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
@@ -632,7 +637,7 @@ public final class TargetDynamic implements Target {
 
   @Override
   public TargetBindSub targetBindSubRecord(
-      ExprContext xx, QExprId loc, Code carry, TList<Target.RecordBindField> fields) {
+      ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields) {
     var entries = new compilerxyz.util.TOrderedMap<ConstKey, TargetBindSub>();
     for (var f : fields) entries.put(f.key(), f.sub());
     var sortedSubs = sortBindSubs(entries, ConstKey.CANONICAL_ORDER);
@@ -650,7 +655,7 @@ public final class TargetDynamic implements Target {
 
   @Override
   public TargetBindSub targetBindSubTuple(
-      ExprContext xx, QExprId loc, Code carry, TList<Target.TupleBindSlot> slots) {
+      ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots) {
     var entries = new compilerxyz.util.TOrderedMap<Integer, TargetBindSub>();
     for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub());
     var sortedSubs = sortBindSubs(entries, Integer::compare);

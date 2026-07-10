@@ -16,8 +16,13 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.eval.dynamic.target.BindResult;
+import compilerxyz.eval.dynamic.target.IfBranch;
+import compilerxyz.eval.dynamic.target.RecordBindField;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TargetCase;
+import compilerxyz.eval.dynamic.target.TryCatchClause;
+import compilerxyz.eval.dynamic.target.TupleBindSlot;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -55,8 +60,6 @@ public interface Target {
 
   BindResult targetBind(QExprId loc, TargetBindSub sub);
 
-  record BindResult(CodeDynamic code, BindingId.Local id) {}
-
   EResult<Opt<TargetBindSub>> targetMaybeBindSub(ExprContext xx, QExprId loc, CodeValue cv);
 
   EResult<TargetBindSub> targetCodeToBindSub(QExprId loc, Code code, Type type_);
@@ -64,12 +67,8 @@ public interface Target {
   TargetBindSub targetBindSubRecord(
       ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields);
 
-  record RecordBindField(ConstKey key, TargetBindSub sub) {}
-
   TargetBindSub targetBindSubTuple(
       ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots);
-
-  record TupleBindSlot(TargetBindSub sub) {}
 
   EResult<Code> targetCastException(
       ExprContext xx, QExprId loc, Code callCode, BindingId catchBinding, CodeValue castCv);
@@ -86,15 +85,11 @@ public interface Target {
   EResult<CodeValue> targetIf_(
       ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<Expr> else_);
 
-  record IfBranch(CodeValue condition, Expr body) {}
-
   EResult<CodeDynamic> targetTryCatchFinally(
       QExprId loc,
       CodeDynamic body,
       Opt<TryCatchClause> catch_,
       Opt<CodeDynamic> finally_);
-
-  record TryCatchClause(BindingId.Local binding, CodeDynamic body) {}
 
   EResult<CodeValue> targetMatch_(
       ExprContext xx,
