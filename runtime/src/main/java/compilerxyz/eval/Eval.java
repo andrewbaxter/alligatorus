@@ -146,17 +146,30 @@ public final class Eval {
 
   public static EResult<TMap<ConstKey, Binding>> initBuiltinScope(
       ExprContext xx, QExprId loc, ImportStateId importState, boolean registerDynamic) {
-    var interfaces = BuiltinInterfaceRegistry.bundle(importState);
-    var bindingRes =
-        GenBuiltinTree.installRoot(xx, loc, importState, interfaces, registerDynamic);
+    var treeRes = genBuiltinTree(xx, loc, importState);
+    if (treeRes.hasErrors()) {
+      return treeRes.reerr();
+    }
+    var tree = treeRes.requireValue("Eval::initBuiltinScope genBuiltinTree");
+    if (registerDynamic) {
+      tree.registerDynamic(xx);
+    }
+    var bindingRes = tree.build(xx, loc);
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }
-    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope installRoot");
+    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope tree.build").binding();
     xx.vx.ix.builtinScopeRootBinding = rootBinding;
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
     return EResult.ok(scopeEntries);
+  }
+
+  private static EResult<BuiltinTree> genBuiltinTree(
+      ExprContext xx, QExprId loc, ImportStateId importState) {
+    var interfaces =
+        BuiltinInterfaceRegistry.bundle(importState);
+    return EResult.ok(GenBuiltinTree.build(importState, interfaces));
   }
 
 
