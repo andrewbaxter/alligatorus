@@ -152,13 +152,13 @@ public final class Eval {
     }
     var tree = treeRes.requireValue("Eval::initBuiltinScope genBuiltinTree");
     if (registerDynamic) {
-      walkRegisterDynamic(xx, tree);
+      tree.registerDynamic(xx);
     }
-    var bindingRes = walkBuildBinding(xx, loc, tree);
+    var bindingRes = tree.build(xx, loc);
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }
-    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope walkBuildBinding").binding();
+    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope tree.build").binding();
     xx.vx.ix.builtinScopeRootBinding = rootBinding;
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
@@ -172,115 +172,6 @@ public final class Eval {
     return EResult.ok(GenBuiltinTree.build(importState, interfaces));
   }
 
-  private record WalkResult(Binding binding, Type type) {}
-
-  private static EResult<WalkResult> walkBuildBinding(
-      ExprContext xx, QExprId loc, BuiltinTree node) {
-    if (node instanceof BuiltinTree.Branch branch) {
-      var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
-      for (var child : branch.children()) {
-        var childRes = walkBuildBinding(xx, loc, child.node());
-        if (childRes.hasErrors()) {
-          return childRes.reerr();
-        }
-        var childResult =
-            childRes.requireValue("Eval::walkBuildBinding child binding");
-        fields.put(
-            new ConstKey.Str(child.name()),
-            new ArgumentEntry(childResult.binding(), childResult.type()));
-      }
-      var argRecord = new ArgumentRecord(fields);
-      return EResult.ok(new WalkResult(new ArgumentRecordBinding(argRecord), argRecord));
-    }
-    var leaf = ((BuiltinTree.Leaf) node).leaf();
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.Function fn) {
-      return initialBindLeafWalk(xx, loc, fn.type(), fn.dynamicKey());
-    }
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.Interface iface) {
-      return initialBindLeafWalk(xx, loc, iface.type(), iface.dynamicKey());
-    }
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.Constructor ctor) {
-      return initialBindLeafWalk(xx, loc, ctor.type(), ctor.dynamicKey());
-    }
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.InitialBind ib) {
-      return initialBindLeafWalk(xx, loc, ib.type(), ib.dynamicKey());
-    }
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.AspectId aspectId) {
-      return EResult.ok(
-          new WalkResult(
-              new BindingUniqueDualMode(aspectId.dynamicKey(), aspectId.unique()),
-              new compilerxyz.eval.value.unique.TypeUnique()));
-    }
-    if (leaf instanceof BuiltinTree.BuiltinLeaf.AnyConst anyConst) {
-      var anyConstType = compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType();
-      var cv = new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(anyConst.type())));
-      var bindRes = AspectBind.get(xx, loc, anyConstType);
-      if (bindRes.hasErrors()) {
-        return bindRes.reerr();
-      }
-      var bind = bindRes.requireValue("Eval::walkBuildBinding AnyConst bind aspect");
-      var br = bind.bind(xx, loc, cv);
-      if (br.hasErrors()) {
-        return br.reerr();
-      }
-      var result = br.requireValue("Eval::walkBuildBinding AnyConst bind result");
-      return EResult.ok(new WalkResult(result.binding(), anyConstType));
-    }
-    throw new IllegalStateException("Unhandled BuiltinLeaf variant: " + leaf.getClass());
-  }
-
-  private static EResult<WalkResult> initialBindLeafWalk(
-      ExprContext xx, QExprId loc, Type type, BindingId dynamicKey) {
-    var res = initialBindLeaf(xx, loc, type, dynamicKey);
-    if (res.hasErrors()) return res.reerr();
-    return EResult.ok(new WalkResult(res.requireValue("initialBindLeafWalk"), type));
-  }
-
-  private static EResult<Binding> initialBindLeaf(
-      ExprContext xx, QExprId loc, Type type, BindingId dynamicKey) {
-    var ibRes = AspectInitialBind.get(xx, loc, type);
-    if (ibRes.hasErrors()) {
-      return ibRes.reerr();
-    }
-    var ib = ibRes.requireValue("Eval::initialBindLeaf AspectInitialBind");
-    return EResult.ok(ib.initialBind(dynamicKey));
-  }
-
-  private static void walkRegisterDynamic(ExprContext xx, BuiltinTree node) {
-    if (node instanceof BuiltinTree.Branch branch) {
-      for (var child : branch.children()) {
-        walkRegisterDynamic(xx, child.node());
-      }
-      return;
-    }
-    var leaf = ((BuiltinTree.Leaf) node).leaf();
-    BindingId dynamicKey;
-    External dynamicValue;
-    switch (leaf) {
-      case BuiltinTree.BuiltinLeaf.Interface iface -> {
-        dynamicKey = iface.dynamicKey();
-        dynamicValue = iface.dynamicValue();
-      }
-      case BuiltinTree.BuiltinLeaf.AspectId aspectId -> {
-        dynamicKey = aspectId.dynamicKey();
-        dynamicValue = aspectId.dynamicValue();
-      }
-      case BuiltinTree.BuiltinLeaf.Function ignored -> {
-        return;
-      }
-      case BuiltinTree.BuiltinLeaf.Constructor ignored -> {
-        return;
-      }
-      case BuiltinTree.BuiltinLeaf.AnyConst ignored -> {
-        return;
-      }
-      case BuiltinTree.BuiltinLeaf.InitialBind ignored -> {
-        return;
-      }
-    }
-    var key = ImportInstall.bindingIdDynamicKey(dynamicKey);
-    xx.vx.ix.builtinDynamics.put(key, dynamicValue);
-  }
 
   public static CompileImport.EvalOutcome eval(
       CompileImportContext cix, ImportStateId importState, Expr expr) {
