@@ -39,6 +39,7 @@ public final class GenMain {
     IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
     TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds);
     DynMethodsGen.run(outRoot, formatter);
+    AspectObjectsGen.run(outRoot, formatter);
 
     PushStructsGen.run(
         outRoot, formatter, PushStructsGen.specs(TraitsGen.specs()), builtinUniqueIds, scopeIds);

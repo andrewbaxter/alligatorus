@@ -1206,8 +1206,7 @@ var targetBindSub =
                     new LeafSpec.AnyConst(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get(
-                                "compilerxyz.eval.value.aspect_bind", "AspectBindObject"))))),
+                            ClassName.get("compilerxyz.gen", "GenAspectBindObject"))))),
             new Child(
                 "aspect_string_dynamic",
                 new Leaf(new LeafSpec.AspectId(4001, "StringDynamic"))),
