@@ -60,6 +60,7 @@ public record TypeObjectConst(
         Type,
         compilerxyz.eval.TypeAspect,
         compilerxyz.gen.AspectArtifact,
+        compilerxyz.artifact.ArtifactExporter,
         AspectAspect,
         AspectBind,
         AspectConsumeDynamic,
@@ -233,7 +234,26 @@ public record TypeObjectConst(
 
   @Override
   public compilerxyz.artifact.ArtifactExporter exporter() {
-    return compilerxyz.eval.value.any.ExporterAnyDelegate.INSTANCE;
+    return this;
+  }
+
+  @Override
+  public EResult<compilerxyz.artifact.Artifact> artifactExporterExport(
+      ExprContext xx, QExprId loc, compilerxyz.artifact.ExporterAny self) {
+    if (!(self instanceof compilerxyz.eval.value.any.ValueAnyConst wrapper)) {
+      return EResult.err(
+          loc, typeDesc + "::artifactExporterExport: expected ValueAnyConst, got " + self.getClass());
+    }
+    return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, wrapper.inner());
+  }
+
+  @Override
+  public EResult<compilerxyz.artifact.ExporterAny> artifactExporterImportFromData(
+      ExprContext xx,
+      QExprId loc,
+      Opt<compilerxyz.artifact.ArtifactIdSource> id,
+      compilerxyz.safejson.JsonValue data) {
+    return EResult.err(loc, typeDesc + "::artifactExporterImportFromData: should not be invoked");
   }
 
   @Override
