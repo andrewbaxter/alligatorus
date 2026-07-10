@@ -57,7 +57,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                         mb.field(mb.scopeUse("d"), mb.str("object")),
                         mb.str(name + "Binding"))),
                 mb.call(
-                    mb.field(mb.scopeUse("cb"), mb.str("set_inner")), mb.typesAny()),
+                    mb.field(mb.scopeUse("cb"), mb.str("set_inner")), mb.typesType()),
                 mb.call(
                     mb.field(mb.scopeUse("cb"), mb.str("impl_interface")),
                     mb.tupleOf(

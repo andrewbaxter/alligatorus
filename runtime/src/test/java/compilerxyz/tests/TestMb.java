@@ -94,10 +94,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "target");
   }
 
-  public SourceExpr typesAny() {
-    return builtin("types", "any");
-  }
-
   public SourceExpr typesAspect() {
     return builtin("types", "aspect");
   }

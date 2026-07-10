@@ -981,9 +981,6 @@ var targetBindSub =
                             ClassName.get(
                                 "compilerxyz.eval.value.bind_result", "BindResultType"))))),
             new Child(
-                "any",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC)))),
-            new Child(
                 "constkey",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_CONSTKEY_DYNAMIC)))),
             new Child(
