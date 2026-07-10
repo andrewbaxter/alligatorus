@@ -297,7 +297,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public EResult<CodeValue> call(
+  public EResult<CodeValue> aspectFunctionCall(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var innerRes = extractInnerType(loc, self, "call");
     if (innerRes.hasErrors()) return innerRes.reerr();
@@ -305,7 +305,7 @@ public record TypeObjectConst(
     var asp = AspectFunction.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
     return asp.requireValue(typeDesc + "::call inner AspectFunction")
-        .call(xx, loc, self, argument);
+        .aspectFunctionCall(xx, loc, self, argument);
   }
 
   private EResult<Type> extractInnerType(QExprId loc, CodeValue self, String op) {
@@ -325,10 +325,10 @@ public record TypeObjectConst(
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     if (!(deferDynamic instanceof Opt.Some<Type> some)) return Opt.none();
     if (!(some.value() instanceof AspectFunction asp)) return Opt.none();
-    return asp.exceptionType();
+    return asp.aspectFunctionExceptionType();
   }
 
   @Override
@@ -368,7 +368,7 @@ public record TypeObjectConst(
     var asp = AspectFunction.get(xx, loc, target);
     if (asp.hasErrors()) return asp.reerr();
     return asp.requireValue(typeDesc + "::call target AspectFunction")
-        .call(xx, loc, dyn.requireValue(typeDesc + "::call dyn self"), argument);
+        .aspectFunctionCall(xx, loc, dyn.requireValue(typeDesc + "::call dyn self"), argument);
   }
 
   private EResult<CodeValue> materializeAsDynamic(ExprContext xx, QExprId loc, CodeValue self) {

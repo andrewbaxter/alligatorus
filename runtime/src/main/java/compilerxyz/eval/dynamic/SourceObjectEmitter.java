@@ -689,8 +689,8 @@ public final class SourceObjectEmitter {
         default -> null;
       };
       case ASPECT_FUNCTION -> switch (sourceName) {
-        case "call" -> new HostMethodSpec(
-            "call",
+        case "aspectFunctionCall" -> new HostMethodSpec(
+            "aspectFunctionCall",
             JavaMethodDescriptor.fromParts(
                 DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE));
         default -> null;

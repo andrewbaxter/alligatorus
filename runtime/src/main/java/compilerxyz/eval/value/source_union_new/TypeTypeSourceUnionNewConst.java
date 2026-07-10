@@ -62,13 +62,13 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
   }
 
   @Override
-  public EResult<CodeValue> call(
+  public EResult<CodeValue> aspectFunctionCall(
       ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-    return asCtor().call(xx, loc, function, argument);
+    return asCtor().aspectFunctionCall(xx, loc, function, argument);
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

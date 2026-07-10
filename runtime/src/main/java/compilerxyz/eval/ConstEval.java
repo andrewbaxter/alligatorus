@@ -92,8 +92,8 @@ public final class ConstEval {
         var aspectFnOpt = erb.mustEr(AspectFunction.get(xx, loc, funcType));
         if (aspectFnOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectFn = aspectFnOpt.get();
-        var calleeExc = aspectFn.exceptionType();
-        var callOpt = erb.mustEr(aspectFn.call(xx, loc, func, arg));
+        var calleeExc = aspectFn.aspectFunctionExceptionType();
+        var callOpt = erb.mustEr(aspectFn.aspectFunctionCall(xx, loc, func, arg));
         if (callOpt.isEmpty()) yield EResult.errs(erb.errors());
         var wrapped = erb.mustEr(Eval.maybeWrapCallException(xx, loc, calleeExc, callOpt.get()));
         if (wrapped.isEmpty()) yield EResult.errs(erb.errors());

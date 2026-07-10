@@ -144,7 +144,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
@@ -247,7 +247,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

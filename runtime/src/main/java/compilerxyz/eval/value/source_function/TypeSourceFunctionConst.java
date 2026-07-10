@@ -323,7 +323,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
     BindingId scopeId = data.bindingId;
     if (scopeId == null) {
       return EResult.err(
@@ -392,7 +392,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return data.exceptionType == null ? Opt.none() : Opt.some(data.exceptionType);
   }
 

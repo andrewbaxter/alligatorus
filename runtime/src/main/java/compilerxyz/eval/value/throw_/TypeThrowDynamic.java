@@ -53,7 +53,7 @@ public record TypeThrowDynamic()
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
     var excType = xx.currentExceptionType;
     if (excType == null) {
@@ -91,7 +91,7 @@ public record TypeThrowDynamic()
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

@@ -92,7 +92,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public EResult<CodeValue> call(
+  public EResult<CodeValue> aspectFunctionCall(
       ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
     if (variantIndex < 0 || variantIndex >= type_.variants.size()) {
       return EResult.err(
@@ -142,7 +142,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

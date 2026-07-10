@@ -81,7 +81,7 @@ public record TypeMethodDynamic(
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var receiverDyn = self.code().dynamic();
     if (receiverDyn == null) {
       return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
@@ -120,7 +120,7 @@ public record TypeMethodDynamic(
 
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

@@ -45,7 +45,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     return EResult.err(
         loc,
         "TypeMapGetFnDynamic::call: needs typecheck_convert + aspect_consume_dynamic_get +"
@@ -53,7 +53,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

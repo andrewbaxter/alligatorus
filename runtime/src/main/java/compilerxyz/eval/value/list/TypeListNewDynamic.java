@@ -61,7 +61,7 @@ public record TypeListNewDynamic(Type elementType)
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
       return EResult.err(loc, "TypeListNewDynamic::call: argument has no compile-time value");
     }
@@ -123,7 +123,7 @@ public record TypeListNewDynamic(Type elementType)
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

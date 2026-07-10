@@ -57,7 +57,7 @@ public record TypeListConstructorConst()
   }
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
       return EResult.err(
           loc, "TypeListConstructorConst::call: argument must have a compile-time value");
@@ -77,7 +77,7 @@ public record TypeListConstructorConst()
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 

@@ -94,7 +94,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       };
 
   @Override
-  public EResult<CodeValue> call(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     Type underlyingType = isSome ? elementType : new TypeNullDynamic();
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
@@ -136,7 +136,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
   }
 
   @Override
-  public Opt<Type> exceptionType() {
+  public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
   }
 
