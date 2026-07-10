@@ -56,44 +56,6 @@ final class AspectsGen {
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
-  /**
-   * Aspects whose Java trait methods are prefixed with the interface name (per the naming
-   * convention). Add each aspect here once its impls and callers have been renamed.
-   */
-  private static final TSet<String> PREFIXED_ASPECTS = TSet.of(
-      "PostDeserialize",
-      "Artifact",
-      "Aspect",
-      "BindDynamic",
-      "InitialBind",
-      "DynamicBoxed",
-      "DynamicUnboxed",
-      "StackValueDynamic",
-      "Record",
-      "Tuple",
-      "Union",
-      "DropDynamicLight",
-      "ConsumeDynamic",
-      "MapDynamic",
-      "Iterable",
-      "FieldUseConst",
-      "FieldUseDynamic",
-      "ElementUseConst",
-      "ElementUseDynamic",
-      "ElementUseDynamicBind",
-      "Lift",
-      "Function",
-      "Field",
-      "OperatorAdd",
-      "OperatorEq",
-      "OperatorLt",
-      "Bind",
-      "DropDynamic",
-      "Set",
-      "Type",
-      "BoolConst",
-      "NumberConst",
-      "StringConst");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 
@@ -167,14 +129,10 @@ final class AspectsGen {
       typeBuilder.addType(buildNestedRecord(nested));
     }
 
-    var prefixed = PREFIXED_ASPECTS.contains(spec.name);
     var prefix = "aspect" + spec.name;
     for (var m : spec.methods) {
-      var javaName = m.name;
-      if (prefixed) {
-        javaName = InterfacesGen.escapeJavaKeyword(
-            prefix + Character.toUpperCase(m.name.charAt(0)) + m.name.substring(1));
-      }
+      var javaName = InterfacesGen.escapeJavaKeyword(
+          prefix + Character.toUpperCase(m.name.charAt(0)) + m.name.substring(1));
       var method =
           MethodSpec.methodBuilder(javaName)
               .returns(m.ret)
