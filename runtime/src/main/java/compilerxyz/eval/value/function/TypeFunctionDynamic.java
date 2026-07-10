@@ -172,7 +172,7 @@ public record TypeFunctionDynamic(
     return EResult.ok(
         retStackRes
             .requireValue("TypeFunctionDynamic::call ret stack")
-            .toValue(loc, emitInvocation(loc, xx.vx, argList)));
+            .aspectStackValueDynamicToValue(loc, emitInvocation(loc, xx.vx, argList)));
   }
 
   private static EResult<TList<CodeDynamic>> destructurePositional(

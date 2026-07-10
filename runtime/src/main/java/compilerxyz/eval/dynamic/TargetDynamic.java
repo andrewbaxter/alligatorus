@@ -371,7 +371,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
     var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(stackOpt.get().toValue(loc, new CodeDynamic(loc, seq)));
+    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
@@ -485,7 +485,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
     var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(stackOpt.get().toValue(loc, new CodeDynamic(loc, seq)));
+    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
   }
 
   private static Optional<CodeDynamic> cvToDynamic(

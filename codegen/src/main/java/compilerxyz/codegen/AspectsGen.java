@@ -65,7 +65,10 @@ final class AspectsGen {
       "Artifact",
       "Aspect",
       "BindDynamic",
-      "InitialBind");
+      "InitialBind",
+      "DynamicBoxed",
+      "DynamicUnboxed",
+      "StackValueDynamic");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

@@ -68,7 +68,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public CodeValue toValue(QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
     return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(loc, value, this);
   }
 

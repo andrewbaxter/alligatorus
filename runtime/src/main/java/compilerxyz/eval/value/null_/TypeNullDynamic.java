@@ -119,7 +119,7 @@ public record TypeNullDynamic()
   }
 
   @Override
-  public CodeValue toValue(QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 

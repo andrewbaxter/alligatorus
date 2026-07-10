@@ -72,7 +72,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public Type unboxedForm() {
+  public Type aspectDynamicUnboxedUnboxedForm() {
     return new TypeNumberDynamic();
   }
 
@@ -122,7 +122,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public CodeValue toValue(QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(loc, value, this);
   }
 

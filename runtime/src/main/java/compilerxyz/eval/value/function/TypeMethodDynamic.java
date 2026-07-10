@@ -115,7 +115,7 @@ public record TypeMethodDynamic(
     return EResult.ok(
         retStackRes
             .requireValue("TypeMethodDynamic::call ret stack")
-            .toValue(loc, new CodeDynamic(loc, seq)));
+            .aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
   }
 
 

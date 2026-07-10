@@ -78,7 +78,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
               JavaMethodDescriptor.fromConstructorParts(TList.of()),
               new CodeDynamic(loc, new JavaBytecodeSequence()));
       return EResult.ok(
-          retStackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, newMap));
+          retStackRes.requireValue("AspectStackValueDynamic.get").aspectStackValueDynamicToValue(loc, newMap));
     }
     return Eval.typecheckConvert(xx, loc, instanceType, argument);
   }

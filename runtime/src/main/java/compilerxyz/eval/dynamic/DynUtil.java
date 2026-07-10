@@ -391,7 +391,7 @@ public final class DynUtil {
     public static Type substituteBoxed(ExprContext xx, Type type) {
         var boxedOpt = compilerxyz.gen.AspectDynamicBoxed.getMaybe(xx, type);
         if (boxedOpt instanceof Opt.Some<compilerxyz.gen.AspectDynamicBoxed> boxedSome) {
-            return boxedSome.value().boxedForm();
+            return boxedSome.value().aspectDynamicBoxedBoxedForm();
         }
         return type;
     }
@@ -479,7 +479,7 @@ public final class DynUtil {
             setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
             setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, setSeq);
-            return EResult.ok(nullStack.toValue(loc, setJs));
+            return EResult.ok(nullStack.aspectStackValueDynamicToValue(loc, setJs));
         }
         if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {
             var seq = new JavaBytecodeSequence();
@@ -499,7 +499,7 @@ public final class DynUtil {
             // so downstream consumers see a stack value.
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, seq);
-            return EResult.ok(nullStack.toValue(loc, setJs));
+            return EResult.ok(nullStack.aspectStackValueDynamicToValue(loc, setJs));
         }
         return EResult.err(loc, "Cannot modify a temporary value");
     }

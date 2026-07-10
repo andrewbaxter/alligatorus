@@ -379,7 +379,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return EResult.ok(
         retStackRes
             .requireValue("TypeSourceFunctionConst::call ret stack")
-            .toValue(loc, invocation));
+            .aspectStackValueDynamicToValue(loc, invocation));
   }
 
   private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescOf(

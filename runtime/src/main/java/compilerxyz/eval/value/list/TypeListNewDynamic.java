@@ -119,7 +119,7 @@ public record TypeListNewDynamic(Type elementType)
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
     }
     return EResult.ok(
-        retStackRes.requireValue("AspectStackValueDynamic.get").toValue(loc, new CodeDynamic(loc, seq)));
+        retStackRes.requireValue("AspectStackValueDynamic.get").aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
