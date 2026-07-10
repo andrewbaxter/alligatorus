@@ -31,7 +31,7 @@ public interface Type extends Value {
       var identityAspects = new TList<Unique>();
       identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_ANY_DYNAMIC_TYPE_ID,
+          GenTypeIds.TYPE_TYPE_DYNAMIC_TYPE_ID,
           "type",
           JavaInternalName.of("compilerxyz/eval/Type"),
           JavaDataDescriptor.fromClass(Type.class),

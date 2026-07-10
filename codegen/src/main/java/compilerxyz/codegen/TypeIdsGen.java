@@ -37,7 +37,7 @@ final class TypeIdsGen {
       "type_null_const",
       "type_null_dynamic",
       "type_any_const",
-      "type_any_dynamic",
+      "type_type_dynamic",
       "type_aspect_dynamic",
       "type_constkey_dynamic",
       "type_unique",
