@@ -113,7 +113,7 @@ public final class ConstEval {
         var baseType = bv.value().valueTypeOf();
         var setOpt = erb.mustEr(AspectSet.get(xx, loc, baseType));
         if (setOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(setOpt.get().set(xx, loc, base, value));
+        var out = erb.mustEr(setOpt.get().aspectSetSet(xx, loc, base, value));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }

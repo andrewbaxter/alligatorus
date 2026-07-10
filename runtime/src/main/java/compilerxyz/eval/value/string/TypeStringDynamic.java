@@ -187,7 +187,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public EResult<CodeValue> set(ExprContext xx, QExprId loc, CodeValue base, CodeValue value) {
+  public EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue base, CodeValue value) {
     return DynUtil.dynamicSet(xx, loc, base, value);
   }
 
