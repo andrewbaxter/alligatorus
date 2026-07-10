@@ -59,6 +59,7 @@ public record TypeObjectConst(
     implements
         Type,
         compilerxyz.eval.TypeAspect,
+        compilerxyz.gen.AspectArtifact,
         AspectAspect,
         AspectBind,
         AspectConsumeDynamic,
@@ -105,14 +106,15 @@ public record TypeObjectConst(
     if (key.equals(AspectBind.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)) {
+        || key.equals(AspectDropDynamicLight.ID)
+        || key.equals(AspectType.ID)
+        || key.equals(AspectField.ID)
+        || key.equals(AspectFunction.ID)
+        || key.equals(compilerxyz.gen.AspectArtifact.ID)) {
       return Opt.some(this);
     }
-    if (deferDynamic instanceof Opt.Some
-        && (key.equals(AspectField.ID)
-            || key.equals(AspectFunction.ID)
-            || key.equals(AspectType.ID))) {
-      return Opt.some(this);
+    if (key.equals(compilerxyz.gen.AspectPostDeserialize.ID)) {
+      return Opt.some(compilerxyz.eval.aspect.PostDeserializeIdentity.INSTANCE);
     }
     if (aspectSource instanceof Opt.Some && key.equals(AspectAspect.ID)) {
       return Opt.some(this);
@@ -230,6 +232,11 @@ public record TypeObjectConst(
   }
 
   @Override
+  public compilerxyz.artifact.ArtifactExporter exporter() {
+    return compilerxyz.eval.value.any.ExporterAnyDelegate.INSTANCE;
+  }
+
+  @Override
   public EResult<Value> lift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
     if (!(lift instanceof Opt.Some<TypeObjectLift> some)) {
@@ -242,49 +249,69 @@ public record TypeObjectConst(
 
   @Override
   public EResult<CodeValue> field(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    return deferField(xx, loc, self, key);
+    var innerRes = extractInnerType(loc, self, "field");
+    if (innerRes.hasErrors()) return innerRes.reerr();
+    var inner = innerRes.requireValue(typeDesc + "::field inner");
+    var asp = AspectField.get(xx, loc, inner);
+    if (asp.hasErrors()) return asp.reerr();
+    return asp.requireValue(typeDesc + "::field inner AspectField").field(xx, loc, self, key);
   }
 
   @Override
   public Opt<Type> fieldTypeOpt(ExprContext xx, compilerxyz.eval.ConstKey key) {
-    if (!(deferDynamic instanceof Opt.Some<Type> some)) return Opt.none();
-    var asp = AspectField.getMaybe(xx, some.value());
-    if (!(asp instanceof Opt.Some<AspectField> aspSome)) return Opt.none();
-    return aspSome.value().fieldTypeOpt(xx, key);
+    return Opt.none();
   }
 
   @Override
   public TList<compilerxyz.eval.ConstKey> fieldKeys(ExprContext xx) {
-    if (!(deferDynamic instanceof Opt.Some<Type> some)) return new TList<>();
-    var asp = AspectField.getMaybe(xx, some.value());
-    if (!(asp instanceof Opt.Some<AspectField> aspSome)) return new TList<>();
-    return aspSome.value().fieldKeys(xx);
+    return new TList<>();
   }
 
   @Override
   public EResult<CodeValue> call(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    return deferCall(xx, loc, self, argument);
+    var innerRes = extractInnerType(loc, self, "call");
+    if (innerRes.hasErrors()) return innerRes.reerr();
+    var inner = innerRes.requireValue(typeDesc + "::call inner");
+    var asp = AspectFunction.get(xx, loc, inner);
+    if (asp.hasErrors()) return asp.reerr();
+    return asp.requireValue(typeDesc + "::call inner AspectFunction")
+        .call(xx, loc, self, argument);
+  }
+
+  private EResult<Type> extractInnerType(QExprId loc, CodeValue self, String op) {
+    if (!(self.value() instanceof Opt.Some<Value> some)) {
+      return EResult.err(loc, typeDesc + "::" + op + ": self has no compile-time value");
+    }
+    var v = some.value();
+    if (v instanceof compilerxyz.eval.value.any.ValueAnyConst wrap) {
+      return EResult.ok(wrap.inner());
+    }
+    if (v instanceof Type t) {
+      return EResult.ok(t);
+    }
+    return EResult.err(
+        loc,
+        typeDesc + "::" + op + ": expected Type or ValueAnyConst, got " + v.getClass());
   }
 
   @Override
   public Opt<Type> exceptionType() {
     if (!(deferDynamic instanceof Opt.Some<Type> some)) return Opt.none();
-    var asp = AspectFunction.getMaybe(xx_dummy(), some.value());
-    if (!(asp instanceof Opt.Some<AspectFunction> aspSome)) return Opt.none();
-    return aspSome.value().exceptionType();
+    if (!(some.value() instanceof AspectFunction asp)) return Opt.none();
+    return asp.exceptionType();
   }
 
   @Override
   public Type type_(Value value) {
-    if (!(deferDynamic instanceof Opt.Some<Type> some)) {
-      throw new UnsupportedOperationException(typeDesc + "::type_: no deferDynamic");
+    if (value instanceof compilerxyz.eval.value.any.ValueAnyConst v) {
+      return v.inner();
     }
-    var asp = AspectType.getMaybe(xx_dummy(), some.value());
-    if (!(asp instanceof Opt.Some<AspectType> aspSome)) {
-      throw new UnsupportedOperationException(typeDesc + "::type_: deferDynamic has no AspectType");
+    if (value instanceof Type t) {
+      return t;
     }
-    return aspSome.value().type_(value);
+    throw new IllegalArgumentException(
+        typeDesc + "::type_: expected Type or ValueAnyConst, got " + value.getClass());
   }
 
   private EResult<CodeValue> deferField(
@@ -327,11 +354,4 @@ public record TypeObjectConst(
         new CodeValue(Code.of(loc, dyn), Opt.some(ValueDynamic.stack(target))));
   }
 
-  // exceptionType and type_ callers don't have ExprContext; use a dummy
-  // fallback that returns none/throws. In practice these are used only on
-  // deferDynamic-configured instances during compile-time typechecking.
-  private static ExprContext xx_dummy() {
-    throw new UnsupportedOperationException(
-        "TypeObjectConst::xx_dummy: exceptionType/type_ called without ExprContext");
-  }
 }

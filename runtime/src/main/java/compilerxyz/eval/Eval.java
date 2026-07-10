@@ -213,7 +213,7 @@ public final class Eval {
               new compilerxyz.eval.value.unique.TypeUnique()));
     }
     if (leaf instanceof BuiltinTree.BuiltinLeaf.AnyConst anyConst) {
-      var anyConstType = new TypeAnyConst();
+      var anyConstType = compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType();
       var cv = new CodeValue(Code.none(loc), Opt.some(new ValueAnyConst(anyConst.type())));
       var bindRes = AspectBind.get(xx, loc, anyConstType);
       if (bindRes.hasErrors()) {
