@@ -178,7 +178,7 @@ public record TypeBoolDynamic()
     var sourceType = some.value().valueTypeOf();
     var boolConstOpt = AspectBoolConst.getMaybe(xx, sourceType);
     if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
-      boolean boolVal = boolConstSome.value().get(some.value());
+      boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());
       var seq = new JavaBytecodeSequence();
       var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {

@@ -136,7 +136,7 @@ public record TypeBoolConst()
   }
 
   @Override
-  public boolean get(Value value) {
+  public boolean aspectBoolConstGet(Value value) {
     if (value instanceof ValueBoolConst v) return v.value();
     throw new IllegalArgumentException(
         "TypeBoolConst::get: expected ValueBoolConst, got " + value.getClass());

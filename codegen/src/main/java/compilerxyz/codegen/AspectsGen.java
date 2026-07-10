@@ -90,7 +90,10 @@ final class AspectsGen {
       "Bind",
       "DropDynamic",
       "Set",
-      "Type");
+      "Type",
+      "BoolConst",
+      "NumberConst",
+      "StringConst");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

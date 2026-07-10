@@ -58,7 +58,7 @@ public final class Eval {
     var typeRes = v.valueTypeOf();
     var stringConst = AspectStringConst.getMaybe(xx, typeRes);
     if (stringConst instanceof Opt.Some<AspectStringConst> some) {
-      return Result.ok(new ConstKey.Str(some.value().get(v)));
+      return Result.ok(new ConstKey.Str(some.value().aspectStringConstGet(v)));
     }
     return Result.err(
         "TODO value type [X] must expose const key aspect [LIST] but doesn't");

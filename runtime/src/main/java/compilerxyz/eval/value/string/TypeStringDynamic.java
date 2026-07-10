@@ -249,7 +249,7 @@ public record TypeStringDynamic()
     var sourceType = some.value().valueTypeOf();
     var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
     if (stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome) {
-      String strVal = stringConstSome.value().get(some.value());
+      String strVal = stringConstSome.value().aspectStringConstGet(some.value());
       // Concatenate the source's existing dynamic code (if any) with an LDC of the string
       // literal, matching the semantics of the old Block(existing, literal) construction.
       var seq = new JavaBytecodeSequence();

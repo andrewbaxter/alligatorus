@@ -98,7 +98,7 @@ public record TypeConstkeyDynamic()
     if (!(stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome)) {
       return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");
     }
-    var s = stringConstSome.value().get(some.value());
+    var s = stringConstSome.value().aspectStringConstGet(some.value());
     var canonical = new ConstKey.Str(s).toCanonical();
     var literal = JavaBytecodeUtils.literalString(loc, canonical);
     return EResult.ok(

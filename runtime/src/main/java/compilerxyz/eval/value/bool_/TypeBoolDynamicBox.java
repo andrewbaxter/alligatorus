@@ -140,7 +140,7 @@ public record TypeBoolDynamicBox()
       seq.add(existingDyn);
     }
     if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
-      boolean boolVal = boolConstSome.value().get(some.value());
+      boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());
       seq.add(JavaBytecodeUtils.literalBool(loc, boolVal));
       seq.add(valueOfBoolean(loc));
     } else if (sourceType instanceof TypeBoolDynamic) {

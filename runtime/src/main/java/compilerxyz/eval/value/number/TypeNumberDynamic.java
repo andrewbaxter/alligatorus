@@ -357,7 +357,7 @@ public record TypeNumberDynamic()
     var sourceType = some.value().valueTypeOf();
     var numConstOpt = AspectNumberConst.getMaybe(xx, sourceType);
     if (numConstOpt instanceof Opt.Some<AspectNumberConst> numConstSome) {
-      double numVal = numConstSome.value().get(some.value());
+      double numVal = numConstSome.value().aspectNumberConstGet(some.value());
       var seq = new JavaBytecodeSequence();
       var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {

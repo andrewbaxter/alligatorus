@@ -155,7 +155,7 @@ public record TypeNumberDynamicBox()
       seq.add(existingDyn);
     }
     if (numConstOpt instanceof Opt.Some<AspectNumberConst> numConstSome) {
-      double numVal = numConstSome.value().get(some.value());
+      double numVal = numConstSome.value().aspectNumberConstGet(some.value());
       seq.add(JavaBytecodeUtils.literalDouble(loc, numVal));
       seq.add(valueOfDouble(loc));
     } else if (sourceType instanceof TypeNumberDynamic) {

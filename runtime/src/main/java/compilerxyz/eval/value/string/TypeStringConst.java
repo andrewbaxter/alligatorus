@@ -159,7 +159,7 @@ public record TypeStringConst()
   }
 
   @Override
-  public String get(Value value) {
+  public String aspectStringConstGet(Value value) {
     if (value instanceof ValueStringConst v) return v.value();
     throw new IllegalArgumentException(
         "TypeStringConst::get: expected ValueStringConst, got " + value.getClass());

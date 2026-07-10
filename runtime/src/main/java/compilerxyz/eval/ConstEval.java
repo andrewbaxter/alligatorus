@@ -627,7 +627,7 @@ public final class ConstEval {
       var condType = cv.value().valueTypeOf();
       var boolAspect = AspectBoolConst.getMaybe(xx, condType);
       if (boolAspect instanceof Opt.Some<AspectBoolConst> some) {
-        var val = some.value().get(cv.value());
+        var val = some.value().aspectBoolConstGet(cv.value());
         conditionsEvaluated.add(new IfEval(val, cond, branch.body()));
       } else {
         allConst = false;

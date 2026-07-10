@@ -152,7 +152,7 @@ public record TypeNumberConst()
   }
 
   @Override
-  public double get(Value value) {
+  public double aspectNumberConstGet(Value value) {
     if (value instanceof ValueNumberConst v) return v.value();
     throw new IllegalArgumentException(
         "TypeNumberConst::get: expected ValueNumberConst, got " + value.getClass());
@@ -201,7 +201,7 @@ public record TypeNumberConst()
     if (!(typeAspect instanceof Opt.Some<AspectNumberConst> a)) {
       return EResult.err(loc, op + ": type " + v.valueTypeOf().typeDesc() + " is not numeric");
     }
-    return EResult.ok(a.value().get(v));
+    return EResult.ok(a.value().aspectNumberConstGet(v));
   }
 
   private static String opErrMsg(String op, String side, EResult<?> r) {
