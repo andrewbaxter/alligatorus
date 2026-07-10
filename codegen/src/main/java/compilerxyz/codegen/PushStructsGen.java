@@ -448,7 +448,6 @@ public final class PushStructsGen {
     var retDefinitionSetBuilder =
         TypeRef.opaque(ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"));
     var retOptionPush = TypeRef.opaque(ClassName.get(GEN_PACKAGE, "OptionPush"));
-    var retInterfaceRef = TypeRef.opaque(INTERFACE_REF);
     var retSourceUnionNewRef = TypeRef.opaque(SOURCE_UNION_NEW_REF);
 
     var definitionSetBuilder =
@@ -636,14 +635,6 @@ public final class PushStructsGen {
             empty,
             "srcObjectImplInterface",
             retObject));
-    sourceObjectMethods.add(
-        new PushMethod(
-            "aspect",
-            TList.of(new NamedTypeRef("record", recordArg)),
-            INTERFACE_REF.canonicalName() + ".dynamicType()",
-            empty,
-            "srcObjectImplAspect",
-            retInterfaceRef));
     var retTypeSourceObjectNewConst = TypeRef.opaque(TYPE_SOURCE_OBJECT_NEW_CONST);
     sourceObjectMethods.add(
         new PushMethod(
