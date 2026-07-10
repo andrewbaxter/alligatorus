@@ -4,18 +4,19 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
 
 /**
- * Opaque marker value with no per-instance data. Used for compile-time-only
- * values (like builtins, function references, and other "the semantics live
- * entirely in the Type" cases). The Type is carried alongside in the enclosing
- * CodeValue's binding metadata — callers must not rely on
- * ValueEmpty.valueTypeOf().
+ * A Value that carries only its Type — no ValueDynamic.Source, no wrapped
+ * inner object. Used for compile-time-only values (builtins, function
+ * references, and other "the semantics live entirely in the Type" cases)
+ * where the runtime representation is inert.
+ *
+ * <p>Contrast with {@link ValueDynamic}, which additionally carries a
+ * {@link ValueDynamic.Source} describing how to realize/drop the runtime
+ * value.
  */
-public record ValueEmpty() implements Value {
+public record ValueEmpty(Type type_) implements Value {
 
   @Override
   public Type valueTypeOf() {
-    throw new UnsupportedOperationException(
-        "ValueEmpty::valueTypeOf: ValueEmpty is a marker; type lives on the binding/CodeValue,"
-            + " not on the value itself");
+    return type_;
   }
 }
