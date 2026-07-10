@@ -32,7 +32,6 @@ import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
@@ -421,7 +420,7 @@ public final class TypeSourceObjectDynamic
         if (sourceCode == null) {
           return EResult.err(loc, "cast " + typeDesc() + " -> any: source has no runtime code");
         }
-        return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, new TypeAnyDynamic()));
+        return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, Type.dynamicType()));
       }
     }
     for (var impl : interfaceImpls) {
@@ -430,7 +429,7 @@ public final class TypeSourceObjectDynamic
         Type resultType = null;
         if (builtinKind != null) {
           switch (builtinKind) {
-            case TYPE -> resultType = new TypeAnyDynamic();
+            case TYPE -> resultType = Type.dynamicType();
             case TARGET -> resultType = compilerxyz.eval.dynamic.Target.dynamicType();
             case BINDING -> resultType = compilerxyz.eval.Binding.dynamicType();
             case CODE_DYN -> {

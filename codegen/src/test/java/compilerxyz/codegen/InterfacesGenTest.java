@@ -27,8 +27,7 @@ final class InterfacesGenTest {
       Formatter.createFormatter(
           JavaFormatterOptions.builder().style(JavaFormatterOptions.Style.PALANTIR).build());
 
-  private static final ClassName ANY_DYN =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
+  private static final ClassName ANY_DYN = ClassName.get("compilerxyz.eval", "Type");
 
   private static TypeRef opaqueAny() {
     return new TypeRef(ANY_DYN, CodeBlock.of("new $T()", ANY_DYN));

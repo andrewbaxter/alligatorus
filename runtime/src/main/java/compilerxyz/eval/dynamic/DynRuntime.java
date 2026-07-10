@@ -16,7 +16,6 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.binding.BindingSourceObjectWrapper;
 import compilerxyz.eval.expr.StagedExprCell;
-import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
@@ -63,7 +62,7 @@ public final class DynRuntime {
   }
 
   private static final JavaInternalName INTNAME = JavaInternalName.fromClass(DynRuntime.class);
-  private static final TypeAnyDynamic ANY = new TypeAnyDynamic();
+  private static final Type ANY = Type.dynamicType();
 
   private static JavaMethodDescriptor desc(JavaDataDescriptor ret, JavaDataDescriptor... args) {
     return JavaMethodDescriptor.fromParts(ret, TList.of(args));
@@ -864,8 +863,8 @@ public final class DynRuntime {
           "_im" + compilerxyz.eval.DefinitionSet.nextInterfaceMethodId(ds);
       var im =
           new compilerxyz.eval.value.source_interface.InterfaceMethodData(imName, fieldName);
-      im.argType = new compilerxyz.eval.value.any.TypeAnyDynamic();
-      im.retType = new compilerxyz.eval.value.any.TypeAnyDynamic();
+      im.argType = compilerxyz.eval.Type.dynamicType();
+      im.retType = compilerxyz.eval.Type.dynamicType();
       ifaceData.methods.add(im);
     }
     var aspectUniqueField =

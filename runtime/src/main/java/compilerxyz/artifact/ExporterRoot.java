@@ -6,7 +6,6 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Value;
-import compilerxyz.eval.value.any.TypeAnyDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.eval.value.expr.TypeExpr;
@@ -37,12 +36,6 @@ import compilerxyz.util.Opt;
 import java.util.function.Function;
 
 public enum ExporterRoot implements ArtifactExporter, ExporterAny {
-  ANY_DYNAMIC("any_dynamic") {
-    @Override
-    ExporterRootDelegate delegate() {
-      return TypeAnyDynamic.DELEGATE;
-    }
-  },
   BOOL_CONST("bool_const") {
     @Override
     ExporterRootDelegate delegate() {

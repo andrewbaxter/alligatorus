@@ -12,8 +12,7 @@ import compilerxyz.util.TList;
 public final class TraitsGen {
   private TraitsGen() {}
 
-  private static final ClassName TYPE_ANY_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
+  private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName TYPE_STRING_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName TYPE_BOOL_DYNAMIC =
@@ -34,7 +33,7 @@ public final class TraitsGen {
       ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
 
   public static TList<InterfaceSpec> specs() {
-    var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
+    var any = TypeRef.opaque(TYPE);
     var string = TypeRef.unit(TYPE_STRING_DYNAMIC);
     var bool = TypeRef.unit(TYPE_BOOL_DYNAMIC);
     var aspect = TypeRef.viaPush(ASPECT_INTERFACE);

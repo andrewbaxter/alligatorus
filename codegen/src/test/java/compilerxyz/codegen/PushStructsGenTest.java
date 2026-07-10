@@ -25,8 +25,7 @@ final class PushStructsGenTest {
       Formatter.createFormatter(
           JavaFormatterOptions.builder().style(JavaFormatterOptions.Style.PALANTIR).build());
 
-  private static final ClassName ANY_DYN =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
+  private static final ClassName ANY_DYN = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName STRING_DYN =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName BOOL_DYN =
@@ -59,8 +58,8 @@ final class PushStructsGenTest {
 
     var dataSrc = Files.readString(dataClass);
     assertTrue(dataSrc.contains("public final class DemoBuilder"), dataSrc);
-    assertTrue(dataSrc.contains("public final TypeAnyDynamic inner;"), dataSrc);
-    assertTrue(dataSrc.contains("public DemoBuilder(TypeAnyDynamic inner)"), dataSrc);
+    assertTrue(dataSrc.contains("public final Type inner;"), dataSrc);
+    assertTrue(dataSrc.contains("public DemoBuilder(Type inner)"), dataSrc);
 
     var sentinelSrc = Files.readString(sentinel);
     assertTrue(

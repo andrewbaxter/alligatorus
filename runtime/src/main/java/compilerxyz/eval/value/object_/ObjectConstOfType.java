@@ -2,21 +2,11 @@ package compilerxyz.eval.value.object_;
 
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-/**
- * Shared TypeObjectConst instance representing "a compile-time Type value" —
- * used as the value-type for {@code builtins.types.string},
- * {@code builtins.types.number}, and other builtin bindings whose value is a
- * Type instance. AspectType.type_ casts the value directly to Type.
- *
- * <p>Interfaces (like {@code aspect_bind}) may need a more specialized
- * TypeObjectConst that additionally exposes TypeAspect/AspectAspect; those
- * live elsewhere.
- */
 public final class ObjectConstOfType {
 
   private ObjectConstOfType() {}
@@ -29,13 +19,17 @@ public final class ObjectConstOfType {
     static final TypeObjectConst INSTANCE = build();
 
     private static TypeObjectConst build() {
+      var castRules = new TList<TypeObjectCastRule>();
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_TYPE_IDENTITY));
+      var identityAspects = new TList<Unique>();
+      identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
       return new TypeObjectConst(
           GenTypeIds.TYPE_ANY_CONST_TYPE_ID,
           "type",
           Type.class,
           Opt.<Type>none(),
-          new TList<Unique>(),
-          new TList<TypeObjectCastRule>(),
+          identityAspects,
+          castRules,
           new TList<TypeObjectCastFromRule>(),
           Opt.<TypeObjectLift>none(),
           Opt.<ObjectAspectSource>none());

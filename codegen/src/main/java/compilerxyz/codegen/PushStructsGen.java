@@ -380,8 +380,6 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.string", "ValueStringConst");
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-  private static final ClassName TYPE_ANY_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
   private static final ClassName TYPE_UNIQUE_RT =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
   private static final ClassName UNIQUE_RT = ClassName.get("compilerxyz.eval", "Unique");
@@ -393,7 +391,7 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.constkey", "TypeConstkeyDynamic");
 
   private static TypeRef dataPath(ClassName path) {
-    return new TypeRef(path, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
+    return new TypeRef(path, CodeBlock.of("$T.dynamicType()", TYPE));
   }
 
   private static TypeRef ref(ClassName path, CodeBlock dynamicType) {
@@ -420,13 +418,13 @@ public final class PushStructsGen {
   }
 
   public static TList<PushStructSpec> specs(TList<InterfaceSpec> traitSpecs) {
-    var any = ref(ClassName.OBJECT, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
+    var any = ref(ClassName.OBJECT, CodeBlock.of("$T.dynamicType()", TYPE));
     var string = ref(ClassName.get(String.class), CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC));
     var bool = ref(ClassName.get(Boolean.class), CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
-    var anyTypeArg = ref(ANY_TYPE, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
+    var anyTypeArg = ref(ANY_TYPE, CodeBlock.of("$T.dynamicType()", TYPE));
     var stagedExprArg = ref(STAGED_EXPR, CodeBlock.of("new $T()", TYPE_EXPR));
     var uniqueArg = ref(UNIQUE_RT, CodeBlock.of("new $T()", TYPE_UNIQUE_RT));
-    var ifaceRefArg = ref(ClassName.OBJECT, CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC));
+    var ifaceRefArg = ref(ClassName.OBJECT, CodeBlock.of("$T.dynamicType()", TYPE));
     var recordArg =
         new TypeRef(
             ParameterizedTypeName.get(

@@ -60,9 +60,6 @@ public final class InterfacesGen {
   private static final ClassName TUPLE_ELEMENT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.tuple", "TupleElement", "Dynamic");
 
-  private static final ClassName TYPE_ANY_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
-
   private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
   private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
@@ -219,7 +216,7 @@ public final class InterfacesGen {
         switch (m.args()) {
           case MethodArgs.Source src -> {
             build.addStatement(
-                "$N.argType = new $T()", methodVar, TYPE_ANY_DYNAMIC);
+                "$N.argType = $T.dynamicType()", methodVar, TYPE);
             build.addCode(buildSourceArgRecordType(methodVar, src));
           }
           case MethodArgs.Rust rs -> {

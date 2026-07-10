@@ -19,7 +19,6 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.expr;
     exports compilerxyz.eval.push;
     exports compilerxyz.eval.value;
-    exports compilerxyz.eval.value.any;
     exports compilerxyz.eval.value.argrecord;
     exports compilerxyz.eval.value.binding;
     exports compilerxyz.eval.value.bool_;

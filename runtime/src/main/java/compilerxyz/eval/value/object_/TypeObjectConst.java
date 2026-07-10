@@ -163,11 +163,16 @@ public record TypeObjectConst(
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     for (var rule : castRules) {
       if (rule.matches(xx, destType)) {
-        // castRules were designed for TypeObjectDynamic; reusing them here means
-        // the rule's apply() receives a null source (we pass null since it's not
-        // typed against TypeObjectConst). For rules that don't inspect source
-        // (RestampToIdentity, CallByDestIdentity, CallToInterfaceSpec), this is fine.
-        return rule.apply(xx, null, loc, cv, destType);
+        CodeValue materialized = cv;
+        if (cv.code().dynamic() == null) {
+          var dynRes = toDynamic(xx, loc, cv);
+          if (dynRes.hasErrors()) return dynRes.reerr();
+          materialized =
+              new CodeValue(
+                  Code.of(loc, dynRes.requireValue(typeDesc + "::typeCastTo materialize")),
+                  cv.value());
+        }
+        return rule.apply(xx, null, loc, materialized, destType);
       }
     }
     return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
@@ -209,11 +214,15 @@ public record TypeObjectConst(
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, typeDesc + "::toDynamic: no compile-time value");
     }
+    Object hostValue = some.value();
+    if (hostValue instanceof ValueObjectConst wrap) {
+      hostValue = wrap.inner();
+    }
     var key = new JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(
-            key, this, new External(externalHostClass, some.value())));
+            key, this, new External(externalHostClass, hostValue)));
     return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
   }
 

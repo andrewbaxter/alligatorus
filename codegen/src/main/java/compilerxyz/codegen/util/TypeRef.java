@@ -13,8 +13,7 @@ public record TypeRef(TypeName path, CodeBlock dynamicType) {
   public static TypeRef opaque(TypeName path) {
     return new TypeRef(
         path,
-        CodeBlock.of(
-            "new $T()", ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic")));
+        CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.eval", "Type")));
   }
 
   public static TypeRef viaPush(ClassName path) {

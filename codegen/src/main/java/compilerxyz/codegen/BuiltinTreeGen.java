@@ -98,8 +98,6 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-  private static final ClassName TYPE_ANY_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.any", "TypeAnyDynamic");
   private static final ClassName TYPE_CONSTKEY_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.constkey", "TypeConstkeyDynamic");
   private static final ClassName TYPE_EXPR =
@@ -504,7 +502,7 @@ public final class BuiltinTreeGen {
   }
 
   public static TList<InterfaceSpec> extraInterfaceSpecs() {
-    var any = TypeRef.unit(TYPE_ANY_DYNAMIC);
+    var any = TypeRef.opaque(TYPE);
     var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
     var xxRef =
         new TypeRef(
@@ -987,7 +985,7 @@ var targetBindSub =
                 "expr", new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_EXPR)))),
             new Child(
                 "type",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_ANY_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", TYPE)))),
             new Child(
                 "aspect",
                 new Leaf(new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", ASPECT_INTERFACE)))),
