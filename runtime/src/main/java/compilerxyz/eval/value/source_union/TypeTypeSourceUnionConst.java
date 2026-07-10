@@ -151,7 +151,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     return new TypeTypeSourceUnionConst(type_);
   }
 

@@ -69,7 +69,7 @@ public record TypeListConstructorConst()
     var elementType =
         aspectTypeRes
             .requireValue("TypeListConstructorConst::call AspectType")
-            .type_(argValue);
+            .aspectTypeType(argValue);
     elementType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType);
     Type listType = new TypeListDynamic(elementType);
     return EResult.ok(

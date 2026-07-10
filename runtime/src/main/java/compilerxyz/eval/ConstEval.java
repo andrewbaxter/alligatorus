@@ -222,7 +222,7 @@ public final class ConstEval {
         var targetMeta = tv.value().valueTypeOf();
         var aspectTypeOpt = erb.mustEr(AspectType.get(xx, loc, targetMeta));
         if (aspectTypeOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var targetType = aspectTypeOpt.get().type_(tv.value());
+        var targetType = aspectTypeOpt.get().aspectTypeType(tv.value());
         var converted = erb.mustEr(Eval.typecheckConvert(xx, loc, targetType, base));
         if (converted.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(converted.get());
@@ -680,7 +680,7 @@ public final class ConstEval {
       var etMeta = etv.value().valueTypeOf();
       var atOpt = erb.mustEr(AspectType.get(xx, loc, etMeta));
       if (atOpt.isEmpty()) return EResult.errs(erb.errors());
-      bodyExcType = atOpt.get().type_(etv.value());
+      bodyExcType = atOpt.get().aspectTypeType(etv.value());
     } else {
       bodyExcType = xx.currentExceptionType;
     }

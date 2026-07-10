@@ -397,7 +397,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     return new TypeSourceFunctionConst(data);
   }
 

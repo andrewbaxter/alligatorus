@@ -93,11 +93,11 @@ public record TypeMapConstructorConst()
     var keyAtRes = AspectType.get(xx, loc, keyValue.valueTypeOf());
     if (keyAtRes.hasErrors()) return keyAtRes.reerr();
     var keyType =
-        keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType").type_(keyValue);
+        keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType").aspectTypeType(keyValue);
     var valueAtRes = AspectType.get(xx, loc, valueValue.valueTypeOf());
     if (valueAtRes.hasErrors()) return valueAtRes.reerr();
     var valueType =
-        valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").type_(valueValue);
+        valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").aspectTypeType(valueValue);
     keyType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, keyType);
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);

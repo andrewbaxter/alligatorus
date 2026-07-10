@@ -70,7 +70,7 @@ public record TypeEResultConstructorConst()
     var elementType =
         aspectTypeRes
             .requireValue("TypeEResultConstructorConst::call AspectType")
-            .type_(argValue);
+            .aspectTypeType(argValue);
     Type eresultType = new TypeEResultDynamic(elementType);
     return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(eresultType))));
   }

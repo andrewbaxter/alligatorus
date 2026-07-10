@@ -270,7 +270,7 @@ public record TypeInterfaceConst(InterfaceData data)
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     return InterfaceData.dynamicType();
   }
 

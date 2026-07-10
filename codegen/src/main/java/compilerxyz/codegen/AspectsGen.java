@@ -89,7 +89,8 @@ final class AspectsGen {
       "OperatorLt",
       "Bind",
       "DropDynamic",
-      "Set");
+      "Set",
+      "Type");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 
@@ -312,7 +313,7 @@ final class AspectsGen {
             TList.of(
                 new AspectMethod(
                     "",
-                    "type_",
+                    "type",
                     TList.of(new Param("value", VALUE)),
                     TYPE))),
         new AspectSpec(

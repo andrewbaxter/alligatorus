@@ -332,7 +332,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v) {
       return v.inner();
     }

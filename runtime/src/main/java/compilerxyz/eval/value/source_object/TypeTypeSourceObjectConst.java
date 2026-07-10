@@ -644,7 +644,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     if (!(value instanceof ValueSourceObjectConst inst)) {
       throw new IllegalStateException(
           "TypeTypeSourceObjectConst::type_: expected ValueSourceObjectConst, got "

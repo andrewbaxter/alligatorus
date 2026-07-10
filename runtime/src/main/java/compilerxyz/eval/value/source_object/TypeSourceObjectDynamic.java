@@ -503,9 +503,9 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     if (value instanceof compilerxyz.eval.value.value_source_object.ValueSourceObjectConst inst) {
-      return new TypeTypeSourceObjectConst(inst.data()).type_(value);
+      return new TypeTypeSourceObjectConst(inst.data()).aspectTypeType(value);
     }
     return this;
   }

@@ -69,7 +69,7 @@ public record TypeOptionConstructorConst()
     var elementType =
         aspectTypeRes
             .requireValue("TypeOptionConstructorConst::call AspectType")
-            .type_(argValue);
+            .aspectTypeType(argValue);
     Type optType = new TypeOptionDynamic(elementType);
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(optType))));

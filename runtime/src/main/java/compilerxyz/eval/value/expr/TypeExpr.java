@@ -167,7 +167,7 @@ public record TypeExpr()
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     return new TypeExpr();
   }
 

@@ -534,7 +534,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public Type type_(Value value) {
+  public Type aspectTypeType(Value value) {
     if (!(value instanceof Record r)) {
       throw new IllegalArgumentException(
           "Record::type_: expected Record value, got " + value.getClass());
