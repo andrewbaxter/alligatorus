@@ -55,7 +55,7 @@ public final class Eval {
   }
 
   public static Result<ConstKey, String> extractConstKey(ExprContext xx, QExprId loc, Value v) {
-    var typeRes = v.valueTypeOf();
+    var typeRes = v.valueType();
     var stringConst = AspectStringConst.getMaybe(xx, typeRes);
     if (stringConst instanceof Opt.Some<AspectStringConst> some) {
       return Result.ok(new ConstKey.Str(some.value().aspectStringConstGet(v)));
@@ -107,7 +107,7 @@ public final class Eval {
       return EResult.ok(source);
     }
     var erb = new Erb(loc);
-    var sourceType = ((Opt.Some<Value>) source.value()).value().valueTypeOf();
+    var sourceType = ((Opt.Some<Value>) source.value()).value().valueType();
     if (sourceType.equals(destType)) {
       return EResult.ok(source);
     }
@@ -197,7 +197,7 @@ public final class Eval {
                           "eval: const_eval produced no compile-time value")))));
     }
     var cvValue = cvValSome.value();
-    var valueType = cvValue.valueTypeOf();
+    var valueType = cvValue.valueType();
     Opt<CodeDynamic> stage1Code;
     Opt<Value> fallbackValue;
     if (cv.code().isNone()) {

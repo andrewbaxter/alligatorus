@@ -75,7 +75,7 @@ public record TypeUnique()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.Unique();
   }
 

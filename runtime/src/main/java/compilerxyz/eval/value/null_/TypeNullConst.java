@@ -53,7 +53,7 @@ public record TypeNullConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.NullConst();
   }
 

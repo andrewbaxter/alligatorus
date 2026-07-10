@@ -24,7 +24,7 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return this;
   }
 

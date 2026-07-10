@@ -8,7 +8,7 @@ import compilerxyz.eval.Value;
 
 public record ValueUnique(Unique unique) implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeUnique();
   }
 

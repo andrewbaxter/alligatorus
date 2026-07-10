@@ -57,7 +57,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.SourceObjectNewConst();
   }
 

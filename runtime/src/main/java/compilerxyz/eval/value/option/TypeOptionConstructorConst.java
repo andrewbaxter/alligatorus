@@ -41,7 +41,7 @@ public record TypeOptionConstructorConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.OptionConstructorConst();
   }
 
@@ -63,7 +63,7 @@ public record TypeOptionConstructorConst()
           loc, "TypeOptionConstructorConst::call: argument must have a compile-time value");
     }
     var argValue = argSome.value();
-    var argMeta = argValue.valueTypeOf();
+    var argMeta = argValue.valueType();
     var aspectTypeRes = AspectType.get(xx, loc, argMeta);
     if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();
     var elementType =

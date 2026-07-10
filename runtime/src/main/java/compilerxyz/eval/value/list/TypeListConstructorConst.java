@@ -41,7 +41,7 @@ public record TypeListConstructorConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ListConstructorConst();
   }
 
@@ -63,7 +63,7 @@ public record TypeListConstructorConst()
           loc, "TypeListConstructorConst::call: argument must have a compile-time value");
     }
     var argValue = argSome.value();
-    var argMeta = argValue.valueTypeOf();
+    var argMeta = argValue.valueType();
     var aspectTypeRes = AspectType.get(xx, loc, argMeta);
     if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();
     var elementType =

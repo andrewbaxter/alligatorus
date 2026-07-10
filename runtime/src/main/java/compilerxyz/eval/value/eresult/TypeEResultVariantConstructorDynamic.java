@@ -48,7 +48,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.EResultVariantConstructorDynamic();
   }
 

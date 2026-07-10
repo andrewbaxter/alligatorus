@@ -16,7 +16,7 @@ import compilerxyz.eval.Value;
 public record ValueEmpty(Type type_) implements Value {
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return type_;
   }
 }

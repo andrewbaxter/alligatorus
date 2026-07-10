@@ -8,7 +8,7 @@ import compilerxyz.eval.value.TypeRoot;
 
 public record ValueTypeStringConst() implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.StringConst();
   }
 

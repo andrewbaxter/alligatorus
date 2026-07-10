@@ -93,7 +93,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.MapDynamic();
   }
 
@@ -326,7 +326,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeMapDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     if (sourceType instanceof TypeMapDynamic sourceMap) {
       if (!typesConvertible(xx, loc, sourceMap.keyType, keyType)) {
         return EResult.err(

@@ -26,7 +26,7 @@ public final class ArtifactSupport {
 
   public static EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc, Value v) {
     var errors = new TList<ExprErr>();
-    var t = v.valueTypeOf();
+    var t = v.valueType();
     var asp = AspectArtifact.get(xx, loc, t);
     if (asp.hasErrors()) {
       asp.drainInto(errors);

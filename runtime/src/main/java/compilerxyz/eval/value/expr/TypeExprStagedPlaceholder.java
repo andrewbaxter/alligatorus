@@ -37,7 +37,7 @@ public record TypeExprStagedPlaceholder()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ExprStagedPlaceholder();
   }
 

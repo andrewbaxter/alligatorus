@@ -16,9 +16,9 @@ import compilerxyz.util.TList;
 
 public interface Value {
 
-  default Type valueTypeOf() {
+  default Type valueType() {
     throw new AssertionError(
-        "user did not provide a Value::valueTypeOf method on " + getClass().getName());
+        "user did not provide a Value::valueType method on " + getClass().getName());
   }
 
   static Type dynamicType() {

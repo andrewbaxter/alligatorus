@@ -369,7 +369,7 @@ public final class DynRuntime {
       throw new IllegalStateException(
           "deriveSourceTypeFromCv: CodeValue has no compile-time value");
     }
-    return new compilerxyz.gen.TypeRefPush(someVal.value().valueTypeOf());
+    return new compilerxyz.gen.TypeRefPush(someVal.value().valueType());
   }
 
   public static StagedExprCell stage(

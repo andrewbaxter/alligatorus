@@ -24,7 +24,7 @@ import java.util.function.Function;
 public record ValueSourceObjectConst(TypeSourceObjectDynamic data, Value underlying)
     implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeTypeSourceObjectConst(data);
   }
 

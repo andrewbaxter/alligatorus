@@ -79,7 +79,7 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.SourceUnionDynamic();
   }
 

@@ -41,7 +41,7 @@ public record TypePanicDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.PanicDynamic();
   }
 

@@ -53,7 +53,7 @@ public record TypeConstkeyDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ConstkeyDynamic();
   }
 
@@ -93,7 +93,7 @@ public record TypeConstkeyDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeConstkeyDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
     if (!(stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome)) {
       return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");

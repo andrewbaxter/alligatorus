@@ -30,7 +30,7 @@ import org.objectweb.asm.Opcodes;
 
 public record ValueDynamic(Source source, Type type_) implements Value {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return type_;
   }
 

@@ -77,7 +77,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.NumberDynamicBox();
   }
 
@@ -147,7 +147,7 @@ public record TypeNumberDynamicBox()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeNumberDynamicBox::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var numConstOpt = AspectNumberConst.getMaybe(xx, sourceType);
     var seq = new JavaBytecodeSequence();
     var existingDyn = cv.code().dynamic();

@@ -45,7 +45,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.MapNewDynamic();
   }
 
@@ -63,7 +63,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
     if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
       return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
     }
-    var argType = argSome.value().valueTypeOf();
+    var argType = argSome.value().valueType();
     var argTupleOpt = AspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome
         && argTupleSome.value().aspectTupleElementTypes().isEmpty()) {

@@ -47,7 +47,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -67,7 +67,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -87,7 +87,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -107,7 +107,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -127,7 +127,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -147,7 +147,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -167,7 +167,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -187,7 +187,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -207,7 +207,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -227,7 +227,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -247,7 +247,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -267,7 +267,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -287,7 +287,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -307,7 +307,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -327,7 +327,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -347,7 +347,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -367,7 +367,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -387,7 +387,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -407,7 +407,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -427,7 +427,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -447,7 +447,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -467,7 +467,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -487,7 +487,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -507,7 +507,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -527,7 +527,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -547,7 +547,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -567,7 +567,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -587,7 +587,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -607,7 +607,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -627,7 +627,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -647,7 +647,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -667,7 +667,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -687,7 +687,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -707,7 +707,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -727,7 +727,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -747,7 +747,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -767,7 +767,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -787,7 +787,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -807,7 +807,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -827,7 +827,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -847,7 +847,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -867,7 +867,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -887,7 +887,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 
@@ -907,7 +907,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
 
     @Override
-    public Type valueTypeOf() {
+    public Type valueType() {
       return this;
     }
 

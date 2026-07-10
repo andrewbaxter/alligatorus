@@ -36,7 +36,7 @@ public record TypeFunctionCastValueDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.FunctionCastValueDynamic();
   }
 

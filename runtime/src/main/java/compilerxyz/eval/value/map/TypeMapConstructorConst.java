@@ -42,7 +42,7 @@ public record TypeMapConstructorConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.MapConstructorConst();
   }
 
@@ -64,7 +64,7 @@ public record TypeMapConstructorConst()
           loc, "TypeMapConstructorConst::call: argument must have a compile-time value");
     }
     var argValue = argSome.value();
-    var argMeta = argValue.valueTypeOf();
+    var argMeta = argValue.valueType();
     var aspectTupleOpt = AspectTuple.getMaybe(xx, argMeta);
     if (!(aspectTupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
       return EResult.err(loc, "map() requires a tuple of (key_type, value_type)");
@@ -90,11 +90,11 @@ public record TypeMapConstructorConst()
     }
     var keyValue = keySome.value();
     var valueValue = valueSome.value();
-    var keyAtRes = AspectType.get(xx, loc, keyValue.valueTypeOf());
+    var keyAtRes = AspectType.get(xx, loc, keyValue.valueType());
     if (keyAtRes.hasErrors()) return keyAtRes.reerr();
     var keyType =
         keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType").aspectTypeType(keyValue);
-    var valueAtRes = AspectType.get(xx, loc, valueValue.valueTypeOf());
+    var valueAtRes = AspectType.get(xx, loc, valueValue.valueType());
     if (valueAtRes.hasErrors()) return valueAtRes.reerr();
     var valueType =
         valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").aspectTypeType(valueValue);

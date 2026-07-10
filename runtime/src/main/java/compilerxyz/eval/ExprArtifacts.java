@@ -438,7 +438,7 @@ public final class ExprArtifacts {
         }
         var value = someV.value();
         var errors = new TList<ExprErr>();
-        var type = value.valueTypeOf();
+        var type = value.valueType();
         var aspRes = AspectArtifact.get(xx, expr.loc(), type);
         if (aspRes.hasErrors()) {
           aspRes.drainInto(errors);

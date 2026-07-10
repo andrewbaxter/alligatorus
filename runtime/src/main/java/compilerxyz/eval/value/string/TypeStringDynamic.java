@@ -118,7 +118,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.StringDynamic();
   }
 
@@ -246,7 +246,7 @@ public record TypeStringDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeStringDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
     if (stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome) {
       String strVal = stringConstSome.value().aspectStringConstGet(some.value());

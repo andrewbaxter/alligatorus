@@ -53,7 +53,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.EResultDynamic();
   }
 

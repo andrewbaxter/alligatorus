@@ -59,7 +59,7 @@ public record TypeFunctionAspectDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.FunctionAspectDynamic();
   }
 
@@ -77,7 +77,7 @@ public record TypeFunctionAspectDynamic()
       return EResult.err(loc, "aspect_lookup: arg has no compile-time value");
     }
     var argVal = argSome.value();
-    var argType = argVal.valueTypeOf();
+    var argType = argVal.valueType();
     var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
     if (!(tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome)) {
       return EResult.err(loc, "aspect_lookup: expected 3-tuple arg (subject, aspect_type, xx)");

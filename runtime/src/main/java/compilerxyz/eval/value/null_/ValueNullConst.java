@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 
 public record ValueNullConst() implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeNullConst();
   }
 

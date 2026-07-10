@@ -93,7 +93,7 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ListDynamic();
   }
 

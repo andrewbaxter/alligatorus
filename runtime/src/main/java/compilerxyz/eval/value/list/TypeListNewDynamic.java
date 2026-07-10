@@ -48,7 +48,7 @@ public record TypeListNewDynamic(Type elementType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ListNewDynamic();
   }
 
@@ -65,7 +65,7 @@ public record TypeListNewDynamic(Type elementType)
     if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
       return EResult.err(loc, "TypeListNewDynamic::call: argument has no compile-time value");
     }
-    var argType = argSome.value().valueTypeOf();
+    var argType = argSome.value().valueType();
     var dynamicElements = new TList<CodeDynamic>();
     var argTupleOpt = AspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome) {

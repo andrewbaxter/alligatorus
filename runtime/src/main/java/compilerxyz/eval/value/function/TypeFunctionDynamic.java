@@ -126,7 +126,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.FunctionDynamic();
   }
 

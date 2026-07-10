@@ -107,7 +107,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (res.hasErrors()) continue;
       var fieldCv = res.requireValue("Record::dropSourceless field");
       if (!(fieldCv.value() instanceof Opt.Some<Value> fieldSome)) continue;
-      var fieldType = fieldSome.value().valueTypeOf();
+      var fieldType = fieldSome.value().valueType();
       var fieldDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
       if (!(fieldDropOpt instanceof Opt.Some<AspectDropDynamic> fieldDropSome)) continue;
       var fieldDropRes = fieldDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
@@ -194,7 +194,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
 
     var fieldTypes = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
@@ -288,7 +288,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         }
         var childCv = inner.requireValue("Record::field EvalRes");
         var childType = childCv.value() instanceof Opt.Some<Value> cvSome
-            ? cvSome.value().valueTypeOf()
+            ? cvSome.value().valueType()
             : entryType;
         var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
         if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
@@ -482,7 +482,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           throw new IllegalStateException(
               "Record::bindSub: const field CodeValue has no value");
         }
-        var fieldType = fieldSome.value().valueTypeOf();
+        var fieldType = fieldSome.value().valueType();
         var bindRes = AspectBind.get(xx, loc, fieldType);
         if (bindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
@@ -511,7 +511,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           throw new IllegalStateException(
               "Record::bindSub: const field CodeValue has no value");
         }
-        var fieldType = fieldSome.value().valueTypeOf();
+        var fieldType = fieldSome.value().valueType();
         var bindRes = AspectBind.get(xx, loc, fieldType);
         if (bindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
@@ -539,7 +539,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       throw new IllegalArgumentException(
           "Record::type_: expected Record value, got " + value.getClass());
     }
-    return r.valueTypeOf();
+    return r.valueType();
   }
 
   @Override
@@ -566,7 +566,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       throw new IllegalStateException("Record::typeCastFrom: CodeValue has no value");
     }
     var srcValue = some.value();
-    var srcType = srcValue.valueTypeOf();
+    var srcType = srcValue.valueType();
     var srcAspOpt = AspectRecord.getMaybe(xx, srcType);
     if (!(srcAspOpt instanceof Opt.Some<AspectRecord> srcAspSome)) {
       throw new IllegalStateException(
@@ -729,7 +729,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                     + e.getKey().toCanonical()
                     + "'");
           }
-          yield vs.value().valueTypeOf();
+          yield vs.value().valueType();
         }
       };
       out.put(e.getKey(), new RecordField.Dynamic(t));
@@ -819,7 +819,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             throw new IllegalStateException(
                 "Record::toDynamic: field '" + key.toCanonical() + "' CodeValue has no value");
           }
-          var elemType = elemValueSome.value().valueTypeOf();
+          var elemType = elemValueSome.value().valueType();
           var toDynOpt = AspectConsumeDynamic.getMaybe(xx, elemType);
           if (!(toDynOpt instanceof Opt.Some<AspectConsumeDynamic> toDynSome)) {
             if (errors == null) errors = new TList<>();
@@ -986,7 +986,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         if (!inner.hasErrors()
             && inner.requireValue("Record::recordFieldType inner").value()
                 instanceof Opt.Some<Value> some) {
-          yield some.value().valueTypeOf();
+          yield some.value().valueType();
         }
         yield new Tuple(Opt.none(), new TList<>());
       }

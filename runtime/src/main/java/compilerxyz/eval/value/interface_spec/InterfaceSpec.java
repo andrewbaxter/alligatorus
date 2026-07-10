@@ -18,7 +18,7 @@ public record InterfaceSpec(
     implements Value {
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeInterfaceSpec();
   }
 }

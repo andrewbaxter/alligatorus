@@ -71,7 +71,7 @@ public record TypeExpr()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.Expr();
   }
 
@@ -135,7 +135,7 @@ public record TypeExpr()
       return EResult.ok(cv);
     }
     var sourceValue = someVal.value();
-    var sourceType = sourceValue.valueTypeOf();
+    var sourceType = sourceValue.valueType();
     if (sourceType.typeAspect(xx, GenIdentities.EXPR_TYPE_IDENTITY).optIsSome()) {
       if (sourceValue instanceof Expr expr) {
         return EResult.ok(new CodeValue(cv.code(), Opt.some(expr)));

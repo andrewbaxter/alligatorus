@@ -104,7 +104,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (res.hasErrors()) continue;
       var elemCv = res.requireValue("Tuple::dropSourceless element");
       if (!(elemCv.value() instanceof Opt.Some<Value> elemSome)) continue;
-      var elemType = elemSome.value().valueTypeOf();
+      var elemType = elemSome.value().valueType();
       var elemDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, elemType);
       if (!(elemDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> elemDropSome))
         continue;
@@ -182,7 +182,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
 
     var slotTypes = new TList<TupleElement>(elements.size());
     for (var e : elements) {
@@ -192,9 +192,9 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             case TupleElement.EvalRes r -> {
               var er = r.result();
               if (!er.hasErrors()
-                  && er.requireValue("Tuple::valueTypeOf element").value()
+                  && er.requireValue("Tuple::valueType element").value()
                       instanceof Opt.Some<Value> some) {
-                yield some.value().valueTypeOf();
+                yield some.value().valueType();
               }
               yield new Tuple(Opt.none(), new TList<>());
             }
@@ -298,7 +298,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           if (!(destCv.value() instanceof Opt.Some<Value> destSome)) {
             return EResult.err(loc, "Tuple::typeCastFrom: dest element " + i + " missing");
           }
-          destElemType = destSome.value().valueTypeOf();
+          destElemType = destSome.value().valueType();
         }
         default -> throw new IllegalStateException();
       }
@@ -416,7 +416,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                               new ArtifactBodyExporter.Root())));
                   continue;
                 }
-                elemType = some.value().valueTypeOf();
+                elemType = some.value().valueType();
               }
               default -> throw new IllegalStateException();
             }
@@ -597,7 +597,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           }
           var elemCv = inner.requireValue("Tuple::bindSub element value");
           if (elemCv.value() instanceof Opt.Some<Value> elemSome) {
-            var elemType = elemSome.value().valueTypeOf();
+            var elemType = elemSome.value().valueType();
             var boxedType = DynUtil.substituteBoxed(xx, elemType);
             if (!boxedType.equals(elemType)) {
               var boxedRes = boxedType.typeCastFrom(xx, loc, elemCv);
@@ -643,7 +643,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           throw new IllegalStateException(
               "Tuple::bindSub: const element CodeValue has no value");
         }
-        var elemType = elemSome.value().valueTypeOf();
+        var elemType = elemSome.value().valueType();
         var bindRes = AspectBind.get(xx, loc, elemType);
         if (bindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull()));
@@ -672,7 +672,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           throw new IllegalStateException(
               "Tuple::bindSub: const element CodeValue has no value");
         }
-        var elemType = elemSome.value().valueTypeOf();
+        var elemType = elemSome.value().valueType();
         var bindRes = AspectBind.get(xx, loc, elemType);
         if (bindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull()));
@@ -882,7 +882,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           var er = r.result();
           if (!er.hasErrors()
               && er.requireValue("Tuple::typeId slot").value() instanceof Opt.Some<Value> some) {
-            yield some.value().valueTypeOf();
+            yield some.value().valueType();
           }
           yield (Type) new Tuple(Opt.none(), new TList<>());
         }

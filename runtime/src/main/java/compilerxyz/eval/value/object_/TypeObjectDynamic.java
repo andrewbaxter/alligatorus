@@ -94,7 +94,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return this;
   }
 
@@ -169,7 +169,7 @@ public record TypeObjectDynamic(
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, typeDesc + "::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     for (var rule : castFromRules) {
       if (rule.matches(xx, sourceType)) {
         return rule.apply(xx, this, loc, cv, sourceType);

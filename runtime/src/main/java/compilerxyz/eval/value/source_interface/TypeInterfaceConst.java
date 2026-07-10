@@ -81,7 +81,7 @@ public record TypeInterfaceConst(InterfaceData data)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.SourceInterfaceConst();
   }
 

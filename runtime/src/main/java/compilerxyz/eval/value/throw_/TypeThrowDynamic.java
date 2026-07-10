@@ -40,7 +40,7 @@ public record TypeThrowDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.ThrowDynamic();
   }
 

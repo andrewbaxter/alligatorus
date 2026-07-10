@@ -88,7 +88,7 @@ public final class ConstEval {
           erb.errPush("Call: function has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var funcType = fv.value().valueTypeOf();
+        var funcType = fv.value().valueType();
         var aspectFnOpt = erb.mustEr(AspectFunction.get(xx, loc, funcType));
         if (aspectFnOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectFn = aspectFnOpt.get();
@@ -110,7 +110,7 @@ public final class ConstEval {
           erb.errPush("Set: base has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var baseType = bv.value().valueTypeOf();
+        var baseType = bv.value().valueType();
         var setOpt = erb.mustEr(AspectSet.get(xx, loc, baseType));
         if (setOpt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(setOpt.get().aspectSetSet(xx, loc, base, value));
@@ -132,7 +132,7 @@ public final class ConstEval {
           erb.errPush("Field: field key has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var baseType = bv.value().valueTypeOf();
+        var baseType = bv.value().valueType();
         var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectField = aspectFieldOpt.get();
@@ -166,7 +166,7 @@ public final class ConstEval {
           erb.errPush("OperatorLt: base has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var aopt = erb.mustEr(AspectOperatorLt.get(xx, loc, bv.value().valueTypeOf()));
+        var aopt = erb.mustEr(AspectOperatorLt.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorLtLt(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -182,7 +182,7 @@ public final class ConstEval {
           erb.errPush("OperatorEq: base has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var aopt = erb.mustEr(AspectOperatorEq.get(xx, loc, bv.value().valueTypeOf()));
+        var aopt = erb.mustEr(AspectOperatorEq.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorEqEq(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -198,7 +198,7 @@ public final class ConstEval {
           erb.errPush("OperatorAdd: base has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var aopt = erb.mustEr(AspectOperatorAdd.get(xx, loc, bv.value().valueTypeOf()));
+        var aopt = erb.mustEr(AspectOperatorAdd.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -219,7 +219,7 @@ public final class ConstEval {
           erb.errPush("As: target has no compile-time value");
           yield EResult.errs(erb.errors());
         }
-        var targetMeta = tv.value().valueTypeOf();
+        var targetMeta = tv.value().valueType();
         var aspectTypeOpt = erb.mustEr(AspectType.get(xx, loc, targetMeta));
         if (aspectTypeOpt.isEmpty()) yield EResult.errs(erb.errors());
         var targetType = aspectTypeOpt.get().aspectTypeType(tv.value());
@@ -287,7 +287,7 @@ public final class ConstEval {
                           "Cannot bind result of expression that ends control flow"))));
           return EResult.errs(erb.errors());
         }
-        var valType = valV.value().valueTypeOf();
+        var valType = valV.value().valueType();
         var bindAspectOpt = erb.mustEr(AspectBind.get(childXx, sub.loc(), valType));
         if (bindAspectOpt.isEmpty()) return EResult.errs(erb.errors());
         var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(childXx, sub.loc(), value));
@@ -407,7 +407,7 @@ public final class ConstEval {
       erb.errPush("Foreach: base has no compile-time value");
       return EResult.errs(erb.errors());
     }
-    var baseType = bv.value().valueTypeOf();
+    var baseType = bv.value().valueType();
     var iterOpt = erb.mustEr(AspectIterable.get(xx, loc, baseType));
     if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
     var iterable = iterOpt.get();
@@ -447,7 +447,7 @@ public final class ConstEval {
       erb.errPush("Match: base has no compile-time value");
       return EResult.errs(erb.errors());
     }
-    var baseType = bv.value().valueTypeOf();
+    var baseType = bv.value().valueType();
     var unionOpt = erb.mustEr(AspectUnion.get(xx, loc, baseType));
     if (unionOpt.isEmpty()) return EResult.errs(erb.errors());
     var variants = unionOpt.get().aspectUnionVariants();
@@ -604,7 +604,7 @@ public final class ConstEval {
     var valueRes = erb.mustEr(exporterRes.get().exporterAnyAsValue());
     if (valueRes.isEmpty()) return EResult.errs(erb.errors());
     var cv = new CodeValue(Code.none(loc), Opt.some(valueRes.get()));
-    var valueType = valueRes.get().valueTypeOf();
+    var valueType = valueRes.get().valueType();
     var pdRes = erb.mustEr(AspectPostDeserialize.get(xx, loc, valueType));
     if (pdRes.isEmpty()) return EResult.errs(erb.errors());
     var finalRes = erb.mustEr(pdRes.get().aspectPostDeserializePostDeserialize(xx, loc, cv));
@@ -624,7 +624,7 @@ public final class ConstEval {
         erb.errPush("If: condition has no compile-time value");
         return EResult.errs(erb.errors());
       }
-      var condType = cv.value().valueTypeOf();
+      var condType = cv.value().valueType();
       var boolAspect = AspectBoolConst.getMaybe(xx, condType);
       if (boolAspect instanceof Opt.Some<AspectBoolConst> some) {
         var val = some.value().aspectBoolConstGet(cv.value());
@@ -677,7 +677,7 @@ public final class ConstEval {
         erb.errPush("Try: catch exception type has no compile-time value");
         return EResult.errs(erb.errors());
       }
-      var etMeta = etv.value().valueTypeOf();
+      var etMeta = etv.value().valueType();
       var atOpt = erb.mustEr(AspectType.get(xx, loc, etMeta));
       if (atOpt.isEmpty()) return EResult.errs(erb.errors());
       bodyExcType = atOpt.get().aspectTypeType(etv.value());
@@ -690,7 +690,7 @@ public final class ConstEval {
     var bodyCv = bodyOpt.get();
     Type bodyType;
     if (bodyCv.value() instanceof Opt.Some<Value> bv2) {
-      bodyType = bv2.value().valueTypeOf();
+      bodyType = bv2.value().valueType();
     } else {
       bodyType = null;
     }
@@ -750,7 +750,7 @@ public final class ConstEval {
       }
       Code finallyDropCode = Code.none(loc);
       if (finCv.value() instanceof Opt.Some<Value> finV) {
-        var finType = finV.value().valueTypeOf();
+        var finType = finV.value().valueType();
         var dropMaybe = AspectDropDynamic.getMaybe(xx, finType);
         if (dropMaybe instanceof Opt.Some<AspectDropDynamic> dropSome) {
           var dropOpt = erb.mustEr(dropSome.value().aspectDropDynamicDrop(xx, loc, finCv));

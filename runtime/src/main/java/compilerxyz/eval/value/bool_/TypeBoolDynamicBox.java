@@ -70,7 +70,7 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.BoolDynamicBox();
   }
 
@@ -132,7 +132,7 @@ public record TypeBoolDynamicBox()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeBoolDynamicBox::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var boolConstOpt = AspectBoolConst.getMaybe(xx, sourceType);
     var seq = new JavaBytecodeSequence();
     var existingDyn = cv.code().dynamic();

@@ -64,7 +64,7 @@ public record TypeStringConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.StringConst();
   }
 

@@ -75,7 +75,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.SourceFunctionConst();
   }
 

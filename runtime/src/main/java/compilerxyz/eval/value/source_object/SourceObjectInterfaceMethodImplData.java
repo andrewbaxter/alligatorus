@@ -236,7 +236,7 @@ public final class SourceObjectInterfaceMethodImplData {
             "SourceObjectInterfaceMethodImplData::compile typecheckConvert");
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
-      var valueType = someVal.value().valueTypeOf();
+      var valueType = someVal.value().valueType();
       var consumeResult = AspectConsumeDynamic.get(methodXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();

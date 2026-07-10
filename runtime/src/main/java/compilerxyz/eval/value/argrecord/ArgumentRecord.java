@@ -30,7 +30,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return this;
   }
 

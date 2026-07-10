@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 
 public record ValueObjectConst(Type inner) implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return ObjectConstOfType.dynamicType();
   }
 

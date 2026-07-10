@@ -82,7 +82,7 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.BoolDynamic();
   }
 
@@ -175,7 +175,7 @@ public record TypeBoolDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeBoolDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var boolConstOpt = AspectBoolConst.getMaybe(xx, sourceType);
     if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
       boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());

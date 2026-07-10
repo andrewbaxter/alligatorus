@@ -7,7 +7,7 @@ import compilerxyz.eval.Value;
 
 public record ValueBoolConst(boolean value) implements Value, ExporterAny {
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeBoolConst();
   }
 

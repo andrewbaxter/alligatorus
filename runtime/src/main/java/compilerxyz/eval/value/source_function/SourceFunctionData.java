@@ -184,7 +184,7 @@ public final class SourceFunctionData {
         convertedResult.requireValue("SourceFunctionData::compile typecheckConvert");
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
-      var valueType = someVal.value().valueTypeOf();
+      var valueType = someVal.value().valueType();
       var consumeResult = AspectConsumeDynamic.get(funcXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();

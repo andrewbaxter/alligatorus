@@ -252,7 +252,7 @@ public final class DynUtil {
             throw new IllegalStateException(
                     "bind_via_target called with absent value in CodeValue; Rust unwraps unconditionally");
         }
-        var vtype = some.value().valueTypeOf();
+        var vtype = some.value().valueType();
         if (cv.code().isNone()) {
             Binding binding = new BindingValue(some.value());
             return EResult.ok(new AspectBind.BindResult(cv.code(), binding));
@@ -285,7 +285,7 @@ public final class DynUtil {
             throw new IllegalStateException(
                     "bind_dynamic_default called with absent value in CodeValue; Rust unwraps unconditionally");
         }
-        var vtype = some.value().valueTypeOf();
+        var vtype = some.value().valueType();
         var dynRes = dynamicConsumeToDynamic(xx, loc, cv);
         if (dynRes.hasErrors()) {
             return dynRes.reerr();
@@ -438,7 +438,7 @@ public final class DynUtil {
         if (!(converted.value() instanceof Opt.Some<Value> convSome)) {
             return EResult.err(loc, "dynamicSet: converted value has no compile-time value");
         }
-        Type valueType = convSome.value().valueTypeOf();
+        Type valueType = convSome.value().valueType();
         var valueToDynRes = AspectConsumeDynamic.get(xx, loc, valueType);
         if (valueToDynRes.hasErrors()) {
             return valueToDynRes.reerr();

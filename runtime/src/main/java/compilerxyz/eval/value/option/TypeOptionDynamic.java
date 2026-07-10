@@ -69,7 +69,7 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.OptionDynamic();
   }
 
@@ -97,7 +97,7 @@ public record TypeOptionDynamic(Type elementType)
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeOptionDynamic::typeCastFrom: CodeValue has no compile-time value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     if (!(sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_IDENTITY) instanceof Opt.Some<Aspect>)) {
       return EResult.err(loc, "Cannot convert to option");
     }

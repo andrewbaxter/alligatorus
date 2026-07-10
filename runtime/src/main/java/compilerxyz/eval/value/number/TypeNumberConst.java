@@ -71,7 +71,7 @@ public record TypeNumberConst()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.NumberConst();
   }
 
@@ -197,9 +197,9 @@ public record TypeNumberConst()
       return EResult.err(loc, op + ": CodeValue has no compile-time value");
     }
     var v = some.value();
-    var typeAspect = AspectNumberConst.getMaybe(xx, v.valueTypeOf());
+    var typeAspect = AspectNumberConst.getMaybe(xx, v.valueType());
     if (!(typeAspect instanceof Opt.Some<AspectNumberConst> a)) {
-      return EResult.err(loc, op + ": type " + v.valueTypeOf().typeDesc() + " is not numeric");
+      return EResult.err(loc, op + ": type " + v.valueType().typeDesc() + " is not numeric");
     }
     return EResult.ok(a.value().aspectNumberConstGet(v));
   }

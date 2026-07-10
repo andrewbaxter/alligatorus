@@ -667,7 +667,7 @@ public final class SourceObjectEmitter {
     return switch (kind) {
       case VALUE -> switch (sourceName) {
         case "type" -> new HostMethodSpec(
-            "valueTypeOf",
+            "valueType",
             JavaMethodDescriptor.fromParts(DESC_TYPE));
         default -> null;
       };

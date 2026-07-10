@@ -113,7 +113,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       return EResult.ok(Code.none(loc));
     }
     var value = cv.value().optUnwrap();
-    var vtype = value.valueTypeOf();
+    var vtype = value.valueType();
     var dropAspect = AspectDropDynamic.getMaybe(xx, vtype);
     if (dropAspect.optIsSome()) {
       return dropAspect.optUnwrap().aspectDropDynamicDrop(xx, loc, cv);
@@ -331,7 +331,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(bodyCv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::if_: body CodeValue has no value");
         }
-        resultType = some.value().valueTypeOf();
+        resultType = some.value().valueType();
       } else {
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, bodyCv));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -354,7 +354,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(elseCv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::if_: else CodeValue has no value");
         }
-        resultType = some.value().valueTypeOf();
+        resultType = some.value().valueType();
       } else {
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, elseCv));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -439,7 +439,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(bodyCv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::match_: case CodeValue has no value");
         }
-        resultType = some.value().valueTypeOf();
+        resultType = some.value().valueType();
       } else {
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(caseXx, loc, resultType, bodyCv));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -468,7 +468,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(fallbackCv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::match_: fallback CodeValue has no value");
         }
-        resultType = some.value().valueTypeOf();
+        resultType = some.value().valueType();
       } else {
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, fallbackCv));
         if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -494,7 +494,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       erb.errPush("TargetDynamic::if_: CodeValue has no value");
       return Optional.empty();
     }
-    var vtype = some.value().valueTypeOf();
+    var vtype = some.value().valueType();
     var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
     if (consumeOpt.isEmpty()) return Optional.empty();
     return erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
@@ -535,7 +535,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic lower CodeValue has no value");
         }
-        var vtype = some.value().valueTypeOf();
+        var vtype = some.value().valueType();
         var liftCell =
             new StageLiftCell(
                 loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
@@ -559,7 +559,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         var id = new BindingId.Local(key);
         var graftType =
             cv.value() instanceof Opt.Some<Value> vSome
-                ? vSome.value().valueTypeOf()
+                ? vSome.value().valueType()
                 : new TypeNullDynamic();
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(
@@ -569,7 +569,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {
           return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
         }
-        var vtype = some.value().valueTypeOf();
+        var vtype = some.value().valueType();
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
@@ -617,7 +617,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       throw new IllegalStateException(
           "Target::maybeBindSub: CodeValue has no value; Rust unwraps unconditionally");
     }
-    var vtype = some.value().valueTypeOf();
+    var vtype = some.value().valueType();
     var bindDynOpt = compilerxyz.gen.AspectBindDynamic.getMaybe(xx, vtype);
     if (!(bindDynOpt instanceof Opt.Some<compilerxyz.gen.AspectBindDynamic> bindDynSome)) {
       return EResult.ok(Opt.none());

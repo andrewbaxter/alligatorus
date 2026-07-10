@@ -165,7 +165,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.SourceObjectDynamic();
   }
 

@@ -128,7 +128,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.NumberDynamic();
   }
 
@@ -354,7 +354,7 @@ public record TypeNumberDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeNumberDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var numConstOpt = AspectNumberConst.getMaybe(xx, sourceType);
     if (numConstOpt instanceof Opt.Some<AspectNumberConst> numConstSome) {
       double numVal = numConstSome.value().aspectNumberConstGet(some.value());

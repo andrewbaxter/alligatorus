@@ -52,7 +52,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.OptionVariantConstructorDynamic();
   }
 

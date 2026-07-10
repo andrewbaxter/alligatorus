@@ -64,7 +64,7 @@ public record TypeMethodDynamic(
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.FunctionDynamic();
   }
 

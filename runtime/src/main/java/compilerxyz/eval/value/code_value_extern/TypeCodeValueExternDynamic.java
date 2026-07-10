@@ -55,7 +55,7 @@ public record TypeCodeValueExternDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.CodeValueExternDynamic();
   }
 
@@ -162,7 +162,7 @@ public record TypeCodeValueExternDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeCodeValueExternDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     if (sourceType.typeAspect(xx, GenIdentities.CODE_VALUE_EXTERN_TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(

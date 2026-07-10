@@ -71,7 +71,7 @@ public record TypeNullDynamic()
   }
 
   @Override
-  public Type valueTypeOf() {
+  public Type valueType() {
     return new TypeRoot.NullDynamic();
   }
 
@@ -155,7 +155,7 @@ public record TypeNullDynamic()
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeNullDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueTypeOf();
+    var sourceType = some.value().valueType();
     var nullRes = AspectNull.get(xx, loc, sourceType);
     if (nullRes.hasErrors()) {
       return nullRes.reerr();
