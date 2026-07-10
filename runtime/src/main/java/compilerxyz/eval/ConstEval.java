@@ -168,7 +168,7 @@ public final class ConstEval {
         }
         var aopt = erb.mustEr(AspectOperatorLt.get(xx, loc, bv.value().valueTypeOf()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().lt(xx, loc, base, ropt.get()));
+        var out = erb.mustEr(aopt.get().aspectOperatorLtLt(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
@@ -184,7 +184,7 @@ public final class ConstEval {
         }
         var aopt = erb.mustEr(AspectOperatorEq.get(xx, loc, bv.value().valueTypeOf()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().eq(xx, loc, base, ropt.get()));
+        var out = erb.mustEr(aopt.get().aspectOperatorEqEq(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
@@ -200,7 +200,7 @@ public final class ConstEval {
         }
         var aopt = erb.mustEr(AspectOperatorAdd.get(xx, loc, bv.value().valueTypeOf()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().add(xx, loc, base, ropt.get()));
+        var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }

@@ -213,7 +213,7 @@ public record TypeUnique()
   }
 
   @Override
-  public EResult<CodeValue> eq(
+  public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var b = extractUnique(base);
     var r = extractUnique(reference);

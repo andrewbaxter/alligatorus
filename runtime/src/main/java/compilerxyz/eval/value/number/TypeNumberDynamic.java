@@ -230,7 +230,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public EResult<CodeValue> add(
+  public EResult<CodeValue> aspectOperatorAddAdd(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();
@@ -243,7 +243,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public EResult<CodeValue> eq(
+  public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();
@@ -257,7 +257,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public EResult<CodeValue> lt(
+  public EResult<CodeValue> aspectOperatorLtLt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();

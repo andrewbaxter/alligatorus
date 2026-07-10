@@ -159,20 +159,20 @@ public record TypeNumberConst()
   }
 
   @Override
-  public EResult<CodeValue> add(
+  public EResult<CodeValue> aspectOperatorAddAdd(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     return binOpNumber(
         xx, loc, base, reference, (a, b) -> new ValueNumberConst(a + b), "add");
   }
 
   @Override
-  public EResult<CodeValue> eq(
+  public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     return binOpNumber(xx, loc, base, reference, (a, b) -> new ValueBoolConst(a == b), "eq");
   }
 
   @Override
-  public EResult<CodeValue> lt(
+  public EResult<CodeValue> aspectOperatorLtLt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     return binOpNumber(xx, loc, base, reference, (a, b) -> new ValueBoolConst(a < b), "lt");
   }
