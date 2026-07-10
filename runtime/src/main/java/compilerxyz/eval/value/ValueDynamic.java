@@ -5,7 +5,7 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;

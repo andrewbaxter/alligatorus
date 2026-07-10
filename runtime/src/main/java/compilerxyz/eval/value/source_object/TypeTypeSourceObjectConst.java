@@ -21,7 +21,7 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.gen.AspectArtifact;

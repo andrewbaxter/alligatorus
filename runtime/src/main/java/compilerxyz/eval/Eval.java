@@ -28,6 +28,7 @@ import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinTree;
+import compilerxyz.gen.Value;
 
 public final class Eval {
 

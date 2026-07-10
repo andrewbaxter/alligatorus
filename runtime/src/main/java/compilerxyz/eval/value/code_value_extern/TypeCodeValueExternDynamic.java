@@ -10,7 +10,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -99,7 +99,7 @@ public record TypeCodeValueExternDynamic()
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new compilerxyz.eval.Erb(loc);
-    if (!(key.value() instanceof Opt.Some<compilerxyz.eval.Value> keySome)) {
+    if (!(key.value() instanceof Opt.Some<compilerxyz.gen.Value> keySome)) {
       return EResult.err(loc, "TypeCodeValueExternDynamic::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(compilerxyz.eval.Eval.extractConstKey(xx, loc, keySome.value()));

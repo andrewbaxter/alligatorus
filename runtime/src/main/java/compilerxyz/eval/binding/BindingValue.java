@@ -5,7 +5,7 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
 public record BindingValue(Value value) implements Binding {

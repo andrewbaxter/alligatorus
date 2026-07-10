@@ -61,7 +61,8 @@ public final class TraitsGen {
             "Value",
             null,
             false,
-            null,
+            "Value",
+            "TYPE_VALUE_DYNAMIC_TYPE_ID",
             TList.of(new Method("type", any, new MethodArgs(TList.of()))));
 
     var typeSpec =

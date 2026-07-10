@@ -15,7 +15,7 @@ import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Scope;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectRecord;

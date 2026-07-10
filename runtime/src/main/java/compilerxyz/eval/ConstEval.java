@@ -38,6 +38,7 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.langhelp.Sources;
+import compilerxyz.gen.Value;
 
 public final class ConstEval {
   private ConstEval() {}

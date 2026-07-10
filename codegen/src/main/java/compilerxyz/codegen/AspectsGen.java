@@ -27,7 +27,7 @@ final class AspectsGen {
   private static final ClassName UNIQUE_BUILTIN =
       ClassName.get("compilerxyz.eval", "Unique", "Builtin");
   private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-  private static final ClassName VALUE = ClassName.get("compilerxyz.eval", "Value");
+  private static final ClassName VALUE = ClassName.get("compilerxyz.gen", "Value");
   private static final ClassName EXPR_CONTEXT =
       ClassName.get("compilerxyz.eval", "ExprContext");
   private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.eval", "QExprId");

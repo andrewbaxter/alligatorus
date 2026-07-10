@@ -11,7 +11,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.safejson.JsonValue;

@@ -26,7 +26,7 @@ public final class PushStructsGen {
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
   private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-  private static final ClassName VALUE = ClassName.get("compilerxyz.eval", "Value");
+  private static final ClassName VALUE = ClassName.get("compilerxyz.gen", "Value");
   private static final ClassName UNIQUE = ClassName.get("compilerxyz.eval", "Unique");
   private static final ClassName UNIQUE_BUILTIN =
       ClassName.get("compilerxyz.eval", "Unique", "Builtin");

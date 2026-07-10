@@ -4,7 +4,7 @@ import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 public record ValueUnique(Unique unique) implements Value, ExporterAny {
   @Override

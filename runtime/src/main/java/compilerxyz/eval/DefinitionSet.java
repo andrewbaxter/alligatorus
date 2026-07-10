@@ -29,6 +29,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.Value;
 
 public final class DefinitionSet implements ExporterAny {
   public @Nullable ArtifactIdSource artifactId;

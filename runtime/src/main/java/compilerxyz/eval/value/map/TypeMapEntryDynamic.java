@@ -13,7 +13,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
@@ -71,7 +71,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // Object references, so the base POP suffices, but the destructuring
     // policy is emitted for correctness when a child type introduces its own
     // drop semantics.
-    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Value> some)) {
+    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.gen.Value> some)) {
       throw new IllegalStateException("TypeMapEntryDynamic::drop: called on absent CodeValue");
     }
     if (!(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)) {

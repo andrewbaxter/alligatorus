@@ -8,7 +8,7 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.Eval;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;

@@ -3,7 +3,7 @@ package compilerxyz.eval.value.null_;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 public record ValueNullConst() implements Value, ExporterAny {
   @Override

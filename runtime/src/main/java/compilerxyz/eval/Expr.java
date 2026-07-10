@@ -4,6 +4,7 @@ import compilerxyz.eval.value.expr.TypeExpr;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.Value;
 
 public record Expr(QExprId loc, Variant variant) implements Value {
 

@@ -5,7 +5,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;

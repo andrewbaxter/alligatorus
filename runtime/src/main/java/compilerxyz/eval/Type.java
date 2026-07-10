@@ -15,6 +15,7 @@ import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.Value;
 
 public interface Type extends Value {
 

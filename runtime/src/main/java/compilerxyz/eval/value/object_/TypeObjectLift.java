@@ -3,7 +3,7 @@ package compilerxyz.eval.value.object_;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import org.jspecify.annotations.Nullable;
 
 @FunctionalInterface

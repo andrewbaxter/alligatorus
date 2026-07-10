@@ -124,7 +124,7 @@ public final class BuiltinTreeGen {
   private static final ClassName TYPE_ERESULT_CONSTRUCTOR_CONST =
       ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
   private static final ClassName CODE_INTERFACE = ClassName.get("compilerxyz.eval", "Code");
-  private static final ClassName VALUE_INTERFACE = ClassName.get("compilerxyz.eval", "Value");
+  private static final ClassName VALUE_INTERFACE = ClassName.get("compilerxyz.gen", "Value");
 
   private static final ClassName UNIQUE_CLASS = ClassName.get("compilerxyz.eval", "Unique");
 
@@ -1064,7 +1064,7 @@ var targetBindSubCls =
                             new NamedTypeRef(
                                 "value",
                                 new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "Value"),
+                                    ClassName.get("compilerxyz.gen", "Value"),
                                     CodeBlock.of("$T.dynamicType()", VALUE_INTERFACE)))),
                         ClassName.get(
                             "compilerxyz.eval.value.code_value_extern", "CodeValueExtern"),
@@ -1083,7 +1083,7 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "type", TypeRef.opaque(ClassName.get("compilerxyz.eval", "Type")))),
-                        ClassName.get("compilerxyz.eval", "Value"),
+                        ClassName.get("compilerxyz.gen", "Value"),
                         CodeBlock.of("$T.dynamicType()", VALUE_INTERFACE),
                         CodeBlock.builder()
                             .addStatement(

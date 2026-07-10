@@ -3,7 +3,7 @@ package compilerxyz.eval.value.number;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 public record ValueNumberConst(double value) implements Value, ExporterAny {
   @Override

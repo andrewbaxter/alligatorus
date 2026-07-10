@@ -10,7 +10,7 @@ import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.expr.TypeExpr;
 import compilerxyz.eval.value.unique.TypeUnique;

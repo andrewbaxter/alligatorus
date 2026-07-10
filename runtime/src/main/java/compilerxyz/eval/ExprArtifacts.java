@@ -4,6 +4,7 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.Value;
 
 public final class ExprArtifacts {
   private ExprArtifacts() {}

@@ -1,7 +1,7 @@
 package compilerxyz.eval.value;
 
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 /**
  * A Value that carries only its Type — no ValueDynamic.Source, no wrapped

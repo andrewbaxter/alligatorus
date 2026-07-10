@@ -185,7 +185,7 @@ public final class SourceObjectEmitter {
       BuiltinInterfaceKind kind) {
     return switch (kind) {
       case TYPE -> INTNAME_TYPE;
-      case VALUE -> JavaInternalName.of("compilerxyz/eval/Value");
+      case VALUE -> JavaInternalName.of("compilerxyz/gen/Value");
       case ASPECT_FIELD -> INTNAME_ASPECT_FIELD;
       case ASPECT_FUNCTION -> JavaInternalName.of("compilerxyz/gen/AspectFunction");
       case ASPECT_DROP_DYNAMIC -> JavaInternalName.of("compilerxyz/gen/AspectDropDynamic");

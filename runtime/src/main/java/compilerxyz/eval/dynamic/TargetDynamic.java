@@ -16,7 +16,7 @@ import compilerxyz.eval.External;
 import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Scope;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;

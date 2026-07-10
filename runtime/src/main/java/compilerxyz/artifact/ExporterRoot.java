@@ -5,7 +5,7 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.eval.value.expr.TypeExpr;

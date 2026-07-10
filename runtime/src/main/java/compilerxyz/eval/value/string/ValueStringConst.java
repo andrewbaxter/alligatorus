@@ -3,7 +3,7 @@ package compilerxyz.eval.value.string;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 public record ValueStringConst(String value) implements Value, ExporterAny {
   @Override

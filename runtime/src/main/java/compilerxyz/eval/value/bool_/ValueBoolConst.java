@@ -3,7 +3,7 @@ package compilerxyz.eval.value.bool_;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Value;
+import compilerxyz.gen.Value;
 
 public record ValueBoolConst(boolean value) implements Value, ExporterAny {
   @Override

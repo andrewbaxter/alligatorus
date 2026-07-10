@@ -10,6 +10,7 @@ import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.gen.Value;
 
 public final class CompileImport {
   private CompileImport() {}
