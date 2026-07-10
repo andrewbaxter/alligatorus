@@ -13,9 +13,9 @@ import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import compilerxyz.gen.Value;
 
 public interface Type extends Value {
 
@@ -48,36 +48,17 @@ public interface Type extends Value {
     }
   }
 
-  default String typeDesc() {
-    throw new AssertionError(
-        "user did not provide a Type::typeDesc method on " + getClass().getName());
-  }
+  String typeDesc();
 
-  default TypeId typeId() {
-    throw new AssertionError(
-        "user did not provide a Type::typeId method on " + getClass().getName());
-  }
+  TypeId typeId();
 
-  default Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    return Opt.none();
-  }
+  Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 
-  default EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    throw new AssertionError(
-        "Type::typeCastTo unreachable for " + getClass().getName()
-            + " (host-only method; predicate typeCanCastTo returned true without an override)");
-  }
+  EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
 
-  default boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return false;
-  }
+  boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
 
-  default boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return false;
-  }
+  boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
-  default EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    throw new AssertionError(
-        "user did not provide a Type::typeCastFrom method on " + getClass().getName());
-  }
+  EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
 }

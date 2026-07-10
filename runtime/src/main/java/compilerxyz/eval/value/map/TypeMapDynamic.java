@@ -536,4 +536,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(Code.of(loc, new CodeDynamic(loc, finalSeq)));
   }
 
+  @Override
+  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+    return false;
+  }
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
 }
