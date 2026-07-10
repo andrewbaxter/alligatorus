@@ -119,7 +119,7 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.LIST_DYNAMIC;
   }
 

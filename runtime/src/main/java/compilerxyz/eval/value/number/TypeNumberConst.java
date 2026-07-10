@@ -95,7 +95,7 @@ public record TypeNumberConst()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.NUMBER_CONST;
   }
 

@@ -242,7 +242,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public compilerxyz.artifact.ArtifactExporter exporter() {
+  public compilerxyz.artifact.ArtifactExporter aspectArtifactExporter() {
     return this;
   }
 

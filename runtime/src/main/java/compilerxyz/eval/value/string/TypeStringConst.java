@@ -85,7 +85,7 @@ public record TypeStringConst()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.STRING_CONST;
   }
 

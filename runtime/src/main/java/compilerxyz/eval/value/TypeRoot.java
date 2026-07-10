@@ -18,7 +18,7 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
   Opt<ExporterRoot> typeRootArtifactExporterOpt();
 
   @Override
-  default ArtifactExporter exporter() {
+  default ArtifactExporter aspectArtifactExporter() {
     if (typeRootArtifactExporterOpt() instanceof Opt.Some<ExporterRoot> some) {
       return some.value();
     }

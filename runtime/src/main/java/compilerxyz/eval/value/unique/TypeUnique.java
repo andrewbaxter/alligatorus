@@ -94,7 +94,7 @@ public record TypeUnique()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.UNIQUE;
   }
 

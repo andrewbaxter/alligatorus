@@ -95,7 +95,7 @@ public record TypeNullDynamic()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.NULL_DYNAMIC;
   }
 

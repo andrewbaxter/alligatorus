@@ -80,7 +80,7 @@ public record TypeBoolConst()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.BOOL_CONST;
   }
 

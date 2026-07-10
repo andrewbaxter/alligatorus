@@ -446,7 +446,7 @@ public final class ExprArtifacts {
         }
         var asp = aspRes.requireValue("ExprArtifacts::exprToArtifact Literal aspect");
         var artRes =
-            asp.exporter()
+            asp.aspectArtifactExporter()
                 .artifactExporterExport(
                     xx, expr.loc(), ArtifactSupport.valueAsExporterAny(value));
         if (artRes.hasErrors()) {

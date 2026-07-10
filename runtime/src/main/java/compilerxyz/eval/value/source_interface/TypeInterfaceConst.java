@@ -105,7 +105,7 @@ public record TypeInterfaceConst(InterfaceData data)
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.SOURCE_INTERFACE_CONST;
   }
 

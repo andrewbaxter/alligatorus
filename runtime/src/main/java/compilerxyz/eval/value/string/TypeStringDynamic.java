@@ -144,7 +144,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.STRING_DYNAMIC;
   }
 

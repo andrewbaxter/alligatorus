@@ -61,7 +61,8 @@ final class AspectsGen {
    * convention). Add each aspect here once its impls and callers have been renamed.
    */
   private static final TSet<String> PREFIXED_ASPECTS = TSet.of(
-      "PostDeserialize");
+      "PostDeserialize",
+      "Artifact");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

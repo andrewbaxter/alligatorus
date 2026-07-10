@@ -91,7 +91,7 @@ public record TypeExpr()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.EXPR;
   }
 

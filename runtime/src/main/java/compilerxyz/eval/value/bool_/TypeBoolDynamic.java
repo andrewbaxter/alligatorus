@@ -107,7 +107,7 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.BOOL_DYNAMIC;
   }
 

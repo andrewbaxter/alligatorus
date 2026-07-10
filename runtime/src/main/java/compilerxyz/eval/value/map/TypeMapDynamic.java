@@ -120,7 +120,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.MAP_DYNAMIC;
   }
 

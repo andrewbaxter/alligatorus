@@ -76,7 +76,7 @@ public record TypeSourceExportsLiftedConst(SourceExportsData set)
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.SOURCE_EXPORTS_LIFTED_CONST;
   }
 

@@ -73,7 +73,7 @@ public record TypeNullConst()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.NULL_CONST;
   }
 

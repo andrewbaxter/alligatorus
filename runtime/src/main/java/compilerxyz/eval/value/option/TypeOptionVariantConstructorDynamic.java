@@ -65,7 +65,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.OPTION_VARIANT_CONSTRUCTOR_DYNAMIC;
   }
 

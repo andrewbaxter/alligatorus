@@ -33,7 +33,7 @@ public final class ArtifactSupport {
       return errsOrEmpty(errors);
     }
     var aspVal = asp.requireValue("ArtifactSupport::exportArtifact aspect");
-    var exporter = aspVal.exporter();
+    var exporter = aspVal.aspectArtifactExporter();
     var art = exporter.artifactExporterExport(xx, loc, valueAsExporterAny(v));
     if (art.hasErrors()) {
       art.drainInto(errors);
@@ -61,7 +61,7 @@ public final class ArtifactSupport {
       return errsOrEmpty(errors);
     }
     var asp = aspRes.requireValue("ArtifactSupport::exporterAnyToArtifactExporter aspect");
-    return EResult.ok(asp.exporter());
+    return EResult.ok(asp.aspectArtifactExporter());
   }
 
   public static EResult<ExporterAny> importArtifact(

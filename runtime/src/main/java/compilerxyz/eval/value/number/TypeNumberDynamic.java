@@ -159,7 +159,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.NUMBER_DYNAMIC;
   }
 

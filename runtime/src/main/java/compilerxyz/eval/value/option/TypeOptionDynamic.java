@@ -106,7 +106,7 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
-  public ArtifactExporter exporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.OPTION_DYNAMIC;
   }
 
