@@ -232,7 +232,8 @@ public record TypeInterfaceConst(InterfaceData data)
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec
-        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome();
+        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
+        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome();
   }
 
   @Override
@@ -255,7 +256,8 @@ public record TypeInterfaceConst(InterfaceData data)
                   ValueDynamic.stack(
                       new compilerxyz.eval.value.interface_spec.TypeInterfaceSpec()))));
     }
-    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
+        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(destType))));
     }
