@@ -187,7 +187,7 @@ public record TypeExpr()
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(
-        new EvalContext.ExternalEntry(key, this, new External.StagedExprCellExternal(cell)));
+        new EvalContext.ExternalEntry(key, this, new External(StagedExprCell.class, cell)));
     return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
   }
 

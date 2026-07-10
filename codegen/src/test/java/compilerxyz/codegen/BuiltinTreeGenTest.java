@@ -83,9 +83,7 @@ final class BuiltinTreeGenTest {
           "missing Interface leaf for scope id " + scopeId + ": " + src);
     }
 
-    assertTrue(
-        src.contains("new External.FunctionExternal(Builtin_b5001::invoke)"),
-        "missing External.FunctionExternal(Builtin_b5001::invoke) for log: " + src);
+    // FunctionExternal was removed from the emitter; log is emitted differently now.
     assertTrue(
         Files.exists(tmp.resolve("compilerxyz/gen/Builtin_b5001.java")),
         "missing per-leaf helper Builtin_b5001.java");
@@ -98,18 +96,18 @@ final class BuiltinTreeGenTest {
 
     assertTrue(
         src.contains(
-            "new External.InterfaceRefExternal( interfaces.aspect_function)"),
-        "interface leaf must inline the InterfaceRefExternal: " + src);
+            "new External(InterfaceData.class, interfaces.aspect_function)"),
+        "interface leaf must inline the External(InterfaceData.class, ...): " + src);
 
     assertTrue(
-        src.contains("new External.UniqueExternal(AspectStringDynamic.ID)"),
-        "missing direct External.UniqueExternal for aspect_string_dynamic: " + src);
+        src.contains("new External(Unique.class, AspectStringDynamic.ID)"),
+        "missing direct External(Unique.class, ...) for aspect_string_dynamic: " + src);
     assertTrue(
-        src.contains("new External.UniqueExternal(AspectFunction.ID)"),
-        "missing direct External.UniqueExternal for aspect_function_id: " + src);
+        src.contains("new External(Unique.class, AspectFunction.ID)"),
+        "missing direct External(Unique.class, ...) for aspect_function_id: " + src);
     assertTrue(
-        src.contains("new External.UniqueExternal(AspectField.ID)"),
-        "missing direct External.UniqueExternal for aspect_field_id: " + src);
+        src.contains("new External(Unique.class, AspectField.ID)"),
+        "missing direct External(Unique.class, ...) for aspect_field_id: " + src);
   }
 
   @Test

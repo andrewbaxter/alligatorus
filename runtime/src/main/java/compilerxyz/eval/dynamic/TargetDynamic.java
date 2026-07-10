@@ -509,7 +509,7 @@ public final class TargetDynamic implements Target {
     var treeExprType = new compilerxyz.eval.value.expr.TypeExpr();
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(
-            treeKey, treeExprType, new External.StagedExprCellExternal(treeCell)));
+            treeKey, treeExprType, new External(StagedExprCell.class, treeCell)));
     var restElements = new TList<CodeDynamic>();
     for (var cv : lowerValues) {
       if (cv.code().isNone()) {
@@ -523,7 +523,7 @@ public final class TargetDynamic implements Target {
             new EvalContext.ExternalEntry(
                 key,
                 new compilerxyz.eval.value.expr.TypeExpr(),
-                new External.StagedExprCellExternal(cell)));
+                new External(StagedExprCell.class, cell)));
         restElements.add(JavaBytecodeUtils.literalNull(loc));
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
@@ -538,7 +538,7 @@ public final class TargetDynamic implements Target {
         var liftId = new BindingId.Local(liftKey);
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(
-                liftKey, vtype, new External.StageLiftCellExternal(liftCell)));
+                liftKey, vtype, new External(StageLiftCell.class, liftCell)));
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
@@ -558,7 +558,7 @@ public final class TargetDynamic implements Target {
                 : new TypeNullDynamic();
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(
-                key, graftType, new External.CodeValueExternExternal(graftCv)));
+                key, graftType, new External(CodeValue.class, graftCv)));
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
       } else {
         if (!(cv.value() instanceof Opt.Some<Value> some)) {

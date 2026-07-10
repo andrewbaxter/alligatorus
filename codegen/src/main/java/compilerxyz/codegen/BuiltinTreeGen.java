@@ -60,10 +60,8 @@ public final class BuiltinTreeGen {
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
   private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
   private static final ClassName EXTERNAL = ClassName.get("compilerxyz.eval", "External");
-  private static final ClassName EXTERNAL_FUNCTION =
-      ClassName.get("compilerxyz.eval", "External", "FunctionExternal");
-  private static final ClassName EXTERNAL_INTERFACE_REF =
-      ClassName.get("compilerxyz.eval", "External", "InterfaceRefExternal");
+  private static final ClassName INTERFACE_DATA =
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
 
   private static final ClassName GEN_BUILTIN_INTERFACES =
       ClassName.get(GEN_PACKAGE, "GenBuiltinInterfaces");
@@ -116,8 +114,7 @@ public final class BuiltinTreeGen {
   private static final ClassName CODE_INTERFACE = ClassName.get("compilerxyz.eval", "Code");
   private static final ClassName VALUE_INTERFACE = ClassName.get("compilerxyz.eval", "Value");
 
-  private static final ClassName EXTERNAL_UNIQUE =
-      ClassName.get("compilerxyz.eval", "External", "UniqueExternal");
+  private static final ClassName UNIQUE_CLASS = ClassName.get("compilerxyz.eval", "Unique");
 
   public sealed interface NodeSpec {}
 
@@ -287,12 +284,13 @@ public final class BuiltinTreeGen {
       case LeafSpec.AspectId ai -> {
         var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
         yield CodeBlock.of(
-            "new $T(new $T($LL), $T.ID, new $T($T.ID))",
+            "new $T(new $T($LL), $T.ID, new $T($T.class, $T.ID))",
             BUILTIN_LEAF_ASPECT_ID,
             BINDING_ID_BUILTIN,
             ai.builtinScopeId(),
             aspectClass,
-            EXTERNAL_UNIQUE,
+            EXTERNAL,
+            UNIQUE_CLASS,
             aspectClass);
       }
       case LeafSpec.Interface ifc ->
@@ -334,14 +332,15 @@ public final class BuiltinTreeGen {
         ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
     return CodeBlock.of(
         "new $T(new $T($LL), ($T) new $T(interfaces.$N),"
-            + " new $T(interfaces.$N))",
+            + " new $T($T.class, interfaces.$N))",
         BUILTIN_LEAF_INTERFACE,
         BINDING_ID_BUILTIN,
         (long) spec.scopeId(),
         TYPE,
         sourceInterfaceConst,
         ifaceHolderFieldName(spec),
-        EXTERNAL_INTERFACE_REF,
+        EXTERNAL,
+        INTERFACE_DATA,
         ifaceHolderFieldName(spec));
   }
 

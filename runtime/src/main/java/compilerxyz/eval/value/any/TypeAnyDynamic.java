@@ -245,7 +245,7 @@ public record TypeAnyDynamic()
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(new EvalContext.ExternalEntry(
-        key, this, new External.TypeExternal(resolvedType)));
+        key, this, new External(Type.class, resolvedType)));
     var bindingUse = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id);
     return EResult.ok(
         new CodeValue(

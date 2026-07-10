@@ -9,6 +9,7 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
 import compilerxyz.eval.Value;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.expr.TypeExpr;
@@ -83,38 +84,35 @@ public final class ExternalCodec {
   }
 
   private static EResult<Value> externalToValue(QExprId loc, External ext) {
-    return switch (ext) {
-      case External.TypeExternal te -> {
-        if (!(te.type() instanceof Value tv)) {
-          yield EResult.err(loc, "ExternalCodec: TypeExternal.type is not a Value");
-        }
-        yield EResult.ok(tv);
+    var host = ext.hostValue();
+    if (host instanceof StagedExprCell cell) {
+      var stored = cell.peek();
+      if (stored == null) {
+        return EResult.err(loc, "ExternalCodec: captured StagedExprCell already consumed");
       }
-      case External.UniqueExternal ue -> EResult.ok(new ValueUnique(ue.unique()));
-      case External.StagedExprCellExternal se -> {
-        var stored = se.cell().peek();
-        if (stored == null) {
-          yield EResult.err(loc, "ExternalCodec: captured StagedExprCell already consumed");
-        }
-        if (!(stored instanceof Value sv)) {
-          yield EResult.err(
-              loc,
-              "ExternalCodec: captured StagedExprCell holds non-Value: "
-                  + stored.getClass().getSimpleName());
-        }
-        yield EResult.ok(sv);
+      if (!(stored instanceof Value sv)) {
+        return EResult.err(
+            loc,
+            "ExternalCodec: captured StagedExprCell holds non-Value: "
+                + stored.getClass().getSimpleName());
       }
-      default ->
-          EResult.err(
-              loc,
-              "ExternalCodec: unsupported External variant for artifact round-trip: "
-                  + ext.getClass().getSimpleName());
-    };
+      return EResult.ok(sv);
+    }
+    if (host instanceof Unique u) {
+      return EResult.ok(new ValueUnique(u));
+    }
+    if (host instanceof Value tv) {
+      return EResult.ok(tv);
+    }
+    return EResult.err(
+        loc,
+        "ExternalCodec: unsupported External host for artifact round-trip: "
+            + (host == null ? "null" : host.getClass().getSimpleName()));
   }
 
   private static EResult<External> valueToExternal(QExprId loc, Type type, Value value) {
     if (type instanceof TypeExpr) {
-      return EResult.ok(new External.StagedExprCellExternal(new StagedExprCell(value)));
+      return EResult.ok(new External(StagedExprCell.class, new StagedExprCell(value)));
     }
     if (type instanceof TypeUnique) {
       if (!(value instanceof ValueUnique vu)) {
@@ -123,10 +121,10 @@ public final class ExternalCodec {
             "ExternalCodec: imported value for TypeUnique is not ValueUnique: "
                 + value.getClass().getSimpleName());
       }
-      return EResult.ok(new External.UniqueExternal(vu.unique()));
+      return EResult.ok(new External(Unique.class, vu.unique()));
     }
     if (value instanceof Type wrappedType) {
-      return EResult.ok(new External.TypeExternal(wrappedType));
+      return EResult.ok(new External(Type.class, wrappedType));
     }
     return EResult.err(
         loc,

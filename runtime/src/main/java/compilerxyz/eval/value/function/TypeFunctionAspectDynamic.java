@@ -132,7 +132,7 @@ public record TypeFunctionAspectDynamic()
     var uniqueKey = new JavaBytecodeBindingKey();
     var uniqueId = new BindingId.Local(uniqueKey);
     xx.vx.externals.add(
-        new EvalContext.ExternalEntry(uniqueKey, this, new External.UniqueExternal(auq)));
+        new EvalContext.ExternalEntry(uniqueKey, this, new External(Unique.class, auq)));
     var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, uniqueId);
 
     var seq = new JavaBytecodeSequence();
