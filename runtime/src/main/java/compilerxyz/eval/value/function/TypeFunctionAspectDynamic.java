@@ -121,7 +121,7 @@ public record TypeFunctionAspectDynamic()
     var subjectDynRes =
         subjectConsumeRes
             .requireValue("aspect_lookup subject consume")
-            .toDynamic(xx, loc, subjectConverted);
+            .aspectConsumeDynamicToDynamic(xx, loc, subjectConverted);
     if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
     var subjectDyn = subjectDynRes.requireValue("aspect_lookup subject toDynamic");
     var xxDyn = xxCv.code().dynamic();

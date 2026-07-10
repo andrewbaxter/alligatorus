@@ -118,7 +118,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE;
   }
 
@@ -175,7 +175,7 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 
@@ -277,15 +277,15 @@ public record TypeNumberDynamic()
 
   private EResult<JavaBytecodeSequence> binOpSeq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    var baseCodeRes = toDynamic(xx, loc, base);
+    var baseCodeRes = aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseCodeRes.hasErrors()) return baseCodeRes.reerr();
     var refCvRes = typeCastFrom(xx, loc, reference);
     if (refCvRes.hasErrors()) return refCvRes.reerr();
-    var refCodeRes = toDynamic(xx, loc, refCvRes.requireValue("typeCastFrom"));
+    var refCodeRes = aspectConsumeDynamicToDynamic(xx, loc, refCvRes.requireValue("typeCastFrom"));
     if (refCodeRes.hasErrors()) return refCodeRes.reerr();
     var seq = new JavaBytecodeSequence();
-    seq.add(baseCodeRes.requireValue("toDynamic(base)"));
-    seq.add(refCodeRes.requireValue("toDynamic(reference)"));
+    seq.add(baseCodeRes.requireValue("aspectConsumeDynamicToDynamic(base)"));
+    seq.add(refCodeRes.requireValue("aspectConsumeDynamicToDynamic(reference)"));
     return EResult.ok(seq);
   }
 

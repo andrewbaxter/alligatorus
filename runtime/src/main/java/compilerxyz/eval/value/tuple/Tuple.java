@@ -163,7 +163,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
@@ -695,7 +695,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var carry = cv.code();
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Tuple::toDynamic: CodeValue has no value");
@@ -740,7 +740,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         continue;
       }
       var toDyn = lookup.requireValue("Tuple::toDynamic consume aspect");
-      var lowered = toDyn.toDynamic(xx, loc, elemCv);
+      var lowered = toDyn.aspectConsumeDynamicToDynamic(xx, loc, elemCv);
       if (lowered.hasErrors()) {
         if (errors == null) errors = new TList<>();
         lowered.drainInto(errors);

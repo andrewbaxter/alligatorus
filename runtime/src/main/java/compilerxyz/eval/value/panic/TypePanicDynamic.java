@@ -66,7 +66,7 @@ public record TypePanicDynamic()
     if (toDynamicOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
-    var msgCodeOpt = erb.mustEr(toDynamicOpt.get().toDynamic(xx, loc, converted));
+    var msgCodeOpt = erb.mustEr(toDynamicOpt.get().aspectConsumeDynamicToDynamic(xx, loc, converted));
     if (msgCodeOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }

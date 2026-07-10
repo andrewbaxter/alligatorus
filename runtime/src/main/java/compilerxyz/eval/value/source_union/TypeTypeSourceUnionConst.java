@@ -65,7 +65,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -138,7 +138,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(

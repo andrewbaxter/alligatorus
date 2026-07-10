@@ -388,7 +388,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, t);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     return EResult.ok(
-        consumeRes.requireValue("jvmDescOf consume").consumeDynamicJvmClass());
+        consumeRes.requireValue("jvmDescOf consume").aspectConsumeDynamicConsumeDynamicJvmClass());
   }
 
   @Override

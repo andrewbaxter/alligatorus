@@ -165,7 +165,7 @@ public record TypeObjectConst(
       if (rule.matches(xx, destType)) {
         CodeValue materialized = cv;
         if (cv.code().dynamic() == null) {
-          var dynRes = toDynamic(xx, loc, cv);
+          var dynRes = aspectConsumeDynamicToDynamic(xx, loc, cv);
           if (dynRes.hasErrors()) return dynRes.reerr();
           materialized =
               new CodeValue(
@@ -203,12 +203,12 @@ public record TypeObjectConst(
   }
 
   @Override
-  public JavaDataDescriptor consumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return JavaDataDescriptor.fromClass(externalHostClass);
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
@@ -372,7 +372,7 @@ public record TypeObjectConst(
   }
 
   private EResult<CodeValue> materializeAsDynamic(ExprContext xx, QExprId loc, CodeValue self) {
-    var dynRes = toDynamic(xx, loc, self);
+    var dynRes = aspectConsumeDynamicToDynamic(xx, loc, self);
     if (dynRes.hasErrors()) return dynRes.reerr();
     var dyn = dynRes.requireValue(typeDesc + "::materializeAsDynamic");
     var target =

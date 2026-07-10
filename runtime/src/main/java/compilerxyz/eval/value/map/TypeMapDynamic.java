@@ -88,7 +88,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
@@ -242,7 +242,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn == null) {
       throw new IllegalStateException(
@@ -257,19 +257,19 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Type elementType() {
+  public Type aspectIterableElementType() {
     return new TypeMapEntryDynamic(keyType, valueType);
   }
 
   @Override
-  public EResult<CodeValue> foreach(
+  public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
     var baseConsumeRes = AspectConsumeDynamic.get(xx, loc, this);
     if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
     var baseDynRes =
-        baseConsumeRes.requireValue("AspectConsumeDynamic.get").toDynamic(xx, loc, base);
+        baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseDynRes.hasErrors()) return baseDynRes.reerr();
-    var baseDyn = baseDynRes.requireValue("toDynamic(base)");
+    var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
 
     var mapName = JavaInternalName.of("java/util/Map");
     var setName = JavaInternalName.of("java/util/Set");
@@ -387,7 +387,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
       if (keyConvOpt.isEmpty()) return EResult.errs(erb.errors());
-      var keyCodeOpt = erb.mustEr(keyToDynamic.toDynamic(xx, loc, keyConvOpt.get()));
+      var keyCodeOpt = erb.mustEr(keyToDynamic.aspectConsumeDynamicToDynamic(xx, loc, keyConvOpt.get()));
       if (keyCodeOpt.isEmpty()) return EResult.errs(erb.errors());
       CodeValue entryCv;
       switch (fieldVal) {
@@ -410,7 +410,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       }
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, valueType, entryCv));
       if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-      var jsValOpt = erb.mustEr(valueToDynamic.toDynamic(xx, loc, convertedOpt.get()));
+      var jsValOpt = erb.mustEr(valueToDynamic.aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.get()));
       if (jsValOpt.isEmpty()) return EResult.errs(erb.errors());
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
       seq.add(keyCodeOpt.get());

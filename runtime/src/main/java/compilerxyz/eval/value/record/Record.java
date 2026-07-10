@@ -170,7 +170,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     var slotInfo = computeSlotInfo(fields);
     var klass = CompositeClassEmitter.getOrEmit(slotInfo.sortedTypes());
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of(klass.getName().replace('.', '/')));
@@ -765,7 +765,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var carry = cv.code();
     if (base instanceof Opt.Some<RecordBaseDynamic> some) {
       return some.value().recordBaseToDynamic(loc, carry);
@@ -835,7 +835,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                                 + ") is missing aspect AspectConsumeDynamic"))));
             continue;
           }
-          var lowered = toDynSome.value().toDynamic(xx, loc, elemCv);
+          var lowered = toDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, elemCv);
           if (lowered.hasErrors()) {
             if (errors == null) errors = new TList<>();
             lowered.drainInto(errors);

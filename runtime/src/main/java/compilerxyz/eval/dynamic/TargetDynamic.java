@@ -497,7 +497,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var vtype = some.value().valueTypeOf();
     var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
     if (consumeOpt.isEmpty()) return Optional.empty();
-    return erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
+    return erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
   }
 
   @Override
@@ -546,7 +546,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
                 liftKey, vtype, new External(StageLiftCell.class, liftCell)));
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
-        var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
+        var innerJsOpt = erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
         restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, liftId));
         restElements.add(innerJsOpt.get());
@@ -572,7 +572,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         var vtype = some.value().valueTypeOf();
         var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
-        var innerJsOpt = erb.mustEr(consumeOpt.get().toDynamic(xx, loc, cv));
+        var innerJsOpt = erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
         restElements.add(innerJsOpt.get());
       }

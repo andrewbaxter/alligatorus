@@ -209,7 +209,7 @@ public final class Eval {
         return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
       }
       var consume = consumeRes.requireValue("Eval::eval consume aspect");
-      var dynamicRes = consume.toDynamic(xx, rootLoc, cv);
+      var dynamicRes = consume.aspectConsumeDynamicToDynamic(xx, rootLoc, cv);
       if (dynamicRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull());
       }

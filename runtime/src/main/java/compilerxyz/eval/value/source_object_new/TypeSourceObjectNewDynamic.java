@@ -133,7 +133,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
     compilerxyz.eval.dynamic.JavaDataDescriptor underlyingDesc =
         underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-            ? underlyingConsume.consumeDynamicJvmClass()
+            ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
             : compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT;
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(

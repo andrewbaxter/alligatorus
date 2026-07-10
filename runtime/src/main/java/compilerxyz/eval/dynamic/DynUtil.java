@@ -65,7 +65,7 @@ public final class DynUtil {
     private static EResult<JavaDataDescriptor> jvmDescFor(ExprContext xx, QExprId loc, Type t) {
         var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
-        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").consumeDynamicJvmClass());
+        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicConsumeDynamicJvmClass());
     }
 
     public record CallArgElement(CodeDynamic code, JavaDataDescriptor jvmDesc) {}
@@ -140,12 +140,12 @@ public final class DynUtil {
         var consumeRes = AspectConsumeDynamic.get(xx, loc, elemType);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
         var consume = consumeRes.requireValue("DynUtil::elementToDyn consume");
-        var dynRes = consume.toDynamic(xx, loc, elemCv);
+        var dynRes = consume.aspectConsumeDynamicToDynamic(xx, loc, elemCv);
         if (dynRes.hasErrors()) return dynRes.reerr();
         return EResult.ok(
                 new CallArgElement(
                         dynRes.requireValue("DynUtil::elementToDyn toDynamic"),
-                        consume.consumeDynamicJvmClass()));
+                        consume.aspectConsumeDynamicConsumeDynamicJvmClass()));
     }
 
 
@@ -444,7 +444,7 @@ public final class DynUtil {
             return valueToDynRes.reerr();
         }
         var valueToDyn = valueToDynRes.requireValue("DynUtil::dynamicSet consume aspect");
-        var valueCodeRes = valueToDyn.toDynamic(xx, loc, converted);
+        var valueCodeRes = valueToDyn.aspectConsumeDynamicToDynamic(xx, loc, converted);
         if (valueCodeRes.hasErrors()) {
             return valueCodeRes.reerr();
         }
@@ -555,7 +555,7 @@ public final class DynUtil {
         var argDyn =
                 consumeRes
                         .requireValue("DynUtil::destructurePositional arg consume")
-                        .toDynamic(xx, loc, converted);
+                        .aspectConsumeDynamicToDynamic(xx, loc, converted);
         if (argDyn.hasErrors()) return argDyn.reerr();
         return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
     }
@@ -575,7 +575,7 @@ public final class DynUtil {
             var elemDyn =
                     consumeRes
                             .requireValue("DynUtil::destructurePositional consume")
-                            .toDynamic(xx, loc, elemCv);
+                            .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
             if (elemDyn.hasErrors()) return elemDyn.reerr();
             out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
         }

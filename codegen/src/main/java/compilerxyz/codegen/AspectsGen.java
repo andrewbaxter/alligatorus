@@ -72,7 +72,10 @@ final class AspectsGen {
       "Record",
       "Tuple",
       "Union",
-      "DropDynamicLight");
+      "DropDynamicLight",
+      "ConsumeDynamic",
+      "MapDynamic",
+      "Iterable");
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
 

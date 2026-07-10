@@ -244,7 +244,7 @@ public final class SourceObjectInterfaceMethodImplData {
       var consume =
           consumeResult.requireValue(
               "SourceObjectInterfaceMethodImplData::compile consume aspect");
-      var dynResult = consume.toDynamic(methodXx, rootLoc, convertedCv);
+      var dynResult = consume.aspectConsumeDynamicToDynamic(methodXx, rootLoc, convertedCv);
       if (dynResult.hasErrors()) {
         return dynResult.reerr();
       }

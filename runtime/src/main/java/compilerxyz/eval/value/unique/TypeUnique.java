@@ -65,7 +65,7 @@ public record TypeUnique()
   public static final BindingId UNIQUE_EQ_FN_SCOPE_ID = new BindingId.Builtin(7021);
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class);
   }
 
@@ -199,7 +199,7 @@ public record TypeUnique()
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn == null) {
       return EResult.err(loc, "TypeUnique::toDynamic: CodeValue has no dynamic code");
@@ -221,9 +221,9 @@ public record TypeUnique()
       return EResult.ok(
           new CodeValue(Code.none(loc), Opt.some(new ValueBoolConst(bs.value().equals(rs.value())))));
     }
-    var baseDyn = toDynamic(xx, loc, base);
+    var baseDyn = aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: base lowering failed");
-    var refDyn = toDynamic(xx, loc, reference);
+    var refDyn = aspectConsumeDynamicToDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
     var call =
         compilerxyz.gen.GenDynMethods.UNIQUE_EQ_TYPE.emitInvocation(

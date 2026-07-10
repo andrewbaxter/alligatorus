@@ -246,7 +246,7 @@ public final class SourceObjectEmitter {
 
     JavaDataDescriptor dataFieldDesc;
     if (data.underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume) {
-      dataFieldDesc = underlyingConsume.consumeDynamicJvmClass();
+      dataFieldDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
     } else {
       dataFieldDesc = JvmConstants.DESC_OBJECT;
     }
@@ -419,7 +419,7 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.emitMethodMethod: method '" + method.name
               + "' has no compiledArgSlots (finish ordering violation)");
     }
-    var retDesc = retConsume.consumeDynamicJvmClass();
+    var retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
     var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
     for (var s : argSlots) argDescs.add(s.jvmDesc());
     var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
@@ -450,7 +450,7 @@ public final class SourceObjectEmitter {
     }
     JavaDataDescriptor dataFieldDesc =
         underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-            ? underlyingConsume.consumeDynamicJvmClass()
+            ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
             : JvmConstants.DESC_OBJECT;
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
@@ -557,7 +557,7 @@ public final class SourceObjectEmitter {
     var jvmParamWides = new TList<Boolean>();
     if (isArgMethod) {
       var argRecordConsume = (compilerxyz.gen.AspectConsumeDynamic) ifaceMethod.argType;
-      var argDesc = argRecordConsume.consumeDynamicJvmClass();
+      var argDesc = argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
       jvmParamKeys.add(selfId.key());
       jvmParamWides.add(slotWidth(argDesc) == 2);
     } else {
@@ -568,7 +568,7 @@ public final class SourceObjectEmitter {
       }
       for (int i = 0; i < argParamIds.size(); i++) {
         var argConsume = (compilerxyz.gen.AspectConsumeDynamic) argParamTypes.get(i);
-        var argDesc = argConsume.consumeDynamicJvmClass();
+        var argDesc = argConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
         jvmParamKeys.add(argParamIds.get(i).key());
         jvmParamWides.add(slotWidth(argDesc) == 2);
       }
@@ -598,7 +598,7 @@ public final class SourceObjectEmitter {
     if (!isArgMethod) {
       JavaDataDescriptor innerDesc =
           underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-              ? underlyingConsume.consumeDynamicJvmClass()
+              ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
               : JvmConstants.DESC_OBJECT;
       seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
       seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, innerDesc));
@@ -882,7 +882,7 @@ public final class SourceObjectEmitter {
           null,
           INTNAME_ASPECT_BIND_DYNAMIC),
       new InlineHelperSpec(
-          "toDynamic",
+          "aspectConsumeDynamicToDynamic",
           JavaMethodDescriptor.fromParts(
               DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
           "sourceObjectToDynamic",
@@ -995,7 +995,7 @@ public final class SourceObjectEmitter {
           null,
           null),
       new InlineHelperSpec(
-          "consumeDynamicJvmClass",
+          "aspectConsumeDynamicConsumeDynamicJvmClass",
           JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromClass(JavaDataDescriptor.class)),
           "sourceObjectConsumeDynamicJvmClass",
@@ -1160,7 +1160,7 @@ public final class SourceObjectEmitter {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: argRecordType does not implement AspectConsumeDynamic");
       }
-      jvmParamDescs.add(argRecordConsume.consumeDynamicJvmClass());
+      jvmParamDescs.add(argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass());
     } else {
       var argParamTypes = m.compiledArgParamTypes;
       if (argParamTypes == null) {
@@ -1173,7 +1173,7 @@ public final class SourceObjectEmitter {
               "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
                   + argType.typeDesc() + " does not implement AspectConsumeDynamic");
         }
-        jvmParamDescs.add(argConsume.consumeDynamicJvmClass());
+        jvmParamDescs.add(argConsume.aspectConsumeDynamicConsumeDynamicJvmClass());
       }
     }
     JavaDataDescriptor retDesc;
@@ -1182,7 +1182,7 @@ public final class SourceObjectEmitter {
       if (spec != null) {
         retDesc = returnDescOf(spec.hostDescriptor());
       } else if (ifaceMethod.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
-        retDesc = retConsume.consumeDynamicJvmClass();
+        retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
       } else {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
@@ -1190,7 +1190,7 @@ public final class SourceObjectEmitter {
     } else if (ifaceMethod.hostMethodDescriptor != null) {
       retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor);
     } else if (ifaceMethod.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
-      retDesc = retConsume.consumeDynamicJvmClass();
+      retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
     } else {
       throw new IllegalStateException(
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");

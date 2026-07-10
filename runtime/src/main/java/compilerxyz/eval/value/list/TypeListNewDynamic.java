@@ -80,7 +80,7 @@ public record TypeListNewDynamic(Type elementType)
         var dynRes =
             consumeRes
                 .requireValue("AspectConsumeDynamic.get")
-                .toDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
+                .aspectConsumeDynamicToDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
         if (dynRes.hasErrors()) return dynRes.reerr();
         dynamicElements.add(dynRes.requireValue("toDynamic"));
       }
@@ -92,7 +92,7 @@ public record TypeListNewDynamic(Type elementType)
       var dynRes =
           consumeRes
               .requireValue("AspectConsumeDynamic.get")
-              .toDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
+              .aspectConsumeDynamicToDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
       if (dynRes.hasErrors()) return dynRes.reerr();
       dynamicElements.add(dynRes.requireValue("toDynamic"));
     }

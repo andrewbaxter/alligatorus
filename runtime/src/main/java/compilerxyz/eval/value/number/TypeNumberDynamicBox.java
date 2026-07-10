@@ -66,7 +66,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"));
   }
@@ -112,7 +112,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 

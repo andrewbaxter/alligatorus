@@ -43,7 +43,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public JavaDataDescriptor consumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/EResult"));
   }
 
@@ -121,7 +121,7 @@ public record TypeEResultDynamic(Type elementType)
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
                   JavaDataDescriptor.fromClass(String.class))));
       if (elementType instanceof AspectConsumeDynamic elemConsume) {
-        var elemDesc = elemConsume.consumeDynamicJvmClass();
+        var elemDesc = elemConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
         if (elemDesc.value().startsWith("L")
             && !elemDesc.value().equals("Ljava/lang/Object;")) {
           seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
@@ -153,7 +153,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn == null) {
       throw new IllegalStateException(

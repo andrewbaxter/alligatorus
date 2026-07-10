@@ -411,7 +411,7 @@ public final class ConstEval {
     var iterOpt = erb.mustEr(AspectIterable.get(xx, loc, baseType));
     if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
     var iterable = iterOpt.get();
-    var elementType = iterable.elementType();
+    var elementType = iterable.aspectIterableElementType();
     var elemBindRes = AspectElementUseDynamicBind.get(xx, loc, elementType);
     if (elemBindRes.hasErrors()) return elemBindRes.reerr();
     var elementScopeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
@@ -424,7 +424,7 @@ public final class ConstEval {
     var childXx = xx.child(childScope);
     var bodyOpt = erb.mustEr(constEval(childXx, e.body()));
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
-    var out = erb.mustEr(iterable.foreach(xx, loc, base, elementScopeId, bodyOpt.get()));
+    var out = erb.mustEr(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyOpt.get()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(out.get());
   }

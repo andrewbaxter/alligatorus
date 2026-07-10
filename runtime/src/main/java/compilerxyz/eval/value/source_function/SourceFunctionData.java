@@ -190,7 +190,7 @@ public final class SourceFunctionData {
         return consumeResult.reerr();
       }
       var consume = consumeResult.requireValue("SourceFunctionData::compile consume aspect");
-      var dynResult = consume.toDynamic(funcXx, rootLoc, convertedCv);
+      var dynResult = consume.aspectConsumeDynamicToDynamic(funcXx, rootLoc, convertedCv);
       if (dynResult.hasErrors()) {
         return dynResult.reerr();
       }
@@ -237,7 +237,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return some.value().consumeDynamicJvmClass();
+      return some.value().aspectConsumeDynamicConsumeDynamicJvmClass();
     }
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
@@ -247,7 +247,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return EResult.ok(some.value().consumeDynamicJvmClass());
+      return EResult.ok(some.value().aspectConsumeDynamicConsumeDynamicJvmClass());
     }
     return EResult.ok(
         compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(

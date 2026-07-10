@@ -50,7 +50,7 @@ public record TypeBoolConst()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -125,7 +125,7 @@ public record TypeBoolConst()
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some && some.value() instanceof ValueBoolConst v) {
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.literalBool(loc, v.value()));

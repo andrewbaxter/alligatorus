@@ -255,12 +255,12 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 
   @Override
-  public JavaDataDescriptor consumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return jvmClassDesc;
   }
 

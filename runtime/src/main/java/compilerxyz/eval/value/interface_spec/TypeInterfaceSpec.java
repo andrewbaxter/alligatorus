@@ -51,12 +51,12 @@ public record TypeInterfaceSpec()
   }
 
   @Override
-  public JavaDataDescriptor consumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return JavaDataDescriptor.fromInternalName(INTERNAL_NAME);
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 

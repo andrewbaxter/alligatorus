@@ -105,7 +105,7 @@ public record TypeFunctionDynamic(
     }
     seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
     if (ret instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
-      var retDesc = retConsume.consumeDynamicJvmClass();
+      var retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
       var d = retDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())
           && d.charAt(0) == 'L') {
@@ -116,7 +116,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor consumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -198,7 +198,7 @@ public record TypeFunctionDynamic(
         var elemDyn =
             consumeRes
                 .requireValue("TypeFunctionDynamic::destructure consume")
-                .toDynamic(xx, loc, elemCv);
+                .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
         if (elemDyn.hasErrors()) return elemDyn.reerr();
         out.add(elemDyn.requireValue("TypeFunctionDynamic::destructure elem toDynamic"));
       }
@@ -209,7 +209,7 @@ public record TypeFunctionDynamic(
     var argDyn =
         consumeRes
             .requireValue("TypeFunctionDynamic::call arg consume")
-            .toDynamic(xx, loc, converted);
+            .aspectConsumeDynamicToDynamic(xx, loc, converted);
     if (argDyn.hasErrors()) return argDyn.reerr();
     return EResult.ok(TList.of(argDyn.requireValue("TypeFunctionDynamic::call arg")));
   }
@@ -257,7 +257,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(

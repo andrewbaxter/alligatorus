@@ -172,7 +172,7 @@ public final class SourceDataMethodData {
         return consumeResult.reerr();
       }
       var consume = consumeResult.requireValue("SourceDataMethodData::compile consume aspect");
-      var dynResult = consume.toDynamic(methodXx, rootLoc, convertedCv);
+      var dynResult = consume.aspectConsumeDynamicToDynamic(methodXx, rootLoc, convertedCv);
       if (dynResult.hasErrors()) {
         return dynResult.reerr();
       }

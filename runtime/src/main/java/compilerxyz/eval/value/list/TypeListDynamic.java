@@ -83,7 +83,7 @@ public record TypeListDynamic(Type elementType)
 
 
   @Override
-  public JavaDataDescriptor consumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/util/TList"));
   }
 
@@ -256,7 +256,7 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public EResult<CodeDynamic> toDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn == null) {
       throw new IllegalStateException(
@@ -271,19 +271,19 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public Type elementType() {
+  public Type aspectIterableElementType() {
     return elementType;
   }
 
   @Override
-  public EResult<CodeValue> foreach(
+  public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
     var baseConsumeRes = AspectConsumeDynamic.get(xx, loc, this);
     if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
     var baseDynRes =
-        baseConsumeRes.requireValue("AspectConsumeDynamic.get").toDynamic(xx, loc, base);
+        baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseDynRes.hasErrors()) return baseDynRes.reerr();
-    var baseDyn = baseDynRes.requireValue("toDynamic(base)");
+    var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
 
     var iterableName = JavaInternalName.of("java/lang/Iterable");
     var iteratorName = JavaInternalName.of("java/util/Iterator");
@@ -310,7 +310,7 @@ public record TypeListDynamic(Type elementType)
     var decodeSeq = new JavaBytecodeSequence();
     var elemConsumeOpt = AspectConsumeDynamic.getMaybe(xx, elementType);
     if (elemConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> elemConsumeSome) {
-      var elemDesc = elemConsumeSome.value().consumeDynamicJvmClass();
+      var elemDesc = elemConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass();
       var d = elemDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);

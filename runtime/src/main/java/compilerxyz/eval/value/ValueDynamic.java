@@ -125,7 +125,7 @@ public record ValueDynamic(Source source, Type type_) implements Value {
                   + t
                   + " is not AspectConsumeDynamic; cannot determine JVM stack size");
         }
-        var d = acd.consumeDynamicJvmClass().value();
+        var d = acd.aspectConsumeDynamicConsumeDynamicJvmClass().value();
         var c = d.charAt(0);
         return new Expr(c == 'D' || c == 'J' ? 2 : 1);
       }

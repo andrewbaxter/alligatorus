@@ -85,7 +85,7 @@ public final class CompositeClassEmitter {
       throw new IllegalStateException(
           "CompositeClassEmitter: type (" + t.typeDesc() + ") does not directly implement AspectConsumeDynamic");
     }
-    return consume.consumeDynamicJvmClass();
+    return consume.aspectConsumeDynamicConsumeDynamicJvmClass();
   }
 
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
