@@ -401,8 +401,12 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                   deps.add(m.argType());
                   deps.add(m.retType());
                   for (var ce : m.capturedExternals()) {
-                    deps.add(ce.typeArtifact());
-                    deps.add(ce.valueArtifact());
+                    switch (ce) {
+                      case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
+                      case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
+                      case ArtifactExternal.StagedExpr ignored -> {}
+                      case ArtifactExternal.Unique ignored -> {}
+                    }
                   }
                 }
                 for (var impl : body.interfaceImpls()) {
@@ -411,8 +415,12 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                   }
                   for (var mi : impl.methodImpls()) {
                     for (var ce : mi.capturedExternals()) {
-                      deps.add(ce.typeArtifact());
-                      deps.add(ce.valueArtifact());
+                      switch (ce) {
+                        case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
+                        case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
+                        case ArtifactExternal.StagedExpr ignored -> {}
+                        case ArtifactExternal.Unique ignored -> {}
+                      }
                     }
                   }
                 }

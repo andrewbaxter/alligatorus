@@ -263,8 +263,12 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                 deps.add(body.argType());
                 deps.add(body.retType());
                 for (var ext : body.capturedExternals()) {
-                  deps.add(ext.typeArtifact());
-                  deps.add(ext.valueArtifact());
+                  switch (ext) {
+                    case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
+                    case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
+                    case ArtifactExternal.StagedExpr ignored -> {}
+                    case ArtifactExternal.Unique ignored -> {}
+                  }
                 }
                 ArtifactSupport.ImportIndependentResult.Finalizer fin =
                     (xx2, loc2) -> {
