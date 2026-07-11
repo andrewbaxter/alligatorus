@@ -51,7 +51,6 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.gen.AspectType;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
@@ -239,8 +238,7 @@ public record TypeStringDynamic()
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return AspectStringDynamic.getMaybe(xx, destType).optIsSome()
-        || destType.typeAspect(xx, AspectType.ID).optIsSome();
+    return AspectStringDynamic.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
