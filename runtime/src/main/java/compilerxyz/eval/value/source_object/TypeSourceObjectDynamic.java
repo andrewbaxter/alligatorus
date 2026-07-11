@@ -239,14 +239,15 @@ public final class TypeSourceObjectDynamic
     String fieldName = null;
     Type argType = null;
     Type retType = null;
-    for (var m : methods) {
+    for (int i = 0; i < methods.size(); i++) {
+      var m = methods.get(i);
       if (m.name.equals(keyName)) {
         if (m.retType == null) {
           throw new IllegalStateException("Data type method missing return type");
         }
         retType = m.retType;
         argType = m.argType != null ? m.argType : new TypeNullDynamic();
-        fieldName = m.fieldName;
+        fieldName = compilerxyz.eval.dynamic.SourceObjectEmitter.methodMethodName(i);
         break;
       }
     }
