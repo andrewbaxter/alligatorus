@@ -8,7 +8,6 @@ import compilerxyz.util.TList;
 public record InterfaceMethodSpec(
     String name,
     String hostMethodName,
-    String fieldName,
     Opt<Type> argType,
     Type retType,
     JavaMethodDescriptor jvmDescriptor,

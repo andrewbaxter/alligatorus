@@ -250,8 +250,10 @@ public final class TypeSourceObjectDynamic
     }
     if (fieldName == null) {
       outer:
-      for (var impl : interfaceImpls) {
-        for (var method : impl.interface_.methods) {
+      for (int implIdx = 0; implIdx < interfaceImpls.size(); implIdx++) {
+        var impl = interfaceImpls.get(implIdx);
+        for (int mIdx = 0; mIdx < impl.interface_.methods.size(); mIdx++) {
+          var method = impl.interface_.methods.get(mIdx);
           if (method.name.equals(keyName)) {
             if (method.argType == null) {
               throw new IllegalStateException("Interface method missing arg type");
@@ -261,7 +263,9 @@ public final class TypeSourceObjectDynamic
             }
             argType = method.argType;
             retType = method.retType;
-            fieldName = method.fieldName;
+            fieldName =
+                compilerxyz.eval.dynamic.SourceObjectEmitter.interfaceMethodMethodName(
+                    implIdx, mIdx);
             break outer;
           }
         }

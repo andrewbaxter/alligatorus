@@ -11,7 +11,6 @@ public final class InterfaceMethodData {
   }
 
   public final String name;
-  public final String fieldName;
   public final TList<String> dataFieldNames;
   public @Nullable Type argType;
   public @Nullable Type retType;
@@ -19,9 +18,8 @@ public final class InterfaceMethodData {
   public @Nullable String hostMethodName;
   public @Nullable JavaMethodDescriptor hostMethodDescriptor;
 
-  public InterfaceMethodData(String name, String fieldName) {
+  public InterfaceMethodData(String name) {
     this.name = name;
-    this.fieldName = fieldName;
     this.dataFieldNames = new TList<>();
   }
 }

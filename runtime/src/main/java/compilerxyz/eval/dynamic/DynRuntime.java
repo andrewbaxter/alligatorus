@@ -65,7 +65,6 @@ public final class DynRuntime {
         new compilerxyz.eval.value.source_interface.InterfaceData(null, staticSrc.id(), null);
     data.description = obj.typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
-    int idx = 0;
     for (var m : obj.methods()) {
       Type argType;
       Type retType;
@@ -81,8 +80,7 @@ public final class DynRuntime {
             "synthesizeInterfaceDataFromObject: unsupported funcType " + m.funcType());
       }
       var md =
-          new compilerxyz.eval.value.source_interface.InterfaceMethodData(
-              m.langName(), "_im_" + obj.typeDesc() + idx++);
+          new compilerxyz.eval.value.source_interface.InterfaceMethodData(m.langName());
       md.argType = argType;
       md.retType = retType;
       if (m.funcType() instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt2) {
@@ -115,8 +113,7 @@ public final class DynRuntime {
     data.compiledBinaryName = spec.jvmInterfaceName().value().replace('/', '.');
     for (var m : spec.methods()) {
       var md =
-          new compilerxyz.eval.value.source_interface.InterfaceMethodData(
-              m.name(), m.fieldName());
+          new compilerxyz.eval.value.source_interface.InterfaceMethodData(m.name());
       if (m.argType() instanceof Opt.Some<Type> at) md.argType = at.value();
       md.retType = m.retType();
       for (var f : m.dataFieldNames()) md.dataFieldNames.add(f);
@@ -132,7 +129,6 @@ public final class DynRuntime {
           "objectToInterfaceSpec: TypeObjectDynamic " + obj.typeDesc() + " has no interfaceRepresented");
     }
     var methods = new TList<compilerxyz.eval.value.interface_spec.InterfaceMethodSpec>();
-    int idx = 0;
     for (var m : obj.methods()) {
       String hostMethodName;
       Type argType;
@@ -157,7 +153,6 @@ public final class DynRuntime {
           new compilerxyz.eval.value.interface_spec.InterfaceMethodSpec(
               m.langName(),
               hostMethodName,
-              "_im_" + obj.typeDesc() + idx++,
               Opt.some(argType),
               retType,
               mDesc,
@@ -195,7 +190,6 @@ public final class DynRuntime {
           new compilerxyz.eval.value.interface_spec.InterfaceMethodSpec(
               m.name,
               m.name,
-              m.fieldName,
               m.argType == null ? Opt.none() : Opt.some(m.argType),
               m.retType == null ? new compilerxyz.eval.value.null_.TypeNullDynamic() : m.retType,
               JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT),

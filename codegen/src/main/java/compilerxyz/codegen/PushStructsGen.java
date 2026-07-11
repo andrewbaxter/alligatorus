@@ -396,10 +396,7 @@ public final class PushStructsGen {
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "name")
             .addStatement("var ifaceData = this.interface_ref")
-            .addStatement("var ds = $T.lookupDefSet(xx, ifaceData.setId)", dynRuntime)
-            .addStatement(
-                "var fieldName = $S + $T.nextInterfaceMethodId(ds)", "_im", definitionSet)
-            .addStatement("var method = new $T(name, fieldName)", interfaceMethodData)
+            .addStatement("var method = new $T(name)", interfaceMethodData)
             .addStatement("ifaceData.methods.add(method)")
             .addStatement("return new $T(method)", sourceInterfaceMethodResult)
             .build());
@@ -430,6 +427,8 @@ public final class PushStructsGen {
         ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
     var interfaceSpec =
         ClassName.get("compilerxyz.eval.value.interface_spec", "InterfaceSpec");
+    var typeInterfaceConst =
+        ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
     var typeObjectDynamic =
         ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
@@ -497,6 +496,8 @@ public final class PushStructsGen {
             .addStatement("$T ifaceData", interfaceData)
             .beginControlFlow("if (ifaceArg instanceof $T sdata)", interfaceData)
             .addStatement("ifaceData = sdata")
+            .nextControlFlow("else if (ifaceArg instanceof $T iconst)", typeInterfaceConst)
+            .addStatement("ifaceData = iconst.data()")
             .nextControlFlow("else if (ifaceArg instanceof $T spec)", interfaceSpec)
             .beginControlFlow(
                 "if (spec.sourceRef() instanceof $T<$T> some)", optSome, interfaceData)
@@ -512,7 +513,7 @@ public final class PushStructsGen {
             .addStatement(
                 "throw new $T($S + (ifaceArg == null ? $S : ifaceArg.getClass()))",
                 illegalState,
-                "impl_interface: expected InterfaceData / InterfaceSpec / TypeObjectDynamic, got ",
+                "impl_interface: expected InterfaceData / TypeInterfaceConst / InterfaceSpec / TypeObjectDynamic, got ",
                 "null")
             .endControlFlow()
             .addStatement("var dtData = this.type_")

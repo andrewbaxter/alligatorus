@@ -201,14 +201,12 @@ public final class InterfacesGen {
       var interfacePrefix = snakeToCamel(spec.name());
       for (var i = 0; i < spec.methods().size(); i++) {
         var m = spec.methods().get(i);
-        var fieldName = "_im_" + spec.fieldPrefix() + i;
         var methodVar = fname + "Method" + i;
         build.addStatement(
-            "var $N = new $T($S, $S)",
+            "var $N = new $T($S)",
             methodVar,
             SOURCE_INTERFACE_METHOD_DATA,
-            m.sourceName(),
-            fieldName);
+            m.sourceName());
         build.addStatement("$N.hostMethodName = $S", methodVar, m.hostName(interfacePrefix));
         build.addStatement(
             "$N.hostMethodDescriptor = $L", methodVar, hostMethodDescriptorExpr(m));
