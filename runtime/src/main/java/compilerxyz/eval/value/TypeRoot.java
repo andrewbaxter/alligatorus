@@ -1620,4 +1620,112 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
       throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
     }
   }
+
+  record ListPushDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_PUSH_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<list-push-dynamic>";
+    }
+
+    @Override
+    public Type valueType() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    }
+    @Override
+    public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+      return false;
+    }
+    @Override
+    public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+      return false;
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+  }
+
+  record ListJoinDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_JOIN_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<list-join-dynamic>";
+    }
+
+    @Override
+    public Type valueType() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    }
+    @Override
+    public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+      return false;
+    }
+    @Override
+    public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+      return false;
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+  }
+
+  record NumberToStringDynamic() implements TypeRoot {
+    @Override
+    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_NUMBER_TO_STRING_DYNAMIC_TYPE_ID; }
+
+    @Override
+    public String typeDesc() {
+      return "type<number-to-string-dynamic>";
+    }
+
+    @Override
+    public Type valueType() {
+      return this;
+    }
+
+    @Override
+    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
+      return Opt.none();
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    }
+    @Override
+    public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+      return false;
+    }
+    @Override
+    public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+      return false;
+    }
+    @Override
+    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+  }
 }

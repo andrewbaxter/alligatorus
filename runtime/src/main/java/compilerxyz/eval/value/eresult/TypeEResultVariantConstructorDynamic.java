@@ -67,10 +67,14 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     if (isOk) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
       if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-      var innerJsOpt =
-          erb.mustEr(DynUtil.destructurePackedObject(xx, loc, elementType, convertedOpt.get()));
-      if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
-      var innerJs = innerJsOpt.get();
+      var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, elementType);
+      if (consumeRes.hasErrors()) return consumeRes.reerr();
+      var innerJsRes =
+          consumeRes
+              .requireValue("TypeEResultVariantConstructorDynamic::call ok consume")
+              .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.get());
+      if (innerJsRes.hasErrors()) return innerJsRes.reerr();
+      var innerJs = innerJsRes.requireValue("TypeEResultVariantConstructorDynamic::call ok toDynamic");
       var okSeq = new JavaBytecodeSequence();
       okSeq.add(innerJs);
       okSeq.add(

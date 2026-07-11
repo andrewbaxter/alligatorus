@@ -574,14 +574,13 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var underlyingJsOpt =
-        erb.mustEr(
-            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
-                xx, loc, underlyingType, converted));
-    if (underlyingJsOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJs = underlyingJsOpt.get();
+    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var underlyingConsume =
+        consumeRes.requireValue("TypeTypeSourceObjectConst::toDynamic consume");
+    var underlyingJsRes = underlyingConsume.aspectConsumeDynamicToDynamic(xx, loc, converted);
+    if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
+    var underlyingJs = underlyingJsRes.requireValue("TypeTypeSourceObjectConst::toDynamic toDynamic");
 
     var set = type_.set;
     if (set == null) {
@@ -601,9 +600,10 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         SourceObjectEmitter.internalNameFor(
             set.defSetId, objectIndex);
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
+    var underlyingDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            TList.of(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT));
+            TList.of(underlyingDesc));
     var result =
         compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
     if (erb.errors().isEmpty()) {

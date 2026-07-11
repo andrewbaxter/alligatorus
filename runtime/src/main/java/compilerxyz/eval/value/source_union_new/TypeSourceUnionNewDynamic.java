@@ -10,7 +10,6 @@ import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
-import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
@@ -42,6 +41,10 @@ import compilerxyz.gen.GenTypeIds;
 
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectBind, AspectFunction, ExporterAny {
+
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
 
   @Override
   public TypeId typeId() {
@@ -99,44 +102,46 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
           loc, "TypeSourceUnionNewDynamic::call: variant index " + variantIndex + " out of range");
     }
     var variant = type_.variants.get(variantIndex);
-    String jsTag = variant.jsTag;
     Type underlyingType = variant.type;
     if (underlyingType == null) {
       return EResult.err(
           loc, "TypeSourceUnionNewDynamic::call: variant payload type not finalised");
     }
+    var unionIndex = type_.set.unions.indexOf(type_);
+    if (unionIndex < 0) {
+      return EResult.err(
+          loc, "TypeSourceUnionNewDynamic::call: union type not in owning DefinitionSet");
+    }
+    xx.vx.definitionSets.putIfAbsent(type_.set.defSetId, type_.set);
+    var variantBinaryName =
+        compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(
+            type_.set.defSetId, unionIndex, variantIndex);
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
     if (convertedOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var underlyingJsOpt =
-        erb.mustEr(
-            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
-                xx, loc, underlyingType, converted));
-    if (underlyingJsOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJs = underlyingJsOpt.get();
+    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var underlyingJsRes =
+        consumeRes
+            .requireValue("TypeSourceUnionNewDynamic::call consume")
+            .aspectConsumeDynamicToDynamic(xx, loc, converted);
+    if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
+    var underlyingJs = underlyingJsRes.requireValue("TypeSourceUnionNewDynamic::call toDynamic");
     Type resultType = new TypeTypeSourceUnionConst(type_);
-    var canonicalTag = new ConstKey.Str(jsTag).toCanonical();
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-    seq.add(JavaBytecodeUtils.literalString(loc, canonicalTag));
-    seq.add(underlyingJs);
-    var descriptor =
+    var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
+    var payloadDesc =
+        compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(underlyingType);
+    var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-            TList.of(
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
-    seq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc,
-            compilerxyz.eval.dynamic.JavaInternalName.fromClass(
-                compilerxyz.eval.dynamic.DynRuntime.class),
-            "unionWrap",
-            descriptor));
+            compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
+    seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+    seq.add(underlyingJs);
+    seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
     var newObject = new CodeDynamic(loc, seq);
     return EResult.ok(DynUtil.dynamicStackToValue(loc, newObject, resultType));
   }

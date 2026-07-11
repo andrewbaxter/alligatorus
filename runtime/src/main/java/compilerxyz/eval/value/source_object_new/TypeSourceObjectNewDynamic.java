@@ -41,6 +41,10 @@ import compilerxyz.gen.GenTypeIds;
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
+
   @Override
   public TypeId typeId() {
     return new TypeId.Composite(
@@ -65,7 +69,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceObjectNewConst();
+    return new TypeTypeSourceObjectNewConst(type_);
   }
 
   @Override
@@ -113,14 +117,14 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var underlyingJsOpt =
-        erb.mustEr(
-            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
-                xx, loc, underlyingType, converted));
-    if (underlyingJsOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJs = underlyingJsOpt.get();
+    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var underlyingJsRes =
+        consumeRes
+            .requireValue("TypeSourceObjectNewDynamic::call consume")
+            .aspectConsumeDynamicToDynamic(xx, loc, converted);
+    if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
+    var underlyingJs = underlyingJsRes.requireValue("TypeSourceObjectNewDynamic::call toDynamic");
     Type resultType = type_;
 
     var objectIndex = set.objects.indexOf(type_);
@@ -131,10 +135,10 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     }
     var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, objectIndex);
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
-    compilerxyz.eval.dynamic.JavaDataDescriptor underlyingDesc =
-        underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-            ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
-            : compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT;
+    var underlyingDesc =
+        consumeRes
+            .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
+            .aspectConsumeDynamicConsumeDynamicJvmClass();
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));

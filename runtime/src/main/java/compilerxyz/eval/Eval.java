@@ -24,6 +24,8 @@ import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TSet;
 import java.util.ArrayDeque;
+import compilerxyz.eval.dynamic.DynException;
+import compilerxyz.eval.dynamic.DynPanic;
 import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
@@ -325,13 +327,13 @@ public final class Eval {
       } catch (ReflectiveOperationException e) {
         var cause = e.getCause();
 
-        if (cause instanceof DynRuntime.DynPanic panic) {
+        if (cause instanceof DynPanic panic) {
           return new CompileImport.EvalOutcome.Err(
               TList.of(
                   new ExprErr(rootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
         }
 
-        if (cause instanceof DynRuntime.DynException dynEx) {
+        if (cause instanceof DynException dynEx) {
           var rendered = renderThrownValue(dynEx.payload);
           return new CompileImport.EvalOutcome.Err(
               TList.of(

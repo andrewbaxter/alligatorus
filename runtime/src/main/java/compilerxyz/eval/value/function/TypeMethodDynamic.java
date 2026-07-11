@@ -38,7 +38,8 @@ public record TypeMethodDynamic(
     JavaInternalName klass,
     String methodName,
     JavaMethodDescriptor descriptor,
-    boolean isInterface)
+    boolean isInterface,
+    boolean needsExprContext)
     implements
         Type,
         AspectBind,
@@ -96,12 +97,22 @@ public record TypeMethodDynamic(
 
     var seq = new JavaBytecodeSequence();
     seq.add(receiverDyn);
+    if (needsExprContext) {
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc,
+              JavaInternalName.of(xx.vx.evalRootInternalName),
+              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
+              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
+    }
     var args = argsDynRes.requireValue("TypeMethodDynamic::call args");
     var paramDescs = descriptor.parameterDescriptors();
+    var paramOffset = needsExprContext ? 1 : 0;
     for (int i = 0; i < args.size(); i++) {
       seq.add(args.get(i));
-      if (i < paramDescs.size()) {
-        var expected = paramDescs.get(i);
+      var pi = i + paramOffset;
+      if (pi < paramDescs.size()) {
+        var expected = paramDescs.get(pi);
         if (expected.value().startsWith("L") && !expected.value().equals("Ljava/lang/Object;")) {
           seq.add(JavaBytecodeUtils.cast(loc, expected));
         }

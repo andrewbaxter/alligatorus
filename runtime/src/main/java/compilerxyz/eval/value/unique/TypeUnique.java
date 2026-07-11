@@ -32,6 +32,11 @@ import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
@@ -226,16 +231,31 @@ public record TypeUnique()
     var refDyn = aspectConsumeDynamicToDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
     var call =
-        compilerxyz.gen.GenDynMethods.UNIQUE_EQ_TYPE.emitInvocation(
+        emitUniqueEqCall(
             loc,
             xx.vx,
-            TList.of(
-                baseDyn.requireValue("TypeUnique::eq base dynamic"),
-                refDyn.requireValue("TypeUnique::eq reference dynamic")));
+            baseDyn.requireValue("TypeUnique::eq base dynamic"),
+            refDyn.requireValue("TypeUnique::eq reference dynamic"));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
             Opt.some(ValueDynamic.stack(new TypeBoolDynamic()))));
+  }
+
+  private static CodeDynamic emitUniqueEqCall(
+      QExprId loc, compilerxyz.eval.EvalContext vx, CodeDynamic base, CodeDynamic reference) {
+    var seq = new JavaBytecodeSequence();
+    seq.add(base);
+    seq.add(reference);
+    seq.add(
+        JavaBytecodeUtils.callMethod(
+            loc,
+            JavaInternalName.of("java/lang/Object"),
+            "equals",
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.DESC_BOOL,
+                TList.of(JavaDataDescriptor.fromClass(Object.class)))));
+    return new CodeDynamic(loc, seq);
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {

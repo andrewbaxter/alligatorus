@@ -39,7 +39,6 @@ public record TypeFunctionDynamic(
     Type ret,
     JavaInternalName klass,
     String methodName,
-    JavaMethodDescriptor descriptor,
     boolean needsExprContext)
     implements
         Type,
@@ -64,55 +63,91 @@ public record TypeFunctionDynamic(
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.typeId(), ret.typeId())); }
 
 
-  private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
-      JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
-  private static final JavaDataDescriptor DESC_OBJECT =
-      JavaDataDescriptor.fromClass(Object.class);
-  private static final JavaMethodDescriptor DESC_CTX_OBJ_TO_OBJ =
-      JavaMethodDescriptor.fromParts(DESC_OBJECT, TList.of(DESC_EXPR_CONTEXT, DESC_OBJECT));
-
-  /**
-   * Convenience factory for builtin function types whose Java implementation is a static method
-   * {@code Object <klassName>.<methodName>(ExprContext, Object)}.
-   */
-  public static TypeFunctionDynamic builtinWithCtx(
-      String klassName, String methodName, Type argType, Type retType) {
-    return new TypeFunctionDynamic(
-        argType, retType, JavaInternalName.of(klassName), methodName, DESC_CTX_OBJ_TO_OBJ, true);
+  public JavaMethodDescriptor descriptor() {
+    var argDescs = new TList<JavaDataDescriptor>();
+    if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
+    if (arg instanceof compilerxyz.gen.AspectTuple t) {
+      for (var elem : t.aspectTupleElementTypes()) argDescs.add(jvmDescOfInstance(elem));
+    } else if (arg instanceof compilerxyz.gen.AspectRecord r) {
+      for (var entry : r.aspectRecordRecordFieldTypes().entrySet()) {
+        argDescs.add(jvmDescOfInstance(entry.getValue()));
+      }
+    } else {
+      argDescs.add(jvmDescOfInstance(arg));
+    }
+    return JavaMethodDescriptor.fromParts(jvmDescOfInstance(ret), argDescs);
   }
 
-  /**
-   * Low-level: emit the INVOKESTATIC (with an optional preceding GETSTATIC for {@code
-   * __exprContext}) using pre-built {@link CodeDynamic} args. Bypasses source-level typecheck and
-   * dynamic-lowering because the internal callers (e.g. invisible-builtin dispatch) already have
-   * their args in {@code CodeDynamic} form.
-   */
-  public CodeDynamic emitInvocation(
-      QExprId loc, compilerxyz.eval.EvalContext vx, compilerxyz.util.TList<CodeDynamic> args) {
+  private static JavaDataDescriptor jvmDescOfInstance(Type t) {
+    if (t instanceof AspectConsumeDynamic c) {
+      return c.aspectConsumeDynamicConsumeDynamicJvmClass();
+    }
+    throw new IllegalStateException(
+        "TypeFunctionDynamic: " + t.getClass() + " does not implement AspectConsumeDynamic");
+  }
+
+  public EResult<JavaMethodDescriptor> descriptor(ExprContext xx, QExprId loc) {
+    var argDescs = new TList<JavaDataDescriptor>();
+    if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
+    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, arg);
+    if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+      for (var elem : tupleSome.value().aspectTupleElementTypes()) {
+        var elemDescRes = jvmDescOf(xx, loc, elem);
+        if (elemDescRes.hasErrors()) return elemDescRes.reerr();
+        argDescs.add(elemDescRes.requireValue("TypeFunctionDynamic::descriptor tuple elem"));
+      }
+    } else {
+      var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, arg);
+      if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
+        for (var entry : recordSome.value().aspectRecordRecordFieldTypes().entrySet()) {
+          var fieldDescRes = jvmDescOf(xx, loc, entry.getValue());
+          if (fieldDescRes.hasErrors()) return fieldDescRes.reerr();
+          argDescs.add(fieldDescRes.requireValue("TypeFunctionDynamic::descriptor record field"));
+        }
+      } else {
+        var argDescRes = jvmDescOf(xx, loc, arg);
+        if (argDescRes.hasErrors()) return argDescRes.reerr();
+        argDescs.add(argDescRes.requireValue("TypeFunctionDynamic::descriptor single arg"));
+      }
+    }
+    var retDescRes = jvmDescOf(xx, loc, ret);
+    if (retDescRes.hasErrors()) return retDescRes.reerr();
+    return EResult.ok(
+        JavaMethodDescriptor.fromParts(
+            retDescRes.requireValue("TypeFunctionDynamic::descriptor ret"), argDescs));
+  }
+
+  private static EResult<JavaDataDescriptor> jvmDescOf(ExprContext xx, QExprId loc, Type t) {
+    var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    return EResult.ok(
+        consumeRes
+            .requireValue("TypeFunctionDynamic::jvmDescOf consume")
+            .aspectConsumeDynamicConsumeDynamicJvmClass());
+  }
+
+  public EResult<CodeDynamic> emitInvocation(
+      ExprContext xx,
+      QExprId loc,
+      compilerxyz.util.TList<CodeDynamic> args) {
+    var descRes = descriptor(xx, loc);
+    if (descRes.hasErrors()) return descRes.reerr();
     var seq = new JavaBytecodeSequence();
     if (needsExprContext) {
       seq.add(
           JavaBytecodeUtils.accessStaticField(
               loc,
-              JavaInternalName.of(vx.evalRootInternalName),
+              JavaInternalName.of(xx.vx.evalRootInternalName),
               compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
               compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
-    // The arg's stack JVM class is declared via AspectConsumeDynamic and the code
-    // it produces already leaves a properly-typed value. No CHECKCAST here.
     for (var argCode : args) {
       seq.add(argCode);
     }
-    seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, descriptor));
-    if (ret instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
-      var retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
-      var d = retDesc.value();
-      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())
-          && d.charAt(0) == 'L') {
-        seq.add(JavaBytecodeUtils.cast(loc, retDesc));
-      }
-    }
-    return new CodeDynamic(loc, seq);
+    seq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc, klass, methodName, descRes.requireValue("TypeFunctionDynamic::emit desc")));
+    return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override
@@ -152,98 +187,19 @@ public record TypeFunctionDynamic(
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
-    var selfDyn = self.code().dynamic();
-    if (selfDyn != null) argList.add(selfDyn);
-    var contextSlots = needsExprContext ? 1 : 0;
-    var receiverSlots = selfDyn != null ? 1 : 0;
-    var remainingSlots =
-        parameterCount(descriptor.value()) - contextSlots - receiverSlots;
-    if (remainingSlots == 1) {
-      var argsDynRes = destructurePackedObject(xx, loc, arg, converted);
-      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
-      argList.add(argsDynRes.requireValue("TypeFunctionDynamic::call packed arg"));
-    } else {
-      var argsDynRes = destructurePositional(xx, loc, arg, converted);
-      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
-      for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
-        argList.add(c);
-      }
+    var argsDynRes =
+        compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
+    if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+    for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
+      argList.add(c);
     }
+    var invocationRes = emitInvocation(xx, loc, argList);
+    if (invocationRes.hasErrors()) return invocationRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeFunctionDynamic::call ret stack")
-            .aspectStackValueDynamicToValue(loc, emitInvocation(loc, xx.vx, argList)));
-  }
-
-  private static EResult<TList<CodeDynamic>> destructurePositional(
-      ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
-    if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
-      if (!(converted.value() instanceof Opt.Some<Value> some)) {
-        return EResult.err(loc, "TypeFunctionDynamic::destructure: arg has no compile-time value");
-      }
-      var elementTypes = tupleSome.value().aspectTupleElementTypes();
-      var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, some.value());
-      if (elementTypes.size() != elemCvs.size()) {
-        throw new IllegalStateException(
-            "TypeFunctionDynamic::destructure: elementTypes/takeElements size mismatch");
-      }
-      var out = new TList<CodeDynamic>(elementTypes.size());
-      for (int i = 0; i < elementTypes.size(); i++) {
-        var elemCvRes = elemCvs.get(i);
-        if (elemCvRes.hasErrors()) return elemCvRes.reerr();
-        var elemCv = elemCvRes.requireValue("TypeFunctionDynamic::destructure element");
-        var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var elemDyn =
-            consumeRes
-                .requireValue("TypeFunctionDynamic::destructure consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
-        if (elemDyn.hasErrors()) return elemDyn.reerr();
-        out.add(elemDyn.requireValue("TypeFunctionDynamic::destructure elem toDynamic"));
-      }
-      return EResult.ok(out);
-    }
-    var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
-    if (consumeRes.hasErrors()) return consumeRes.reerr();
-    var argDyn =
-        consumeRes
-            .requireValue("TypeFunctionDynamic::call arg consume")
-            .aspectConsumeDynamicToDynamic(xx, loc, converted);
-    if (argDyn.hasErrors()) return argDyn.reerr();
-    return EResult.ok(TList.of(argDyn.requireValue("TypeFunctionDynamic::call arg")));
-  }
-
-  private static int parameterCount(String descriptor) {
-    int n = 0;
-    int i = 1;
-    while (i < descriptor.length() && descriptor.charAt(i) != ')') {
-      var c = descriptor.charAt(i);
-      if (c == 'L') {
-        n++;
-        i = descriptor.indexOf(';', i) + 1;
-      } else if (c == '[') {
-        i++;
-      } else {
-        n++;
-        i++;
-      }
-    }
-    return n;
-  }
-
-  private static EResult<CodeDynamic> destructurePackedObject(
-      ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-    var positional = destructurePositional(xx, loc, argType, converted);
-    if (positional.hasErrors()) return positional.reerr();
-    var elemCodes = positional.requireValue("TypeFunctionDynamic::destructure packed elements");
-    if (elemCodes.isEmpty()) {
-      return EResult.ok(JavaBytecodeUtils.literalNull(loc));
-    }
-    if (elemCodes.size() == 1) {
-      return EResult.ok(elemCodes.get(0));
-    }
-    return EResult.ok(JavaBytecodeUtils.buildObjectArray(loc, elemCodes));
+            .aspectStackValueDynamicToValue(
+                loc, invocationRes.requireValue("TypeFunctionDynamic::call invocation")));
   }
 
   @Override

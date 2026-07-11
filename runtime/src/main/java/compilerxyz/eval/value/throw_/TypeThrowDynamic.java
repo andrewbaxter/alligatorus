@@ -17,6 +17,10 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynException;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.TypeRoot;
@@ -66,27 +70,26 @@ public record TypeThrowDynamic()
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var packedOpt =
-        erb.mustEr(
-            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(xx, loc, excType, converted));
-    if (packedOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var args = new TList<CodeDynamic>();
-    args.add(packedOpt.get());
-    var throwType =
-        new compilerxyz.eval.value.function.TypeFunctionDynamic(
-            excType,
-            excType,
-            JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class),
-            "throwValue",
-            JavaMethodDescriptor.fromParts(
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                TList.of(
-                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(ExprContext.class),
-                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class))),
-            true);
-    var throwCode = throwType.emitInvocation(loc, xx.vx, args);
+    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, excType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var valueDynRes =
+        consumeRes
+            .requireValue("TypeThrowDynamic::call consume")
+            .aspectConsumeDynamicToDynamic(xx, loc, converted);
+    if (valueDynRes.hasErrors()) return valueDynRes.reerr();
+    var valueCode = valueDynRes.requireValue("TypeThrowDynamic::call toDynamic");
+    var excInternal = JavaInternalName.fromClass(DynException.class);
+    var ctorDesc =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.DESC_VOID,
+            TList.of(JavaDataDescriptor.fromClass(Object.class)));
+    var seq = new JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.newInstance(loc, excInternal));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(valueCode);
+    seq.add(JavaBytecodeUtils.invokeSpecial(loc, excInternal, "<init>", ctorDesc));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+    var throwCode = new CodeDynamic(loc, seq);
     return EResult.ok(new CodeValue(Code.of(loc, throwCode), Opt.none()));
   }
 

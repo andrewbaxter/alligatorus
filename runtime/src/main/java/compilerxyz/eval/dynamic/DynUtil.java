@@ -18,13 +18,99 @@ import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.binding.BindingSourceObjectWrapper;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.Unique;
+import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectFunction;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 
 public final class DynUtil {
     private DynUtil() {
+    }
+
+    public static Opt<Aspect> sourceObjectClaimedAspect(Object self, Object data, Unique key) {
+        var d = (TypeSourceObjectDynamic) data;
+        for (var impl : d.interfaceImpls) {
+            var iface = impl.interface_;
+            var kind = iface.builtinKind;
+            if (kind != null && claimedKindExposesAspect(kind, key)) {
+                return Opt.some((Aspect) self);
+            }
+            if (kind == null && iface.identity.equals(key)) {
+                return Opt.some((Aspect) self);
+            }
+        }
+        return Opt.none();
+    }
+
+    private static boolean claimedKindExposesAspect(BuiltinInterfaceKind kind, Unique key) {
+        return switch (kind) {
+            case ASPECT_DROP_DYNAMIC -> key.equals(AspectDropDynamic.ID);
+            case ASPECT_FIELD -> key.equals(AspectField.ID);
+            case ASPECT_FUNCTION -> key.equals(AspectFunction.ID);
+            case BINDING -> key.equals(AspectBindDynamic.ID);
+            case VALUE, TYPE, TARGET, CODE_DYN -> false;
+        };
+    }
+
+    public static Opt<Aspect> optOr(Opt<Aspect> a, Opt<Aspect> b) {
+        return a instanceof Opt.Some ? a : b;
+    }
+
+    public static EResult<AspectBind.BindResult> sourceObjectBind(
+            Object data, Object self, ExprContext xx, QExprId loc, CodeValue cv) {
+        var d = (TypeSourceObjectDynamic) data;
+        var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
+        var bindDynOpt = AspectBindDynamic.getMaybe(xx, d);
+        if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
+            return EResult.err(loc, "sourceObjectBind: canary type missing AspectBindDynamic");
+        }
+        var subRes = bindDynSome.value().aspectBindDynamicBindDynamic(xx, loc, canaryCv);
+        if (subRes.hasErrors()) return subRes.reerr();
+        var subOpt = subRes.requireValue("sourceObjectBind bindDynamic");
+        if (!(subOpt instanceof Opt.Some<TargetBindSub> subSome)) {
+            return EResult.err(loc, "sourceObjectBind: bindDynamic returned None");
+        }
+        var bound = xx.target.targetBind(loc, subSome.value());
+        Code wrappingCode = Code.of(loc, bound.code());
+        Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
+        Binding wrapped = new BindingSourceObjectWrapper((Binding) self, underlyingBinding);
+        return EResult.ok(new AspectBind.BindResult(wrappingCode, wrapped));
+    }
+
+    public static EResult<Opt<TargetBindSub>> sourceObjectBindDynamic(
+            Object data, ExprContext xx, QExprId loc, CodeValue cv) {
+        var d = (TypeSourceObjectDynamic) data;
+        var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
+        return bindDynamicDefault(xx, loc, canaryCv);
+    }
+
+    public static EResult<CodeDynamic> sourceObjectToDynamic(
+            ExprContext xx, QExprId loc, CodeValue cv) {
+        var dyn = cv.code().dynamic();
+        if (dyn == null) {
+            return EResult.err(loc, "sourceObjectToDynamic: CodeValue has no dynamic code");
+        }
+        return EResult.ok(dyn);
+    }
+
+    public static Binding sourceObjectInitialBind(
+            Object data, Object self, BindingId dynamicKey) {
+        var d = (TypeSourceObjectDynamic) data;
+        var ut = d.underlyingType;
+        if (ut == null) {
+            throw new IllegalStateException(
+                    "sourceObjectInitialBind: object underlying type not finalised");
+        }
+        return new BindingSourceObjectWrapper(
+                (Binding) self, new BindingDynamicBinding(dynamicKey, ut));
     }
 
     public record ArgSignatureSlot(Type elementType, JavaDataDescriptor jvmDesc) {}
@@ -582,24 +668,12 @@ public final class DynUtil {
         return EResult.ok(out);
     }
 
-    /**
-     * Same as {@link #destructurePositional} but packs the results into a single Object:
-     * 0 elements → ACONST_NULL; 1 element → the element as-is; 2+ elements →
-     * Object[] via {@link JavaBytecodeUtils#buildObjectArray}. Used at call sites whose JVM
-     * descriptor takes a single packed Object payload (e.g. invisible builtins, constructor
-     * wrappers).
-     */
-    public static EResult<CodeDynamic> destructurePackedObject(
-            ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-        var positional = destructurePositional(xx, loc, argType, converted);
-        if (positional.hasErrors()) return positional.reerr();
-        var elemCodes = positional.requireValue("DynUtil::destructurePackedObject elements");
-        if (elemCodes.isEmpty()) {
-            return EResult.ok(JavaBytecodeUtils.literalNull(loc));
+    public static Type derivedSourceType(ExprContext xx, CodeValue cv) {
+        if (!(cv.value() instanceof Opt.Some<Value> someVal)) {
+            throw new IllegalStateException(
+                    "derivedSourceType: CodeValue has no compile-time value");
         }
-        if (elemCodes.size() == 1) {
-            return EResult.ok(elemCodes.get(0));
-        }
-        return EResult.ok(JavaBytecodeUtils.buildObjectArray(loc, elemCodes));
+        return someVal.value().valueType();
     }
+
 }

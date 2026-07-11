@@ -99,6 +99,14 @@ public final class ImportInstall {
       }
     }
 
+    for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
+      var union = set.unions.get((int) unionIdx);
+      var unionFinish = union.finish(xx, loc, unionIdx, loader);
+      if (unionFinish.hasErrors()) {
+        return unionFinish.reerr();
+      }
+    }
+
     var emittedFuncs = set.finishFunctions(xx.vx.ix.builtinDynamics, staticFunctionDefs);
     if (emittedFuncs != null) {
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());

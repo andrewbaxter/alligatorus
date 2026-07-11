@@ -48,11 +48,34 @@ public final class TypeSourceUnionDynamic
   public final Counter nextTagId;
   public final TList<SourceUnionVariant> variants;
 
+  public @Nullable String compiledBaseBinaryName;
+  public @Nullable TList<String> compiledVariantBinaryNames;
+
   public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
     this.set = set;
     this.identity = identity;
     this.nextTagId = new Counter();
     this.variants = new TList<>();
+  }
+
+  public EResult<Void> finish(
+      ExprContext xx,
+      QExprId loc,
+      long unionIndex,
+      compilerxyz.eval.DefinitionSetClassLoader loader) {
+    if (compiledBaseBinaryName != null) {
+      return EResult.ok(null);
+    }
+    var emitted =
+        compilerxyz.eval.dynamic.SourceUnionEmitter.emit(set.defSetId, unionIndex, this);
+    compiledBaseBinaryName = emitted.baseBinaryName();
+    compiledVariantBinaryNames = emitted.variantBinaryNames();
+    loader.registerClass(emitted.baseBinaryName(), emitted.baseBytecode());
+    for (int i = 0; i < emitted.variantBinaryNames().size(); i++) {
+      loader.registerClass(
+          emitted.variantBinaryNames().get(i), emitted.variantBytecode().get(i));
+    }
+    return EResult.ok(null);
   }
 
   @Override

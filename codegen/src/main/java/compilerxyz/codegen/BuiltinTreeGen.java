@@ -14,6 +14,7 @@ import compilerxyz.codegen.util.Method;
 import compilerxyz.codegen.util.MethodArgs;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
+import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
 import java.io.IOException;
@@ -149,19 +150,10 @@ public final class BuiltinTreeGen {
     record Function(
         long builtinScopeId,
         TList<NamedTypeRef> args,
-        TypeName ret,
-        CodeBlock retDynamicType,
-        CodeBlock body)
+        CodeBlock retDynamicType)
         implements LeafSpec {}
 
-    record Constructor(
-        long builtinScopeId,
-        TList<NamedTypeRef> args,
-        TypeName ret,
-        CodeBlock retDynamicType,
-        CodeBlock typeExpr,
-        CodeBlock body)
-        implements LeafSpec {}
+    record Constructor(long builtinScopeId, CodeBlock typeExpr) implements LeafSpec {}
   }
 
   public static void run(
@@ -180,70 +172,6 @@ public final class BuiltinTreeGen {
 
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
-
-    for (var helper : collectFunctionLeaves(spec)) {
-      var helperCls =
-              TypeSpec.classBuilder(builtinHelperName(helper.scopeId()))
-                      .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                      .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build())
-              .addMethod(invokeMethod(helper))
-              .build();
-      var helperFile = JavaFile.builder(GEN_PACKAGE, helperCls).build();
-      GenMain.write(outRoot, helperFile, formatter);
-    }
-  }
-
-  private record FunctionHelper(
-      long scopeId, TList<NamedTypeRef> args, TypeName ret, CodeBlock body) {}
-
-  private static TList<FunctionHelper> collectFunctionLeaves(NodeSpec root) {
-    var out = new TList<FunctionHelper>();
-    collectFunctionLeaves(root, out);
-    return out;
-  }
-
-  private static void collectFunctionLeaves(NodeSpec node, TList<FunctionHelper> out) {
-    switch (node) {
-      case Branch b -> {
-        for (var c : b.children()) collectFunctionLeaves(c.node(), out);
-      }
-      case Leaf l -> {
-        switch (l.leaf()) {
-          case LeafSpec.Function fn ->
-              out.add(new FunctionHelper(fn.builtinScopeId(), fn.args(), fn.ret(), fn.body()));
-          case LeafSpec.Constructor c ->
-              out.add(new FunctionHelper(c.builtinScopeId(), c.args(), c.ret(), c.body()));
-          default -> {}
-        }
-      }
-    }
-  }
-
-  private static String builtinHelperName(long scopeId) {
-    return "Builtin_b" + scopeId;
-  }
-
-  private static MethodSpec invokeMethod(FunctionHelper h) {
-    var m =
-        MethodSpec.methodBuilder("invoke")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(TypeName.OBJECT)
-            .addParameter(ParameterSpec.builder(EXPR_CONTEXT, "xx").build())
-            .addParameter(ParameterSpec.builder(TypeName.OBJECT, "arg").build());
-
-    var args = h.args();
-    if (args.size() == 1) {
-      var a = args.get(0);
-      m.addStatement("$T $N = ($T) arg", a.type().path(), a.name(), a.type().path());
-    } else if (args.size() > 1) {
-      m.addStatement("$T[] _args = ($T[]) arg", TypeName.OBJECT, TypeName.OBJECT);
-      for (var i = 0; i < args.size(); i++) {
-        var a = args.get(i);
-        m.addStatement("$T $N = ($T) _args[$L]", a.type().path(), a.name(), a.type().path(), i);
-      }
-    }
-    m.addCode(h.body());
-    return m.build();
   }
 
   /**
@@ -336,21 +264,54 @@ public final class BuiltinTreeGen {
         yield emitInitialBindLike(typeExpr, (long) ifc.spec().scopeId(), st, "Interface");
       }
       case LeafSpec.Function fn -> {
-        var helperInternalName =
-            (GEN_PACKAGE + "." + builtinHelperName(fn.builtinScopeId())).replace('.', '/');
+        var methodName = BUILTIN_METHOD_NAMES.get(fn.builtinScopeId());
+        if (methodName == null) {
+          throw new IllegalStateException(
+              "BuiltinTreeGen: no BuiltinBodies method mapped for scope id "
+                  + fn.builtinScopeId());
+        }
         var typeExpr =
             CodeBlock.of(
-                "$T.builtinWithCtx($S, $S, $L, $L)",
+                "new $T($L, $L, $T.of($S), $S, true)",
                 TYPE_FUNCTION_DYNAMIC,
-                helperInternalName,
-                "invoke",
                 argDynamicTypeExpr(fn.args()),
-                fn.retDynamicType());
+                fn.retDynamicType(),
+                JAVA_INTERNAL_NAME,
+                "compilerxyz/eval/builtin/BuiltinBodies",
+                methodName);
         yield emitInitialBindLike(typeExpr, fn.builtinScopeId(), st, "Function");
       }
       case LeafSpec.Constructor c ->
           emitInitialBindLike(c.typeExpr(), c.builtinScopeId(), st, "Constructor");
     };
+  }
+
+  private static final java.util.Map<Long, String> BUILTIN_METHOD_NAMES =
+      java.util.Map.ofEntries(
+          java.util.Map.entry(5001L, "log"),
+          java.util.Map.entry(5002L, "define"),
+          java.util.Map.entry(5003L, "strToJson"),
+          java.util.Map.entry(5004L, "constkeyToStr"),
+          java.util.Map.entry(5005L, "codevalue"),
+          java.util.Map.entry(5006L, "genBindingName"),
+          java.util.Map.entry(5008L, "constEval"),
+          java.util.Map.entry(5009L, "newExprContext"),
+          java.util.Map.entry(5013L, "stack"),
+          java.util.Map.entry(5015L, "bindResult"));
+
+  private static final ClassName JAVA_INTERNAL_NAME =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+  private static final ClassName JAVA_METHOD_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+  private static final ClassName JAVA_DATA_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+
+  private static ClassName argClassLiteral(NamedTypeRef a) {
+    var path = a.type().path();
+    if (path instanceof ClassName cn) return cn;
+    if (path instanceof ParameterizedTypeName pt) return pt.rawType;
+    throw new IllegalStateException(
+        "BuiltinTreeGen: unsupported arg TypeName for JVM descriptor: " + path);
   }
 
   private static String[] emitAnyConstLeaf(CodeBlock typeExpr, EmitState st) {
@@ -501,17 +462,14 @@ public final class BuiltinTreeGen {
   }
 
   public static TList<InterfaceSpec> extraInterfaceSpecs() {
-    var any = TypeRef.opaque(TYPE);
-    var cve = TypeRef.unit(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
-    var xxRef =
-        new TypeRef(
-            ClassName.get("compilerxyz.eval", "ExprContext"),
-            CodeBlock.of(
-                "$T.dynamicType()", ClassName.get("compilerxyz.eval", "ExprContext")));
-    var dropRet =
-        new TypeRef(
-            TYPE_ERESULT_DYNAMIC,
-            CodeBlock.of("new $T($T.dynamicType())", TYPE_ERESULT_DYNAMIC, CODE_INTERFACE));
+    var cve = TypeRef.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
+    var xxRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext"));
+    var qexprIdRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "QExprId"));
+    var constKeyRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey"));
+    var typeRef = TypeRef.leaf(TYPE);
+    var eresultCve = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, cve);
+    var optType = TypeRef.composite1(TYPE_OPTION_DYNAMIC, typeRef);
+    var dropRet = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, TypeRef.leaf(CODE_INTERFACE));
 
     var aspectFunction =
         new InterfaceSpec(
@@ -526,9 +484,13 @@ public final class BuiltinTreeGen {
             TList.of(
                 new Method(
                     "call",
-                    cve,
+                    eresultCve,
                     new MethodArgs(
-                        TList.of(new NamedTypeRef("inner", cve), new NamedTypeRef("argument", cve))))));
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("self_", cve),
+                            new NamedTypeRef("argument", cve))))));
 
     var aspectField =
         new InterfaceSpec(
@@ -543,13 +505,20 @@ public final class BuiltinTreeGen {
             TList.of(
                 new Method(
                     "field",
-                    cve,
+                    eresultCve,
                     new MethodArgs(
-                        TList.of(new NamedTypeRef("inner", cve), new NamedTypeRef("key", cve)))),
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("self_", cve),
+                            new NamedTypeRef("key", cve)))),
                 new Method(
-                    "field_type_opt",
-                    any,
-                    new MethodArgs(TList.of(new NamedTypeRef("key", cve))))));
+                    "fieldTypeOpt",
+                    optType,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("key", constKeyRef))))));
 
     var aspectDropDynamic =
         new InterfaceSpec(
@@ -566,21 +535,19 @@ public final class BuiltinTreeGen {
                     "drop",
                     dropRet,
                     new MethodArgs(
-                        TList.of(new NamedTypeRef("xx", xxRef), new NamedTypeRef("inner", cve))))));
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("cv", cve))))));
 
     var codeRef = ClassName.get("compilerxyz.eval", "Code");
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
     var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
     var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var bindingXx =
-        new TypeRef(exprContext, CodeBlock.of("$T.dynamicType()", exprContext));
-    var bindingLoc =
-        new TypeRef(qexprId, CodeBlock.of("$T.dynamicType()", qexprId));
-    var bindingCode =
-        new TypeRef(
-            codeRef,
-            CodeBlock.of("$T.dynamicType()", CODE_INTERFACE));
-    var bindingCv = TypeRef.viaPush(codeValue);
+    var bindingXx = TypeRef.leaf(exprContext);
+    var bindingLoc = TypeRef.leaf(qexprId);
+    var bindingCode = TypeRef.leaf(codeRef);
+    var bindingCv = TypeRef.leaf(codeValue);
 
     var binding =
         new InterfaceSpec(
@@ -605,79 +572,51 @@ public final class BuiltinTreeGen {
 
 var targetBindSubCls =
         ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub");
-    var targetBindSub = TypeRef.opaque(targetBindSubCls);
+    var targetBindSub = TypeRef.leaf(targetBindSubCls);
     var codeDynamicCls = ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
     var bindResult =
-        TypeRef.opaque(
-            ClassName.get("compilerxyz.eval.dynamic.target", "BindResult"));
-    var codeDynamic = TypeRef.opaque(codeDynamicCls);
-    var eresultCode =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(ClassName.get("compilerxyz.eval", "EResult"), codeRef));
-    var eresultCodeValue =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.eval", "EResult"), codeValue));
-    var eresultCodeDynamic =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.eval", "EResult"), codeDynamicCls));
-    var eresultTargetBindSub =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.eval", "EResult"), targetBindSubCls));
+        TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "BindResult"));
+    var codeDynamic = TypeRef.leaf(codeDynamicCls);
+    var codeRefLeaf = TypeRef.leaf(codeRef);
+    var codeValueLeaf = TypeRef.leaf(codeValue);
+    var eresultCode = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeRefLeaf);
+    var eresultCodeValue = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeValueLeaf);
+    var eresultCodeDynamic = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeDynamic);
+    var eresultTargetBindSub = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, targetBindSub);
     var eresultOptionTargetBindSub =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.eval", "EResult"),
-                ParameterizedTypeName.get(
-                    ClassName.get("compilerxyz.util", "Opt"), targetBindSubCls)));
+        TypeRef.composite1(
+            TYPE_ERESULT_DYNAMIC, TypeRef.composite1(TYPE_OPTION_DYNAMIC, targetBindSub));
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
     var expr = ClassName.get("compilerxyz.eval", "Expr");
     var listRecordBindField =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "TList"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "RecordBindField")));
+        TypeRef.composite1(
+            TYPE_LIST_DYNAMIC,
+            TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "RecordBindField")));
     var listTupleBindSlot =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "TList"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "TupleBindSlot")));
-    var listEntries =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(ClassName.get("compilerxyz.util", "TList"), codeRef));
-    var listCodeValue =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "TList"), codeValue));
-    var typeOpaque = TypeRef.opaque(TYPE);
+        TypeRef.composite1(
+            TYPE_LIST_DYNAMIC,
+            TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "TupleBindSlot")));
+    var listEntries = TypeRef.composite1(TYPE_LIST_DYNAMIC, codeRefLeaf);
+    var listCodeValue = TypeRef.composite1(TYPE_LIST_DYNAMIC, codeValueLeaf);
+    var typeOpaque = TypeRef.leaf(TYPE);
     var listIfBranch =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "TList"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "IfBranch")));
-    var optExpr =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(ClassName.get("compilerxyz.util", "Opt"), expr));
+        TypeRef.composite1(
+            TYPE_LIST_DYNAMIC,
+            TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "IfBranch")));
+    var optExpr = TypeRef.composite1(TYPE_OPTION_DYNAMIC, TypeRef.leaf(expr));
     var optTryCatchClause =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "Opt"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "TryCatchClause")));
-    var optCodeDynamic =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "Opt"), codeDynamicCls));
+        TypeRef.composite1(
+            TYPE_OPTION_DYNAMIC,
+            TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "TryCatchClause")));
+    var optCodeDynamic = TypeRef.composite1(TYPE_OPTION_DYNAMIC, codeDynamic);
     var caseListOpaque =
-        TypeRef.opaque(
-            ParameterizedTypeName.get(
-                ClassName.get("compilerxyz.util", "TList"),
-                ClassName.get("compilerxyz.eval.dynamic.target", "TargetCase")));
-    var codeValueOpaque = TypeRef.opaque(codeValue);
-    var exprOpaque = TypeRef.opaque(expr);
-    var constKeyOpaque = TypeRef.opaque(constKey);
-    var bindingIdOpaque = TypeRef.opaque(BINDING_ID);
+        TypeRef.composite1(
+            TYPE_LIST_DYNAMIC,
+            TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "TargetCase")));
+    var codeValueOpaque = TypeRef.leaf(codeValue);
+    var exprOpaque = TypeRef.leaf(expr);
+    var constKeyOpaque = TypeRef.leaf(constKey);
+    var bindingIdOpaque = TypeRef.leaf(BINDING_ID);
 
     var target =
         new InterfaceSpec(
@@ -699,7 +638,7 @@ var targetBindSubCls =
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("sub", targetBindSub)))),
                 new Method(
-                    "maybe_bind_sub",
+                    "maybeBindSub",
                     eresultOptionTargetBindSub,
                     new MethodArgs(
                         TList.of(
@@ -707,7 +646,7 @@ var targetBindSubCls =
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("cv", codeValueOpaque)))),
                 new Method(
-                    "code_to_bind_sub",
+                    "codeToBindSub",
                     eresultTargetBindSub,
                     new MethodArgs(
                         TList.of(
@@ -715,7 +654,7 @@ var targetBindSubCls =
                             new NamedTypeRef("code", bindingCode),
                             new NamedTypeRef("type", typeOpaque)))),
                 new Method(
-                    "bind_sub_record",
+                    "bindSubRecord",
                     targetBindSub,
                     new MethodArgs(
                         TList.of(
@@ -724,7 +663,7 @@ var targetBindSubCls =
                             new NamedTypeRef("carry", bindingCode),
                             new NamedTypeRef("fields", listRecordBindField)))),
                 new Method(
-                    "bind_sub_tuple",
+                    "bindSubTuple",
                     targetBindSub,
                     new MethodArgs(
                         TList.of(
@@ -733,7 +672,7 @@ var targetBindSubCls =
                             new NamedTypeRef("carry", bindingCode),
                             new NamedTypeRef("slots", listTupleBindSlot)))),
                 new Method(
-                    "cast_exception",
+                    "castException",
                     eresultCode,
                     new MethodArgs(
                         TList.of(
@@ -750,7 +689,7 @@ var targetBindSubCls =
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("entries", listEntries)))),
                 new Method(
-                    "try_finally",
+                    "tryFinally",
                     eresultCode,
                     new MethodArgs(
                         TList.of(
@@ -785,7 +724,7 @@ var targetBindSubCls =
                             new NamedTypeRef("conditions", listIfBranch),
                             new NamedTypeRef("else", optExpr)))),
                 new Method(
-                    "try_catch_finally",
+                    "tryCatchFinally",
                     eresultCodeDynamic,
                     new MethodArgs(
                         TList.of(
@@ -820,13 +759,13 @@ var targetBindSubCls =
                 new Leaf(
                     new LeafSpec.InitialBind(
                         THROW_COMPILE_SCOPE_ID,
-                        CodeBlock.of("new $T()", TYPE_THROW_DYNAMIC)))),
+                        DynamicTypes.leaf(TYPE_THROW_DYNAMIC)))),
             new Child(
                 "panic",
                 new Leaf(
                     new LeafSpec.InitialBind(
                         PANIC_COMPILE_SCOPE_ID,
-                        CodeBlock.of("new $T()", TYPE_PANIC_DYNAMIC)))),
+                        DynamicTypes.leaf(TYPE_PANIC_DYNAMIC)))),
             new Child(
                 "log",
                 new Leaf(
@@ -835,44 +774,17 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "message",
-                                new TypeRef(
-                                    ClassName.get(String.class),
-                                    CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC)))),
-                        ClassName.VOID,
-                        unitTupleDynamic(),
-                        CodeBlock.builder()
-                            .addStatement("long timestampMs = $T.currentTimeMillis()", System.class)
-                            .addStatement(
-                                "xx.vx.logs.add(new $T(timestampMs, message))",
-                                ClassName.get("compilerxyz.eval", "LogEntry"))
-                            .addStatement("return null")
-                            .build()))),
+                                TypeRef.leaf(TYPE_STRING_DYNAMIC))),
+                        unitTupleDynamic()))),
             new Child(
                 "define",
                 new Leaf(
                     new LeafSpec.Function(
                         5002,
                         TList.of(),
-                        ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"),
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder")),
-                        CodeBlock.builder()
-                            .addStatement("var ex = xx.vx")
-                            .addStatement(
-                                "var compileId = new $T(ex.ix.importState, ex.ix.sourceId)",
-                                ClassName.get("compilerxyz.eval", "CompileId"))
-                            .addStatement(
-                                "var defSetId = new $T(compileId, ex.ix.defSetCounter.next())",
-                                ClassName.get("compilerxyz.eval", "DefSetId"))
-                            .addStatement(
-                                "var inner = new $T(defSetId)",
-                                ClassName.get("compilerxyz.eval", "DefinitionSet"))
-                            .addStatement("ex.definitionSets.put(defSetId, inner)")
-                            .addStatement(
-                                "return new $T(inner)",
-                                ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"))
-                            .build()))),
+                            ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"))))),
             new Child("types", typesBranch()),
             new Child("eval", evalBranch())));
   }
@@ -884,85 +796,38 @@ var targetBindSubCls =
                 "list",
                 new Leaf(
                     new LeafSpec.Constructor(
-                        5010,
-                        TList.of(
-                            new NamedTypeRef(
-                                "element_type",
-                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType")))),
-                        TYPE_LIST_DYNAMIC,
-                        CodeBlock.of("new $T()", TYPE_LIST_DYNAMIC),
-                        CodeBlock.of("new $T()", TYPE_LIST_CONSTRUCTOR_CONST),
-                        pendingBody(
-                            5010,
-                            "types.list",
-                            "TypeListDynamic instantiation from dynamic AnyType arg")))),
+                        5010, DynamicTypes.leaf(TYPE_LIST_CONSTRUCTOR_CONST)))),
             new Child(
                 "map",
                 new Leaf(
                     new LeafSpec.Constructor(
-                        5011,
-                        TList.of(
-                            new NamedTypeRef(
-                                "key_type",
-                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType"))),
-                            new NamedTypeRef(
-                                "value_type",
-                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType")))),
-                        TYPE_MAP_DYNAMIC,
-                        CodeBlock.of("new $T()", TYPE_MAP_DYNAMIC),
-                        CodeBlock.of("new $T()", TYPE_MAP_CONSTRUCTOR_CONST),
-                        pendingBody(
-                            5011,
-                            "types.map",
-                            "TypeMapDynamic instantiation from dynamic AnyType args")))),
+                        5011, DynamicTypes.leaf(TYPE_MAP_CONSTRUCTOR_CONST)))),
             new Child(
                 "option",
                 new Leaf(
                     new LeafSpec.Constructor(
-                        5012,
-                        TList.of(
-                            new NamedTypeRef(
-                                "element_type",
-                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType")))),
-                        TYPE_OPTION_DYNAMIC,
-                        CodeBlock.of("new $T()", TYPE_OPTION_DYNAMIC),
-                        CodeBlock.of("new $T()", TYPE_OPTION_CONSTRUCTOR_CONST),
-                        pendingBody(
-                            5012,
-                            "types.option",
-                            "TypeOptionDynamic instantiation from dynamic AnyType arg")))),
+                        5012, DynamicTypes.leaf(TYPE_OPTION_CONSTRUCTOR_CONST)))),
             new Child(
                 "eresult",
                 new Leaf(
                     new LeafSpec.Constructor(
-                        5014,
-                        TList.of(
-                            new NamedTypeRef(
-                                "element_type",
-                                TypeRef.unit(ClassName.get("compilerxyz.eval.push", "AnyType")))),
-                        TYPE_ERESULT_DYNAMIC,
-                        CodeBlock.of("new $T()", TYPE_ERESULT_DYNAMIC),
-                        CodeBlock.of("new $T()", TYPE_ERESULT_CONSTRUCTOR_CONST),
-                        pendingBody(
-                            5014,
-                            "types.eresult",
-                            "TypeEResultDynamic instantiation from dynamic AnyType arg")))),
+                        5014, DynamicTypes.leaf(TYPE_ERESULT_CONSTRUCTOR_CONST)))),
             new Child(
                 "code",
                 new Leaf(
-                    new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", CODE_INTERFACE)))),
+                    new LeafSpec.AnyConst(DynamicTypes.leaf(CODE_INTERFACE)))),
             new Child(
                 "string",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
             new Child(
                 "number",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_NUMBER_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC)))),
             new Child(
                 "null",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_NULL_DYNAMIC)))),
             new Child(
                 "bool",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC)))),
             new Child(
                 "binding",
                 new Leaf(
@@ -980,25 +845,25 @@ var targetBindSubCls =
                                 "compilerxyz.eval.value.bind_result", "BindResultType"))))),
             new Child(
                 "constkey",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_CONSTKEY_DYNAMIC)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC)))),
             new Child(
-                "expr", new Leaf(new LeafSpec.AnyConst(CodeBlock.of("new $T()", TYPE_EXPR)))),
+                "expr", new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_EXPR)))),
             new Child(
                 "type",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", TYPE)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE)))),
             new Child(
                 "aspect",
-                new Leaf(new LeafSpec.AnyConst(CodeBlock.of("$T.dynamicType()", ASPECT_INTERFACE)))),
+                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(ASPECT_INTERFACE)))),
             new Child(
                 "codedyn",
                 new Leaf(
                     new LeafSpec.AnyConst(
-                        CodeBlock.of("$T.dynamicType()", CODE_DYN_HANDLE_TYPE)))),
+                        DynamicTypes.leaf(CODE_DYN_HANDLE_TYPE)))),
             new Child(
                 "cve",
                 new Leaf(
                     new LeafSpec.AnyConst(
-                        CodeBlock.of("new $T()", TYPE_CODE_VALUE_EXTERN_DYNAMIC))))));
+                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC))))));
   }
 
   private static NodeSpec evalBranch() {
@@ -1017,13 +882,13 @@ var targetBindSubCls =
                 new Leaf(
                     new LeafSpec.InitialBind(
                         ASPECT_COMPILE_SCOPE_ID,
-                        CodeBlock.of("new $T()", TYPE_FUNCTION_ASPECT_DYNAMIC)))),
+                        DynamicTypes.leaf(TYPE_FUNCTION_ASPECT_DYNAMIC)))),
             new Child(
                 "cast_value",
                 new Leaf(
                     new LeafSpec.InitialBind(
                         CAST_VALUE_COMPILE_SCOPE_ID,
-                        CodeBlock.of("new $T()", TYPE_FUNCTION_CAST_VALUE_DYNAMIC)))),
+                        DynamicTypes.leaf(TYPE_FUNCTION_CAST_VALUE_DYNAMIC)))),
 
             new Child(
                 "const_eval",
@@ -1033,23 +898,9 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "xx_",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "ExprContext"),
-                                    CodeBlock.of(
-                                        "$T.dynamicType()",
-                                        ClassName.get("compilerxyz.eval", "ExprContext")))),
-                            new NamedTypeRef(
-                                "staged",
-                                new TypeRef(
-                                    TypeName.OBJECT,
-                                    CodeBlock.of(
-                                        "$T.dynamicType()",
-                                        ClassName.get(
-                                            "compilerxyz.eval.push", "StagedExpr"))))),
-                        ClassName.get(
-                            "compilerxyz.eval.value.code_value_extern", "CodeValueExtern"),
-                        CodeBlock.of("new $T()", TYPE_CODE_VALUE_EXTERN_DYNAMIC),
-                        constEvalBody()))),
+                                TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext"))),
+                            new NamedTypeRef("staged", TypeRef.leaf(TYPE_EXPR))),
+                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC)))),
             new Child(
                 "codevalue",
                 new Leaf(
@@ -1057,24 +908,10 @@ var targetBindSubCls =
                         5005,
                         TList.of(
                             new NamedTypeRef(
-                                "code",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "Code"),
-                                    CodeBlock.of("$T.dynamicType()", CODE_INTERFACE))),
+                                "code", TypeRef.leaf(CODE_INTERFACE)),
                             new NamedTypeRef(
-                                "value",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.gen", "Value"),
-                                    CodeBlock.of("$T.dynamicType()", VALUE_INTERFACE)))),
-                        ClassName.get(
-                            "compilerxyz.eval.value.code_value_extern", "CodeValueExtern"),
-                        CodeBlock.of("new $T()", TYPE_CODE_VALUE_EXTERN_DYNAMIC),
-                        CodeBlock.builder()
-                            .addStatement(
-                                "return new $T(code, $T.some(value))",
-                                ClassName.get("compilerxyz.eval", "CodeValue"),
-                                ClassName.get("compilerxyz.util", "Opt"))
-                            .build()))),
+                                "value", TypeRef.leaf(VALUE_INTERFACE))),
+                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC)))),
             new Child(
                 "stack",
                 new Leaf(
@@ -1082,14 +919,8 @@ var targetBindSubCls =
                         5013,
                         TList.of(
                             new NamedTypeRef(
-                                "type", TypeRef.opaque(ClassName.get("compilerxyz.eval", "Type")))),
-                        ClassName.get("compilerxyz.gen", "Value"),
-                        CodeBlock.of("$T.dynamicType()", VALUE_INTERFACE),
-                        CodeBlock.builder()
-                            .addStatement(
-                                "return $T.stack(type)",
-                                ClassName.get("compilerxyz.eval.value", "ValueDynamic"))
-                            .build()))),
+                                "type", TypeRef.leaf(ClassName.get("compilerxyz.eval", "Type")))),
+                        DynamicTypes.leaf(VALUE_INTERFACE)))),
             new Child(
                 "str_to_json",
                 new Leaf(
@@ -1098,16 +929,8 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "s",
-                                new TypeRef(
-                                    ClassName.get(String.class),
-                                    CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC)))),
-                        ClassName.get(String.class),
-                        CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC),
-                        pendingBody(
-                            5003,
-                            "str_to_json",
-                            "serde_json::to_string equivalent on JVM (com.fasterxml.jackson or"
-                                + " similar) not yet selected for the runtime")))),
+                                TypeRef.leaf(TYPE_STRING_DYNAMIC))),
+                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
             new Child(
                 "constkey_to_str",
                 new Leaf(
@@ -1115,13 +938,8 @@ var targetBindSubCls =
                         5004,
                         TList.of(
                             new NamedTypeRef(
-                                "key", TypeRef.viaPush(ClassName.get("compilerxyz.eval", "ConstKey")))),
-                        ClassName.get(String.class),
-                        CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC),
-                        pendingBody(
-                            5004,
-                            "constkey_to_str",
-                            "ConstKey.toStr() bridge from dynamic invocation not yet wired")))),
+                                "key", TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey")))),
+                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
             new Child(
                 "gen_binding_name",
                 new Leaf(
@@ -1130,18 +948,8 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "_xx",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "ExprContext"),
-                                    CodeBlock.of(
-                                        "$T.dynamicType()",
-                                        ClassName.get("compilerxyz.eval", "ExprContext"))))),
-                        ClassName.get(String.class),
-                        CodeBlock.of("new $T()", TYPE_STRING_DYNAMIC),
-                        pendingBody(
-                            5006,
-                            "gen_binding_name",
-                            "requires next_local_id allocation from xx.vx — pending Push decode"
-                                + " parity")))),
+                                TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext")))),
+                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
             new Child(
                 "new_expr_context",
                 new Leaf(
@@ -1150,23 +958,14 @@ var targetBindSubCls =
                         TList.of(
                             new NamedTypeRef(
                                 "target_arg",
-                                TypeRef.viaPush(ClassName.get("compilerxyz.gen", "Target"))),
+                                TypeRef.leaf(ClassName.get("compilerxyz.gen", "Target"))),
                             new NamedTypeRef(
                                 "scope_arg",
-                                TypeRef.opaque(
-                                    ParameterizedTypeName.get(
-                                        ClassName.get("compilerxyz.util", "TMap"),
-                                        ClassName.get("compilerxyz.eval", "ConstKey"),
-                                        ClassName.get("compilerxyz.gen", "Binding"))))),
-                        ClassName.get("compilerxyz.eval", "ExprContext"),
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.eval", "ExprContext")),
-                        pendingBody(
-                            5009,
-                            "new_expr_context",
-                            "requires RcBindingWrap + Scope construction — pending Push decode"
-                                + " parity")))),
+                                TypeRef.composite2(
+                                    TYPE_MAP_DYNAMIC,
+                                    TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey")),
+                                    TypeRef.leaf(ClassName.get("compilerxyz.gen", "Binding"))))),
+                        DynamicTypes.leaf(ClassName.get("compilerxyz.eval", "ExprContext"))))),
             new Child("aspect_function", new Leaf(new LeafSpec.Interface(ifaceAspectFunction))),
             new Child("aspect_field", new Leaf(new LeafSpec.Interface(ifaceAspectField))),
             new Child(
@@ -1178,28 +977,13 @@ var targetBindSubCls =
                     new LeafSpec.Function(
                         5015,
                         TList.of(
-                            new NamedTypeRef(
-                                "code",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.eval", "Code"),
-                                    CodeBlock.of("$T.dynamicType()", CODE_INTERFACE))),
+                            new NamedTypeRef("code", TypeRef.leaf(CODE_INTERFACE)),
                             new NamedTypeRef(
                                 "binding",
-                                new TypeRef(
-                                    ClassName.get("compilerxyz.gen", "Binding"),
-                                    CodeBlock.of(
-                                        "$T.dynamicType()",
-                                        ClassName.get("compilerxyz.gen", "Binding"))))),
-                        ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
-                        CodeBlock.of(
-                            "$T.dynamicType()",
+                                TypeRef.leaf(ClassName.get("compilerxyz.gen", "Binding")))),
+                        DynamicTypes.leaf(
                             ClassName.get(
-                                "compilerxyz.eval.value.bind_result", "BindResultType")),
-                        CodeBlock.builder()
-                            .addStatement(
-                                "return new $T(code, binding)",
-                                ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"))
-                            .build()))),
+                                "compilerxyz.eval.value.bind_result", "BindResultType"))))),
             new Child(
                 "aspect_bind",
                 new Leaf(
@@ -1230,71 +1014,7 @@ var targetBindSubCls =
   }
 
   private static CodeBlock unitTupleDynamic() {
-    return CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC);
-  }
-
-  private static CodeBlock constEvalBody() {
-    var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var stagedCell = ClassName.get("compilerxyz.eval.expr", "StagedExprCell");
-    var expr = ClassName.get("compilerxyz.eval", "Expr");
-    var constEval = ClassName.get("compilerxyz.eval", "ConstEval");
-    var b = CodeBlock.builder();
-    b.addStatement("$T targetXx", exprContext);
-    b.beginControlFlow("if (xx_ instanceof $T raw)", exprContext);
-    b.addStatement("targetXx = raw");
-    b.nextControlFlow("else");
-    b.addStatement(
-        "throw new $T($S + (xx_ == null ? $S : xx_.getClass()))",
-        AssertionError.class,
-        "builtin 5008 (const_eval): xx is not ExprContext, got ",
-        "null");
-    b.endControlFlow();
-    b.addStatement("Object stagedObj = staged");
-    b.addStatement("Object exprValue");
-    b.beginControlFlow("if (stagedObj instanceof $T cell)", stagedCell);
-    b.addStatement("exprValue = cell.peek()");
-    b.beginControlFlow("if (exprValue == null)");
-    b.addStatement(
-        "throw new $T($S)",
-        IllegalStateException.class,
-        "builtin 5008 (const_eval): staged cell already null (was consumed elsewhere)");
-    b.endControlFlow();
-    b.nextControlFlow("else");
-    b.addStatement("exprValue = stagedObj");
-    b.endControlFlow();
-    b.beginControlFlow("if (!(exprValue instanceof $T exprAst))", expr);
-    b.addStatement(
-        "throw new $T($S + (exprValue == null ? $S : exprValue.getClass()))",
-        AssertionError.class,
-        "builtin 5008 (const_eval): staged payload is not Expr, got ",
-        "null");
-    b.endControlFlow();
-    b.addStatement("var res = $T.constEval(targetXx, exprAst)", constEval);
-    b.beginControlFlow("if (res.hasErrors())");
-    b.addStatement(
-        "throw new $T($S + res.errorsOrNull())",
-        IllegalStateException.class,
-        "builtin 5008 (const_eval): const_eval produced no value; errors: ");
-    b.endControlFlow();
-    b.addStatement(
-        "var resCv = res.requireValue($S)",
-        "BuiltinTreeGen builtin 5008 const_eval result");
-    b.addStatement("return resCv");
-    return b.build();
-  }
-
-  private static CodeBlock pendingBody(long scopeId, String name, String reason) {
-    return CodeBlock.builder()
-        .addStatement(
-            "throw new $T($S)",
-            UnsupportedOperationException.class,
-            "builtin scope id "
-                + scopeId
-                + " ("
-                + name
-                + "): port of builtin_tree.rs body pending — "
-                + reason)
-        .build();
+    return DynamicTypes.leaf(TYPE_NULL_DYNAMIC);
   }
 
   private static void validate(NodeSpec root, TSet<Long> scopeIds) {

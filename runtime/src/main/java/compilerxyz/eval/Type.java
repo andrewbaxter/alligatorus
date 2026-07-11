@@ -3,6 +3,11 @@ package compilerxyz.eval;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.value.bool_.TypeBoolDynamic;
+import compilerxyz.eval.value.code_value_extern.TypeCodeValueExternDynamic;
+import compilerxyz.eval.value.eresult.TypeEResultDynamic;
+import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
 import compilerxyz.eval.value.object_.ObjectDropKind;
@@ -11,11 +16,20 @@ import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.eval.value.option.TypeOptionDynamic;
+import compilerxyz.eval.value.record.Record;
+import compilerxyz.eval.value.record.RecordField;
+import compilerxyz.eval.value.string.TypeStringDynamic;
+import compilerxyz.eval.value.tuple.Tuple;
+import compilerxyz.eval.value.tuple.TupleElement;
+import compilerxyz.eval.value.typeid.TypeTypeIdDynamic;
+import compilerxyz.eval.value.unique.TypeUnique;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.util.TOrderedMap;
 
 public interface Type extends Value {
 
@@ -31,20 +45,157 @@ public interface Type extends Value {
     private static TypeObjectDynamic build() {
       var identityAspects = new TList<Unique>();
       identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
-      return new TypeObjectDynamic(
+      var methods = new TList<ObjectMethod>();
+      var instance = new TypeObjectDynamic(
           GenTypeIds.TYPE_TYPE_DYNAMIC_TYPE_ID,
           "type",
           JavaInternalName.of("compilerxyz/eval/Type"),
           JavaDataDescriptor.fromClass(Type.class),
           new TList<ObjectDataField>(),
-          new TList<ObjectMethod>(),
+          methods,
           ObjectDropKind.DYNAMIC_LIGHT,
           identityAspects,
           new TList<TypeObjectCastRule>(),
           new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
+          Opt.<TypeObjectLift>some(
+              (xx, loc, host) -> {
+                if (!(host instanceof Type t)) {
+                  return compilerxyz.eval.EResult.err(
+                      loc,
+                      "Type::lift: host is not a Type, got "
+                          + (host == null ? "null" : host.getClass().getName()));
+                }
+                return compilerxyz.eval.EResult.ok(
+                    new compilerxyz.eval.value.ValueEmpty(t));
+              }),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
+
+      var typeIn = JavaInternalName.of("compilerxyz/eval/Type");
+      var exprCtxDesc = JavaDataDescriptor.fromClass(ExprContext.class);
+      var qexprIdDesc = JavaDataDescriptor.fromClass(QExprId.class);
+      var typeDesc_ = JavaDataDescriptor.fromClass(Type.class);
+      var cvDesc = JavaDataDescriptor.fromClass(CodeValue.class);
+      var eresultDesc = JavaDataDescriptor.fromClass(EResult.class);
+      var boolDesc = JavaDataDescriptor.DESC_BOOL;
+      var stringDesc = JavaDataDescriptor.fromClass(String.class);
+      var typeIdDesc = JavaDataDescriptor.fromClass(TypeId.class);
+      var uniqueDesc = JavaDataDescriptor.fromClass(Unique.class);
+      var optDesc = JavaDataDescriptor.fromClass(Opt.class);
+
+      // typeCanCastFrom(ExprContext, QExprId, Type) -> boolean
+      {
+        var fields = new TOrderedMap<ConstKey, RecordField>();
+        fields.put(new ConstKey.Str("xx"), new RecordField.Dynamic(ExprContext.dynamicType()));
+        fields.put(new ConstKey.Str("loc"), new RecordField.Dynamic(QExprId.dynamicType()));
+        fields.put(new ConstKey.Str("source_type"), new RecordField.Dynamic(instance));
+        var argRecord = new Record(Opt.none(), fields);
+        methods.add(new ObjectMethod("can_cast_from", new TypeMethodDynamic(
+            instance,
+            argRecord,
+            new TypeBoolDynamic(),
+            typeIn,
+            "typeCanCastFrom",
+            JavaMethodDescriptor.fromParts(boolDesc, exprCtxDesc, qexprIdDesc, typeDesc_),
+            true,
+            false)));
+      }
+
+      // typeCastFrom(ExprContext, QExprId, CodeValue) -> EResult<CodeValue>
+      {
+        var fields = new TOrderedMap<ConstKey, RecordField>();
+        fields.put(new ConstKey.Str("xx"), new RecordField.Dynamic(ExprContext.dynamicType()));
+        fields.put(new ConstKey.Str("loc"), new RecordField.Dynamic(QExprId.dynamicType()));
+        fields.put(new ConstKey.Str("cv"), new RecordField.Dynamic(new TypeCodeValueExternDynamic()));
+        var argRecord = new Record(Opt.none(), fields);
+        methods.add(new ObjectMethod("cast_from", new TypeMethodDynamic(
+            instance,
+            argRecord,
+            new TypeEResultDynamic(new TypeCodeValueExternDynamic()),
+            typeIn,
+            "typeCastFrom",
+            JavaMethodDescriptor.fromParts(eresultDesc, exprCtxDesc, qexprIdDesc, cvDesc),
+            true,
+            false)));
+      }
+
+      // typeCanCastTo(ExprContext, QExprId, Type) -> boolean
+      {
+        var fields = new TOrderedMap<ConstKey, RecordField>();
+        fields.put(new ConstKey.Str("xx"), new RecordField.Dynamic(ExprContext.dynamicType()));
+        fields.put(new ConstKey.Str("loc"), new RecordField.Dynamic(QExprId.dynamicType()));
+        fields.put(new ConstKey.Str("dest_type"), new RecordField.Dynamic(instance));
+        var argRecord = new Record(Opt.none(), fields);
+        methods.add(new ObjectMethod("can_cast_to", new TypeMethodDynamic(
+            instance,
+            argRecord,
+            new TypeBoolDynamic(),
+            typeIn,
+            "typeCanCastTo",
+            JavaMethodDescriptor.fromParts(boolDesc, exprCtxDesc, qexprIdDesc, typeDesc_),
+            true,
+            false)));
+      }
+
+      // typeCastTo(ExprContext, QExprId, CodeValue, Type) -> EResult<CodeValue>
+      {
+        var fields = new TOrderedMap<ConstKey, RecordField>();
+        fields.put(new ConstKey.Str("xx"), new RecordField.Dynamic(ExprContext.dynamicType()));
+        fields.put(new ConstKey.Str("loc"), new RecordField.Dynamic(QExprId.dynamicType()));
+        fields.put(new ConstKey.Str("cv"), new RecordField.Dynamic(new TypeCodeValueExternDynamic()));
+        fields.put(new ConstKey.Str("dest_type"), new RecordField.Dynamic(instance));
+        var argRecord = new Record(Opt.none(), fields);
+        methods.add(new ObjectMethod("cast_to", new TypeMethodDynamic(
+            instance,
+            argRecord,
+            new TypeEResultDynamic(new TypeCodeValueExternDynamic()),
+            typeIn,
+            "typeCastTo",
+            JavaMethodDescriptor.fromParts(eresultDesc, exprCtxDesc, qexprIdDesc, cvDesc, typeDesc_),
+            true,
+            false)));
+      }
+
+      // typeDesc() -> String
+      {
+        var argTuple = new Tuple(Opt.none(), TList.<TupleElement>of());
+        methods.add(new ObjectMethod("desc", new TypeMethodDynamic(
+            instance,
+            argTuple,
+            new TypeStringDynamic(),
+            typeIn,
+            "typeDesc",
+            JavaMethodDescriptor.fromParts(stringDesc),
+            true,
+            false)));
+      }
+
+      // typeId() -> TypeId
+      {
+        var argTuple = new Tuple(Opt.none(), TList.<TupleElement>of());
+        methods.add(new ObjectMethod("id", new TypeMethodDynamic(
+            instance,
+            argTuple,
+            new TypeTypeIdDynamic(),
+            typeIn,
+            "typeId",
+            JavaMethodDescriptor.fromParts(typeIdDesc),
+            true,
+            false)));
+      }
+
+      // typeAspect(Unique) -> Opt<Aspect>; xx from ExprContext static field
+      methods.add(new ObjectMethod("aspect", new TypeMethodDynamic(
+          instance,
+          new TypeUnique(),
+          new TypeOptionDynamic(Aspect.dynamicType()),
+          typeIn,
+          "typeAspect",
+          JavaMethodDescriptor.fromParts(optDesc, exprCtxDesc, uniqueDesc),
+          true,
+          true)));
+
+      return instance;
     }
   }
 

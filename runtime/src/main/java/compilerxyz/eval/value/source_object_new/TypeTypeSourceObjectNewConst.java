@@ -18,10 +18,13 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.ValueEmpty;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectPostDeserialize;
+import org.jspecify.annotations.Nullable;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
@@ -29,7 +32,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
-    implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
+    implements Type, AspectArtifact, AspectBind, AspectFunction, AspectLift, ExporterAny {
 
   private TypeSourceObjectNewDynamic asCtor() {
     return new TypeSourceObjectNewDynamic(type_);
@@ -65,7 +68,8 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
-        || key.equals(AspectFunction.ID)) {
+        || key.equals(AspectFunction.ID)
+        || key.equals(AspectLift.ID)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {
@@ -88,6 +92,12 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   @Override
   public Opt<Type> aspectFunctionExceptionType() {
     return Opt.none();
+  }
+
+  @Override
+  public EResult<Value> aspectLiftLift(
+      ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
+    return EResult.ok(new ValueEmpty(new TypeSourceObjectNewDynamic(type_)));
   }
 
   @Override

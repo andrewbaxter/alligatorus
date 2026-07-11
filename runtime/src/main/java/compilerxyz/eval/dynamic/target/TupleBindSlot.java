@@ -1,3 +1,9 @@
 package compilerxyz.eval.dynamic.target;
 
-public record TupleBindSlot(TargetBindSub sub) {}
+import compilerxyz.eval.Type;
+
+public record TupleBindSlot(TargetBindSub sub) {
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
+}

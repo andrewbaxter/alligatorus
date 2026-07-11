@@ -36,6 +36,12 @@ public record TypeEResultDynamic(Type elementType)
         AspectStackValueDynamic,
         ExporterAny {
 
+  public TypeEResultDynamic {
+    if (elementType instanceof compilerxyz.gen.AspectDynamicBoxed b) {
+      elementType = b.aspectDynamicBoxedBoxedForm();
+    }
+  }
+
   @Override
   public TypeId typeId() {
     return new TypeId.Composite(

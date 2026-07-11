@@ -11,9 +11,14 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -73,16 +78,26 @@ public record TypeInterfaceSpec()
         return EResult.err(
             loc, "cast interface_spec → interface_ref: source has no runtime code");
       }
-      var args = new TList<CodeDynamic>();
-      args.add(sourceCode);
-      var call =
-          compilerxyz.gen.GenDynMethods.SPEC_TO_INTERFACE_DATA.emitInvocation(
-              loc, xx.vx, args);
+      var call = emitSpecToInterfaceDataCall(loc, sourceCode);
       return EResult.ok(
           new CodeValue(
               compilerxyz.eval.Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
     }
     return EResult.err(loc, "Cannot cast interface_spec to " + destType.typeDesc());
+  }
+
+  private static CodeDynamic emitSpecToInterfaceDataCall(QExprId loc, CodeDynamic source) {
+    var seq = new JavaBytecodeSequence();
+    seq.add(source);
+    seq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc,
+            JavaInternalName.fromClass(DynRuntime.class),
+            "specToInterfaceData",
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.fromClass(InterfaceData.class),
+                TList.of(JavaDataDescriptor.fromClass(TypeInterfaceSpec.class)))));
+    return new CodeDynamic(loc, seq);
   }
 
   @Override

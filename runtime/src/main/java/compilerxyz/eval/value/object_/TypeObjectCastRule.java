@@ -8,7 +8,12 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.eval.dynamic.EvalRootEmitter;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.interface_spec.TypeInterfaceSpec;
 import compilerxyz.util.Opt;
@@ -34,7 +39,7 @@ public sealed interface TypeObjectCastRule {
     }
   }
 
-  record CallByDestIdentity(Unique identity, TypeFunctionDynamic method)
+  record CallByDestIdentity(Unique identity, DynRuntimeHelper helper)
       implements TypeObjectCastRule {
     @Override
     public boolean matches(ExprContext xx, Type destType) {
@@ -44,11 +49,11 @@ public sealed interface TypeObjectCastRule {
     @Override
     public EResult<CodeValue> apply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return emitRuntimeCall(xx, source, loc, cv, destType, method);
+      return emitRuntimeCall(xx, source, loc, cv, destType, helper);
     }
   }
 
-  record CallToInterfaceSpec(TypeFunctionDynamic method) implements TypeObjectCastRule {
+  record CallToInterfaceSpec(DynRuntimeHelper helper) implements TypeObjectCastRule {
     @Override
     public boolean matches(ExprContext xx, Type destType) {
       return destType instanceof TypeInterfaceSpec;
@@ -57,17 +62,23 @@ public sealed interface TypeObjectCastRule {
     @Override
     public EResult<CodeValue> apply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return emitRuntimeCall(xx, source, loc, cv, destType, method);
+      return emitRuntimeCall(xx, source, loc, cv, destType, helper);
     }
   }
 
-private static EResult<CodeValue> emitRuntimeCall(
+  record DynRuntimeHelper(
+      JavaInternalName targetClass,
+      String methodName,
+      JavaMethodDescriptor descriptor,
+      boolean needsExprContext) {}
+
+  private static EResult<CodeValue> emitRuntimeCall(
       ExprContext xx,
       TypeObjectDynamic source,
       QExprId loc,
       CodeValue cv,
       Type destType,
-      TypeFunctionDynamic method) {
+      DynRuntimeHelper helper) {
     var sourceCode = cv.code().dynamic();
     if (sourceCode == null) {
       return EResult.err(
@@ -78,9 +89,32 @@ private static EResult<CodeValue> emitRuntimeCall(
               + destType.typeDesc()
               + ": source has no runtime code");
     }
-    var args = new TList<CodeDynamic>();
-    args.add(sourceCode);
-    var call = method.emitInvocation(loc, xx.vx, args);
+    var seq = new JavaBytecodeSequence();
+    if (helper.needsExprContext) {
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc,
+              JavaInternalName.of(xx.vx.evalRootInternalName),
+              EvalRootEmitter.EXPR_CONTEXT_FIELD,
+              EvalRootEmitter.DESC_EXPR_CONTEXT));
+    }
+    seq.add(sourceCode);
+    seq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc,
+            helper.targetClass,
+            helper.methodName,
+            helper.descriptor));
+    var retDesc = helper.descriptor.value();
+    var retStart = retDesc.indexOf(')') + 1;
+    if (retDesc.charAt(retStart) == 'L'
+        && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
+      seq.add(
+          JavaBytecodeUtils.cast(
+              loc, JavaDataDescriptor.fromInternalName(
+                  JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
+    }
+    var call = new CodeDynamic(loc, seq);
     return EResult.ok(
         new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
   }

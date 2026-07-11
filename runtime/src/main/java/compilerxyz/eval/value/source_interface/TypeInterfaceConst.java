@@ -30,6 +30,12 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -57,6 +63,11 @@ public record TypeInterfaceConst(InterfaceData data)
   @Override
   public TypeId typeId() {
     return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
+  }
+
+  public static compilerxyz.eval.Type fromInterfaceData(
+      compilerxyz.eval.ExprContext xx, InterfaceData data) {
+    return new TypeInterfaceConst(data);
   }
 
   private static long uniqueId(Unique u) {
@@ -162,20 +173,7 @@ public record TypeInterfaceConst(InterfaceData data)
       return EResult.err(
           loc, "Interface method '" + keyName + "' is missing arg or return type");
     }
-    var descObjObj =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-            TList.of(
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
-    var fieldType =
-        new compilerxyz.eval.value.function.TypeFunctionDynamic(
-            argType,
-            retType,
-            compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),
-            match.fieldName,
-            descObjObj,
-            false);
+    var fieldType = new TypeInterfaceMethodDynamic(data, match);
     return EResult.ok(
         new CodeValue(
             self.code(),
@@ -195,20 +193,7 @@ public record TypeInterfaceConst(InterfaceData data)
         var argType = m.argType;
         var retType = m.retType;
         if (argType != null && retType != null) {
-          var descObjObj =
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                  TList.of(
-                      compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                      compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class)));
-          return Opt.some(
-              new compilerxyz.eval.value.function.TypeFunctionDynamic(
-                  argType,
-                  retType,
-                  compilerxyz.eval.dynamic.JavaInternalName.of("PENDING_source_interface_class"),
-                  m.fieldName,
-                  descObjObj,
-                  false));
+          return Opt.some(new TypeInterfaceMethodDynamic(data, m));
         }
         return Opt.none();
       }
@@ -244,11 +229,7 @@ public record TypeInterfaceConst(InterfaceData data)
         return EResult.err(
             loc, "cast interface_const → interface_spec: source has no runtime code");
       }
-      var args = new TList<CodeDynamic>();
-      args.add(sourceCode);
-      var call =
-          compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_INTERFACE_SPEC.emitInvocation(
-              loc, xx.vx, args);
+      var call = emitInterfaceRefToInterfaceSpecCall(loc, sourceCode);
       return EResult.ok(
           new CodeValue(
               Code.of(loc, call),
@@ -299,5 +280,20 @@ public record TypeInterfaceConst(InterfaceData data)
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;
+  }
+
+  static CodeDynamic emitInterfaceRefToInterfaceSpecCall(QExprId loc, CodeDynamic source) {
+    var seq = new JavaBytecodeSequence();
+    seq.add(source);
+    seq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc,
+            JavaInternalName.fromClass(DynRuntime.class),
+            "interfaceRefToInterfaceSpec",
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.fromClass(
+                    compilerxyz.eval.value.interface_spec.TypeInterfaceSpec.class),
+                TList.of(JavaDataDescriptor.fromClass(InterfaceData.class)))));
+    return new CodeDynamic(loc, seq);
   }
 }

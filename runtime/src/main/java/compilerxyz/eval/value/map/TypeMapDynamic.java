@@ -78,6 +78,15 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         AspectStackValueDynamic,
         ExporterAny {
 
+  public TypeMapDynamic {
+    if (keyType instanceof compilerxyz.gen.AspectDynamicBoxed bk) {
+      keyType = bk.aspectDynamicBoxedBoxedForm();
+    }
+    if (valueType instanceof compilerxyz.gen.AspectDynamicBoxed bv) {
+      valueType = bv.aspectDynamicBoxedBoxedForm();
+    }
+  }
+
   @Override
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
 

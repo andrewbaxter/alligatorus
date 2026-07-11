@@ -23,6 +23,10 @@ import compilerxyz.util.TOrderedMap;
 import org.jspecify.annotations.Nullable;
 
 public final class SourceDataMethodData {
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
+
   public final String name;
   public final String fieldName;
   public @Nullable Type argType;

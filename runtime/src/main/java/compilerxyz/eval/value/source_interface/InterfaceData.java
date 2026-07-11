@@ -8,9 +8,9 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.ObjectDataField;
@@ -112,9 +112,27 @@ public final class InterfaceData {
       castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_CONST_IDENTITY));
       castRules.add(
           new TypeObjectCastRule.CallByDestIdentity(
-              GenIdentities.TYPE_TYPE_IDENTITY, compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_TYPE_TYPE));
+              GenIdentities.TYPE_TYPE_IDENTITY,
+              new TypeObjectCastRule.DynRuntimeHelper(
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeInterfaceConst.class),
+                  "fromInterfaceData",
+                  JavaMethodDescriptor.fromParts(
+                      JavaDataDescriptor.fromClass(compilerxyz.eval.Type.class),
+                      TList.of(
+                          JavaDataDescriptor.fromClass(compilerxyz.eval.ExprContext.class),
+                          JavaDataDescriptor.fromClass(InterfaceData.class))),
+                  true)));
       castRules.add(
-          new TypeObjectCastRule.CallToInterfaceSpec(compilerxyz.gen.GenDynMethods.INTERFACE_REF_TO_INTERFACE_SPEC));
+          new TypeObjectCastRule.CallToInterfaceSpec(
+              new TypeObjectCastRule.DynRuntimeHelper(
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(
+                      compilerxyz.eval.dynamic.DynRuntime.class),
+                  "interfaceRefToInterfaceSpec",
+                  JavaMethodDescriptor.fromParts(
+                      JavaDataDescriptor.fromClass(
+                          compilerxyz.eval.value.interface_spec.TypeInterfaceSpec.class),
+                      TList.of(JavaDataDescriptor.fromClass(InterfaceData.class))),
+                  false)));
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID,
           "definition_set_interface_ref",

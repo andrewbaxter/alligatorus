@@ -18,6 +18,12 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynPanic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
@@ -71,22 +77,18 @@ public record TypePanicDynamic()
       return EResult.errs(erb.errors());
     }
     var msgCode = msgCodeOpt.get();
-    var args = new TList<CodeDynamic>();
-    args.add(msgCode);
-    var panicType =
-        new compilerxyz.eval.value.function.TypeFunctionDynamic(
-            stringType,
-            stringType,
-            compilerxyz.eval.dynamic.JavaInternalName.fromClass(
-                compilerxyz.eval.dynamic.DynRuntime.class),
-            "panic",
-            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Object.class),
-                TList.of(
-                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(ExprContext.class),
-                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class))),
-            true);
-    var throwCode = panicType.emitInvocation(loc, xx.vx, args);
+    var panicInternal = JavaInternalName.fromClass(DynPanic.class);
+    var ctorDesc =
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.DESC_VOID,
+            TList.of(JavaDataDescriptor.fromClass(String.class)));
+    var seq = new JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.newInstance(loc, panicInternal));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(msgCode);
+    seq.add(JavaBytecodeUtils.invokeSpecial(loc, panicInternal, "<init>", ctorDesc));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+    var throwCode = new CodeDynamic(loc, seq);
     return EResult.ok(new CodeValue(Code.of(loc, throwCode), Opt.none()));
   }
 

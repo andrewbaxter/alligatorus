@@ -95,6 +95,7 @@ public record TypeStringDynamic()
                   JAVA_STRING,
                   "toLowerCase",
                   DESC_TO_STR,
+                  false,
                   false)),
           new Pair<>(
               new ConstKey.Str("toUpperCase"),
@@ -105,6 +106,7 @@ public record TypeStringDynamic()
                   JAVA_STRING,
                   "toUpperCase",
                   DESC_TO_STR,
+                  false,
                   false)));
 
   @Override

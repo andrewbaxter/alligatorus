@@ -46,7 +46,8 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue"));
   }
 
   @Override

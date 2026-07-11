@@ -134,6 +134,14 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_value_dynamic", 7109L));
     list.add(new TypeIdSpec("type_interface_spec", 7110L));
     list.add(new TypeIdSpec("type_root_interface_spec", 7111L));
+    list.add(new TypeIdSpec("type_type_id_dynamic", 7112L));
+    list.add(new TypeIdSpec("type_list_push_dynamic", 7113L));
+    list.add(new TypeIdSpec("type_list_join_dynamic", 7114L));
+    list.add(new TypeIdSpec("type_number_to_string_dynamic", 7115L));
+    list.add(new TypeIdSpec("type_root_list_push_dynamic", 7116L));
+    list.add(new TypeIdSpec("type_root_list_join_dynamic", 7117L));
+    list.add(new TypeIdSpec("type_root_number_to_string_dynamic", 7118L));
+    list.add(new TypeIdSpec("type_interface_method_dynamic", 7119L));
     return list;
   }
 

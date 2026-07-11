@@ -52,32 +52,6 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
             mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                 mb.bind(
-                    "cb",
-                    mb.call(
-                        mb.field(mb.scopeUse("d"), mb.str("object")),
-                        mb.str(name + "Binding"))),
-                mb.call(
-                    mb.field(mb.scopeUse("cb"), mb.str("set_inner")), mb.typesType()),
-                mb.call(
-                    mb.field(mb.scopeUse("cb"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalBinding(),
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                new TestMb.RecordPair(
-                                    "use",
-                                    mb.call(
-                                        mb.evalCodevalue(),
-                                        mb.tupleOf(
-                                            mb.field(mb.scopeUse("arg"), mb.str("code")),
-                                            mb.call(
-                                                mb.evalStack(),
-                                                mb.scopeUse("inner"))))))))),
-                mb.bind(
-                    "cbnew",
-                    mb.call(mb.field(mb.scopeUse("cb"), mb.str("new")), mb.tupleOf())),
-                mb.bind(
                     "u",
                     mb.call(
                         mb.field(mb.scopeUse("d"), mb.str("object")),
@@ -96,17 +70,15 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             new TestMb.RecordPair(
                                 "can_cast_from",
                                 mb.seqOf(
-                                    mb.call(
-                                        mb.field(
-                                            mb.call(
+                                    mb.field(
+                                        mb.call(
+                                            mb.field(
                                                 mb.field(
-                                                    mb.field(
-                                                        mb.scopeUse("arg"),
-                                                        mb.str("source_type")),
-                                                    mb.str("aspect")),
-                                                mb.evalAspectStringDynamic()),
-                                            mb.str("is_some")),
-                                        mb.tupleOf()))),
+                                                    mb.scopeUse("arg"),
+                                                    mb.str("source_type")),
+                                                mb.str("aspect")),
+                                            mb.evalAspectStringDynamic()),
+                                        mb.str("is_some")))),
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(
@@ -189,9 +161,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb,
                             TList.of(
                                 new TestMb.RecordPair("bind", canaryBindBody(mb)))))),
-                mb.call(
-                    mb.field(mb.scopeUse("u"), mb.str("new")),
-                    mb.tupleOf()))),
+                mb.field(mb.scopeUse("u"), mb.str("new")))),
         mb.literalNull());
   }
 

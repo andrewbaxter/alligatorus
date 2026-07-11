@@ -361,25 +361,21 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     if (argElementsRes.hasErrors()) return argElementsRes.reerr();
     var argElements = argElementsRes.requireValue("TypeSourceFunctionConst::call arg elements");
 
-    var argDescs = new TList<compilerxyz.eval.dynamic.JavaDataDescriptor>(argElements.size());
-    for (var e : argElements) argDescs.add(e.jvmDesc());
-    var retDescRes = jvmDescOf(xx, loc, retType);
-    if (retDescRes.hasErrors()) return retDescRes.reerr();
-    var retDesc = retDescRes.requireValue("TypeSourceFunctionConst::call retDesc");
-    var descriptor =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(retDesc, argDescs);
     var retStackRes =
         compilerxyz.gen.AspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argCodes = new TList<compilerxyz.eval.dynamic.CodeDynamic>(argElements.size());
     for (var e : argElements) argCodes.add(e.code());
-    var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, descriptor, false);
-    var invocation = fnType.emitInvocation(loc, xx.vx, argCodes);
+    var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, false);
+    var invocationRes = fnType.emitInvocation(xx, loc, argCodes);
+    if (invocationRes.hasErrors()) return invocationRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeSourceFunctionConst::call ret stack")
-            .aspectStackValueDynamicToValue(loc, invocation));
+            .aspectStackValueDynamicToValue(
+                loc,
+                invocationRes.requireValue("TypeSourceFunctionConst::call invocation")));
   }
 
   private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescOf(

@@ -32,6 +32,10 @@ import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.Value;
 
 public final class DefinitionSet implements ExporterAny {
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
+
   public @Nullable ArtifactIdSource artifactId;
   public final DefSetId defSetId;
   public final TOrderedMap<DefSetId, DefinitionSet> dependencies;

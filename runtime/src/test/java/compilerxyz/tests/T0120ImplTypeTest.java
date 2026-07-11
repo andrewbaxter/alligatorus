@@ -50,17 +50,15 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "can_cast_from",
                                 mb.seqOf(
-                                    mb.call(
-                                        mb.field(
-                                            mb.call(
+                                    mb.field(
+                                        mb.call(
+                                            mb.field(
                                                 mb.field(
-                                                    mb.field(
-                                                        mb.scopeUse("arg"),
-                                                        mb.str("source_type")),
-                                                    mb.str("aspect")),
-                                                mb.evalAspectStringDynamic()),
-                                            mb.str("is_some")),
-                                        mb.tupleOf()))),
+                                                    mb.scopeUse("arg"),
+                                                    mb.str("source_type")),
+                                                mb.str("aspect")),
+                                            mb.evalAspectStringDynamic()),
+                                        mb.str("is_some")))),
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(

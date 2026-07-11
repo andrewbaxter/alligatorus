@@ -19,7 +19,6 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
@@ -46,22 +45,7 @@ import java.util.Map;
 public final class DynRuntime {
   private DynRuntime() {}
 
-  public static final class DynException extends RuntimeException {
-    public final Object payload;
-
-    public DynException(Object payload) {
-      super(payload == null ? "null" : payload.toString());
-      this.payload = payload;
-    }
-  }
-
-  public static final class DynPanic extends RuntimeException {
-    public DynPanic(String message) {
-      super(message);
-    }
-  }
-
-  private static compilerxyz.eval.value.source_interface.InterfaceData
+  public static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromObject(
           compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
     if (!(obj.aspectSource() instanceof Opt.Some<compilerxyz.eval.value.object_.ObjectAspectSource> some)
@@ -122,7 +106,7 @@ public final class DynRuntime {
     return data;
   }
 
-  private static compilerxyz.eval.value.source_interface.InterfaceData
+  public static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromSpec(
           compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
     var data=
@@ -228,150 +212,6 @@ public final class DynRuntime {
         jvmName, data.identity, kind, methods, Opt.some(data));
   }
 
-  public static Object listPush(TList<Object> list, Object element) {
-    list.add(element);
-    return null;
-  }
-
-  public static String listJoin(TList<Object> list, String separator) {
-    var sb = new StringBuilder();
-    boolean first = true;
-    for (var e : list) {
-      if (!first) sb.append(separator);
-      first = false;
-      sb.append((String) e);
-    }
-    return sb.toString();
-  }
-
-  public static Object mapGet(Map<Object, Object> map, Object key) {
-    return map.get(key);
-  }
-
-  public static String numberToString(double d) {
-    if (d == Math.floor(d) && !Double.isInfinite(d)) {
-      return Long.toString((long) d);
-    }
-    return Double.toString(d);
-  }
-
-  public static Object log(ExprContext xx, Object arg) {
-    System.out.println(arg);
-    return null;
-  }
-
-  public static Object panic(ExprContext xx, String message) {
-    throw new DynPanic(message);
-  }
-
-  public static Object throwValue(ExprContext xx, Object value) {
-    throw new DynException(value);
-  }
-
-  public static Object unionWrap(String tag, Object value) {
-    var m = new java.util.LinkedHashMap<String, Object>();
-    m.put(tag, value);
-    return m;
-  }
-
-  public static Opt<Aspect> sourceObjectClaimedAspect(Object self, Object data, Unique key) {
-    var d = (TypeSourceObjectDynamic) data;
-    for (var impl : d.interfaceImpls) {
-      var iface = impl.interface_;
-      var kind = iface.builtinKind;
-      if (kind != null && claimedKindExposesAspect(kind, key)) {
-        return Opt.some((Aspect) self);
-      }
-      if (kind == null && iface.identity.equals(key)) {
-        return Opt.some((Aspect) self);
-      }
-    }
-    return Opt.none();
-  }
-
-  private static boolean claimedKindExposesAspect(BuiltinInterfaceKind kind, Unique key) {
-    return switch (kind) {
-      case ASPECT_DROP_DYNAMIC -> key.equals(AspectDropDynamic.ID);
-      case ASPECT_FIELD -> key.equals(AspectField.ID);
-      case ASPECT_FUNCTION -> key.equals(AspectFunction.ID);
-      case BINDING -> key.equals(AspectBindDynamic.ID);
-      case VALUE, TYPE, TARGET, CODE_DYN -> false;
-    };
-  }
-
-  public static Opt<Aspect> optOr(Opt<Aspect> a, Opt<Aspect> b) {
-    return a instanceof Opt.Some ? a : b;
-  }
-
-  public static JavaDataDescriptor sourceObjectConsumeDynamicJvmClass(Object self) {
-    var internal = self.getClass().getName().replace('.', '/');
-    return JavaDataDescriptor.fromInternalName(JavaInternalName.of(internal));
-  }
-
-  public static EResult<AspectBind.BindResult> sourceObjectBind(
-      Object data, Object self, ExprContext xx, QExprId loc, CodeValue cv) {
-    var d = (TypeSourceObjectDynamic) data;
-    var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
-    var bindDynOpt = AspectBindDynamic.getMaybe(xx, d);
-    if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
-      return EResult.err(loc, "sourceObjectBind: canary type missing AspectBindDynamic");
-    }
-    var subRes = bindDynSome.value().aspectBindDynamicBindDynamic(xx, loc, canaryCv);
-    if (subRes.hasErrors()) return subRes.reerr();
-    var subOpt = subRes.requireValue("sourceObjectBind bindDynamic");
-    if (!(subOpt instanceof Opt.Some<TargetBindSub> subSome)) {
-      return EResult.err(loc, "sourceObjectBind: bindDynamic returned None");
-    }
-    var bound = xx.target.targetBind(loc, subSome.value());
-    Code wrappingCode = Code.of(loc, bound.code());
-    compilerxyz.gen.Binding underlyingBinding = new BindingDynamicBinding(bound.id(), d);
-    compilerxyz.gen.Binding wrapped =
-        new BindingSourceObjectWrapper((compilerxyz.gen.Binding) self, underlyingBinding);
-    return EResult.ok(new AspectBind.BindResult(wrappingCode, wrapped));
-  }
-
-  public static EResult<Opt<TargetBindSub>> sourceObjectBindDynamic(
-      Object data, ExprContext xx, QExprId loc, CodeValue cv) {
-    var d = (TypeSourceObjectDynamic) data;
-    var canaryCv = new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(d)));
-    return DynUtil.bindDynamicDefault(xx, loc, canaryCv);
-  }
-
-  public static EResult<CodeDynamic> sourceObjectToDynamic(
-      Object data, ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
-    if (dyn == null) {
-      return EResult.err(loc, "sourceObjectToDynamic: CodeValue has no dynamic code");
-    }
-    return EResult.ok(dyn);
-  }
-
-  public static compilerxyz.gen.Binding sourceObjectInitialBind(
-      Object data, Object self, BindingId dynamicKey) {
-    var d = (TypeSourceObjectDynamic) data;
-    var ut = d.underlyingType;
-    if (ut == null) {
-      throw new IllegalStateException(
-          "sourceObjectInitialBind: object underlying type not finalised");
-    }
-    return new BindingSourceObjectWrapper(
-        (Binding) self, new BindingDynamicBinding(dynamicKey, ut));
-  }
-
-
-  public static Object wrapTypeRefPush(Object typeRef) {
-    return new compilerxyz.gen.TypeRefPush((Type) typeRef);
-  }
-
-  public static Object deriveSourceTypeFromCv(Object xx, Object cv) {
-    var cvValue = ((CodeValue) cv).value();
-    if (!(cvValue instanceof Opt.Some<Value> someVal)) {
-      throw new IllegalStateException(
-          "deriveSourceTypeFromCv: CodeValue has no compile-time value");
-    }
-    return new compilerxyz.gen.TypeRefPush(someVal.value().valueType());
-  }
-
   public static StagedExprCell stage(
       ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
     var treeValue = treeCell.take();
@@ -434,387 +274,12 @@ public final class DynRuntime {
     return new StagedExprCell(newTree);
   }
 
-  public static Type interfaceRefToType(ExprContext xx, InterfaceData data) {
-    return new TypeInterfaceConst(data);
-  }
-
-  public static boolean uniqueEq(ExprContext xx, Unique a, Unique b) {
-    return a.equals(b);
-  }
-
-  public static Type recordToType(ExprContext xx, Object instance) {
-    throw new UnsupportedOperationException(
-        "invisible builtin record_to_type: invisible_builtins.rs scope 7016 body pending Type record"
-            + " + dynamic_value_to_type port");
-  }
-
-  public static Type tupleToType(ExprContext xx, Object instance) {
-    throw new UnsupportedOperationException(
-        "invisible builtin tuple_to_type: invisible_builtins.rs scope 7020 body pending Type tuple"
-            + " + dynamic_value_to_type port");
-  }
-
-  public static Value cveExtract(ExprContext xx, CodeValue cell) {
-    throw new UnsupportedOperationException(
-        "invisible builtin cve_extract: invisible_builtins.rs scope 7003 body pending"
-            + " DynamicExprContextSlot.xx + aspect_string_const_get_maybe bridge");
-  }
-
-  public static Object cveGetCodeEnum(ExprContext xx, CodeValue cell) {
-    throw new UnsupportedOperationException(
-        "invisible builtin cve_get_code_enum: invisible_builtins.rs scope 7004 body pending Code Dyn"
-            + " variant external-bridge + ConstKey-keyed v8 object equivalent on JVM");
-  }
-
-  public static Value cveGetValue(ExprContext xx, CodeValue cell) {
-    throw new UnsupportedOperationException(
-        "invisible builtin cve_get_value: invisible_builtins.rs scope 7005 body pending"
-            + " rc_value_to_dynamic_ext analogue on JVM");
-  }
-
-  public static Type valueGetType(ExprContext xx, Value value) {
-    throw new UnsupportedOperationException(
-        "invisible builtin value_get_type: invisible_builtins.rs scope 7022 body pending TypeRefPush"
-            + " + DynamicExprContextSlot.xx bridge");
-  }
-
-  public static Object aspectLookup(ExprContext xx, Type type, Unique unique) {
-    throw new UnsupportedOperationException(
-        "invisible builtin aspect_lookup: invisible_builtins.rs scope 7001 body pending TypeRefPush"
-            + " + AspectField + DynamicExprContextSlot.xx bridge");
-  }
-
-  public static Value castValue(ExprContext xx, Value value) {
-    throw new UnsupportedOperationException(
-        "invisible builtin cast_value: invisible_builtins.rs scope 7002 body pending ValuePull +"
-            + " TypeTypeSourceObjectConst port");
-  }
-
-  public static Type objectRefToType(ExprContext xx, Object ref) {
-    throw new UnsupportedOperationException(
-        "invisible builtin object_ref_to_type: invisible_builtins.rs scope 7013 body pending"
-            + " SourceObjectRef + TypeTypeSourceObjectConst port");
-  }
-
-  public static Type unionRefToType(ExprContext xx, Object ref) {
-    throw new UnsupportedOperationException(
-        "invisible builtin union_ref_to_type: invisible_builtins.rs scope 7019 body pending"
-            + " SourceUnionRef + TypeTypeSourceUnionConst port");
-  }
-
-  public static Type functionConstToType(ExprContext xx, Object ref) {
-    throw new UnsupportedOperationException(
-        "invisible builtin function_const_to_type: invisible_builtins.rs scope 7014 body pending"
-            + " TypeSourceFunctionConst port");
-  }
-
-  public static Type objectNewToType(ExprContext xx, Object ref) {
-    throw new UnsupportedOperationException(
-        "invisible builtin object_new_to_type: invisible_builtins.rs scope 7012 body pending"
-            + " object_new TypeSourceObjectNewDynamic port");
-  }
-
-  public static Type unionNewToType(ExprContext xx, Object ref) {
-    throw new UnsupportedOperationException(
-        "invisible builtin union_new_to_type: invisible_builtins.rs scope 7018 body pending"
-            + " SourceUnionNewRef + TypeSourceUnionNewDynamic port");
-  }
-
-  public static Value dataInstanceToValue(ExprContext xx, Object template, Object instance) {
-    throw new UnsupportedOperationException(
-        "invisible builtin data_instance_to_value: invisible_builtins.rs scope 7011 body pending"
-            + " value_pull::dynamic::ValuePull port");
-  }
-
-  public static Object dataInstanceToCode(ExprContext xx, Object template, Object instance) {
-    throw new UnsupportedOperationException(
-        "invisible builtin data_instance_to_code: invisible_builtins.rs scope 7007 body pending"
-            + " eval::CodePull port");
-  }
-
-  public static compilerxyz.gen.OptionPush typeRefPushAspect(
-      ExprContext xx, compilerxyz.gen.TypeRefPush trp, Unique unique) {
-    return new compilerxyz.gen.OptionPush(trp.type_ref.typeAspect(xx, unique).optIsSome());
-  }
-
-  public static Object optionPushGet(ExprContext xx, compilerxyz.gen.OptionPush opt) {
-    return opt.is_some_inner;
-  }
-
-  public static compilerxyz.gen.SourceFuncResult defSetBuilderFunc(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb, String name) {
-    var entryId = dsb.inner.nextEntryId.next();
-    var data =
-        new compilerxyz.eval.value.source_function.SourceFunctionData(
-            dsb.inner.defSetId, name, dsb.inner);
-    data.bindingId = new compilerxyz.eval.BindingId.Def(dsb.inner.defSetId, entryId);
-    dsb.inner.functions.add(data);
-    return new compilerxyz.gen.SourceFuncResult(
-        new compilerxyz.eval.value.source_function.TypeSourceFunctionConst(data));
-  }
-
-  public static compilerxyz.gen.SourceObjectBuilder defSetBuilderObject(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb, String name) {
-    var identity = freshUnique(xx);
-    var dataField = "_" + dsb.inner.nextFieldId.next();
-    var data =
-        new compilerxyz.eval.value.source_object.TypeSourceObjectDynamic(
-            dsb.inner.defSetId, name, identity, dataField, dsb.inner);
-    dsb.inner.objects.add(data);
-    return new compilerxyz.gen.SourceObjectBuilder(data);
-  }
-
-  public static compilerxyz.gen.SourceUnionBuilder defSetBuilderUnion(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
-    var identity = freshUnique(xx);
-    var data = new compilerxyz.eval.value.source_union.TypeSourceUnionDynamic(dsb.inner, identity);
-    dsb.inner.unions.add(data);
-    return new compilerxyz.gen.SourceUnionBuilder(data);
-  }
-
-  public static compilerxyz.gen.SourceInterfaceResult defSetBuilderInterface(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
-    var identity = freshUnique(xx);
-    var iface =
-        new compilerxyz.eval.value.source_interface.InterfaceData(
-            dsb.inner.defSetId, identity, null, dsb.inner);
-    dsb.inner.interfaces.add(iface);
-    return new compilerxyz.gen.SourceInterfaceResult(iface);
-  }
-
-  public static Object defSetBuilderFinish(
-      ExprContext xx, compilerxyz.gen.DefinitionSetBuilder dsb) {
-    dsb.inner.finished = true;
-    return null;
-  }
-
-  public static compilerxyz.eval.value.source_function.TypeSourceFunctionConst srcFuncGetRef(
-      compilerxyz.gen.SourceFuncResult sfr) {
-    return sfr.func_ref;
-  }
-
-  public static Object srcFuncSetDescription(
-      ExprContext xx, compilerxyz.gen.SourceFuncResult sfr, String description) {
-    if (sfr.func_ref.data().description != null) {
-      throw new IllegalStateException("Function already has a description");
-    }
-    sfr.func_ref.data().description = description;
-    return null;
-  }
-
-  public static Object srcFuncSetTypesAndImpl(
+  public static Object implBuiltinInterface(
       ExprContext xx,
-      compilerxyz.gen.SourceFuncResult sfr,
-      Type argType,
-      Type retType,
-      compilerxyz.eval.expr.StagedExprCell implCell) {
-    var data = sfr.func_ref.data();
-    if (data.argType != null) {
-      throw new IllegalStateException("Function already has an arg type");
-    }
-    data.argType = argType;
-    if (data.retType != null) {
-      throw new IllegalStateException("Function already has a ret type");
-    }
-    data.retType = retType;
-    if (data.implExpr != null) {
-      throw new IllegalStateException("Function already has an implementation");
-    }
-    data.implExpr = (Value) implCell.take();
-    return null;
-  }
-
-  public static Object srcFuncSetExcType(
-      ExprContext xx, compilerxyz.gen.SourceFuncResult sfr, Type excType) {
-    if (sfr.func_ref.data().exceptionType != null) {
-      throw new IllegalStateException("Function already has an exception type");
-    }
-    sfr.func_ref.data().exceptionType = excType;
-    return null;
-  }
-
-  public static compilerxyz.eval.value.source_interface.InterfaceData srcInterfaceGetRef(
-      compilerxyz.gen.SourceInterfaceResult sir) {
-    return sir.interface_ref;
-  }
-
-  public static Object srcInterfaceSetDescription(
-      ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, String description) {
-    if (sir.interface_ref.description != null) {
-      throw new IllegalStateException("Interface already has a description");
-    }
-    sir.interface_ref.description = description;
-    return null;
-  }
-
-  public static compilerxyz.gen.SourceInterfaceMethodResult srcInterfaceAddMethod(
-      ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, String name) {
-    var ifaceData = sir.interface_ref;
-    var ds = lookupDefSet(xx, ifaceData.setId);
-    var fieldName =
-        "_im" + compilerxyz.eval.DefinitionSet.nextInterfaceMethodId(ds);
-    var method =
-        new compilerxyz.eval.value.source_interface.InterfaceMethodData(name, fieldName);
-    ifaceData.methods.add(method);
-    return new compilerxyz.gen.SourceInterfaceMethodResult(method);
-  }
-
-  public static Object srcInterfaceSetIsAspect(
-      ExprContext xx, compilerxyz.gen.SourceInterfaceResult sir, Boolean isAspect) {
-    sir.interface_ref.isAspect = isAspect;
-    return null;
-  }
-
-  public static Object srcInterfaceMethodSetTypes(
-      ExprContext xx,
-      compilerxyz.gen.SourceInterfaceMethodResult simr,
-      Type argType,
-      Type retType) {
-    if (simr.method.argType != null) {
-      throw new IllegalStateException("Interface method already has an arg type");
-    }
-    simr.method.argType = argType;
-    if (simr.method.retType != null) {
-      throw new IllegalStateException("Interface method already has a ret type");
-    }
-    simr.method.retType = retType;
-    return null;
-  }
-
-  public static Object srcObjectSetDescription(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, String description) {
-    if (sor.type_.description != null) {
-      throw new IllegalStateException("Object already has a description");
-    }
-    sor.type_.description = description;
-    return null;
-  }
-
-  public static Object srcObjectSetInnerType(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Type typeRef) {
-    if (sor.type_.underlyingType != null) {
-      throw new IllegalStateException("Object already has an inner type");
-    }
-    sor.type_.underlyingType = typeRef;
-    return null;
-  }
-
-  public static compilerxyz.gen.SourceObjectMethodResult srcObjectAddMethod(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, String name) {
-    var dtData = sor.type_;
-    var ds = lookupDefSet(xx, dtData.setId);
-    var fieldName = "_" + ds.nextFieldId.next();
-    var entryId = ds.nextEntryId.next();
-    var method =
-        new compilerxyz.eval.value.source_object.SourceDataMethodData(name, fieldName);
-    method.bindingId = new compilerxyz.eval.BindingId.Def(ds.defSetId, entryId);
-    dtData.methods.add(method);
-    return new compilerxyz.gen.SourceObjectMethodResult(method);
-  }
-
-  public static Object srcObjectImplInterface(
-      ExprContext xx,
-      compilerxyz.gen.SourceObjectBuilder sor,
-      Object ifaceArg,
-      java.util.Map<Object, Object> recordArg) {
-    var record = recordToConstKeyExprMap(recordArg);
-    InterfaceData ifaceData;
-    if (ifaceArg instanceof InterfaceData sdata) {
-      ifaceData = sdata;
-    } else if (ifaceArg instanceof compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
-      if (spec.sourceRef() instanceof Opt.Some<InterfaceData> some) {
-        ifaceData = some.value();
-      } else {
-        ifaceData = synthesizeInterfaceDataFromSpec(spec);
-      }
-    } else if (ifaceArg instanceof compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-      ifaceData = synthesizeInterfaceDataFromObject(obj);
-    } else {
-      throw new IllegalStateException(
-          "srcObjectImplInterface: expected InterfaceData / InterfaceSpec / TypeObjectDynamic,"
-              + " got "
-              + (ifaceArg == null ? "null" : ifaceArg.getClass()));
-    }
-    var dtData = sor.type_;
-    var ds = lookupDefSet(xx, dtData.setId);
-    var impl =
-        new compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData(ifaceData);
-    for (int idx = 0; idx < ifaceData.methods.size(); idx++) {
-      var im = ifaceData.methods.get(idx);
-      var ckey = new compilerxyz.eval.ConstKey.Str(im.name);
-      var expr = record.get(ckey);
-      if (expr == null) {
-        throw new IllegalStateException(
-            "Missing implementation for interface method '" + im.name + "'");
-      }
-      var entryId = ds.nextEntryId.next();
-      var mImpl =
-          new compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData(idx);
-      mImpl.implExpr = expr;
-      mImpl.bindingId = new compilerxyz.eval.BindingId.Def(ds.defSetId, entryId);
-      impl.methodImpls.add(mImpl);
-    }
-    dtData.interfaceImpls.add(impl);
-    return null;
-  }
-
-
-  public static compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic
-      srcObjectResultNew(ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor) {
-    return new compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic(sor.type_);
-  }
-
-  public static Object srcObjectImplValue(
-      ExprContext xx,
-      compilerxyz.gen.SourceObjectBuilder sor,
-      java.util.Map<Object, Object> arg) {
-    return implBuiltinInterface(xx, sor, arg, "value");
-  }
-
-  public static Object srcObjectImplTypeInterface(
-      ExprContext xx,
-      compilerxyz.gen.SourceObjectBuilder sor,
-      java.util.Map<Object, Object> arg) {
-    return implBuiltinInterface(xx, sor, arg, "type_");
-  }
-
-  public static Object srcObjectMethodSetTypesAndImpl(
-      ExprContext xx,
-      compilerxyz.gen.SourceObjectMethodResult somr,
-      Type argType,
-      Type retType,
-      compilerxyz.eval.expr.StagedExprCell implCell) {
-    var method = somr.method;
-    if (method.argType != null) {
-      throw new IllegalStateException("Method already has an arg type");
-    }
-    method.argType = argType;
-    if (method.retType != null) {
-      throw new IllegalStateException("Method already has a ret type");
-    }
-    method.retType = retType;
-    if (method.implExpr != null) {
-      throw new IllegalStateException("Method already has an implementation");
-    }
-    method.implExpr = (Value) implCell.take();
-    return null;
-  }
-
-  public static compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic srcUnionAddVariant(
-      ExprContext xx, compilerxyz.gen.SourceUnionBuilder sub, String tag, Type typeRef) {
-    var jsTag = Prefixes.TAG_PREFIX + sub.type_.nextTagId.next();
-    var variantIndex = sub.type_.variants.size();
-    sub.type_.variants.add(
-        new compilerxyz.eval.value.source_union.SourceUnionVariant(
-            new compilerxyz.eval.ConstKey.Str(tag), jsTag, typeRef));
-    return new compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic(
-        sub.type_, variantIndex);
-  }
-
-  private static Object implBuiltinInterface(
-      ExprContext xx, compilerxyz.gen.SourceObjectBuilder sor, Object arg, String ifaceField) {
+      compilerxyz.eval.value.source_object.TypeSourceObjectDynamic dtData,
+      Object arg,
+      String ifaceField) {
     var record = recordToConstKeyExprMap(arg);
-    var dtData = sor.type_;
     var ds = lookupDefSet(xx, dtData.setId);
     var vx = xx.vx;
     var builtinIfaces =
@@ -852,7 +317,7 @@ public final class DynRuntime {
     return null;
   }
 
-  private static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
+  public static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
     if (!(arg instanceof Map<?, ?> rawMap)) {
       throw new IllegalStateException(
           "DynRuntime.recordToConstKeyExprMap: expected Map, got "
@@ -910,13 +375,13 @@ public final class DynRuntime {
     return new compilerxyz.eval.ConstKey.Uint(Long.parseUnsignedLong(s));
   }
 
-  private static Unique freshUnique(ExprContext xx) {
+  public static Unique freshUnique(ExprContext xx) {
     var vx = xx.vx;
     var compileId = new compilerxyz.eval.CompileId(vx.ix.importState, vx.ix.sourceId);
     return new Unique.Source(compileId, vx.uniqueCounter.next());
   }
 
-  private static compilerxyz.eval.DefinitionSet lookupDefSet(
+  public static compilerxyz.eval.DefinitionSet lookupDefSet(
       ExprContext xx, compilerxyz.eval.DefSetId id) {
     if (id == null) {
       throw new IllegalStateException("DynRuntime: definition set id is null");

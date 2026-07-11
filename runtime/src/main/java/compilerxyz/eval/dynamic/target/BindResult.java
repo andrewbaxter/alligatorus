@@ -1,6 +1,11 @@
 package compilerxyz.eval.dynamic.target;
 
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.CodeDynamic;
 
-public record BindResult(CodeDynamic code, BindingId.Local id) {}
+public record BindResult(CodeDynamic code, BindingId.Local id) {
+  public static Type dynamicType() {
+    return Type.dynamicType();
+  }
+}

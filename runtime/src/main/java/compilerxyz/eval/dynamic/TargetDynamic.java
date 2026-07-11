@@ -52,7 +52,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 
 public final class TargetDynamic implements compilerxyz.gen.Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
-      JavaInternalName.fromClass(DynRuntime.DynException.class);
+      JavaInternalName.fromClass(DynException.class);
   private static final JavaInternalName INTNAME_EXPR_CONTEXT =
       JavaInternalName.of("compilerxyz/eval/ExprContext");
   private static final JavaInternalName INTNAME_OBJECT_ARRAY_ELEM =
@@ -385,47 +385,22 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var erb = new Erb(loc);
     var baseDynOpt = cvToDynamic(erb, xx, loc, base);
     if (baseDynOpt.isEmpty()) return EResult.errs(erb.errors());
-    var stringDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_STRING);
-    var mapDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP);
-    var mapEntryDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY);
-    var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
-    var tagKey = new JavaBytecodeBindingKey();
+    var baseKey = new JavaBytecodeBindingKey();
 
     var seq = new JavaBytecodeSequence();
-    // Base is a single-tag payload — a Map with exactly one entry {tag: payload}.
-    // Extract the sole Map.Entry inline: entrySet().iterator().next().
     seq.add(baseDynOpt.get());
-    seq.add(JavaBytecodeUtils.cast(loc, mapDesc));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc, JvmConstants.INTNAME_MAP, "entrySet", MDESC_MAP_ENTRY_SET));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc, JvmConstants.INTNAME_SET, "iterator", MDESC_ITERATOR));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc, JvmConstants.INTNAME_ITERATOR, "next", MDESC_NEXT));
-    seq.add(JavaBytecodeUtils.cast(loc, mapEntryDesc));
-    // Duplicate the entry so we can read both key and value.
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc, JvmConstants.INTNAME_MAP_ENTRY, "getKey", MDESC_MAP_ENTRY_GET));
-    seq.add(JavaBytecodeUtils.cast(loc, stringDesc));
     seq.add(
         new CodeDynamic(
-            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, tagKey)));
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc, JvmConstants.INTNAME_MAP_ENTRY, "getValue", MDESC_MAP_ENTRY_GET));
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc),
-            new JavaBytecodeStoreLoad(Opcodes.ASTORE, payloadBinding.key())));
+            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, baseKey)));
 
     var endLabel = new LabelNode();
     compilerxyz.eval.Type resultType = null;
     for (var branch : cases) {
+      var variantInternal =
+          JavaInternalName.of(branch.variantBinaryName().replace('.', '/'));
+      var payloadDesc =
+          compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(branch.variantType());
+      var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
       var caseScope = new compilerxyz.eval.Scope(xx.scope);
       var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
@@ -450,12 +425,23 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       var nextCaseLabel = new LabelNode();
       seq.add(
           new CodeDynamic(
-              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, tagKey)));
-      seq.add(JavaBytecodeUtils.literalString(loc, branch.dynamicTag()));
-      seq.add(
-          JavaBytecodeUtils.callMethod(
-              loc, JvmConstants.INTNAME_STRING, "equals", MDESC_STRING_EQUALS));
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
+      seq.add(JavaBytecodeUtils.instanceOf(loc, variantInternal));
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextCaseLabel)));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
+      seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(variantInternal)));
+      seq.add(
+          JavaBytecodeUtils.accessField(
+              loc,
+              variantInternal,
+              compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD,
+              payloadDesc));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, payloadBinding.key())));
       seq.add(bodyDynOpt.get());
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
@@ -577,13 +563,29 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         restElements.add(innerJsOpt.get());
       }
     }
-    var stageArgs = new TList<CodeDynamic>();
-    stageArgs.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
-    stageArgs.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
-    stageArgs.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
-    var stageCall =
-        compilerxyz.gen.GenDynMethods.STAGE_TYPE.emitInvocation(
-            loc, xx.vx, stageArgs);
+    var stageSeq = new JavaBytecodeSequence();
+    stageSeq.add(
+        JavaBytecodeUtils.accessStaticField(
+            loc,
+            JavaInternalName.of(xx.vx.evalRootInternalName),
+            EvalRootEmitter.EXPR_CONTEXT_FIELD,
+            EvalRootEmitter.DESC_EXPR_CONTEXT));
+    stageSeq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
+    stageSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
+    stageSeq.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
+    stageSeq.add(
+        JavaBytecodeUtils.callStaticMethod(
+            loc,
+            JavaInternalName.fromClass(DynRuntime.class),
+            "stage",
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.fromClass(StagedExprCell.class),
+                TList.of(
+                    JavaDataDescriptor.fromClass(ExprContext.class),
+                    JavaDataDescriptor.fromClass(StagedExprCell.class),
+                    JavaDataDescriptor.DESC_INT,
+                    JavaDataDescriptor.fromClass(Object[].class)))));
+    var stageCall = new CodeDynamic(loc, stageSeq);
     var resultValue =
         ValueDynamic.stack(new TypeExprStagedPlaceholder());
     return EResult.ok(new CodeValue(Code.of(loc, stageCall), Opt.some(resultValue)));

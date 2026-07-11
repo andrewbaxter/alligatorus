@@ -38,7 +38,6 @@ public final class GenMain {
     InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
     IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
     TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds);
-    DynMethodsGen.run(outRoot, formatter);
     AspectObjectsGen.run(outRoot, formatter);
 
     PushStructsGen.run(

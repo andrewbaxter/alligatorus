@@ -27,6 +27,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
@@ -52,7 +53,14 @@ public record TypeOptionDynamic(Type elementType)
         AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
+        AspectStackValueDynamic,
         ExporterAny {
+
+  public TypeOptionDynamic {
+    if (elementType instanceof compilerxyz.gen.AspectDynamicBoxed b) {
+      elementType = b.aspectDynamicBoxedBoxedForm();
+    }
+  }
 
   @Override
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
@@ -81,10 +89,16 @@ public record TypeOptionDynamic(Type elementType)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(AspectInitialBind.ID)
+        || key.equals(AspectStackValueDynamic.ID)) {
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(loc, value, this);
   }
 
   @Override
@@ -188,6 +202,21 @@ public record TypeOptionDynamic(Type elementType)
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
               Opt.some(ValueDynamic.stack(elementType))));
     }
+    if (ck instanceof ConstKey.Str s2 && s2.value().equals("is_some")) {
+      var selfDyn = self.code().dynamic();
+      if (selfDyn == null) {
+        return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(is_some): self has no runtime code");
+      }
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(selfDyn);
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(
+              loc, compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some")));
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
+              Opt.some(ValueDynamic.stack(new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+    }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on option");
@@ -206,6 +235,9 @@ public record TypeOptionDynamic(Type elementType)
 
   @Override
   public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+    if (key instanceof ConstKey.Str s && s.value().equals("is_some")) {
+      return Opt.some(new compilerxyz.eval.value.bool_.TypeBoolDynamic());
+    }
     var spec = fieldSpecs().getOrNull(key);
     return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }

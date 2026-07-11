@@ -90,27 +90,9 @@ public record TypeNumberDynamic()
   public TypeId typeId() { return GenTypeIds.TYPE_NUMBER_DYNAMIC_TYPE_ID; }
 
 
-  private static final compilerxyz.eval.dynamic.JavaInternalName DYN_RUNTIME =
-      compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.dynamic.DynRuntime.class);
-  private static final compilerxyz.eval.dynamic.JavaMethodDescriptor DESC_DBL_TO_STR =
-      compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class),
-          TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE));
-
-  private static final Type EMPTY_TUPLE =
-      new compilerxyz.eval.value.tuple.Tuple(compilerxyz.util.Opt.none(), new TList<>());
-
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
-          new Pair<>(
-              new ConstKey.Str("to_string"),
-              new compilerxyz.eval.value.function.TypeFunctionDynamic(
-                  EMPTY_TUPLE,
-                  new TypeStringDynamic(),
-                  DYN_RUNTIME,
-                  "numberToString",
-                  DESC_DBL_TO_STR,
-                  false)));
+          new Pair<>(new ConstKey.Str("to_string"), new TypeNumberToStringDynamic()));
 
   @Override
   public String typeDesc() {

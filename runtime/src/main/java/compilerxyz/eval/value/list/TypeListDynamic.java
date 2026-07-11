@@ -32,7 +32,6 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -47,12 +46,6 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.dynamic.DynRuntime;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.null_.TypeNullDynamic;
-import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.gen.AspectStringDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
@@ -77,6 +70,12 @@ public record TypeListDynamic(Type elementType)
         AspectIterable,
         AspectStackValueDynamic,
         ExporterAny {
+
+  public TypeListDynamic {
+    if (elementType instanceof compilerxyz.gen.AspectDynamicBoxed b) {
+      elementType = b.aspectDynamicBoxedBoxedForm();
+    }
+  }
 
   @Override
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
@@ -165,46 +164,14 @@ public record TypeListDynamic(Type elementType)
     }
   }
 
-  private static final JavaInternalName DYN_RUNTIME = JavaInternalName.fromClass(DynRuntime.class);
-  private static final JavaMethodDescriptor DESC_LIST_PUSH =
-      JavaMethodDescriptor.fromParts(
-          JavaDataDescriptor.fromClass(Object.class),
-          TList.of(
-              JavaDataDescriptor.fromInternalName(
-                  JavaInternalName.of("compilerxyz/util/TList")),
-              JavaDataDescriptor.fromClass(Object.class)));
-  private static final JavaMethodDescriptor DESC_LIST_JOIN =
-      JavaMethodDescriptor.fromParts(
-          JavaDataDescriptor.fromClass(String.class),
-          TList.of(
-              JavaDataDescriptor.fromInternalName(
-                  JavaInternalName.of("compilerxyz/util/TList")),
-              JavaDataDescriptor.fromClass(String.class)));
-
   private TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
     var m = TMap.<ConstKey, FieldSpec>of();
     m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
-    m.put(
-        new ConstKey.Str("push"),
-        new FieldSpec.Method(
-            new compilerxyz.eval.value.function.TypeFunctionDynamic(
-                elementType,
-                new TypeNullDynamic(),
-                DYN_RUNTIME,
-                "listPush",
-                DESC_LIST_PUSH,
-                false)));
+    m.put(new ConstKey.Str("push"), new FieldSpec.Method(new TypeListPushDynamic(elementType)));
     if (AspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
       m.put(
           new ConstKey.Str("join"),
-          new FieldSpec.Method(
-              new compilerxyz.eval.value.function.TypeFunctionDynamic(
-                  new TypeStringDynamic(),
-                  new TypeStringDynamic(),
-                  DYN_RUNTIME,
-                  "listJoin",
-                  DESC_LIST_JOIN,
-                  false)));
+          new FieldSpec.Method(new TypeListJoinDynamic(elementType)));
     }
     return m;
   }

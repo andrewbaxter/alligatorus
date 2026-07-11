@@ -13,6 +13,7 @@ module compilerxyz.runtime {
     exports compilerxyz.eval;
     exports compilerxyz.eval.aspect;
     exports compilerxyz.eval.binding;
+    exports compilerxyz.eval.builtin;
     exports compilerxyz.eval.definition_set;
     exports compilerxyz.eval.dynamic;
     exports compilerxyz.eval.dynamic.target;

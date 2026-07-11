@@ -106,9 +106,9 @@ public final class InterfacesGen {
       }
       var methodNames = new TSet<String>();
       for (var m : spec.methods()) {
-        if (!methodNames.add(m.name())) {
+        if (!methodNames.add(m.sourceName())) {
           throw new IllegalStateException(
-              "duplicate method name on iface " + spec.name() + ": " + m.name());
+              "duplicate method name on iface " + spec.name() + ": " + m.sourceName());
         }
       }
     }
@@ -133,7 +133,7 @@ public final class InterfacesGen {
       for (var i = 0; i < spec.methods().size(); i++) {
         var m = spec.methods().get(i);
         var fieldName = "_im_" + spec.fieldPrefix() + i;
-        var constName = "IM_" + ifaceUpper + "_" + upper(m.name()) + "_FIELD";
+        var constName = "IM_" + ifaceUpper + "_" + upper(m.sourceName()) + "_FIELD";
         holder.addField(
                 FieldSpec.builder(
                                 String.class,
@@ -198,6 +198,7 @@ public final class InterfacesGen {
       var description = spec.description() != null ? spec.description() : spec.name();
       build.addStatement("$N.description = $S", fname, description);
 
+      var interfacePrefix = snakeToCamel(spec.name());
       for (var i = 0; i < spec.methods().size(); i++) {
         var m = spec.methods().get(i);
         var fieldName = "_im_" + spec.fieldPrefix() + i;
@@ -206,8 +207,11 @@ public final class InterfacesGen {
             "var $N = new $T($S, $S)",
             methodVar,
             SOURCE_INTERFACE_METHOD_DATA,
-            m.name(),
+            m.sourceName(),
             fieldName);
+        build.addStatement("$N.hostMethodName = $S", methodVar, m.hostName(interfacePrefix));
+        build.addStatement(
+            "$N.hostMethodDescriptor = $L", methodVar, hostMethodDescriptorExpr(m));
 
         for (var dfn : dataFieldNames(m)) {
           build.addStatement("$N.dataFieldNames.add($S)", methodVar, dfn);
@@ -334,6 +338,44 @@ public final class InterfacesGen {
       ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
   private static final ClassName JAVA_DATA_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+  private static final ClassName JAVA_METHOD_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+
+  private static CodeBlock hostMethodDescriptorExpr(Method m) {
+    var b = CodeBlock.builder();
+    b.add("$T.fromParts(", JAVA_METHOD_DESCRIPTOR);
+    b.add(dataDescriptorExpr(m.retType().path()));
+    for (var arg : m.args().fields()) {
+      b.add(", ");
+      b.add(dataDescriptorExpr(arg.type().path()));
+    }
+    b.add(")");
+    return b.build();
+  }
+
+  private static CodeBlock dataDescriptorExpr(com.squareup.javapoet.TypeName tn) {
+    var raw = rawClassLiteral(tn);
+    if (raw == null) {
+      if (tn.equals(TypeName.BOOLEAN)) return CodeBlock.of("$T.DESC_BOOL", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.INT)) return CodeBlock.of("$T.DESC_INT", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.LONG)) return CodeBlock.of("$T.DESC_LONG", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.DOUBLE)) return CodeBlock.of("$T.DESC_DOUBLE", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.FLOAT)) return CodeBlock.of("$T.DESC_FLOAT", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.VOID)) return CodeBlock.of("$T.DESC_VOID", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.BYTE)) return CodeBlock.of("$T.DESC_BYTE", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.SHORT)) return CodeBlock.of("$T.DESC_SHORT", JAVA_DATA_DESCRIPTOR);
+      if (tn.equals(TypeName.CHAR)) return CodeBlock.of("$T.DESC_CHAR", JAVA_DATA_DESCRIPTOR);
+      throw new IllegalStateException(
+          "InterfacesGen.dataDescriptorExpr: unsupported TypeName " + tn);
+    }
+    return CodeBlock.of("$T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, raw);
+  }
+
+  private static ClassName rawClassLiteral(com.squareup.javapoet.TypeName tn) {
+    if (tn instanceof ClassName cn) return cn;
+    if (tn instanceof ParameterizedTypeName pt) return pt.rawType;
+    return null;
+  }
 
   private static void addDynamicTypeFactory(TypeSpec.Builder trait, InterfaceSpec spec) {
     var traitClass = ClassName.get("compilerxyz.gen", spec.javaTraitName());
@@ -426,7 +468,7 @@ public final class InterfacesGen {
 
   private static String javaTraitMethodName(InterfaceSpec spec, Method m) {
     var prefix = snakeToCamel(spec.name());
-    return escapeJavaKeyword(prefix + snakeToPascal(m.name()));
+    return escapeJavaKeyword(m.hostName(prefix));
   }
 
   private static String snakeToCamel(String s) {

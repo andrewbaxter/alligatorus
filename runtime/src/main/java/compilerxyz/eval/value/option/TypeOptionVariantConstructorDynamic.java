@@ -102,14 +102,15 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var underlyingJsOpt =
-        erb.mustEr(
-            compilerxyz.eval.dynamic.DynUtil.destructurePackedObject(
-                xx, loc, underlyingType, converted));
-    if (underlyingJsOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var underlyingJs = underlyingJsOpt.get();
+    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    if (consumeRes.hasErrors()) return consumeRes.reerr();
+    var underlyingJsRes =
+        consumeRes
+            .requireValue("TypeOptionVariantConstructorDynamic::call consume")
+            .aspectConsumeDynamicToDynamic(xx, loc, converted);
+    if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
+    var underlyingJs =
+        underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
 
     Type resultType = new TypeOptionDynamic(elementType);
     CodeDynamic newOpt;

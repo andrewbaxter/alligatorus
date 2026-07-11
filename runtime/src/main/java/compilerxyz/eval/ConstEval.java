@@ -495,18 +495,45 @@ public final class ConstEval {
       erb.errPush("Exhaustive match must not have a fallback");
       return EResult.errs(erb.errors());
     }
+    compilerxyz.eval.value.source_union.TypeSourceUnionDynamic sud;
+    if (baseType instanceof compilerxyz.eval.value.source_union.TypeSourceUnionDynamic direct) {
+      sud = direct;
+    } else if (baseType instanceof compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst wrap) {
+      sud = wrap.type_();
+    } else {
+      erb.errPush("Match: base type is not a source union: " + baseType.typeDesc());
+      return EResult.errs(erb.errors());
+    }
+    var unionIndex = sud.set.unions.indexOf(sud);
+    if (unionIndex < 0) {
+      erb.errPush("Match: source union not in owning DefinitionSet");
+      return EResult.errs(erb.errors());
+    }
+    xx.vx.definitionSets.putIfAbsent(sud.set.defSetId, sud.set);
     var matchCases = new TList<TargetCase>(e.cases().size());
     for (int i = 0; i < e.cases().size(); i++) {
       var tag = caseTags.get(i);
-      AspectUnion.Variant info = null;
-      for (var inf : variants) {
-        if (inf.key().equals(tag)) {
-          info = inf;
+      int variantIdx = -1;
+      for (int j = 0; j < sud.variants.size(); j++) {
+        if (sud.variants.get(j).tag.equals(tag)) {
+          variantIdx = j;
           break;
         }
       }
+      if (variantIdx < 0) {
+        erb.errPush("Match: tag not found in union variants: " + tag.toCanonical());
+        return EResult.errs(erb.errors());
+      }
+      var variant = sud.variants.get(variantIdx);
+      var variantBinaryName =
+          compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(
+              sud.set.defSetId, unionIndex, variantIdx);
       matchCases.add(
-          new TargetCase(info.jsTag(), info.type(), e.cases().get(i).body()));
+          new TargetCase(
+              variant.jsTag,
+              variant.type,
+              variantBinaryName,
+              e.cases().get(i).body()));
     }
     var out = erb.mustEr(xx.target.targetMatch(xx, loc, base, elementKey, matchCases, e.fallback()));
     if (out.isEmpty()) return EResult.errs(erb.errors());

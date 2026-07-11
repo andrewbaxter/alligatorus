@@ -83,17 +83,6 @@ final class BuiltinTreeGenTest {
           "missing Interface leaf for scope id " + scopeId + ": " + src);
     }
 
-    // FunctionExternal was removed from the emitter; log is emitted differently now.
-    assertTrue(
-        Files.exists(tmp.resolve("compilerxyz/gen/Builtin_b5001.java")),
-        "missing per-leaf helper Builtin_b5001.java");
-    assertTrue(
-        Files.exists(tmp.resolve("compilerxyz/gen/Builtin_b5008.java")),
-        "missing per-leaf helper Builtin_b5008.java (const_eval)");
-    assertTrue(
-        Files.exists(tmp.resolve("compilerxyz/gen/Builtin_b5010.java")),
-        "missing per-leaf helper Builtin_b5010.java (types.list constructor)");
-
     assertTrue(
         src.contains(
             "new External(InterfaceData.class, interfaces.aspect_function)"),
