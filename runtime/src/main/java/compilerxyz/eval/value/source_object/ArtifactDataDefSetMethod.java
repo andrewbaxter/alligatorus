@@ -7,7 +7,6 @@ import org.jspecify.annotations.Nullable;
 
 public record ArtifactDataDefSetMethod(
     String name,
-    String fieldName,
     Artifact argType,
     Artifact retType,
     @Nullable String compiledClassName,

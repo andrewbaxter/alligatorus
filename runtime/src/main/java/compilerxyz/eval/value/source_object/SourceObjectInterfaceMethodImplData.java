@@ -57,8 +57,7 @@ public final class SourceObjectInterfaceMethodImplData {
       QExprId rootLoc,
       InterfaceData iface,
       TypeSourceObjectDynamic dtData,
-      Type underlyingType,
-      String dataField) {
+      Type underlyingType) {
     if (compiledBodyCode != null) {
       return EResult.ok(null);
     }

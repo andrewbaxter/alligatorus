@@ -28,7 +28,6 @@ public final class SourceDataMethodData {
   }
 
   public final String name;
-  public final String fieldName;
   public @Nullable Type argType;
   public @Nullable Type retType;
   public @Nullable Value implExpr;
@@ -43,9 +42,8 @@ public final class SourceDataMethodData {
   public @Nullable TList<compilerxyz.eval.dynamic.DynUtil.ArgSignatureSlot> compiledArgSlots;
   public @Nullable TList<BindingId.Local> compiledArgSlotIds;
 
-  public SourceDataMethodData(String name, String fieldName) {
+  public SourceDataMethodData(String name) {
     this.name = name;
-    this.fieldName = fieldName;
     this.capturedExternals = new TList<>();
   }
 
@@ -55,7 +53,6 @@ public final class SourceDataMethodData {
       String dtName,
       TypeSourceObjectDynamic outerType,
       Type underlyingType,
-      String dataField,
       String objectInternalName) {
     if (compiledBodyCode != null) {
       return EResult.ok(null);

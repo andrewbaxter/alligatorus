@@ -375,7 +375,7 @@ public final class SourceObjectEmitter {
       if (bodyCode == null) {
         continue;
       }
-      emitMethodMethod(cw, internalName, methodIdx, method, data.dataField, data.underlyingType, bodyCode, staticFunctionDefs);
+      emitMethodMethod(cw, internalName, methodIdx, method, data.underlyingType, bodyCode, staticFunctionDefs);
     }
 
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
@@ -403,7 +403,6 @@ public final class SourceObjectEmitter {
       JavaInternalName internalName,
       long methodIdx,
       SourceDataMethodData method,
-      String dataField,
       compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
       CodeDynamic bodyCode,
       TSet<BindingId.Def> staticFunctionDefs) {

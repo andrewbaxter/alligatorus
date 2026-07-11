@@ -43,7 +43,6 @@ public final class DefinitionSet implements ExporterAny {
   public final TList<SourceFunctionData> functions;
   public final TList<InterfaceData> interfaces;
   public final Counter nextEntryId;
-  public final Counter nextFieldId;
   public final Counter nextInterfaceMethodId;
   public final TList<TypeSourceObjectDynamic> objects;
   public final TList<TypeSourceUnionDynamic> unions;
@@ -58,7 +57,6 @@ public final class DefinitionSet implements ExporterAny {
     this.objects = new TList<>();
     this.unions = new TList<>();
     this.nextEntryId = new Counter();
-    this.nextFieldId = new Counter();
     this.nextInterfaceMethodId = new Counter();
   }
 

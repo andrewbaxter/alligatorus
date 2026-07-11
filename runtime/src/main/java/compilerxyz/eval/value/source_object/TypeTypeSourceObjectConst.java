@@ -211,7 +211,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               var objInternalName =
                   compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dt.setId, objectIndex);
               var finishRes = m.finish(xx, loc, dt.name == null ? "(unnamed)" : dt.name,
-                  dt, underlying, dt.dataField, objInternalName);
+                  dt, underlying, objInternalName);
               if (finishRes.hasErrors()) {
                 finishRes.drainInto(errors);
                 return EResult.errs(errors);
@@ -260,7 +260,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
             methods.add(
                 new ArtifactDataDefSetMethod(
                     m.name,
-                    m.fieldName,
                     argArt,
                     retArt,
                     m.compiledClassName,
@@ -287,7 +286,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
             for (var mi : impl.methodImpls) {
               var iface = impl.interface_;
               if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
-                var finishRes = mi.finish(xx, loc, iface, dt, underlying, dt.dataField);
+                var finishRes = mi.finish(xx, loc, iface, dt, underlying);
                 if (finishRes.hasErrors()) {
                   finishRes.drainInto(errors);
                   return EResult.errs(errors);
@@ -336,7 +335,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                   set.defSetId,
                   dt.name,
                   dt.identity,
-                  dt.dataField,
                   underlyingArt,
                   methods,
                   ifaceImpls,
@@ -379,12 +377,12 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               },
               (body) -> {
                 var dt = new TypeSourceObjectDynamic(
-                    body.defSetId(), body.name(), body.identity(), body.dataField());
+                    body.defSetId(), body.name(), body.identity());
                 dt.artifactId = idValue;
                 dt.compiledBinaryName = body.compiledBinaryName();
                 dt.compiledBytecode = body.compiledBytecode();
                 for (var m : body.methods()) {
-                  var md = new SourceDataMethodData(m.name(), m.fieldName());
+                  var md = new SourceDataMethodData(m.name());
                   md.bindingId = new BindingId.Def(body.defSetId(), m.entryId());
                   md.compiledClassName = m.compiledClassName();
                   md.compiledBytecode = m.compiledBytecode();

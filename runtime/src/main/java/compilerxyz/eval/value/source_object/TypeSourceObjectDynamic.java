@@ -66,7 +66,6 @@ public final class TypeSourceObjectDynamic
   public @Nullable String description;
   public @Nullable Type underlyingType;
   public final Unique identity;
-  public final String dataField;
   public final TList<SourceDataMethodData> methods;
   public final TList<SourceObjectInterfaceImplData> interfaceImpls;
   public @Nullable ArtifactIdSource artifactId;
@@ -77,24 +76,22 @@ public final class TypeSourceObjectDynamic
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
 
   public TypeSourceObjectDynamic(
-      DefSetId setId, @Nullable String name, Unique identity, String dataField, DefinitionSet set) {
+      DefSetId setId, @Nullable String name, Unique identity, DefinitionSet set) {
     this.setId = setId;
     this.set = set;
     this.name = name;
     this.identity = identity;
-    this.dataField = dataField;
     this.methods = new TList<>();
     this.interfaceImpls = new TList<>();
   }
 
   @SuppressWarnings("NullAway")
   public TypeSourceObjectDynamic(
-      @Nullable DefSetId setId, @Nullable String name, Unique identity, String dataField) {
+      @Nullable DefSetId setId, @Nullable String name, Unique identity) {
     this.setId = setId;
     this.set = (DefinitionSet) null;
     this.name = name;
     this.identity = identity;
-    this.dataField = dataField;
     this.methods = new TList<>();
     this.interfaceImpls = new TList<>();
   }

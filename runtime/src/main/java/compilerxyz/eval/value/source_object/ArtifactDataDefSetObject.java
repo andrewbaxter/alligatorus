@@ -12,7 +12,6 @@ public record ArtifactDataDefSetObject(
     DefSetId defSetId,
     @Nullable String name,
     Unique identity,
-    String dataField,
     Artifact underlyingType,
     TList<ArtifactDataDefSetMethod> methods,
     TList<ArtifactDataDefSetInterfaceImpl> interfaceImpls,

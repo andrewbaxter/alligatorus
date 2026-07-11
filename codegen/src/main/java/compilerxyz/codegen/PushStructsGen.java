@@ -246,9 +246,8 @@ public final class PushStructsGen {
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "name")
             .addStatement("var identity = $T.freshUnique(xx)", dynRuntime)
-            .addStatement("var dataField = \"_\" + this.inner.nextFieldId.next()")
             .addStatement(
-                "var data = new $T(this.inner.defSetId, name, identity, dataField, this.inner)",
+                "var data = new $T(this.inner.defSetId, name, identity, this.inner)",
                 typeSourceObjectDynamic)
             .addStatement("this.inner.objects.add(data)")
             .addStatement("return new $T(data)", sourceObjectBuilder)
@@ -480,9 +479,8 @@ public final class PushStructsGen {
             .addParameter(stringClass, "name")
             .addStatement("var dtData = this.type_")
             .addStatement("var ds = $T.lookupDefSet(xx, dtData.setId)", dynRuntime)
-            .addStatement("var fieldName = $S + ds.nextFieldId.next()", "_")
             .addStatement("var entryId = ds.nextEntryId.next()")
-            .addStatement("var method = new $T(name, fieldName)", sourceDataMethodData)
+            .addStatement("var method = new $T(name)", sourceDataMethodData)
             .addStatement("method.bindingId = new $T(ds.defSetId, entryId)", bindingIdDef)
             .addStatement("dtData.methods.add(method)")
             .addStatement("return new $T(method)", sourceObjectMethodResult)

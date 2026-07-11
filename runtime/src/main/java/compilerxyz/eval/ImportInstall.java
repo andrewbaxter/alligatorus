@@ -75,14 +75,14 @@ public final class ImportInstall {
       for (var method : obj.methods) {
         var nameStr = obj.name != null ? obj.name : "(unnamed)";
         var finishResult =
-            method.finish(xx, loc, nameStr, obj, underlyingType, obj.dataField, objInternalName);
+            method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
         if (finishResult.hasErrors()) {
           return finishResult.reerr();
         }
       }
       for (var impl : obj.interfaceImpls) {
         for (var m : impl.methodImpls) {
-          var finishResult = m.finish(xx, loc, impl.interface_, obj, underlyingType, obj.dataField);
+          var finishResult = m.finish(xx, loc, impl.interface_, obj, underlyingType);
           if (finishResult.hasErrors()) {
             return finishResult.reerr();
           }
