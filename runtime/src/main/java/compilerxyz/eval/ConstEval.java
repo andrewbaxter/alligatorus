@@ -150,10 +150,25 @@ public final class ConstEval {
       case Expr.Graft.Pending ignored ->
           EResult.err(loc, "Graft outside of stage processing — its inner was never evaluated");
       case Expr.Tuple t -> {
+        var erb = new Erb(loc);
         var elements = new TList<TupleElement>(t.elements().size());
         for (var elExpr : t.elements()) {
-          elements.add(new TupleElement.EvalRes(constEval(xx, elExpr)));
+          var elRes = constEval(xx, elExpr);
+          if (!elRes.hasErrors() && elRes.valueOrNull() != null
+              && !(elRes.valueOrNull().value() instanceof Opt.Some<Value>)) {
+            erb.errors()
+                .add(
+                    new ExprErr(
+                        elExpr.loc(),
+                        TList.of(new ExprSubErr.Opaque(
+                            "Tuple element does not fall through (contains an unreachable"
+                                + " control jump like throw/panic); not valid in element"
+                                + " position"))));
+            continue;
+          }
+          elements.add(new TupleElement.EvalRes(elRes));
         }
+        if (!erb.errors().isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(new CodeValue(Code.none(loc), Opt.some(new Tuple(Opt.none(), elements))));
       }
       case Expr.Record r -> constEvalRecord(xx, loc, r);
@@ -366,8 +381,21 @@ public final class ConstEval {
       }
       var keyRes = Eval.extractConstKey(xx, loc, kv.value());
       switch (keyRes) {
-        case Result.Ok<ConstKey, String> ok ->
-            entries.put(ok.value(), constEval(xx, entry.value()));
+        case Result.Ok<ConstKey, String> ok -> {
+          var valRes = constEval(xx, entry.value());
+          if (!valRes.hasErrors() && valRes.valueOrNull() != null
+              && !(valRes.valueOrNull().value() instanceof Opt.Some<Value>)) {
+            errors.add(
+                new ExprErr(
+                    entry.value().loc(),
+                    TList.of(new ExprSubErr.Opaque(
+                        "Record field '" + ok.value().toCanonical()
+                            + "' does not fall through (contains an unreachable control"
+                            + " jump like throw/panic); not valid in field position"))));
+          } else {
+            entries.put(ok.value(), valRes);
+          }
+        }
         case Result.Err<ConstKey, String> err ->
             errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(err.error()))));
       }

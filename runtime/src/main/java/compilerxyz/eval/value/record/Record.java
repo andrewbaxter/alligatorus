@@ -138,7 +138,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (carry != null) seq.add(carry);
     CodeValue accessedCv = null;
     Type accessedType = null;
-    compilerxyz.eval.dynamic.JavaBytecodeBindingKey accessedLocalKey = null;
+    CodeDynamic accessedPushDyn = null;
     ConstKey accessedKeyResolved = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
     var sortedKeys = new TList<ConstKey>(record.fields.size());
     sortedKeys.addAll(record.fields.keySet());
@@ -163,14 +163,17 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         }
         continue;
       }
+      if (er.isUnreachable()) {
+        return EResult.err(
+            loc,
+            "Field '" + k.toCanonical() + "' does not fall through (contains an unreachable"
+                + " control jump like throw/panic); this expression is not valid in a"
+                + " record field position");
+      }
       var fieldCv = res.requireValue("Record::accessOrDropSourceless field");
       var fieldDyn = fieldCv.code().dynamic();
-      Type fieldType;
-      if (fieldCv.value() instanceof Opt.Some<Value> fieldSome) {
-        fieldType = fieldSome.value().valueType();
-      } else {
-        fieldType = recordFieldType(f);
-      }
+      var fieldSome = (Opt.Some<Value>) fieldCv.value();
+      Type fieldType = fieldSome.value().valueType();
       if (isAccessed) {
         var useConstOpt = AspectFieldUseConst.getMaybe(xx, fieldType);
         if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
@@ -179,26 +182,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           accessedCv = useRes.requireValue("Record::accessOrDropSourceless useConst");
           continue;
         }
-        // If the accessed field has a compile-time value AND no dynamic push
-        // code, preserve the CV as-is — it's a purely const access.
         if (fieldDyn == null) {
           accessedCv = fieldCv;
           continue;
         }
-        // Field has runtime push code — emit it, STORE to a fresh local, LOAD at end.
-        seq.add(fieldDyn);
-        var acdOpt = AspectConsumeDynamic.getMaybe(xx, fieldType);
-        if (!(acdOpt instanceof Opt.Some<AspectConsumeDynamic> acdSome)) {
-          return EResult.err(
-              loc,
-              "Field '" + k.toCanonical() + "' type '" + fieldType.typeDesc()
-                  + "' is not AspectConsumeDynamic (needed to store to a local)");
-        }
-        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
-        var storeOp = stackDesc.charAt(0) == 'D' ? Opcodes.DSTORE
-            : stackDesc.charAt(0) == 'J' ? Opcodes.LSTORE : Opcodes.ASTORE;
-        accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
-        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(storeOp, accessedLocalKey)));
+        accessedPushDyn = fieldDyn;
         accessedType = fieldType;
         continue;
       }
@@ -228,25 +216,12 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     if (accessKey instanceof Opt.Some<ConstKey> aksReq) {
       if (accessedCv != null) {
-        // Const-accessed path: append the accessed value's code (side effects) and
-        // return its CV as-is.
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
         return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
       }
-      if (accessedLocalKey != null) {
-        // Dynamic-accessed path: LOAD from the local we stored earlier.
-        var acdOpt = AspectConsumeDynamic.getMaybe(xx, accessedType);
-        if (!(acdOpt instanceof Opt.Some<AspectConsumeDynamic> acdSome)) {
-          return EResult.err(
-              loc,
-              "Accessed field type '" + accessedType.typeDesc()
-                  + "' is not AspectConsumeDynamic (needed to load from a local)");
-        }
-        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
-        var loadOp = stackDesc.charAt(0) == 'D' ? Opcodes.DLOAD
-            : stackDesc.charAt(0) == 'J' ? Opcodes.LLOAD : Opcodes.ALOAD;
-        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(loadOp, accessedLocalKey)));
+      if (accessedPushDyn != null) {
+        seq.add(accessedPushDyn);
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),

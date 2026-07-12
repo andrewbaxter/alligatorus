@@ -813,4 +813,151 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         () -> "sourced record drop should reverse construction order at end of scope; got "
             + messages(res));
   }
+
+  @Test
+  public void test01530RecordSourcelessFieldAccessFirstRuntime() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.field(
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b")),
+                            new TestMb.RecordPair("c", canaryInstance(mb, "cC", "c")))),
+                    mb.str("a")),
+                mb.call(mb.log(), mb.str("end")))));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    assertTrue(
+        messages.contains("drop_B"),
+        () -> "sourceless field-drop: sibling 'b' must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_C"),
+        () -> "sourceless field-drop: sibling 'c' must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_A"),
+        () -> "sourceless field-drop: extracted 'a' copy must drop; got " + messages);
+    assertTrue(
+        messages.contains("end"),
+        () -> "expected 'end' log after all drops; got " + messages);
+    int endIdx = messages.indexOf("end");
+    int aIdx = messages.indexOf("drop_A");
+    int bIdx = messages.indexOf("drop_B");
+    int cIdx = messages.indexOf("drop_C");
+    assertTrue(
+        aIdx < endIdx && bIdx < endIdx && cIdx < endIdx,
+        () -> "all record-field drops must precede 'end' (stack expr-drop, no bind); got "
+            + messages);
+  }
+
+  @Test
+  public void test01540RecordSourcelessFieldAccessLastRuntime() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.field(
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b")),
+                            new TestMb.RecordPair("c", canaryInstance(mb, "cC", "c")))),
+                    mb.str("c")),
+                mb.call(mb.log(), mb.str("end")))));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    assertTrue(
+        messages.contains("drop_A"),
+        () -> "sourceless field-drop (last): sibling 'a' must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_B"),
+        () -> "sourceless field-drop (last): sibling 'b' must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_C"),
+        () -> "sourceless field-drop (last): extracted 'c' copy must drop; got " + messages);
+    assertTrue(
+        messages.contains("end"),
+        () -> "expected 'end' log after all drops; got " + messages);
+  }
+
+  @Test
+  public void test01550TupleSourcelessIndexAccessFirstRuntime() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.field(
+                    mb.tupleOf(
+                        canaryInstance(mb, "cA", "a"),
+                        canaryInstance(mb, "cB", "b"),
+                        canaryInstance(mb, "cC", "c")),
+                    mb.num(0)),
+                mb.call(mb.log(), mb.str("end")))));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    assertTrue(
+        messages.contains("drop_A"),
+        () -> "sourceless tuple index-drop: extracted [0] copy must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_B"),
+        () -> "sourceless tuple index-drop: sibling [1] must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_C"),
+        () -> "sourceless tuple index-drop: sibling [2] must drop; got " + messages);
+    assertTrue(
+        messages.contains("end"),
+        () -> "expected 'end' log after all drops; got " + messages);
+  }
+
+  @Test
+  public void test01560TupleSourcelessIndexAccessLastRuntime() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.bind("cC", mb.lower(makeCanaryInstance(mb, "CanaryC", "drop_C"))),
+                mb.field(
+                    mb.tupleOf(
+                        canaryInstance(mb, "cA", "a"),
+                        canaryInstance(mb, "cB", "b"),
+                        canaryInstance(mb, "cC", "c")),
+                    mb.num(2)),
+                mb.call(mb.log(), mb.str("end")))));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    assertTrue(
+        messages.contains("drop_A"),
+        () -> "sourceless tuple index-drop (last): sibling [0] must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_B"),
+        () -> "sourceless tuple index-drop (last): sibling [1] must drop; got " + messages);
+    assertTrue(
+        messages.contains("drop_C"),
+        () -> "sourceless tuple index-drop (last): extracted [2] copy must drop; got " + messages);
+    assertTrue(
+        messages.contains("end"),
+        () -> "expected 'end' log after all drops; got " + messages);
+  }
+
 }

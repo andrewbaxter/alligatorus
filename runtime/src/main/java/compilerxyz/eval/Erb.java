@@ -1,5 +1,7 @@
 package compilerxyz.eval;
 
+import compilerxyz.gen.Value;
+import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.Optional;
@@ -36,6 +38,21 @@ public final class Erb {
       return Optional.empty();
     }
     return Optional.of(r.requireValue("Erb::mustEr value"));
+  }
+
+  public Optional<CodeValue> mustReachable(EResult<CodeValue> r) {
+    if (r.hasErrors()) {
+      r.drainInto(this.errors);
+      return Optional.empty();
+    }
+    var cv = r.requireValue("Erb::mustReachable value");
+    if (!(cv.value() instanceof Opt.Some<Value>)) {
+      errPush(
+          "Expression does not fall through (contains an unreachable control jump like"
+              + " throw/panic); not valid in this position");
+      return Optional.empty();
+    }
+    return Optional.of(cv);
   }
 
   public <T> Optional<T> mustRes(Result<T, String> r) {
