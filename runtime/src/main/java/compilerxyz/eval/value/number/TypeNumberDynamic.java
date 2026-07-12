@@ -105,30 +105,6 @@ public record TypeNumberDynamic()
   }
 
   @Override
-  public CodeDynamic aspectConsumeDynamicEmitStore(
-      ExprContext xx, QExprId loc, compilerxyz.eval.dynamic.JavaBytecodeBindingKey key) {
-    return new CodeDynamic(
-        loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(Opcodes.DSTORE, key));
-  }
-
-  @Override
-  public CodeDynamic aspectConsumeDynamicEmitLoad(
-      ExprContext xx, QExprId loc, compilerxyz.eval.dynamic.JavaBytecodeBindingKey key) {
-    return new CodeDynamic(
-        loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(Opcodes.DLOAD, key));
-  }
-
-  @Override
-  public CodeDynamic aspectConsumeDynamicEmitDup(ExprContext xx, QExprId loc) {
-    return JavaBytecodeUtils.inst(loc, Opcodes.DUP2);
-  }
-
-  @Override
-  public CodeDynamic aspectConsumeDynamicEmitPop(ExprContext xx, QExprId loc) {
-    return JavaBytecodeUtils.inst(loc, Opcodes.POP2);
-  }
-
-  @Override
   public Type aspectDynamicBoxedBoxedForm() {
     return new TypeNumberDynamicBox();
   }

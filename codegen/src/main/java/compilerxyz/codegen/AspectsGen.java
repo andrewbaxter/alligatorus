@@ -853,61 +853,7 @@ final class AspectsGen {
                         + " infallible.",
                     "consumeDynamicJvmClass",
                     TList.of(xxParam),
-                    ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")),
-                new AspectMethod(
-                    "Emit a store-to-local bytecode for this type's stack representation.",
-                    "emitStore",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param(
-                            "key",
-                            ClassName.get(
-                                "compilerxyz.eval.dynamic", "JavaBytecodeBindingKey"))),
-                    CODE_DYNAMIC,
-                    CodeBlock.of(
-                        "return new $T(loc, new $T($T.ASTORE, key));\n",
-                        CODE_DYNAMIC,
-                        ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeStoreLoad"),
-                        ClassName.get("org.objectweb.asm", "Opcodes")),
-                    /* sourceVisible = */ false),
-                new AspectMethod(
-                    "Emit a load-from-local bytecode for this type's stack representation.",
-                    "emitLoad",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param(
-                            "key",
-                            ClassName.get(
-                                "compilerxyz.eval.dynamic", "JavaBytecodeBindingKey"))),
-                    CODE_DYNAMIC,
-                    CodeBlock.of(
-                        "return new $T(loc, new $T($T.ALOAD, key));\n",
-                        CODE_DYNAMIC,
-                        ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeStoreLoad"),
-                        ClassName.get("org.objectweb.asm", "Opcodes")),
-                    /* sourceVisible = */ false),
-                new AspectMethod(
-                    "Emit a DUP-form bytecode for this type's stack representation.",
-                    "emitDup",
-                    TList.of(xxParam, locParam),
-                    CODE_DYNAMIC,
-                    CodeBlock.of(
-                        "return $T.inst(loc, $T.DUP);\n",
-                        ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeUtils"),
-                        ClassName.get("org.objectweb.asm", "Opcodes")),
-                    /* sourceVisible = */ false),
-                new AspectMethod(
-                    "Emit a POP-form bytecode for this type's stack representation.",
-                    "emitPop",
-                    TList.of(xxParam, locParam),
-                    CODE_DYNAMIC,
-                    CodeBlock.of(
-                        "return $T.inst(loc, $T.POP);\n",
-                        ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeUtils"),
-                        ClassName.get("org.objectweb.asm", "Opcodes")),
-                    /* sourceVisible = */ false))),
+                    ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
         new AspectSpec(
             "",
             "StackValueDynamic",

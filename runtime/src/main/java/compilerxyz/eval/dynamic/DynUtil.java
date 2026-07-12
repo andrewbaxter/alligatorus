@@ -377,7 +377,6 @@ public final class DynUtil {
             case ValueDynamic.Source.Expr expr -> true;
             case ValueDynamic.Source.Binding binding -> false;
             case ValueDynamic.Source.Field field -> isStackRooted(field.base());
-            case ValueDynamic.Source.Dup dup -> isStackRooted(dup.base());
         };
     }
 
