@@ -2,11 +2,16 @@ package compilerxyz.eval.value.record;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValues;
+import compilerxyz.util.Result;
 import compilerxyz.eval.dynamic.CompositeSlotSort;
 import compilerxyz.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.gen.Binding;
@@ -347,6 +352,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     return ExporterRoot.RECORD;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -355,18 +364,130 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "Record::exporterRootDelegateSelfExport: recursive export_artifact (eval/artifact.rs) port deferred");
+          if (!(self instanceof Record record)) {
+            return EResult.err(
+                loc,
+                "Record::exporterRootDelegateSelfExport: expected Record, got " + self.getClass());
+          }
+          var cell = new ArtifactSupport.ArtifactIdHolder();
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  cell,
+                  () -> {
+                    var fieldArts = new TOrderedMap<ConstKey, Artifact>();
+                    for (var entry : record.fields.entrySet()) {
+                      var key = entry.getKey();
+                      var field = entry.getValue();
+                      Type fieldType;
+                      switch (field) {
+                        case RecordField.Dynamic d -> fieldType = d.type();
+                        case RecordField.EvalRes r -> {
+                          var inner = r.result();
+                          if (inner.hasErrors()) {
+                            inner.drainInto(errors);
+                          }
+                          if (inner.valueOrNull() == null) {
+                            errors.add(
+                                new ExprErr(
+                                    loc,
+                                    TList.of(
+                                        new ExprSubErr.Opaque(
+                                            "Record field has no value to serialize"))));
+                            fieldArts.put(key, nullArtifact());
+                            continue;
+                          }
+                          var cv = inner.requireValue("Record::exporterExport field");
+                          if (!(cv.value() instanceof Opt.Some<Value> some)) {
+                            errors.add(
+                                new ExprErr(
+                                    loc,
+                                    TList.of(
+                                        new ExprSubErr.Opaque(
+                                            "Record field has no value to serialize"))));
+                            fieldArts.put(key, nullArtifact());
+                            continue;
+                          }
+                          fieldType = some.value().valueType();
+                        }
+                        default -> throw new IllegalStateException();
+                      }
+                      var artRes = ArtifactSupport.exportArtifact(xx, loc, fieldType);
+                      artRes.drainInto(errors);
+                      fieldArts.put(
+                          key,
+                          artRes.valueOrNull() != null
+                              ? artRes.requireValue("Record::exporterExport field artifact")
+                              : nullArtifact());
+                    }
+                    var body = new ArtifactRecordType(fieldArts);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(loc, "Record requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "Record::exporterRootDelegateSelfFromArtifactData: recursive import_type_artifact (eval/artifact.rs)"
-                  + " port deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactRecordType body;
+                try {
+                  body = JsonValues.fromValue(ArtifactRecordType.class, raw);
+                } catch (RuntimeException e) {
+                  return new Result.Err<>(
+                      "Record data: failed to parse ArtifactRecordType: " + e.getMessage());
+                }
+                return new Result.Ok<>(body);
+              },
+              (body) -> {
+                var holder = new ExporterAny[] {null};
+                ExporterAny stub =
+                    new ExporterAny() {
+                      @Override
+                      public EResult<Type> exporterAnyAsType() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "Record import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsType();
+                      }
+
+                      @Override
+                      public EResult<Value> exporterAnyAsValue() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "Record import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsValue();
+                      }
+                    };
+                var deps = new TList<Artifact>();
+                for (var entry : body.fields().entrySet()) deps.add(entry.getValue());
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var fields = new TOrderedMap<ConstKey, RecordField>();
+                      for (var entry : body.fields().entrySet()) {
+                        var tRes =
+                            ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                xx2, loc2, entry.getValue());
+                        var t = tRes.requireValue("Record::finalizer field type");
+                        fields.put(entry.getKey(), new RecordField.Dynamic(t));
+                      }
+                      holder[0] = new Record(Opt.none(), fields);
+                    };
+                return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+              });
         }
       };
 

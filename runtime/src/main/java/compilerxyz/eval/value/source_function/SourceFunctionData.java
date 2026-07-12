@@ -34,6 +34,8 @@ import compilerxyz.util.TOrderedMap;
 import org.jspecify.annotations.Nullable;
 
 public final class SourceFunctionData {
+  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
   public @Nullable DefSetId setId;
 
   @SuppressWarnings("NullAway.Init")

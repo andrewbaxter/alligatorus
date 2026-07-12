@@ -24,8 +24,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.Value;
@@ -35,7 +33,7 @@ public final class DefinitionSet implements ExporterAny {
     return Type.dynamicType();
   }
 
-  public @Nullable ArtifactIdSource artifactId;
+  public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
   public final DefSetId defSetId;
   public final TOrderedMap<DefSetId, DefinitionSet> dependencies;
   public boolean finished;
@@ -45,7 +43,6 @@ public final class DefinitionSet implements ExporterAny {
   public final TList<TypeSourceUnionDynamic> unions;
 
   public DefinitionSet(DefSetId defSetId) {
-    this.artifactId = null;
     this.defSetId = defSetId;
     this.dependencies = new TOrderedMap<>();
     this.finished = false;
@@ -104,9 +101,6 @@ public final class DefinitionSet implements ExporterAny {
     throw new UnsupportedOperationException("DefinitionSet is neither a Type nor a Value");
   }
 
-  private static final Map<DefinitionSet, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
-      java.util.Collections.synchronizedMap(new IdentityHashMap<>());
-
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -120,67 +114,62 @@ public final class DefinitionSet implements ExporterAny {
                 loc,
                 "DefinitionSet::exporterRootDelegateSelfExport: expected DefinitionSet self, got " + self.getClass());
           }
-          var cell =
-              INDEPENDENT_CELLS.computeIfAbsent(
-                  set, k -> new ArtifactSupport.ArtifactIdHolder());
-          if (cell.id() != null) {
-            return EResult.ok(new Artifact.Ref(cell.id()));
-          }
-
-          var reservedId = xx.vx.ix.gx.artifacts.artifactsReserveId();
-          cell.set(reservedId);
-          if (set.artifactId == null) {
-            set.artifactId = reservedId;
-          }
           var errors = new TList<ExprErr>();
-          var objects = new TList<Artifact>(set.objects.size());
-          for (var dt : set.objects) {
-            var dtConst = new TypeTypeSourceObjectConst(dt);
-            var artRes = ArtifactSupport.exportArtifact(xx, loc, dtConst);
-            if (artRes.hasErrors()) {
-              artRes.drainInto(errors);
-              continue;
-            }
-            objects.add(artRes.requireValue("DefinitionSet::exporterExport object artifact"));
-          }
-          var functions = new TList<Artifact>(set.functions.size());
-          for (var f : set.functions) {
-            var fConst = new TypeSourceFunctionConst(f);
-            var artRes = ArtifactSupport.exportArtifact(xx, loc, fConst);
-            if (artRes.hasErrors()) {
-              artRes.drainInto(errors);
-              continue;
-            }
-            functions.add(artRes.requireValue("DefinitionSet::exporterExport function artifact"));
-          }
-          var interfaces = new TList<Artifact>(set.interfaces.size());
-          for (var i : set.interfaces) {
-            var iConst = new TypeInterfaceConst(i);
-            var artRes = ArtifactSupport.exportArtifact(xx, loc, iConst);
-            if (artRes.hasErrors()) {
-              artRes.drainInto(errors);
-              continue;
-            }
-            interfaces.add(artRes.requireValue("DefinitionSet::exporterExport interface artifact"));
-          }
-          var dependencies = new TList<Artifact>(set.dependencies.size());
-          for (var entry : set.dependencies.entrySet()) {
-            var depRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, entry.getValue());
-            if (depRes.hasErrors()) {
-              depRes.drainInto(errors);
-              continue;
-            }
-            dependencies.add(depRes.requireValue("DefinitionSet::exporterExport dependency artifact"));
-          }
-          var body =
-              new ArtifactDataDefSet(
-                  set.defSetId,
-                  TList.from(dependencies),
-                  TList.from(functions),
-                  TList.from(interfaces),
-                  TList.from(objects));
-          xx.vx.ix.gx.artifacts.artifactsSet(reservedId, makeBody.apply(JsonValues.toValue(body)));
-          var artifact = new Artifact.Ref(reservedId);
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  set.artifactIdCell,
+                  () -> {
+                    var objects = new TList<Artifact>(set.objects.size());
+                    for (var dt : set.objects) {
+                      var dtConst = new TypeTypeSourceObjectConst(dt);
+                      var artRes = ArtifactSupport.exportArtifact(xx, loc, dtConst);
+                      artRes.drainInto(errors);
+                      if (artRes.valueOrNull() != null) {
+                        objects.add(
+                            artRes.requireValue("DefinitionSet::exporterExport object"));
+                      }
+                    }
+                    var functions = new TList<Artifact>(set.functions.size());
+                    for (var f : set.functions) {
+                      var fConst = new TypeSourceFunctionConst(f);
+                      var artRes = ArtifactSupport.exportArtifact(xx, loc, fConst);
+                      artRes.drainInto(errors);
+                      if (artRes.valueOrNull() != null) {
+                        functions.add(
+                            artRes.requireValue("DefinitionSet::exporterExport function"));
+                      }
+                    }
+                    var interfaces = new TList<Artifact>(set.interfaces.size());
+                    for (var i : set.interfaces) {
+                      var iConst = new TypeInterfaceConst(i);
+                      var artRes = ArtifactSupport.exportArtifact(xx, loc, iConst);
+                      artRes.drainInto(errors);
+                      if (artRes.valueOrNull() != null) {
+                        interfaces.add(
+                            artRes.requireValue("DefinitionSet::exporterExport interface"));
+                      }
+                    }
+                    var dependencies = new TList<Artifact>(set.dependencies.size());
+                    for (var entry : set.dependencies.entrySet()) {
+                      var depRes =
+                          ExporterRoot.DEFINITION_SET.artifactExporterExport(
+                              xx, loc, entry.getValue());
+                      depRes.drainInto(errors);
+                      if (depRes.valueOrNull() != null) {
+                        dependencies.add(
+                            depRes.requireValue("DefinitionSet::exporterExport dependency"));
+                      }
+                    }
+                    var body =
+                        new ArtifactDataDefSet(
+                            set.defSetId,
+                            TList.from(dependencies),
+                            TList.from(functions),
+                            TList.from(interfaces),
+                            TList.from(objects));
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
           if (!errors.isEmpty()) {
             return EResult.mixed(artifact, errors);
           }
@@ -211,7 +200,7 @@ public final class DefinitionSet implements ExporterAny {
               },
               (body) -> {
                 var set = new DefinitionSet(body.defSetId());
-                set.artifactId = idValue;
+                set.artifactIdCell.set(idValue);
                 var deps = new TList<Artifact>();
                 deps.addAll(body.objects());
                 deps.addAll(body.functions());

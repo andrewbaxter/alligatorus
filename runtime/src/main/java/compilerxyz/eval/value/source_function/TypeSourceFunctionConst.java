@@ -38,8 +38,6 @@ import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ImportInstall;
@@ -96,9 +94,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.SOURCE_FUNCTION_CONST;
   }
-
-  private static final Map<SourceFunctionData, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
-      java.util.Collections.synchronizedMap(new IdentityHashMap<>());
 
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
@@ -159,58 +154,64 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                     + "' has not been compiled (finish() returned no source)");
           }
           var errors = new TList<ExprErr>();
-          var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
-          if (defSetArtRes.hasErrors()) {
-            defSetArtRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var defSetArt =
-              defSetArtRes.requireValue(
-                  "TypeSourceFunctionConst::exporterExport defSet artifact");
-          var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argType);
-          if (argArtRes.hasErrors()) {
-            argArtRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var argArt =
-              argArtRes.requireValue("TypeSourceFunctionConst::exporterExport arg artifact");
-          var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retType);
-          if (retArtRes.hasErrors()) {
-            retArtRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var retArt =
-              retArtRes.requireValue("TypeSourceFunctionConst::exporterExport ret artifact");
-          var externalsRes = ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
-          if (externalsRes.hasErrors()) {
-            externalsRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var externals =
-              externalsRes.requireValue(
-                  "TypeSourceFunctionConst::exporterExport externals");
-          var body =
-              new ArtifactDataDefSetFunction(
-                  defSetArt,
-                  set.defSetId,
-                  data.name,
-                  argArt,
-                  retArt,
-                  compiledClassName,
-                  compiledBytecode,
-                  externals);
-          var cell =
-              INDEPENDENT_CELLS.computeIfAbsent(
-                  data, k -> new ArtifactSupport.ArtifactIdHolder());
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
                   xx.vx.ix.gx.artifacts,
-                  cell,
-                  () -> makeBody.apply(JsonValues.toValue(body)));
+                  data.artifactIdCell,
+                  () -> {
+                    var defSetArtRes =
+                        ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                    defSetArtRes.drainInto(errors);
+                    var defSetArt =
+                        defSetArtRes.valueOrNull() != null
+                            ? defSetArtRes.requireValue(
+                                "TypeSourceFunctionConst::exporterExport defSet")
+                            : nullArtifact();
+                    var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argType);
+                    argArtRes.drainInto(errors);
+                    var argArt =
+                        argArtRes.valueOrNull() != null
+                            ? argArtRes.requireValue(
+                                "TypeSourceFunctionConst::exporterExport arg")
+                            : nullArtifact();
+                    var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retType);
+                    retArtRes.drainInto(errors);
+                    var retArt =
+                        retArtRes.valueOrNull() != null
+                            ? retArtRes.requireValue(
+                                "TypeSourceFunctionConst::exporterExport ret")
+                            : nullArtifact();
+                    var externalsRes =
+                        ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
+                    externalsRes.drainInto(errors);
+                    var externals =
+                        externalsRes.valueOrNull() != null
+                            ? externalsRes.requireValue(
+                                "TypeSourceFunctionConst::exporterExport externals")
+                            : compilerxyz.util.TList.<ArtifactExternal>of();
+                    var body =
+                        new ArtifactDataDefSetFunction(
+                            defSetArt,
+                            set.defSetId,
+                            data.name,
+                            argArt,
+                            retArt,
+                            compiledClassName,
+                            compiledBytecode,
+                            externals);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
           if (errors.isEmpty()) {
             return EResult.ok(artifact);
           }
           return EResult.mixed(artifact, errors);
+        }
+
+        private static Artifact nullArtifact() {
+          return new Artifact.Body(
+              new ArtifactBody(
+                  new compilerxyz.safejson.JsonValueNull(),
+                  new compilerxyz.artifact.ArtifactBodyExporter.Root()));
         }
 
         @Override
@@ -240,6 +241,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
               },
               (body) -> {
                 var funcData = new SourceFunctionData(body.defSetId(), body.name());
+                funcData.artifactIdCell.set(idValue);
                 funcData.compiledClassName = body.compiledClassName();
                 funcData.compiledBytecode = body.compiledBytecode();
                 var fc = new ImportedSourceFunctionConst(funcData);

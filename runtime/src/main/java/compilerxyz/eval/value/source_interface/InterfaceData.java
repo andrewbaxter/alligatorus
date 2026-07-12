@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.source_interface;
 
-import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.DefinitionSetClassLoader;
@@ -34,7 +34,7 @@ public final class InterfaceData {
   public @Nullable String description;
   public boolean isAspect;
   public final TList<InterfaceMethodData> methods;
-  public @Nullable ArtifactIdSource artifactId;
+  public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
   public @Nullable String compiledBinaryName;
 

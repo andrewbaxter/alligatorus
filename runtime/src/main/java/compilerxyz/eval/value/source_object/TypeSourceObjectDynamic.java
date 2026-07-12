@@ -68,8 +68,10 @@ public final class TypeSourceObjectDynamic
   public int objIdx;
   public final TList<SourceDataMethodData> methods;
   public final TList<SourceObjectInterfaceImplData> interfaceImpls;
-  public @Nullable ArtifactIdSource artifactId;
-  public @Nullable ArtifactIdSource newArtifactId;
+  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
+  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder newArtifactIdCell =
+      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
 
   public @Nullable String compiledBinaryName;
   public byte @Nullable [] compiledBytecode;

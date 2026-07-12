@@ -376,67 +376,67 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             return EResult.err(
                 loc, "Tuple::exporterRootDelegateSelfExport: expected Tuple self, got " + self.getClass());
           }
-          var cell = INDEPENDENT_CELLS.computeIfAbsent(
-              System.identityHashCode(tuple), k -> new ArtifactSupport.ArtifactIdHolder());
+          var cell = new ArtifactSupport.ArtifactIdHolder();
           TList<ExprErr> errors = new TList<>();
-          var elementArtifacts = new TList<Artifact>(tuple.elements.size());
-          for (var e : tuple.elements) {
-            Type elemType;
-            switch (e) {
-              case TupleElement.Dynamic d -> elemType = d.type();
-              case TupleElement.EvalRes r -> {
-                var innerRes = r.result();
-                if (innerRes.hasErrors()) {
-                  innerRes.drainInto(errors);
-                  errors.add(
-                      new ExprErr(
-                          loc,
-                          TList.of(
-                              new ExprSubErr.Opaque(
-                                  "Tuple element has no value to serialize"))));
-                  elementArtifacts.add(
-                      new Artifact.Body(
-                          new ArtifactBody(
-                              new JsonValueNull(),
-                              new ArtifactBodyExporter.Root())));
-                  continue;
-                }
-                var cv = innerRes.requireValue("Tuple::exporterExport element");
-                if (!(cv.value() instanceof Opt.Some<Value> some)) {
-                  errors.add(
-                      new ExprErr(
-                          loc,
-                          TList.of(
-                              new ExprSubErr.Opaque(
-                                  "Tuple element has no value to serialize"))));
-                  elementArtifacts.add(
-                      new Artifact.Body(
-                          new ArtifactBody(
-                              new JsonValueNull(),
-                              new ArtifactBodyExporter.Root())));
-                  continue;
-                }
-                elemType = some.value().valueType();
-              }
-              default -> throw new IllegalStateException();
-            }
-            var artRes = ArtifactSupport.exportArtifact(xx, loc, elemType);
-            if (artRes.hasErrors()) {
-              artRes.drainInto(errors);
-              elementArtifacts.add(
-                  new Artifact.Body(
-                      new ArtifactBody(
-                          new JsonValueNull(),
-                          new ArtifactBodyExporter.Root())));
-            } else {
-              elementArtifacts.add(artRes.requireValue("Tuple::exporterExport element artifact"));
-            }
-          }
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
                   xx.vx.ix.gx.artifacts,
                   cell,
                   () -> {
+                    var elementArtifacts = new TList<Artifact>(tuple.elements.size());
+                    for (var e : tuple.elements) {
+                      Type elemType;
+                      switch (e) {
+                        case TupleElement.Dynamic d -> elemType = d.type();
+                        case TupleElement.EvalRes r -> {
+                          var innerRes = r.result();
+                          if (innerRes.hasErrors()) {
+                            innerRes.drainInto(errors);
+                            errors.add(
+                                new ExprErr(
+                                    loc,
+                                    TList.of(
+                                        new ExprSubErr.Opaque(
+                                            "Tuple element has no value to serialize"))));
+                            elementArtifacts.add(
+                                new Artifact.Body(
+                                    new ArtifactBody(
+                                        new JsonValueNull(),
+                                        new ArtifactBodyExporter.Root())));
+                            continue;
+                          }
+                          var cv = innerRes.requireValue("Tuple::exporterExport element");
+                          if (!(cv.value() instanceof Opt.Some<Value> some)) {
+                            errors.add(
+                                new ExprErr(
+                                    loc,
+                                    TList.of(
+                                        new ExprSubErr.Opaque(
+                                            "Tuple element has no value to serialize"))));
+                            elementArtifacts.add(
+                                new Artifact.Body(
+                                    new ArtifactBody(
+                                        new JsonValueNull(),
+                                        new ArtifactBodyExporter.Root())));
+                            continue;
+                          }
+                          elemType = some.value().valueType();
+                        }
+                        default -> throw new IllegalStateException();
+                      }
+                      var artRes = ArtifactSupport.exportArtifact(xx, loc, elemType);
+                      artRes.drainInto(errors);
+                      if (artRes.valueOrNull() != null) {
+                        elementArtifacts.add(
+                            artRes.requireValue("Tuple::exporterExport element artifact"));
+                      } else {
+                        elementArtifacts.add(
+                            new Artifact.Body(
+                                new ArtifactBody(
+                                    new JsonValueNull(),
+                                    new ArtifactBodyExporter.Root())));
+                      }
+                    }
                     var data = new TOrderedMap<String, JsonValue>();
                     data.put("elements", ArtifactJson.encodeArtifactList(elementArtifacts));
                     return makeBody.apply(new JsonValueObject(data));
@@ -518,9 +518,6 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
               });
         }
       };
-
-  private static final java.util.Map<Integer, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
-      new java.util.concurrent.ConcurrentHashMap<>();
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {

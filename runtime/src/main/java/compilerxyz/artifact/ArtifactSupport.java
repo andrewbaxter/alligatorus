@@ -167,7 +167,8 @@ public final class ArtifactSupport {
     }
     var id = artifacts.artifactsReserveId();
     cell.set(id);
-    artifacts.artifactsSet(id, produce.get());
+    var body = produce.get();
+    artifacts.artifactsSet(id, body);
     return new Artifact.Ref(id);
   }
 

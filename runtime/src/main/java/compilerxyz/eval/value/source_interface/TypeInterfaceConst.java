@@ -2,11 +2,18 @@ package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValues;
+import compilerxyz.util.Result;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -120,6 +127,10 @@ public record TypeInterfaceConst(InterfaceData data)
     return ExporterRoot.SOURCE_INTERFACE_CONST;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -128,21 +139,171 @@ public record TypeInterfaceConst(InterfaceData data)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeInterfaceConst::exporterRootDelegateSelfExport: recursive export_artifact + "
-                  + "type_source_exports port deferred");
+          if (!(self instanceof TypeInterfaceConst ic)) {
+            return EResult.err(
+                loc,
+                "TypeInterfaceConst::exporterRootDelegateSelfExport: expected"
+                    + " TypeInterfaceConst, got " + self.getClass());
+          }
+          var iface = ic.data;
+          var set = iface.set;
+          if (set == null) {
+            return EResult.err(
+                loc,
+                "TypeInterfaceConst::exporterRootDelegateSelfExport: interface not attached to a"
+                    + " definition set");
+          }
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  iface.artifactIdCell,
+                  () -> {
+                    var defSetArtRes =
+                        ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                    defSetArtRes.drainInto(errors);
+                    var defSetArt =
+                        defSetArtRes.valueOrNull() != null
+                            ? defSetArtRes.requireValue(
+                                "TypeInterfaceConst::exporterExport defSet")
+                            : nullArtifact();
+                    var methodsOut = new TList<ArtifactDataDefSetInterfaceMethodData>();
+                    for (var m : iface.methods) {
+                      var argT = m.argType;
+                      var retT = m.retType;
+                      Artifact argArt;
+                      if (argT == null) {
+                        argArt = nullArtifact();
+                      } else {
+                        var res = ArtifactSupport.exportArtifact(xx, loc, argT);
+                        res.drainInto(errors);
+                        argArt =
+                            res.valueOrNull() != null
+                                ? res.requireValue(
+                                    "TypeInterfaceConst::exporterExport method arg")
+                                : nullArtifact();
+                      }
+                      Artifact retArt;
+                      if (retT == null) {
+                        retArt = nullArtifact();
+                      } else {
+                        var res = ArtifactSupport.exportArtifact(xx, loc, retT);
+                        res.drainInto(errors);
+                        retArt =
+                            res.valueOrNull() != null
+                                ? res.requireValue(
+                                    "TypeInterfaceConst::exporterExport method ret")
+                                : nullArtifact();
+                      }
+                      methodsOut.add(
+                          new ArtifactDataDefSetInterfaceMethodData(
+                              m.name, argArt, retArt, TList.from(m.dataFieldNames)));
+                    }
+                    var body =
+                        new ArtifactDataDefSetInterface(
+                            defSetArt,
+                            set.defSetId,
+                            iface.identity,
+                            iface.description,
+                            iface.isAspect,
+                            iface.builtinKind,
+                            methodsOut);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(
+                loc, "TypeInterfaceConst requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeInterfaceConst::exporterRootDelegateSelfFromArtifactData: recursive "
-                  + "import_independent_artifact + type_source_exports port deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactDataDefSetInterface body;
+                try {
+                  body = JsonValues.fromValue(ArtifactDataDefSetInterface.class, raw);
+                } catch (RuntimeException e) {
+                  return new Result.Err<>(
+                      "TypeInterfaceConst data: failed to parse ArtifactDataDefSetInterface: "
+                          + e.getMessage());
+                }
+                return new Result.Ok<>(body);
+              },
+              (body) -> {
+                var iface =
+                    new InterfaceData(body.defSetId(), body.identity(), body.builtinKind());
+                iface.description = body.description();
+                iface.isAspect = body.isAspect();
+                iface.artifactIdCell.set(idValue);
+                for (var m : body.methods()) {
+                  var md = new InterfaceMethodData(m.name());
+                  md.dataFieldNames.addAll(m.dataFieldNames());
+                  iface.methods.add(md);
+                }
+                var imported = new ImportedInterfaceConst(iface);
+                var deps = new TList<Artifact>();
+                deps.add(body.defSet());
+                for (var m : body.methods()) {
+                  deps.add(m.argType());
+                  deps.add(m.retType());
+                }
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var defSetAny =
+                          ArtifactSupport.independentFinalizeImportArtifact(
+                              xx2, loc2, body.defSet());
+                      var defSetVal =
+                          defSetAny.requireValue(
+                              "TypeInterfaceConst::finalizer defSet artifact");
+                      if (!(defSetVal instanceof DefinitionSet set)) {
+                        throw new IllegalStateException(
+                            "TypeInterfaceConst finalizer: defSet artifact resolved to "
+                                + defSetVal.getClass());
+                      }
+                      iface.initSetReflectively(set);
+                      var methodsIt = body.methods().iterator();
+                      for (var md : iface.methods) {
+                        var mBody = methodsIt.next();
+                        var argRes =
+                            ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                xx2, loc2, mBody.argType());
+                        md.argType =
+                            argRes.requireValue(
+                                "TypeInterfaceConst::finalizer method arg");
+                        var retRes =
+                            ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                xx2, loc2, mBody.retType());
+                        md.retType =
+                            retRes.requireValue(
+                                "TypeInterfaceConst::finalizer method ret");
+                      }
+                    };
+                return new Result.Ok<>(
+                    new ArtifactSupport.ImportIndependentResult(imported, deps, fin));
+              });
         }
       };
+
+  public record ImportedInterfaceConst(InterfaceData data) implements ExporterAny {
+    @Override
+    public EResult<Type> exporterAnyAsType() {
+      return EResult.ok(new TypeInterfaceConst(data));
+    }
+
+    @Override
+    public EResult<Value> exporterAnyAsValue() {
+      return EResult.ok(new TypeInterfaceConst(data));
+    }
+  }
 
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {

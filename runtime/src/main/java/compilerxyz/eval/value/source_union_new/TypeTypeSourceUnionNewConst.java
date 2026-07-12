@@ -2,14 +2,17 @@ package compilerxyz.eval.value.source_union_new;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -18,12 +21,17 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
 import java.util.function.Function;
 
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
@@ -77,6 +85,10 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
     return ExporterRoot.SOURCE_UNION_NEW_CONST;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -85,19 +97,117 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeTypeSourceUnionNewConst::exporterRootDelegateSelfExport: recursive export_artifact + parent "
-                  + "TypeTypeSourceUnionConst export deferred");
+          if (!(self instanceof TypeTypeSourceUnionNewConst uc)) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceUnionNewConst::exporterRootDelegateSelfExport: expected"
+                    + " TypeTypeSourceUnionNewConst, got " + self.getClass());
+          }
+          var tu = uc.type_;
+          var variantIndex = uc.variantIndex;
+          if (variantIndex < 0 || variantIndex >= tu.variants.size()) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceUnionNewConst::exporterExport: variant index "
+                    + variantIndex + " out of range");
+          }
+          var variant = tu.variants.get(variantIndex);
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  variant.newArtifactIdCell,
+                  () -> {
+                    var parentConst = new TypeTypeSourceUnionConst(tu);
+                    var tuArtRes = ArtifactSupport.exportArtifact(xx, loc, parentConst);
+                    tuArtRes.drainInto(errors);
+                    var tuArt =
+                        tuArtRes.valueOrNull() != null
+                            ? tuArtRes.requireValue(
+                                "TypeTypeSourceUnionNewConst::exporterExport parent union")
+                            : nullArtifact();
+                    var body = new ArtifactDataSourceUnionNew(tuArt, variantIndex);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(
+                loc, "TypeTypeSourceUnionNewConst requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeTypeSourceUnionNewConst::exporterRootDelegateSelfFromArtifactData: recursive "
-                  + "import_independent_artifact + parent TypeTypeSourceUnionConst import deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactDataSourceUnionNew body;
+                try {
+                  body = JsonValues.fromValue(ArtifactDataSourceUnionNew.class, raw);
+                } catch (RuntimeException e) {
+                  return new Result.Err<>(
+                      "TypeTypeSourceUnionNewConst data: failed to parse "
+                          + "ArtifactDataSourceUnionNew: " + e.getMessage());
+                }
+                return new Result.Ok<>(body);
+              },
+              (body) -> {
+                var tuArt = body.union();
+                var variantIndex = body.variantIndex();
+                var holder = new ExporterAny[] {null};
+                ExporterAny stub =
+                    new ExporterAny() {
+                      @Override
+                      public EResult<Type> exporterAnyAsType() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeTypeSourceUnionNewConst import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsType();
+                      }
+
+                      @Override
+                      public EResult<Value> exporterAnyAsValue() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeTypeSourceUnionNewConst import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsValue();
+                      }
+                    };
+                var deps = new TList<Artifact>();
+                deps.add(tuArt);
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var parentAny =
+                          ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, tuArt);
+                      var parentVal =
+                          parentAny.requireValue(
+                              "TypeTypeSourceUnionNewConst::finalizer parent union");
+                      TypeSourceUnionDynamic tuData;
+                      if (parentVal instanceof TypeTypeSourceUnionConst pConst) {
+                        tuData = pConst.type_();
+                      } else if (parentVal
+                          instanceof TypeTypeSourceUnionConst.ImportedSourceUnionConst imp) {
+                        tuData = imp.type_();
+                      } else {
+                        throw new IllegalStateException(
+                            "TypeTypeSourceUnionNewConst finalizer: parent union artifact resolved to "
+                                + parentVal.getClass());
+                      }
+                      if (variantIndex >= 0 && variantIndex < tuData.variants.size()) {
+                        tuData.variants.get(variantIndex).newArtifactIdCell.set(idValue);
+                      }
+                      holder[0] = new TypeTypeSourceUnionNewConst(tuData, variantIndex);
+                    };
+                return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+              });
         }
       };
 

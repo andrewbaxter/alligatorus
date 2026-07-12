@@ -2,17 +2,25 @@ package compilerxyz.eval.value.source_object_new;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
+import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValues;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
@@ -105,6 +113,10 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     return ExporterRoot.SOURCE_OBJECT_NEW_CONST;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -113,19 +125,107 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeTypeSourceObjectNewConst::exporterRootDelegateSelfExport: recursive export_artifact + parent "
-                  + "TypeTypeSourceObjectConst export deferred");
+          if (!(self instanceof TypeTypeSourceObjectNewConst oc)) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceObjectNewConst::exporterRootDelegateSelfExport: expected"
+                    + " TypeTypeSourceObjectNewConst, got " + self.getClass());
+          }
+          var dt = oc.type_;
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  dt.newArtifactIdCell,
+                  () -> {
+                    var parentConst = new TypeTypeSourceObjectConst(dt);
+                    var objectArtRes = ArtifactSupport.exportArtifact(xx, loc, parentConst);
+                    objectArtRes.drainInto(errors);
+                    var objectArt =
+                        objectArtRes.valueOrNull() != null
+                            ? objectArtRes.requireValue(
+                                "TypeTypeSourceObjectNewConst::exporterExport parent object")
+                            : nullArtifact();
+                    var body = new ArtifactDataSourceObjectNew(objectArt);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceObjectNewConst requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeTypeSourceObjectNewConst::exporterRootDelegateSelfFromArtifactData: recursive "
-                  + "import_independent_artifact + parent TypeTypeSourceObjectConst import deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactDataSourceObjectNew body;
+                try {
+                  body = JsonValues.fromValue(ArtifactDataSourceObjectNew.class, raw);
+                } catch (RuntimeException e) {
+                  return new Result.Err<>(
+                      "TypeTypeSourceObjectNewConst data: failed to parse "
+                          + "ArtifactDataSourceObjectNew: " + e.getMessage());
+                }
+                return new Result.Ok<>(body);
+              },
+              (body) -> {
+                var objectArt = body.object();
+                var holder = new ExporterAny[] {null};
+                ExporterAny stub =
+                    new ExporterAny() {
+                      @Override
+                      public EResult<Type> exporterAnyAsType() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeTypeSourceObjectNewConst import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsType();
+                      }
+
+                      @Override
+                      public EResult<compilerxyz.gen.Value> exporterAnyAsValue() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeTypeSourceObjectNewConst import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsValue();
+                      }
+                    };
+                var deps = new TList<Artifact>();
+                deps.add(objectArt);
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var parentAny =
+                          ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, objectArt);
+                      var parentVal =
+                          parentAny.requireValue(
+                              "TypeTypeSourceObjectNewConst::finalizer parent object");
+                      compilerxyz.eval.value.source_object.TypeSourceObjectDynamic dtData;
+                      if (parentVal instanceof TypeTypeSourceObjectConst pConst) {
+                        dtData = pConst.type_();
+                      } else if (parentVal
+                          instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst imp) {
+                        dtData = imp.type_();
+                      } else {
+                        throw new IllegalStateException(
+                            "TypeTypeSourceObjectNewConst finalizer: parent object artifact resolved to "
+                                + parentVal.getClass());
+                      }
+                      dtData.newArtifactIdCell.set(idValue);
+                      holder[0] = new TypeTypeSourceObjectNewConst(dtData);
+                    };
+                return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+              });
         }
       };
 

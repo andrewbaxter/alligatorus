@@ -46,8 +46,6 @@ import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
-import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ArtifactExternal;
@@ -135,9 +133,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
   }
 
-  private static final Map<TypeSourceObjectDynamic, ArtifactSupport.ArtifactIdHolder> INDEPENDENT_CELLS =
-      java.util.Collections.synchronizedMap(new IdentityHashMap<>());
-
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -170,164 +165,175 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                     + "' missing underlying type");
           }
           var errors = new TList<ExprErr>();
-          var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
-          if (defSetArtRes.hasErrors()) {
-            defSetArtRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var defSetArt =
-              defSetArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport defSet artifact");
-          var underlyingArtRes = ArtifactSupport.exportArtifact(xx, loc, underlying);
-          if (underlyingArtRes.hasErrors()) {
-            underlyingArtRes.drainInto(errors);
-            return EResult.errs(errors);
-          }
-          var underlyingArt =
-              underlyingArtRes.requireValue(
-                  "TypeTypeSourceObjectConst::exporterExport underlying artifact");
-          var methods = new TList<ArtifactDataDefSetMethod>();
-          for (var m : dt.methods) {
-            var argT = m.argType;
-            var retT = m.retType;
-            if (argT == null || retT == null) {
-              return EResult.err(
-                  loc,
-                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object '"
-                      + (dt.name == null ? "(unnamed)" : dt.name)
-                      + "' method '"
-                      + m.name
-                      + "' missing arg/ret type");
-            }
-            if (m.compiledBodyCode == null && m.compiledClassName == null) {
-              if (dt.setId == null) {
-                throw new AssertionError(
-                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: dt.setId is null");
-              }
-              var objectIndex = dt.set.objects.indexOf(dt);
-              if (objectIndex < 0) {
-                throw new AssertionError(
-                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: dt not in its owning set");
-              }
-              var objInternalName =
-                  compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dt.setId, objectIndex);
-              var finishRes = m.finish(xx, loc, dt.name == null ? "(unnamed)" : dt.name,
-                  dt, underlying, objInternalName);
-              if (finishRes.hasErrors()) {
-                finishRes.drainInto(errors);
-                return EResult.errs(errors);
-              }
-            }
-            if (m.compiledBodyCode == null && m.compiledClassName == null) {
-              return EResult.err(
-                  loc,
-                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
-                      + m.name
-                      + "' has not been compiled");
-            }
-            var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argT);
-            if (argArtRes.hasErrors()) {
-              argArtRes.drainInto(errors);
-              return EResult.errs(errors);
-            }
-            var argArt =
-                argArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport method arg artifact");
-            var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retT);
-            if (retArtRes.hasErrors()) {
-              retArtRes.drainInto(errors);
-              return EResult.errs(errors);
-            }
-            var retArt =
-                retArtRes.requireValue("TypeTypeSourceObjectConst::exporterExport method ret artifact");
-            var extRes =
-                ExternalCodec.exportExternals(
-                    xx, loc, m.capturedExternals);
-            if (extRes.hasErrors()) {
-              extRes.drainInto(errors);
-              return EResult.errs(errors);
-            }
-            var ext =
-                extRes.requireValue("TypeTypeSourceObjectConst::exporterExport method externals");
-            methods.add(
-                new ArtifactDataDefSetMethod(
-                    m.name,
-                    argArt,
-                    retArt,
-                    m.compiledClassName,
-                    m.compiledBytecode,
-                    ext));
-          }
-          var ifaceImpls = new TList<ArtifactDataDefSetInterfaceImpl>();
-          for (var impl : dt.interfaceImpls) {
-            BuiltinInterfaceKind kind = impl.interface_.builtinKind;
-            Artifact userIface = null;
-            if (kind == null) {
-              var ifaceConst = new TypeInterfaceConst(impl.interface_);
-              var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
-              if (ifaceArtRes.hasErrors()) {
-                ifaceArtRes.drainInto(errors);
-                return EResult.errs(errors);
-              }
-              userIface =
-                  ifaceArtRes.requireValue(
-                      "TypeTypeSourceObjectConst::exporterExport user interface artifact");
-            }
-            var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
-            for (var mi : impl.methodImpls) {
-              var iface = impl.interface_;
-              if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
-                var finishRes = mi.finish(xx, loc, iface, dt, underlying);
-                if (finishRes.hasErrors()) {
-                  finishRes.drainInto(errors);
-                  return EResult.errs(errors);
-                }
-              }
-              if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
-                return EResult.err(
-                    loc,
-                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl (idx="
-                        + mi.interfaceMethodIndex
-                        + ") has not been compiled");
-              }
-              var extRes =
-                  ExternalCodec.exportExternals(
-                      xx, loc, mi.capturedExternals);
-              if (extRes.hasErrors()) {
-                extRes.drainInto(errors);
-                return EResult.errs(errors);
-              }
-              var ext =
-                  extRes.requireValue(
-                      "TypeTypeSourceObjectConst::exporterExport interface method externals");
-              methodImpls.add(
-                  new ArtifactDataDefSetInterfaceMethodImpl(
-                      mi.interfaceMethodIndex,
-                      mi.compiledClassName,
-                      mi.compiledBytecode,
-                      ext));
-            }
-            ifaceImpls.add(
-                new ArtifactDataDefSetInterfaceImpl(kind, userIface, methodImpls));
-          }
-          var body =
-              new ArtifactDataDefSetObject(
-                  defSetArt,
-                  set.defSetId,
-                  dt.name,
-                  dt.identity,
-                  underlyingArt,
-                  methods,
-                  ifaceImpls,
-                  dt.compiledBinaryName,
-                  dt.compiledBytecode);
-          var cell =
-              INDEPENDENT_CELLS.computeIfAbsent(dt, k -> new ArtifactSupport.ArtifactIdHolder());
+          var underlyingFinal = underlying;
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
-                  xx.vx.ix.gx.artifacts, cell, () -> makeBody.apply(JsonValues.toValue(body)));
+                  xx.vx.ix.gx.artifacts,
+                  dt.artifactIdCell,
+                  () -> {
+                    var defSetArtRes =
+                        ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                    defSetArtRes.drainInto(errors);
+                    var defSetArt =
+                        defSetArtRes.valueOrNull() != null
+                            ? defSetArtRes.requireValue(
+                                "TypeTypeSourceObjectConst::exporterExport defSet")
+                            : nullArtifact();
+                    var underlyingArtRes =
+                        ArtifactSupport.exportArtifact(xx, loc, underlyingFinal);
+                    underlyingArtRes.drainInto(errors);
+                    var underlyingArt =
+                        underlyingArtRes.valueOrNull() != null
+                            ? underlyingArtRes.requireValue(
+                                "TypeTypeSourceObjectConst::exporterExport underlying")
+                            : nullArtifact();
+                    var methods = new TList<ArtifactDataDefSetMethod>();
+                    for (var m : dt.methods) {
+                      var argT = m.argType;
+                      var retT = m.retType;
+                      if (argT == null || retT == null) {
+                        errors.add(
+                            new compilerxyz.eval.ExprErr(
+                                loc,
+                                compilerxyz.util.TList.of(
+                                    new compilerxyz.eval.ExprSubErr.Opaque(
+                                        "TypeTypeSourceObjectConst::exporterExport: object '"
+                                            + (dt.name == null ? "(unnamed)" : dt.name)
+                                            + "' method '"
+                                            + m.name
+                                            + "' missing arg/ret type"))));
+                        continue;
+                      }
+                      if (m.compiledBodyCode == null && m.compiledClassName == null) {
+                        var objectIndex = dt.set.objects.indexOf(dt);
+                        var objInternalName =
+                            compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(
+                                dt.setId, objectIndex);
+                        var finishRes =
+                            m.finish(
+                                xx,
+                                loc,
+                                dt.name == null ? "(unnamed)" : dt.name,
+                                dt,
+                                underlyingFinal,
+                                objInternalName);
+                        finishRes.drainInto(errors);
+                      }
+                      if (m.compiledBodyCode == null && m.compiledClassName == null) {
+                        errors.add(
+                            new compilerxyz.eval.ExprErr(
+                                loc,
+                                compilerxyz.util.TList.of(
+                                    new compilerxyz.eval.ExprSubErr.Opaque(
+                                        "TypeTypeSourceObjectConst::exporterExport: object method '"
+                                            + m.name
+                                            + "' has not been compiled"))));
+                        continue;
+                      }
+                      var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argT);
+                      argArtRes.drainInto(errors);
+                      var argArt =
+                          argArtRes.valueOrNull() != null
+                              ? argArtRes.requireValue(
+                                  "TypeTypeSourceObjectConst::exporterExport method arg")
+                              : nullArtifact();
+                      var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retT);
+                      retArtRes.drainInto(errors);
+                      var retArt =
+                          retArtRes.valueOrNull() != null
+                              ? retArtRes.requireValue(
+                                  "TypeTypeSourceObjectConst::exporterExport method ret")
+                              : nullArtifact();
+                      var extRes = ExternalCodec.exportExternals(xx, loc, m.capturedExternals);
+                      extRes.drainInto(errors);
+                      var ext =
+                          extRes.valueOrNull() != null
+                              ? extRes.requireValue(
+                                  "TypeTypeSourceObjectConst::exporterExport method externals")
+                              : compilerxyz.util.TList.<ArtifactExternal>of();
+                      methods.add(
+                          new ArtifactDataDefSetMethod(
+                              m.name,
+                              argArt,
+                              retArt,
+                              m.compiledClassName,
+                              m.compiledBytecode,
+                              ext));
+                    }
+                    var ifaceImpls = new TList<ArtifactDataDefSetInterfaceImpl>();
+                    for (var impl : dt.interfaceImpls) {
+                      BuiltinInterfaceKind kind = impl.interface_.builtinKind;
+                      Artifact userIface = null;
+                      if (kind == null) {
+                        var ifaceConst = new TypeInterfaceConst(impl.interface_);
+                        var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
+                        ifaceArtRes.drainInto(errors);
+                        userIface =
+                            ifaceArtRes.valueOrNull() != null
+                                ? ifaceArtRes.requireValue(
+                                    "TypeTypeSourceObjectConst::exporterExport user iface")
+                                : nullArtifact();
+                      }
+                      var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
+                      for (var mi : impl.methodImpls) {
+                        var iface = impl.interface_;
+                        if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
+                          var finishRes = mi.finish(xx, loc, iface, dt, underlyingFinal);
+                          finishRes.drainInto(errors);
+                        }
+                        if (mi.compiledBodyCode == null && mi.compiledClassName == null) {
+                          errors.add(
+                              new compilerxyz.eval.ExprErr(
+                                  loc,
+                                  compilerxyz.util.TList.of(
+                                      new compilerxyz.eval.ExprSubErr.Opaque(
+                                          "TypeTypeSourceObjectConst::exporterExport: iface method impl (idx="
+                                              + mi.interfaceMethodIndex
+                                              + ") has not been compiled"))));
+                          continue;
+                        }
+                        var extRes =
+                            ExternalCodec.exportExternals(xx, loc, mi.capturedExternals);
+                        extRes.drainInto(errors);
+                        var ext =
+                            extRes.valueOrNull() != null
+                                ? extRes.requireValue(
+                                    "TypeTypeSourceObjectConst::exporterExport iface method ext")
+                                : compilerxyz.util.TList.<ArtifactExternal>of();
+                        methodImpls.add(
+                            new ArtifactDataDefSetInterfaceMethodImpl(
+                                mi.interfaceMethodIndex,
+                                mi.compiledClassName,
+                                mi.compiledBytecode,
+                                ext));
+                      }
+                      ifaceImpls.add(
+                          new ArtifactDataDefSetInterfaceImpl(kind, userIface, methodImpls));
+                    }
+                    var body =
+                        new ArtifactDataDefSetObject(
+                            defSetArt,
+                            set.defSetId,
+                            dt.name,
+                            dt.identity,
+                            underlyingArt,
+                            methods,
+                            ifaceImpls,
+                            dt.compiledBinaryName,
+                            dt.compiledBytecode);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
           if (errors.isEmpty()) {
             return EResult.ok(artifact);
           }
           return EResult.mixed(artifact, errors);
+        }
+
+        private static Artifact nullArtifact() {
+          return new Artifact.Body(
+              new compilerxyz.artifact.ArtifactBody(
+                  new compilerxyz.safejson.JsonValueNull(),
+                  new compilerxyz.artifact.ArtifactBodyExporter.Root()));
         }
 
         @Override
@@ -357,7 +363,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               (body) -> {
                 var dt = new TypeSourceObjectDynamic(
                     body.defSetId(), body.name(), body.identity());
-                dt.artifactId = idValue;
+                dt.artifactIdCell.set(idValue);
                 dt.compiledBinaryName = body.compiledBinaryName();
                 dt.compiledBytecode = body.compiledBytecode();
                 for (var m : body.methods()) {

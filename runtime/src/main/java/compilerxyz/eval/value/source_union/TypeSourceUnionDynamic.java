@@ -42,11 +42,13 @@ public final class TypeSourceUnionDynamic
         AspectUnion,
         ExporterAny {
 
+  @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
   public final Unique identity;
-  public @Nullable ArtifactIdSource newArtifactId;
   public final Counter nextTagId;
   public final TList<SourceUnionVariant> variants;
+  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
 
   public @Nullable String compiledBaseBinaryName;
   public @Nullable TList<String> compiledVariantBinaryNames;
@@ -56,6 +58,25 @@ public final class TypeSourceUnionDynamic
     this.identity = identity;
     this.nextTagId = new Counter();
     this.variants = new TList<>();
+  }
+
+  @SuppressWarnings("NullAway")
+  public TypeSourceUnionDynamic(Unique identity) {
+    this.set = (DefinitionSet) null;
+    this.identity = identity;
+    this.nextTagId = new Counter();
+    this.variants = new TList<>();
+  }
+
+  public void initSetReflectively(DefinitionSet set) {
+    try {
+      var f = TypeSourceUnionDynamic.class.getDeclaredField("set");
+      f.setAccessible(true);
+      f.set(this, set);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError(
+          "TypeSourceUnionDynamic.initSetReflectively: failed to write final 'set' field", e);
+    }
   }
 
   public EResult<Void> finish(

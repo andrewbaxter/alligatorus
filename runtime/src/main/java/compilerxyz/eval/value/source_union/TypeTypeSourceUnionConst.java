@@ -2,11 +2,18 @@ package compilerxyz.eval.value.source_union;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValues;
+import compilerxyz.util.Result;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
@@ -103,6 +110,10 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     return ExporterRoot.SOURCE_UNION_CONST;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -111,21 +122,135 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: recursive export_artifact + per-variant payload "
-                  + "type export deferred");
+          if (!(self instanceof TypeTypeSourceUnionConst uc)) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: expected"
+                    + " TypeTypeSourceUnionConst, got " + self.getClass());
+          }
+          var tu = uc.type_;
+          var set = tu.set;
+          if (set == null) {
+            return EResult.err(
+                loc,
+                "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: union not attached to a"
+                    + " definition set");
+          }
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  tu.artifactIdCell,
+                  () -> {
+                    var defSetArtRes =
+                        ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                    defSetArtRes.drainInto(errors);
+                    var defSetArt =
+                        defSetArtRes.valueOrNull() != null
+                            ? defSetArtRes.requireValue(
+                                "TypeTypeSourceUnionConst::exporterExport defSet")
+                            : nullArtifact();
+                    var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
+                    for (var v : tu.variants) {
+                      var tArtRes = ArtifactSupport.exportArtifact(xx, loc, v.type);
+                      tArtRes.drainInto(errors);
+                      var tArt =
+                          tArtRes.valueOrNull() != null
+                              ? tArtRes.requireValue(
+                                  "TypeTypeSourceUnionConst::exporterExport variant type")
+                              : nullArtifact();
+                      variantsOut.add(
+                          new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt));
+                    }
+                    var body =
+                        new ArtifactDataSourceUnion(
+                            defSetArt, set.defSetId, tu.identity, variantsOut);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(
+                loc, "TypeTypeSourceUnionConst requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeTypeSourceUnionConst::exporterRootDelegateSelfFromArtifactData: recursive import_independent_artifact "
-                  + "+ per-variant payload type import deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactDataSourceUnion body;
+                try {
+                  body = JsonValues.fromValue(ArtifactDataSourceUnion.class, raw);
+                } catch (RuntimeException e) {
+                  return new Result.Err<>(
+                      "TypeTypeSourceUnionConst data: failed to parse "
+                          + "ArtifactDataSourceUnion: " + e.getMessage());
+                }
+                return new Result.Ok<>(body);
+              },
+              (body) -> {
+                var tu = new TypeSourceUnionDynamic(body.identity());
+                tu.artifactIdCell.set(idValue);
+                for (var v : body.variants()) {
+                  tu.variants.add(
+                      new SourceUnionVariant(v.tag(), v.jsTag(), Type.dynamicType()));
+                }
+                var imported = new ImportedSourceUnionConst(tu);
+                var deps = new TList<Artifact>();
+                deps.add(body.defSet());
+                for (var v : body.variants()) deps.add(v.type_());
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var defSetAny =
+                          ArtifactSupport.independentFinalizeImportArtifact(
+                              xx2, loc2, body.defSet());
+                      var defSetVal =
+                          defSetAny.requireValue(
+                              "TypeTypeSourceUnionConst::finalizer defSet artifact");
+                      if (!(defSetVal instanceof DefinitionSet set)) {
+                        throw new IllegalStateException(
+                            "TypeTypeSourceUnionConst finalizer: defSet artifact resolved to "
+                                + defSetVal.getClass());
+                      }
+                      tu.initSetReflectively(set);
+                      var variantsIt = body.variants().iterator();
+                      for (int i = 0; i < tu.variants.size(); i++) {
+                        var v = tu.variants.get(i);
+                        var artV = variantsIt.next();
+                        var tRes =
+                            ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                xx2, loc2, artV.type_());
+                        var tVal =
+                            tRes.requireValue(
+                                "TypeTypeSourceUnionConst::finalizer variant type");
+                        tu.variants.set(
+                            i, new SourceUnionVariant(v.tag, v.jsTag, tVal));
+                      }
+                    };
+                return new Result.Ok<>(
+                    new ArtifactSupport.ImportIndependentResult(imported, deps, fin));
+              });
         }
       };
+
+  public record ImportedSourceUnionConst(TypeSourceUnionDynamic type_) implements ExporterAny {
+    @Override
+    public EResult<Type> exporterAnyAsType() {
+      return EResult.ok(new TypeTypeSourceUnionConst(type_));
+    }
+
+    @Override
+    public EResult<Value> exporterAnyAsValue() {
+      return EResult.ok(new TypeTypeSourceUnionConst(type_));
+    }
+  }
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
