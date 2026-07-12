@@ -37,23 +37,24 @@ public final class Erb {
       r.drainInto(this.errors);
       return Optional.empty();
     }
-    return Optional.of(r.requireValue("Erb::mustEr value"));
-  }
-
-  public Optional<CodeValue> mustReachable(EResult<CodeValue> r) {
-    if (r.hasErrors()) {
-      r.drainInto(this.errors);
-      return Optional.empty();
-    }
-    var cv = r.requireValue("Erb::mustReachable value");
-    if (!(cv.value() instanceof Opt.Some<Value>)) {
+    var value = r.requireValue("Erb::mustEr value");
+    if (value instanceof CodeValue cv && !(cv.value() instanceof Opt.Some<Value>)) {
       errPush(
           "Expression does not fall through (contains an unreachable control jump like"
               + " throw/panic); not valid in this position");
       return Optional.empty();
     }
-    return Optional.of(cv);
+    return Optional.of(value);
   }
+
+  public <T> Optional<T> mustErMaybeUnreachable(EResult<T> r) {
+    if (r.hasErrors()) {
+      r.drainInto(this.errors);
+      return Optional.empty();
+    }
+    return Optional.of(r.requireValue("Erb::mustErMaybeUnreachable value"));
+  }
+
 
   public <T> Optional<T> mustRes(Result<T, String> r) {
     return switch (r) {

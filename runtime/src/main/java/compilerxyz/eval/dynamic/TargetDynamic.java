@@ -318,7 +318,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     for (var branch : conditions) {
       var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition());
       if (condDynOpt.isEmpty()) return EResult.errs(erb.errors());
-      var bodyCvOpt = erb.mustEr(ConstEval.constEval(xx, branch.body()));
+      var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, branch.body()));
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
       if (resultType == null) {
@@ -341,7 +341,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextLabel));
     }
     if (else_ instanceof Opt.Some<Expr> someElse) {
-      var elseCvOpt = erb.mustEr(ConstEval.constEval(xx, someElse.value()));
+      var elseCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someElse.value()));
       if (elseCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var elseCv = elseCvOpt.get();
       if (resultType == null) {
@@ -401,7 +401,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         caseScope.values.put(elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
       }
       var caseXx = xx.child(caseScope);
-      var bodyCvOpt = erb.mustEr(ConstEval.constEval(caseXx, branch.body()));
+      var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(caseXx, branch.body()));
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
       if (resultType == null) {
@@ -441,7 +441,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
     }
     if (fallback instanceof Opt.Some<Expr> someFallback) {
-      var fallbackCvOpt = erb.mustEr(ConstEval.constEval(xx, someFallback.value()));
+      var fallbackCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someFallback.value()));
       if (fallbackCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var fallbackCv = fallbackCvOpt.get();
       if (resultType == null) {

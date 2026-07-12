@@ -54,10 +54,7 @@ public final class ConstEval {
         var keyOpt = erb.mustEr(keyR);
         if (keyOpt.isEmpty()) yield EResult.errs(erb.errors());
         var key = keyOpt.get();
-        if (!(key.value() instanceof Opt.Some<Value> keyVal)) {
-          erb.errPush("ScopeUse: key has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var keyVal = (Opt.Some<Value>) key.value();
         var keyConstRes = Eval.extractConstKey(xx, loc, keyVal.value());
         var keyConstOpt = erb.mustRes(keyConstRes);
         if (keyConstOpt.isEmpty()) yield EResult.errs(erb.errors());
@@ -85,18 +82,15 @@ public final class ConstEval {
         if (fopt.isEmpty() || aopt.isEmpty()) yield EResult.errs(erb.errors());
         var func = fopt.get();
         var arg = aopt.get();
-        if (!(func.value() instanceof Opt.Some<Value> fv)) {
-          erb.errPush("Call: function has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var fv = (Opt.Some<Value>) func.value();
         var funcType = fv.value().valueType();
         var aspectFnOpt = erb.mustEr(AspectFunction.get(xx, loc, funcType));
         if (aspectFnOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectFn = aspectFnOpt.get();
         var calleeExc = aspectFn.aspectFunctionExceptionType();
-        var callOpt = erb.mustEr(aspectFn.aspectFunctionCall(xx, loc, func, arg));
+        var callOpt = erb.mustErMaybeUnreachable(aspectFn.aspectFunctionCall(xx, loc, func, arg));
         if (callOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var wrapped = erb.mustEr(Eval.maybeWrapCallException(xx, loc, calleeExc, callOpt.get()));
+        var wrapped = erb.mustErMaybeUnreachable(Eval.maybeWrapCallException(xx, loc, calleeExc, callOpt.get()));
         if (wrapped.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(wrapped.get());
       }
@@ -107,10 +101,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || vopt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var value = vopt.get();
-        if (!(base.value() instanceof Opt.Some<Value> bv)) {
-          erb.errPush("Set: base has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
         var setOpt = erb.mustEr(AspectSet.get(xx, loc, baseType));
         if (setOpt.isEmpty()) yield EResult.errs(erb.errors());
@@ -125,14 +116,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || fopt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var field = fopt.get();
-        if (!(base.value() instanceof Opt.Some<Value> bv)) {
-          erb.errPush("Field: base has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
-        if (!(field.value() instanceof Opt.Some<Value>)) {
-          erb.errPush("Field: field key has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
         var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
@@ -178,10 +162,7 @@ public final class ConstEval {
         var ropt = erb.mustEr(constEval(xx, e.reference()));
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
-        if (!(base.value() instanceof Opt.Some<Value> bv)) {
-          erb.errPush("OperatorLt: base has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var bv = (Opt.Some<Value>) base.value();
         var aopt = erb.mustEr(AspectOperatorLt.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorLtLt(xx, loc, base, ropt.get()));
@@ -194,10 +175,7 @@ public final class ConstEval {
         var ropt = erb.mustEr(constEval(xx, e.reference()));
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
-        if (!(base.value() instanceof Opt.Some<Value> bv)) {
-          erb.errPush("OperatorEq: base has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var bv = (Opt.Some<Value>) base.value();
         var aopt = erb.mustEr(AspectOperatorEq.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorEqEq(xx, loc, base, ropt.get()));
@@ -210,10 +188,7 @@ public final class ConstEval {
         var ropt = erb.mustEr(constEval(xx, e.reference()));
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
-        if (!(base.value() instanceof Opt.Some<Value> bv)) {
-          erb.errPush("OperatorAdd: base has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var bv = (Opt.Some<Value>) base.value();
         var aopt = erb.mustEr(AspectOperatorAdd.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
@@ -231,10 +206,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || topt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var target = topt.get();
-        if (!(target.value() instanceof Opt.Some<Value> tv)) {
-          erb.errPush("As: target has no compile-time value");
-          yield EResult.errs(erb.errors());
-        }
+        var tv = (Opt.Some<Value>) target.value();
         var targetMeta = tv.value().valueType();
         var aspectTypeOpt = erb.mustEr(AspectType.get(xx, loc, targetMeta));
         if (aspectTypeOpt.isEmpty()) yield EResult.errs(erb.errors());
@@ -276,14 +248,14 @@ public final class ConstEval {
         continue;
       }
       if (pendingDiscard != null) {
-        var dropOpt = erb.mustEr(childXx.target.targetDrop(childXx, sub.loc(), pendingDiscard));
+        var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, sub.loc(), pendingDiscard));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(dropOpt.get());
         pendingDiscard = null;
       }
       if (sub.variant() instanceof Expr.Bind bind) {
         var bopt = erb.mustEr(constEval(childXx, bind.base()));
-        var vopt = erb.mustEr(constEval(childXx, bind.value()));
+        var vopt = erb.mustErMaybeUnreachable(constEval(childXx, bind.value()));
         if (bopt.isEmpty() || vopt.isEmpty()) return EResult.errs(erb.errors());
         var base = bopt.get();
         var value = vopt.get();
@@ -310,7 +282,7 @@ public final class ConstEval {
         if (brOpt.isEmpty()) return EResult.errs(erb.errors());
         var br = brOpt.get();
         var bindingUseCv = br.binding().bindingUse(childXx, sub.loc(), Code.none(sub.loc()));
-        var dropOpt = erb.mustEr(childXx.target.targetDrop(childXx, sub.loc(), bindingUseCv));
+        var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, sub.loc(), bindingUseCv));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(br.code());
         var nf = new Frame();
@@ -319,7 +291,7 @@ public final class ConstEval {
         childXx.scope.values.put(ckOpt.get(), br.binding());
         lastVal = Opt.some(new ValueNullConst());
       } else {
-        var ropt = erb.mustEr(constEval(childXx, sub));
+        var ropt = erb.mustErMaybeUnreachable(constEval(childXx, sub));
         if (ropt.isEmpty()) return EResult.errs(erb.errors());
         var r = ropt.get();
         frames.get(frames.size() - 1).codes.add(r.code());
@@ -340,16 +312,16 @@ public final class ConstEval {
       if (inner.dropCode.isNone()) {
         frames.get(frames.size() - 1).codes.addAll(inner.codes);
       } else {
-        var bodyOpt = erb.mustEr(childXx.target.targetSeq(loc, inner.codes));
+        var bodyOpt = erb.mustErMaybeUnreachable(childXx.target.targetSeq(loc, inner.codes));
         if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
         var wrappedOpt =
-            erb.mustEr(childXx.target.targetTryFinally(loc, bodyOpt.get(), inner.dropCode));
+            erb.mustErMaybeUnreachable(childXx.target.targetTryFinally(loc, bodyOpt.get(), inner.dropCode));
         if (wrappedOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(wrappedOpt.get());
       }
     }
     var outer = frames.remove(0);
-    var seqOpt = erb.mustEr(childXx.target.targetSeq(loc, outer.codes));
+    var seqOpt = erb.mustErMaybeUnreachable(childXx.target.targetSeq(loc, outer.codes));
     if (seqOpt.isEmpty()) return EResult.errs(erb.errors());
     var cv = new CodeValue(seqOpt.get(), lastVal);
     if (erb.errors().isEmpty()) {
@@ -426,16 +398,10 @@ public final class ConstEval {
     if (bopt.isEmpty() || ekopt.isEmpty()) return EResult.errs(erb.errors());
     var base = bopt.get();
     var ekCv = ekopt.get();
-    if (!(ekCv.value() instanceof Opt.Some<Value> ekv)) {
-      erb.errPush("Foreach: element key has no compile-time value");
-      return EResult.errs(erb.errors());
-    }
+    var ekv = (Opt.Some<Value>) ekCv.value();
     var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
     if (ekOpt.isEmpty()) return EResult.errs(erb.errors());
-    if (!(base.value() instanceof Opt.Some<Value> bv)) {
-      erb.errPush("Foreach: base has no compile-time value");
-      return EResult.errs(erb.errors());
-    }
+    var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
     var iterOpt = erb.mustEr(AspectIterable.get(xx, loc, baseType));
     if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -451,9 +417,9 @@ public final class ConstEval {
     var childScope = new Scope(xx.scope);
     childScope.values.put(ekOpt.get(), elementBinding);
     var childXx = xx.child(childScope);
-    var bodyOpt = erb.mustEr(constEval(childXx, e.body()));
+    var bodyOpt = erb.mustErMaybeUnreachable(constEval(childXx, e.body()));
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
-    var out = erb.mustEr(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyOpt.get()));
+    var out = erb.mustErMaybeUnreachable(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyOpt.get()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(out.get());
   }
@@ -465,17 +431,11 @@ public final class ConstEval {
     if (bopt.isEmpty() || ekopt.isEmpty()) return EResult.errs(erb.errors());
     var base = bopt.get();
     var ekCv = ekopt.get();
-    if (!(ekCv.value() instanceof Opt.Some<Value> ekv)) {
-      erb.errPush("Match: element key has no compile-time value");
-      return EResult.errs(erb.errors());
-    }
+    var ekv = (Opt.Some<Value>) ekCv.value();
     var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
     if (ekOpt.isEmpty()) return EResult.errs(erb.errors());
     var elementKey = ekOpt.get();
-    if (!(base.value() instanceof Opt.Some<Value> bv)) {
-      erb.errPush("Match: base has no compile-time value");
-      return EResult.errs(erb.errors());
-    }
+    var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
     var unionOpt = erb.mustEr(AspectUnion.get(xx, loc, baseType));
     if (unionOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -484,10 +444,7 @@ public final class ConstEval {
     for (var c : e.cases()) {
       var condOpt = erb.mustEr(constEval(xx, c.condition()));
       if (condOpt.isEmpty()) return EResult.errs(erb.errors());
-      if (!(condOpt.get().value() instanceof Opt.Some<Value> cv)) {
-        erb.errPush("Match: case condition has no compile-time value");
-        return EResult.errs(erb.errors());
-      }
+      var cv = (Opt.Some<Value>) condOpt.get().value();
       var tagOpt = erb.mustRes(Eval.extractConstKey(xx, loc, cv.value()));
       if (tagOpt.isEmpty()) return EResult.errs(erb.errors());
       var tag = tagOpt.get();
@@ -563,7 +520,7 @@ public final class ConstEval {
               variantBinaryName,
               e.cases().get(i).body()));
     }
-    var out = erb.mustEr(xx.target.targetMatch(xx, loc, base, elementKey, matchCases, e.fallback()));
+    var out = erb.mustErMaybeUnreachable(xx.target.targetMatch(xx, loc, base, elementKey, matchCases, e.fallback()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(out.get());
   }
@@ -676,10 +633,7 @@ public final class ConstEval {
       var condOpt = erb.mustEr(constEval(xx, branch.condition()));
       if (condOpt.isEmpty()) return EResult.errs(erb.errors());
       var cond = condOpt.get();
-      if (!(cond.value() instanceof Opt.Some<Value> cv)) {
-        erb.errPush("If: condition has no compile-time value");
-        return EResult.errs(erb.errors());
-      }
+      var cv = (Opt.Some<Value>) cond.value();
       var condType = cv.value().valueType();
       var boolAspect = AspectBoolConst.getMaybe(xx, condType);
       if (boolAspect instanceof Opt.Some<AspectBoolConst> some) {
@@ -693,13 +647,13 @@ public final class ConstEval {
     if (allConst) {
       for (var ie : conditionsEvaluated) {
         if (ie.val) {
-          var bodyOpt = erb.mustEr(constEval(xx, ie.body));
+          var bodyOpt = erb.mustErMaybeUnreachable(constEval(xx, ie.body));
           if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
           return EResult.ok(bodyOpt.get());
         }
       }
       if (e.else_() instanceof Opt.Some<Expr> els) {
-        var elseOpt = erb.mustEr(constEval(xx, els.value()));
+        var elseOpt = erb.mustErMaybeUnreachable(constEval(xx, els.value()));
         if (elseOpt.isEmpty()) return EResult.errs(erb.errors());
         return EResult.ok(elseOpt.get());
       }
@@ -709,7 +663,7 @@ public final class ConstEval {
       for (var ie : conditionsEvaluated) {
         branches.add(new IfBranch(ie.cond, ie.body));
       }
-      var out = erb.mustEr(xx.target.targetIf(xx, loc, branches, e.else_()));
+      var out = erb.mustErMaybeUnreachable(xx.target.targetIf(xx, loc, branches, e.else_()));
       if (out.isEmpty()) return EResult.errs(erb.errors());
       return EResult.ok(out.get());
     }
@@ -729,10 +683,7 @@ public final class ConstEval {
       var etCvOpt = erb.mustEr(constEval(xx, catchObj.exceptionType()));
       if (etCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var etCv = etCvOpt.get();
-      if (!(etCv.value() instanceof Opt.Some<Value> etv)) {
-        erb.errPush("Try: catch exception type has no compile-time value");
-        return EResult.errs(erb.errors());
-      }
+      var etv = (Opt.Some<Value>) etCv.value();
       var etMeta = etv.value().valueType();
       var atOpt = erb.mustEr(AspectType.get(xx, loc, etMeta));
       if (atOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -741,7 +692,7 @@ public final class ConstEval {
       bodyExcType = xx.currentExceptionType;
     }
     var bodyXx = xx.withExceptionType(bodyExcType);
-    var bodyOpt = erb.mustEr(constEval(bodyXx, e.body()));
+    var bodyOpt = erb.mustErMaybeUnreachable(constEval(bodyXx, e.body()));
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
     var bodyCv = bodyOpt.get();
     Type bodyType;
@@ -762,10 +713,7 @@ public final class ConstEval {
       var bnCvOpt = erb.mustEr(constEval(xx, catchObj.bindingName()));
       if (bnCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bnCv = bnCvOpt.get();
-      if (!(bnCv.value() instanceof Opt.Some<Value> bnv)) {
-        erb.errPush("Try: catch binding name has no compile-time value");
-        return EResult.errs(erb.errors());
-      }
+      var bnv = (Opt.Some<Value>) bnCv.value();
       var bnCkOpt =
           erb.mustRes(Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
       if (bnCkOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -776,11 +724,11 @@ public final class ConstEval {
         catchScope.values.put(bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
       }
       var catchXx = xx.child(catchScope);
-      var catchCvOpt = erb.mustEr(constEval(catchXx, catchObj.body()));
+      var catchCvOpt = erb.mustErMaybeUnreachable(constEval(catchXx, catchObj.body()));
       if (catchCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var catchCv = catchCvOpt.get();
       if (bodyType != null && catchCv.value() instanceof Opt.Some<Value>) {
-        var convOpt = erb.mustEr(Eval.typecheckConvert(catchXx, loc, bodyType, catchCv));
+        var convOpt = erb.mustErMaybeUnreachable(Eval.typecheckConvert(catchXx, loc, bodyType, catchCv));
         if (convOpt.isEmpty()) return EResult.errs(erb.errors());
         catchCv = convOpt.get();
       }
@@ -802,7 +750,7 @@ public final class ConstEval {
     }
     Opt<CodeDynamic> finally_ = Opt.none();
     if (e.finallyBlock() instanceof Opt.Some<Expr> finSome) {
-      var finCvOpt = erb.mustEr(constEval(xx, finSome.value()));
+      var finCvOpt = erb.mustErMaybeUnreachable(constEval(xx, finSome.value()));
       if (finCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var finCv = finCvOpt.get();
       var finCd = finCv.code().dynamic();
