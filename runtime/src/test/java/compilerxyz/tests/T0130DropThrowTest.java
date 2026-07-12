@@ -519,11 +519,11 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
     assertTrue(
         messages.contains("dropped_b"),
         () -> "sibling 'b' should be dropped when field 'a' is accessed; got logs=" + messages);
-    assertFalse(
+    assertTrue(
         messages.contains("dropped_a"),
         () ->
-            "extracted field 'a' should not be dropped at the field-access site; got logs="
-                + messages);
+            "field access copies the value, so extracted 'a' and rec's original slot are"
+                + " both dropped; got logs=" + messages);
   }
 
   @Test
