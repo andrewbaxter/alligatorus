@@ -270,7 +270,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
       }
       // Emit sibling drops (full drop path).
-      emitSiblingDrops(xx, loc, klass, slotInfo, /* skipKey */ null, out);
+      var dropRes = emitSiblingDrops(xx, loc, klass, slotInfo, /* skipKey */ null, out);
+      if (dropRes.hasErrors()) return dropRes.reerr();
       out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
       return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
     }
@@ -280,7 +281,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     // Last-field optimization: when the accessed field is the LAST in iteration order
     // and no siblings need dropping, we can skip DUP for it.
     // Simpler safe path: always do sibling drops + STORE/LOAD dance.
-    emitSiblingDrops(xx, loc, klass, slotInfo, accessedKey, out);
+    var sibRes = emitSiblingDrops(xx, loc, klass, slotInfo, accessedKey, out);
+    if (sibRes.hasErrors()) return sibRes.reerr();
     // DUP + GETFIELD accessed + STORE
     var accessedConsume = AspectConsumeDynamic.getMaybe(xx, accessedType);
     if (!(accessedConsume instanceof Opt.Some<AspectConsumeDynamic> accessedConsumeSome)) {
@@ -311,7 +313,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             Opt.some(ValueDynamic.stack(xx, accessedType))));
   }
 
-  private void emitSiblingDrops(
+  private EResult<Void> emitSiblingDrops(
       ExprContext xx,
       QExprId loc,
       JavaInternalName klass,
@@ -326,22 +328,17 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (skipKey != null && skipKey.equals(k)) continue;
       var t = recordFieldType(fields.getOrNull(k));
       int slotIdx = slotInfo.slotOfKey().get(k);
-      var siblingDrop = childDropCode(xx, loc, klass, slotIdx, t);
-      if (siblingDrop != null) out.add(siblingDrop);
+      var dropRes = childDropCode(xx, loc, klass, slotIdx, t, k);
+      if (dropRes.hasErrors()) return dropRes.reerr();
+      out.add(dropRes.requireValue("Record::emitSiblingDrops child"));
     }
+    return EResult.ok(null);
   }
 
-  private @org.jspecify.annotations.Nullable CodeDynamic childDropCode(
-      ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType) {
+  private EResult<CodeDynamic> childDropCode(
+      ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
+      ConstKey key) {
     // Build: DUP, GETFIELD, <child drop chain>.
-    var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
-    var lightDropOpt = AspectDropDynamic.getMaybe(xx, childType).optIsSome()
-        ? Opt.<compilerxyz.gen.AspectDropDynamicLight>none()
-        : compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType);
-    if (!(fullDropOpt instanceof Opt.Some<AspectDropDynamic>)
-        && !(lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight>)) {
-      return null;
-    }
     var seq = new JavaBytecodeSequence();
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
     seq.add(
@@ -354,24 +351,26 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         new CodeValue(
             Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
             Opt.some(ValueDynamic.stack(xx, childType)));
+    var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
     if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullSome) {
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
-      if (res.hasErrors()) {
-        throw new IllegalStateException(
-            "Record::childDropCode: drop failed for '" + childType.typeDesc() + "'");
-      }
+      if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Record::childDropCode drop").dynamic();
       if (d != null) seq.add(d);
-    } else if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
+      return EResult.ok(new CodeDynamic(loc, seq));
+    }
+    var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType);
+    if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
       var res = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, childCv);
-      if (res.hasErrors()) {
-        throw new IllegalStateException(
-            "Record::childDropCode: light drop failed for '" + childType.typeDesc() + "'");
-      }
+      if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Record::childDropCode light drop").dynamic();
       if (d != null) seq.add(d);
+      return EResult.ok(new CodeDynamic(loc, seq));
     }
-    return new CodeDynamic(loc, seq);
+    return EResult.err(
+        loc,
+        "Record field '" + key.toCanonical() + "' type '" + childType.typeDesc()
+            + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
   }
 
   @Override
