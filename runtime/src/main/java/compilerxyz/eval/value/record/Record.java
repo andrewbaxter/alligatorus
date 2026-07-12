@@ -276,37 +276,17 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
     }
 
-    // Field access with stack-rooted base: emit sibling drops, ASTORE accessed field,
-    // POP base, ALOAD accessed.
-    // Last-field optimization: when the accessed field is the LAST in iteration order
-    // and no siblings need dropping, we can skip DUP for it.
-    // Simpler safe path: always do sibling drops + STORE/LOAD dance.
+    // Field access with stack-rooted base: emit sibling drops (each DUP+GETFIELD+
+    // drop, base preserved), then GETFIELD the accessed slot — no DUP needed
+    // because we consume the base here (the accessed field replaces it on stack).
     var sibRes = emitSiblingDrops(xx, loc, klass, slotInfo, accessedKey, out);
     if (sibRes.hasErrors()) return sibRes.reerr();
-    // DUP + GETFIELD accessed + STORE
-    var accessedConsume = AspectConsumeDynamic.getMaybe(xx, accessedType);
-    if (!(accessedConsume instanceof Opt.Some<AspectConsumeDynamic> accessedConsumeSome)) {
-      return EResult.err(
-          loc,
-          "Record::accessOrDrop: accessed field type '"
-              + accessedType.typeDesc()
-              + "' is not AspectConsumeDynamic");
-    }
-    var acd = accessedConsumeSome.value();
-    var accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
-    // The base ref is on top of stack; DUP, GETFIELD, STORE
-    out.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
     out.add(
         JavaBytecodeUtils.accessField(
             loc,
             klass,
             CompositeClassEmitter.slotFieldName(accessedSlot),
             CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-    out.add(acd.aspectConsumeDynamicEmitStore(xx, loc, accessedLocalKey));
-    // POP the base ref
-    out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    // LOAD accessed
-    out.add(acd.aspectConsumeDynamicEmitLoad(xx, loc, accessedLocalKey));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, new CodeDynamic(loc, out)),

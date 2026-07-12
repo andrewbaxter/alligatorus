@@ -231,7 +231,9 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
     }
 
-    // Element access with stack-rooted base.
+    // Element access with stack-rooted base: sibling drops (each DUP+GETFIELD+drop,
+    // base preserved), then GETFIELD the accessed slot — no DUP needed because
+    // we consume the base here.
     for (int i = elementTypesUnsorted.size() - 1; i >= 0; i--) {
       if (accessedIdx == i) continue;
       var t = elementTypesUnsorted.get(i);
@@ -240,27 +242,12 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
       out.add(siblingDropRes.requireValue("Tuple::accessOrIndex sibling"));
     }
-    var accessedConsume = compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, accessedType);
-    if (!(accessedConsume
-        instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> accessedConsumeSome)) {
-      return EResult.err(
-          loc,
-          "Tuple::accessOrIndex: accessed element type '"
-              + accessedType.typeDesc()
-              + "' is not AspectConsumeDynamic");
-    }
-    var acd = accessedConsumeSome.value();
-    var accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
-    out.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
     out.add(
         JavaBytecodeUtils.accessField(
             loc,
             klass,
             CompositeClassEmitter.slotFieldName(accessedSlot),
             CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-    out.add(acd.aspectConsumeDynamicEmitStore(xx, loc, accessedLocalKey));
-    out.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-    out.add(acd.aspectConsumeDynamicEmitLoad(xx, loc, accessedLocalKey));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, new CodeDynamic(loc, out)),
