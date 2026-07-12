@@ -108,44 +108,103 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   private EResult<CodeValue> accessOrIndexSourceless(
       ExprContext xx, QExprId loc, Tuple tuple, Opt<Integer> accessIndex) {
+    // Same shape as Record.accessOrDropSourceless — see there for the design notes.
     var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
     Integer accessed = accessIndex instanceof Opt.Some<Integer> aiSome ? aiSome.value() : null;
     CodeValue accessedCv = null;
+    Type accessedType = null;
+    compilerxyz.eval.dynamic.JavaBytecodeBindingKey accessedLocalKey = null;
     for (int i = tuple.elements.size() - 1; i >= 0; i--) {
       boolean isAccessed = accessed != null && accessed == i;
       var e = tuple.elements.get(i);
       if (!(e instanceof TupleElement.EvalRes er)) {
         throw new IllegalStateException(
-            "Tuple::accessOrIndexSourceless: element " + i + " is not EvalRes");
+            "Tuple::accessOrIndexSourceless: element " + i
+                + " is not EvalRes; sourceless value tuple cannot carry a"
+                + " TupleElement.Dynamic entry");
       }
       var res = er.result();
-      if (isAccessed) {
-        if (res.hasErrors()) {
-          return EResult.err(loc, "Tuple element " + i + " evaluated to error");
-        }
-        accessedCv = res.requireValue("Tuple::accessOrIndexSourceless accessed");
+      if (res.hasErrors()) {
+        if (isAccessed) return EResult.err(loc, "Tuple element " + i + " evaluated to error");
         continue;
       }
-      if (res.hasErrors()) continue;
-      var elemCv = res.requireValue("Tuple::accessOrIndexSourceless sibling");
-      if (!(elemCv.value() instanceof Opt.Some<Value> elemSome)) continue;
-      var elemType = elemSome.value().valueType();
-      var elemDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, elemType);
-      if (!(elemDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> elemDropSome))
+      var elemCv = res.requireValue("Tuple::accessOrIndexSourceless element");
+      var elemDyn = elemCv.code().dynamic();
+      Type elemType;
+      if (elemCv.value() instanceof Opt.Some<Value> elemSome) {
+        elemType = elemSome.value().valueType();
+      } else {
+        continue; // no value and (presumably) no push code
+      }
+      if (isAccessed) {
+        if (elemDyn == null) {
+          accessedCv = elemCv;
+          continue;
+        }
+        seq.add(elemDyn);
+        var acdOpt = compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, elemType);
+        if (!(acdOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> acdSome)) {
+          return EResult.err(
+              loc,
+              "Tuple element " + i + " type '" + elemType.typeDesc()
+                  + "' is not AspectConsumeDynamic (needed to store to a local)");
+        }
+        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
+        var storeOp = stackDesc.charAt(0) == 'D' ? org.objectweb.asm.Opcodes.DSTORE
+            : stackDesc.charAt(0) == 'J' ? org.objectweb.asm.Opcodes.LSTORE
+            : org.objectweb.asm.Opcodes.ASTORE;
+        accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(storeOp, accessedLocalKey)));
+        accessedType = elemType;
         continue;
-      var elemDropRes = elemDropSome.value().aspectDropDynamicDrop(xx, loc, elemCv);
-      if (elemDropRes.hasErrors()) return elemDropRes.reerr();
-      var elemDrop =
-          elemDropRes.requireValue("Tuple::accessOrIndexSourceless sibling drop").dynamic();
-      if (elemDrop != null) seq.add(elemDrop);
+      }
+      if (elemDyn != null) seq.add(elemDyn);
+      var fullDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, elemType);
+      if (fullDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> fullDropSome) {
+        var dropRes = fullDropSome.value().aspectDropDynamicDrop(xx, loc, elemCv);
+        if (dropRes.hasErrors()) return dropRes.reerr();
+        var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless drop").dynamic();
+        if (dropDyn != null) seq.add(dropDyn);
+        continue;
+      }
+      var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, elemType);
+      if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
+        var dropRes = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, elemCv);
+        if (dropRes.hasErrors()) return dropRes.reerr();
+        var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless light drop").dynamic();
+        if (dropDyn != null) seq.add(dropDyn);
+        continue;
+      }
+      return EResult.err(
+          loc,
+          "Sourceless tuple element " + i + " type '" + elemType.typeDesc()
+              + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
     }
     if (accessed != null) {
-      if (accessedCv == null) {
-        return EResult.err(loc, "Tuple element " + accessed + " not found");
+      if (accessedCv != null) {
+        var accessedDyn = accessedCv.code().dynamic();
+        if (accessedDyn != null) seq.add(accessedDyn);
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
       }
-      var accessedDyn = accessedCv.code().dynamic();
-      if (accessedDyn != null) seq.add(accessedDyn);
-      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
+      if (accessedLocalKey != null) {
+        var acdOpt = compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, accessedType);
+        if (!(acdOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> acdSome)) {
+          return EResult.err(
+              loc,
+              "Accessed element type '" + accessedType.typeDesc()
+                  + "' is not AspectConsumeDynamic (needed to load from a local)");
+        }
+        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
+        var loadOp = stackDesc.charAt(0) == 'D' ? org.objectweb.asm.Opcodes.DLOAD
+            : stackDesc.charAt(0) == 'J' ? org.objectweb.asm.Opcodes.LLOAD
+            : org.objectweb.asm.Opcodes.ALOAD;
+        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(loadOp, accessedLocalKey)));
+        return EResult.ok(
+            new CodeValue(
+                Code.of(loc, new CodeDynamic(loc, seq)),
+                Opt.some(ValueDynamic.stack(xx, accessedType))));
+      }
+      return EResult.err(loc, "Tuple element " + accessed + " not found");
     }
     return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
   }
