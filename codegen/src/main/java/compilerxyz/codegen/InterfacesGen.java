@@ -198,6 +198,13 @@ public final class InterfacesGen {
       var description = spec.description() != null ? spec.description() : spec.name();
       build.addStatement("$N.description = $S", fname, description);
 
+      var hostBinaryName = spec.effectiveHostInterfaceBinaryName();
+      if (hostBinaryName == null) {
+        throw new IllegalStateException(
+            "InterfaceSpec '" + spec.name() + "' has no host interface binary name");
+      }
+      build.addStatement("$N.compiledBinaryName = $S", fname, hostBinaryName);
+
       var interfacePrefix = snakeToCamel(spec.name());
       for (var i = 0; i < spec.methods().size(); i++) {
         var m = spec.methods().get(i);

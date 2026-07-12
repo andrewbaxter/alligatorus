@@ -68,6 +68,8 @@ public final class TraitsGen {
             null,
             false,
             null,
+            null,
+            "compilerxyz.eval.Type",
             TList.of(
                 new Method(
                     "canCastFrom",

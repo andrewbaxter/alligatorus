@@ -39,13 +39,17 @@ public final class T0120ImplTypeTest {
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
                 mb.call(
-                    mb.field(mb.scopeUse("u"), mb.str("value")),
-                    ifaceMethods(
-                        mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("inner"))))),
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalValue(),
+                        ifaceMethods(
+                            mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("inner")))))),
                 mb.call(
-                    mb.field(mb.scopeUse("u"), mb.str("type")),
-                    ifaceMethods(
-                        mb,
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalType(),
+                        ifaceMethods(
+                            mb,
                         TList.of(
                             new TestMb.RecordPair(
                                 "can_cast_from",
@@ -90,7 +94,8 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
                             new TestMb.RecordPair(
-                                "cast_to", mb.panic(mb.str("unimpl cast_to")))))),
+                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))),
+                mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.field(mb.scopeUse("u"), mb.str("new")))),
         mb.literalNull());
   }

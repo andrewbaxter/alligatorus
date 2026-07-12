@@ -45,10 +45,22 @@ public final class ImportInstall {
   private static EResult<Void> installCompiledArtifacts(
       ExprContext xx, QExprId loc, DefinitionSet set, DefinitionSetClassLoader loader) {
 
+    if (!set.finished) {
+      return EResult.err(
+          loc,
+          "DefinitionSet not finished — call d.finish() in source before using this definition set");
+    }
+
     for (var func : set.functions) {
       var finishResult = func.finish(xx, loc);
       if (finishResult.hasErrors()) {
         return finishResult.reerr();
+      }
+    }
+
+    for (var iface : set.interfaces) {
+      if (iface.compiledBytecode != null && iface.compiledBinaryName != null) {
+        loader.registerClass(iface.compiledBinaryName, iface.compiledBytecode);
       }
     }
 

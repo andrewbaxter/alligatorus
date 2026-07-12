@@ -684,8 +684,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
       throw new IllegalStateException(
           "TypeTypeSourceObjectConst::type_: generated class "
               + binaryName
-              + " does not implement Type — object must declare a Type builtin-interface impl"
-              + " (see SourceObjectEmitter.builtinHostInterfaceInternalName)");
+              + " does not implement Type — object must declare a Type builtin-interface impl");
     }
     return t;
   }

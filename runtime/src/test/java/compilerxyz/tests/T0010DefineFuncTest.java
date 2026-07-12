@@ -38,6 +38,7 @@ public final class T0010DefineFuncTest {
                                     mb.typesNull(),
                                     mb.typesNull(),
                                     mb.stage(mb.call(mb.log(), mb.str("hello"))))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
@@ -78,6 +79,7 @@ public final class T0010DefineFuncTest {
                                                 mb.scopeUse("arg"),
                                                 mb.str("toUpperCase")),
                                             mb.tupleOf())))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),
@@ -120,6 +122,7 @@ public final class T0010DefineFuncTest {
                                                 mb.scopeUse("arg"),
                                                 mb.str("toUpperCase")),
                                             mb.tupleOf())))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(
                     mb.log(),

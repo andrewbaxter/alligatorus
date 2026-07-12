@@ -42,6 +42,7 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("builder"), mb.str("variant")),
                                     mb.tupleOf(mb.str("numtag"), mb.typesNumber()))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
@@ -104,6 +105,7 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("builder"), mb.str("variant")),
                                     mb.tupleOf(mb.str("numtag"), mb.typesNumber()))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
@@ -159,6 +161,7 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("builder"), mb.str("variant")),
                                     mb.tupleOf(mb.str("numtag"), mb.typesNumber()))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
@@ -215,6 +218,7 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("builder"), mb.str("variant")),
                                     mb.tupleOf(mb.str("numtag"), mb.typesNumber()))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(

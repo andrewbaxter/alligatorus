@@ -481,6 +481,8 @@ public final class BuiltinTreeGen {
             null,
             true,
             null,
+            null,
+            "compilerxyz.gen.AspectFunction",
             TList.of(
                 new Method(
                     "call",
@@ -502,6 +504,8 @@ public final class BuiltinTreeGen {
             null,
             true,
             null,
+            null,
+            "compilerxyz.gen.AspectField",
             TList.of(
                 new Method(
                     "field",
@@ -530,6 +534,8 @@ public final class BuiltinTreeGen {
             null,
             true,
             null,
+            null,
+            "compilerxyz.gen.AspectDropDynamic",
             TList.of(
                 new Method(
                     "drop",
@@ -746,7 +752,7 @@ var targetBindSubCls =
 
     var codeDyn =
         new InterfaceSpec(
-            "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, null, TList.<Method>of());
+            "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, "CodeDyn", TList.<Method>of());
 
     return TList.of(aspectFunction, aspectField, aspectDropDynamic, binding, target, codeDyn);
   }
@@ -874,6 +880,9 @@ var targetBindSubCls =
     var ifaceBinding = findSpec(extras, "binding");
     var ifaceTarget = findSpec(extras, "target");
     var ifaceCodeDyn = findSpec(extras, "code_dyn");
+    var traits = TraitsGen.specs();
+    var ifaceValue = findSpec(traits, "value");
+    var ifaceType = findSpec(traits, "type");
 
     return new Branch(
         TList.of(
@@ -1005,7 +1014,9 @@ var targetBindSubCls =
                 new Leaf(new LeafSpec.AspectId(4004, "Bind"))),
             new Child("binding", new Leaf(new LeafSpec.Interface(ifaceBinding))),
             new Child("target", new Leaf(new LeafSpec.Interface(ifaceTarget))),
-            new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn)))));
+            new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn))),
+            new Child("value", new Leaf(new LeafSpec.Interface(ifaceValue))),
+            new Child("type_", new Leaf(new LeafSpec.Interface(ifaceType)))));
   }
 
   private static InterfaceSpec findSpec(TList<InterfaceSpec> specs, String name) {

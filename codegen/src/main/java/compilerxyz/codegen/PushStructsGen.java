@@ -263,6 +263,8 @@ public final class PushStructsGen {
             .addStatement("return new $T(data)", sourceUnionBuilder)
             .build());
 
+    var sourceInterfaceEmitter =
+        ClassName.get("compilerxyz.eval.dynamic", "SourceInterfaceEmitter");
     cls.addMethod(
         MethodSpec.methodBuilder("interface_")
             .addModifiers(Modifier.PUBLIC)
@@ -272,17 +274,35 @@ public final class PushStructsGen {
             .addStatement(
                 "var iface = new $T(this.inner.defSetId, identity, null, this.inner)",
                 interfaceData)
+            .addStatement("var ifaceIndex = (long) this.inner.interfaces.size()")
             .addStatement("this.inner.interfaces.add(iface)")
+            .addStatement(
+                "iface.compiledBinaryName = $T.binaryNameFor(this.inner.defSetId, ifaceIndex)",
+                sourceInterfaceEmitter)
             .addStatement("return new $T(iface)", sourceInterfaceResult)
             .build());
 
+    var qexprIdCls = ClassName.get("compilerxyz.eval", "QExprId");
+    var sourceIdCls = ClassName.get("compilerxyz.eval", "SourceId");
+    var eresultVoid =
+        ParameterizedTypeName.get(ERESULT, ClassName.get(Void.class));
     cls.addMethod(
         MethodSpec.methodBuilder("finish")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(eresultVoid)
             .addParameter(EXPR_CONTEXT, "xx")
+            .addStatement(
+                "var _loc = new $T(new $T(-1L), -1L)", qexprIdCls, sourceIdCls)
+            .beginControlFlow(
+                "for (long _i = 0; _i < this.inner.interfaces.size(); _i++)")
+            .addStatement("var _iface = this.inner.interfaces.get((int) _i)")
+            .addStatement("var _r = _iface.finish(_loc, _i)")
+            .beginControlFlow("if (_r.hasErrors())")
+            .addStatement("return _r.reerr()")
+            .endControlFlow()
+            .endControlFlow()
             .addStatement("this.inner.finished = true")
-            .addStatement("return null")
+            .addStatement("return $T.ok(null)", ERESULT)
             .build());
   }
 
@@ -535,25 +555,6 @@ public final class PushStructsGen {
             .addStatement("return null")
             .build());
 
-    cls.addMethod(
-        MethodSpec.methodBuilder("value")
-            .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
-            .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(mapClass, "arg")
-            .addStatement(
-                "return $T.implBuiltinInterface(xx, this.type_, arg, $S)", dynRuntime, "value")
-            .build());
-
-    cls.addMethod(
-        MethodSpec.methodBuilder("type")
-            .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
-            .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(mapClass, "arg")
-            .addStatement(
-                "return $T.implBuiltinInterface(xx, this.type_, arg, $S)", dynRuntime, "type_")
-            .build());
   }
 
   private static void addSourceUnionBuilderMethods(TypeSpec.Builder cls) {
@@ -949,6 +950,7 @@ public final class PushStructsGen {
     var empty = CodeBlock.of("");
 
     var retObject = TypeRef.opaque(ClassName.OBJECT);
+    var retEResult = TypeRef.opaque(ERESULT);
     var retSourceFuncResult = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceFuncResult"));
     var retSourceObjectBuilder = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceObjectBuilder"));
     var retSourceInterfaceResult =
@@ -991,7 +993,7 @@ public final class PushStructsGen {
                     "defSetBuilderInterface", retSourceInterfaceResult),
                 new PushMethod(
                     "finish", TList.of(), "()", empty,
-                    "defSetBuilderFinish", retObject)));
+                    "defSetBuilderFinish", retEResult)));
 
     var sourceFuncResult =
         new PushStructSpec(

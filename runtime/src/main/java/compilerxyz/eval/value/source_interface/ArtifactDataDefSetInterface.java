@@ -14,5 +14,6 @@ public record ArtifactDataDefSetInterface(
     @Nullable String description,
     boolean isAspect,
     @Nullable BuiltinInterfaceKind builtinKind,
+    String compiledBinaryName,
     TList<ArtifactDataDefSetInterfaceMethodData> methods)
     implements SafeJsonSerializable {}

@@ -395,6 +395,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
                     new PVector[]{TreePVector.empty()};
             var branchIndexes =
                     new TMap<Label, Pair<PMap<JavaBytecodeBindingKey, Integer>, PVector<JavaBytecodeBindingKey>>>();
+            var pendingTryCatchBlocks = new TList<JavaBytecodeInstructionTryCatch>();
             int initSlot = 0;
             for (int i = 0; i < initialSlotWidths.size(); i++) {
                 var s = initialSlotWidths.get(i);
@@ -474,7 +475,11 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                                             @Override
                                             public void handleTryCatch(JavaBytecodeInstructionTryCatch n) {
-                                                out.visitTryCatchBlock(n.start, n.end, n.handler, n.excType);
+                                                // Defer visitTryCatchBlock so we can emit entries in
+                                                // reverse order at method end — the JVM matches exception
+                                                // table entries in table order, so innermost handlers must
+                                                // appear first for correct nesting.
+                                                pendingTryCatchBlocks.add(n);
                                                 // Register the handler label as an entry point so that when
                                                 // its LabelNode is emitted, the current frame (variable index
                                                 // allocations) is restored — otherwise a preceding GOTO nulls
@@ -575,6 +580,29 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             }
                         });
                 codeIndex += 1;
+            }
+            // Flush deferred tryCatch entries sorted by nesting: innermost first, then
+            // preserve insertion order among siblings. The JVM matches entries in
+            // table order, and for nested handlers the inner one must be tried first;
+            // but sibling handlers at the same try (catch + finally) must preserve
+            // source order (catch before finally). Sort key = (span-length asc, index asc).
+            var indexed = new int[pendingTryCatchBlocks.size()];
+            for (int i = 0; i < indexed.length; i++) indexed[i] = i;
+            var sortedIndexes = java.util.stream.IntStream.of(indexed)
+                    .boxed()
+                    .sorted((a, b) -> {
+                        var na = pendingTryCatchBlocks.get(a);
+                        var nb = pendingTryCatchBlocks.get(b);
+                        int spanA = na.end.getOffset() - na.start.getOffset();
+                        int spanB = nb.end.getOffset() - nb.start.getOffset();
+                        int c = Integer.compare(spanA, spanB);
+                        if (c != 0) return c;
+                        return Integer.compare(a, b);
+                    })
+                    .toList();
+            for (int idx : sortedIndexes) {
+                var n = pendingTryCatchBlocks.get(idx);
+                out.visitTryCatchBlock(n.start, n.end, n.handler, n.excType);
             }
         }
 

@@ -71,6 +71,7 @@ public final class T0100ImportTest {
                                                 mb.scopeUse("inner"),
                                                 mb.str("toUpperCase")),
                                             mb.tupleOf())))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.call(mb.scopeUse("ctor"), mb.str("hello")))));
     modules.put(

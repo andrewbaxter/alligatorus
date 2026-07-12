@@ -68,6 +68,7 @@ public final class T0030DefineInterfaceTest {
                                                                 mb.scopeUse("inner"),
                                                                 mb.str("toUpperCase")),
                                                             mb.tupleOf())))))))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                 mb.call(

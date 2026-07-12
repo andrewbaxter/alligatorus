@@ -66,8 +66,6 @@ public final class SourceObjectEmitter {
       JavaInternalName.of("compilerxyz/gen/AspectBindDynamic");
   private static final JavaInternalName INTNAME_ASPECT_CONSUME_DYNAMIC =
       JavaInternalName.of("compilerxyz/gen/AspectConsumeDynamic");
-  private static final JavaInternalName INTNAME_ASPECT_FIELD =
-      JavaInternalName.of("compilerxyz/gen/AspectField");
   private static final JavaInternalName INTNAME_ASPECT_INITIAL_BIND =
       JavaInternalName.of("compilerxyz/gen/AspectInitialBind");
   private static final JavaInternalName INTNAME_ASPECT_LIFT =
@@ -130,12 +128,6 @@ public final class SourceObjectEmitter {
           DESC_TYPE,
           DESC_EXPR_CONTEXT,
           DESC_CODE_VALUE);
-  private static final JavaMethodDescriptor MDESC_CLAIMED_ASPECT =
-      JavaMethodDescriptor.fromParts(
-          DESC_OPT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, DESC_UNIQUE);
-  private static final JavaMethodDescriptor MDESC_OPT_OR =
-      JavaMethodDescriptor.fromParts(DESC_OPT, DESC_OPT, DESC_OPT);
-
   public record EmittedSourceObject(
       String binaryName,
       String internalName,
@@ -182,20 +174,6 @@ public final class SourceObjectEmitter {
 
   public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
 
-  public static @org.jspecify.annotations.Nullable JavaInternalName builtinHostInterfaceInternalName(
-      BuiltinInterfaceKind kind) {
-    return switch (kind) {
-      case TYPE -> INTNAME_TYPE;
-      case VALUE -> JavaInternalName.of("compilerxyz/gen/Value");
-      case ASPECT_FIELD -> INTNAME_ASPECT_FIELD;
-      case ASPECT_FUNCTION -> JavaInternalName.of("compilerxyz/gen/AspectFunction");
-      case ASPECT_DROP_DYNAMIC -> JavaInternalName.of("compilerxyz/gen/AspectDropDynamic");
-      case BINDING -> JavaInternalName.of("compilerxyz/gen/Binding");
-      case TARGET -> JavaInternalName.of("compilerxyz/gen/Target");
-      case CODE_DYN -> null;
-    };
-  }
-
   public static EmittedSourceObject emit(
       DefSetId defSet,
       long objectIndex,
@@ -214,21 +192,9 @@ public final class SourceObjectEmitter {
     var implementsInternalNames = new TOrderedSet<String>();
 
     implementsInternalNames.add(INTNAME_SOURCE_OBJECT_INSTANCE.value());
-    for (var spec : INLINE_HELPER_METHODS) {
-      if (spec.jvmInterface() == null) continue;
-      if (!inlineHelperApplies(spec, claimedKinds)) continue;
-      implementsInternalNames.add(spec.jvmInterface().value());
-    }
     for (var impl : data.interfaceImpls) {
       var iface = impl.interface_;
-      if (iface.builtinKind != null) {
-        var hostInternal = builtinHostInterfaceInternalName(iface.builtinKind);
-        if (hostInternal != null) {
-          implementsInternalNames.add(hostInternal.value());
-        }
-      } else if (iface.compiledBinaryName != null) {
-        implementsInternalNames.add(iface.compiledBinaryName.replace('.', '/'));
-      }
+      implementsInternalNames.add(iface.compiledBinaryName.replace('.', '/'));
     }
     var interfacesArr =
         implementsInternalNames.isEmpty()
@@ -381,7 +347,6 @@ public final class SourceObjectEmitter {
     }
 
     var emittedHostSlots = emitHostInterfaceAdapters(cw, internalName, data);
-    emitDelegateAspectForwarders(cw, internalName, emittedHostSlots, claimedKinds);
 
     cw.visitEnd();
     return new EmittedSourceObject(binaryName, internalNameStr, cw.toByteArray(), staticFieldValues);
@@ -677,276 +642,6 @@ public final class SourceObjectEmitter {
     return emitted;
   }
 
-  private record InlineHelperSpec(
-      String hostName,
-      JavaMethodDescriptor hostDescriptor,
-      String helperName,
-      JavaMethodDescriptor helperDescriptor,
-      boolean passData,
-      boolean passSelf,
-      @org.jspecify.annotations.Nullable BuiltinInterfaceKind requiredKind,
-      @org.jspecify.annotations.Nullable BuiltinInterfaceKind requiredKindAlt,
-      @org.jspecify.annotations.Nullable JavaInternalName jvmInterface) {}
-
-  private static final TList<InlineHelperSpec> INLINE_HELPER_METHODS = TList.of(
-      new InlineHelperSpec(
-          "aspectBindBind",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          "sourceObjectBind",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT,
-              JvmConstants.DESC_OBJECT,
-              JvmConstants.DESC_OBJECT,
-              DESC_EXPR_CONTEXT,
-              DESC_QEXPR_ID,
-              DESC_CODE_VALUE),
-          true,
-          true,
-          BuiltinInterfaceKind.BINDING,
-          null,
-          INTNAME_ASPECT_BIND),
-      new InlineHelperSpec(
-          "aspectBindDynamicBindDynamic",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          "sourceObjectBindDynamic",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          true,
-          false,
-          BuiltinInterfaceKind.BINDING,
-          null,
-          INTNAME_ASPECT_BIND_DYNAMIC),
-      new InlineHelperSpec(
-          "aspectConsumeDynamicToDynamic",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          "sourceObjectToDynamic",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          false,
-          false,
-          BuiltinInterfaceKind.BINDING,
-          null,
-          INTNAME_ASPECT_CONSUME_DYNAMIC),
-      new InlineHelperSpec(
-          "aspectFieldField",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_CODE_VALUE),
-          "sourceObjectField",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT,
-              JvmConstants.DESC_OBJECT,
-              DESC_EXPR_CONTEXT,
-              DESC_QEXPR_ID,
-              DESC_CODE_VALUE,
-              DESC_CODE_VALUE),
-          true,
-          false,
-          BuiltinInterfaceKind.ASPECT_FIELD,
-          null,
-          INTNAME_ASPECT_FIELD),
-      new InlineHelperSpec(
-          "aspectFieldFieldKeys",
-          JavaMethodDescriptor.fromParts(DESC_TLIST, DESC_EXPR_CONTEXT),
-          "sourceObjectFieldKeys",
-          JavaMethodDescriptor.fromParts(DESC_TLIST, JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT),
-          true,
-          false,
-          BuiltinInterfaceKind.ASPECT_FIELD,
-          null,
-          INTNAME_ASPECT_FIELD),
-      new InlineHelperSpec(
-          "aspectFieldFieldTypeOpt",
-          JavaMethodDescriptor.fromParts(DESC_OPT, DESC_EXPR_CONTEXT, DESC_CONST_KEY),
-          "sourceObjectFieldTypeOpt",
-          JavaMethodDescriptor.fromParts(
-              DESC_OPT, JvmConstants.DESC_OBJECT, DESC_EXPR_CONTEXT, DESC_CONST_KEY),
-          true,
-          false,
-          BuiltinInterfaceKind.ASPECT_FIELD,
-          null,
-          INTNAME_ASPECT_FIELD),
-      new InlineHelperSpec(
-          "aspectInitialBindInitialBind",
-          JavaMethodDescriptor.fromParts(DESC_BINDING, DESC_BINDING_ID),
-          "sourceObjectInitialBind",
-          JavaMethodDescriptor.fromParts(
-              DESC_BINDING, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, DESC_BINDING_ID),
-          true,
-          true,
-          BuiltinInterfaceKind.BINDING,
-          null,
-          INTNAME_ASPECT_INITIAL_BIND),
-      new InlineHelperSpec(
-          "aspectLiftLift",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          "sourceObjectLift",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE),
-          false,
-          false,
-          BuiltinInterfaceKind.TYPE,
-          null,
-          INTNAME_ASPECT_LIFT),
-      new InlineHelperSpec(
-          "aspectLiftLift",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, JvmConstants.DESC_OBJECT),
-          "sourceObjectLiftRuntime",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT,
-              JvmConstants.DESC_OBJECT,
-              DESC_EXPR_CONTEXT,
-              DESC_QEXPR_ID,
-              JvmConstants.DESC_OBJECT),
-          true,
-          false,
-          BuiltinInterfaceKind.TYPE,
-          null,
-          INTNAME_ASPECT_LIFT),
-      new InlineHelperSpec(
-          "typeCanCastTo",
-          JavaMethodDescriptor.fromParts(
-              JvmConstants.DESC_BOOL, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_TYPE),
-          "sourceObjectCanCastTo",
-          JavaMethodDescriptor.fromParts(
-              JvmConstants.DESC_BOOL, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_TYPE),
-          false,
-          false,
-          BuiltinInterfaceKind.TYPE,
-          null,
-          null),
-      new InlineHelperSpec(
-          "typeCastTo",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_TYPE),
-          "sourceObjectCastTo",
-          JavaMethodDescriptor.fromParts(
-              DESC_ERESULT, DESC_EXPR_CONTEXT, DESC_QEXPR_ID, DESC_CODE_VALUE, DESC_TYPE),
-          false,
-          false,
-          BuiltinInterfaceKind.TYPE,
-          null,
-          null),
-      new InlineHelperSpec(
-          "aspectConsumeDynamicConsumeDynamicJvmClass",
-          JavaMethodDescriptor.fromParts(
-              JavaDataDescriptor.fromClass(JavaDataDescriptor.class)),
-          "sourceObjectConsumeDynamicJvmClass",
-          JavaMethodDescriptor.fromParts(
-              JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
-              JvmConstants.DESC_OBJECT),
-          true,
-          false,
-          BuiltinInterfaceKind.VALUE,
-          BuiltinInterfaceKind.BINDING,
-          INTNAME_ASPECT_CONSUME_DYNAMIC));
-
-  private static boolean inlineHelperApplies(
-      InlineHelperSpec spec, java.util.Set<BuiltinInterfaceKind> claimedKinds) {
-    if (spec.requiredKind() == null) {
-      return true;
-    }
-    return claimedKinds.contains(spec.requiredKind())
-        || (spec.requiredKindAlt() != null && claimedKinds.contains(spec.requiredKindAlt()));
-  }
-
-  private static void emitDelegateAspectForwarders(
-      ClassWriter cw,
-      JavaInternalName internalName,
-      TOrderedSet<String> emittedHostSlots,
-      java.util.Set<BuiltinInterfaceKind> claimedKinds) {
-    var emittedForwarders = new java.util.HashSet<String>();
-    for (var spec : INLINE_HELPER_METHODS) {
-      if (!inlineHelperApplies(spec, claimedKinds)) {
-        continue;
-      }
-      var dedupeKey = spec.hostName() + spec.hostDescriptor().value();
-      if (emittedHostSlots.contains(dedupeKey) || !emittedForwarders.add(dedupeKey)) {
-        continue;
-      }
-      var mv =
-          cw.visitMethod(
-              Opcodes.ACC_PUBLIC, spec.hostName(), spec.hostDescriptor().value(), null, null);
-      var seq = new JavaBytecodeSequence();
-      if (spec.helperName().equals("sourceObjectConsumeDynamicJvmClass")) {
-        var locInline = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
-        seq.add(JavaBytecodeUtils.literalString(locInline, internalName.value()));
-        seq.add(JavaBytecodeUtils.callStaticMethod(
-            locInline,
-            JavaInternalName.of("compilerxyz/eval/dynamic/JavaInternalName"),
-            "of",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromInternalName(
-                    JavaInternalName.of("compilerxyz/eval/dynamic/JavaInternalName")),
-                JvmConstants.DESC_STRING)));
-        seq.add(JavaBytecodeUtils.callStaticMethod(
-            locInline,
-            JavaInternalName.of("compilerxyz/eval/dynamic/JavaDataDescriptor"),
-            "fromInternalName",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
-                JavaDataDescriptor.fromInternalName(
-                    JavaInternalName.of("compilerxyz/eval/dynamic/JavaInternalName")))));
-        seq.add(JavaBytecodeUtils.inst(locInline, Opcodes.ARETURN));
-        JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
-        continue;
-      }
-      if (spec.passData()) {
-        seq.add(JavaBytecodeUtils.accessStaticField(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, internalName, SOURCE_OBJECT_DATA_FIELD, JvmConstants.DESC_OBJECT));
-      }
-      if (spec.passSelf()) {
-        seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-      }
-      int slot = 1;
-      var descriptor = spec.hostDescriptor().value();
-      int i = 1;
-      while (i < descriptor.length() && descriptor.charAt(i) != ')') {
-        var c = descriptor.charAt(i);
-        if (c == 'L') {
-          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, slot));
-          slot++;
-          i = descriptor.indexOf(';', i) + 1;
-        } else if (c == '[') {
-          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, slot));
-          slot++;
-          i++;
-          while (i < descriptor.length() && descriptor.charAt(i) == '[') i++;
-          if (i < descriptor.length() && descriptor.charAt(i) == 'L') {
-            i = descriptor.indexOf(';', i) + 1;
-          } else {
-            i++;
-          }
-        } else {
-          seq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, slot));
-          slot++;
-          i++;
-        }
-      }
-      var helperInternal =
-          spec.helperName().startsWith("sourceObject") ? INTNAME_DYN_UTIL : INTNAME_DYN_RUNTIME;
-      seq.add(JavaBytecodeUtils.callStaticMethod(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, helperInternal, spec.helperName(), spec.helperDescriptor()));
-      var closeParen = descriptor.indexOf(')');
-      var retChar = descriptor.charAt(closeParen + 1);
-      if (retChar == 'Z' || retChar == 'B' || retChar == 'C' || retChar == 'S' || retChar == 'I') {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.IRETURN));
-      } else if (retChar == 'J') {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.LRETURN));
-      } else if (retChar == 'F') {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.FRETURN));
-      } else if (retChar == 'D') {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.DRETURN));
-      } else if (retChar == 'V') {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
-      } else {
-        seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-      }
-      JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
-    }
-  }
 
   private static void emitHostAdapter(
       ClassWriter cw,
@@ -968,16 +663,6 @@ public final class SourceObjectEmitter {
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
     var seq = new JavaBytecodeSequence();
 
-    boolean isTypeAspect = spec.hostName().equals("typeAspect");
-    if (isTypeAspect) {
-      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-      seq.add(JavaBytecodeUtils.accessStaticField(
-          loc, internalName, SOURCE_OBJECT_DATA_FIELD, JvmConstants.DESC_OBJECT));
-      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, paramSlotCount));
-      seq.add(JavaBytecodeUtils.callStaticMethod(
-          loc, INTNAME_DYN_UTIL, "sourceObjectClaimedAspect", MDESC_CLAIMED_ASPECT));
-    }
-
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
 
     var calleeDescriptor =
@@ -988,13 +673,8 @@ public final class SourceObjectEmitter {
     seq.add(JavaBytecodeUtils.callMethod(loc,
         internalName, interfaceMethodMethodName(implIdx, mIdx), calleeDescriptor));
 
-    if (isTypeAspect) {
-      seq.add(JavaBytecodeUtils.callStaticMethod(loc, INTNAME_DYN_UTIL, "optOr", MDESC_OPT_OR));
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
-    } else {
-      var retChar = hostDescStr.charAt(hostDescStr.indexOf(')') + 1);
-      seq.add(JavaBytecodeUtils.inst(loc, returnOpcodeFor(retChar)));
-    }
+    var retChar = hostDescStr.charAt(hostDescStr.indexOf(')') + 1);
+    seq.add(JavaBytecodeUtils.inst(loc, returnOpcodeFor(retChar)));
     JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 

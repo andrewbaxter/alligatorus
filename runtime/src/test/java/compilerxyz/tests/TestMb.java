@@ -38,6 +38,14 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_drop_dynamic");
   }
 
+  public SourceExpr evalValue() {
+    return builtin("eval", "value");
+  }
+
+  public SourceExpr evalType() {
+    return builtin("eval", "type_");
+  }
+
   public SourceExpr evalBinding() {
     return builtin("eval", "binding");
   }

@@ -3,7 +3,6 @@ package compilerxyz.eval.value.source_interface;
 import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
-import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -36,7 +35,8 @@ public final class InterfaceData {
   public final TList<InterfaceMethodData> methods;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
-  public @Nullable String compiledBinaryName;
+  @SuppressWarnings("NullAway.Init")
+  public String compiledBinaryName;
 
   public byte @Nullable [] compiledBytecode;
 
@@ -62,8 +62,7 @@ public final class InterfaceData {
     this.methods = new TList<>();
   }
 
-  public EResult<Void> finish(
-      QExprId loc, long interfaceIndex, DefinitionSetClassLoader loader) {
+  public EResult<Void> finish(QExprId loc, long interfaceIndex) {
     var name = description != null ? description : "(unnamed)";
     for (var method : methods) {
       if (method.argType == null) {
@@ -80,7 +79,7 @@ public final class InterfaceData {
     if (builtinKind != null) {
       return EResult.ok(null);
     }
-    if (compiledBinaryName != null) {
+    if (compiledBytecode != null) {
       return EResult.ok(null);
     }
     if (setId == null) {
@@ -90,7 +89,6 @@ public final class InterfaceData {
     var emitted = SourceInterfaceEmitter.emit(setId, interfaceIndex, this);
     compiledBinaryName = emitted.binaryName();
     compiledBytecode = emitted.bytecode();
-    loader.registerClass(emitted.binaryName(), emitted.bytecode());
     return EResult.ok(null);
   }
 

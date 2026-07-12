@@ -26,6 +26,7 @@ public final class T0140PanicTest {
                     mb.typesNull(),
                     mb.typesNull(),
                     mb.stage(mb.panic(mb.str(message))))),
+            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
             mb.scopeUse("f")));
   }
 
@@ -46,6 +47,7 @@ public final class T0140PanicTest {
                     mb.typesNull(),
                     mb.typesNull(),
                     mb.stage(mb.panic(mb.str(message))))),
+            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
             mb.scopeUse("f")));
   }
 

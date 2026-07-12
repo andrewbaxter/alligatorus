@@ -93,16 +93,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
               + method.name
               + "' missing arg or ret type");
     }
-    var binaryName = iface.compiledBinaryName;
-    if (binaryName == null) {
-      return EResult.err(
-          loc,
-          "TypeInterfaceMethodDynamic::call: interface has not been compiled ("
-              + "compiledBinaryName == null) for method '"
-              + method.name
-              + "'");
-    }
-    var ifaceInternalName = JavaInternalName.of(binaryName.replace('.', '/'));
+    var ifaceInternalName = JavaInternalName.of(iface.compiledBinaryName.replace('.', '/'));
 
     var selfDyn = self.code().dynamic();
     if (selfDyn == null) {

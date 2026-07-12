@@ -207,6 +207,7 @@ public record TypeInterfaceConst(InterfaceData data)
                             iface.description,
                             iface.isAspect,
                             iface.builtinKind,
+                            iface.compiledBinaryName,
                             methodsOut);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
@@ -241,6 +242,7 @@ public record TypeInterfaceConst(InterfaceData data)
               (body) -> {
                 var iface =
                     new InterfaceData(body.defSetId(), body.identity(), body.builtinKind());
+                iface.compiledBinaryName = body.compiledBinaryName();
                 iface.description = body.description();
                 iface.isAspect = body.isAspect();
                 iface.artifactIdCell.set(idValue);
