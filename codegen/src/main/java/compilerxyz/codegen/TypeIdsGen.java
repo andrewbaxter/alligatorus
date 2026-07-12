@@ -81,7 +81,6 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_source_union_new_dynamic", 7055L));
     list.add(new TypeIdSpec("type_source_function_const", 7056L));
     list.add(new TypeIdSpec("type_source_function_dynamic", 7057L));
-    list.add(new TypeIdSpec("type_source_exports_lifted_const", 7058L));
     list.add(new TypeIdSpec("type_root_string_const", 7059L));
     list.add(new TypeIdSpec("type_root_null_const", 7060L));
     list.add(new TypeIdSpec("type_root_null_dynamic", 7061L));
@@ -121,7 +120,6 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_root_source_union_dynamic", 7096L));
     list.add(new TypeIdSpec("type_root_source_union_new_const", 7097L));
     list.add(new TypeIdSpec("type_root_code_value_extern_dynamic", 7098L));
-    list.add(new TypeIdSpec("type_root_source_exports_lifted_const", 7099L));
     list.add(new TypeIdSpec("argument_tuple", 7100L));
     list.add(new TypeIdSpec("type_eresult_dynamic", 7101L));
     list.add(new TypeIdSpec("type_eresult_variant_constructor_dynamic", 7102L));

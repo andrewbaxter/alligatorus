@@ -35,7 +35,6 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.option;
     exports compilerxyz.eval.value.panic;
     exports compilerxyz.eval.value.record;
-    exports compilerxyz.eval.value.source_exports;
     exports compilerxyz.eval.value.source_function;
     exports compilerxyz.eval.value.source_interface;
     exports compilerxyz.eval.value.source_object;

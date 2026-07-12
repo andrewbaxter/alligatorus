@@ -1585,42 +1585,6 @@ public sealed interface TypeRoot extends Type, AspectArtifact {
     }
   }
 
-  record SourceExportsLiftedConst() implements TypeRoot {
-    @Override
-    public TypeId typeId() { return GenTypeIds.TYPE_ROOT_SOURCE_EXPORTS_LIFTED_CONST_TYPE_ID; }
-
-    @Override
-    public String typeDesc() {
-      return "type<definition_set_exports>";
-    }
-
-    @Override
-    public Type valueType() {
-      return this;
-    }
-
-    @Override
-    public Opt<ExporterRoot> typeRootArtifactExporterOpt() {
-      return Opt.some(ExporterRoot.SOURCE_EXPORTS_LIFTED_CONST);
-    }
-    @Override
-    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
-      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
-    }
-    @Override
-    public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
-      return false;
-    }
-    @Override
-    public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-      return false;
-    }
-    @Override
-    public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-      throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-    }
-  }
-
   record ListPushDynamic() implements TypeRoot {
     @Override
     public TypeId typeId() { return GenTypeIds.TYPE_ROOT_LIST_PUSH_DYNAMIC_TYPE_ID; }
