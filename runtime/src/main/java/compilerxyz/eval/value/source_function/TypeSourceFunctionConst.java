@@ -356,7 +356,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         retStackRes
             .requireValue("TypeSourceFunctionConst::call ret stack")
             .aspectStackValueDynamicToValue(
-                loc,
+                xx, loc,
                 invocationRes.requireValue("TypeSourceFunctionConst::call invocation")));
   }
 
@@ -366,7 +366,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, t);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     return EResult.ok(
-        consumeRes.requireValue("jvmDescOf consume").aspectConsumeDynamicConsumeDynamicJvmClass());
+        consumeRes.requireValue("jvmDescOf consume").aspectConsumeDynamicConsumeDynamicJvmClass(xx));
   }
 
   @Override

@@ -36,7 +36,7 @@ public record TypeListPushDynamic(Type elementType)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
@@ -109,7 +109,7 @@ public record TypeListPushDynamic(Type elementType)
     return EResult.ok(
         retStackRes
             .requireValue("AspectStackValueDynamic.get")
-            .aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
+            .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
 
   @Override

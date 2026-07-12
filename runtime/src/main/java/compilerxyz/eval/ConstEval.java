@@ -769,7 +769,7 @@ public final class ConstEval {
       var payloadDesc =
           payloadConsumeRes
               .requireValue("try/catch payload AspectConsumeDynamic")
-              .aspectConsumeDynamicConsumeDynamicJvmClass();
+              .aspectConsumeDynamicConsumeDynamicJvmClass(xx);
       catch_ = Opt.some(new TryCatchClause(bindingId, payloadDesc, catchCd));
     }
     Opt<CodeDynamic> finally_ = Opt.none();

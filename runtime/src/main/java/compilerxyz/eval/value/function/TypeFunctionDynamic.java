@@ -63,24 +63,24 @@ public record TypeFunctionDynamic(
   public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.typeId(), ret.typeId())); }
 
 
-  public JavaMethodDescriptor descriptor() {
+  public JavaMethodDescriptor descriptor(ExprContext xx) {
     var argDescs = new TList<JavaDataDescriptor>();
     if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
     if (arg instanceof compilerxyz.gen.AspectTuple t) {
-      for (var elem : t.aspectTupleElementTypes()) argDescs.add(jvmDescOfInstance(elem));
+      for (var elem : t.aspectTupleElementTypes()) argDescs.add(jvmDescOfInstance(xx, elem));
     } else if (arg instanceof compilerxyz.gen.AspectRecord r) {
       for (var entry : r.aspectRecordRecordFieldTypes().entrySet()) {
-        argDescs.add(jvmDescOfInstance(entry.getValue()));
+        argDescs.add(jvmDescOfInstance(xx, entry.getValue()));
       }
     } else {
-      argDescs.add(jvmDescOfInstance(arg));
+      argDescs.add(jvmDescOfInstance(xx, arg));
     }
-    return JavaMethodDescriptor.fromParts(jvmDescOfInstance(ret), argDescs);
+    return JavaMethodDescriptor.fromParts(jvmDescOfInstance(xx, ret), argDescs);
   }
 
-  private static JavaDataDescriptor jvmDescOfInstance(Type t) {
+  private static JavaDataDescriptor jvmDescOfInstance(ExprContext xx, Type t) {
     if (t instanceof AspectConsumeDynamic c) {
-      return c.aspectConsumeDynamicConsumeDynamicJvmClass();
+      return c.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     }
     throw new IllegalStateException(
         "TypeFunctionDynamic: " + t.getClass() + " does not implement AspectConsumeDynamic");
@@ -123,7 +123,7 @@ public record TypeFunctionDynamic(
     return EResult.ok(
         consumeRes
             .requireValue("TypeFunctionDynamic::jvmDescOf consume")
-            .aspectConsumeDynamicConsumeDynamicJvmClass());
+            .aspectConsumeDynamicConsumeDynamicJvmClass(xx));
   }
 
   public EResult<CodeDynamic> emitInvocation(
@@ -151,7 +151,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -199,7 +199,7 @@ public record TypeFunctionDynamic(
         retStackRes
             .requireValue("TypeFunctionDynamic::call ret stack")
             .aspectStackValueDynamicToValue(
-                loc, invocationRes.requireValue("TypeFunctionDynamic::call invocation")));
+                xx, loc, invocationRes.requireValue("TypeFunctionDynamic::call invocation")));
   }
 
   @Override

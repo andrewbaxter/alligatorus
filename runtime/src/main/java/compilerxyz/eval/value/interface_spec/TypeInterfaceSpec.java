@@ -56,7 +56,7 @@ public record TypeInterfaceSpec()
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(INTERNAL_NAME);
   }
 
@@ -81,7 +81,7 @@ public record TypeInterfaceSpec()
       var call = emitSpecToInterfaceDataCall(loc, sourceCode);
       return EResult.ok(
           new CodeValue(
-              compilerxyz.eval.Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
+              compilerxyz.eval.Code.of(loc, call), Opt.some(ValueDynamic.stack(xx, destType))));
     }
     return EResult.err(loc, "Cannot cast interface_spec to " + destType.typeDesc());
   }

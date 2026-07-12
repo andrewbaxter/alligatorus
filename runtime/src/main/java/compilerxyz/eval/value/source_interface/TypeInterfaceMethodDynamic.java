@@ -49,7 +49,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
@@ -126,7 +126,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     return EResult.ok(
         retStackRes
             .requireValue("TypeInterfaceMethodDynamic AspectStackValueDynamic.get")
-            .aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
+            .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
 
   @Override

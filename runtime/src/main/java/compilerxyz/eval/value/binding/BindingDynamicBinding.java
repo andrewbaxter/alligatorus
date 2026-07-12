@@ -26,7 +26,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
       dyn = new CodeDynamic(
           new CodeLoc.Some(loc),
           new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(
-              compilerxyz.eval.dynamic.JvmSort.loadOpcode(type_), local.key()));
+              compilerxyz.eval.dynamic.JvmSort.loadOpcode(xx, type_), local.key()));
     } else {
       dyn = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey);
     }

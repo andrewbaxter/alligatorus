@@ -163,7 +163,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
@@ -254,7 +254,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                 loc,
                 JavaBytecodeUtils.literalNull(loc)),
             Opt.some(
-                compilerxyz.eval.value.ValueDynamic.stack(destType))));
+                compilerxyz.eval.value.ValueDynamic.stack(xx, destType))));
   }
 
   @Override
@@ -275,7 +275,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(this))));
+              Opt.some(ValueDynamic.stack(xx, this))));
     }
     if (!(some.value() instanceof Tuple tuple)) {
       throw new IllegalStateException(
@@ -527,7 +527,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
     var sub = subRes.requireValue("Tuple::bind bindSub");
     if (sub.targetSub() instanceof Opt.Some<TargetBindSub> targetSome) {
-      var bound = xx.target.targetBind(loc, targetSome.value());
+      var bound = xx.target.targetBind(xx, loc, targetSome.value());
       return EResult.ok(
           new BindResult(
               Code.of(loc, bound.code()),
@@ -771,8 +771,8 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override

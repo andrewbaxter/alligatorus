@@ -222,13 +222,13 @@ public record TypeObjectDynamic(
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, loadSeq)),
-                Opt.some(ValueDynamic.stack(f.fieldType()))));
+                Opt.some(ValueDynamic.stack(xx, f.fieldType()))));
       }
     }
     for (var m : methods) {
       if (m.langName().equals(keyStr)) {
         return EResult.ok(
-            new CodeValue(self_.code(), Opt.some(ValueDynamic.stack(m.funcType()))));
+            new CodeValue(self_.code(), Opt.some(ValueDynamic.stack(xx, m.funcType()))));
       }
     }
     return EResult.err(loc, typeDesc + ": unknown field '" + keyStr);
@@ -260,7 +260,7 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return jvmClassDesc;
   }
 
@@ -290,8 +290,8 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override

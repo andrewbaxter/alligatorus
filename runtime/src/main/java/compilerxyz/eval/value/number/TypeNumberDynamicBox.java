@@ -66,7 +66,7 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"));
   }
@@ -122,8 +122,8 @@ public record TypeNumberDynamicBox()
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -164,7 +164,7 @@ public record TypeNumberDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(this))));
+            Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -172,7 +172,7 @@ public record TypeNumberDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(this))));
+            Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -188,7 +188,7 @@ public record TypeNumberDynamicBox()
     var unboxedSelf =
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(unboxed)));
+            Opt.some(ValueDynamic.stack(xx, unboxed)));
     return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
   }
 

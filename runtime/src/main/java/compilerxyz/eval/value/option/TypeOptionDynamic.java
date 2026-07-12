@@ -67,7 +67,7 @@ public record TypeOptionDynamic(Type elementType)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -97,8 +97,8 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -116,7 +116,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.err(loc, "Cannot convert to option");
     }
     return EResult.ok(
-        new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(this))));
+        new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -200,7 +200,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              Opt.some(ValueDynamic.stack(elementType))));
+              Opt.some(ValueDynamic.stack(xx, elementType))));
     }
     if (ck instanceof ConstKey.Str s2 && s2.value().equals("is_some")) {
       var selfDyn = self.code().dynamic();
@@ -215,7 +215,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              Opt.some(ValueDynamic.stack(new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+              Opt.some(ValueDynamic.stack(xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {

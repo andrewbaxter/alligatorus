@@ -45,7 +45,7 @@ public record TypeCodeValueExternDynamic()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue"));
   }
@@ -93,8 +93,8 @@ public record TypeCodeValueExternDynamic()
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -135,7 +135,7 @@ public record TypeCodeValueExternDynamic()
             "code",
             compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(codeDesc, TList.of())));
     var resultDyn = new CodeDynamic(loc, seq);
-    return EResult.ok(DynUtil.dynamicStackToValue(loc, resultDyn, codeType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, resultDyn, codeType));
   }
 
   @Override
@@ -168,7 +168,7 @@ public record TypeCodeValueExternDynamic()
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(this))));
+              Opt.some(ValueDynamic.stack(xx, this))));
     }
     return EResult.err(loc, "Cannot convert to CodeValueExtern");
   }

@@ -72,7 +72,7 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL;
   }
 
@@ -145,8 +145,8 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -188,12 +188,12 @@ public record TypeBoolDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
-              Opt.some(ValueDynamic.stack(this))));
+              Opt.some(ValueDynamic.stack(xx, this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(this))));
+            Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -201,7 +201,7 @@ public record TypeBoolDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(this))));
+            Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

@@ -1,5 +1,6 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import org.objectweb.asm.Opcodes;
 
@@ -12,17 +13,17 @@ import org.objectweb.asm.Opcodes;
 public final class JvmSort {
   private JvmSort() {}
 
-  public static int loadOpcode(Type type) {
-    return typedOpcode(type, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD, Opcodes.ALOAD);
+  public static int loadOpcode(ExprContext xx, Type type) {
+    return typedOpcode(xx, type, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD, Opcodes.ALOAD);
   }
 
-  public static int storeOpcode(Type type) {
-    return typedOpcode(type, Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.FSTORE, Opcodes.DSTORE, Opcodes.ASTORE);
+  public static int storeOpcode(ExprContext xx, Type type) {
+    return typedOpcode(xx, type, Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.FSTORE, Opcodes.DSTORE, Opcodes.ASTORE);
   }
 
-  private static int typedOpcode(Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
+  private static int typedOpcode(ExprContext xx, Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
     if (type instanceof compilerxyz.gen.AspectConsumeDynamic consume) {
-      var desc = consume.aspectConsumeDynamicConsumeDynamicJvmClass().value();
+      var desc = consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
       if (!desc.isEmpty()) {
         return switch (desc.charAt(0)) {
           case 'D' -> dOp;

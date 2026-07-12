@@ -54,7 +54,7 @@ public record TypeMethodDynamic(
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
@@ -126,7 +126,7 @@ public record TypeMethodDynamic(
     return EResult.ok(
         retStackRes
             .requireValue("TypeMethodDynamic::call ret stack")
-            .aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
+            .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
 
 

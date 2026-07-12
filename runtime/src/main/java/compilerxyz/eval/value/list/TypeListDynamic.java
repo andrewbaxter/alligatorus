@@ -82,7 +82,7 @@ public record TypeListDynamic(Type elementType)
 
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/util/TList"));
   }
 
@@ -197,7 +197,7 @@ public record TypeListDynamic(Type elementType)
           EResult.ok(
               new CodeValue(
                   self.code(),
-                  Opt.some(ValueDynamic.stack(m.type()))));
+                  Opt.some(ValueDynamic.stack(xx, m.type()))));
     };
   }
 
@@ -269,7 +269,7 @@ public record TypeListDynamic(Type elementType)
 
     var elementDecode = elementDecodeCast(xx, loc);
     return EResult.ok(
-        DynUtil.foreachSkeleton(
+        DynUtil.foreachSkeleton(xx,
             loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
   }
 
@@ -277,7 +277,7 @@ public record TypeListDynamic(Type elementType)
     var decodeSeq = new JavaBytecodeSequence();
     var elemConsumeOpt = AspectConsumeDynamic.getMaybe(xx, elementType);
     if (elemConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> elemConsumeSome) {
-      var elemDesc = elemConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass();
+      var elemDesc = elemConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
       var d = elemDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
@@ -290,8 +290,8 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -327,7 +327,7 @@ public record TypeListDynamic(Type elementType)
     var elementCv =
         new CodeValue(
             Code.of(loc, loadElement),
-            Opt.some(compilerxyz.eval.value.ValueDynamic.stack(elementType)));
+            Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType)));
     var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
@@ -345,7 +345,7 @@ public record TypeListDynamic(Type elementType)
     var elementDecode = elementDecodeCast(xx, loc);
 
     var loop =
-        DynUtil.foreachSkeleton(
+        DynUtil.foreachSkeleton(xx,
             loc, iteratorSetup, elementDecode, elementSlot, Opcodes.ASTORE, elemDropCode);
     var loopCode = loop.code().dynamic();
     var finalSeq = new JavaBytecodeSequence();

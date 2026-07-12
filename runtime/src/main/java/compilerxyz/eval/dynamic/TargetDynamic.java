@@ -116,7 +116,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   @Override
-  public BindResult targetBind(QExprId loc, TargetBindSub sub) {
+  public BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub) {
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var local = new BindingId.Local(key);
     var seq = new JavaBytecodeSequence();
@@ -125,7 +125,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         new CodeDynamic(
             new CodeLoc.Some(loc),
             new JavaBytecodeStoreLoad(
-                JvmSort.storeOpcode(sub.type()), key)));
+                JvmSort.storeOpcode(xx, sub.type()), key)));
     return new BindResult(new CodeDynamic(loc, seq), local);
   }
 
@@ -365,7 +365,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
     var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
+    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
 
   @Override
@@ -393,7 +393,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       var variantInternal =
           JavaInternalName.of(branch.variantBinaryName().replace('.', '/'));
       var payloadDesc =
-          compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(branch.variantType());
+          compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, branch.variantType());
       var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
       var caseScope = new compilerxyz.eval.Scope(xx.scope);
       var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
@@ -465,7 +465,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
     var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(loc, new CodeDynamic(loc, seq)));
+    return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
 
   private static Optional<CodeDynamic> cvToDynamic(
@@ -581,7 +581,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
                     JavaDataDescriptor.fromClass(Object[].class)))));
     var stageCall = new CodeDynamic(loc, stageSeq);
     var resultValue =
-        ValueDynamic.stack(new TypeExprStagedPlaceholder());
+        ValueDynamic.stack(xx, new TypeExprStagedPlaceholder());
     return EResult.ok(new CodeValue(Code.of(loc, stageCall), Opt.some(resultValue)));
   }
 

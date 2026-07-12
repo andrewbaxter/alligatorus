@@ -175,6 +175,7 @@ public final class SourceObjectEmitter {
   public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
 
   public static EmittedSourceObject emit(
+      compilerxyz.eval.ExprContext xx,
       DefSetId defSet,
       long objectIndex,
       TypeSourceObjectDynamic data,
@@ -212,7 +213,7 @@ public final class SourceObjectEmitter {
 
     JavaDataDescriptor dataFieldDesc;
     if (data.underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume) {
-      dataFieldDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+      dataFieldDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     } else {
       dataFieldDesc = JvmConstants.DESC_OBJECT;
     }
@@ -330,7 +331,7 @@ public final class SourceObjectEmitter {
       if (bodyCode == null) {
         continue;
       }
-      emitMethodMethod(cw, internalName, methodIdx, method, data.underlyingType, bodyCode);
+      emitMethodMethod(xx, cw, internalName, methodIdx, method, data.underlyingType, bodyCode);
     }
 
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
@@ -342,17 +343,18 @@ public final class SourceObjectEmitter {
           continue;
         }
         emitInterfaceMethodMethod(
-            cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType, bodyCode);
+            xx, cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType, bodyCode);
       }
     }
 
-    var emittedHostSlots = emitHostInterfaceAdapters(cw, internalName, data);
+    var emittedHostSlots = emitHostInterfaceAdapters(xx, cw, internalName, data);
 
     cw.visitEnd();
     return new EmittedSourceObject(binaryName, internalNameStr, cw.toByteArray(), staticFieldValues);
   }
 
   private static void emitMethodMethod(
+      compilerxyz.eval.ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       long methodIdx,
@@ -373,7 +375,7 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.emitMethodMethod: method '" + method.name
               + "' has no compiledArgSlots (finish ordering violation)");
     }
-    var retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+    var retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
     for (var s : argSlots) argDescs.add(s.jvmDesc());
     var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
@@ -403,7 +405,7 @@ public final class SourceObjectEmitter {
     }
     JavaDataDescriptor dataFieldDesc =
         underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-            ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
+            ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx)
             : JvmConstants.DESC_OBJECT;
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
@@ -467,6 +469,7 @@ public final class SourceObjectEmitter {
   }
 
   private static void emitInterfaceMethodMethod(
+      compilerxyz.eval.ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       int implIdx,
@@ -494,12 +497,12 @@ public final class SourceObjectEmitter {
     var ifaceMethod = iface.methods.get(m.interfaceMethodIndex);
     var isArgMethod = m.compiledIsArgMethod;
 
-    var descriptor = interfaceMethodMethodDescriptor(m, ifaceMethod, iface.builtinKind);
+    var descriptor = interfaceMethodMethodDescriptor(xx, m, ifaceMethod, iface.builtinKind);
     var jvmParamKeys = new TList<compilerxyz.eval.dynamic.JavaBytecodeBindingKey>();
     var jvmParamWides = new TList<Boolean>();
     if (isArgMethod) {
       var argRecordConsume = (compilerxyz.gen.AspectConsumeDynamic) ifaceMethod.argType;
-      var argDesc = argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+      var argDesc = argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
       jvmParamKeys.add(selfId.key());
       jvmParamWides.add(slotWidth(argDesc) == 2);
     } else {
@@ -510,7 +513,7 @@ public final class SourceObjectEmitter {
       }
       for (int i = 0; i < argParamIds.size(); i++) {
         var argConsume = (compilerxyz.gen.AspectConsumeDynamic) argParamTypes.get(i);
-        var argDesc = argConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+        var argDesc = argConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
         jvmParamKeys.add(argParamIds.get(i).key());
         jvmParamWides.add(slotWidth(argDesc) == 2);
       }
@@ -539,7 +542,7 @@ public final class SourceObjectEmitter {
     if (!isArgMethod) {
       JavaDataDescriptor innerDesc =
           underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-              ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass()
+              ? underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx)
               : JvmConstants.DESC_OBJECT;
       seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
       seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, innerDesc));
@@ -614,7 +617,7 @@ public final class SourceObjectEmitter {
   }
 
   private static TOrderedSet<String> emitHostInterfaceAdapters(
-      ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
+      compilerxyz.eval.ExprContext xx, ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
     var emitted = new TOrderedSet<String>();
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
       var impl = data.interfaceImpls.get(implIdx);
@@ -636,7 +639,7 @@ public final class SourceObjectEmitter {
         if (!emitted.add(dedupeKey)) {
           continue;
         }
-        emitHostAdapter(cw, internalName, implIdx, mIdx, m, ifaceMethod, kind, spec);
+        emitHostAdapter(xx, cw, internalName, implIdx, mIdx, m, ifaceMethod, kind, spec);
       }
     }
     return emitted;
@@ -644,6 +647,7 @@ public final class SourceObjectEmitter {
 
 
   private static void emitHostAdapter(
+      compilerxyz.eval.ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       int implIdx,
@@ -666,9 +670,9 @@ public final class SourceObjectEmitter {
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
 
     var calleeDescriptor =
-        interfaceMethodMethodDescriptor(m, ifaceMethod, kind);
+        interfaceMethodMethodDescriptor(xx, m, ifaceMethod, kind);
 
-    emitArgPacking(seq, kind, m, ifaceMethod, firstParamIsExprContext, paramSlotCount);
+    emitArgPacking(xx, seq, kind, m, ifaceMethod, firstParamIsExprContext, paramSlotCount);
 
     seq.add(JavaBytecodeUtils.callMethod(loc,
         internalName, interfaceMethodMethodName(implIdx, mIdx), calleeDescriptor));
@@ -692,6 +696,7 @@ public final class SourceObjectEmitter {
   }
 
   private static JavaMethodDescriptor interfaceMethodMethodDescriptor(
+      compilerxyz.eval.ExprContext xx,
       SourceObjectInterfaceMethodImplData m,
       InterfaceMethodData ifaceMethod,
       compilerxyz.eval.value.source_interface.@org.jspecify.annotations.Nullable BuiltinInterfaceKind kind) {
@@ -702,7 +707,7 @@ public final class SourceObjectEmitter {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: argRecordType does not implement AspectConsumeDynamic");
       }
-      jvmParamDescs.add(argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass());
+      jvmParamDescs.add(argRecordConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx));
     } else {
       var argParamTypes = m.compiledArgParamTypes;
       if (argParamTypes == null) {
@@ -715,14 +720,14 @@ public final class SourceObjectEmitter {
               "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
                   + argType.typeDesc() + " does not implement AspectConsumeDynamic");
         }
-        jvmParamDescs.add(argConsume.aspectConsumeDynamicConsumeDynamicJvmClass());
+        jvmParamDescs.add(argConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx));
       }
     }
     JavaDataDescriptor retDesc;
     if (ifaceMethod.hostMethodDescriptor != null) {
       retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor);
     } else if (ifaceMethod.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
-      retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+      retDesc = retConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     } else {
       throw new IllegalStateException(
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
@@ -737,6 +742,7 @@ public final class SourceObjectEmitter {
   }
 
   private static void emitArgPacking(
+      compilerxyz.eval.ExprContext xx,
       JavaBytecodeSequence seq,
       BuiltinInterfaceKind kind,
       SourceObjectInterfaceMethodImplData m,
@@ -752,7 +758,7 @@ public final class SourceObjectEmitter {
             && ifaceMethod.argType instanceof compilerxyz.eval.value.record.Record)) {
       var argRecord = (compilerxyz.eval.value.record.Record) ifaceMethod.argType;
       buildArgRecordComposite(
-          seq, argRecord, ifaceMethod, firstParamIsExprContext, paramSlotCount);
+          xx, seq, argRecord, ifaceMethod, firstParamIsExprContext, paramSlotCount);
     } else if (kind == BuiltinInterfaceKind.BINDING
         || kind == BuiltinInterfaceKind.TARGET
         || (kind == null && !ifaceMethod.dataFieldNames.isEmpty())) {
@@ -779,6 +785,7 @@ public final class SourceObjectEmitter {
   }
 
   private static void buildArgRecordComposite(
+      compilerxyz.eval.ExprContext xx,
       JavaBytecodeSequence seq,
       compilerxyz.eval.value.record.Record argRecord,
       InterfaceMethodData ifaceMethod,
@@ -789,12 +796,12 @@ public final class SourceObjectEmitter {
     var slotSort = compilerxyz.eval.dynamic.CompositeSlotSort.sort(
         recordFieldTypes, compilerxyz.eval.ConstKey.CANONICAL_ORDER);
     var sortedTypes = slotSort.sortedTypes();
-    var compositeClass = compilerxyz.eval.dynamic.CompositeClassEmitter.getOrEmit(sortedTypes);
+    var compositeClass = compilerxyz.eval.dynamic.CompositeClassEmitter.getOrEmit(xx, sortedTypes);
     var compositeInternal =
         compilerxyz.eval.dynamic.JavaInternalName.of(compositeClass.getName().replace('.', '/'));
     var ctorArgDescs = new compilerxyz.util.TList<JavaDataDescriptor>(sortedTypes.size());
     for (var t : sortedTypes) {
-      ctorArgDescs.add(compilerxyz.eval.dynamic.CompositeClassEmitter.slotDescriptor(t));
+      ctorArgDescs.add(compilerxyz.eval.dynamic.CompositeClassEmitter.slotDescriptor(xx, t));
     }
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(ctorArgDescs);

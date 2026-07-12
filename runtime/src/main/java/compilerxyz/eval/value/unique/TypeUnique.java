@@ -70,7 +70,7 @@ public record TypeUnique()
   public static final BindingId UNIQUE_EQ_FN_SCOPE_ID = new BindingId.Builtin(7021);
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class);
   }
 
@@ -239,7 +239,7 @@ public record TypeUnique()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
-            Opt.some(ValueDynamic.stack(new TypeBoolDynamic()))));
+            Opt.some(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
   }
 
   private static CodeDynamic emitUniqueEqCall(

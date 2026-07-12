@@ -35,7 +35,7 @@ public sealed interface TypeObjectCastRule {
     @Override
     public EResult<CodeValue> apply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return EResult.ok(new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(destType))));
+      return EResult.ok(new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
     }
   }
 
@@ -116,6 +116,6 @@ public sealed interface TypeObjectCastRule {
     }
     var call = new CodeDynamic(loc, seq);
     return EResult.ok(
-        new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(destType))));
+        new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(xx, destType))));
   }
 }

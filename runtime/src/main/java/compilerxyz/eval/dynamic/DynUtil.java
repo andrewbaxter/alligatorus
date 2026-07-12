@@ -73,7 +73,7 @@ public final class DynUtil {
     private static EResult<JavaDataDescriptor> jvmDescFor(ExprContext xx, QExprId loc, Type t) {
         var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
-        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicConsumeDynamicJvmClass());
+        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicConsumeDynamicJvmClass(xx));
     }
 
     public record CallArgElement(CodeDynamic code, JavaDataDescriptor jvmDesc) {}
@@ -153,7 +153,7 @@ public final class DynUtil {
         return EResult.ok(
                 new CallArgElement(
                         dynRes.requireValue("DynUtil::elementToDyn toDynamic"),
-                        consume.aspectConsumeDynamicConsumeDynamicJvmClass()));
+                        consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx)));
     }
 
 
@@ -180,6 +180,7 @@ public final class DynUtil {
      * AspectStackValueDynamic lookup involved.
      */
     public static CodeValue foreachSkeleton(
+            ExprContext xx,
             QExprId loc,
             CodeDynamic iteratorSetup,
             CodeDynamic elementDecode,
@@ -229,7 +230,7 @@ public final class DynUtil {
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         seq.add(JavaBytecodeUtils.literalNull(loc));
-        return dynamicStackToValue(loc, new CodeDynamic(loc, seq), new TypeNullDynamic());
+        return dynamicStackToValue(xx, loc, new CodeDynamic(loc, seq), new TypeNullDynamic());
     }
 
     public static EResult<CodeValue> fieldUseDefaultDynamic(
@@ -278,7 +279,7 @@ public final class DynUtil {
             return EResult.err(
                     loc, "Type (" + vtype.typeDesc() + ") returned None from AspectBindDynamic");
         }
-        var bound = xx.target.targetBind(loc, subSome.value());
+        var bound = xx.target.targetBind(xx, loc, subSome.value());
         Code wrappingCode = Code.of(loc, bound.code());
         Binding binding = new BindingDynamicBinding(bound.id(), vtype);
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
@@ -330,7 +331,7 @@ public final class DynUtil {
             var childCv =
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
-                            Opt.some(ValueDynamic.stack(child.childType())));
+                            Opt.some(ValueDynamic.stack(xx, child.childType())));
             var childDropRes = childDropSome.value().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
@@ -404,9 +405,9 @@ public final class DynUtil {
         return type;
     }
 
-    public static CodeValue dynamicStackToValue(QExprId loc, CodeDynamic value, Type type_) {
+    public static CodeValue dynamicStackToValue(ExprContext xx, QExprId loc, CodeDynamic value, Type type_) {
         var dynValue =
-                ValueDynamic.stack(type_);
+                ValueDynamic.stack(xx, type_);
         return new CodeValue(Code.of(loc, value), Opt.some(dynValue));
     }
 
@@ -487,7 +488,7 @@ public final class DynUtil {
             setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
             setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, setSeq);
-            return EResult.ok(nullStack.aspectStackValueDynamicToValue(loc, setJs));
+            return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
         }
         if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {
             var seq = new JavaBytecodeSequence();
@@ -499,7 +500,7 @@ public final class DynUtil {
                     new CodeDynamic(
                         new CodeLoc.Some(loc),
                         new JavaBytecodeStoreLoad(
-                            JvmSort.storeOpcode(targetType), local.key())));
+                            JvmSort.storeOpcode(xx, targetType), local.key())));
             } else {
                 seq.add(BindingCode.bindingSet(new CodeLoc.Some(loc), xx.vx, bindingSrc.key(), valueCode));
             }
@@ -507,7 +508,7 @@ public final class DynUtil {
             // so downstream consumers see a stack value.
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, seq);
-            return EResult.ok(nullStack.aspectStackValueDynamicToValue(loc, setJs));
+            return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
         }
         return EResult.err(loc, "Cannot modify a temporary value");
     }

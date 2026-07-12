@@ -82,7 +82,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -515,6 +515,8 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
       case ASPECT_FUNCTION -> ifaces.aspect_function;
       case ASPECT_FIELD -> ifaces.aspect_field;
       case ASPECT_DROP_DYNAMIC -> ifaces.aspect_drop_dynamic;
+      case ASPECT_CONSUME_DYNAMIC -> throw new IllegalStateException(
+          "builtinInterfaceOf: ASPECT_CONSUME_DYNAMIC not in GenBuiltinInterfaces");
       case BINDING -> ifaces.binding;
       case TARGET -> ifaces.target;
       case CODE_DYN -> ifaces.code_dyn;
@@ -591,7 +593,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         SourceObjectEmitter.internalNameFor(
             set.defSetId, objectIndex);
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
-    var underlyingDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+    var underlyingDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));
@@ -615,7 +617,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),
-            Opt.some(ValueDynamic.stack(dynType)));
+            Opt.some(ValueDynamic.stack(xx, dynType)));
     return dynType.aspectFieldField(xx, loc, selfDynamic, key);
   }
 

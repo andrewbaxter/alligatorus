@@ -88,7 +88,7 @@ public final class TypeSourceUnionDynamic
       return EResult.ok(null);
     }
     var emitted =
-        compilerxyz.eval.dynamic.SourceUnionEmitter.emit(set.defSetId, unionIndex, this);
+        compilerxyz.eval.dynamic.SourceUnionEmitter.emit(xx, set.defSetId, unionIndex, this);
     compiledBaseBinaryName = emitted.baseBinaryName();
     compiledVariantBinaryNames = emitted.variantBinaryNames();
     loader.registerClass(emitted.baseBinaryName(), emitted.baseBytecode());
@@ -112,7 +112,7 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }

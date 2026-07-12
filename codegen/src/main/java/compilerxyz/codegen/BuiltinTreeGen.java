@@ -641,6 +641,7 @@ var targetBindSubCls =
                     bindResult,
                     new MethodArgs(
                         TList.of(
+                            new NamedTypeRef("xx", bindingXx),
                             new NamedTypeRef("loc", bindingLoc),
                             new NamedTypeRef("sub", targetBindSub)))),
                 new Method(

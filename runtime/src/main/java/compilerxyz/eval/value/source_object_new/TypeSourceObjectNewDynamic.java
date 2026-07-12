@@ -138,13 +138,13 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     var underlyingDesc =
         consumeRes
             .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
-            .aspectConsumeDynamicConsumeDynamicJvmClass();
+            .aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));
     var newInstance =
         compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
-    return EResult.ok(DynUtil.dynamicStackToValue(loc, newInstance, resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newInstance, resultType));
   }
 
   @Override

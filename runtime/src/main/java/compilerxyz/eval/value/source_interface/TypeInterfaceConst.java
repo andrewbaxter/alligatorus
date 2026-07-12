@@ -86,7 +86,7 @@ public record TypeInterfaceConst(InterfaceData data)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
         compilerxyz.eval.value.source_interface.InterfaceData.class);
   }
@@ -340,7 +340,7 @@ public record TypeInterfaceConst(InterfaceData data)
     return EResult.ok(
         new CodeValue(
             self.code(),
-            Opt.some(ValueDynamic.stack(fieldType))));
+            Opt.some(ValueDynamic.stack(xx, fieldType))));
   }
 
   @Override
@@ -397,13 +397,13 @@ public record TypeInterfaceConst(InterfaceData data)
           new CodeValue(
               Code.of(loc, call),
               Opt.some(
-                  ValueDynamic.stack(
+                  ValueDynamic.stack(xx, 
                       new compilerxyz.eval.value.interface_spec.TypeInterfaceSpec()))));
     }
     if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
         || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(destType))));
+          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
     }
     return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
   }

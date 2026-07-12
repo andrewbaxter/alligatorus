@@ -95,7 +95,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/util/Map$Entry"));
   }
 
@@ -153,7 +153,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // time, so the target descriptor is always object-shaped here.
     var fieldConsumeOpt = AspectConsumeDynamic.getMaybe(xx, spec.type());
     if (fieldConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> fieldConsumeSome) {
-      var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass();
+      var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
       var d = fieldDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
@@ -165,7 +165,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(spec.type()))));
+            Opt.some(ValueDynamic.stack(xx, spec.type()))));
   }
 
   @Override

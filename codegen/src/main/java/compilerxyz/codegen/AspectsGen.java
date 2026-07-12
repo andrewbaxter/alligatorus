@@ -516,7 +516,7 @@ final class AspectsGen {
                         + " implies the type has a host stack representation, so this is"
                         + " infallible.",
                     "consumeDynamicJvmClass",
-                    TList.of(),
+                    TList.of(xxParam),
                     ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
         new AspectSpec(
             "",
@@ -526,7 +526,7 @@ final class AspectsGen {
                 new AspectMethod(
                     "",
                     "toValue",
-                    TList.of(locParam, new Param("self_", CODE_DYNAMIC)),
+                    TList.of(xxParam, locParam, new Param("self_", CODE_DYNAMIC)),
                     CODE_VALUE))),
         new AspectSpec(
             "Called on imported values to convert them from const to dynamic form when"

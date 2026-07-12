@@ -203,7 +203,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromClass(externalHostClass);
   }
 
@@ -380,7 +380,7 @@ public record TypeObjectConst(
             ? some.value()
             : this;
     return EResult.ok(
-        new CodeValue(Code.of(loc, dyn), Opt.some(ValueDynamic.stack(target))));
+        new CodeValue(Code.of(loc, dyn), Opt.some(ValueDynamic.stack(xx, target))));
   }
 
 }

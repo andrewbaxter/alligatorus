@@ -97,7 +97,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
@@ -208,7 +208,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           yield EResult.ok(
               new CodeValue(
                   Code.of(loc, selfDyn),
-                  Opt.some(ValueDynamic.stack(g.type()))));
+                  Opt.some(ValueDynamic.stack(xx, g.type()))));
         }
       };
     }
@@ -308,13 +308,13 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     var elementDecode = new CodeDynamic(loc, decodeSeq);
 
     return EResult.ok(
-        compilerxyz.eval.dynamic.DynUtil.foreachSkeleton(
+        compilerxyz.eval.dynamic.DynUtil.foreachSkeleton(xx,
             loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override
@@ -356,7 +356,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(this))));
+              Opt.some(ValueDynamic.stack(xx, this))));
     }
     if (!(some.value() instanceof Record record)) {
       return EResult.err(
@@ -430,7 +430,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(this))));
+            Opt.some(ValueDynamic.stack(xx, this))));
   }
 
   private static boolean typesConvertible(
@@ -482,7 +482,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var keyCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(keyType)));
+              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, keyType)));
       var keyDropRes = keyDropSome.value().aspectDropDynamicDrop(xx, loc, keyCv);
       if (keyDropRes.hasErrors()) return keyDropRes.reerr();
       var keyDropDyn = keyDropRes.requireValue("map key drop").dynamic();
@@ -504,7 +504,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var valCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadValSeq)),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(valueType)));
+              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, valueType)));
       var valDropRes = valDropSome.value().aspectDropDynamicDrop(xx, loc, valCv);
       if (valDropRes.hasErrors()) return valDropRes.reerr();
       var valDropDyn = valDropRes.requireValue("map value drop").dynamic();
@@ -531,7 +531,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     var elementDecode = new CodeDynamic(loc, decodeSeq);
 
     var loop =
-        DynUtil.foreachSkeleton(
+        DynUtil.foreachSkeleton(xx,
             loc,
             iteratorSetup,
             elementDecode,

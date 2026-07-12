@@ -43,7 +43,7 @@ public record TypeConstkeyDynamic()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.eval.ConstKey.class);
   }
 
@@ -104,7 +104,7 @@ public record TypeConstkeyDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, literal),
-            Opt.some(ValueDynamic.stack(new TypeConstkeyDynamic()))));
+            Opt.some(ValueDynamic.stack(xx, new TypeConstkeyDynamic()))));
   }
 
   @Override

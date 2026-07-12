@@ -133,7 +133,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
                       JavaInternalName.of("compilerxyz/util/Opt")),
                   TList.of()));
     }
-    return EResult.ok(DynUtil.dynamicStackToValue(loc, newOpt, resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newOpt, resultType));
   }
 
   @Override

@@ -49,7 +49,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/EResult"));
   }
 
@@ -74,8 +74,8 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(QExprId loc, CodeDynamic value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(loc, value, this);
+  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   private sealed interface FieldSpec {
@@ -127,7 +127,7 @@ public record TypeEResultDynamic(Type elementType)
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
                   JavaDataDescriptor.fromClass(String.class))));
       if (elementType instanceof AspectConsumeDynamic elemConsume) {
-        var elemDesc = elemConsume.aspectConsumeDynamicConsumeDynamicJvmClass();
+        var elemDesc = elemConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
         if (elemDesc.value().startsWith("L")
             && !elemDesc.value().equals("Ljava/lang/Object;")) {
           seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
@@ -135,7 +135,7 @@ public record TypeEResultDynamic(Type elementType)
       }
       return EResult.ok(new CodeValue(
           Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-          Opt.some(compilerxyz.eval.value.ValueDynamic.stack(elementType))));
+          Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {

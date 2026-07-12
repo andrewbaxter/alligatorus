@@ -175,9 +175,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     var slotInfo = computeSlotInfo(fields);
-    var klass = CompositeClassEmitter.getOrEmit(slotInfo.sortedTypes());
+    var klass = CompositeClassEmitter.getOrEmit(xx, slotInfo.sortedTypes());
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of(klass.getName().replace('.', '/')));
   }
 
@@ -274,7 +274,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
               CompositeClassEmitter.slotDescriptor(xx, entryType)));
       var fieldCode = Code.of(loc, new CodeDynamic(loc, loadSeq));
       return EResult.ok(
-          new CodeValue(fieldCode, Opt.some(ValueDynamic.stack(entryType))));
+          new CodeValue(fieldCode, Opt.some(ValueDynamic.stack(xx, entryType))));
     }
     if (!(self_.value() instanceof Opt.Some<Value> selfSome)
         || !(selfSome.value() instanceof Record recordValue)) {
@@ -499,7 +499,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     var sub = subRes.requireValue("Record::bind bindSub");
     if (sub.targetSub() instanceof Opt.Some<TargetBindSub> targetSome) {
-      var bound = xx.target.targetBind(loc, targetSome.value());
+      var bound = xx.target.targetBind(xx, loc, targetSome.value());
       return EResult.ok(
           new BindResult(
               Code.of(loc, bound.code()),
@@ -752,7 +752,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     CodeDynamic sourceLoadCarry;
     ValueDynamic.Source srcAccessSource;
     if (carryDyn != null) {
-      var bindResult = xx.target.targetBind(loc, new TargetBindSub(carryDyn, srcType));
+      var bindResult = xx.target.targetBind(xx, loc, new TargetBindSub(carryDyn, srcType));
       sourceLoadCarry = bindResult.code();
       srcAccessSource = new ValueDynamic.Source.Binding(bindResult.id());
     } else {
@@ -794,7 +794,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var srcFieldCv =
           new CodeValue(
               Code.of(loc, loadDyn),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(srcFieldType)));
+              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, srcFieldType)));
       var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destType, srcFieldCv));
       if (convOpt.isEmpty()) {
         return EResult.errs(erb.errors());
@@ -829,7 +829,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       finalDyn = instantiate;
     }
     var newBase = Opt.some(
-        new RecordBaseDynamic(ValueDynamic.Source.Expr.stackFor(this)));
+        new RecordBaseDynamic(ValueDynamic.Source.Expr.stackFor(xx, this)));
     var newRecord = new Record(newBase, asDynamicFields(fields));
     return EResult.ok(
         new CodeValue(Code.of(loc, finalDyn), Opt.some((Value) newRecord)));

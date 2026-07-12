@@ -133,7 +133,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     Type resultType = new TypeTypeSourceUnionConst(type_);
     var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
     var payloadDesc =
-        compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(underlyingType);
+        compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
@@ -143,7 +143,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     seq.add(underlyingJs);
     seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
     var newObject = new CodeDynamic(loc, seq);
-    return EResult.ok(DynUtil.dynamicStackToValue(loc, newObject, resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newObject, resultType));
   }
 
   @Override

@@ -77,22 +77,14 @@ public final class CompositeClassEmitter {
   }
 
   public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
-    return slotDescriptor(t);
-  }
-
-  public static JavaDataDescriptor slotDescriptor(Type t) {
     if (!(t instanceof compilerxyz.gen.AspectConsumeDynamic consume)) {
       throw new IllegalStateException(
           "CompositeClassEmitter: type (" + t.typeDesc() + ") does not directly implement AspectConsumeDynamic");
     }
-    return consume.aspectConsumeDynamicConsumeDynamicJvmClass();
+    return consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
   }
 
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
-    return getOrEmit(sortedTypes);
-  }
-
-  public static Class<?> getOrEmit(TList<Type> sortedTypes) {
     var key = new StructuralKey(sortedTypes);
     var existing = CACHE.getIfPresent(key);
     if (existing != null) {
@@ -100,7 +92,7 @@ public final class CompositeClassEmitter {
     }
 
     var binaryName = binaryNameFor(key);
-    var bytecode = emitBytecode(binaryName, sortedTypes);
+    var bytecode = emitBytecode(xx, binaryName, sortedTypes);
     var loader =
         new CompositeClassLoader(CompositeClassEmitter.class.getClassLoader(), binaryName, bytecode);
     Class<?> defined;
@@ -120,7 +112,7 @@ public final class CompositeClassEmitter {
     return getOrEmit(xx, sortedTypes).getName().replace('.', '/');
   }
 
-  static byte[] emitBytecode(String binaryName, TList<Type> sortedTypes) {
+  static byte[] emitBytecode(ExprContext xx, String binaryName, TList<Type> sortedTypes) {
     var internalName = binaryName.replace('.', '/');
     var ownName = JavaInternalName.of(internalName);
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
@@ -133,7 +125,7 @@ public final class CompositeClassEmitter {
         null);
 
     var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
-    for (var t : sortedTypes) slotDescs.add(slotDescriptor(t));
+    for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));
 
     for (int i = 0; i < sortedTypes.size(); i++) {
       cw.visitField(

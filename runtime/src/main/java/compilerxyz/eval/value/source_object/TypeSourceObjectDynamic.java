@@ -115,7 +115,7 @@ public final class TypeSourceObjectDynamic
               + "'");
     }
     var emitted =
-        SourceObjectEmitter.emit(setId, objectIndex, this, builtinDynamics);
+        SourceObjectEmitter.emit(xx, setId, objectIndex, this, builtinDynamics);
     compiledBinaryName = emitted.binaryName();
     compiledBytecode = emitted.bytecode();
     compiledStaticFieldValues = emitted.staticFieldValues();
@@ -151,7 +151,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass() {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
@@ -187,6 +187,7 @@ public final class TypeSourceObjectDynamic
       var kind = impl.interface_.builtinKind;
       if (kind != null) {
         boolean exposes = switch (kind) {
+          case ASPECT_CONSUME_DYNAMIC -> key.equals(AspectConsumeDynamic.ID);
           case ASPECT_DROP_DYNAMIC -> key.equals(compilerxyz.gen.AspectDropDynamic.ID);
           case ASPECT_FIELD -> key.equals(compilerxyz.gen.AspectField.ID);
           case ASPECT_FUNCTION -> key.equals(compilerxyz.gen.AspectFunction.ID);
@@ -298,7 +299,7 @@ public final class TypeSourceObjectDynamic
     for (var s : slots) argDescs.add(s.jvmDesc());
     var descObjObj =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            retConsume.aspectConsumeDynamicConsumeDynamicJvmClass(),
+            retConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx),
             argDescs);
     if (setId == null) {
       throw new AssertionError(
@@ -324,7 +325,7 @@ public final class TypeSourceObjectDynamic
             descObjObj,
             false,
             false);
-    return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(fieldType))));
+    return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(xx, fieldType))));
   }
 
   @Override
@@ -409,7 +410,7 @@ public final class TypeSourceObjectDynamic
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, identity).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(this))));
+          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
@@ -465,7 +466,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(ValueDynamic.stack(new TypeInterfaceConst(impl.interface_)))));
+                Opt.some(ValueDynamic.stack(xx, new TypeInterfaceConst(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
@@ -485,7 +486,7 @@ public final class TypeSourceObjectDynamic
 
   private CodeValue emitBuiltinCast(
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
-    return new CodeValue(Code.of(loc, sourceCode), Opt.some(ValueDynamic.stack(resultType)));
+    return new CodeValue(Code.of(loc, sourceCode), Opt.some(ValueDynamic.stack(xx, resultType)));
   }
 
   @Override

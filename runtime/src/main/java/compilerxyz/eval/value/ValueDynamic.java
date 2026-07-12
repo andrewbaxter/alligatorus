@@ -39,8 +39,8 @@ public record ValueDynamic(Source source, Type type_) implements Value {
    * type's JVM representation (2 slots for D/J primitives, 1 otherwise). Used
    * at every site that produces a value directly onto the JVM stack.
    */
-  public static ValueDynamic stack(Type type_) {
-    return new ValueDynamic(Source.Expr.stackFor(type_), type_);
+  public static ValueDynamic stack(ExprContext xx, Type type_) {
+    return new ValueDynamic(Source.Expr.stackFor(xx, type_), type_);
   }
 
   public static Type sourceDynamicType() {
@@ -118,14 +118,14 @@ public record ValueDynamic(Source source, Type type_) implements Value {
         return Code.of(loc, JavaBytecodeUtils.inst(loc, popOp));
       }
 
-      public static Expr stackFor(Type t) {
+      public static Expr stackFor(ExprContext xx, Type t) {
         if (!(t instanceof compilerxyz.gen.AspectConsumeDynamic acd)) {
           throw new IllegalArgumentException(
               "ValueDynamic.Source.Expr.stackFor: type "
                   + t
                   + " is not AspectConsumeDynamic; cannot determine JVM stack size");
         }
-        var d = acd.aspectConsumeDynamicConsumeDynamicJvmClass().value();
+        var d = acd.aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
         var c = d.charAt(0);
         return new Expr(c == 'D' || c == 'J' ? 2 : 1);
       }

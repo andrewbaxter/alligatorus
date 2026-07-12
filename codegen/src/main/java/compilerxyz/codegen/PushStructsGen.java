@@ -524,7 +524,7 @@ public final class PushStructsGen {
             .endControlFlow()
             .nextControlFlow("else if (ifaceArg instanceof $T obj)", typeObjectDynamic)
             .addStatement(
-                "ifaceData = $T.synthesizeInterfaceDataFromObject(obj)", dynRuntime)
+                "ifaceData = $T.synthesizeInterfaceDataFromObject(xx, obj)", dynRuntime)
             .nextControlFlow("else")
             .addStatement(
                 "throw new $T($S + (ifaceArg == null ? $S : ifaceArg.getClass()))",

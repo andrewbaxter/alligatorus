@@ -93,7 +93,7 @@ public final class BuiltinBodies {
   }
 
   public static Value stack(ExprContext xx, Type type) {
-    return ValueDynamic.stack(type);
+    return ValueDynamic.stack(xx, type);
   }
 
   public static AspectBind.BindResult bindResult(ExprContext xx, Code code, Binding binding) {

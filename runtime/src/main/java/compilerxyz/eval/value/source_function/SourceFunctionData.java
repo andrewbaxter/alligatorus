@@ -225,7 +225,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return some.value().aspectConsumeDynamicConsumeDynamicJvmClass();
+      return some.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     }
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
@@ -235,7 +235,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return EResult.ok(some.value().aspectConsumeDynamicConsumeDynamicJvmClass());
+      return EResult.ok(some.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx));
     }
     return EResult.ok(
         compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(

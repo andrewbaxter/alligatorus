@@ -23,6 +23,8 @@ public final class BuiltinInterfaceRegistry {
       case ASPECT_FUNCTION -> ifaces.aspect_function;
       case ASPECT_FIELD -> ifaces.aspect_field;
       case ASPECT_DROP_DYNAMIC -> ifaces.aspect_drop_dynamic;
+      case ASPECT_CONSUME_DYNAMIC -> throw new IllegalStateException(
+          "BuiltinInterfaceRegistry.resolve: ASPECT_CONSUME_DYNAMIC not registered in GenBuiltinInterfaces");
       case BINDING -> ifaces.binding;
       case TARGET -> ifaces.target;
       case CODE_DYN -> ifaces.code_dyn;

@@ -47,6 +47,7 @@ public final class DynRuntime {
 
   public static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromObject(
+          compilerxyz.eval.ExprContext xx,
           compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
     if (!(obj.aspectSource() instanceof Opt.Some<compilerxyz.eval.value.object_.ObjectAspectSource> some)
         || !(some.value() instanceof compilerxyz.eval.value.object_.ObjectAspectSource.Static staticSrc)) {
@@ -88,7 +89,7 @@ public final class DynRuntime {
         md.hostMethodDescriptor = mt2.descriptor();
       } else if (m.funcType() instanceof TypeFunctionDynamic ft2) {
         md.hostMethodName = ft2.methodName();
-        md.hostMethodDescriptor = ft2.descriptor();
+        md.hostMethodDescriptor = ft2.descriptor(xx);
       }
       if (argType instanceof compilerxyz.eval.value.record.Record rec) {
         for (var key : rec.fields().keySet()) {
@@ -123,6 +124,7 @@ public final class DynRuntime {
   }
 
   public static compilerxyz.eval.value.interface_spec.InterfaceSpec objectToInterfaceSpec(
+      compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
     if (!(obj.interfaceRepresented() instanceof Opt.Some<JavaInternalName> some)) {
       throw new IllegalStateException(
@@ -138,7 +140,7 @@ public final class DynRuntime {
         hostMethodName = ft.methodName();
         argType = ft.arg();
         retType = ft.ret();
-        mDesc = ft.descriptor();
+        mDesc = ft.descriptor(xx);
       } else if (m.funcType()
           instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt) {
         hostMethodName = mt.methodName();
@@ -170,8 +172,9 @@ public final class DynRuntime {
   }
 
   public static InterfaceData objectToInterfaceData(
+      compilerxyz.eval.ExprContext xx,
       compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-    return synthesizeInterfaceDataFromObject(obj);
+    return synthesizeInterfaceDataFromObject(xx, obj);
   }
 
   public static InterfaceData specToInterfaceData(

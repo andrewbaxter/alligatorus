@@ -35,7 +35,7 @@ public final class SourceUnionEmitter {
   public static final String PAYLOAD_FIELD = "payload";
 
   public static EmittedSourceUnion emit(
-      DefSetId defSet, long unionIndex, TypeSourceUnionDynamic data) {
+      compilerxyz.eval.ExprContext xx, DefSetId defSet, long unionIndex, TypeSourceUnionDynamic data) {
     var baseBinaryName = baseBinaryNameFor(defSet, unionIndex);
     var baseInternalName = baseBinaryName.replace('.', '/');
 
@@ -52,7 +52,7 @@ public final class SourceUnionEmitter {
     var variantBytecode = new TList<byte[]>(data.variants.size());
     for (int i = 0; i < data.variants.size(); i++) {
       var variant = data.variants.get(i);
-      var payloadDesc = payloadDescriptor(variant.type);
+      var payloadDesc = payloadDescriptor(xx, variant.type);
       variantBytecode.add(
           emitVariant(variantInternalNames.get(i), baseInternalName, payloadDesc));
     }
@@ -61,9 +61,9 @@ public final class SourceUnionEmitter {
         baseBinaryName, baseBytecode, variantBinaryNames, variantBytecode);
   }
 
-  public static JavaDataDescriptor payloadDescriptor(compilerxyz.eval.Type type) {
+  public static JavaDataDescriptor payloadDescriptor(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type type) {
     if (type instanceof AspectConsumeDynamic consume) {
-      return consume.aspectConsumeDynamicConsumeDynamicJvmClass();
+      return consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
     }
     return JvmConstants.DESC_OBJECT;
   }
