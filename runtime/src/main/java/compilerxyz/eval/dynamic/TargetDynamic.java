@@ -251,6 +251,10 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(
           JavaBytecodeUtils.accessField(
               loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
+      var payloadDesc = clause.payloadDesc();
+      if (payloadDesc.value().startsWith("L") && !payloadDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+        seq.add(JavaBytecodeUtils.cast(loc, payloadDesc));
+      }
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc),

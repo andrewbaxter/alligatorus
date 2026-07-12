@@ -764,7 +764,13 @@ public final class ConstEval {
         erb.errPush("Try catch body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
-      catch_ = Opt.some(new TryCatchClause(bindingId, catchCd));
+      var payloadConsumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, bodyExcType);
+      if (payloadConsumeRes.hasErrors()) return payloadConsumeRes.reerr();
+      var payloadDesc =
+          payloadConsumeRes
+              .requireValue("try/catch payload AspectConsumeDynamic")
+              .aspectConsumeDynamicConsumeDynamicJvmClass();
+      catch_ = Opt.some(new TryCatchClause(bindingId, payloadDesc, catchCd));
     }
     Opt<CodeDynamic> finally_ = Opt.none();
     if (e.finallyBlock() instanceof Opt.Some<Expr> finSome) {
