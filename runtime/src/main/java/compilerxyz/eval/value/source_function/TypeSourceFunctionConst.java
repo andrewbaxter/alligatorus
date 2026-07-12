@@ -339,16 +339,14 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
-    var argElementsRes = DynUtil.destructureCallArg(xx, loc, argType, converted);
-    if (argElementsRes.hasErrors()) return argElementsRes.reerr();
-    var argElements = argElementsRes.requireValue("TypeSourceFunctionConst::call arg elements");
+    var argCodesRes = DynUtil.destructurePositional(xx, loc, argType, converted);
+    if (argCodesRes.hasErrors()) return argCodesRes.reerr();
+    var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
 
     var retStackRes =
         compilerxyz.gen.AspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var argCodes = new TList<compilerxyz.eval.dynamic.CodeDynamic>(argElements.size());
-    for (var e : argElements) argCodes.add(e.code());
     var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, false);
     var invocationRes = fnType.emitInvocation(xx, loc, argCodes);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
@@ -358,15 +356,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             .aspectStackValueDynamicToValue(
                 xx, loc,
                 invocationRes.requireValue("TypeSourceFunctionConst::call invocation")));
-  }
-
-  private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescOf(
-      ExprContext xx, QExprId loc, Type t) {
-    var consumeRes =
-        compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, t);
-    if (consumeRes.hasErrors()) return consumeRes.reerr();
-    return EResult.ok(
-        consumeRes.requireValue("jvmDescOf consume").aspectConsumeDynamicConsumeDynamicJvmClass(xx));
   }
 
   @Override
