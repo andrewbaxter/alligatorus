@@ -372,7 +372,7 @@ public final class DynUtil {
         return EResult.ok(vd.source().drop(loc));
     }
 
-    private static boolean isStackRooted(ValueDynamic.Source source) {
+    public static boolean isStackRooted(ValueDynamic.Source source) {
         return switch (source) {
             case ValueDynamic.Source.Expr expr -> true;
             case ValueDynamic.Source.Binding binding -> false;

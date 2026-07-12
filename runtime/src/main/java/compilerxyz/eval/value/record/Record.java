@@ -62,6 +62,7 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.objectweb.asm.Opcodes;
 
 public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
     implements
@@ -80,66 +81,297 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      throw new IllegalStateException("Record::drop: called on absent CodeValue");
-    }
-    var v = some.value();
-    if (v instanceof ValueDynamic vd) {
-      return dropSourced(xx, loc, vd.source());
-    }
-    if (!(v instanceof Record record)) {
-      throw new IllegalStateException(
-          "Record::drop: expected Record or ValueDynamic value, got " + v.getClass());
-    }
-    return switch (record.base) {
-      case Opt.None<RecordBaseDynamic> ignored -> dropSourceless(xx, loc, record);
-      case Opt.Some<RecordBaseDynamic> baseSome -> dropSourced(xx, loc, baseSome.value().source());
-    };
+    var res = accessOrDrop(xx, loc, cv, Opt.none());
+    if (res.hasErrors()) return res.reerr();
+    return EResult.ok(res.requireValue("Record::drop").code());
   }
 
-  private EResult<Code> dropSourceless(ExprContext xx, QExprId loc, Record record) {
+  /**
+   * Unified field-access + drop for records. See design spec.
+   *
+   * <p>{@code accessKey = None}: emits full-drop bytecode; returned CodeValue has no
+   * value component.
+   *
+   * <p>{@code accessKey = Some(k)}: emits sibling-drop + accessed-field extraction;
+   * returned CodeValue carries the accessed field's value on the stack.
+   */
+  public EResult<CodeValue> accessOrDrop(
+      ExprContext xx, QExprId loc, CodeValue selfCv, Opt<ConstKey> accessKey) {
+    if (!(selfCv.value() instanceof Opt.Some<Value> some)) {
+      throw new IllegalStateException("Record::accessOrDrop: CodeValue has no value");
+    }
+    var v = some.value();
+    ValueDynamic.Source baseSource;
+    Record record;
+    if (v instanceof ValueDynamic vd) {
+      baseSource = vd.source();
+      record = this;
+    } else if (v instanceof Record r) {
+      record = r;
+      if (r.base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
+        baseSource = baseSome.value().source();
+      } else {
+        return accessOrDropSourceless(xx, loc, selfCv, record, accessKey);
+      }
+    } else {
+      throw new IllegalStateException(
+          "Record::accessOrDrop: expected Record or ValueDynamic, got " + v.getClass());
+    }
+    return accessOrDropSourced(xx, loc, selfCv, record, baseSource, accessKey);
+  }
+
+  private EResult<CodeValue> accessOrDropSourceless(
+      ExprContext xx, QExprId loc, CodeValue selfCv, Record record, Opt<ConstKey> accessKey) {
+    // Current implementation shape: all fields are RecordField.EvalRes (compile-time).
+    // Emit compile-time drop of siblings; if accessKey is Some, return the accessed
+    // const CodeValue directly (routed through AspectFieldUseConst when applicable).
+    var seq = new JavaBytecodeSequence();
+    var carry = selfCv.code().dynamic();
+    if (carry != null) seq.add(carry);
+    CodeValue accessedCv = null;
+    ConstKey accessedKeyResolved = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
     var sortedKeys = new TList<ConstKey>(record.fields.size());
     sortedKeys.addAll(record.fields.keySet());
     sortedKeys.sort(ConstKey.CANONICAL_ORDER);
-    var seq = new JavaBytecodeSequence();
     for (int i = sortedKeys.size() - 1; i >= 0; i--) {
-      var f = record.fields.getOrNull(sortedKeys.get(i));
+      var k = sortedKeys.get(i);
+      var f = record.fields.getOrNull(k);
+      boolean isAccessed = accessedKeyResolved != null && accessedKeyResolved.equals(k);
       if (!(f instanceof RecordField.EvalRes er)) {
+        // Mixed sourceless (dynamic + const) is not currently produced by any path.
         throw new IllegalStateException(
-            "Record::dropSourceless: expected EvalRes field, got " + f.getClass());
+            "Record::accessOrDropSourceless: field '"
+                + k.toCanonical()
+                + "' is not EvalRes; sourceless with Dynamic fields is not implemented");
       }
       var res = er.result();
+      if (isAccessed) {
+        if (res.hasErrors()) {
+          return EResult.err(loc, "Field '" + k.toCanonical() + "' evaluated to error");
+        }
+        var childCv = res.requireValue("Record::accessOrDropSourceless accessed");
+        var childType = childCv.value() instanceof Opt.Some<Value> cvSome
+            ? cvSome.value().valueType()
+            : recordFieldType(f);
+        var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
+        if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
+          var useRes = useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, childCv);
+          if (useRes.hasErrors()) return useRes.reerr();
+          accessedCv = useRes.requireValue("Record::accessOrDropSourceless useConst");
+        } else {
+          accessedCv = childCv;
+        }
+        continue;
+      }
       if (res.hasErrors()) continue;
-      var fieldCv = res.requireValue("Record::dropSourceless field");
+      var fieldCv = res.requireValue("Record::accessOrDropSourceless sibling");
       if (!(fieldCv.value() instanceof Opt.Some<Value> fieldSome)) continue;
       var fieldType = fieldSome.value().valueType();
       var fieldDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
       if (!(fieldDropOpt instanceof Opt.Some<AspectDropDynamic> fieldDropSome)) continue;
       var fieldDropRes = fieldDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
       if (fieldDropRes.hasErrors()) return fieldDropRes.reerr();
-      var fieldDrop = fieldDropRes.requireValue("Record::dropSourceless field drop").dynamic();
+      var fieldDrop = fieldDropRes.requireValue("Record::accessOrDropSourceless sibling drop").dynamic();
       if (fieldDrop != null) seq.add(fieldDrop);
     }
-    return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+    if (accessKey instanceof Opt.Some<ConstKey> aksReq) {
+      if (accessedCv == null) {
+        return EResult.err(
+            loc, "Field '" + aksReq.value().toCanonical() + "' not found on record value");
+      }
+      // Wrap the accessed value's code with the sibling-drop prelude.
+      var accessedDyn = accessedCv.code().dynamic();
+      if (accessedDyn != null) seq.add(accessedDyn);
+      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
+    }
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
   }
 
-  private EResult<Code> dropSourced(ExprContext xx, QExprId loc, ValueDynamic.Source source) {
+  private EResult<CodeValue> accessOrDropSourced(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue selfCv,
+      Record record,
+      ValueDynamic.Source baseSource,
+      Opt<ConstKey> accessKey) {
     var slotInfo = computeSlotInfo(fields);
     var klass =
         JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
-    var children = new TList<DynUtil.DropChild>(slotInfo.sortedTypes().size());
-    for (int i = slotInfo.sortedTypes().size() - 1; i >= 0; i--) {
-      var slotType = slotInfo.sortedTypes().get(i);
-      var access =
+    boolean stackRooted = DynUtil.isStackRooted(baseSource);
+
+    // Scan-first optimization: if no dynamic field has a full (non-light) drop, we can
+    // skip the base realize + POP-at-end entirely; just emit each field's light-drop.
+    boolean anyFullDrop = false;
+    for (var entry : fields.entrySet()) {
+      var t = recordFieldType(entry.getValue());
+      if (AspectDropDynamic.getMaybe(xx, t) instanceof Opt.Some<AspectDropDynamic>) {
+        anyFullDrop = true;
+        break;
+      }
+    }
+
+    ConstKey accessedKey = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
+    Type accessedType = null;
+    int accessedSlot = -1;
+    if (accessedKey != null) {
+      var f = fields.getOrNull(accessedKey);
+      if (f == null) {
+        return EResult.err(loc, "Field '" + accessedKey.toCanonical() + "' not found on record");
+      }
+      accessedType = recordFieldType(f);
+      accessedSlot = slotInfo.slotOfKey().get(accessedKey);
+    }
+
+    // Fast path: pure field-access (no sibling drops needed).
+    if (accessedKey != null && !stackRooted) {
+      // Non-stack source: no sibling drops, just base.realize + GETFIELD.
+      // Do NOT prepend selfCv.code() carry — for non-stack sources the source
+      // already reaches its base (e.g. ALOAD binding, GETFIELD chain); any
+      // carry produced by upstream is a side channel that should not repeat.
+      var loadSeq = new JavaBytecodeSequence();
+      loadSeq.add(baseSource.realize(xx, loc));
+      loadSeq.add(
           JavaBytecodeUtils.accessField(
               loc,
               klass,
-              CompositeClassEmitter.slotFieldName(i),
-              CompositeClassEmitter.slotDescriptor(xx, slotType));
-      children.add(new DynUtil.DropChild(slotType, access));
+              CompositeClassEmitter.slotFieldName(accessedSlot),
+              CompositeClassEmitter.slotDescriptor(xx, accessedType)));
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(loc, loadSeq)),
+              Opt.some(ValueDynamic.stack(xx, accessedType))));
     }
-    return DynUtil.dropDestructiveComposite(xx, loc, source, children);
+
+    // Stack-rooted or drop-only path.
+    var out = new JavaBytecodeSequence();
+    // Do not include selfCv.code() carry (upstream carry is a side channel that
+    // aspectDropDynamicDrop / aspectFieldField ignore per legacy behavior).
+
+    if (accessedKey == null) {
+      // Full drop.
+      if (!stackRooted) {
+        // Non-stack source: base isn't on the stack; defer to enclosing owner.
+        // Emit only the source's own drop code (may be Code.none for Binding).
+        var srcDrop = baseSource.drop(loc).dynamic();
+        if (srcDrop != null) out.add(srcDrop);
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+      }
+      // Stack-rooted: base ref is on top of stack; realize is a no-op for Expr.
+      out.add(baseSource.realize(xx, loc));
+      if (!anyFullDrop) {
+        // No child needs a full drop; still emit light-drops via child aspect chain.
+        // For a stack base we already have base ref on stack — POP it.
+        // Then run light drops on siblings? Actually the base itself is one JVM ref;
+        // light-drops on child fields would need to reach through the base. Since
+        // no field carries user-visible cleanup, dropping just the base ref
+        // suffices — the JVM GC handles the composite.
+        out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+      }
+      // Emit sibling drops (full drop path).
+      emitSiblingDrops(xx, loc, klass, slotInfo, /* skipKey */ null, out);
+      out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+    }
+
+    // Field access with stack-rooted base: emit sibling drops, ASTORE accessed field,
+    // POP base, ALOAD accessed.
+    // Last-field optimization: when the accessed field is the LAST in iteration order
+    // and no siblings need dropping, we can skip DUP for it.
+    // Simpler safe path: always do sibling drops + STORE/LOAD dance.
+    emitSiblingDrops(xx, loc, klass, slotInfo, accessedKey, out);
+    // DUP + GETFIELD accessed + STORE
+    var accessedConsume = AspectConsumeDynamic.getMaybe(xx, accessedType);
+    if (!(accessedConsume instanceof Opt.Some<AspectConsumeDynamic> accessedConsumeSome)) {
+      return EResult.err(
+          loc,
+          "Record::accessOrDrop: accessed field type '"
+              + accessedType.typeDesc()
+              + "' is not AspectConsumeDynamic");
+    }
+    var acd = accessedConsumeSome.value();
+    var accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    // The base ref is on top of stack; DUP, GETFIELD, STORE
+    out.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    out.add(
+        JavaBytecodeUtils.accessField(
+            loc,
+            klass,
+            CompositeClassEmitter.slotFieldName(accessedSlot),
+            CompositeClassEmitter.slotDescriptor(xx, accessedType)));
+    out.add(acd.aspectConsumeDynamicEmitStore(xx, loc, accessedLocalKey));
+    // POP the base ref
+    out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    // LOAD accessed
+    out.add(acd.aspectConsumeDynamicEmitLoad(xx, loc, accessedLocalKey));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(loc, new CodeDynamic(loc, out)),
+            Opt.some(ValueDynamic.stack(xx, accessedType))));
+  }
+
+  private void emitSiblingDrops(
+      ExprContext xx,
+      QExprId loc,
+      JavaInternalName klass,
+      compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
+      @org.jspecify.annotations.Nullable ConstKey skipKey,
+      JavaBytecodeSequence out) {
+    var sortedKeys = new TList<ConstKey>(fields.size());
+    sortedKeys.addAll(fields.keySet());
+    sortedKeys.sort(ConstKey.CANONICAL_ORDER);
+    for (int i = sortedKeys.size() - 1; i >= 0; i--) {
+      var k = sortedKeys.get(i);
+      if (skipKey != null && skipKey.equals(k)) continue;
+      var t = recordFieldType(fields.getOrNull(k));
+      int slotIdx = slotInfo.slotOfKey().get(k);
+      var siblingDrop = childDropCode(xx, loc, klass, slotIdx, t);
+      if (siblingDrop != null) out.add(siblingDrop);
+    }
+  }
+
+  private @org.jspecify.annotations.Nullable CodeDynamic childDropCode(
+      ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType) {
+    // Build: DUP, GETFIELD, <child drop chain>.
+    var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
+    var lightDropOpt = AspectDropDynamic.getMaybe(xx, childType).optIsSome()
+        ? Opt.<compilerxyz.gen.AspectDropDynamicLight>none()
+        : compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType);
+    if (!(fullDropOpt instanceof Opt.Some<AspectDropDynamic>)
+        && !(lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight>)) {
+      return null;
+    }
+    var seq = new JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+    seq.add(
+        JavaBytecodeUtils.accessField(
+            loc,
+            klass,
+            CompositeClassEmitter.slotFieldName(slotIdx),
+            CompositeClassEmitter.slotDescriptor(xx, childType)));
+    var childCv =
+        new CodeValue(
+            Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
+            Opt.some(ValueDynamic.stack(xx, childType)));
+    if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullSome) {
+      var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
+      if (res.hasErrors()) {
+        throw new IllegalStateException(
+            "Record::childDropCode: drop failed for '" + childType.typeDesc() + "'");
+      }
+      var d = res.requireValue("Record::childDropCode drop").dynamic();
+      if (d != null) seq.add(d);
+    } else if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
+      var res = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, childCv);
+      if (res.hasErrors()) {
+        throw new IllegalStateException(
+            "Record::childDropCode: light drop failed for '" + childType.typeDesc() + "'");
+      }
+      var d = res.requireValue("Record::childDropCode light drop").dynamic();
+      if (d != null) seq.add(d);
+    }
+    return new CodeDynamic(loc, seq);
   }
 
   @Override
@@ -249,57 +481,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    var ck = ckOpt.get();
-    var typeField = fields.getOrNull(ck);
-    if (typeField == null) {
-      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on record");
-    }
-    var entryType = recordFieldType(typeField);
-    if (base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
-      var slotInfo = computeSlotInfo(fields);
-      var recordInternal = CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes());
-      var recordKlass = JavaInternalName.of(recordInternal);
-      int slotIndex = slotInfo.slotOfKey().get(ck);
-      var loadSeq = new JavaBytecodeSequence();
-      loadSeq.add(baseSome.value().source().realize(xx, loc));
-      loadSeq.add(
-          JavaBytecodeUtils.accessField(
-              loc,
-              recordKlass,
-              CompositeClassEmitter.slotFieldName(slotIndex),
-              CompositeClassEmitter.slotDescriptor(xx, entryType)));
-      var fieldCode = Code.of(loc, new CodeDynamic(loc, loadSeq));
-      return EResult.ok(
-          new CodeValue(fieldCode, Opt.some(ValueDynamic.stack(xx, entryType))));
-    }
-    if (!(self_.value() instanceof Opt.Some<Value> selfSome)
-        || !(selfSome.value() instanceof Record recordValue)) {
-      throw new IllegalStateException(
-          "Record::field: baseless record self_ does not carry a Record value");
-    }
-    var valueField = recordValue.fields.getOrNull(ck);
-    if (valueField == null) {
-      return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on record value");
-    }
-    return switch (valueField) {
-      case RecordField.EvalRes er -> {
-        var inner = er.result();
-        if (inner.hasErrors()) {
-          yield EResult.err(loc, "Field '" + ck.toCanonical() + "' evaluated to error");
-        }
-        var childCv = inner.requireValue("Record::field EvalRes");
-        var childType = childCv.value() instanceof Opt.Some<Value> cvSome
-            ? cvSome.value().valueType()
-            : entryType;
-        var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
-        if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
-          yield useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, childCv);
-        }
-        yield EResult.ok(childCv);
-      }
-      case RecordField.Dynamic d ->
-          throw new IllegalStateException("Record::field: baseless record value has Dynamic field");
-    };
+    return accessOrDrop(xx, loc, self_, Opt.some(ckOpt.get()));
   }
 
   @Override

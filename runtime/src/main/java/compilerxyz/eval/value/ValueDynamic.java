@@ -143,10 +143,16 @@ public record ValueDynamic(Source source, Type type_) implements Value {
       }
     }
 
-    record Dup(Source base) implements Source {
+    record Dup(Source base, Type type_) implements Source {
       @Override
       public CodeDynamic realize(ExprContext xx, QExprId loc) {
-        return JavaBytecodeUtils.inst(loc, Opcodes.DUP);
+        if (!(type_ instanceof compilerxyz.gen.AspectConsumeDynamic acd)) {
+          throw new IllegalStateException(
+              "ValueDynamic.Source.Dup.realize: type "
+                  + type_
+                  + " is not AspectConsumeDynamic");
+        }
+        return acd.aspectConsumeDynamicEmitDup(xx, loc);
       }
 
       @Override
