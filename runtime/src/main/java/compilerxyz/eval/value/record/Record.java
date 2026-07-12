@@ -223,20 +223,16 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       return Opt.some(this);
     }
     if (key.equals(AspectLift.ID)) {
-
       var entryLifts = new TList<RecordLift.Entry>(fields.size());
       for (var entry : fields.entrySet()) {
         var k = entry.getKey();
         var f = entry.getValue();
         if (!(f instanceof RecordField.Dynamic d)) {
-          throw new IllegalStateException(
-              "Record::aspect(LIFT): non-type record entry " + k.toCanonical());
+          return Opt.none();
         }
         var entryLiftOpt = AspectLift.getMaybe(xx, d.type());
         if (!(entryLiftOpt instanceof Opt.Some<AspectLift> entryLiftSome)) {
-          throw new IllegalStateException(
-              "Record entry '" + k.toCanonical() + "' type (" + d.type().typeDesc()
-                  + ") missing AspectLift");
+          return Opt.none();
         }
         entryLifts.add(new RecordLift.Entry(k, entryLiftSome.value(), d.type()));
       }

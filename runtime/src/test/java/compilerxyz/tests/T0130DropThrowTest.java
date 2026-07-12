@@ -512,7 +512,8 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.as_(
                                     mb.as_(mb.str("B"), mb.typesString()),
                                     mb.scopeUse("canary_b")))))),
-                mb.field(mb.scopeUse("rec"), mb.str("a")))));
+                mb.field(mb.scopeUse("rec"), mb.str("a")),
+                mb.call(mb.log(), mb.str("end")))));
     var res = compileOk(modules);
     var messages = messages(res);
     assertTrue(

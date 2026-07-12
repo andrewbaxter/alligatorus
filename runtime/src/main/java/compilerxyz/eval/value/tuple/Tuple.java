@@ -216,17 +216,15 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return Opt.some(this);
     }
     if (key.equals(AspectLift.ID)) {
-
       var elementLifts = new TList<AspectLift>(elements.size());
       var elementTypes = new TList<Type>(elements.size());
       for (var e : elements) {
         if (!(e instanceof TupleElement.Dynamic d)) {
-          throw new IllegalStateException("Tuple::aspect(LIFT): non-type tuple");
+          return Opt.none();
         }
         var elemLiftOpt = AspectLift.getMaybe(xx, d.type());
         if (!(elemLiftOpt instanceof Opt.Some<AspectLift> elemLiftSome)) {
-          throw new IllegalStateException(
-              "Tuple element type (" + d.type().typeDesc() + ") missing AspectLift");
+          return Opt.none();
         }
         elementLifts.add(elemLiftSome.value());
         elementTypes.add(d.type());
