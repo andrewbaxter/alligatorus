@@ -37,6 +37,7 @@ final class IdentitiesGenTest {
       {"TYPE_CODE_DYN_HANDLE_IDENTITY", "6011"},
       {"TYPE_ASPECT_IDENTITY", "6012"},
       {"EXPR_TYPE_IDENTITY", "6013"},
+      {"JAVA_DATA_DESCRIPTOR_TYPE_IDENTITY", "6014"},
     };
     for (var e : entries) {
       var needle = "public static final Unique " + e[0] + " = new Unique.Builtin(" + e[1] + "L)";

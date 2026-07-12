@@ -124,6 +124,7 @@ public final class DynamicTypes {
     factory("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
     factory("compilerxyz.eval.value.source_function", "SourceFunctionType");
     factory("compilerxyz.eval.value.source_interface", "InterfaceData");
+    factory("compilerxyz.eval.dynamic", "JavaDataDescriptor");
     factory("compilerxyz.eval.dynamic.target", "TargetBindSub");
     factory("compilerxyz.eval.dynamic.target", "BindResult");
     factory("compilerxyz.eval.dynamic.target", "RecordBindField");

@@ -1,5 +1,20 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.value.object_.ObjectAspectSource;
+import compilerxyz.eval.value.object_.ObjectDataField;
+import compilerxyz.eval.value.object_.ObjectDropKind;
+import compilerxyz.eval.value.object_.ObjectMethod;
+import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
+import compilerxyz.eval.value.object_.TypeObjectCastRule;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTypeIds;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
+
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
     public static final JavaDataDescriptor DESC_INT = new JavaDataDescriptor("I");
@@ -67,5 +82,39 @@ public class JavaDataDescriptor {
     @Override
     public int hashCode() {
         return value.hashCode();
+    }
+
+    public static Type dynamicType() {
+        return JavaDataDescriptorDynamicType.INSTANCE;
+    }
+
+    static final class JavaDataDescriptorDynamicType {
+        static final TypeObjectDynamic INSTANCE = build();
+
+        private JavaDataDescriptorDynamicType() {}
+
+        private static TypeObjectDynamic build() {
+            var jvmClass = JavaInternalName.of("compilerxyz/eval/dynamic/JavaDataDescriptor");
+            var identityAspects = new TList<Unique>();
+            identityAspects.add(GenIdentities.JAVA_DATA_DESCRIPTOR_TYPE_IDENTITY);
+            var castFromRules = new TList<TypeObjectCastFromRule>();
+            castFromRules.add(
+                new TypeObjectCastFromRule.RestampFromIdentity(
+                    GenIdentities.JAVA_DATA_DESCRIPTOR_TYPE_IDENTITY));
+            return new TypeObjectDynamic(
+                GenTypeIds.TYPE_JAVA_DATA_DESCRIPTOR_DYNAMIC_TYPE_ID,
+                "JavaDataDescriptor",
+                jvmClass,
+                JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
+                new TList<ObjectDataField>(),
+                new TList<ObjectMethod>(),
+                ObjectDropKind.DYNAMIC_LIGHT,
+                identityAspects,
+                new TList<TypeObjectCastRule>(),
+                castFromRules,
+                Opt.<TypeObjectLift>none(),
+                Opt.<ObjectAspectSource>none(),
+                Opt.<JavaInternalName>none());
+        }
     }
 }

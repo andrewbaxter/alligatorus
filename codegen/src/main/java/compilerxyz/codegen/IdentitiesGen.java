@@ -35,7 +35,8 @@ final class IdentitiesGen {
         new IdentitySpec("type_code_enum_identity", 6010),
         new IdentitySpec("type_code_dyn_handle_identity", 6011),
         new IdentitySpec("type_aspect_identity", 6012),
-        new IdentitySpec("expr_type_identity", 6013));
+        new IdentitySpec("expr_type_identity", 6013),
+        new IdentitySpec("java_data_descriptor_type_identity", 6014));
   }
 
   static void run(

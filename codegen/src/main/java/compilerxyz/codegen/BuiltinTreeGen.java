@@ -546,6 +546,39 @@ public final class BuiltinTreeGen {
                             new NamedTypeRef("loc", qexprIdRef),
                             new NamedTypeRef("cv", cve))))));
 
+    var codeDynamicClass = ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
+    var codeDynamicRef = TypeRef.leaf(codeDynamicClass);
+    var eresultCodeDyn = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeDynamicRef);
+    var javaDataDescriptorRef =
+        TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor"));
+
+    var aspectConsumeDynamic =
+        new InterfaceSpec(
+            "aspect_consume_dynamic",
+            2009,
+            3010,
+            "cd_",
+            "AspectConsumeDynamic",
+            null,
+            true,
+            null,
+            null,
+            "compilerxyz.gen.AspectConsumeDynamic",
+            TList.of(
+                new Method(
+                    "toDynamic",
+                    eresultCodeDyn,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("cv", cve)))),
+                new Method(
+                    "consumeDynamicJvmClass",
+                    javaDataDescriptorRef,
+                    new MethodArgs(
+                        TList.of(new NamedTypeRef("xx", xxRef))))));
+
     var codeRef = ClassName.get("compilerxyz.eval", "Code");
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
     var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
@@ -755,7 +788,14 @@ var targetBindSubCls =
         new InterfaceSpec(
             "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, "CodeDyn", TList.<Method>of());
 
-    return TList.of(aspectFunction, aspectField, aspectDropDynamic, binding, target, codeDyn);
+    return TList.of(
+        aspectFunction,
+        aspectField,
+        aspectDropDynamic,
+        aspectConsumeDynamic,
+        binding,
+        target,
+        codeDyn);
   }
 
   public static NodeSpec canonicalSpec() {
@@ -878,6 +918,7 @@ var targetBindSubCls =
     var ifaceAspectFunction = findSpec(extras, "aspect_function");
     var ifaceAspectField = findSpec(extras, "aspect_field");
     var ifaceAspectDropDynamic = findSpec(extras, "aspect_drop_dynamic");
+    var ifaceAspectConsumeDynamic = findSpec(extras, "aspect_consume_dynamic");
     var ifaceBinding = findSpec(extras, "binding");
     var ifaceTarget = findSpec(extras, "target");
     var ifaceCodeDyn = findSpec(extras, "code_dyn");
@@ -981,6 +1022,9 @@ var targetBindSubCls =
             new Child(
                 "aspect_drop_dynamic",
                 new Leaf(new LeafSpec.Interface(ifaceAspectDropDynamic))),
+            new Child(
+                "aspect_consume_dynamic",
+                new Leaf(new LeafSpec.Interface(ifaceAspectConsumeDynamic))),
             new Child(
                 "bind_result",
                 new Leaf(
