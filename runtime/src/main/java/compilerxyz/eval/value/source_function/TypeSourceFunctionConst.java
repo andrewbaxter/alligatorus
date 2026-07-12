@@ -10,7 +10,6 @@ import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.ArtifactExternal;
 import compilerxyz.gen.Binding;
-import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.DefinitionSet;
@@ -57,13 +56,12 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public TypeId typeId() {
-    if (!(data.bindingId instanceof BindingId.Def def)) {
+    var setId = data.setId;
+    if (setId == null) {
       throw new IllegalStateException(
-          "TypeSourceFunctionConst::typeId: bindingId is not BindingId.Def for '"
-              + data.name
-              + "'");
+          "TypeSourceFunctionConst::typeId: function '" + data.name + "' has no setId");
     }
-    return new TypeId.DefsetMember(def.defSet(), def.index());
+    return new TypeId.DefsetMember(setId, data.funcIdx);
   }
 
 
@@ -125,16 +123,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                     + (data.name == null ? "(unnamed)" : data.name)
                     + "' is not attached to a definition set");
           }
-          var bindingId = data.bindingId;
-          if (!(bindingId instanceof BindingId.Def def)) {
-            return EResult.err(
-                loc,
-                "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                    + (data.name == null ? "(unnamed)" : data.name)
-                    + "' has no BindingId.Def registration (got "
-                    + bindingId
-                    + ")");
-          }
           var argType = data.argType;
           if (argType == null) {
             return EResult.err(
@@ -159,8 +147,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
           }
 
           if (data.compiledClassName == null && data.functionSpec != null) {
-            ImportInstall.registerStaticFunctionDefs(xx, set);
-            set.finishFunctions(xx.vx.ix.builtinDynamics, xx.vx.ix.staticFunctionDefs);
+            set.finishFunctions(xx.vx.ix.builtinDynamics);
           }
           var compiledClassName = data.compiledClassName;
           var compiledBytecode = data.compiledBytecode;
@@ -205,8 +192,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
           var body =
               new ArtifactDataDefSetFunction(
                   defSetArt,
-                  def.defSet(),
-                  def.index(),
+                  set.defSetId,
                   data.name,
                   argArt,
                   retArt,
@@ -254,7 +240,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
               },
               (body) -> {
                 var funcData = new SourceFunctionData(body.defSetId(), body.name());
-                funcData.bindingId = new BindingId.Def(body.defSetId(), body.entryId());
                 funcData.compiledClassName = body.compiledClassName();
                 funcData.compiledBytecode = body.compiledBytecode();
                 var fc = new ImportedSourceFunctionConst(funcData);
@@ -328,11 +313,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-    BindingId scopeId = data.bindingId;
-    if (scopeId == null) {
-      return EResult.err(
-          loc, "TypeSourceFunctionConst::call: definition set function not registered");
-    }
     var set = data.set;
     if (set == null) {
       return EResult.err(
@@ -349,15 +329,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return EResult.err(
           loc, "TypeSourceFunctionConst::call: definition set function missing return type");
     }
-    if (!(scopeId instanceof BindingId.Def def)) {
-      return EResult.err(
-          loc, "TypeSourceFunctionConst::call: bindingId is not a Def");
-    }
     var klass =
         compilerxyz.eval.dynamic.JavaInternalName.of(
-            compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(def.defSet()));
+            compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
     var methodName =
-        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionMethodName(def.index());
+        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionMethodName(data.funcIdx);
     var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");

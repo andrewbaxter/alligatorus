@@ -11,5 +11,4 @@ public record ArtifactDataDefSetMethod(
     Artifact retType,
     @Nullable String compiledClassName,
     @Nullable byte[] compiledBytecode,
-    long entryId,
     TList<ArtifactExternal> capturedExternals) {}

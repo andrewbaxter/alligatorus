@@ -224,16 +224,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       + m.name
                       + "' has not been compiled");
             }
-            var mBinding = m.bindingId;
-            if (!(mBinding instanceof BindingId.Def def)) {
-              return EResult.err(
-                  loc,
-                  "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object method '"
-                      + m.name
-                      + "' has no BindingId.Def (got "
-                      + mBinding
-                      + ")");
-            }
             var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argT);
             if (argArtRes.hasErrors()) {
               argArtRes.drainInto(errors);
@@ -264,7 +254,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                     retArt,
                     m.compiledClassName,
                     m.compiledBytecode,
-                    def.index(),
                     ext));
           }
           var ifaceImpls = new TList<ArtifactDataDefSetInterfaceImpl>();
@@ -299,15 +288,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         + mi.interfaceMethodIndex
                         + ") has not been compiled");
               }
-              var miBinding = mi.bindingId;
-              if (!(miBinding instanceof BindingId.Def miDef)) {
-                return EResult.err(
-                    loc,
-                    "TypeTypeSourceObjectConst::exporterRootDelegateSelfExport: object interface method impl has no "
-                        + "BindingId.Def (got "
-                        + miBinding
-                        + ")");
-              }
               var extRes =
                   ExternalCodec.exportExternals(
                       xx, loc, mi.capturedExternals);
@@ -323,7 +303,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       mi.interfaceMethodIndex,
                       mi.compiledClassName,
                       mi.compiledBytecode,
-                      miDef.index(),
                       ext));
             }
             ifaceImpls.add(
@@ -383,7 +362,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                 dt.compiledBytecode = body.compiledBytecode();
                 for (var m : body.methods()) {
                   var md = new SourceDataMethodData(m.name());
-                  md.bindingId = new BindingId.Def(body.defSetId(), m.entryId());
+                  md.methodIdx = dt.methods.size();
                   md.compiledClassName = m.compiledClassName();
                   md.compiledBytecode = m.compiledBytecode();
                   dt.methods.add(md);
@@ -497,11 +476,11 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           iface = ic.data();
                         }
                         var implData = new SourceObjectInterfaceImplData(iface);
+                        implData.implIdx = dt.interfaceImpls.size();
                         for (var mi : impl.methodImpls()) {
                           var mid = new SourceObjectInterfaceMethodImplData(
                               mi.interfaceMethodIndex());
-                          mid.bindingId =
-                              new BindingId.Def(body.defSetId(), mi.entryId());
+                          mid.methodImplIdx = implData.methodImpls.size();
                           mid.compiledClassName = mi.compiledClassName();
                           mid.compiledBytecode = mi.compiledBytecode();
                           var extRes =

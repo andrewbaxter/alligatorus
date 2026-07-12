@@ -39,7 +39,6 @@ import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import compilerxyz.util.TSet;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.TypeId;
@@ -66,6 +65,7 @@ public final class TypeSourceObjectDynamic
   public @Nullable String description;
   public @Nullable Type underlyingType;
   public final Unique identity;
+  public int objIdx;
   public final TList<SourceDataMethodData> methods;
   public final TList<SourceObjectInterfaceImplData> interfaceImpls;
   public @Nullable ArtifactIdSource artifactId;
@@ -101,8 +101,7 @@ public final class TypeSourceObjectDynamic
       QExprId loc,
       long objectIndex,
       DefinitionSetClassLoader loader,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
     if (compiledBinaryName != null) {
       return EResult.ok(null);
     }
@@ -114,7 +113,7 @@ public final class TypeSourceObjectDynamic
               + "'");
     }
     var emitted =
-        SourceObjectEmitter.emit(setId, objectIndex, this, builtinDynamics, staticFunctionDefs);
+        SourceObjectEmitter.emit(setId, objectIndex, this, builtinDynamics);
     compiledBinaryName = emitted.binaryName();
     compiledBytecode = emitted.bytecode();
     compiledStaticFieldValues = emitted.staticFieldValues();

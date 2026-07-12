@@ -1,10 +1,8 @@
 package compilerxyz.eval;
 
 import compilerxyz.eval.dynamic.Prefixes;
-import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import compilerxyz.util.TSet;
 
 public final class ImportInstall {
   private ImportInstall() {}
@@ -47,17 +45,12 @@ public final class ImportInstall {
   private static EResult<Void> installCompiledArtifacts(
       ExprContext xx, QExprId loc, DefinitionSet set, DefinitionSetClassLoader loader) {
 
-    registerStaticFunctionDefs(xx, set);
-
     for (var func : set.functions) {
       var finishResult = func.finish(xx, loc);
       if (finishResult.hasErrors()) {
         return finishResult.reerr();
       }
     }
-
-    registerStaticFunctionDefs(xx, set);
-    var staticFunctionDefs = xx.vx.ix.staticFunctionDefs;
 
     for (long objIdx = 0; objIdx < set.objects.size(); objIdx++) {
       var obj = set.objects.get((int) objIdx);
@@ -93,7 +86,7 @@ public final class ImportInstall {
         loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
       }
       var objFinishResult =
-          obj.finish(xx, loc, objIdx, loader, xx.vx.ix.builtinDynamics, staticFunctionDefs);
+          obj.finish(xx, loc, objIdx, loader, xx.vx.ix.builtinDynamics);
       if (objFinishResult.hasErrors()) {
         return objFinishResult.reerr();
       }
@@ -107,7 +100,7 @@ public final class ImportInstall {
       }
     }
 
-    var emittedFuncs = set.finishFunctions(xx.vx.ix.builtinDynamics, staticFunctionDefs);
+    var emittedFuncs = set.finishFunctions(xx.vx.ix.builtinDynamics);
     if (emittedFuncs != null) {
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
       var funcStaticFields = new TOrderedMap<String, Object>();
@@ -151,10 +144,6 @@ public final class ImportInstall {
       }
     }
     for (var func : set.functions) {
-      var nameResult = funcBindingKey(loc, func);
-      if (nameResult.hasErrors()) {
-        return nameResult.reerr();
-      }
       var binaryName = func.compiledClassName;
       var bytecode = func.compiledBytecode;
       if (binaryName == null || bytecode == null) {
@@ -224,57 +213,6 @@ public final class ImportInstall {
               "bindingIdDynamicKey(Local): locals are JVM slots, not static fields; caller must"
                   + " handle Local separately (JavaBytecodeStoreLoad ALOAD/ASTORE on the key)");
       case BindingId.Builtin builtin -> Prefixes.BUILTIN_PREFIX + builtin.index();
-      case BindingId.Def def -> {
-        var defSet = def.defSet();
-        var compileId = defSet.compileId();
-        var importState = compileId.importState();
-        var source = compileId.source();
-        yield Prefixes.DEF_PREFIX
-            + importState.value()
-            + "_"
-            + source.value()
-            + "_"
-            + defSet.index()
-            + "_"
-            + def.index();
-      }
     };
   }
-
-  private static EResult<String> funcBindingKey(QExprId loc, SourceFunctionData func) {
-    var id = func.bindingId;
-    if (id == null) {
-      return EResult.err(loc, "func missing binding_id");
-    }
-    return EResult.ok(bindingIdDynamicKey(id));
-  }
-
-  public static void registerStaticFunctionDefs(ExprContext xx, DefinitionSet set) {
-    var out = xx.vx.ix.staticFunctionDefs;
-    var seen = new TSet<DefSetId>();
-    walkRegisterStaticFunctionDefs(set, out, seen);
-
-    for (var ds : xx.vx.definitionSets.values()) {
-      walkRegisterStaticFunctionDefs(ds, out, seen);
-    }
-  }
-
-  private static void walkRegisterStaticFunctionDefs(
-      DefinitionSet set,
-      TSet<BindingId.Def> out,
-      TSet<DefSetId> seen) {
-    if (!seen.add(set.defSetId)) {
-      return;
-    }
-    for (var func : set.functions) {
-      var id = func.bindingId;
-      if (id instanceof BindingId.Def def) {
-        out.add(def);
-      }
-    }
-    for (var dep : set.dependencies.values()) {
-      walkRegisterStaticFunctionDefs(dep, out, seen);
-    }
-  }
-
 }

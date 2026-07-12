@@ -17,7 +17,6 @@ import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
-import compilerxyz.util.TSet;
 import org.jspecify.annotations.Nullable;
 
 public final class SourceObjectEmitter {
@@ -201,8 +200,7 @@ public final class SourceObjectEmitter {
       DefSetId defSet,
       long objectIndex,
       TypeSourceObjectDynamic data,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
     var binaryName = binaryNameFor(defSet, objectIndex);
     var internalNameStr = binaryName.replace('.', '/');
     var internalName = JavaInternalName.of(internalNameStr);
@@ -296,7 +294,7 @@ public final class SourceObjectEmitter {
         var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
         collectMethodFields(
             bodyCode, m.capturedExternals, prefix, allFieldNames, fieldDescriptors,
-            staticFieldValues, builtinDynamics, staticFunctionDefs);
+            staticFieldValues, builtinDynamics);
       }
     }
 
@@ -327,15 +325,6 @@ public final class SourceObjectEmitter {
           fieldDescriptors.put(
               name, JavaDataDescriptor.fromClass(entry.external().externalHostClass()));
           staticFieldValues.put(name, entry.external().externalHostValue());
-        }
-      }
-      for (var defId : EvalRootEmitter.referencedDefIds(bodyCode)) {
-        if (staticFunctionDefs.contains(defId)) {
-          continue;
-        }
-        var name = ImportInstall.bindingIdDynamicKey(defId);
-        if (allFieldNames.add(name)) {
-          fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
         }
       }
     }
@@ -375,7 +364,7 @@ public final class SourceObjectEmitter {
       if (bodyCode == null) {
         continue;
       }
-      emitMethodMethod(cw, internalName, methodIdx, method, data.underlyingType, bodyCode, staticFunctionDefs);
+      emitMethodMethod(cw, internalName, methodIdx, method, data.underlyingType, bodyCode);
     }
 
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
@@ -387,7 +376,7 @@ public final class SourceObjectEmitter {
           continue;
         }
         emitInterfaceMethodMethod(
-            cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType, bodyCode, staticFunctionDefs);
+            cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType, bodyCode);
       }
     }
 
@@ -404,8 +393,7 @@ public final class SourceObjectEmitter {
       long methodIdx,
       SourceDataMethodData method,
       compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
-      CodeDynamic bodyCode,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      CodeDynamic bodyCode) {
     var methodName = methodMethodName(methodIdx);
     var prefix = methodFieldPrefix(methodIdx);
     if (!(method.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
@@ -433,7 +421,6 @@ public final class SourceObjectEmitter {
             null);
 
     var target = new TargetDynamic(new Counter());
-    target.registerStaticFunctionDefs(staticFunctionDefs);
     int totalArgSlots = 0;
     for (var s : argSlots) totalArgSlots += slotWidth(s.jvmDesc());
     var ctx = new EmitCtx(internalName.value(), 1, 1 + totalArgSlots, prefix);
@@ -490,8 +477,7 @@ public final class SourceObjectEmitter {
       TOrderedSet<String> allFieldNames,
       TOrderedMap<String, JavaDataDescriptor> fieldDescriptors,
       TOrderedMap<String, Object> staticFieldValues,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
     for (var builtinId : EvalRootEmitter.referencedBuiltinIds(bodyCode)) {
       var name = Prefixes.BUILTIN_PREFIX + builtinId;
       if (allFieldNames.add(name)) {
@@ -513,15 +499,6 @@ public final class SourceObjectEmitter {
         staticFieldValues.put(name, entry.external().externalHostValue());
       }
     }
-    for (var defId : EvalRootEmitter.referencedDefIds(bodyCode)) {
-      if (staticFunctionDefs.contains(defId)) {
-        continue;
-      }
-      var name = ImportInstall.bindingIdDynamicKey(defId);
-      if (allFieldNames.add(name)) {
-        fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
-      }
-    }
   }
 
   private static void emitInterfaceMethodMethod(
@@ -532,8 +509,7 @@ public final class SourceObjectEmitter {
       compilerxyz.eval.value.source_interface.InterfaceData iface,
       SourceObjectInterfaceMethodImplData m,
       compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
-      CodeDynamic bodyCode,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      CodeDynamic bodyCode) {
     var methodName = interfaceMethodMethodName(implIdx, mIdx);
     var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
     var selfIdRaw = m.innerBindingId;
@@ -582,7 +558,6 @@ public final class SourceObjectEmitter {
             null,
             null);
     var target = new TargetDynamic(new Counter());
-    target.registerStaticFunctionDefs(staticFunctionDefs);
     int totalParamSlots = 0;
     for (var wide : jvmParamWides) totalParamSlots += (wide ? 2 : 1);
     var ctx = new EmitCtx(internalName.value(), 1, 1 + totalParamSlots, prefix);

@@ -93,18 +93,8 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
 
   private final Counter localIds;
 
-  private compilerxyz.util.TSet<BindingId.Def> staticFunctionDefs = new compilerxyz.util.TSet<>();
-
   public TargetDynamic(Counter localIds) {
     this.localIds = localIds;
-  }
-
-  public void registerStaticFunctionDefs(compilerxyz.util.TSet<BindingId.Def> defs) {
-    this.staticFunctionDefs = defs;
-  }
-
-  public boolean isStaticFunctionDef(BindingId.Def def) {
-    return staticFunctionDefs.contains(def);
   }
 
   @Override

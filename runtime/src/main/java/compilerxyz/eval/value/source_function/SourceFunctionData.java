@@ -44,7 +44,7 @@ public final class SourceFunctionData {
   public @Nullable Value implExpr;
   public @Nullable Type argType;
   public @Nullable Type retType;
-  public @Nullable BindingId bindingId;
+  public int funcIdx;
   public @Nullable String compiledClassName;
   public @Nullable byte[] compiledBytecode;
 
@@ -105,25 +105,16 @@ public final class SourceFunctionData {
       return EResult.err(
           rootLoc, "Definition set function '" + nameStr + "' is missing a return type");
     }
-    var scopeId = bindingId;
-    if (scopeId == null) {
+    var funcSet = set;
+    if (funcSet == null) {
       throw new AssertionError(
-          "Definition set function '" + nameStr + "' is not registered");
+          "Definition set function '" + nameStr + "' is not attached to a definition set");
     }
 
     var innerVx = new EvalContext(xx.vx.ix);
-    // Source-function bodies reference their own Functions class's static fields (not the
-    // outer EvalRoot), because Functions is loaded in a separate class loader that can't reach
-    // EvalRoot. DefSetFunctionsEmitter registers builtins/defs on Functions with un-prefixed
-    // names matching the body's field references.
-    if (scopeId instanceof BindingId.Def defForOwner) {
-      innerVx.evalRootInternalName =
-          compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(defForOwner.defSet());
-    } else {
-      innerVx.evalRootInternalName = xx.vx.evalRootInternalName;
-    }
+    innerVx.evalRootInternalName =
+        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-    innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
 
     var bodyScope = new Scope(null);
     bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
@@ -219,17 +210,12 @@ public final class SourceFunctionData {
     var captured = innerVx.externals;
     capturedExternals.addAll(captured);
 
-    var defBinding = scopeId;
-    if (!(defBinding instanceof BindingId.Def def)) {
-      throw new AssertionError(
-          "SourceFunctionData.finish: binding id must be a Def, got " + defBinding.getClass());
-    }
     var retDescRes = jvmDescForRes(xx, rootLoc, retT);
     if (retDescRes.hasErrors()) return retDescRes.reerr();
     var retDesc = retDescRes.requireValue("SourceFunctionData::finish retDesc");
     functionSpec =
         new DefSetFunctionsEmitter.FunctionSpec(
-            def.index(), argSlots, retDesc, bodyCode, TList.from(captured));
+            funcIdx, argSlots, retDesc, bodyCode, TList.from(captured));
     return EResult.ok(null);
   }
 

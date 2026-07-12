@@ -24,7 +24,6 @@ public final class CompileImportContext {
   public final ImportStateId importState;
   public final TSet<DefSetId> installedDefSets = new TSet<>();
 
-  public final TSet<BindingId.Def> staticFunctionDefs = new TSet<>();
   public final SourceId sourceId;
 
   public CompileImportContext(

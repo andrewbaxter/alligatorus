@@ -171,7 +171,6 @@ public final class Eval {
     var vx = new EvalContext(cix);
     var rootScope = new Scope(null);
     var target = new TargetDynamic(vx.nextLocalId);
-    target.registerStaticFunctionDefs(cix.staticFunctionDefs);
     var xx = new ExprContext(rootScope, target, vx, importState, new TypeStringConst());
     var registerDynamic = !cix.builtinsRegistered;
     var scopeRes = initBuiltinScope(xx, rootLoc, importState, registerDynamic);
@@ -303,8 +302,7 @@ public final class Eval {
               binaryName,
               rootSome.value(),
               vx.externals,
-              cix.builtinDynamics,
-              cix.staticFunctionDefs);
+              cix.builtinDynamics);
       var loader =
           new DefinitionSetClassLoader(
               DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);

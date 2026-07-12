@@ -1,13 +1,9 @@
 package compilerxyz.eval.dynamic;
 
-import compilerxyz.eval.BindingId;
 import compilerxyz.eval.EvalContext;
-import compilerxyz.eval.ImportInstall;
-import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
-import compilerxyz.util.TSet;
 import java.util.concurrent.atomic.AtomicLong;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -46,12 +42,6 @@ public final class EvalRootEmitter {
     return out;
   }
 
-  public static TOrderedSet<BindingId.Def> referencedDefIds(CodeDynamic code) {
-    var out = new TOrderedSet<BindingId.Def>();
-    collectReferencedDefs(code, out);
-    return out;
-  }
-
   private static void collectReferencedBuiltins(CodeDynamic code, TOrderedSet<Long> out) {
       var v = code.code();
       if (v instanceof JavaBytecodeInstructionObj obj
@@ -74,41 +64,6 @@ public final class EvalRootEmitter {
       }
   }
 
-  private static void collectReferencedDefs(CodeDynamic code, TOrderedSet<BindingId.Def> out) {
-      var v = code.code();
-      if (v instanceof JavaBytecodeInstructionObj obj
-          && obj.node instanceof org.objectweb.asm.tree.FieldInsnNode fi
-          && (fi.getOpcode() == org.objectweb.asm.Opcodes.GETSTATIC
-              || fi.getOpcode() == org.objectweb.asm.Opcodes.PUTSTATIC)
-          && fi.name.startsWith(Prefixes.DEF_PREFIX)) {
-          var def = parseDefFieldName(fi.name);
-          if (def != null) out.add(def);
-          return;
-      }
-      if (v instanceof JavaBytecodeSequence s) {
-          for (var child : s.children) collectReferencedDefs(child, out);
-          return;
-      }
-      if (v instanceof CodeDynamic nested) {
-          collectReferencedDefs(nested, out);
-      }
-  }
-
-  private static BindingId.Def parseDefFieldName(String name) {
-      var body = name.substring(Prefixes.DEF_PREFIX.length());
-      var parts = body.split("_");
-      if (parts.length != 4) return null;
-      try {
-          var importState = new compilerxyz.eval.ImportStateId(Long.parseLong(parts[0]));
-          var source = new compilerxyz.eval.SourceId(Long.parseLong(parts[1]));
-          var defSet = new compilerxyz.eval.DefSetId(
-              new compilerxyz.eval.CompileId(importState, source), Long.parseLong(parts[2]));
-          return new BindingId.Def(defSet, Long.parseLong(parts[3]));
-      } catch (NumberFormatException e) {
-          return null;
-      }
-  }
-
   public static String builtinFieldName(long scopeId) {
     return Prefixes.BUILTIN_PREFIX + scopeId;
   }
@@ -119,16 +74,6 @@ public final class EvalRootEmitter {
       CodeDynamic rootCode,
       TList<EvalContext.ExternalEntry> externals,
       TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
-    return emit(target, binaryName, rootCode, externals, builtinDynamics, new TSet<>());
-  }
-
-  public static EmittedRoot emit(
-      TargetDynamic target,
-      String binaryName,
-      CodeDynamic rootCode,
-      TList<EvalContext.ExternalEntry> externals,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
-      TSet<BindingId.Def> staticFunctionDefs) {
     var internalName = toInternalName(binaryName);
 
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
@@ -163,12 +108,6 @@ public final class EvalRootEmitter {
       fieldDescriptors.put(fieldName, desc);
     }
 
-    for (var def : referencedDefIds(rootCode)) {
-      if (staticFunctionDefs.contains(def)) {
-        continue;
-      }
-      fieldDescriptors.put(ImportInstall.bindingIdDynamicKey(def), JvmConstants.DESC_OBJECT);
-    }
     for (var entry : fieldDescriptors.entrySet()) {
       cw.visitField(
               Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,

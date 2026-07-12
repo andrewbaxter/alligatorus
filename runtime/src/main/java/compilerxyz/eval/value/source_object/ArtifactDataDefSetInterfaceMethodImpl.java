@@ -8,5 +8,4 @@ public record ArtifactDataDefSetInterfaceMethodImpl(
     int interfaceMethodIndex,
     @Nullable String compiledClassName,
     @Nullable byte[] compiledBytecode,
-    long entryId,
     TList<ArtifactExternal> capturedExternals) {}

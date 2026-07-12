@@ -24,7 +24,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import compilerxyz.util.TSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -42,7 +41,6 @@ public final class DefinitionSet implements ExporterAny {
   public boolean finished;
   public final TList<SourceFunctionData> functions;
   public final TList<InterfaceData> interfaces;
-  public final Counter nextEntryId;
   public final TList<TypeSourceObjectDynamic> objects;
   public final TList<TypeSourceUnionDynamic> unions;
 
@@ -55,11 +53,10 @@ public final class DefinitionSet implements ExporterAny {
     this.interfaces = new TList<>();
     this.objects = new TList<>();
     this.unions = new TList<>();
-    this.nextEntryId = new Counter();
   }
 
   public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions(
-      TOrderedMap<String, External> builtinDynamics, TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, External> builtinDynamics) {
     var specs = new TList<DefSetFunctionsEmitter.FunctionSpec>();
     var contributors = new TList<SourceFunctionData>();
     for (var func : functions) {
@@ -78,7 +75,7 @@ public final class DefinitionSet implements ExporterAny {
       return null;
     }
     var emitted =
-        DefSetFunctionsEmitter.emit(defSetId, specs, builtinDynamics, staticFunctionDefs);
+        DefSetFunctionsEmitter.emit(defSetId, specs, builtinDynamics);
     for (var func : contributors) {
       func.compiledClassName = emitted.binaryName();
       func.compiledBytecode = emitted.bytecode();
@@ -236,6 +233,7 @@ public final class DefinitionSet implements ExporterAny {
                           throw new IllegalStateException(
                               "def-set object artifact had wrong type: " + v.getClass());
                         }
+                        dtData.objIdx = set.objects.size();
                         set.objects.add(dtData);
                       }
                       for (var fArt : body.functions()) {
@@ -253,6 +251,7 @@ public final class DefinitionSet implements ExporterAny {
                           throw new IllegalStateException(
                               "def-set function artifact had wrong type: " + v.getClass());
                         }
+                        fData.funcIdx = set.functions.size();
                         set.functions.add(fData);
                       }
                       for (var iArt : body.interfaces()) {

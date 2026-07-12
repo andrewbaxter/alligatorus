@@ -292,6 +292,7 @@ public final class DynRuntime {
     }
     var impl =
         new compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData(ifaceData);
+    impl.implIdx = dtData.interfaceImpls.size();
     for (int idx = 0; idx < ifaceData.methods.size(); idx++) {
       var im = ifaceData.methods.get(idx);
       var ckey = new compilerxyz.eval.ConstKey.Str(im.name);
@@ -300,11 +301,10 @@ public final class DynRuntime {
         throw new IllegalStateException(
             "Missing implementation for builtin interface method '" + im.name + "'");
       }
-      var entryId = ds.nextEntryId.next();
       var mImpl =
           new compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData(idx);
       mImpl.implExpr = expr;
-      mImpl.bindingId = new compilerxyz.eval.BindingId.Def(ds.defSetId, entryId);
+      mImpl.methodImplIdx = impl.methodImpls.size();
       impl.methodImpls.add(mImpl);
     }
     dtData.interfaceImpls.add(impl);

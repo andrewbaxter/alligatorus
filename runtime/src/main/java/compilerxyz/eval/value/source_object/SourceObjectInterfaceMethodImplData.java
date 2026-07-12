@@ -34,9 +34,9 @@ public final class SourceObjectInterfaceMethodImplData {
   public @Nullable Value implExpr;
   public @Nullable String compiledClassName;
   public @Nullable byte[] compiledBytecode;
-  public @Nullable BindingId bindingId;
   public @Nullable BindingId innerBindingId;
   public @Nullable BindingId outerBindingId;
+  public int methodImplIdx;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
   public @Nullable CodeDynamic compiledBodyCode;
@@ -76,10 +76,6 @@ public final class SourceObjectInterfaceMethodImplData {
     if (retT == null) {
       throw new AssertionError("Interface method missing return type");
     }
-    if (bindingId == null) {
-      throw new AssertionError("Interface method impl is not registered");
-    }
-
     var innerVx = new EvalContext(xx.vx.ix);
     if (dtData.setId == null) {
       throw new AssertionError(
@@ -93,7 +89,6 @@ public final class SourceObjectInterfaceMethodImplData {
     innerVx.evalRootInternalName =
         compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dtData.setId, objectIndex);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-    innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     innerBindingId = selfId;
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());

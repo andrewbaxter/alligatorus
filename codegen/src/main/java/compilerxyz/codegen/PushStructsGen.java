@@ -220,7 +220,6 @@ public final class PushStructsGen {
         ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
     var interfaceData =
         ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
-    var bindingIdDef = ClassName.get("compilerxyz.eval", "BindingId", "Def");
     var dynRuntime = ClassName.get("compilerxyz.eval.dynamic", "DynRuntime");
     var objectClass = ClassName.get(Object.class);
     var stringClass = ClassName.get(String.class);
@@ -231,10 +230,9 @@ public final class PushStructsGen {
             .returns(sourceFuncResult)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "name")
-            .addStatement("var entryId = this.inner.nextEntryId.next()")
             .addStatement(
                 "var data = new $T(this.inner.defSetId, name, this.inner)", sourceFunctionData)
-            .addStatement("data.bindingId = new $T(this.inner.defSetId, entryId)", bindingIdDef)
+            .addStatement("data.funcIdx = this.inner.functions.size()")
             .addStatement("this.inner.functions.add(data)")
             .addStatement("return new $T(new $T(data))", sourceFuncResult, typeSourceFunctionConst)
             .build());
@@ -249,6 +247,7 @@ public final class PushStructsGen {
             .addStatement(
                 "var data = new $T(this.inner.defSetId, name, identity, this.inner)",
                 typeSourceObjectDynamic)
+            .addStatement("data.objIdx = this.inner.objects.size()")
             .addStatement("this.inner.objects.add(data)")
             .addStatement("return new $T(data)", sourceObjectBuilder)
             .build());
@@ -434,7 +433,6 @@ public final class PushStructsGen {
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
     var constKeyStr = ClassName.get("compilerxyz.eval", "ConstKey", "Str");
     var expr = ClassName.get("compilerxyz.eval", "Expr");
-    var bindingIdDef = ClassName.get("compilerxyz.eval", "BindingId", "Def");
     var optSome = ClassName.get("compilerxyz.util", "Opt", "Some");
     var dynRuntime = ClassName.get("compilerxyz.eval.dynamic", "DynRuntime");
     var objectClass = ClassName.get(Object.class);
@@ -477,10 +475,8 @@ public final class PushStructsGen {
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "name")
             .addStatement("var dtData = this.type_")
-            .addStatement("var ds = $T.lookupDefSet(xx, dtData.setId)", dynRuntime)
-            .addStatement("var entryId = ds.nextEntryId.next()")
             .addStatement("var method = new $T(name)", sourceDataMethodData)
-            .addStatement("method.bindingId = new $T(ds.defSetId, entryId)", bindingIdDef)
+            .addStatement("method.methodIdx = dtData.methods.size()")
             .addStatement("dtData.methods.add(method)")
             .addStatement("return new $T(method)", sourceObjectMethodResult)
             .build());
@@ -517,8 +513,8 @@ public final class PushStructsGen {
                 "null")
             .endControlFlow()
             .addStatement("var dtData = this.type_")
-            .addStatement("var ds = $T.lookupDefSet(xx, dtData.setId)", dynRuntime)
             .addStatement("var impl = new $T(ifaceData)", sourceObjectInterfaceImplData)
+            .addStatement("impl.implIdx = dtData.interfaceImpls.size()")
             .beginControlFlow("for (int idx = 0; idx < ifaceData.methods.size(); idx++)")
             .addStatement("var im = ifaceData.methods.get(idx)")
             .addStatement("var ckey = new $T(im.name)", constKeyStr)
@@ -530,10 +526,9 @@ public final class PushStructsGen {
                 "Missing implementation for interface method '",
                 "'")
             .endControlFlow()
-            .addStatement("var entryId = ds.nextEntryId.next()")
             .addStatement("var mImpl = new $T(idx)", sourceObjectInterfaceMethodImplData)
             .addStatement("mImpl.implExpr = implExpr")
-            .addStatement("mImpl.bindingId = new $T(ds.defSetId, entryId)", bindingIdDef)
+            .addStatement("mImpl.methodImplIdx = impl.methodImpls.size()")
             .addStatement("impl.methodImpls.add(mImpl)")
             .endControlFlow()
             .addStatement("dtData.interfaceImpls.add(impl)")

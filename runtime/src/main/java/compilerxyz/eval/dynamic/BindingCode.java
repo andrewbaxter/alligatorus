@@ -13,7 +13,6 @@ public final class BindingCode {
     return switch (id) {
       case BindingId.Local local ->
           new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, local.key()));
-      case BindingId.Def def -> staticFieldForBinding(loc, vx, def);
       case BindingId.Builtin builtin -> staticFieldForBinding(loc, vx, builtin);
     };
   }
@@ -31,7 +30,6 @@ public final class BindingCode {
           seq.add(
               new CodeDynamic(
                   loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, local.key())));
-      case BindingId.Def def -> seq.add(staticFieldSetForBinding(loc, vx, def));
       case BindingId.Builtin builtin -> seq.add(staticFieldSetForBinding(loc, vx, builtin));
     }
     return new CodeDynamic(loc, seq);
@@ -51,7 +49,6 @@ public final class BindingCode {
             ? JvmConstants.DESC_OBJECT
             : JavaDataDescriptor.fromClass(external.externalHostClass());
       }
-      case BindingId.Def ignored -> JvmConstants.DESC_OBJECT;
       case BindingId.Local ignored ->
           throw new AssertionError(
               "BindingCode::descForBinding: local bindings do not have static field descriptors");

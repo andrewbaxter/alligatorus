@@ -4,12 +4,8 @@ import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Counter;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.EvalContext;
-import compilerxyz.eval.ImportInstall;
-import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import compilerxyz.util.TOrderedSet;
-import compilerxyz.util.TSet;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
@@ -19,7 +15,7 @@ public final class DefSetFunctionsEmitter {
   public record ArgSlot(BindingId.Local id, JavaDataDescriptor jvmDesc) {}
 
   public record FunctionSpec(
-      long bindingIndex,
+      long funcIdx,
       TList<ArgSlot> argSlots,
       JavaDataDescriptor retDesc,
       CodeDynamic bodyCode,
@@ -51,19 +47,18 @@ public final class DefSetFunctionsEmitter {
     return functionsBinaryName(defSet).replace('.', '/');
   }
 
-  public static String functionMethodName(long bindingIndex) {
-    return "_" + bindingIndex;
+  public static String functionMethodName(long funcIdx) {
+    return "_" + funcIdx;
   }
 
-  public static String functionFieldPrefix(long bindingIndex) {
-    return "_" + bindingIndex + "_";
+  public static String functionFieldPrefix(long funcIdx) {
+    return "_" + funcIdx + "_";
   }
 
   public static EmittedFunctions emit(
       DefSetId defSet,
       TList<FunctionSpec> specs,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics,
-      TSet<BindingId.Def> staticFunctionDefs) {
+      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
     var binaryName = functionsBinaryName(defSet);
     var internalName = functionsInternalName(defSet);
 
@@ -80,7 +75,7 @@ public final class DefSetFunctionsEmitter {
     var staticFieldValues = new TOrderedMap<String, Object>();
 
     for (var spec : specs) {
-      var prefix = functionFieldPrefix(spec.bindingIndex());
+      var prefix = functionFieldPrefix(spec.funcIdx());
 
       for (var builtinId : EvalRootEmitter.referencedBuiltinIds(spec.bodyCode())) {
         var name = Prefixes.BUILTIN_PREFIX + builtinId;
@@ -110,14 +105,6 @@ public final class DefSetFunctionsEmitter {
         }
         staticFieldValues.put(name, external.externalHostValue());
       }
-
-      for (var defId : EvalRootEmitter.referencedDefIds(spec.bodyCode())) {
-        if (staticFunctionDefs.contains(defId)) {
-          continue;
-        }
-        var name = ImportInstall.bindingIdDynamicKey(defId);
-        fieldDescriptors.put(name, JvmConstants.DESC_OBJECT);
-      }
     }
     for (var entry : fieldDescriptors.entrySet()) {
       cw.visitField(
@@ -137,7 +124,7 @@ public final class DefSetFunctionsEmitter {
         .visitEnd();
 
     for (var spec : specs) {
-      emitFunctionMethod(cw, internalName, spec, staticFunctionDefs);
+      emitFunctionMethod(cw, internalName, spec);
     }
 
     cw.visitEnd();
@@ -147,10 +134,9 @@ public final class DefSetFunctionsEmitter {
   private static void emitFunctionMethod(
       ClassWriter cw,
       String internalName,
-      FunctionSpec spec,
-      TSet<BindingId.Def> staticFunctionDefs) {
-    var methodName = functionMethodName(spec.bindingIndex());
-    var prefix = functionFieldPrefix(spec.bindingIndex());
+      FunctionSpec spec) {
+    var methodName = functionMethodName(spec.funcIdx());
+    var prefix = functionFieldPrefix(spec.funcIdx());
     var mv =
         cw.visitMethod(
             Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
@@ -159,7 +145,6 @@ public final class DefSetFunctionsEmitter {
             null,
             null);
     var target = new TargetDynamic(new Counter());
-    target.registerStaticFunctionDefs(staticFunctionDefs);
     int reservedLocals = 0;
     for (var s : spec.argSlots()) reservedLocals += slotWidth(s.jvmDesc());
     var ctx = new EmitCtx(internalName, Math.max(1, reservedLocals), prefix);
@@ -193,26 +178,6 @@ public final class DefSetFunctionsEmitter {
   private static int slotWidth(JavaDataDescriptor d) {
     var v = d.value();
     return (v.equals("D") || v.equals("J")) ? 2 : 1;
-  }
-
-  private static int loadOpcode(JavaDataDescriptor d) {
-    return switch (d.value()) {
-      case "I", "Z", "B", "S", "C" -> Opcodes.ILOAD;
-      case "J" -> Opcodes.LLOAD;
-      case "F" -> Opcodes.FLOAD;
-      case "D" -> Opcodes.DLOAD;
-      default -> Opcodes.ALOAD;
-    };
-  }
-
-  private static int storeOpcode(JavaDataDescriptor d) {
-    return switch (d.value()) {
-      case "I", "Z", "B", "S", "C" -> Opcodes.ISTORE;
-      case "J" -> Opcodes.LSTORE;
-      case "F" -> Opcodes.FSTORE;
-      case "D" -> Opcodes.DSTORE;
-      default -> Opcodes.ASTORE;
-    };
   }
 
   private static int returnOpcode(JavaDataDescriptor d) {

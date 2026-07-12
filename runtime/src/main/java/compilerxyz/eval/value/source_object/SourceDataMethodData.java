@@ -33,8 +33,8 @@ public final class SourceDataMethodData {
   public @Nullable Value implExpr;
   public @Nullable String compiledClassName;
   public @Nullable byte[] compiledBytecode;
-  public @Nullable BindingId bindingId;
   public @Nullable BindingId innerBindingId;
+  public int methodIdx;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
   public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
   public @Nullable CodeDynamic compiledBodyCode;
@@ -72,15 +72,9 @@ public final class SourceDataMethodData {
       return EResult.err(
           rootLoc, "Data type '" + dtName + "' method '" + name + "' is missing a return type");
     }
-    if (bindingId == null) {
-      throw new AssertionError(
-          "Data type '" + dtName + "' method '" + name + "' is not registered");
-    }
-
     var innerVx = new EvalContext(xx.vx.ix);
     innerVx.evalRootInternalName = objectInternalName;
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-    innerTarget.registerStaticFunctionDefs(xx.vx.ix.staticFunctionDefs);
     var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     innerBindingId = selfId;
 

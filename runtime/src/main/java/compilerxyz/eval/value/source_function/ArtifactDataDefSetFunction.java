@@ -10,7 +10,6 @@ import org.jspecify.annotations.Nullable;
 public record ArtifactDataDefSetFunction(
     Artifact defSet,
     DefSetId defSetId,
-    long entryId,
     @Nullable String name,
     Artifact argType,
     Artifact retType,
