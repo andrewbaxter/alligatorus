@@ -1061,6 +1061,12 @@ var targetBindSubCls =
             new Child(
                 "aspect_bind_id",
                 new Leaf(new LeafSpec.AspectId(4004, "Bind"))),
+            new Child(
+                "aspect_drop_dynamic_id",
+                new Leaf(new LeafSpec.AspectId(4005, "DropDynamic"))),
+            new Child(
+                "aspect_consume_dynamic_id",
+                new Leaf(new LeafSpec.AspectId(4006, "ConsumeDynamic"))),
             new Child("binding", new Leaf(new LeafSpec.Interface(ifaceBinding))),
             new Child("target", new Leaf(new LeafSpec.Interface(ifaceTarget))),
             new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn))),

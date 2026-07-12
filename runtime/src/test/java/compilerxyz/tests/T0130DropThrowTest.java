@@ -110,11 +110,43 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             new TestMb.RecordPair("desc", mb.seqOf(mb.str(name))),
                             new TestMb.RecordPair(
                                 "aspect",
-                                mb.call(
-                                    mb.field(
-                                        mb.call(mb.typesOption(), mb.typesAspect()),
-                                        mb.str("some")),
-                                    mb.scopeUse("outer"))),
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.operatorEq(
+                                                mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                mb.evalAspectBindId()),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesOption(), mb.typesAspect()),
+                                                    mb.str("some")),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.Branch(
+                                            mb.operatorEq(
+                                                mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                mb.evalAspectDropDynamicId()),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesOption(), mb.typesAspect()),
+                                                    mb.str("some")),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.Branch(
+                                            mb.operatorEq(
+                                                mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                mb.evalAspectConsumeDynamicId()),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesOption(), mb.typesAspect()),
+                                                    mb.str("some")),
+                                                mb.scopeUse("outer")))),
+                                    mb.call(
+                                        mb.field(
+                                            mb.call(mb.typesOption(), mb.typesAspect()),
+                                            mb.str("none")),
+                                        mb.literalNull()))),
                             new TestMb.RecordPair("id", mb.panic(mb.str("unimpl id"))),
                             new TestMb.RecordPair(
                                 "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),

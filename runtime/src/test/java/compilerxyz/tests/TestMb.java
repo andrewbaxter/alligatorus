@@ -62,6 +62,14 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_bind_id");
   }
 
+  public SourceExpr evalAspectDropDynamicId() {
+    return builtin("eval", "aspect_drop_dynamic_id");
+  }
+
+  public SourceExpr evalAspectConsumeDynamicId() {
+    return builtin("eval", "aspect_consume_dynamic_id");
+  }
+
   public SourceExpr evalBindResult() {
     return builtin("eval", "bind_result");
   }

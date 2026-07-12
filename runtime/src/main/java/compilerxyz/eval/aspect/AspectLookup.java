@@ -13,9 +13,8 @@ public final class AspectLookup {
   public static <A extends Aspect> Opt<A> getMaybe(
       ExprContext xx, Type type, Unique id, Class<A> aspectClass) {
     return switch (type.typeAspect(xx, id)) {
-      case Opt.Some<Aspect> s when aspectClass.isInstance(s.value()) ->
-          Opt.some(aspectClass.cast(s.value()));
-      default -> Opt.none();
+      case Opt.Some<Aspect> s -> Opt.some(aspectClass.cast(s.value()));
+      case Opt.None<Aspect> n -> Opt.none();
     };
   }
 

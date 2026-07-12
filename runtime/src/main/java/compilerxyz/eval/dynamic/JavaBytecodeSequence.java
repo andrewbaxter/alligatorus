@@ -423,18 +423,40 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                         n.node,
                                                         new AsmFramingVisitor() {
                                                             void setFrameInitialVars(Label l) {
-                                                                var pair = new Pair<>(currentIndexes[0], currentRevIndexes[0]);
-                                                                var old = branchIndexes.put(l, pair);
-                                                                if (old != null) {
-                                                                    if (old.second().size() != currentRevIndexes[0].size()) {
-                                                                        throw new AssertionError();
-                                                                    }
-                                                                    for (int i = 0; i < old.second().size(); ++i) {
-                                                                        if (currentRevIndexes[0].get(i) != old.second().get(i)) {
-                                                                            throw new AssertionError();
+                                                                var old = branchIndexes.get(l);
+                                                                if (old == null) {
+                                                                    branchIndexes.put(
+                                                                        l,
+                                                                        new Pair<>(
+                                                                            currentIndexes[0],
+                                                                            currentRevIndexes[0]));
+                                                                    return;
+                                                                }
+                                                                if (old.second().size()
+                                                                        != currentRevIndexes[0].size()) {
+                                                                    throw new AssertionError();
+                                                                }
+                                                                var mergedFwd = old.first();
+                                                                var mergedRev = old.second();
+                                                                for (int i = 0;
+                                                                        i < old.second().size();
+                                                                        ++i) {
+                                                                    var oldKey = old.second().get(i);
+                                                                    var newKey =
+                                                                            currentRevIndexes[0]
+                                                                                    .get(i);
+                                                                    if (oldKey != newKey) {
+                                                                        mergedRev =
+                                                                                mergedRev.with(i, null);
+                                                                        if (oldKey != null) {
+                                                                            mergedFwd =
+                                                                                    mergedFwd.minus(oldKey);
                                                                         }
                                                                     }
                                                                 }
+                                                                branchIndexes.put(
+                                                                        l,
+                                                                        new Pair<>(mergedFwd, mergedRev));
                                                             }
 
                                                             @Override
