@@ -3,6 +3,7 @@ package compilerxyz.codegen;
 import com.palantir.javaformat.java.Formatter;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
@@ -11,6 +12,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -55,6 +57,117 @@ final class AspectsGen {
       ClassName.get("compilerxyz.eval.value", "ValueDynamic", "Source");
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
+
+  private static final ClassName TYPE_OBJECT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName TYPE_METHOD_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.function", "TypeMethodDynamic");
+  private static final ClassName OBJECT_METHOD =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
+  private static final ClassName OBJECT_DATA_FIELD =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
+  private static final ClassName OBJECT_DROP_KIND =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
+  private static final ClassName OBJECT_ASPECT_SOURCE =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource");
+  private static final ClassName OBJECT_ASPECT_SOURCE_STATIC =
+      ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource", "Static");
+  private static final ClassName TYPE_OBJECT_CAST_RULE =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
+  private static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
+  private static final ClassName TYPE_OBJECT_LIFT =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectLift");
+  private static final ClassName CAST_RULE_CALL_TO_INTERFACE_SPEC =
+      ClassName.get(
+          "compilerxyz.eval.value.object_", "TypeObjectCastRule", "CallToInterfaceSpec");
+  private static final ClassName CAST_RULE_CALL_BY_DEST_IDENTITY =
+      ClassName.get(
+          "compilerxyz.eval.value.object_", "TypeObjectCastRule", "CallByDestIdentity");
+  private static final ClassName DYN_RUNTIME_HELPER =
+      ClassName.get(
+          "compilerxyz.eval.value.object_", "TypeObjectCastRule", "DynRuntimeHelper");
+  private static final ClassName INTERFACE_SPEC_TYPE_TYPE =
+      ClassName.get("compilerxyz.eval.value.interface_spec", "TypeInterfaceSpec");
+  private static final ClassName GEN_IDENTITIES =
+      ClassName.get("compilerxyz.gen", "GenIdentities");
+  private static final ClassName DYN_RUNTIME =
+      ClassName.get("compilerxyz.eval.dynamic", "DynRuntime");
+  private static final ClassName TYPE_ID_BUILTIN =
+      ClassName.get("compilerxyz.eval", "TypeId", "Builtin");
+  private static final ClassName JAVA_INTERNAL_NAME =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+  private static final ClassName JAVA_DATA_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+  private static final ClassName JAVA_METHOD_DESCRIPTOR =
+      ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+  private static final ClassName RECORD_CLASS =
+      ClassName.get("compilerxyz.eval.value.record", "Record");
+  private static final ClassName RECORD_FIELD =
+      ClassName.get("compilerxyz.eval.value.record", "RecordField");
+  private static final ClassName RECORD_FIELD_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
+  private static final ClassName CONST_KEY_STR =
+      ClassName.get("compilerxyz.eval", "ConstKey", "Str");
+  private static final ClassName TYPE_ERESULT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
+  private static final ClassName TYPE_LIST_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic");
+  private static final ClassName TYPE_OPTION_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
+  private static final ClassName TYPE_MAP_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic");
+  private static final ClassName TYPE_UNIQUE =
+      ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
+  private static final ClassName TYPE_CONSTKEY_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.constkey", "TypeConstkeyDynamic");
+  private static final ClassName BIND_RESULT_TYPE =
+      ClassName.get("compilerxyz.eval.value.bind_result", "BindResultType");
+  private static final ClassName INTERFACE_DATA =
+      ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
+
+  private static final TMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS = compositeDescriptors();
+  private static final TMap<ClassName, CodeBlock> LEAF_DESCRIPTORS = leafDescriptors();
+
+  private static TMap<ClassName, ClassName> compositeDescriptors() {
+    var m = new TMap<ClassName, ClassName>();
+    m.put(ERESULT, TYPE_ERESULT_DYNAMIC);
+    m.put(OPT, TYPE_OPTION_DYNAMIC);
+    m.put(TLIST, TYPE_LIST_DYNAMIC);
+    m.put(ClassName.get("compilerxyz.util", "TMap"), TYPE_MAP_DYNAMIC);
+    return m;
+  }
+
+  /**
+   * Maps a source-value ClassName (as it appears in {@link AspectMethod}) to the CodeBlock that
+   * constructs the runtime {@code Type} descriptor for that value. Returns {@code null} for
+   * unmapped types.
+   */
+  private static TMap<ClassName, CodeBlock> leafDescriptors() {
+    var m = new TMap<ClassName, CodeBlock>();
+    // Static-factory (value class exposes its own dynamicType()).
+    for (var cn :
+        new ClassName[] {
+          TYPE,
+          EXPR_CONTEXT,
+          QEXPR_ID,
+          CODE_VALUE,
+          CODE,
+          CONST_KEY,
+          BINDING_ID,
+          CODE_DYNAMIC,
+          JAVA_DATA_DESCRIPTOR,
+          TARGET_BIND_SUB,
+          INTERFACE_DATA,
+          VALUE,
+          BINDING,
+        }) {
+      m.put(cn, CodeBlock.of("$T.dynamicType()", cn));
+    }
+    // Nullary descriptors — value class distinct from descriptor class.
+    m.put(UNIQUE, CodeBlock.of("new $T()", TYPE_UNIQUE));
+    return m;
+  }
 
 
   private static final TypeName EVAL_RES = ParameterizedTypeName.get(ERESULT, CODE_VALUE);
@@ -170,8 +283,217 @@ final class AspectsGen {
     typeBuilder.addMethod(getMaybe);
     typeBuilder.addMethod(get);
 
+    emitDynamicType(typeBuilder, spec, self);
+
     var file = JavaFile.builder(GEN_PACKAGE, typeBuilder.build()).build();
     GenMain.write(outRoot, file, formatter);
+  }
+
+  private static void emitDynamicType(TypeSpec.Builder typeBuilder, AspectSpec spec, ClassName self) {
+    var dynamicType =
+        MethodSpec.methodBuilder("dynamicType")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(TYPE_OBJECT_DYNAMIC)
+            .addStatement("return Holder.INSTANCE")
+            .build();
+    typeBuilder.addMethod(dynamicType);
+
+    var holder =
+        TypeSpec.classBuilder("Holder")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+    holder.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+    holder.addField(
+        FieldSpec.builder(TYPE_OBJECT_DYNAMIC, "INSTANCE", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .initializer("build()")
+            .build());
+    holder.addMethod(buildDynamicTypeBuild(spec, self));
+    typeBuilder.addType(holder.build());
+  }
+
+  private static MethodSpec buildDynamicTypeBuild(AspectSpec spec, ClassName self) {
+    var jvmIfaceStr = "compilerxyz/gen/Aspect" + spec.name;
+    var typeDesc = "aspect_" + snake(spec.name);
+    var typeIdValue = spec.builtinUniqueId + 10000L;
+
+    var b = MethodSpec.methodBuilder("build")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .returns(TYPE_OBJECT_DYNAMIC);
+    b.addStatement("var jvmInterface = $T.of($S)", JAVA_INTERNAL_NAME, jvmIfaceStr);
+    b.addStatement(
+        "var jvmInterfaceDesc = $T.fromInternalName(jvmInterface)", JAVA_DATA_DESCRIPTOR);
+    b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
+    b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
+    b.addStatement(
+        "castRules.add(new $T(new $T($T.fromClass($T.class), $S, "
+            + "$T.fromParts($T.fromClass($T.class), "
+            + "$T.of($T.fromClass($T.class))), false)))",
+        CAST_RULE_CALL_TO_INTERFACE_SPEC,
+        DYN_RUNTIME_HELPER,
+        JAVA_INTERNAL_NAME,
+        DYN_RUNTIME,
+        "objectToInterfaceSpec",
+        JAVA_METHOD_DESCRIPTOR,
+        JAVA_DATA_DESCRIPTOR,
+        INTERFACE_SPEC_TYPE_TYPE,
+        TLIST,
+        JAVA_DATA_DESCRIPTOR,
+        TYPE_OBJECT_DYNAMIC);
+    b.addStatement(
+        "castRules.add(new $T($T.INTERFACE_REF_TYPE_IDENTITY, new $T($T.fromClass($T.class), $S, "
+            + "$T.fromParts($T.fromClass($T.class), "
+            + "$T.of($T.fromClass($T.class))), false)))",
+        CAST_RULE_CALL_BY_DEST_IDENTITY,
+        GEN_IDENTITIES,
+        DYN_RUNTIME_HELPER,
+        JAVA_INTERNAL_NAME,
+        DYN_RUNTIME,
+        "objectToInterfaceData",
+        JAVA_METHOD_DESCRIPTOR,
+        JAVA_DATA_DESCRIPTOR,
+        INTERFACE_DATA,
+        TLIST,
+        JAVA_DATA_DESCRIPTOR,
+        TYPE_OBJECT_DYNAMIC);
+
+    b.addStatement(
+        "var instance = new $T(new $T($LL), $S, jvmInterface, jvmInterfaceDesc, new $T<$T>(), methods, "
+            + "$T.DYNAMIC, new $T<$T>(), castRules, new $T<$T>(), $T.<$T>none(), "
+            + "$T.<$T>some(new $T($T.ID)), $T.some(jvmInterface))",
+        TYPE_OBJECT_DYNAMIC,
+        TYPE_ID_BUILTIN,
+        typeIdValue,
+        typeDesc,
+        TLIST,
+        OBJECT_DATA_FIELD,
+        OBJECT_DROP_KIND,
+        TLIST,
+        UNIQUE,
+        TLIST,
+        TYPE_OBJECT_CAST_FROM_RULE,
+        OPT,
+        TYPE_OBJECT_LIFT,
+        OPT,
+        OBJECT_ASPECT_SOURCE,
+        OBJECT_ASPECT_SOURCE_STATIC,
+        self,
+        OPT);
+
+    var prefix = "aspect" + spec.name;
+    for (var m : spec.methods) {
+      emitMethod(b, spec, self, m, prefix);
+    }
+
+    b.addStatement("return instance");
+    return b.build();
+  }
+
+  /** Attempts to emit ObjectMethod for {@code m}; skips if any param/ret cannot be resolved. */
+  private static void emitMethod(
+      MethodSpec.Builder b, AspectSpec spec, ClassName self, AspectMethod m, String prefix) {
+    var retDesc = resolveDescriptor(m.ret);
+    if (retDesc == null) return;
+    var paramDescs = new TList<CodeBlock>();
+    var paramRawClasses = new TList<TypeName>();
+    for (var p : m.params) {
+      var pd = resolveDescriptor(p.type);
+      if (pd == null) return;
+      paramDescs.add(pd);
+      paramRawClasses.add(rawClass(p.type));
+    }
+    var retRaw = rawClass(m.ret);
+    if (retRaw == null) return;
+
+    var javaMethodName =
+        InterfacesGen.escapeJavaKeyword(
+            prefix + Character.toUpperCase(m.name.charAt(0)) + m.name.substring(1));
+    var sourceName = snake(m.name);
+    var suffix = m.name;
+
+    // argRecord fields
+    var argRecordVar = "argRecord_" + suffix + "Fields";
+    var argRecordName = "argRecord_" + suffix;
+    b.addStatement("var $L = new $T<$T, $T>()", argRecordVar, TORDERED_MAP, CONST_KEY, RECORD_FIELD);
+    for (int i = 0; i < m.params.size(); i++) {
+      var p = m.params.get(i);
+      b.addStatement(
+          "$L.put(new $T($S), new $T($L))",
+          argRecordVar,
+          CONST_KEY_STR,
+          p.name,
+          RECORD_FIELD_DYNAMIC,
+          paramDescs.get(i));
+    }
+    b.addStatement("var $L = new $T($T.none(), $L)", argRecordName, RECORD_CLASS, OPT, argRecordVar);
+
+    // ret type
+    var retTypeName = "retType_" + suffix;
+    b.addStatement("var $L = $L", retTypeName, retDesc);
+
+    // JVM method descriptor
+    var descName = "desc_" + suffix;
+    var argClassBuilder = CodeBlock.builder();
+    for (int i = 0; i < paramRawClasses.size(); i++) {
+      if (i > 0) argClassBuilder.add(", ");
+      argClassBuilder.add("$T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, paramRawClasses.get(i));
+    }
+    b.addStatement(
+        "var $L = $T.fromParts($T.fromClass($T.class), $T.of($L))",
+        descName,
+        JAVA_METHOD_DESCRIPTOR,
+        JAVA_DATA_DESCRIPTOR,
+        retRaw,
+        TLIST,
+        argClassBuilder.build());
+
+    var methodVar = "method_" + suffix;
+    b.addStatement(
+        "var $L = new $T(instance, $L, $L, jvmInterface, $S, $L, true, false)",
+        methodVar,
+        TYPE_METHOD_DYNAMIC,
+        argRecordName,
+        retTypeName,
+        javaMethodName,
+        descName);
+    b.addStatement("methods.add(new $T($S, $L))", OBJECT_METHOD, sourceName, methodVar);
+  }
+
+  /** Returns null if the type can't be mapped to a runtime {@code Type} descriptor. */
+  private static CodeBlock resolveDescriptor(TypeName tn) {
+    if (tn instanceof ClassName cn) {
+      var m = LEAF_DESCRIPTORS.get(cn);
+      if (m != null) return m;
+      // Nested classes inside compilerxyz.gen aspects — treat as delegated to the outer aspect's
+      // BindResult-style factory only if we've registered it. Otherwise skip.
+      if (cn.equals(ClassName.get(GEN_PACKAGE, "AspectBind", "BindResult"))) {
+        return CodeBlock.of("$T.dynamicType()", BIND_RESULT_TYPE);
+      }
+      return null;
+    }
+    if (tn instanceof ParameterizedTypeName pt) {
+      var wrapper = COMPOSITE_DESCRIPTORS.get(pt.rawType);
+      if (wrapper == null) return null;
+      var parts = new TList<CodeBlock>();
+      for (var arg : pt.typeArguments) {
+        var sub = resolveDescriptor(arg);
+        if (sub == null) return null;
+        parts.add(sub);
+      }
+      var joined = CodeBlock.builder();
+      for (int i = 0; i < parts.size(); i++) {
+        if (i > 0) joined.add(", ");
+        joined.add(parts.get(i));
+      }
+      return CodeBlock.of("new $T($L)", wrapper, joined.build());
+    }
+    return null;
+  }
+
+  /** Returns the raw class TypeName used for JavaDataDescriptor.fromClass, or null for primitives. */
+  private static TypeName rawClass(TypeName tn) {
+    if (tn.isPrimitive()) return null;
+    if (tn instanceof ClassName cn) return cn;
+    if (tn instanceof ParameterizedTypeName pt) return pt.rawType;
+    return null;
   }
 
   private static TypeSpec buildNestedRecord(NestedRecord nested) {

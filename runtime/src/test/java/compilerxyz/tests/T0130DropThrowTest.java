@@ -165,6 +165,64 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb,
                             TList.of(
                                 new TestMb.RecordPair("bind", canaryBindBody(mb)))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.tupleOf(
+                        mb.evalAspectConsumeDynamic(),
+                        ifaceMethods(
+                            mb,
+                            TList.of(
+                                new TestMb.RecordPair(
+                                    "to_dynamic",
+                                    mb.call(
+                                        mb.field(
+                                            mb.field(
+                                                mb.call(
+                                                    mb.evalAspectLookup(),
+                                                    mb.tupleOf(
+                                                        mb.typesNull(),
+                                                        mb.evalAspectConsumeDynamic(),
+                                                        mb.field(
+                                                            mb.scopeUse("arg"),
+                                                            mb.str("xx")))),
+                                                mb.str("value")),
+                                            mb.str("to_dynamic")),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx",
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("xx"))),
+                                                new TestMb.RecordPair(
+                                                    "loc",
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("loc"))),
+                                                new TestMb.RecordPair(
+                                                    "cv",
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("cv"))))))),
+                                new TestMb.RecordPair(
+                                    "consume_dynamic_jvm_class",
+                                    mb.call(
+                                        mb.field(
+                                            mb.field(
+                                                mb.call(
+                                                    mb.evalAspectLookup(),
+                                                    mb.tupleOf(
+                                                        mb.typesNull(),
+                                                        mb.evalAspectConsumeDynamic(),
+                                                        mb.field(
+                                                            mb.scopeUse("arg"),
+                                                            mb.str("xx")))),
+                                                mb.str("value")),
+                                            mb.str("consume_dynamic_jvm_class")),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx",
+                                                    mb.field(
+                                                        mb.scopeUse("arg"),
+                                                        mb.str("xx"))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.field(mb.scopeUse("u"), mb.str("new")))),
         mb.literalNull());

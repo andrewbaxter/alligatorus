@@ -1024,7 +1024,11 @@ var targetBindSubCls =
                 new Leaf(new LeafSpec.Interface(ifaceAspectDropDynamic))),
             new Child(
                 "aspect_consume_dynamic",
-                new Leaf(new LeafSpec.Interface(ifaceAspectConsumeDynamic))),
+                new Leaf(
+                    new LeafSpec.AnyConst(
+                        CodeBlock.of(
+                            "$T.dynamicType()",
+                            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic"))))),
             new Child(
                 "bind_result",
                 new Leaf(
@@ -1044,7 +1048,7 @@ var targetBindSubCls =
                     new LeafSpec.AnyConst(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "GenAspectBindObject"))))),
+                            ClassName.get("compilerxyz.gen", "AspectBind"))))),
             new Child(
                 "aspect_string_dynamic",
                 new Leaf(new LeafSpec.AspectId(4001, "StringDynamic"))),
