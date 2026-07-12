@@ -122,13 +122,23 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   private EResult<CodeValue> accessOrDropSourceless(
       ExprContext xx, QExprId loc, CodeValue selfCv, Record record, Opt<ConstKey> accessKey) {
-    // Current implementation shape: all fields are RecordField.EvalRes (compile-time).
-    // Emit compile-time drop of siblings; if accessKey is Some, return the accessed
-    // const CodeValue directly (routed through AspectFieldUseConst when applicable).
+    // Sourceless: no composite heap object. Each field's value code hasn't been
+    // emitted yet — it lives in the RecordField.EvalRes's inner CV until drop
+    // (or field access / consumption / object-construction) consumes it.
+    //
+    // For DROP: iterate reverse canonical order (matching the ordering used
+    // elsewhere), for each field emit fieldCv.code (pushes value; may be Code.none
+    // for pure-const fields) then the drop code (pops it). Net stack-neutral per
+    // field.
+    //
+    // For ACCESS(key=k): siblings same as above; for the accessed field emit
+    // fieldCv.code + STORE to a local. LOAD at the end.
     var seq = new JavaBytecodeSequence();
     var carry = selfCv.code().dynamic();
     if (carry != null) seq.add(carry);
     CodeValue accessedCv = null;
+    Type accessedType = null;
+    compilerxyz.eval.dynamic.JavaBytecodeBindingKey accessedLocalKey = null;
     ConstKey accessedKeyResolved = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
     var sortedKeys = new TList<ConstKey>(record.fields.size());
     sortedKeys.addAll(record.fields.keySet());
@@ -138,51 +148,112 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var f = record.fields.getOrNull(k);
       boolean isAccessed = accessedKeyResolved != null && accessedKeyResolved.equals(k);
       if (!(f instanceof RecordField.EvalRes er)) {
-        // Mixed sourceless (dynamic + const) is not currently produced by any path.
+        // RecordField.Dynamic entries appear only in type-level records (schemas);
+        // a value record never contains one under current construction paths.
         throw new IllegalStateException(
             "Record::accessOrDropSourceless: field '"
                 + k.toCanonical()
-                + "' is not EvalRes; sourceless with Dynamic fields is not implemented");
+                + "' is not EvalRes; sourceless value record cannot carry a"
+                + " RecordField.Dynamic entry");
       }
       var res = er.result();
-      if (isAccessed) {
-        if (res.hasErrors()) {
+      if (res.hasErrors()) {
+        if (isAccessed) {
           return EResult.err(loc, "Field '" + k.toCanonical() + "' evaluated to error");
-        }
-        var childCv = res.requireValue("Record::accessOrDropSourceless accessed");
-        var childType = childCv.value() instanceof Opt.Some<Value> cvSome
-            ? cvSome.value().valueType()
-            : recordFieldType(f);
-        var useConstOpt = AspectFieldUseConst.getMaybe(xx, childType);
-        if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
-          var useRes = useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, childCv);
-          if (useRes.hasErrors()) return useRes.reerr();
-          accessedCv = useRes.requireValue("Record::accessOrDropSourceless useConst");
-        } else {
-          accessedCv = childCv;
         }
         continue;
       }
-      if (res.hasErrors()) continue;
-      var fieldCv = res.requireValue("Record::accessOrDropSourceless sibling");
-      if (!(fieldCv.value() instanceof Opt.Some<Value> fieldSome)) continue;
-      var fieldType = fieldSome.value().valueType();
-      var fieldDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
-      if (!(fieldDropOpt instanceof Opt.Some<AspectDropDynamic> fieldDropSome)) continue;
-      var fieldDropRes = fieldDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
-      if (fieldDropRes.hasErrors()) return fieldDropRes.reerr();
-      var fieldDrop = fieldDropRes.requireValue("Record::accessOrDropSourceless sibling drop").dynamic();
-      if (fieldDrop != null) seq.add(fieldDrop);
+      var fieldCv = res.requireValue("Record::accessOrDropSourceless field");
+      var fieldDyn = fieldCv.code().dynamic();
+      Type fieldType;
+      if (fieldCv.value() instanceof Opt.Some<Value> fieldSome) {
+        fieldType = fieldSome.value().valueType();
+      } else {
+        fieldType = recordFieldType(f);
+      }
+      if (isAccessed) {
+        var useConstOpt = AspectFieldUseConst.getMaybe(xx, fieldType);
+        if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
+          var useRes = useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, fieldCv);
+          if (useRes.hasErrors()) return useRes.reerr();
+          accessedCv = useRes.requireValue("Record::accessOrDropSourceless useConst");
+          continue;
+        }
+        // If the accessed field has a compile-time value AND no dynamic push
+        // code, preserve the CV as-is — it's a purely const access.
+        if (fieldDyn == null) {
+          accessedCv = fieldCv;
+          continue;
+        }
+        // Field has runtime push code — emit it, STORE to a fresh local, LOAD at end.
+        seq.add(fieldDyn);
+        var acdOpt = AspectConsumeDynamic.getMaybe(xx, fieldType);
+        if (!(acdOpt instanceof Opt.Some<AspectConsumeDynamic> acdSome)) {
+          return EResult.err(
+              loc,
+              "Field '" + k.toCanonical() + "' type '" + fieldType.typeDesc()
+                  + "' is not AspectConsumeDynamic (needed to store to a local)");
+        }
+        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
+        var storeOp = stackDesc.charAt(0) == 'D' ? Opcodes.DSTORE
+            : stackDesc.charAt(0) == 'J' ? Opcodes.LSTORE : Opcodes.ASTORE;
+        accessedLocalKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(storeOp, accessedLocalKey)));
+        accessedType = fieldType;
+        continue;
+      }
+      // Sibling: emit push code + drop code. Try full drop first, then light.
+      if (fieldDyn != null) seq.add(fieldDyn);
+      var fullDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
+      if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullDropSome) {
+        var dropRes = fullDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
+        if (dropRes.hasErrors()) return dropRes.reerr();
+        var dropDyn = dropRes.requireValue("Record::accessOrDropSourceless drop").dynamic();
+        if (dropDyn != null) seq.add(dropDyn);
+        continue;
+      }
+      var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, fieldType);
+      if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
+        var dropRes = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, fieldCv);
+        if (dropRes.hasErrors()) return dropRes.reerr();
+        var dropDyn = dropRes.requireValue("Record::accessOrDropSourceless light drop").dynamic();
+        if (dropDyn != null) seq.add(dropDyn);
+        continue;
+      }
+      return EResult.err(
+          loc,
+          "Sourceless record field '" + k.toCanonical() + "' type '"
+              + fieldType.typeDesc()
+              + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
     }
     if (accessKey instanceof Opt.Some<ConstKey> aksReq) {
-      if (accessedCv == null) {
-        return EResult.err(
-            loc, "Field '" + aksReq.value().toCanonical() + "' not found on record value");
+      if (accessedCv != null) {
+        // Const-accessed path: append the accessed value's code (side effects) and
+        // return its CV as-is.
+        var accessedDyn = accessedCv.code().dynamic();
+        if (accessedDyn != null) seq.add(accessedDyn);
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
       }
-      // Wrap the accessed value's code with the sibling-drop prelude.
-      var accessedDyn = accessedCv.code().dynamic();
-      if (accessedDyn != null) seq.add(accessedDyn);
-      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
+      if (accessedLocalKey != null) {
+        // Dynamic-accessed path: LOAD from the local we stored earlier.
+        var acdOpt = AspectConsumeDynamic.getMaybe(xx, accessedType);
+        if (!(acdOpt instanceof Opt.Some<AspectConsumeDynamic> acdSome)) {
+          return EResult.err(
+              loc,
+              "Accessed field type '" + accessedType.typeDesc()
+                  + "' is not AspectConsumeDynamic (needed to load from a local)");
+        }
+        var stackDesc = acdSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
+        var loadOp = stackDesc.charAt(0) == 'D' ? Opcodes.DLOAD
+            : stackDesc.charAt(0) == 'J' ? Opcodes.LLOAD : Opcodes.ALOAD;
+        seq.add(new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(loadOp, accessedLocalKey)));
+        return EResult.ok(
+            new CodeValue(
+                Code.of(loc, new CodeDynamic(loc, seq)),
+                Opt.some(ValueDynamic.stack(xx, accessedType))));
+      }
+      return EResult.err(
+          loc, "Field '" + aksReq.value().toCanonical() + "' not found on record value");
     }
     return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
   }
