@@ -225,7 +225,8 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         int slotIdx = slotInfo.slotOfKey().get(i);
         var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
         if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
-        out.add(siblingDropRes.requireValue("Tuple::accessOrIndex sibling"));
+        var siblingDrop = siblingDropRes.requireValue("Tuple::accessOrIndex sibling");
+        if (siblingDrop != null) out.add(siblingDrop);
       }
       out.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
       return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
@@ -254,36 +255,38 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             Opt.some(ValueDynamic.stack(xx, accessedType))));
   }
 
-  private EResult<CodeDynamic> tupleChildDropCode(
+  /**
+   * Emit sibling-drop bytecode for one tuple element. Returns Ok(some(...)) with a
+   * non-light drop; Ok(none()) for light-only elements (GC handles them); Err if the
+   * element type has neither drop aspect.
+   */
+  private EResult<@org.jspecify.annotations.Nullable CodeDynamic> tupleChildDropCode(
       ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
       int elementIndex) {
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-    seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
-    seq.add(
-        JavaBytecodeUtils.accessField(
-            loc,
-            klass,
-            CompositeClassEmitter.slotFieldName(slotIdx),
-            CompositeClassEmitter.slotDescriptor(xx, childType)));
-    var childCv =
-        new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence())),
-            Opt.some(ValueDynamic.stack(xx, childType)));
     var fullDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, childType);
     if (fullDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> fullSome) {
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+      seq.add(
+          JavaBytecodeUtils.accessField(
+              loc,
+              klass,
+              CompositeClassEmitter.slotFieldName(slotIdx),
+              CompositeClassEmitter.slotDescriptor(xx, childType)));
+      var childCv =
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence())),
+              Opt.some(ValueDynamic.stack(xx, childType)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Tuple::tupleChildDropCode drop").dynamic();
       if (d != null) seq.add(d);
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType);
-    if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
-      var res = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, childCv);
-      if (res.hasErrors()) return res.reerr();
-      var d = res.requireValue("Tuple::tupleChildDropCode light drop").dynamic();
-      if (d != null) seq.add(d);
-      return EResult.ok(new CodeDynamic(loc, seq));
+    if (compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType)
+        instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight>) {
+      // Light-drop only: skip — GC handles it when the composite is dropped.
+      return EResult.ok(null);
     }
     return EResult.err(
         loc,

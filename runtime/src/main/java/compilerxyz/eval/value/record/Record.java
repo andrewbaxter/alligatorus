@@ -200,17 +200,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
     boolean stackRooted = DynUtil.isStackRooted(baseSource);
 
-    // Scan-first optimization: if no dynamic field has a full (non-light) drop, we can
-    // skip the base realize + POP-at-end entirely; just emit each field's light-drop.
-    boolean anyFullDrop = false;
-    for (var entry : fields.entrySet()) {
-      var t = recordFieldType(entry.getValue());
-      if (AspectDropDynamic.getMaybe(xx, t) instanceof Opt.Some<AspectDropDynamic>) {
-        anyFullDrop = true;
-        break;
-      }
-    }
-
     ConstKey accessedKey = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
     Type accessedType = null;
     int accessedSlot = -1;
@@ -258,18 +247,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
       }
       // Stack-rooted: base ref is on top of stack; realize is a no-op for Expr.
+      // Emit sibling drops (skipping light-only fields, which GC handles) then POP.
       out.add(baseSource.realize(xx, loc));
-      if (!anyFullDrop) {
-        // No child needs a full drop; still emit light-drops via child aspect chain.
-        // For a stack base we already have base ref on stack — POP it.
-        // Then run light drops on siblings? Actually the base itself is one JVM ref;
-        // light-drops on child fields would need to reach through the base. Since
-        // no field carries user-visible cleanup, dropping just the base ref
-        // suffices — the JVM GC handles the composite.
-        out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
-      }
-      // Emit sibling drops (full drop path).
       var dropRes = emitSiblingDrops(xx, loc, klass, slotInfo, /* skipKey */ null, out);
       if (dropRes.hasErrors()) return dropRes.reerr();
       out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
@@ -308,44 +287,51 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (skipKey != null && skipKey.equals(k)) continue;
       var t = recordFieldType(fields.getOrNull(k));
       int slotIdx = slotInfo.slotOfKey().get(k);
-      var dropRes = childDropCode(xx, loc, klass, slotIdx, t, k);
+      var dropRes = childFullDropCode(xx, loc, klass, slotIdx, t, k);
       if (dropRes.hasErrors()) return dropRes.reerr();
-      out.add(dropRes.requireValue("Record::emitSiblingDrops child"));
+      var dropCode = dropRes.requireValue("Record::emitSiblingDrops child");
+      if (dropCode != null) out.add(dropCode);
     }
     return EResult.ok(null);
   }
 
-  private EResult<CodeDynamic> childDropCode(
+  /**
+   * Emit sibling-drop bytecode for one field. Returns:
+   * <ul>
+   *   <li>{@code Ok(some(code))} — field has a non-light drop; emit {@code DUP; GETFIELD; drop_side_effect}.
+   *   <li>{@code Ok(none())} — field is light-drop only; skip entirely (GC handles it when the
+   *       composite is dropped).
+   *   <li>{@code Err} — field type has neither drop aspect.
+   * </ul>
+   */
+  private EResult<@org.jspecify.annotations.Nullable CodeDynamic> childFullDropCode(
       ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
       ConstKey key) {
-    // Build: DUP, GETFIELD, <child drop chain>.
-    var seq = new JavaBytecodeSequence();
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    seq.add(
-        JavaBytecodeUtils.accessField(
-            loc,
-            klass,
-            CompositeClassEmitter.slotFieldName(slotIdx),
-            CompositeClassEmitter.slotDescriptor(xx, childType)));
-    var childCv =
-        new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-            Opt.some(ValueDynamic.stack(xx, childType)));
     var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
     if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullSome) {
+      var seq = new JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      seq.add(
+          JavaBytecodeUtils.accessField(
+              loc,
+              klass,
+              CompositeClassEmitter.slotFieldName(slotIdx),
+              CompositeClassEmitter.slotDescriptor(xx, childType)));
+      var childCv =
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
+              Opt.some(ValueDynamic.stack(xx, childType)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
-      var d = res.requireValue("Record::childDropCode drop").dynamic();
+      var d = res.requireValue("Record::childFullDropCode drop").dynamic();
       if (d != null) seq.add(d);
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType);
-    if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
-      var res = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, childCv);
-      if (res.hasErrors()) return res.reerr();
-      var d = res.requireValue("Record::childDropCode light drop").dynamic();
-      if (d != null) seq.add(d);
-      return EResult.ok(new CodeDynamic(loc, seq));
+    if (compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType)
+        instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight>) {
+      // Light-drop only: no per-field side effect, GC handles it when the composite
+      // is dropped. Skip emitting DUP+GETFIELD+POP for this sibling entirely.
+      return EResult.ok(null);
     }
     return EResult.err(
         loc,
