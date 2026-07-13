@@ -55,10 +55,7 @@ public final class DefSetFunctionsEmitter {
     return "_" + funcIdx + "_";
   }
 
-  public static EmittedFunctions emit(
-      DefSetId defSet,
-      TList<FunctionSpec> specs,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
+  public static EmittedFunctions emit(DefSetId defSet, TList<FunctionSpec> specs) {
     var binaryName = functionsBinaryName(defSet);
     var internalName = functionsInternalName(defSet);
 
@@ -76,22 +73,6 @@ public final class DefSetFunctionsEmitter {
 
     for (var spec : specs) {
       var prefix = functionFieldPrefix(spec.funcIdx());
-
-      for (var builtinId : EvalRootEmitter.referencedBuiltinIds(spec.bodyCode())) {
-        var name = Prefixes.BUILTIN_PREFIX + builtinId;
-        var v = builtinDynamics.get(name);
-        if (v == null) {
-          throw new AssertionError(
-              "DefSetFunctionsEmitter::emit: no builtin registered for " + name);
-        }
-        var desc = JavaDataDescriptor.fromClass(v.externalHostClass());
-        var prev = fieldDescriptors.put(name, desc);
-        if (prev != null && !prev.value().equals(desc.value())) {
-          throw new AssertionError(
-              "DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
-        }
-        staticFieldValues.put(name, v.externalHostValue());
-      }
 
       for (int i = 0; i < spec.externals().size(); i++) {
         var entry = spec.externals().get(i);

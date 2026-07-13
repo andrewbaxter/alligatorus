@@ -39,6 +39,7 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_aspect_dynamic", 7013L));
     list.add(new TypeIdSpec("type_constkey_dynamic", 7014L));
     list.add(new TypeIdSpec("type_unique", 7015L));
+    list.add(new TypeIdSpec("type_unique_const", 7123L));
     list.add(new TypeIdSpec("type_expr", 7016L));
     list.add(new TypeIdSpec("type_expr_staged_placeholder", 7017L));
     list.add(new TypeIdSpec("type_throw_dynamic", 7018L));

@@ -141,7 +141,7 @@ public record TypeBoolDynamic()
           "TypeBoolDynamic::lift: expected java.lang.Boolean, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return EResult.ok(new ValueBoolConst(b));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeBoolConst(), b));
   }
 
   @Override

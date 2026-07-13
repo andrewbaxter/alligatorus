@@ -102,8 +102,7 @@ public final class TypeSourceObjectDynamic
       compilerxyz.eval.ExprContext xx,
       QExprId loc,
       long objectIndex,
-      DefinitionSetClassLoader loader,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
+      DefinitionSetClassLoader loader) {
     if (compiledBinaryName != null) {
       return EResult.ok(null);
     }
@@ -114,8 +113,7 @@ public final class TypeSourceObjectDynamic
               + (name == null ? "(unnamed)" : name)
               + "'");
     }
-    var emitted =
-        SourceObjectEmitter.emit(xx, setId, objectIndex, this, builtinDynamics);
+    var emitted = SourceObjectEmitter.emit(xx, setId, objectIndex, this);
     compiledBinaryName = emitted.binaryName();
     compiledBytecode = emitted.bytecode();
     compiledStaticFieldValues = emitted.staticFieldValues();
@@ -381,7 +379,8 @@ public final class TypeSourceObjectDynamic
     }
     return underlyingLift
         .aspectLiftLift(xx, loc, underlyingHost)
-        .map(underlying -> new ValueSourceObjectConst(this, underlying));
+        .map(underlying -> new compilerxyz.eval.value.object_.ValueObjectConst(
+            new compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst(this), underlying));
   }
 
   @Override
@@ -510,8 +509,9 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public Type aspectTypeType(Value value) {
-    if (value instanceof compilerxyz.eval.value.value_source_object.ValueSourceObjectConst inst) {
-      return new TypeTypeSourceObjectConst(inst.data()).aspectTypeType(value);
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst voc
+        && voc.type() instanceof TypeTypeSourceObjectConst ttsoc) {
+      return ttsoc.aspectTypeType(value);
     }
     return this;
   }

@@ -175,7 +175,7 @@ public record TypeNumberDynamic()
           "TypeNumberDynamic::lift: expected java.lang.Double, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return EResult.ok(new ValueNumberConst(d));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), d));
   }
 
   @Override

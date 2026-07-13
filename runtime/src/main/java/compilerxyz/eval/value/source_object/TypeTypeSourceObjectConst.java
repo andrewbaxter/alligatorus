@@ -545,10 +545,11 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     if (!(cv.value() instanceof Opt.Some<Value> some)
-        || !(some.value() instanceof ValueSourceObjectConst instance)) {
+        || !(some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst instance)
+        || !(instance.data() instanceof Value)) {
       return EResult.err(
           loc,
-          "TypeTypeSourceObjectConst::toDynamic: expected ValueSourceObjectConst, got "
+          "TypeTypeSourceObjectConst::toDynamic: expected source-object ValueObjectConst, got "
               + (cv.value() instanceof Opt.Some<Value> s
                   ? s.value().getClass().getName()
                   : "no value"));
@@ -560,7 +561,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     }
     var erb = new Erb(loc);
     var rawUnderlyingCv =
-        new CodeValue(Code.none(loc), Opt.some(instance.underlying()));
+        new CodeValue(Code.none(loc), Opt.some((Value) instance.data()));
     var convertedOpt =
         erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, rawUnderlyingCv));
     if (convertedOpt.isEmpty()) {
@@ -638,9 +639,10 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public Type aspectTypeType(Value value) {
-    if (!(value instanceof ValueSourceObjectConst inst)) {
+    if (!(value instanceof compilerxyz.eval.value.object_.ValueObjectConst inst)
+        || !(inst.type() instanceof TypeTypeSourceObjectConst)) {
       throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: expected ValueSourceObjectConst, got "
+          "TypeTypeSourceObjectConst::type_: expected source-object ValueObjectConst, got "
               + (value == null ? "null" : value.getClass().getName()));
     }
     var set = type_.set;
@@ -674,7 +676,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     }
     Object instance;
     try {
-      instance = cls.getDeclaredConstructor(Object.class).newInstance(inst.underlying());
+      instance = cls.getDeclaredConstructor(Object.class).newInstance(inst.data());
     } catch (ReflectiveOperationException e) {
       throw new AssertionError(
           "TypeTypeSourceObjectConst::type_: generated class "

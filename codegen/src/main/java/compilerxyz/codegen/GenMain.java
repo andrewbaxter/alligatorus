@@ -41,7 +41,6 @@ public final class GenMain {
 
     PushStructsGen.run(
         outRoot, formatter, PushStructsGen.specs(TraitsGen.specs()), builtinUniqueIds, scopeIds);
-    InvisibleBuiltinsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
     BuiltinTreeGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
   }

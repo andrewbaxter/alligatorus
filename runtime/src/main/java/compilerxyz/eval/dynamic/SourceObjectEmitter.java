@@ -178,8 +178,7 @@ public final class SourceObjectEmitter {
       compilerxyz.eval.ExprContext xx,
       DefSetId defSet,
       long objectIndex,
-      TypeSourceObjectDynamic data,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
+      TypeSourceObjectDynamic data) {
     var binaryName = binaryNameFor(defSet, objectIndex);
     var internalNameStr = binaryName.replace('.', '/');
     var internalName = JavaInternalName.of(internalNameStr);
@@ -261,7 +260,7 @@ public final class SourceObjectEmitter {
         var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
         collectMethodFields(
             bodyCode, m.capturedExternals, prefix, allFieldNames, fieldDescriptors,
-            staticFieldValues, builtinDynamics);
+            staticFieldValues);
       }
     }
 
@@ -273,18 +272,6 @@ public final class SourceObjectEmitter {
         continue;
       }
       var prefix = methodFieldPrefix(methodIdx);
-      for (var builtinId : EvalRootEmitter.referencedBuiltinIds(bodyCode)) {
-        var name = Prefixes.BUILTIN_PREFIX + builtinId;
-        if (allFieldNames.add(name)) {
-          var v = builtinDynamics.get(name);
-          if (v == null) {
-            throw new AssertionError(
-                "SourceObjectEmitter: no builtin registered for " + name);
-          }
-          fieldDescriptors.put(name, JavaDataDescriptor.fromClass(v.externalHostClass()));
-          staticFieldValues.put(name, v.externalHostValue());
-        }
-      }
       for (int i = 0; i < method.capturedExternals.size(); i++) {
         var entry = method.capturedExternals.get(i);
         var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
@@ -443,20 +430,7 @@ public final class SourceObjectEmitter {
       String prefix,
       TOrderedSet<String> allFieldNames,
       TOrderedMap<String, JavaDataDescriptor> fieldDescriptors,
-      TOrderedMap<String, Object> staticFieldValues,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
-    for (var builtinId : EvalRootEmitter.referencedBuiltinIds(bodyCode)) {
-      var name = Prefixes.BUILTIN_PREFIX + builtinId;
-      if (allFieldNames.add(name)) {
-        var v = builtinDynamics.get(name);
-        if (v == null) {
-          throw new AssertionError(
-              "SourceObjectEmitter: no builtin registered for " + name);
-        }
-        fieldDescriptors.put(name, JavaDataDescriptor.fromClass(v.externalHostClass()));
-        staticFieldValues.put(name, v.externalHostValue());
-      }
-    }
+      TOrderedMap<String, Object> staticFieldValues) {
     for (int i = 0; i < capturedExternals.size(); i++) {
       var entry = capturedExternals.get(i);
       var name = prefix + Prefixes.EXTERNAL_PREFIX + i;

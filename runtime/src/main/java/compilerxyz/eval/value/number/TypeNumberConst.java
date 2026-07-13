@@ -31,7 +31,6 @@ import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.value.TypeRoot;
-import compilerxyz.eval.value.bool_.ValueBoolConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
@@ -108,9 +107,10 @@ public record TypeNumberConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof ValueNumberConst v) {
-            data = new JsonValueNumber(v.value());
-          } else if (self instanceof TypeNumberConst || self instanceof ValueTypeNumberConst) {
+          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+              && v.data() instanceof Double dv) {
+            data = new JsonValueNumber(dv);
+          } else if (self instanceof TypeNumberConst) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
@@ -123,8 +123,9 @@ public record TypeNumberConst()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return switch (data) {
-            case JsonValueNull ignored -> EResult.ok(new ValueTypeNumberConst());
-            case JsonValueNumber n -> EResult.ok(new ValueNumberConst(n.value()));
+            case JsonValueNull ignored -> EResult.ok(new TypeNumberConst());
+            case JsonValueNumber n -> EResult.ok(
+                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), n.value()));
             default -> EResult.err(
                 loc, "TypeNumberConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -142,39 +143,49 @@ public record TypeNumberConst()
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof ValueNumberConst v) {
+        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Double dv) {
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-      seq.add(JavaBytecodeUtils.literalDouble(loc, v.value()));
+      seq.add(JavaBytecodeUtils.literalDouble(loc, dv));
       seq.add(TypeNumberDynamic.boxDouble(loc));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    return EResult.err(loc, "TypeNumberConst::toDynamic: expected ValueNumberConst");
+    return EResult.err(loc, "TypeNumberConst::toDynamic: expected number ValueObjectConst");
   }
 
   @Override
   public double aspectNumberConstGet(Value value) {
-    if (value instanceof ValueNumberConst v) return v.value();
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Double dv) return dv;
     throw new IllegalArgumentException(
-        "TypeNumberConst::get: expected ValueNumberConst, got " + value.getClass());
+        "TypeNumberConst::get: expected number ValueObjectConst, got " + value.getClass());
   }
 
   @Override
   public EResult<CodeValue> aspectOperatorAddAdd(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     return binOpNumber(
-        xx, loc, base, reference, (a, b) -> new ValueNumberConst(a + b), "add");
+        xx, loc, base, reference,
+        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), a + b),
+        "add");
   }
 
   @Override
   public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOpNumber(xx, loc, base, reference, (a, b) -> new ValueBoolConst(a == b), "eq");
+    return binOpNumber(xx, loc, base, reference,
+        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
+            new compilerxyz.eval.value.bool_.TypeBoolConst(), a == b),
+        "eq");
   }
 
   @Override
   public EResult<CodeValue> aspectOperatorLtLt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOpNumber(xx, loc, base, reference, (a, b) -> new ValueBoolConst(a < b), "lt");
+    return binOpNumber(xx, loc, base, reference,
+        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
+            new compilerxyz.eval.value.bool_.TypeBoolConst(), a < b),
+        "lt");
   }
 
   private EResult<CodeValue> binOpNumber(
@@ -246,7 +257,7 @@ public record TypeNumberConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueTypeNumberConst());
+    return EResult.ok(this);
   }
 
   @Override

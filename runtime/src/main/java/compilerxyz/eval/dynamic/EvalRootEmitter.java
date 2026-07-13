@@ -36,44 +36,12 @@ public final class EvalRootEmitter {
       byte[] bytecode,
       TOrderedMap<String, Object> staticFieldValues) {}
 
-  public static TOrderedSet<Long> referencedBuiltinIds(CodeDynamic code) {
-    var out = new TOrderedSet<Long>();
-    collectReferencedBuiltins(code, out);
-    return out;
-  }
-
-  private static void collectReferencedBuiltins(CodeDynamic code, TOrderedSet<Long> out) {
-      var v = code.code();
-      if (v instanceof JavaBytecodeInstructionObj obj
-          && obj.node instanceof org.objectweb.asm.tree.FieldInsnNode fi
-          && fi.getOpcode() == org.objectweb.asm.Opcodes.GETSTATIC
-          && fi.name.startsWith(Prefixes.BUILTIN_PREFIX)) {
-          try {
-              out.add(Long.parseLong(fi.name.substring(Prefixes.BUILTIN_PREFIX.length())));
-          } catch (NumberFormatException e) {
-              // not a builtin id we understand
-          }
-          return;
-      }
-      if (v instanceof JavaBytecodeSequence s) {
-          for (var child : s.children) collectReferencedBuiltins(child, out);
-          return;
-      }
-      if (v instanceof CodeDynamic nested) {
-          collectReferencedBuiltins(nested, out);
-      }
-  }
-
-  public static String builtinFieldName(long scopeId) {
-    return Prefixes.BUILTIN_PREFIX + scopeId;
-  }
 
   public static EmittedRoot emit(
       TargetDynamic target,
       String binaryName,
       CodeDynamic rootCode,
-      TList<EvalContext.ExternalEntry> externals,
-      TOrderedMap<String, compilerxyz.eval.External> builtinDynamics) {
+      TList<EvalContext.ExternalEntry> externals) {
     var internalName = toInternalName(binaryName);
 
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
@@ -91,11 +59,6 @@ public final class EvalRootEmitter {
         null);
 
     var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-    for (var entry : builtinDynamics.entrySet()) {
-      fieldDescriptors.put(
-          entry.getKey(),
-          JavaDataDescriptor.fromClass(entry.getValue().externalHostClass()));
-    }
     fieldDescriptors.put(EXPR_CONTEXT_FIELD, DESC_EXPR_CONTEXT);
     var externalFieldNames = new TList<String>(externals.size());
     var externalFieldDescriptors = new TList<JavaDataDescriptor>(externals.size());
@@ -146,9 +109,6 @@ public final class EvalRootEmitter {
     var bytecode = cw.toByteArray();
 
     var staticFields = new TOrderedMap<String, Object>();
-    for (var entry : builtinDynamics.entrySet()) {
-      staticFields.put(entry.getKey(), entry.getValue().externalHostValue());
-    }
     for (int i = 0; i < externals.size(); i++) {
       staticFields.put(externalFieldNames.get(i), externals.get(i).external().externalHostValue());
     }

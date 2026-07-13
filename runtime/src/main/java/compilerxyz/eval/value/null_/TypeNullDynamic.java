@@ -126,7 +126,7 @@ public record TypeNullDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    return EResult.ok(new ValueNullConst());
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null));
   }
 
   @Override

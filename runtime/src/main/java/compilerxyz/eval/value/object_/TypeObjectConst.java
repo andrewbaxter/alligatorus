@@ -216,7 +216,7 @@ public record TypeObjectConst(
     }
     Object hostValue = some.value();
     if (hostValue instanceof ValueObjectConst wrap) {
-      hostValue = wrap.inner();
+      hostValue = wrap.data();
     }
     var key = new JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
@@ -253,7 +253,7 @@ public record TypeObjectConst(
       return EResult.err(
           loc, typeDesc + "::artifactExporterExport: expected ValueObjectConst, got " + self.getClass());
     }
-    return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, wrapper.inner());
+    return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, (Type) wrapper.data());
   }
 
   @Override
@@ -314,7 +314,7 @@ public record TypeObjectConst(
     }
     var v = some.value();
     if (v instanceof compilerxyz.eval.value.object_.ValueObjectConst wrap) {
-      return EResult.ok(wrap.inner());
+      return EResult.ok((Type) wrap.data());
     }
     if (v instanceof Type t) {
       return EResult.ok(t);
@@ -334,7 +334,7 @@ public record TypeObjectConst(
   @Override
   public Type aspectTypeType(Value value) {
     if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v) {
-      return v.inner();
+      return (Type) v.data();
     }
     if (value instanceof Type t) {
       return t;

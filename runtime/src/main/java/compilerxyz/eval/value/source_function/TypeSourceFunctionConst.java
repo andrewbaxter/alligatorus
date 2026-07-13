@@ -142,7 +142,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
           }
 
           if (data.compiledClassName == null && data.functionSpec != null) {
-            set.finishFunctions(xx.vx.ix.builtinDynamics);
+            set.finishFunctions();
           }
           var compiledClassName = data.compiledClassName;
           var compiledBytecode = data.compiledBytecode;

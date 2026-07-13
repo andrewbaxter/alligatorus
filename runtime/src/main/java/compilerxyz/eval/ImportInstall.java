@@ -97,8 +97,7 @@ public final class ImportInstall {
       if (obj.compiledBinaryName != null && obj.compiledBytecode != null) {
         loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
       }
-      var objFinishResult =
-          obj.finish(xx, loc, objIdx, loader, xx.vx.ix.builtinDynamics);
+      var objFinishResult = obj.finish(xx, loc, objIdx, loader);
       if (objFinishResult.hasErrors()) {
         return objFinishResult.reerr();
       }
@@ -112,7 +111,7 @@ public final class ImportInstall {
       }
     }
 
-    var emittedFuncs = set.finishFunctions(xx.vx.ix.builtinDynamics);
+    var emittedFuncs = set.finishFunctions();
     if (emittedFuncs != null) {
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
       var funcStaticFields = new TOrderedMap<String, Object>();
@@ -218,13 +217,4 @@ public final class ImportInstall {
     return EResult.ok(null);
   }
 
-  public static String bindingIdDynamicKey(BindingId id) {
-    return switch (id) {
-      case BindingId.Local local ->
-          throw new AssertionError(
-              "bindingIdDynamicKey(Local): locals are JVM slots, not static fields; caller must"
-                  + " handle Local separately (JavaBytecodeStoreLoad ALOAD/ASTORE on the key)");
-      case BindingId.Builtin builtin -> Prefixes.BUILTIN_PREFIX + builtin.index();
-    };
-  }
 }

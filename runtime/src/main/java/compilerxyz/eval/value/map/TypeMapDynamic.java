@@ -45,10 +45,11 @@ import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.number.ValueNumberConst;
+import compilerxyz.eval.value.number.TypeNumberConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
-import compilerxyz.eval.value.string.ValueStringConst;
+import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -389,10 +390,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       CodeValue keyCv;
       switch (fieldKey) {
         case ConstKey.Str s ->
-            keyCv = new CodeValue(Code.none(loc), Opt.some(new ValueStringConst(s.value())));
+            keyCv = new CodeValue(Code.none(loc), Opt.some(
+                new ValueObjectConst(new TypeStringConst(), s.value())));
         case ConstKey.Uint u ->
             keyCv =
-                new CodeValue(Code.none(loc), Opt.some(new ValueNumberConst((double) u.value())));
+                new CodeValue(Code.none(loc), Opt.some(
+                    new ValueObjectConst(new TypeNumberConst(), (double) u.value())));
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
       if (keyConvOpt.isEmpty()) return EResult.errs(erb.errors());

@@ -65,8 +65,7 @@ public interface Type extends Value {
                       "Type::lift: host is not a Type, got "
                           + (host == null ? "null" : host.getClass().getName()));
                 }
-                return compilerxyz.eval.EResult.ok(
-                    new compilerxyz.eval.value.ValueEmpty(t));
+                return compilerxyz.eval.EResult.ok(t);
               }),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());

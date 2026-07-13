@@ -179,7 +179,7 @@ public record TypeStringDynamic()
           "TypeStringDynamic::lift: expected java.lang.String, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    return EResult.ok(new ValueStringConst(s));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.string.TypeStringConst(), s));
   }
 
   @Override

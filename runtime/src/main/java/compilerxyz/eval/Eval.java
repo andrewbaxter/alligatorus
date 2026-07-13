@@ -16,7 +16,6 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.eval.value.argrecord.ArgumentRecordBinding;
-import compilerxyz.eval.value.unique.BindingUniqueDualMode;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
@@ -150,10 +149,10 @@ public final class Eval {
   }
 
   public static EResult<TMap<ConstKey, Binding>> initBuiltinScope(
-      ExprContext xx, QExprId loc, ImportStateId importState, boolean registerDynamic) {
+      ExprContext xx, QExprId loc, ImportStateId importState) {
     var interfaces = BuiltinInterfaceRegistry.bundle(importState);
     var bindingRes =
-        GenBuiltinTree.installRoot(xx, loc, importState, interfaces, registerDynamic);
+        GenBuiltinTree.installRoot(xx, loc, importState, interfaces);
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }
@@ -172,16 +171,12 @@ public final class Eval {
     var rootScope = new Scope(null);
     var target = new TargetDynamic(vx.nextLocalId);
     var xx = new ExprContext(rootScope, target, vx, importState, new TypeStringConst());
-    var registerDynamic = !cix.builtinsRegistered;
-    var scopeRes = initBuiltinScope(xx, rootLoc, importState, registerDynamic);
+    var scopeRes = initBuiltinScope(xx, rootLoc, importState);
     if (scopeRes.hasErrors()) {
       return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull());
     }
     var scopeEntries = scopeRes.requireValue("Eval::eval initBuiltinScope");
     rootScope.values.putAll(scopeEntries);
-    if (registerDynamic) {
-      cix.builtinsRegistered = true;
-    }
     var binaryName = EvalRootEmitter.allocateBinaryName();
     vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);
@@ -277,32 +272,12 @@ public final class Eval {
 
         return new CompileImport.EvalOutcome.Ok(fb.value(), vx.logs, false);
       }
-      var referencedBuiltins = EvalRootEmitter.referencedBuiltinIds(rootSome.value());
-      for (var scopeId : referencedBuiltins) {
-        var fieldName = EvalRootEmitter.builtinFieldName(scopeId);
-        if (!cix.builtinDynamics.containsKey(fieldName)) {
-          return new CompileImport.EvalOutcome.Err(
-              TList.of(
-                  new ExprErr(
-                      rootLoc,
-                      TList.of(
-                          new ExprSubErr.Opaque(
-                              "eval: root dynamic code references builtin scope id "
-                                  + scopeId
-                                  + " ("
-                                  + fieldName
-                                  + ") with no registered host value — invisible-builtin"
-                                  + " dispatch (Rust install_invisible_builtins) not yet"
-                                  + " ported to the JVM target")))));
-        }
-      }
       var emitted =
           EvalRootEmitter.emit(
               target,
               binaryName,
               rootSome.value(),
-              vx.externals,
-              cix.builtinDynamics);
+              vx.externals);
       var loader =
           new DefinitionSetClassLoader(
               DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);

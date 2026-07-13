@@ -7,7 +7,5 @@ public sealed interface BindingId {
     return Type.dynamicType();
   }
 
-  record Builtin(long index) implements BindingId {}
-
   record Local(JavaBytecodeBindingKey key) implements BindingId {}
 }

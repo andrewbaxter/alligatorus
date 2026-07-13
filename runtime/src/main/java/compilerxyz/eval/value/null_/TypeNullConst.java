@@ -85,8 +85,8 @@ public record TypeNullConst()
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof ValueNullConst
-              || self instanceof ValueTypeNullConst
+          if (!((self instanceof compilerxyz.eval.value.object_.ValueObjectConst voc
+                  && voc.type() instanceof TypeNullConst)
               || self instanceof TypeNullConst)) {
             return EResult.err(
                 loc, "TypeNullConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
@@ -98,7 +98,7 @@ public record TypeNullConst()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (data instanceof JsonValueNull) {
-            return EResult.ok(new ValueNullConst());
+            return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNullConst(), null));
           }
           return EResult.err(
               loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
@@ -125,7 +125,7 @@ public record TypeNullConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueTypeNullConst());
+    return EResult.ok(this);
   }
 
   @Override

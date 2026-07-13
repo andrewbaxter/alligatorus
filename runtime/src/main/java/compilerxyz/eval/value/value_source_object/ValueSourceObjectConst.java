@@ -21,23 +21,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 
-public record ValueSourceObjectConst(TypeSourceObjectDynamic data, Value underlying)
-    implements Value, ExporterAny {
-  @Override
-  public Type valueType() {
-    return new TypeTypeSourceObjectConst(data);
-  }
-
-  @Override
-  public EResult<Type> exporterAnyAsType() {
-    throw new UnsupportedOperationException(
-        "ValueSourceObjectConst::exporterAnyAsType: a source-object instance is not a type");
-  }
-
-  @Override
-  public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
-  }
+public final class ValueSourceObjectConst {
+  private ValueSourceObjectConst() {}
 
   public record ArtifactValueSourceObject(Artifact typeArtifact, Artifact underlying)
       implements SafeJsonSerializable {}
@@ -50,22 +35,23 @@ public record ValueSourceObjectConst(TypeSourceObjectDynamic data, Value underly
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof ValueSourceObjectConst inst)) {
+          if (!(self instanceof compilerxyz.eval.value.object_.ValueObjectConst inst)
+              || !(inst.type() instanceof TypeTypeSourceObjectConst instType)
+              || !(inst.data() instanceof Value underlying)) {
             return EResult.err(
                 loc,
-                "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected ValueSourceObjectConst, got "
+                "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected source-object ValueObjectConst, got "
                     + self.getClass());
           }
           var errors = new TList<ExprErr>();
-          var typeValue = new TypeTypeSourceObjectConst(inst.data);
-          var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, typeValue);
+          var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, instType);
           if (typeArtRes.hasErrors()) {
             typeArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
           var typeArt =
               typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
-          var underArtRes = ArtifactSupport.exportArtifact(xx, loc, inst.underlying);
+          var underArtRes = ArtifactSupport.exportArtifact(xx, loc, underlying);
           if (underArtRes.hasErrors()) {
             underArtRes.drainInto(errors);
             return EResult.errs(errors);
@@ -128,7 +114,8 @@ public record ValueSourceObjectConst(TypeSourceObjectDynamic data, Value underly
           var underlying =
               underVal.requireValue(
                   "ValueSourceObjectConst::exporterFromArtifactData underlying value");
-          ExporterAny out = new ValueSourceObjectConst(dt, underlying);
+          ExporterAny out = new compilerxyz.eval.value.object_.ValueObjectConst(
+              new TypeTypeSourceObjectConst(dt), underlying);
           if (errors.isEmpty()) return EResult.ok(out);
           return EResult.mixed(out, errors);
         }

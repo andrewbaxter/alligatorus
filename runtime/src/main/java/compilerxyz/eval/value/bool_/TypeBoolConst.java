@@ -93,9 +93,10 @@ public record TypeBoolConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof ValueBoolConst v) {
-            data = new JsonValueBoolean(v.value());
-          } else if (self instanceof TypeBoolConst || self instanceof ValueTypeBoolConst) {
+          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+              && v.data() instanceof Boolean bv) {
+            data = new JsonValueBoolean(bv);
+          } else if (self instanceof TypeBoolConst) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
@@ -108,8 +109,9 @@ public record TypeBoolConst()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return switch (data) {
-            case JsonValueNull ignored -> EResult.ok(new ValueTypeBoolConst());
-            case JsonValueBoolean b -> EResult.ok(new ValueBoolConst(b.value()));
+            case JsonValueNull ignored -> EResult.ok(new TypeBoolConst());
+            case JsonValueBoolean b -> EResult.ok(
+                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeBoolConst(), b.value()));
             default -> EResult.err(
                 loc, "TypeBoolConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -126,20 +128,23 @@ public record TypeBoolConst()
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some && some.value() instanceof ValueBoolConst v) {
+    if (cv.value() instanceof Opt.Some<Value> some
+        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Boolean bv) {
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-      seq.add(JavaBytecodeUtils.literalBool(loc, v.value()));
+      seq.add(JavaBytecodeUtils.literalBool(loc, bv));
       seq.add(compilerxyz.eval.value.number.TypeNumberDynamic.boxBoolean(loc));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    return EResult.err(loc, "TypeBoolConst::toDynamic: expected ValueBoolConst");
+    return EResult.err(loc, "TypeBoolConst::toDynamic: expected bool ValueObjectConst");
   }
 
   @Override
   public boolean aspectBoolConstGet(Value value) {
-    if (value instanceof ValueBoolConst v) return v.value();
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Boolean bv) return bv;
     throw new IllegalArgumentException(
-        "TypeBoolConst::get: expected ValueBoolConst, got " + value.getClass());
+        "TypeBoolConst::get: expected bool ValueObjectConst, got " + value.getClass());
   }
 
   @Override
@@ -149,7 +154,7 @@ public record TypeBoolConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueTypeBoolConst());
+    return EResult.ok(this);
   }
 
   @Override

@@ -98,9 +98,10 @@ public record TypeStringConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof ValueStringConst v) {
-            data = new JsonValueString(v.value());
-          } else if (self instanceof TypeStringConst || self instanceof ValueTypeStringConst) {
+          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+              && v.data() instanceof String s) {
+            data = new JsonValueString(s);
+          } else if (self instanceof TypeStringConst) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
@@ -113,8 +114,9 @@ public record TypeStringConst()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return switch (data) {
-            case JsonValueNull ignored -> EResult.ok(new ValueTypeStringConst());
-            case JsonValueString s -> EResult.ok(new ValueStringConst(s.value()));
+            case JsonValueNull ignored -> EResult.ok(new TypeStringConst());
+            case JsonValueString s -> EResult.ok(
+                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeStringConst(), s.value()));
             default -> EResult.err(
                 loc, "TypeStringConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -132,10 +134,11 @@ public record TypeStringConst()
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof ValueStringConst v) {
-      return EResult.ok(JavaBytecodeUtils.literalString(loc, v.value()));
+        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof String s) {
+      return EResult.ok(JavaBytecodeUtils.literalString(loc, s));
     }
-    return EResult.err(loc, "TypeStringConst::toDynamic: expected ValueStringConst");
+    return EResult.err(loc, "TypeStringConst::toDynamic: expected string ValueObjectConst");
   }
 
   @Override
@@ -160,9 +163,10 @@ public record TypeStringConst()
 
   @Override
   public String aspectStringConstGet(Value value) {
-    if (value instanceof ValueStringConst v) return v.value();
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof String s) return s;
     throw new IllegalArgumentException(
-        "TypeStringConst::get: expected ValueStringConst, got " + value.getClass());
+        "TypeStringConst::get: expected string ValueObjectConst, got " + value.getClass());
   }
 
   @Override
@@ -172,7 +176,7 @@ public record TypeStringConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueTypeStringConst());
+    return EResult.ok(this);
   }
 
 

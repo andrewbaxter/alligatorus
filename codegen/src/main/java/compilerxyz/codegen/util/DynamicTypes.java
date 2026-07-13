@@ -74,6 +74,10 @@ public final class DynamicTypes {
         "TypeUnique",
         ClassName.get("compilerxyz.eval", "Unique"));
     nullary(
+        "compilerxyz.eval.value.unique",
+        "TypeUniqueConst",
+        ClassName.get("compilerxyz.eval", "Unique"));
+    nullary(
         "compilerxyz.eval.value.code_value_extern",
         "TypeCodeValueExternDynamic",
         ClassName.get("compilerxyz.eval", "CodeValue"));

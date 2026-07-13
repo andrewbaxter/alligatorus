@@ -40,7 +40,6 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
-import compilerxyz.eval.value.bool_.ValueBoolConst;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.safejson.JsonValue;
@@ -66,8 +65,6 @@ public record TypeUnique()
   @Override
   public TypeId typeId() { return GenTypeIds.TYPE_UNIQUE_TYPE_ID; }
 
-
-  public static final BindingId UNIQUE_EQ_FN_SCOPE_ID = new BindingId.Builtin(7021);
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -112,9 +109,10 @@ public record TypeUnique()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof ValueUnique v) {
-            data = encodeUnique(v.unique());
-          } else if (self instanceof ValueTypeUnique || self instanceof TypeUnique) {
+          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+              && v.data() instanceof Unique u) {
+            data = encodeUnique(u);
+          } else if (self instanceof TypeUnique) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
@@ -127,7 +125,7 @@ public record TypeUnique()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (data instanceof JsonValueNull) {
-            return EResult.ok(new ValueTypeUnique());
+            return EResult.ok(new TypeUnique());
           }
           if (data instanceof JsonValueObject obj) {
             var decoded = decodeUnique(loc, obj);
@@ -135,7 +133,8 @@ public record TypeUnique()
               return EResult.err(loc, "TypeUnique::exporterRootDelegateSelfFromArtifactData: malformed");
             }
             return EResult.ok(
-                new ValueUnique(
+                new compilerxyz.eval.value.object_.ValueObjectConst(
+                    new TypeUnique(),
                     decoded.requireValue(
                         "TypeUnique::exporterRootDelegateSelfFromArtifactData decoded")));
           }
@@ -206,10 +205,17 @@ public record TypeUnique()
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
-    if (dyn == null) {
-      return EResult.err(loc, "TypeUnique::toDynamic: CodeValue has no dynamic code");
+    if (dyn != null) return EResult.ok(dyn);
+    if (cv.value() instanceof Opt.Some<Value> some) {
+      var srcType = some.value().valueType();
+      if (!(srcType instanceof TypeUnique)) {
+        var asp = AspectConsumeDynamic.getMaybe(xx, srcType);
+        if (asp instanceof Opt.Some<AspectConsumeDynamic> aspSome) {
+          return aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
+        }
+      }
     }
-    return EResult.ok(dyn);
+    return EResult.err(loc, "TypeUnique::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -224,7 +230,10 @@ public record TypeUnique()
     var r = extractUnique(reference);
     if (b instanceof Opt.Some<Unique> bs && r instanceof Opt.Some<Unique> rs) {
       return EResult.ok(
-          new CodeValue(Code.none(loc), Opt.some(new ValueBoolConst(bs.value().equals(rs.value())))));
+          new CodeValue(Code.none(loc), Opt.some(
+              new compilerxyz.eval.value.object_.ValueObjectConst(
+                  new compilerxyz.eval.value.bool_.TypeBoolConst(),
+                  bs.value().equals(rs.value())))));
     }
     var baseDyn = aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: base lowering failed");
@@ -259,8 +268,10 @@ public record TypeUnique()
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some && some.value() instanceof ValueUnique v) {
-      return Opt.some(v.unique());
+    if (cv.value() instanceof Opt.Some<Value> some
+        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Unique u) {
+      return Opt.some(u);
     }
     return Opt.none();
   }
@@ -272,7 +283,15 @@ public record TypeUnique()
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.ok(cv);
+    if (cv.code().dynamic() != null) return EResult.ok(cv);
+    if (!(cv.value() instanceof Opt.Some<Value> some)) return EResult.ok(cv);
+    var srcType = some.value().valueType();
+    if (srcType instanceof TypeUnique) return EResult.ok(cv);
+    var asp = AspectConsumeDynamic.getMaybe(xx, srcType);
+    if (!(asp instanceof Opt.Some<AspectConsumeDynamic> aspSome)) return EResult.ok(cv);
+    var dynRes = aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
+    if (dynRes.hasErrors()) return dynRes.reerr();
+    return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUnique::typeCastFrom")), cv.value()));
   }
 
   @Override
@@ -287,7 +306,7 @@ public record TypeUnique()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueTypeUnique());
+    return EResult.ok(this);
   }
 
   @Override

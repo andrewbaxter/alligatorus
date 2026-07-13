@@ -3,9 +3,10 @@ package compilerxyz.langhelp;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
-import compilerxyz.eval.value.null_.ValueNullConst;
-import compilerxyz.eval.value.number.ValueNumberConst;
-import compilerxyz.eval.value.string.ValueStringConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.null_.TypeNullConst;
+import compilerxyz.eval.value.number.TypeNumberConst;
+import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceLiteral;
 import compilerxyz.syntax.SourceModule;
@@ -46,7 +47,8 @@ public final class SourceModuleToModule {
             var nameLiteral =
                 new Expr(
                     loc,
-                    new Expr.Literal(Expr.LitValue.shared(new ValueStringConst(b.name()))));
+                    new Expr.Literal(Expr.LitValue.shared(
+                        new ValueObjectConst(new TypeStringConst(), b.name()))));
             yield new Expr.Bind(nameLiteral, sourceExprToExpr(sourceId, b.value()));
           }
           case SourceExpr.Stage s -> new Expr.Stage(sourceExprToExpr(sourceId, s.expr()));
@@ -134,9 +136,12 @@ public final class SourceModuleToModule {
 
   private static Expr.LitValue literalToLitValue(SourceLiteral literal) {
     return switch (literal) {
-      case SourceLiteral.Null n -> Expr.LitValue.shared(new ValueNullConst());
-      case SourceLiteral.Str s -> Expr.LitValue.shared(new ValueStringConst(s.value()));
-      case SourceLiteral.Number n -> Expr.LitValue.shared(new ValueNumberConst(n.value()));
+      case SourceLiteral.Null n -> Expr.LitValue.shared(
+          new ValueObjectConst(new TypeNullConst(), null));
+      case SourceLiteral.Str s -> Expr.LitValue.shared(
+          new ValueObjectConst(new TypeStringConst(), s.value()));
+      case SourceLiteral.Number n -> Expr.LitValue.shared(
+          new ValueObjectConst(new TypeNumberConst(), n.value()));
     };
   }
 

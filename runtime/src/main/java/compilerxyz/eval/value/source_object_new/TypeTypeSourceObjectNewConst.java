@@ -26,7 +26,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
-import compilerxyz.eval.value.ValueEmpty;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
@@ -105,7 +104,8 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-    return EResult.ok(new ValueEmpty(new TypeSourceObjectNewDynamic(type_)));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(
+        new TypeSourceObjectNewDynamic(type_), null));
   }
 
   @Override

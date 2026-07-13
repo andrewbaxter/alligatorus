@@ -67,6 +67,10 @@ public final class BuiltinTreeGen {
       CodeBlock.of("$T.dynamicType()", OBJECT_CONST_OF_TYPE);
   private static final CodeBlock TTOD_TYPE_EXPR =
       CodeBlock.of("$T.dynamicType()", TYPE_TYPE_OBJECT_DYNAMIC);
+  private static final ClassName TYPE_UNIQUE_CONST =
+      ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueConst");
+  private static final CodeBlock TUC_TYPE_EXPR =
+      CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);
   private static final ClassName IMPORT_INSTALL =
       ClassName.get("compilerxyz.eval", "ImportInstall");
   private static final ClassName TYPE_INTERFACE_CONST =
@@ -143,27 +147,43 @@ public final class BuiltinTreeGen {
 
   public record Leaf(LeafSpec leaf) implements NodeSpec {}
 
-  public sealed interface LeafSpec {
+  public record LeafSpec(CodeBlock innerExpr, CodeBlock valueTypeExpr) {
 
-    /**
-     * Compile-time constant value. {@code innerExpr} is the wrapped Type reference; {@code
-     * valueTypeExpr} is the source-level type of the resulting value (both required, no default).
-     */
-    record Const(CodeBlock innerExpr, CodeBlock valueTypeExpr) implements LeafSpec {}
+    public static LeafSpec of(CodeBlock innerExpr, CodeBlock valueTypeExpr) {
+      return new LeafSpec(innerExpr, valueTypeExpr);
+    }
 
-    record InitialBind(long dynamicKeyScopeId, CodeBlock typeExpr) implements LeafSpec {}
+    public static LeafSpec initialBind(CodeBlock typeExpr) {
+      return new LeafSpec(typeExpr, OCT_TYPE_EXPR);
+    }
 
-    record AspectId(long builtinScopeId, String aspectName) implements LeafSpec {}
+    public static LeafSpec interface_(InterfaceSpec spec) {
+      var innerExpr =
+          CodeBlock.of("new $T(interfaces.$N)", TYPE_INTERFACE_CONST, ifaceHolderFieldName(spec));
+      var wrapperExpr = CodeBlock.of("$T.dynamicType()", TYPE_INTERFACE_CONST);
+      return new LeafSpec(innerExpr, wrapperExpr);
+    }
 
-    record Interface(InterfaceSpec spec) implements LeafSpec {}
+    public static LeafSpec function(long builtinScopeId, TList<NamedTypeRef> args, CodeBlock retDynamicType) {
+      var methodName = BUILTIN_METHOD_NAMES.get(builtinScopeId);
+      if (methodName == null) {
+        throw new IllegalStateException(
+            "BuiltinTreeGen: no BuiltinBodies method mapped for scope id " + builtinScopeId);
+      }
+      var innerExpr = CodeBlock.of(
+          "new $T($L, $L, $T.of($S), $S, true)",
+          TYPE_FUNCTION_DYNAMIC,
+          argDynamicTypeExpr(args),
+          retDynamicType,
+          JAVA_INTERNAL_NAME,
+          "compilerxyz/eval/builtin/BuiltinBodies",
+          methodName);
+      return new LeafSpec(innerExpr, OCT_TYPE_EXPR);
+    }
 
-    record Function(
-        long builtinScopeId,
-        TList<NamedTypeRef> args,
-        CodeBlock retDynamicType)
-        implements LeafSpec {}
-
-    record Constructor(long builtinScopeId, CodeBlock typeExpr) implements LeafSpec {}
+    public static LeafSpec constructor(CodeBlock typeExpr) {
+      return new LeafSpec(typeExpr, OCT_TYPE_EXPR);
+    }
   }
 
   public static void run(
@@ -207,19 +227,8 @@ public final class BuiltinTreeGen {
             .addParameter(ParameterSpec.builder(EXPR_CONTEXT, "xx").build())
             .addParameter(ParameterSpec.builder(QEXPR_ID, "loc").build())
             .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build())
-            .addParameter(ParameterSpec.builder(GEN_BUILTIN_INTERFACES, "interfaces").build())
-            .addParameter(ParameterSpec.builder(TypeName.BOOLEAN, "registerDynamic").build());
+            .addParameter(ParameterSpec.builder(GEN_BUILTIN_INTERFACES, "interfaces").build());
 
-    // Dynamic registration for Interface + AspectId leaves.
-    var dynBlock = CodeBlock.builder();
-    emitDynamicRegistrations(root, dynBlock);
-    if (!dynBlock.build().isEmpty()) {
-      m.beginControlFlow("if (registerDynamic)");
-      m.addCode(dynBlock.build());
-      m.endControlFlow();
-    }
-
-    // Emit the whole tree inline; result is (binding, type) local names.
     var st = new EmitState();
     var vars = emitNode(root, st);
     m.addCode(st.body.build());
@@ -260,40 +269,7 @@ public final class BuiltinTreeGen {
   }
 
   private static String[] emitLeaf(LeafSpec spec, EmitState st) {
-    return switch (spec) {
-      case LeafSpec.Const c -> emitConstLeaf(c.innerExpr(), c.valueTypeExpr(), st);
-      case LeafSpec.InitialBind ib ->
-          emitInitialBindLike(ib.typeExpr(), ib.dynamicKeyScopeId(), st, "InitialBind");
-      case LeafSpec.AspectId ai -> emitAspectIdLeaf(ai, st);
-      case LeafSpec.Interface ifc -> {
-        var typeExpr =
-            CodeBlock.of(
-                "new $T(interfaces.$N)",
-                TYPE_INTERFACE_CONST,
-                ifaceHolderFieldName(ifc.spec()));
-        yield emitInitialBindLike(typeExpr, (long) ifc.spec().scopeId(), st, "Interface");
-      }
-      case LeafSpec.Function fn -> {
-        var methodName = BUILTIN_METHOD_NAMES.get(fn.builtinScopeId());
-        if (methodName == null) {
-          throw new IllegalStateException(
-              "BuiltinTreeGen: no BuiltinBodies method mapped for scope id "
-                  + fn.builtinScopeId());
-        }
-        var typeExpr =
-            CodeBlock.of(
-                "new $T($L, $L, $T.of($S), $S, true)",
-                TYPE_FUNCTION_DYNAMIC,
-                argDynamicTypeExpr(fn.args()),
-                fn.retDynamicType(),
-                JAVA_INTERNAL_NAME,
-                "compilerxyz/eval/builtin/BuiltinBodies",
-                methodName);
-        yield emitInitialBindLike(typeExpr, fn.builtinScopeId(), st, "Function");
-      }
-      case LeafSpec.Constructor c ->
-          emitInitialBindLike(c.typeExpr(), c.builtinScopeId(), st, "Constructor");
-    };
+    return emitConstLeaf(spec.innerExpr(), spec.valueTypeExpr(), st);
   }
 
   private static final java.util.Map<Long, String> BUILTIN_METHOD_NAMES =
@@ -332,7 +308,7 @@ public final class BuiltinTreeGen {
     var bindRes = st.next("bindRes");
     var br = st.next("br");
     var binding = st.next("binding");
-    st.body.addStatement("$T $N = ($T) $L", TYPE, type, TYPE, innerExpr);
+    st.body.addStatement("$T $N = $L", Object.class, type, innerExpr);
     st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
     st.body.addStatement(
         "var $N = new $T($T.none(loc), $T.some(new $T($N, $N)))",
@@ -390,57 +366,6 @@ public final class BuiltinTreeGen {
     return new String[] {binding, type};
   }
 
-  private static String[] emitAspectIdLeaf(LeafSpec.AspectId ai, EmitState st) {
-    var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
-    var binding = st.next("binding");
-    var type = st.next("type");
-    st.body.addStatement(
-        "$T $N = new $T(new $T($LL), $T.ID)",
-        BINDING,
-        binding,
-        BINDING_UNIQUE_DUAL_MODE,
-        BINDING_ID_BUILTIN,
-        ai.builtinScopeId(),
-        aspectClass);
-    st.body.addStatement("$T $N = new $T()", TYPE, type, TYPE_UNIQUE_RT);
-    return new String[] {binding, type};
-  }
-
-  private static void emitDynamicRegistrations(NodeSpec node, CodeBlock.Builder out) {
-    switch (node) {
-      case Branch b -> {
-        for (var c : b.children()) emitDynamicRegistrations(c.node(), out);
-      }
-      case Leaf l -> {
-        switch (l.leaf()) {
-          case LeafSpec.Interface ifc ->
-              out.addStatement(
-                  "xx.vx.ix.builtinDynamics.put($T.bindingIdDynamicKey(new $T($LL)),"
-                      + " new $T($T.class, new $T(interfaces.$N)))",
-                  IMPORT_INSTALL,
-                  BINDING_ID_BUILTIN,
-                  (long) ifc.spec().scopeId(),
-                  EXTERNAL,
-                  TYPE_INTERFACE_CONST,
-                  TYPE_INTERFACE_CONST,
-                  ifaceHolderFieldName(ifc.spec()));
-          case LeafSpec.AspectId ai -> {
-            var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
-            out.addStatement(
-                "xx.vx.ix.builtinDynamics.put($T.bindingIdDynamicKey(new $T($LL)),"
-                    + " new $T($T.class, $T.ID))",
-                IMPORT_INSTALL,
-                BINDING_ID_BUILTIN,
-                ai.builtinScopeId(),
-                EXTERNAL,
-                UNIQUE_CLASS,
-                aspectClass);
-          }
-          default -> {}
-        }
-      }
-    }
-  }
 
   private static CodeBlock argDynamicTypeExpr(TList<NamedTypeRef> args) {
     if (args.size() == 1) {
@@ -858,19 +783,15 @@ var targetBindSubCls =
             new Child(
                 "throw",
                 new Leaf(
-                    new LeafSpec.InitialBind(
-                        THROW_COMPILE_SCOPE_ID,
-                        DynamicTypes.leaf(TYPE_THROW_DYNAMIC)))),
+                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_THROW_DYNAMIC)))),
             new Child(
                 "panic",
                 new Leaf(
-                    new LeafSpec.InitialBind(
-                        PANIC_COMPILE_SCOPE_ID,
-                        DynamicTypes.leaf(TYPE_PANIC_DYNAMIC)))),
+                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_PANIC_DYNAMIC)))),
             new Child(
                 "log",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5001,
                         TList.of(
                             new NamedTypeRef(
@@ -880,7 +801,7 @@ var targetBindSubCls =
             new Child(
                 "define",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5002,
                         TList.of(),
                         CodeBlock.of(
@@ -896,74 +817,70 @@ var targetBindSubCls =
             new Child(
                 "list",
                 new Leaf(
-                    new LeafSpec.Constructor(
-                        5010, DynamicTypes.leaf(TYPE_LIST_CONSTRUCTOR_CONST)))),
+                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_LIST_CONSTRUCTOR_CONST)))),
             new Child(
                 "map",
                 new Leaf(
-                    new LeafSpec.Constructor(
-                        5011, DynamicTypes.leaf(TYPE_MAP_CONSTRUCTOR_CONST)))),
+                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_MAP_CONSTRUCTOR_CONST)))),
             new Child(
                 "option",
                 new Leaf(
-                    new LeafSpec.Constructor(
-                        5012, DynamicTypes.leaf(TYPE_OPTION_CONSTRUCTOR_CONST)))),
+                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_OPTION_CONSTRUCTOR_CONST)))),
             new Child(
                 "eresult",
                 new Leaf(
-                    new LeafSpec.Constructor(
-                        5014, DynamicTypes.leaf(TYPE_ERESULT_CONSTRUCTOR_CONST)))),
+                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_ERESULT_CONSTRUCTOR_CONST)))),
             new Child(
                 "code",
                 new Leaf(
-                    new LeafSpec.Const(DynamicTypes.leaf(CODE_INTERFACE), OCT_TYPE_EXPR))),
+                    new LeafSpec(DynamicTypes.leaf(CODE_INTERFACE), OCT_TYPE_EXPR))),
             new Child(
                 "string",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_STRING_DYNAMIC), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_STRING_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "number",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "null",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_NULL_DYNAMIC), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_NULL_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "bool",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "binding",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get("compilerxyz.gen", "Binding")), OCT_TYPE_EXPR))),
             new Child(
                 "bind_result",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get(
                                 "compilerxyz.eval.value.bind_result", "BindResultType")), OCT_TYPE_EXPR))),
             new Child(
                 "constkey",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
-                "expr", new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_EXPR), OCT_TYPE_EXPR))),
+                "expr", new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_EXPR), OCT_TYPE_EXPR))),
             new Child(
                 "type",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE), OCT_TYPE_EXPR))),
             new Child(
                 "aspect",
-                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(ASPECT_INTERFACE), OCT_TYPE_EXPR))),
+                new Leaf(new LeafSpec(DynamicTypes.leaf(ASPECT_INTERFACE), OCT_TYPE_EXPR))),
             new Child(
                 "codedyn",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         DynamicTypes.leaf(CODE_DYN_HANDLE_TYPE), OCT_TYPE_EXPR))),
             new Child(
                 "cve",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC), OCT_TYPE_EXPR)))));
   }
 
@@ -986,20 +903,16 @@ var targetBindSubCls =
             new Child(
                 "aspect_lookup",
                 new Leaf(
-                    new LeafSpec.InitialBind(
-                        ASPECT_COMPILE_SCOPE_ID,
-                        DynamicTypes.leaf(TYPE_FUNCTION_ASPECT_DYNAMIC)))),
+                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_FUNCTION_ASPECT_DYNAMIC)))),
             new Child(
                 "cast_value",
                 new Leaf(
-                    new LeafSpec.InitialBind(
-                        CAST_VALUE_COMPILE_SCOPE_ID,
-                        DynamicTypes.leaf(TYPE_FUNCTION_CAST_VALUE_DYNAMIC)))),
+                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_FUNCTION_CAST_VALUE_DYNAMIC)))),
 
             new Child(
                 "const_eval",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5008,
                         TList.of(
                             new NamedTypeRef(
@@ -1010,7 +923,7 @@ var targetBindSubCls =
             new Child(
                 "codevalue",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5005,
                         TList.of(
                             new NamedTypeRef(
@@ -1021,7 +934,7 @@ var targetBindSubCls =
             new Child(
                 "stack",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5013,
                         TList.of(
                             new NamedTypeRef(
@@ -1030,7 +943,7 @@ var targetBindSubCls =
             new Child(
                 "str_to_json",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5003,
                         TList.of(
                             new NamedTypeRef(
@@ -1040,7 +953,7 @@ var targetBindSubCls =
             new Child(
                 "constkey_to_str",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5004,
                         TList.of(
                             new NamedTypeRef(
@@ -1049,7 +962,7 @@ var targetBindSubCls =
             new Child(
                 "gen_binding_name",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5006,
                         TList.of(
                             new NamedTypeRef(
@@ -1059,7 +972,7 @@ var targetBindSubCls =
             new Child(
                 "new_expr_context",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5009,
                         TList.of(
                             new NamedTypeRef(
@@ -1072,29 +985,29 @@ var targetBindSubCls =
                                     TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey")),
                                     TypeRef.leaf(ClassName.get("compilerxyz.gen", "Binding"))))),
                         DynamicTypes.leaf(ClassName.get("compilerxyz.eval", "ExprContext"))))),
-            new Child("aspect_function", new Leaf(new LeafSpec.Interface(ifaceAspectFunction))),
-            new Child("aspect_field", new Leaf(new LeafSpec.Interface(ifaceAspectField))),
+            new Child("aspect_function", new Leaf(LeafSpec.interface_(ifaceAspectFunction))),
+            new Child("aspect_field", new Leaf(LeafSpec.interface_(ifaceAspectField))),
             new Child(
                 "aspect_drop_dynamic",
-                new Leaf(new LeafSpec.Interface(ifaceAspectDropDynamic))),
+                new Leaf(LeafSpec.interface_(ifaceAspectDropDynamic))),
             new Child(
                 "aspect_bind_dynamic",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get("compilerxyz.gen", "AspectBindDynamic")), TTOD_TYPE_EXPR))),
             new Child(
                 "aspect_consume_dynamic",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")), TTOD_TYPE_EXPR))),
             new Child(
                 "bind_result",
                 new Leaf(
-                    new LeafSpec.Function(
+                    LeafSpec.function(
                         5015,
                         TList.of(
                             new NamedTypeRef("code", TypeRef.leaf(CODE_INTERFACE)),
@@ -1107,36 +1020,50 @@ var targetBindSubCls =
             new Child(
                 "aspect_bind",
                 new Leaf(
-                    new LeafSpec.Const(
+                    new LeafSpec(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get("compilerxyz.gen", "AspectBind")), TTOD_TYPE_EXPR))),
             new Child(
                 "aspect_string_dynamic",
-                new Leaf(new LeafSpec.AspectId(4001, "StringDynamic"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectStringDynamic")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_function_id",
-                new Leaf(new LeafSpec.AspectId(4002, "Function"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectFunction")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_field_id",
-                new Leaf(new LeafSpec.AspectId(4003, "Field"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectField")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_bind_id",
-                new Leaf(new LeafSpec.AspectId(4004, "Bind"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBind")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_drop_dynamic_id",
-                new Leaf(new LeafSpec.AspectId(4005, "DropDynamic"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectDropDynamic")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_consume_dynamic_id",
-                new Leaf(new LeafSpec.AspectId(4006, "ConsumeDynamic"))),
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")),
+                    TUC_TYPE_EXPR))),
             new Child(
                 "aspect_bind_dynamic_id",
-                new Leaf(new LeafSpec.AspectId(4007, "BindDynamic"))),
-            new Child("binding", new Leaf(new LeafSpec.Interface(ifaceBinding))),
-            new Child("target", new Leaf(new LeafSpec.Interface(ifaceTarget))),
-            new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn))),
-            new Child("value", new Leaf(new LeafSpec.Interface(ifaceValue))),
-            new Child("type_", new Leaf(new LeafSpec.Interface(ifaceType)))));
+                new Leaf(new LeafSpec(
+                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBindDynamic")),
+                    TUC_TYPE_EXPR))),
+            new Child("binding", new Leaf(LeafSpec.interface_(ifaceBinding))),
+            new Child("target", new Leaf(LeafSpec.interface_(ifaceTarget))),
+            new Child("code_dyn", new Leaf(LeafSpec.interface_(ifaceCodeDyn))),
+            new Child("value", new Leaf(LeafSpec.interface_(ifaceValue))),
+            new Child("type_", new Leaf(LeafSpec.interface_(ifaceType)))));
   }
 
   private static InterfaceSpec findSpec(TList<InterfaceSpec> specs, String name) {
@@ -1188,21 +1115,5 @@ var targetBindSubCls =
     }
   }
 
-  private static void validateLeaf(LeafSpec spec, String path, TSet<Long> scopeIds) {
-
-    Long id =
-        switch (spec) {
-          case LeafSpec.Const c -> null;
-          case LeafSpec.InitialBind ib -> null;
-          case LeafSpec.AspectId ai -> ai.builtinScopeId();
-          case LeafSpec.Interface ifc -> null;
-          case LeafSpec.Function fn -> fn.builtinScopeId();
-          case LeafSpec.Constructor c -> c.builtinScopeId();
-        };
-    if (id == null) return;
-    if (!scopeIds.add(id)) {
-      throw new IllegalStateException(
-          "duplicate scope_id " + id + " (in builtin_tree at path " + path + ")");
-    }
-  }
+  private static void validateLeaf(LeafSpec spec, String path, TSet<Long> scopeIds) {}
 }

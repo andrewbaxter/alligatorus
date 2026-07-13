@@ -23,7 +23,6 @@ import compilerxyz.gen.Target;
 import compilerxyz.eval.dynamic.target.IfBranch;
 import compilerxyz.eval.dynamic.target.TargetCase;
 import compilerxyz.eval.dynamic.target.TryCatchClause;
-import compilerxyz.eval.value.null_.ValueNullConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.eval.value.tuple.Tuple;
@@ -231,7 +230,7 @@ public final class ConstEval {
 
     var frames = new TList<Frame>();
     frames.add(new Frame());
-    Opt<Value> lastVal = Opt.some(new ValueNullConst());
+    Opt<Value> lastVal = Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null));
     CodeValue pendingDiscard = null;
     boolean controlEnded = false;
     var subs = e.exprs();
@@ -289,7 +288,7 @@ public final class ConstEval {
         nf.dropCode = dropOpt.get();
         frames.add(nf);
         childXx.scope.values.put(ckOpt.get(), br.binding());
-        lastVal = Opt.some(new ValueNullConst());
+        lastVal = Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null));
       } else {
         var ropt = erb.mustErMaybeUnreachable(constEval(childXx, sub));
         if (ropt.isEmpty()) return EResult.errs(erb.errors());
@@ -657,7 +656,7 @@ public final class ConstEval {
         if (elseOpt.isEmpty()) return EResult.errs(erb.errors());
         return EResult.ok(elseOpt.get());
       }
-      return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueNullConst())));
+      return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))));
     } else {
       var branches = new TList<IfBranch>(conditionsEvaluated.size());
       for (var ie : conditionsEvaluated) {

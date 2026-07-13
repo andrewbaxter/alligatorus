@@ -52,8 +52,7 @@ public final class DefinitionSet implements ExporterAny {
     this.unions = new TList<>();
   }
 
-  public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions(
-      TOrderedMap<String, External> builtinDynamics) {
+  public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions() {
     var specs = new TList<DefSetFunctionsEmitter.FunctionSpec>();
     var contributors = new TList<SourceFunctionData>();
     for (var func : functions) {
@@ -71,8 +70,7 @@ public final class DefinitionSet implements ExporterAny {
     if (specs.isEmpty()) {
       return null;
     }
-    var emitted =
-        DefSetFunctionsEmitter.emit(defSetId, specs, builtinDynamics);
+    var emitted = DefSetFunctionsEmitter.emit(defSetId, specs);
     for (var func : contributors) {
       func.compiledClassName = emitted.binaryName();
       func.compiledBytecode = emitted.bytecode();
