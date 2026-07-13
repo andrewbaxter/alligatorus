@@ -433,19 +433,32 @@ public final class BuiltinTreeGen {
     if (args.size() == 1) {
       return args.get(0).type().dynamicType();
     }
-    var tuple = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
-    var tupleElement = ClassName.get("compilerxyz.eval.value.tuple", "TupleElement");
-    var tupleElementDynamic =
-        ClassName.get("compilerxyz.eval.value.tuple", "TupleElement", "Dynamic");
     var opt = ClassName.get("compilerxyz.util", "Opt");
-    var elements = CodeBlock.builder();
-    elements.add("$T.<$T>of(", TLIST, tupleElement);
-    for (var i = 0; i < args.size(); i++) {
-      if (i > 0) elements.add(", ");
-      elements.add("new $T($L)", tupleElementDynamic, args.get(i).type().dynamicType());
+    if (args.isEmpty()) {
+      var tuple = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
+      var tupleElement = ClassName.get("compilerxyz.eval.value.tuple", "TupleElement");
+      return CodeBlock.of(
+          "new $T($T.none(), $T.<$T>of())", tuple, opt, TLIST, tupleElement);
     }
-    elements.add(")");
-    return CodeBlock.of("new $T($T.none(), $L)", tuple, opt, elements.build());
+    var record = ClassName.get("compilerxyz.eval.value.record", "Record");
+    var recordFieldDynamic =
+        ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
+    var pair = ClassName.get("compilerxyz.util", "Pair");
+    var entries = CodeBlock.builder();
+    entries.add("$T.ofEntries(", TORDERED_MAP);
+    for (var i = 0; i < args.size(); i++) {
+      var a = args.get(i);
+      if (i > 0) entries.add(", ");
+      entries.add(
+          "new $T<>(new $T($S), new $T($L))",
+          pair,
+          CONST_KEY_STR,
+          a.name(),
+          recordFieldDynamic,
+          a.type().dynamicType());
+    }
+    entries.add(")");
+    return CodeBlock.of("new $T($T.none(), $L)", record, opt, entries.build());
   }
 
   private static String ifaceHolderFieldName(InterfaceSpec spec) {

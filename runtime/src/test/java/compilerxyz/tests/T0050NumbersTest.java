@@ -64,23 +64,27 @@ public final class T0050NumbersTest {
                                     mb.str("maybe add 7"))),
                             mb.call(
                                 mb.field(mb.scopeUse("builder"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNumber(),
-                                    mb.typesNumber(),
-                                    mb.stage(
-                                        mb.seqOf(
-                                            mb.ifOf(
-                                                TList.of(
-                                                    new TestMb.Branch(
-                                                        mb.operatorLt(
-                                                            mb.scopeUse("arg"), mb.num(5.0)),
-                                                        mb.set(
-                                                            mb.scopeUse("arg"),
-                                                            mb.operatorAdd(
-                                                                mb.scopeUse("arg"),
-                                                                mb.num(7.0))))),
-                                                null),
-                                            mb.scopeUse("arg"))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNumber()),
+                                        new TestMb.RecordPair("ret", mb.typesNumber()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.seqOf(
+                                                    mb.ifOf(
+                                                        TList.of(
+                                                            new TestMb.Branch(
+                                                                mb.operatorLt(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.num(5.0)),
+                                                                mb.set(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.operatorAdd(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.num(7.0))))),
+                                                        null),
+                                                    mb.scopeUse("arg"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("builder"), mb.str("func"))))),
                 mb.call(

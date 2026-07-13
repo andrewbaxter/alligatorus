@@ -62,15 +62,18 @@ public final class T0100ImportTest {
                                     mb.str("to_string"))),
                             mb.call(
                                 mb.field(mb.scopeUse("mnfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesString(),
-                                    mb.stage(
-                                        mb.call(
-                                            mb.field(
-                                                mb.scopeUse("inner"),
-                                                mb.str("toUpperCase")),
-                                            mb.tupleOf())))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scopeUse("inner"),
+                                                        mb.str("toUpperCase")),
+                                                    mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.call(mb.scopeUse("ctor"), mb.str("hello")))));
@@ -111,10 +114,11 @@ public final class T0100ImportTest {
                 mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                 mb.call(
                     mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                    mb.tupleOf(
-                        mb.typesNull(),
-                        mb.typesString(),
-                        mb.stage(mb.str("hello")))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("arg", mb.typesNull()),
+                            new TestMb.RecordPair("ret", mb.typesString()),
+                            new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello")))))),
                 mb.call(
                     mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.scopeUse("f"))));
@@ -132,13 +136,16 @@ public final class T0100ImportTest {
                 mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                 mb.call(
                     mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                    mb.tupleOf(
-                        mb.typesNull(),
-                        mb.typesString(),
-                        mb.stage(
-                            mb.call(
-                                mb.lower(mb.scopeUse("func_b")),
-                                mb.literalNull())))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("arg", mb.typesNull()),
+                            new TestMb.RecordPair("ret", mb.typesString()),
+                            new TestMb.RecordPair(
+                                "impl_body",
+                                mb.stage(
+                                    mb.call(
+                                        mb.lower(mb.scopeUse("func_b")),
+                                        mb.literalNull())))))),
                 mb.call(
                     mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.scopeUse("f"))));

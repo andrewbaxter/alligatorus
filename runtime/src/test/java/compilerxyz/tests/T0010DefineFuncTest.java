@@ -34,10 +34,13 @@ public final class T0010DefineFuncTest {
                             mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesNull(),
-                                    mb.stage(mb.call(mb.log(), mb.str("hello"))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(mb.call(mb.log(), mb.str("hello"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
@@ -70,15 +73,18 @@ public final class T0010DefineFuncTest {
                             mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesString(),
-                                    mb.typesString(),
-                                    mb.stage(
-                                        mb.call(
-                                            mb.field(
-                                                mb.scopeUse("arg"),
-                                                mb.str("toUpperCase")),
-                                            mb.tupleOf())))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesString()),
+                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scopeUse("arg"),
+                                                        mb.str("toUpperCase")),
+                                                    mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(
@@ -113,15 +119,18 @@ public final class T0010DefineFuncTest {
                             mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesString(),
-                                    mb.typesString(),
-                                    mb.stage(
-                                        mb.call(
-                                            mb.field(
-                                                mb.scopeUse("arg"),
-                                                mb.str("toUpperCase")),
-                                            mb.tupleOf())))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesString()),
+                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scopeUse("arg"),
+                                                        mb.str("toUpperCase")),
+                                                    mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(

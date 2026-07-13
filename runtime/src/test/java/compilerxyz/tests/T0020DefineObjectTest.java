@@ -41,15 +41,18 @@ public final class T0020DefineObjectTest {
                                     mb.str("to_string"))),
                             mb.call(
                                 mb.field(mb.scopeUse("mnfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesString(),
-                                    mb.stage(
-                                        mb.call(
-                                            mb.field(
-                                                mb.scopeUse("inner"),
-                                                mb.str("toUpperCase")),
-                                            mb.tupleOf())))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scopeUse("inner"),
+                                                        mb.str("toUpperCase")),
+                                                    mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),

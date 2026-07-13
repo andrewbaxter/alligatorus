@@ -60,16 +60,25 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalValue(),
-                        ifaceMethods(
-                            mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("outer")))))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalValue()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "type", mb.scopeUse("outer")))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalType(),
-                        ifaceMethods(
-                            mb,
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalType()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
                         TList.of(
                             new TestMb.RecordPair(
                                 "can_cast_from",
@@ -91,22 +100,35 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                         mb.str("ok")),
                                     mb.call(
                                         mb.evalCodevalue(),
-                                        mb.tupleOf(
-                                            mb.field(
-                                                mb.call(
-                                                    mb.evalConstEval(),
-                                                    mb.tupleOf(
-                                                        mb.field(
-                                                            mb.scopeUse("arg"), mb.str("xx")),
-                                                        mb.stage(
-                                                            mb.graft(
-                                                                mb.field(
-                                                                    mb.scopeUse("arg"),
-                                                                    mb.str("cv")))))),
-                                                mb.str("code")),
-                                            mb.call(
-                                                mb.evalStack(),
-                                                mb.scopeUse("outer")))))),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "code",
+                                                    mb.field(
+                                                        mb.call(
+                                                            mb.evalConstEval(),
+                                                            mb.recordOf(
+                                                                TList.of(
+                                                                    new TestMb.RecordPair(
+                                                                        "xx_",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("xx"))),
+                                                                    new TestMb.RecordPair(
+                                                                        "staged",
+                                                                        mb.stage(
+                                                                            mb.graft(
+                                                                                mb.field(
+                                                                                    mb.scopeUse(
+                                                                                        "arg"),
+                                                                                    mb.str(
+                                                                                        "cv")))))))),
+                                                        mb.str("code"))),
+                                                new TestMb.RecordPair(
+                                                    "value",
+                                                    mb.call(
+                                                        mb.evalStack(),
+                                                        mb.scopeUse("outer")))))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.str(name))),
                             new TestMb.RecordPair(
                                 "aspect",
@@ -151,57 +173,89 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             new TestMb.RecordPair(
                                 "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
                             new TestMb.RecordPair(
-                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))),
+                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalAspectDropDynamic(),
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                new TestMb.RecordPair(
-                                    "drop",
-                                    mb.call(
-                                        mb.field(
-                                            mb.call(mb.typesEresult(), mb.typesCode()),
-                                            mb.str("ok")),
-                                        mb.field(
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalAspectDropDynamic()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "drop",
                                             mb.call(
-                                                mb.evalConstEval(),
-                                                mb.tupleOf(
-                                                    mb.field(mb.scopeUse("arg"), mb.str("xx")),
-                                                    mb.stage(
-                                                        mb.call(mb.log(), mb.str(dropMessage))))),
-                                            mb.str("code")))))))),
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesEresult(), mb.typesCode()),
+                                                    mb.str("ok")),
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.evalConstEval(),
+                                                        mb.recordOf(
+                                                            TList.of(
+                                                                new TestMb.RecordPair(
+                                                                    "xx_",
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("xx"))),
+                                                                new TestMb.RecordPair(
+                                                                    "staged",
+                                                                    mb.stage(
+                                                                        mb.call(
+                                                                            mb.log(),
+                                                                            mb.str(
+                                                                                dropMessage))))))),
+                                                    mb.str("code")))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalBinding(),
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                new TestMb.RecordPair(
-                                    "use",
-                                    mb.call(
-                                        mb.evalCodevalue(),
-                                        mb.tupleOf(
-                                            mb.field(mb.scopeUse("arg"), mb.str("code")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalBinding()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "use",
                                             mb.call(
-                                                mb.evalStack(),
-                                                mb.scopeUse("outer"))))))))),
+                                                mb.evalCodevalue(),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "code",
+                                                            mb.field(
+                                                                mb.scopeUse("arg"),
+                                                                mb.str("code"))),
+                                                        new TestMb.RecordPair(
+                                                            "value",
+                                                            mb.call(
+                                                                mb.evalStack(),
+                                                                mb.scopeUse("outer"))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalAspectBind(),
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                new TestMb.RecordPair("bind", canaryBindBody(mb)))))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalAspectBind()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "bind", canaryBindBody(mb)))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalAspectConsumeDynamic(),
-                        ifaceMethods(
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair(
+                                "iface_ref", mb.evalAspectConsumeDynamic()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
                             mb,
                             TList.of(
                                 new TestMb.RecordPair(
@@ -254,7 +308,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     "xx",
                                                     mb.field(
                                                         mb.scopeUse("arg"),
-                                                        mb.str("xx"))))))))))),
+                                                        mb.str("xx"))))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.field(mb.scopeUse("u"), mb.str("new")))),
         mb.literalNull());
@@ -377,10 +431,13 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesNull(),
-                                    mb.stage(mb.throw_(mb.str("x"))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(mb.throw_(mb.str("x"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.call(mb.scopeUse("my_func"), mb.tupleOf()))));
@@ -414,10 +471,13 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.typesString()),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesNull(),
-                                    mb.stage(mb.throw_(mb.str("x"))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(mb.throw_(mb.str("x"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.tryCatchFinally(
@@ -641,13 +701,17 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.typesString()),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesNull(),
-                                    mb.stage(
-                                        mb.seqOf(
-                                            mb.bind("x", mb.throw_(mb.str("boom"))),
-                                            mb.literalNull())))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.seqOf(
+                                                    mb.bind(
+                                                        "x", mb.throw_(mb.str("boom"))),
+                                                    mb.literalNull())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.tryCatchFinally(
@@ -688,13 +752,18 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.typesString()),
                             mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.typesNull(),
-                                    mb.typesNull(),
-                                    mb.stage(
-                                        mb.seqOf(
-                                            mb.throw_(mb.str("boom")),
-                                            mb.call(mb.log(), mb.str("unreachable")))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.seqOf(
+                                                    mb.throw_(mb.str("boom")),
+                                                    mb.call(
+                                                        mb.log(),
+                                                        mb.str("unreachable")))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.scopeUse("f")))),
                 mb.tryCatchFinally(

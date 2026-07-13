@@ -40,16 +40,24 @@ public final class T0120ImplTypeTest {
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalValue(),
-                        ifaceMethods(
-                            mb, TList.of(new TestMb.RecordPair("type", mb.scopeUse("inner")))))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalValue()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair("type", mb.scopeUse("inner")))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                    mb.tupleOf(
-                        mb.evalType(),
-                        ifaceMethods(
-                            mb,
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalType()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
                         TList.of(
                             new TestMb.RecordPair(
                                 "can_cast_from",
@@ -71,17 +79,23 @@ public final class T0120ImplTypeTest {
                                         mb.str("ok")),
                                     mb.call(
                                         mb.evalConstEval(),
-                                        mb.tupleOf(
-                                            mb.field(mb.scopeUse("arg"), mb.str("xx")),
-                                            mb.stage(
-                                                mb.call(
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx_",
                                                     mb.field(
-                                                        mb.graft(
+                                                        mb.scopeUse("arg"), mb.str("xx"))),
+                                                new TestMb.RecordPair(
+                                                    "staged",
+                                                    mb.stage(
+                                                        mb.call(
                                                             mb.field(
-                                                                mb.scopeUse("arg"),
-                                                                mb.str("cv"))),
-                                                        mb.str("toUpperCase")),
-                                                    mb.tupleOf())))))),
+                                                                mb.graft(
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("cv"))),
+                                                                mb.str("toUpperCase")),
+                                                            mb.tupleOf())))))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.str("upper"))),
                             new TestMb.RecordPair(
                                 "aspect",
@@ -94,7 +108,7 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
                             new TestMb.RecordPair(
-                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))),
+                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.field(mb.scopeUse("u"), mb.str("new")))),
         mb.literalNull());

@@ -8,6 +8,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
 
@@ -22,10 +23,12 @@ public final class T0140PanicTest {
             mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
             mb.call(
                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                mb.tupleOf(
-                    mb.typesNull(),
-                    mb.typesNull(),
-                    mb.stage(mb.panic(mb.str(message))))),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("arg", mb.typesNull()),
+                        new TestMb.RecordPair("ret", mb.typesNull()),
+                        new TestMb.RecordPair(
+                            "impl_body", mb.stage(mb.panic(mb.str(message))))))),
             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
             mb.scopeUse("f")));
   }
@@ -43,10 +46,12 @@ public final class T0140PanicTest {
                 mb.typesString()),
             mb.call(
                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                mb.tupleOf(
-                    mb.typesNull(),
-                    mb.typesNull(),
-                    mb.stage(mb.panic(mb.str(message))))),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("arg", mb.typesNull()),
+                        new TestMb.RecordPair("ret", mb.typesNull()),
+                        new TestMb.RecordPair(
+                            "impl_body", mb.stage(mb.panic(mb.str(message))))))),
             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
             mb.scopeUse("f")));
   }

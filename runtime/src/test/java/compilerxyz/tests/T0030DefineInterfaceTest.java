@@ -39,7 +39,10 @@ public final class T0030DefineInterfaceTest {
                                     mb.str("to_string"))),
                             mb.call(
                                 mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
-                                mb.tupleOf(mb.typesNull(), mb.typesString())),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesString())))),
                             mb.bind(
                                 "ndr",
                                 mb.call(
@@ -50,24 +53,31 @@ public final class T0030DefineInterfaceTest {
                                 mb.typesString()),
                             mb.call(
                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
-                                mb.tupleOf(
-                                    mb.field(mb.scopeUse("iface"), mb.str("type")),
-                                    mb.call(
-                                        mb.field(
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref",
+                                            mb.field(mb.scopeUse("iface"), mb.str("type"))),
+                                        new TestMb.RecordPair(
+                                            "record",
                                             mb.call(
-                                                mb.typesMap(),
-                                                mb.tupleOf(mb.typesConstkey(), mb.typesExpr())),
-                                            mb.str("new")),
-                                        mb.recordOf(
-                                            TList.of(
-                                                new TestMb.RecordPair(
-                                                    "to_string",
-                                                    mb.stage(
-                                                        mb.call(
-                                                            mb.field(
-                                                                mb.scopeUse("inner"),
-                                                                mb.str("toUpperCase")),
-                                                            mb.tupleOf())))))))),
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "to_string",
+                                                            mb.stage(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.scopeUse("inner"),
+                                                                        mb.str("toUpperCase")),
+                                                                    mb.tupleOf())))))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
@@ -110,7 +120,10 @@ public final class T0030DefineInterfaceTest {
                                     mb.str("to_string"))),
                             mb.call(
                                 mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
-                                mb.tupleOf(mb.typesNull(), mb.typesString())),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesString())))),
                             mb.bind(
                                 "ndr",
                                 mb.call(
@@ -121,24 +134,31 @@ public final class T0030DefineInterfaceTest {
                                 mb.typesString()),
                             mb.call(
                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
-                                mb.tupleOf(
-                                    mb.field(mb.scopeUse("iface"), mb.str("type")),
-                                    mb.call(
-                                        mb.field(
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref",
+                                            mb.field(mb.scopeUse("iface"), mb.str("type"))),
+                                        new TestMb.RecordPair(
+                                            "record",
                                             mb.call(
-                                                mb.typesMap(),
-                                                mb.tupleOf(mb.typesConstkey(), mb.typesExpr())),
-                                            mb.str("new")),
-                                        mb.recordOf(
-                                            TList.of(
-                                                new TestMb.RecordPair(
-                                                    "to_string",
-                                                    mb.stage(
-                                                        mb.call(
-                                                            mb.field(
-                                                                mb.scopeUse("inner"),
-                                                                mb.str("toUpperCase")),
-                                                            mb.tupleOf())))))))),
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "to_string",
+                                                            mb.stage(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.scopeUse("inner"),
+                                                                        mb.str("toUpperCase")),
+                                                                    mb.tupleOf())))))))))),
                             mb.bind(
                                 "do_log_fn",
                                 mb.call(
@@ -146,17 +166,22 @@ public final class T0030DefineInterfaceTest {
                                     mb.str("do_log"))),
                             mb.call(
                                 mb.field(mb.scopeUse("do_log_fn"), mb.str("impl")),
-                                mb.tupleOf(
-                                    mb.field(mb.scopeUse("iface"), mb.str("type")),
-                                    mb.typesNull(),
-                                    mb.stage(
-                                        mb.call(
-                                            mb.log(),
-                                            mb.call(
-                                                mb.field(
-                                                    mb.scopeUse("arg"),
-                                                    mb.str("to_string")),
-                                                mb.tupleOf()))))),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "arg",
+                                            mb.field(mb.scopeUse("iface"), mb.str("type"))),
+                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.call(
+                                                    mb.log(),
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.scopeUse("arg"),
+                                                            mb.str("to_string")),
+                                                        mb.tupleOf()))))))),
                             mb.call(
                                 mb.field(mb.scopeUse("d"), mb.str("finish")),
                                 mb.tupleOf())))),
@@ -199,7 +224,10 @@ public final class T0030DefineInterfaceTest {
                                     mb.str("to_string"))),
                             mb.call(
                                 mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
-                                mb.tupleOf(mb.typesNull(), mb.typesString())),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.typesString())))),
                             mb.bind(
                                 "ndr",
                                 mb.call(

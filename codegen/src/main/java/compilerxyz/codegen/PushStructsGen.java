@@ -843,14 +843,34 @@ public final class PushStructsGen {
     if (args.size() == 1) {
       return args.get(0).type().dynamicType();
     }
-    var elements = CodeBlock.builder();
-    elements.add("$T.<$T>of(", TLIST, ClassName.get("compilerxyz.eval.value.tuple", "TupleElement"));
-    for (var i = 0; i < args.size(); i++) {
-      if (i > 0) elements.add(", ");
-      elements.add("new $T($L)", TUPLE_ELEMENT_DYNAMIC, args.get(i).type().dynamicType());
+    if (args.isEmpty()) {
+      return CodeBlock.of(
+          "new $T($T.none(), $T.<$T>of())",
+          TUPLE,
+          OPT,
+          TLIST,
+          ClassName.get("compilerxyz.eval.value.tuple", "TupleElement"));
     }
-    elements.add(")");
-    return CodeBlock.of("new $T($T.none(), $L)", TUPLE, OPT, elements.build());
+    var record = ClassName.get("compilerxyz.eval.value.record", "Record");
+    var recordFieldDynamic =
+        ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
+    var torderedMap = ClassName.get("compilerxyz.util", "TOrderedMap");
+    var pair = ClassName.get("compilerxyz.util", "Pair");
+    var entries = CodeBlock.builder();
+    entries.add("$T.ofEntries(", torderedMap);
+    for (var i = 0; i < args.size(); i++) {
+      var a = args.get(i);
+      if (i > 0) entries.add(", ");
+      entries.add(
+          "new $T<>(new $T($S), new $T($L))",
+          pair,
+          CONST_KEY_STR,
+          a.name(),
+          recordFieldDynamic,
+          a.type().dynamicType());
+    }
+    entries.add(")");
+    return CodeBlock.of("new $T($T.none(), $L)", record, OPT, entries.build());
   }
 
   private static CodeBlock unitOrDynamic(String ret) {
