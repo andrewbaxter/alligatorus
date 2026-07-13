@@ -271,7 +271,7 @@ public final class DynRuntime {
     return new StagedExprCell(newTree);
   }
 
-  public static Object implBuiltinInterface(
+  public static void implBuiltinInterface(
       ExprContext xx,
       compilerxyz.eval.value.source_object.TypeSourceObjectDynamic dtData,
       Object arg,
@@ -311,7 +311,6 @@ public final class DynRuntime {
       impl.methodImpls.add(mImpl);
     }
     dtData.interfaceImpls.add(impl);
-    return null;
   }
 
   public static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {

@@ -284,12 +284,10 @@ public final class PushStructsGen {
 
     var qexprIdCls = ClassName.get("compilerxyz.eval", "QExprId");
     var sourceIdCls = ClassName.get("compilerxyz.eval", "SourceId");
-    var eresultVoid =
-        ParameterizedTypeName.get(ERESULT, ClassName.get(Void.class));
     cls.addMethod(
         MethodSpec.methodBuilder("finish")
             .addModifiers(Modifier.PUBLIC)
-            .returns(eresultVoid)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addStatement(
                 "var _loc = new $T(new $T(-1L), -1L)", qexprIdCls, sourceIdCls)
@@ -298,11 +296,11 @@ public final class PushStructsGen {
             .addStatement("var _iface = this.inner.interfaces.get((int) _i)")
             .addStatement("var _r = _iface.finish(_loc, _i)")
             .beginControlFlow("if (_r.hasErrors())")
-            .addStatement("return _r.reerr()")
+            .addStatement(
+                "throw new IllegalStateException(\"DefinitionSetBuilder.finish: \" + _r.errorsOrNull())")
             .endControlFlow()
             .endControlFlow()
             .addStatement("this.inner.finished = true")
-            .addStatement("return $T.ok(null)", ERESULT)
             .build());
   }
 
@@ -326,20 +324,19 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .beginControlFlow("if (this.func_ref.data().description != null)")
             .addStatement("throw new $T($S)", illegalState, "Function already has a description")
             .endControlFlow()
             .addStatement("this.func_ref.data().description = description")
-            .addStatement("return null")
             .build());
 
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -357,20 +354,18 @@ public final class PushStructsGen {
             .addStatement("throw new $T($S)", illegalState, "Function already has an implementation")
             .endControlFlow()
             .addStatement("data.implExpr = ($T) implCell.take()", valueClass)
-            .addStatement("return null")
             .build());
 
     cls.addMethod(
         MethodSpec.methodBuilder("set_exception_type")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "excType")
             .beginControlFlow("if (this.func_ref.data().exceptionType != null)")
             .addStatement("throw new $T($S)", illegalState, "Function already has an exception type")
             .endControlFlow()
             .addStatement("this.func_ref.data().exceptionType = excType")
-            .addStatement("return null")
             .build());
   }
 
@@ -398,14 +393,13 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .beginControlFlow("if (this.interface_ref.description != null)")
             .addStatement("throw new $T($S)", illegalState, "Interface already has a description")
             .endControlFlow()
             .addStatement("this.interface_ref.description = description")
-            .addStatement("return null")
             .build());
 
     cls.addMethod(
@@ -423,11 +417,10 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_is_aspect")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(booleanClass, "isAspect")
             .addStatement("this.interface_ref.isAspect = isAspect")
-            .addStatement("return null")
             .build());
   }
 
@@ -465,27 +458,25 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .beginControlFlow("if (this.type_.description != null)")
             .addStatement("throw new $T($S)", illegalState, "Object already has a description")
             .endControlFlow()
             .addStatement("this.type_.description = description")
-            .addStatement("return null")
             .build());
 
     cls.addMethod(
         MethodSpec.methodBuilder("set_inner")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "typeRef")
             .beginControlFlow("if (this.type_.underlyingType != null)")
             .addStatement("throw new $T($S)", illegalState, "Object already has an inner type")
             .endControlFlow()
             .addStatement("this.type_.underlyingType = typeRef")
-            .addStatement("return null")
             .build());
 
     cls.addMethod(
@@ -504,7 +495,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl_interface")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(objectClass, "ifaceArg")
             .addParameter(mapClass, "recordArg")
@@ -552,7 +543,6 @@ public final class PushStructsGen {
             .addStatement("impl.methodImpls.add(mImpl)")
             .endControlFlow()
             .addStatement("dtData.interfaceImpls.add(impl)")
-            .addStatement("return null")
             .build());
 
   }
@@ -594,7 +584,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -608,7 +598,6 @@ public final class PushStructsGen {
                 "throw new $T($S)", illegalState, "Interface method already has a ret type")
             .endControlFlow()
             .addStatement("this.method.retType = retType")
-            .addStatement("return null")
             .build());
   }
 
@@ -621,7 +610,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(objectClass)
+            .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -638,7 +627,6 @@ public final class PushStructsGen {
             .addStatement("throw new $T($S)", illegalState, "Method already has an implementation")
             .endControlFlow()
             .addStatement("this.method.implExpr = ($T) implCell.take()", valueClass)
-            .addStatement("return null")
             .build());
   }
 
@@ -969,8 +957,7 @@ public final class PushStructsGen {
 
     var empty = CodeBlock.of("");
 
-    var retObject = TypeRef.opaque(ClassName.OBJECT);
-    var retEResult = TypeRef.opaque(ERESULT);
+    var retVoid = TypeRef.opaque(TypeName.VOID);
     var retSourceFuncResult = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceFuncResult"));
     var retSourceObjectBuilder = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceObjectBuilder"));
     var retSourceInterfaceResult =
@@ -1013,7 +1000,7 @@ public final class PushStructsGen {
                     "defSetBuilderInterface", retSourceInterfaceResult),
                 new PushMethod(
                     "finish", TList.of(), "()", empty,
-                    "defSetBuilderFinish", retEResult)));
+                    "defSetBuilderFinish", retVoid)));
 
     var sourceFuncResult =
         new PushStructSpec(
@@ -1033,7 +1020,7 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcFuncSetDescription",
-                    retObject),
+                    retVoid),
                 new PushMethod(
                     "impl_",
                     TList.of(
@@ -1043,14 +1030,14 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcFuncSetTypesAndImpl",
-                    retObject),
+                    retVoid),
                 new PushMethod(
                     "set_exception_type",
                     TList.of(new NamedTypeRef("exception_type", anyTypeArg)),
                     "()",
                     empty,
                     "srcFuncSetExcType",
-                    retObject)));
+                    retVoid)));
 
     var sourceObjectMethodResult =
         new PushStructSpec(
@@ -1068,7 +1055,7 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcObjectMethodSetTypesAndImpl",
-                    retObject)));
+                    retVoid)));
 
     var sourceInterfaceResult =
         new PushStructSpec(
@@ -1088,7 +1075,7 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcInterfaceSetDescription",
-                    retObject),
+                    retVoid),
                 new PushMethod(
                     "func",
                     TList.of(new NamedTypeRef("name", string)),
@@ -1102,7 +1089,7 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcInterfaceSetIsAspect",
-                    retObject)));
+                    retVoid)));
 
     var sourceObjectMethods = new TList<PushMethod>();
     sourceObjectMethods.add(
@@ -1112,7 +1099,7 @@ public final class PushStructsGen {
             "()",
             empty,
             "srcObjectSetDescription",
-            retObject));
+            retVoid));
     sourceObjectMethods.add(
         new PushMethod(
             "set_inner",
@@ -1120,7 +1107,7 @@ public final class PushStructsGen {
             "()",
             empty,
             "srcObjectSetInnerType",
-            retObject));
+            retVoid));
     sourceObjectMethods.add(
         new PushMethod(
             "func",
@@ -1138,7 +1125,7 @@ public final class PushStructsGen {
             "()",
             empty,
             "srcObjectImplInterface",
-            retObject));
+            retVoid));
     var retTypeSourceObjectNewConst = TypeRef.leaf(TYPE_SOURCE_OBJECT_NEW_CONST);
     for (var traitSpec : traitSpecs) {
       if (traitSpec.registerInScope()) continue;
@@ -1159,7 +1146,7 @@ public final class PushStructsGen {
               "()",
               empty,
               runtimeName,
-              retObject));
+              retVoid));
     }
     var sourceObjectResult =
         new PushStructSpec(
@@ -1221,7 +1208,7 @@ public final class PushStructsGen {
                     "()",
                     empty,
                     "srcInterfaceMethodSetTypes",
-                    retObject)));
+                    retVoid)));
 
     return TList.of(
         definitionSetBuilder,

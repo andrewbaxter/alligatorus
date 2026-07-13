@@ -958,7 +958,13 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    if (elements.isEmpty()) {
+      return new CodeValue(Code.of(loc, value), Opt.some(new Tuple(Opt.none(), new TList<>())));
+    }
+    var source = ValueDynamic.Source.Expr.stackFor(xx, this);
+    return new CodeValue(
+        Code.of(loc, value),
+        Opt.some(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));
   }
 
   @Override
