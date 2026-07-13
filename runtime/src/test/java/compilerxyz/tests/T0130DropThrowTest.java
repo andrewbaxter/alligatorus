@@ -46,6 +46,25 @@ public final class T0130DropThrowTest {
                 new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
   }
 
+  private static SourceExpr canaryBindDynamicBody(TestMb mb) {
+    return mb.call(
+        mb.field(
+            mb.field(
+                mb.call(
+                    mb.evalAspectLookup(),
+                    mb.tupleOf(
+                        mb.typesString(),
+                        mb.evalAspectBindDynamic(),
+                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                mb.str("value")),
+            mb.str("bind_dynamic")),
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
+  }
+
 private static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
     return mb.call(
         mb.lower(
@@ -163,6 +182,16 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.call(
                                                         mb.typesOption(), mb.typesAspect()),
                                                     mb.str("some")),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.Branch(
+                                            mb.operatorEq(
+                                                mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                mb.evalAspectBindDynamicId()),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesOption(), mb.typesAspect()),
+                                                    mb.str("some")),
                                                 mb.scopeUse("outer")))),
                                     mb.call(
                                         mb.field(
@@ -247,6 +276,20 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "bind", canaryBindBody(mb)))))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair(
+                                "iface_ref", mb.evalAspectBindDynamic()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "bind_dynamic",
+                                            canaryBindDynamicBody(mb)))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(

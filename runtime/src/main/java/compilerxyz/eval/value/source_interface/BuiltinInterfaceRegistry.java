@@ -24,6 +24,7 @@ public final class BuiltinInterfaceRegistry {
       case ASPECT_FIELD -> ifaces.aspect_field;
       case ASPECT_DROP_DYNAMIC -> ifaces.aspect_drop_dynamic;
       case ASPECT_CONSUME_DYNAMIC -> ifaces.aspect_consume_dynamic;
+      case ASPECT_BIND_DYNAMIC -> ifaces.aspect_bind_dynamic;
       case BINDING -> ifaces.binding;
       case TARGET -> ifaces.target;
       case CODE_DYN -> ifaces.code_dyn;

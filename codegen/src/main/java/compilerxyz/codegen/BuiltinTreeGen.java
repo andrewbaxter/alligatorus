@@ -572,6 +572,33 @@ public final class BuiltinTreeGen {
                             new NamedTypeRef("loc", qexprIdRef),
                             new NamedTypeRef("cv", cve))))));
 
+    var targetBindSubRefEarly =
+        TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"));
+    var optTargetBindSub = TypeRef.composite1(TYPE_OPTION_DYNAMIC, targetBindSubRefEarly);
+    var eresultOptTargetBindSub =
+        TypeRef.composite1(TYPE_ERESULT_DYNAMIC, optTargetBindSub);
+    var aspectBindDynamic =
+        new InterfaceSpec(
+            "aspect_bind_dynamic",
+            2010,
+            3011,
+            "abd",
+            "AspectBindDynamic",
+            null,
+            true,
+            null,
+            null,
+            "compilerxyz.gen.AspectBindDynamic",
+            TList.of(
+                new Method(
+                    "bindDynamic",
+                    eresultOptTargetBindSub,
+                    new MethodArgs(
+                        TList.of(
+                            new NamedTypeRef("xx", xxRef),
+                            new NamedTypeRef("loc", qexprIdRef),
+                            new NamedTypeRef("cv", cve))))));
+
     var codeDynamicClass = ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
     var codeDynamicRef = TypeRef.leaf(codeDynamicClass);
     var eresultCodeDyn = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeDynamicRef);
@@ -819,6 +846,7 @@ var targetBindSubCls =
         aspectField,
         aspectDropDynamic,
         aspectConsumeDynamic,
+        aspectBindDynamic,
         binding,
         target,
         codeDyn);
@@ -944,6 +972,7 @@ var targetBindSubCls =
     var ifaceAspectFunction = findSpec(extras, "aspect_function");
     var ifaceAspectField = findSpec(extras, "aspect_field");
     var ifaceAspectDropDynamic = findSpec(extras, "aspect_drop_dynamic");
+    var ifaceAspectBindDynamic = findSpec(extras, "aspect_bind_dynamic");
     var ifaceAspectConsumeDynamic = findSpec(extras, "aspect_consume_dynamic");
     var ifaceBinding = findSpec(extras, "binding");
     var ifaceTarget = findSpec(extras, "target");
@@ -1049,6 +1078,13 @@ var targetBindSubCls =
                 "aspect_drop_dynamic",
                 new Leaf(new LeafSpec.Interface(ifaceAspectDropDynamic))),
             new Child(
+                "aspect_bind_dynamic",
+                new Leaf(
+                    new LeafSpec.Const(
+                        CodeBlock.of(
+                            "$T.dynamicType()",
+                            ClassName.get("compilerxyz.gen", "AspectBindDynamic")), TTOD_TYPE_EXPR))),
+            new Child(
                 "aspect_consume_dynamic",
                 new Leaf(
                     new LeafSpec.Const(
@@ -1093,6 +1129,9 @@ var targetBindSubCls =
             new Child(
                 "aspect_consume_dynamic_id",
                 new Leaf(new LeafSpec.AspectId(4006, "ConsumeDynamic"))),
+            new Child(
+                "aspect_bind_dynamic_id",
+                new Leaf(new LeafSpec.AspectId(4007, "BindDynamic"))),
             new Child("binding", new Leaf(new LeafSpec.Interface(ifaceBinding))),
             new Child("target", new Leaf(new LeafSpec.Interface(ifaceTarget))),
             new Child("code_dyn", new Leaf(new LeafSpec.Interface(ifaceCodeDyn))),

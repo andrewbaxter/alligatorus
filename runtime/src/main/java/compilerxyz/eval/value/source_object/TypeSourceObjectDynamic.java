@@ -187,6 +187,7 @@ public final class TypeSourceObjectDynamic
       var kind = impl.interface_.builtinKind;
       if (kind != null) {
         boolean exposes = switch (kind) {
+          case ASPECT_BIND_DYNAMIC -> key.equals(AspectBindDynamic.ID);
           case ASPECT_CONSUME_DYNAMIC -> key.equals(AspectConsumeDynamic.ID);
           case ASPECT_DROP_DYNAMIC -> key.equals(compilerxyz.gen.AspectDropDynamic.ID);
           case ASPECT_FIELD -> key.equals(compilerxyz.gen.AspectField.ID);
