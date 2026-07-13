@@ -53,6 +53,50 @@ public sealed interface TypeObjectCastRule {
     }
   }
 
+  /**
+   * Casts by calling an instance method via INVOKEVIRTUAL on the source runtime value.
+   * The method is expected to return a value assignable to destType (typically) or to
+   * throw at runtime if the specific source instance cannot produce one.
+   */
+  record InvokeVirtualByDestIdentity(
+      Unique identity,
+      JavaInternalName ownerClass,
+      String methodName,
+      JavaMethodDescriptor descriptor)
+      implements TypeObjectCastRule {
+    @Override
+    public boolean matches(ExprContext xx, Type destType) {
+      return destType.typeAspect(xx, identity).optIsSome();
+    }
+
+    @Override
+    public EResult<CodeValue> apply(
+        ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc,
+            "cast " + source.typeDesc() + " → " + destType.typeDesc()
+                + ": source has no runtime code");
+      }
+      var seq = new JavaBytecodeSequence();
+      seq.add(sourceCode);
+      seq.add(JavaBytecodeUtils.callMethod(loc, ownerClass, methodName, descriptor));
+      var retDesc = descriptor.value();
+      var retStart = retDesc.indexOf(')') + 1;
+      if (retDesc.charAt(retStart) == 'L'
+          && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
+        seq.add(
+            JavaBytecodeUtils.cast(
+                loc, JavaDataDescriptor.fromInternalName(
+                    JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
+      }
+      var call = new CodeDynamic(loc, seq);
+      return EResult.ok(
+          new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(xx, destType))));
+    }
+  }
+
   record CallToInterfaceSpec(DynRuntimeHelper helper) implements TypeObjectCastRule {
     @Override
     public boolean matches(ExprContext xx, Type destType) {

@@ -55,7 +55,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
-public record TypeInterfaceConst(InterfaceData data)
+public record TypeSourceInterfaceConst(InterfaceData data)
     implements
         Type,
         AspectArtifact,
@@ -72,9 +72,13 @@ public record TypeInterfaceConst(InterfaceData data)
     return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
   }
 
+  public InterfaceData getInterfaceData() {
+    return data;
+  }
+
   public static compilerxyz.eval.Type fromInterfaceData(
       compilerxyz.eval.ExprContext xx, InterfaceData data) {
-    return new TypeInterfaceConst(data);
+    return new TypeSourceInterfaceConst(data);
   }
 
   private static long uniqueId(Unique u) {
@@ -139,18 +143,18 @@ public record TypeInterfaceConst(InterfaceData data)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeInterfaceConst ic)) {
+          if (!(self instanceof TypeSourceInterfaceConst ic)) {
             return EResult.err(
                 loc,
-                "TypeInterfaceConst::exporterRootDelegateSelfExport: expected"
-                    + " TypeInterfaceConst, got " + self.getClass());
+                "TypeSourceInterfaceConst::exporterRootDelegateSelfExport: expected"
+                    + " TypeSourceInterfaceConst, got " + self.getClass());
           }
           var iface = ic.data;
           var set = iface.set;
           if (set == null) {
             return EResult.err(
                 loc,
-                "TypeInterfaceConst::exporterRootDelegateSelfExport: interface not attached to a"
+                "TypeSourceInterfaceConst::exporterRootDelegateSelfExport: interface not attached to a"
                     + " definition set");
           }
           var errors = new TList<ExprErr>();
@@ -165,7 +169,7 @@ public record TypeInterfaceConst(InterfaceData data)
                     var defSetArt =
                         defSetArtRes.valueOrNull() != null
                             ? defSetArtRes.requireValue(
-                                "TypeInterfaceConst::exporterExport defSet")
+                                "TypeSourceInterfaceConst::exporterExport defSet")
                             : nullArtifact();
                     var methodsOut = new TList<ArtifactDataDefSetInterfaceMethodData>();
                     for (var m : iface.methods) {
@@ -180,7 +184,7 @@ public record TypeInterfaceConst(InterfaceData data)
                         argArt =
                             res.valueOrNull() != null
                                 ? res.requireValue(
-                                    "TypeInterfaceConst::exporterExport method arg")
+                                    "TypeSourceInterfaceConst::exporterExport method arg")
                                 : nullArtifact();
                       }
                       Artifact retArt;
@@ -192,7 +196,7 @@ public record TypeInterfaceConst(InterfaceData data)
                         retArt =
                             res.valueOrNull() != null
                                 ? res.requireValue(
-                                    "TypeInterfaceConst::exporterExport method ret")
+                                    "TypeSourceInterfaceConst::exporterExport method ret")
                                 : nullArtifact();
                       }
                       methodsOut.add(
@@ -220,7 +224,7 @@ public record TypeInterfaceConst(InterfaceData data)
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
             return EResult.err(
-                loc, "TypeInterfaceConst requires an artifact id to deserialize");
+                loc, "TypeSourceInterfaceConst requires an artifact id to deserialize");
           }
           var idValue = idSome.value();
           return ArtifactSupport.implImportIndependentArtifact(
@@ -234,7 +238,7 @@ public record TypeInterfaceConst(InterfaceData data)
                   body = JsonValues.fromValue(ArtifactDataDefSetInterface.class, raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
-                      "TypeInterfaceConst data: failed to parse ArtifactDataDefSetInterface: "
+                      "TypeSourceInterfaceConst data: failed to parse ArtifactDataDefSetInterface: "
                           + e.getMessage());
                 }
                 return new Result.Ok<>(body);
@@ -265,10 +269,10 @@ public record TypeInterfaceConst(InterfaceData data)
                               xx2, loc2, body.defSet());
                       var defSetVal =
                           defSetAny.requireValue(
-                              "TypeInterfaceConst::finalizer defSet artifact");
+                              "TypeSourceInterfaceConst::finalizer defSet artifact");
                       if (!(defSetVal instanceof DefinitionSet set)) {
                         throw new IllegalStateException(
-                            "TypeInterfaceConst finalizer: defSet artifact resolved to "
+                            "TypeSourceInterfaceConst finalizer: defSet artifact resolved to "
                                 + defSetVal.getClass());
                       }
                       iface.initSetReflectively(set);
@@ -280,13 +284,13 @@ public record TypeInterfaceConst(InterfaceData data)
                                 xx2, loc2, mBody.argType());
                         md.argType =
                             argRes.requireValue(
-                                "TypeInterfaceConst::finalizer method arg");
+                                "TypeSourceInterfaceConst::finalizer method arg");
                         var retRes =
                             ArtifactSupport.independentFinalizeImportTypeArtifact(
                                 xx2, loc2, mBody.retType());
                         md.retType =
                             retRes.requireValue(
-                                "TypeInterfaceConst::finalizer method ret");
+                                "TypeSourceInterfaceConst::finalizer method ret");
                       }
                     };
                 return new Result.Ok<>(
@@ -298,12 +302,12 @@ public record TypeInterfaceConst(InterfaceData data)
   public record ImportedInterfaceConst(InterfaceData data) implements ExporterAny {
     @Override
     public EResult<Type> exporterAnyAsType() {
-      return EResult.ok(new TypeInterfaceConst(data));
+      return EResult.ok(new TypeSourceInterfaceConst(data));
     }
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new TypeInterfaceConst(data));
+      return EResult.ok(new TypeSourceInterfaceConst(data));
     }
   }
 
@@ -311,7 +315,7 @@ public record TypeInterfaceConst(InterfaceData data)
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, "TypeInterfaceConst::field: key has no compile-time value");
+      return EResult.err(loc, "TypeSourceInterfaceConst::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -374,7 +378,7 @@ public record TypeInterfaceConst(InterfaceData data)
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
-        loc, "TypeInterfaceConst::toDynamic: CodeValue has no dynamic code");
+        loc, "TypeSourceInterfaceConst::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
@@ -410,7 +414,7 @@ public record TypeInterfaceConst(InterfaceData data)
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeInterfaceConst(data));
+    return new BindingDynamicBinding(dynamicKey, new TypeSourceInterfaceConst(data));
   }
 
   @Override

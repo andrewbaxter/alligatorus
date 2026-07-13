@@ -41,7 +41,7 @@ public final class SourceFunctionType {
                   "definition_set_function::lift: expected TypeSourceFunctionConst, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueObjectConst(funcType));
+            return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), funcType));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_FUNCTION_DYNAMIC_TYPE_ID,

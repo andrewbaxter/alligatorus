@@ -112,7 +112,7 @@ public final class InterfaceData {
           new TypeObjectCastRule.CallByDestIdentity(
               GenIdentities.TYPE_TYPE_IDENTITY,
               new TypeObjectCastRule.DynRuntimeHelper(
-                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeInterfaceConst.class),
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
                   "fromInterfaceData",
                   JavaMethodDescriptor.fromParts(
                       JavaDataDescriptor.fromClass(compilerxyz.eval.Type.class),

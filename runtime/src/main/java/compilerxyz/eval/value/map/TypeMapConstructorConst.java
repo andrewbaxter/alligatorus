@@ -102,7 +102,7 @@ public record TypeMapConstructorConst()
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(mapType))));
+        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), mapType))));
   }
 
   @Override

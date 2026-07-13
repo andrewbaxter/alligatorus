@@ -143,7 +143,7 @@ public record TypeEResultDynamic(Type elementType)
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
-          EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
+          EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), f.type()))));
     };
   }
 

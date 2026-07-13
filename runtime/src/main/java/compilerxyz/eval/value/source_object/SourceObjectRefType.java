@@ -41,7 +41,7 @@ public final class SourceObjectRefType {
                   "definition_set_object_ref::lift: expected TypeSourceObjectDynamic, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectConst(dt)));
+            return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceObjectConst(dt)));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_OBJECT_REF_DYNAMIC_TYPE_ID,

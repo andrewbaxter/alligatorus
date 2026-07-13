@@ -5,10 +5,10 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.Value;
 
-public record ValueObjectConst(Type inner) implements Value, ExporterAny {
+public record ValueObjectConst(Type type, Type inner) implements Value, ExporterAny {
   @Override
   public Type valueType() {
-    return ObjectConstOfType.dynamicType();
+    return type;
   }
 
   @Override

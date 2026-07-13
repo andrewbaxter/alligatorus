@@ -72,7 +72,7 @@ public record TypeOptionConstructorConst()
             .aspectTypeType(argValue);
     Type optType = new TypeOptionDynamic(elementType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(optType))));
+        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), optType))));
   }
 
   @Override

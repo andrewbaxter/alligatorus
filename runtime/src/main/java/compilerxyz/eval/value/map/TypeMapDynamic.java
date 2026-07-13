@@ -199,7 +199,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return switch (spec) {
         case FieldSpec.Factory f ->
             EResult.ok(
-                new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(f.type()))));
+                new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), f.type()))));
         case FieldSpec.GetFn g -> {
           var selfDyn = self.code().dynamic();
           if (selfDyn == null) {

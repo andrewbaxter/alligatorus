@@ -393,7 +393,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new ValueObjectConst(new TypeSourceFunctionConst(data)));
+      return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeSourceFunctionConst(data)));
     }
   }
   @Override

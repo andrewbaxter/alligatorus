@@ -42,7 +42,7 @@ public final class SourceObjectNewRefType {
                       + (host == null ? "null" : host.getClass().getName()));
             }
             return EResult.ok(
-                new ValueObjectConst(new TypeTypeSourceObjectNewConst(ctorType.type_())));
+                new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceObjectNewConst(ctorType.type_())));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_TYPE_ID,

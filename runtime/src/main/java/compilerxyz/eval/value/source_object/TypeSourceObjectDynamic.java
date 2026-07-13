@@ -34,7 +34,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -466,7 +466,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(ValueDynamic.stack(xx, new TypeInterfaceConst(impl.interface_)))));
+                Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceConst(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {

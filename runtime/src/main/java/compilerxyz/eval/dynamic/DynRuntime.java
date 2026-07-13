@@ -46,66 +46,6 @@ public final class DynRuntime {
   private DynRuntime() {}
 
   public static compilerxyz.eval.value.source_interface.InterfaceData
-      synthesizeInterfaceDataFromObject(
-          compilerxyz.eval.ExprContext xx,
-          compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-    if (!(obj.aspectSource() instanceof Opt.Some<compilerxyz.eval.value.object_.ObjectAspectSource> some)
-        || !(some.value() instanceof compilerxyz.eval.value.object_.ObjectAspectSource.Static staticSrc)) {
-      throw new IllegalStateException(
-          "synthesizeInterfaceDataFromObject: TypeObjectDynamic "
-              + obj.typeDesc()
-              + " has no static aspect id");
-    }
-    if (!(obj.interfaceRepresented() instanceof Opt.Some<JavaInternalName> ir)) {
-      throw new IllegalStateException(
-          "synthesizeInterfaceDataFromObject: TypeObjectDynamic "
-              + obj.typeDesc()
-              + " has no interfaceRepresented");
-    }
-    var data =
-        new compilerxyz.eval.value.source_interface.InterfaceData(null, staticSrc.id(), null);
-    data.description = obj.typeDesc();
-    data.compiledBinaryName = ir.value().value().replace('/', '.');
-    for (var m : obj.methods()) {
-      Type argType;
-      Type retType;
-      if (m.funcType() instanceof TypeFunctionDynamic ft) {
-        argType = ft.arg();
-        retType = ft.ret();
-      } else if (m.funcType()
-          instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt) {
-        argType = mt.arg();
-        retType = mt.ret();
-      } else {
-        throw new IllegalStateException(
-            "synthesizeInterfaceDataFromObject: unsupported funcType " + m.funcType());
-      }
-      var md =
-          new compilerxyz.eval.value.source_interface.InterfaceMethodData(m.langName());
-      md.argType = argType;
-      md.retType = retType;
-      if (m.funcType() instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt2) {
-        md.hostMethodName = mt2.methodName();
-        md.hostMethodDescriptor = mt2.descriptor();
-      } else if (m.funcType() instanceof TypeFunctionDynamic ft2) {
-        md.hostMethodName = ft2.methodName();
-        md.hostMethodDescriptor = ft2.descriptor(xx);
-      }
-      if (argType instanceof compilerxyz.eval.value.record.Record rec) {
-        for (var key : rec.fields().keySet()) {
-          if (key instanceof compilerxyz.eval.ConstKey.Str s) {
-            md.dataFieldNames.add(s.value());
-          } else {
-            md.dataFieldNames.add(key.toCanonical());
-          }
-        }
-      }
-      data.methods.add(md);
-    }
-    return data;
-  }
-
-  public static compilerxyz.eval.value.source_interface.InterfaceData
       synthesizeInterfaceDataFromSpec(
           compilerxyz.eval.value.interface_spec.InterfaceSpec spec) {
     var data=
@@ -169,12 +109,6 @@ public final class DynRuntime {
     }
     return new compilerxyz.eval.value.interface_spec.InterfaceSpec(
         some.value(), (Unique) identity, Opt.none(), methods, Opt.none());
-  }
-
-  public static InterfaceData objectToInterfaceData(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.value.object_.TypeObjectDynamic obj) {
-    return synthesizeInterfaceDataFromObject(xx, obj);
   }
 
   public static InterfaceData specToInterfaceData(

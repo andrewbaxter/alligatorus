@@ -19,7 +19,7 @@ import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
@@ -140,7 +140,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   SOURCE_INTERFACE_CONST("source_interface_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeInterfaceConst.DELEGATE;
+      return TypeSourceInterfaceConst.DELEGATE;
     }
   },
   SOURCE_OBJECT_CONST("source_object_const") {

@@ -42,7 +42,7 @@ public final class SourceUnionNewRefType {
                       + (host == null ? "null" : host.getClass().getName()));
             }
             return EResult.ok(
-                new ValueObjectConst(
+                new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), 
                     new TypeTypeSourceUnionNewConst(newType.type_(), newType.variantIndex())));
           };
       return new TypeObjectDynamic(

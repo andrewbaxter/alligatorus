@@ -73,7 +73,7 @@ public record TypeListConstructorConst()
     elementType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType);
     Type listType = new TypeListDynamic(elementType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(listType))));
+        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), listType))));
   }
 
   @Override

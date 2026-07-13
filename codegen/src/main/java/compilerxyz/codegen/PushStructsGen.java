@@ -440,7 +440,7 @@ public final class PushStructsGen {
     var interfaceSpec =
         ClassName.get("compilerxyz.eval.value.interface_spec", "InterfaceSpec");
     var typeInterfaceConst =
-        ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
+        ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
     var typeObjectDynamic =
         ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
@@ -497,32 +497,9 @@ public final class PushStructsGen {
             .addModifiers(Modifier.PUBLIC)
             .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
-            .addParameter(objectClass, "ifaceArg")
+            .addParameter(interfaceData, "ifaceData")
             .addParameter(mapClass, "recordArg")
             .addStatement("var record = $T.recordToConstKeyExprMap(recordArg)", dynRuntime)
-            .addStatement("$T ifaceData", interfaceData)
-            .beginControlFlow("if (ifaceArg instanceof $T sdata)", interfaceData)
-            .addStatement("ifaceData = sdata")
-            .nextControlFlow("else if (ifaceArg instanceof $T iconst)", typeInterfaceConst)
-            .addStatement("ifaceData = iconst.data()")
-            .nextControlFlow("else if (ifaceArg instanceof $T spec)", interfaceSpec)
-            .beginControlFlow(
-                "if (spec.sourceRef() instanceof $T<$T> some)", optSome, interfaceData)
-            .addStatement("ifaceData = some.value()")
-            .nextControlFlow("else")
-            .addStatement(
-                "ifaceData = $T.synthesizeInterfaceDataFromSpec(spec)", dynRuntime)
-            .endControlFlow()
-            .nextControlFlow("else if (ifaceArg instanceof $T obj)", typeObjectDynamic)
-            .addStatement(
-                "ifaceData = $T.synthesizeInterfaceDataFromObject(xx, obj)", dynRuntime)
-            .nextControlFlow("else")
-            .addStatement(
-                "throw new $T($S + (ifaceArg == null ? $S : ifaceArg.getClass()))",
-                illegalState,
-                "impl_interface: expected InterfaceData / TypeInterfaceConst / InterfaceSpec / TypeObjectDynamic, got ",
-                "null")
-            .endControlFlow()
             .addStatement("var dtData = this.type_")
             .addStatement("var impl = new $T(ifaceData)", sourceObjectInterfaceImplData)
             .addStatement("impl.implIdx = dtData.interfaceImpls.size()")
@@ -946,7 +923,7 @@ public final class PushStructsGen {
     var anyTypeArg = TypeRef.leaf(TYPE_RT);
     var stagedExprArg = TypeRef.leaf(TYPE_EXPR);
     var uniqueArg = TypeRef.leaf(TYPE_UNIQUE_RT);
-    var ifaceRefArg = TypeRef.opaque(ClassName.OBJECT);
+    var ifaceRefArg = TypeRef.leaf(INTERFACE_REF);
     var recordArg =
         new TypeRef(
             ParameterizedTypeName.get(

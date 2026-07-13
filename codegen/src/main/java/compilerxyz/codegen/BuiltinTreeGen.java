@@ -61,10 +61,16 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.object_", "ValueObjectConst");
   private static final ClassName OBJECT_CONST_OF_TYPE =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectConstOfType");
+  private static final ClassName TYPE_TYPE_OBJECT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeTypeObjectDynamic");
+  private static final CodeBlock OCT_TYPE_EXPR =
+      CodeBlock.of("$T.dynamicType()", OBJECT_CONST_OF_TYPE);
+  private static final CodeBlock TTOD_TYPE_EXPR =
+      CodeBlock.of("$T.dynamicType()", TYPE_TYPE_OBJECT_DYNAMIC);
   private static final ClassName IMPORT_INSTALL =
       ClassName.get("compilerxyz.eval", "ImportInstall");
   private static final ClassName TYPE_INTERFACE_CONST =
-      ClassName.get("compilerxyz.eval.value.source_interface", "TypeInterfaceConst");
+      ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
   private static final ClassName TYPE_FUNCTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
   private static final ClassName BINDING_ID_BUILTIN =
@@ -139,7 +145,11 @@ public final class BuiltinTreeGen {
 
   public sealed interface LeafSpec {
 
-    record AnyConst(CodeBlock typeExpr) implements LeafSpec {}
+    /**
+     * Compile-time constant value. {@code innerExpr} is the wrapped Type reference; {@code
+     * valueTypeExpr} is the source-level type of the resulting value (both required, no default).
+     */
+    record Const(CodeBlock innerExpr, CodeBlock valueTypeExpr) implements LeafSpec {}
 
     record InitialBind(long dynamicKeyScopeId, CodeBlock typeExpr) implements LeafSpec {}
 
@@ -251,7 +261,7 @@ public final class BuiltinTreeGen {
 
   private static String[] emitLeaf(LeafSpec spec, EmitState st) {
     return switch (spec) {
-      case LeafSpec.AnyConst a -> emitAnyConstLeaf(a.typeExpr(), st);
+      case LeafSpec.Const c -> emitConstLeaf(c.innerExpr(), c.valueTypeExpr(), st);
       case LeafSpec.InitialBind ib ->
           emitInitialBindLike(ib.typeExpr(), ib.dynamicKeyScopeId(), st, "InitialBind");
       case LeafSpec.AspectId ai -> emitAspectIdLeaf(ai, st);
@@ -314,22 +324,24 @@ public final class BuiltinTreeGen {
         "BuiltinTreeGen: unsupported arg TypeName for JVM descriptor: " + path);
   }
 
-  private static String[] emitAnyConstLeaf(CodeBlock typeExpr, EmitState st) {
+  private static String[] emitConstLeaf(
+      CodeBlock innerExpr, CodeBlock valueTypeExpr, EmitState st) {
     var type = st.next("type");
     var wrapper = st.next("wrapper");
     var cv = st.next("cv");
     var bindRes = st.next("bindRes");
     var br = st.next("br");
     var binding = st.next("binding");
-    st.body.addStatement("$T $N = ($T) $L", TYPE, type, TYPE, typeExpr);
-    st.body.addStatement("$T $N = $T.dynamicType()", TYPE, wrapper, OBJECT_CONST_OF_TYPE);
+    st.body.addStatement("$T $N = ($T) $L", TYPE, type, TYPE, innerExpr);
+    st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
     st.body.addStatement(
-        "var $N = new $T($T.none(loc), $T.some(new $T($N)))",
+        "var $N = new $T($T.none(loc), $T.some(new $T($N, $N)))",
         cv,
         CODE_VALUE,
         CODE_RT,
         OPT,
         VALUE_OBJECT_CONST,
+        wrapper,
         type);
     st.body.addStatement("var $N = $T.get(xx, loc, $N)", bindRes, ASPECT_BIND, wrapper);
     st.body.beginControlFlow("if ($N.hasErrors())", bindRes);
@@ -339,7 +351,7 @@ public final class BuiltinTreeGen {
         "var $N = $N.requireValue($S).aspectBindBind(xx, loc, $N)",
         br,
         bindRes,
-        "installRoot AnyConst bind aspect",
+        "installRoot Const bind aspect",
         cv);
     st.body.beginControlFlow("if ($N.hasErrors())", br);
     st.body.addStatement("return $N.reerr()", br);
@@ -349,7 +361,7 @@ public final class BuiltinTreeGen {
         BINDING,
         binding,
         br,
-        "installRoot AnyConst bind result");
+        "installRoot Const bind result");
     return new String[] {binding, wrapper};
   }
 
@@ -875,55 +887,55 @@ var targetBindSubCls =
             new Child(
                 "code",
                 new Leaf(
-                    new LeafSpec.AnyConst(DynamicTypes.leaf(CODE_INTERFACE)))),
+                    new LeafSpec.Const(DynamicTypes.leaf(CODE_INTERFACE), OCT_TYPE_EXPR))),
             new Child(
                 "string",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_STRING_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "number",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "null",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_NULL_DYNAMIC)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_NULL_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "bool",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
                 "binding",
                 new Leaf(
-                    new LeafSpec.AnyConst(
+                    new LeafSpec.Const(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "Binding"))))),
+                            ClassName.get("compilerxyz.gen", "Binding")), OCT_TYPE_EXPR))),
             new Child(
                 "bind_result",
                 new Leaf(
-                    new LeafSpec.AnyConst(
+                    new LeafSpec.Const(
                         CodeBlock.of(
                             "$T.dynamicType()",
                             ClassName.get(
-                                "compilerxyz.eval.value.bind_result", "BindResultType"))))),
+                                "compilerxyz.eval.value.bind_result", "BindResultType")), OCT_TYPE_EXPR))),
             new Child(
                 "constkey",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC), OCT_TYPE_EXPR))),
             new Child(
-                "expr", new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE_EXPR)))),
+                "expr", new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE_EXPR), OCT_TYPE_EXPR))),
             new Child(
                 "type",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(TYPE)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(TYPE), OCT_TYPE_EXPR))),
             new Child(
                 "aspect",
-                new Leaf(new LeafSpec.AnyConst(DynamicTypes.leaf(ASPECT_INTERFACE)))),
+                new Leaf(new LeafSpec.Const(DynamicTypes.leaf(ASPECT_INTERFACE), OCT_TYPE_EXPR))),
             new Child(
                 "codedyn",
                 new Leaf(
-                    new LeafSpec.AnyConst(
-                        DynamicTypes.leaf(CODE_DYN_HANDLE_TYPE)))),
+                    new LeafSpec.Const(
+                        DynamicTypes.leaf(CODE_DYN_HANDLE_TYPE), OCT_TYPE_EXPR))),
             new Child(
                 "cve",
                 new Leaf(
-                    new LeafSpec.AnyConst(
-                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC))))));
+                    new LeafSpec.Const(
+                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC), OCT_TYPE_EXPR)))));
   }
 
   private static NodeSpec evalBranch() {
@@ -1038,10 +1050,10 @@ var targetBindSubCls =
             new Child(
                 "aspect_consume_dynamic",
                 new Leaf(
-                    new LeafSpec.AnyConst(
+                    new LeafSpec.Const(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic"))))),
+                            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")), TTOD_TYPE_EXPR))),
             new Child(
                 "bind_result",
                 new Leaf(
@@ -1058,10 +1070,10 @@ var targetBindSubCls =
             new Child(
                 "aspect_bind",
                 new Leaf(
-                    new LeafSpec.AnyConst(
+                    new LeafSpec.Const(
                         CodeBlock.of(
                             "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectBind"))))),
+                            ClassName.get("compilerxyz.gen", "AspectBind")), TTOD_TYPE_EXPR))),
             new Child(
                 "aspect_string_dynamic",
                 new Leaf(new LeafSpec.AspectId(4001, "StringDynamic"))),
@@ -1140,7 +1152,7 @@ var targetBindSubCls =
 
     Long id =
         switch (spec) {
-          case LeafSpec.AnyConst a -> null;
+          case LeafSpec.Const c -> null;
           case LeafSpec.InitialBind ib -> null;
           case LeafSpec.AspectId ai -> ai.builtinScopeId();
           case LeafSpec.Interface ifc -> null;

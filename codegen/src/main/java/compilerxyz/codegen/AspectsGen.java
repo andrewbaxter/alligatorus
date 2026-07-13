@@ -84,6 +84,9 @@ final class AspectsGen {
   private static final ClassName CAST_RULE_CALL_BY_DEST_IDENTITY =
       ClassName.get(
           "compilerxyz.eval.value.object_", "TypeObjectCastRule", "CallByDestIdentity");
+  private static final ClassName CAST_RULE_INVOKE_VIRTUAL_BY_DEST_IDENTITY =
+      ClassName.get(
+          "compilerxyz.eval.value.object_", "TypeObjectCastRule", "InvokeVirtualByDestIdentity");
   private static final ClassName DYN_RUNTIME_HELPER =
       ClassName.get(
           "compilerxyz.eval.value.object_", "TypeObjectCastRule", "DynRuntimeHelper");
@@ -352,21 +355,17 @@ final class AspectsGen {
         JAVA_DATA_DESCRIPTOR,
         TYPE_OBJECT_DYNAMIC);
     b.addStatement(
-        "castRules.add(new $T($T.INTERFACE_REF_TYPE_IDENTITY, new $T($T.fromClass($T.class), $S, "
-            + "$T.fromParts($T.fromClass($T.class), "
-            + "$T.of($T.fromClass($T.class))), false)))",
-        CAST_RULE_CALL_BY_DEST_IDENTITY,
+        "castRules.add(new $T($T.INTERFACE_REF_TYPE_IDENTITY, $T.fromClass($T.class), $S, "
+            + "$T.fromParts($T.fromClass($T.class), $T.of())))",
+        CAST_RULE_INVOKE_VIRTUAL_BY_DEST_IDENTITY,
         GEN_IDENTITIES,
-        DYN_RUNTIME_HELPER,
         JAVA_INTERNAL_NAME,
-        DYN_RUNTIME,
-        "objectToInterfaceData",
+        TYPE_OBJECT_DYNAMIC,
+        "getInterfaceData",
         JAVA_METHOD_DESCRIPTOR,
         JAVA_DATA_DESCRIPTOR,
         INTERFACE_DATA,
-        TLIST,
-        JAVA_DATA_DESCRIPTOR,
-        TYPE_OBJECT_DYNAMIC);
+        TLIST);
 
     b.addStatement(
         "var instance = new $T(new $T($LL), $S, jvmInterface, jvmInterfaceDesc, new $T<$T>(), methods, "

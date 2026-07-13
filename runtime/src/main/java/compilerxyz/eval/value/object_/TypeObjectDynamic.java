@@ -78,6 +78,44 @@ public record TypeObjectDynamic(
     return staticSrc.id();
   }
 
+  public InterfaceData getInterfaceData() {
+    if (!(interfaceRepresented instanceof Opt.Some<JavaInternalName> ir)) {
+      throw new IllegalStateException(
+          typeDesc + "::getInterfaceData: does not represent an interface");
+    }
+    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> aspSome)
+        || !(aspSome.value() instanceof ObjectAspectSource.Static staticSrc)) {
+      throw new IllegalStateException(
+          typeDesc + "::getInterfaceData: missing static aspect source");
+    }
+    var data = new InterfaceData(null, staticSrc.id(), null);
+    data.description = typeDesc;
+    data.compiledBinaryName = ir.value().value().replace('/', '.');
+    for (var m : methods) {
+      if (!(m.funcType() instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt)) {
+        throw new IllegalStateException(
+            typeDesc + "::getInterfaceData: method " + m.langName()
+                + " funcType is not TypeMethodDynamic");
+      }
+      var md = new compilerxyz.eval.value.source_interface.InterfaceMethodData(m.langName());
+      md.argType = mt.arg();
+      md.retType = mt.ret();
+      md.hostMethodName = mt.methodName();
+      md.hostMethodDescriptor = mt.descriptor();
+      if (mt.arg() instanceof compilerxyz.eval.value.record.Record rec) {
+        for (var key : rec.fields().keySet()) {
+          if (key instanceof ConstKey.Str s) {
+            md.dataFieldNames.add(s.value());
+          } else {
+            md.dataFieldNames.add(key.toCanonical());
+          }
+        }
+      }
+      data.methods.add(md);
+    }
+    return data;
+  }
+
   @Override
   public boolean equals(Object other) {
     return other instanceof TypeObjectDynamic o && typeId.equals(o.typeId);

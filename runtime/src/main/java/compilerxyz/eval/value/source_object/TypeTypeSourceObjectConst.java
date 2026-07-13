@@ -39,7 +39,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.eval.value.source_interface.TypeInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
@@ -265,7 +265,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       BuiltinInterfaceKind kind = impl.interface_.builtinKind;
                       Artifact userIface = null;
                       if (kind == null) {
-                        var ifaceConst = new TypeInterfaceConst(impl.interface_);
+                        var ifaceConst = new TypeSourceInterfaceConst(impl.interface_);
                         var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
                         ifaceArtRes.drainInto(errors);
                         userIface =
@@ -474,7 +474,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           var ifaceVal =
                               ifaceAny.requireValue(
                                   "TypeTypeSourceObjectConst::finalizer user iface artifact");
-                          if (!(ifaceVal instanceof TypeInterfaceConst ic)) {
+                          if (!(ifaceVal instanceof TypeSourceInterfaceConst ic)) {
                             throw new IllegalStateException(
                                 "TypeTypeSourceObjectConst finalizer: user iface artifact resolved to "
                                     + ifaceVal.getClass());

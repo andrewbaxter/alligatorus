@@ -72,7 +72,7 @@ public record TypeEResultConstructorConst()
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .aspectTypeType(argValue);
     Type eresultType = new TypeEResultDynamic(elementType);
-    return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(eresultType))));
+    return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), eresultType))));
   }
 
   @Override

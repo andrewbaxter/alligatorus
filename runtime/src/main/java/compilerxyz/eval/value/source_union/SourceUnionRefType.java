@@ -44,7 +44,7 @@ public final class SourceUnionRefType {
                   "union_ref::lift: expected TypeSourceUnionDynamic, got "
                       + (host == null ? "null" : host.getClass().getName()));
             }
-            return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionConst(ut)));
+            return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceUnionConst(ut)));
           };
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_UNION_REF_DYNAMIC_TYPE_ID,

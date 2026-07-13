@@ -141,6 +141,8 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_root_number_to_string_dynamic", 7118L));
     list.add(new TypeIdSpec("type_interface_method_dynamic", 7119L));
     list.add(new TypeIdSpec("type_java_data_descriptor_dynamic", 7120L));
+    list.add(new TypeIdSpec("type_type_object_dynamic", 7121L));
+    list.add(new TypeIdSpec("type_type_source_interface_const", 7122L));
     return list;
   }
 
