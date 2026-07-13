@@ -279,7 +279,10 @@ public final class PushStructsGen {
             .addStatement(
                 "iface.compiledBinaryName = $T.binaryNameFor(this.inner.defSetId, ifaceIndex)",
                 sourceInterfaceEmitter)
-            .addStatement("return new $T(iface)", sourceInterfaceResult)
+            .addStatement(
+                "return new $T(new $T(iface))",
+                sourceInterfaceResult,
+                SOURCE_INTERFACE_CONST)
             .build());
 
     var qexprIdCls = ClassName.get("compilerxyz.eval", "QExprId");
@@ -387,7 +390,7 @@ public final class PushStructsGen {
         MethodSpec.methodBuilder("get_ref")
             .addModifiers(Modifier.PUBLIC)
             .returns(interfaceData)
-            .addStatement("return this.interface_ref")
+            .addStatement("return this.interface_ref.getInterfaceData()")
             .build());
 
     cls.addMethod(
@@ -396,10 +399,11 @@ public final class PushStructsGen {
             .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
-            .beginControlFlow("if (this.interface_ref.description != null)")
+            .addStatement("var ifaceData = this.interface_ref.getInterfaceData()")
+            .beginControlFlow("if (ifaceData.description != null)")
             .addStatement("throw new $T($S)", illegalState, "Interface already has a description")
             .endControlFlow()
-            .addStatement("this.interface_ref.description = description")
+            .addStatement("ifaceData.description = description")
             .build());
 
     cls.addMethod(
@@ -408,7 +412,7 @@ public final class PushStructsGen {
             .returns(sourceInterfaceMethodResult)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "name")
-            .addStatement("var ifaceData = this.interface_ref")
+            .addStatement("var ifaceData = this.interface_ref.getInterfaceData()")
             .addStatement("var method = new $T(name)", interfaceMethodData)
             .addStatement("ifaceData.methods.add(method)")
             .addStatement("return new $T(method)", sourceInterfaceMethodResult)
@@ -420,7 +424,7 @@ public final class PushStructsGen {
             .returns(com.squareup.javapoet.TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(booleanClass, "isAspect")
-            .addStatement("this.interface_ref.isAspect = isAspect")
+            .addStatement("this.interface_ref.getInterfaceData().isAspect = isAspect")
             .build());
   }
 
@@ -437,12 +441,6 @@ public final class PushStructsGen {
             "compilerxyz.eval.value.source_object", "SourceObjectInterfaceMethodImplData");
     var interfaceData =
         ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
-    var interfaceSpec =
-        ClassName.get("compilerxyz.eval.value.interface_spec", "InterfaceSpec");
-    var typeInterfaceConst =
-        ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
-    var typeObjectDynamic =
-        ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
     var constKey = ClassName.get("compilerxyz.eval", "ConstKey");
     var constKeyStr = ClassName.get("compilerxyz.eval", "ConstKey", "Str");
     var expr = ClassName.get("compilerxyz.eval", "Expr");
@@ -860,6 +858,9 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_function", "SourceFunctionType");
   private static final ClassName INTERFACE_REF =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
+  private static final ClassName SOURCE_INTERFACE_CONST =
+      ClassName.get(
+          "compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
   private static final ClassName SOURCE_OBJECT_REF =
@@ -1038,12 +1039,13 @@ public final class PushStructsGen {
         new PushStructSpec(
             "SourceInterfaceResult",
             3005L,
-            TList.of(new NamedTypeRef("interface_ref", TypeRef.leaf(INTERFACE_REF))),
+            TList.of(
+                new NamedTypeRef("interface_ref", TypeRef.leaf(SOURCE_INTERFACE_CONST))),
             TList.of(
                 new PushField(
                     "type_",
                     "interface_ref",
-                    TypeRef.leaf(INTERFACE_REF),
+                    TypeRef.leaf(SOURCE_INTERFACE_CONST),
                     empty)),
             TList.of(
                 new PushMethod(

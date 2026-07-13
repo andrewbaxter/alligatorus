@@ -120,17 +120,6 @@ public final class InterfaceData {
                           JavaDataDescriptor.fromClass(compilerxyz.eval.ExprContext.class),
                           JavaDataDescriptor.fromClass(InterfaceData.class))),
                   true)));
-      castRules.add(
-          new TypeObjectCastRule.CallToInterfaceSpec(
-              new TypeObjectCastRule.DynRuntimeHelper(
-                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(
-                      compilerxyz.eval.dynamic.DynRuntime.class),
-                  "interfaceRefToInterfaceSpec",
-                  JavaMethodDescriptor.fromParts(
-                      JavaDataDescriptor.fromClass(
-                          compilerxyz.eval.value.interface_spec.TypeInterfaceSpec.class),
-                      TList.of(JavaDataDescriptor.fromClass(InterfaceData.class))),
-                  false)));
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID,
           "definition_set_interface_ref",

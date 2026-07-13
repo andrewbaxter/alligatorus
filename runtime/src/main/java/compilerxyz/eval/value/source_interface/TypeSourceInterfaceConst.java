@@ -76,6 +76,46 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return data;
   }
 
+  public static compilerxyz.eval.Type dynamicType() {
+    return TypeSourceInterfaceConstMeta.INSTANCE;
+  }
+
+  static final class TypeSourceInterfaceConstMeta {
+    static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
+
+    private TypeSourceInterfaceConstMeta() {}
+
+    private static compilerxyz.eval.value.object_.TypeObjectConst build() {
+      var castRules =
+          new compilerxyz.util.TList<
+              compilerxyz.eval.value.object_.TypeObjectCastRule>();
+      castRules.add(
+          new compilerxyz.eval.value.object_.TypeObjectCastRule.RestampToIdentity(
+              compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY));
+      castRules.add(
+          new compilerxyz.eval.value.object_.TypeObjectCastRule.InvokeVirtualByDestIdentity(
+              compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY,
+              compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
+              "getInterfaceData",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(InterfaceData.class),
+                  compilerxyz.util.TList.of())));
+      var identityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
+      identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY);
+      return new compilerxyz.eval.value.object_.TypeObjectConst(
+          compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_INTERFACE_CONST_TYPE_ID,
+          "type_source_interface_const_meta",
+          TypeSourceInterfaceConst.class,
+          compilerxyz.util.Opt.<compilerxyz.eval.Type>none(),
+          identityAspects,
+          castRules,
+          new compilerxyz.util.TList<
+              compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
+          compilerxyz.util.Opt.<compilerxyz.eval.value.object_.TypeObjectLift>none(),
+          compilerxyz.util.Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none());
+    }
+  }
+
   public static compilerxyz.eval.Type fromInterfaceData(
       compilerxyz.eval.ExprContext xx, InterfaceData data) {
     return new TypeSourceInterfaceConst(data);
@@ -91,8 +131,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
-        compilerxyz.eval.value.source_interface.InterfaceData.class);
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(TypeSourceInterfaceConst.class);
   }
 
   @Override
@@ -383,31 +422,36 @@ public record TypeSourceInterfaceConst(InterfaceData data)
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec
-        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
+    return destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
         || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType instanceof compilerxyz.eval.value.interface_spec.TypeInterfaceSpec) {
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
+      return EResult.ok(
+          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
+    }
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
         return EResult.err(
-            loc, "cast interface_const → interface_spec: source has no runtime code");
+            loc, "cast source_interface_const → interface_ref: source has no runtime code");
       }
-      var call = emitInterfaceRefToInterfaceSpecCall(loc, sourceCode);
+      var seq = new JavaBytecodeSequence();
+      seq.add(sourceCode);
+      seq.add(
+          JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
+              "getInterfaceData",
+              JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromClass(InterfaceData.class),
+                  TList.of())));
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, call),
-              Opt.some(
-                  ValueDynamic.stack(xx, 
-                      new compilerxyz.eval.value.interface_spec.TypeInterfaceSpec()))));
-    }
-    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
-        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
-      return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
+              Code.of(loc, new CodeDynamic(loc, seq)),
+              Opt.some(ValueDynamic.stack(xx, destType))));
     }
     return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
   }
@@ -449,18 +493,4 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return false;
   }
 
-  static CodeDynamic emitInterfaceRefToInterfaceSpecCall(QExprId loc, CodeDynamic source) {
-    var seq = new JavaBytecodeSequence();
-    seq.add(source);
-    seq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc,
-            JavaInternalName.fromClass(DynRuntime.class),
-            "interfaceRefToInterfaceSpec",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromClass(
-                    compilerxyz.eval.value.interface_spec.TypeInterfaceSpec.class),
-                TList.of(JavaDataDescriptor.fromClass(InterfaceData.class)))));
-    return new CodeDynamic(loc, seq);
-  }
 }

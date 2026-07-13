@@ -130,8 +130,6 @@ final class TypeIdsGen {
     list.add(new TypeIdSpec("type_eresult_constructor_const", 7107L));
     list.add(new TypeIdSpec("type_root_eresult_constructor_const", 7108L));
     list.add(new TypeIdSpec("type_value_dynamic", 7109L));
-    list.add(new TypeIdSpec("type_interface_spec", 7110L));
-    list.add(new TypeIdSpec("type_root_interface_spec", 7111L));
     list.add(new TypeIdSpec("type_type_id_dynamic", 7112L));
     list.add(new TypeIdSpec("type_list_push_dynamic", 7113L));
     list.add(new TypeIdSpec("type_list_join_dynamic", 7114L));

@@ -78,9 +78,6 @@ final class AspectsGen {
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
   private static final ClassName TYPE_OBJECT_LIFT =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectLift");
-  private static final ClassName CAST_RULE_CALL_TO_INTERFACE_SPEC =
-      ClassName.get(
-          "compilerxyz.eval.value.object_", "TypeObjectCastRule", "CallToInterfaceSpec");
   private static final ClassName CAST_RULE_CALL_BY_DEST_IDENTITY =
       ClassName.get(
           "compilerxyz.eval.value.object_", "TypeObjectCastRule", "CallByDestIdentity");
@@ -90,8 +87,6 @@ final class AspectsGen {
   private static final ClassName DYN_RUNTIME_HELPER =
       ClassName.get(
           "compilerxyz.eval.value.object_", "TypeObjectCastRule", "DynRuntimeHelper");
-  private static final ClassName INTERFACE_SPEC_TYPE_TYPE =
-      ClassName.get("compilerxyz.eval.value.interface_spec", "TypeInterfaceSpec");
   private static final ClassName GEN_IDENTITIES =
       ClassName.get("compilerxyz.gen", "GenIdentities");
   private static final ClassName DYN_RUNTIME =
@@ -339,21 +334,6 @@ final class AspectsGen {
         "var jvmInterfaceDesc = $T.fromInternalName(jvmInterface)", JAVA_DATA_DESCRIPTOR);
     b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
-    b.addStatement(
-        "castRules.add(new $T(new $T($T.fromClass($T.class), $S, "
-            + "$T.fromParts($T.fromClass($T.class), "
-            + "$T.of($T.fromClass($T.class))), false)))",
-        CAST_RULE_CALL_TO_INTERFACE_SPEC,
-        DYN_RUNTIME_HELPER,
-        JAVA_INTERNAL_NAME,
-        DYN_RUNTIME,
-        "objectToInterfaceSpec",
-        JAVA_METHOD_DESCRIPTOR,
-        JAVA_DATA_DESCRIPTOR,
-        INTERFACE_SPEC_TYPE_TYPE,
-        TLIST,
-        JAVA_DATA_DESCRIPTOR,
-        TYPE_OBJECT_DYNAMIC);
     b.addStatement(
         "castRules.add(new $T($T.INTERFACE_REF_TYPE_IDENTITY, $T.fromClass($T.class), $S, "
             + "$T.fromParts($T.fromClass($T.class), $T.of())))",

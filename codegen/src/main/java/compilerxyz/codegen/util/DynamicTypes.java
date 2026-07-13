@@ -85,7 +85,6 @@ public final class DynamicTypes {
         "compilerxyz.eval.value.expr",
         "TypeExpr",
         ClassName.get("compilerxyz.eval.expr", "StagedExprCell"));
-    nullary("compilerxyz.eval.value.interface_spec", "TypeInterfaceSpec");
     nullary("compilerxyz.eval.value.throw_", "TypeThrowDynamic");
     nullary("compilerxyz.eval.value.panic", "TypePanicDynamic");
     nullary("compilerxyz.eval.value.function", "TypeFunctionAspectDynamic");
@@ -124,6 +123,7 @@ public final class DynamicTypes {
     factory("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
     factory("compilerxyz.eval.value.source_function", "SourceFunctionType");
     factory("compilerxyz.eval.value.source_interface", "InterfaceData");
+    factory("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
     factory("compilerxyz.eval.dynamic", "JavaDataDescriptor");
     factory("compilerxyz.eval.dynamic.target", "TargetBindSub");
     factory("compilerxyz.eval.dynamic.target", "BindResult");

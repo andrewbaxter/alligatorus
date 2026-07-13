@@ -416,12 +416,13 @@ public final class BuiltinTreeGen {
           case LeafSpec.Interface ifc ->
               out.addStatement(
                   "xx.vx.ix.builtinDynamics.put($T.bindingIdDynamicKey(new $T($LL)),"
-                      + " new $T($T.class, interfaces.$N))",
+                      + " new $T($T.class, new $T(interfaces.$N)))",
                   IMPORT_INSTALL,
                   BINDING_ID_BUILTIN,
                   (long) ifc.spec().scopeId(),
                   EXTERNAL,
-                  INTERFACE_DATA,
+                  TYPE_INTERFACE_CONST,
+                  TYPE_INTERFACE_CONST,
                   ifaceHolderFieldName(ifc.spec()));
           case LeafSpec.AspectId ai -> {
             var aspectClass = ClassName.get(GEN_PACKAGE, "Aspect" + ai.aspectName());
