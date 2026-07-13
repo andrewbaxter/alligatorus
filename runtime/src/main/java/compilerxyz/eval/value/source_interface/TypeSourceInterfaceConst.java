@@ -131,7 +131,12 @@ public record TypeSourceInterfaceConst(InterfaceData data)
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(TypeSourceInterfaceConst.class);
+    var binaryName = data.compiledBinaryName;
+    if (binaryName == null) {
+      return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(TypeSourceInterfaceConst.class);
+    }
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JavaInternalName.of(binaryName.replace('.', '/')));
   }
 
   @Override

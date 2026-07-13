@@ -28,6 +28,7 @@ import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -39,7 +40,14 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
-    implements Type, AspectArtifact, AspectBind, AspectFunction, AspectLift, ExporterAny {
+    implements
+        Type,
+        AspectArtifact,
+        AspectBind,
+        AspectDropDynamicLight,
+        AspectFunction,
+        AspectLift,
+        ExporterAny {
 
   private TypeSourceObjectNewDynamic asCtor() {
     return new TypeSourceObjectNewDynamic(type_);
@@ -75,6 +83,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
+        || key.equals(AspectDropDynamicLight.ID)
         || key.equals(AspectFunction.ID)
         || key.equals(AspectLift.ID)) {
       return Opt.some(this);
@@ -111,6 +120,12 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   @Override
   public ArtifactExporter aspectArtifactExporter() {
     return ExporterRoot.SOURCE_OBJECT_NEW_CONST;
+  }
+
+  @Override
+  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   private static Artifact nullArtifact() {

@@ -123,6 +123,16 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     seq.add(argDyn);
     var hostName = method.hostMethodName == null ? method.name : method.hostMethodName;
     seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
+    var retConsumeOpt = AspectConsumeDynamic.getMaybe(xx, retType);
+    if (retConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> retConsumeSome) {
+      var retDesc = retConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+      if (!retDesc.value().equals(descObject.value())) {
+        var c = retDesc.value().charAt(0);
+        if (c == 'L' || c == '[') {
+          seq.add(JavaBytecodeUtils.cast(loc, retDesc));
+        }
+      }
+    }
     return EResult.ok(
         retStackRes
             .requireValue("TypeInterfaceMethodDynamic AspectStackValueDynamic.get")

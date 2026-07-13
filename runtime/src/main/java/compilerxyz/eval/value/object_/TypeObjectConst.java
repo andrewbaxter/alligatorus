@@ -63,6 +63,7 @@ public record TypeObjectConst(
         compilerxyz.artifact.ArtifactExporter,
         AspectAspect,
         AspectBind,
+        compilerxyz.gen.AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
@@ -105,6 +106,7 @@ public record TypeObjectConst(
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(AspectBind.ID)
+        || key.equals(compilerxyz.gen.AspectBindDynamic.ID)
         || key.equals(AspectInitialBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
@@ -228,7 +230,20 @@ public record TypeObjectConst(
 
   @Override
   public EResult<AspectBind.BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
+    if (cv.value() instanceof Opt.Some<Value> some) {
+      return EResult.ok(new AspectBind.BindResult(
+          Code.none(loc), new compilerxyz.eval.binding.BindingValue(some.value())));
+    }
     return DynUtil.bindViaTarget(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Opt<compilerxyz.eval.dynamic.target.TargetBindSub>> aspectBindDynamicBindDynamic(
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    if (cv.value() instanceof Opt.Some<Value>) {
+      return EResult.ok(Opt.none());
+    }
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
   }
 
   @Override

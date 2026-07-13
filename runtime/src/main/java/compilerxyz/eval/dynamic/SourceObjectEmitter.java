@@ -592,12 +592,16 @@ public final class SourceObjectEmitter {
           continue;
         }
         var ifaceMethod = iface.methods.get(m.interfaceMethodIndex);
-        if (ifaceMethod.hostMethodName == null
-            || ifaceMethod.hostMethodDescriptor == null) {
-          continue;
+        HostMethodSpec spec;
+        if (ifaceMethod.hostMethodName != null && ifaceMethod.hostMethodDescriptor != null) {
+          spec = new HostMethodSpec(
+              ifaceMethod.hostMethodName, ifaceMethod.hostMethodDescriptor);
+        } else {
+          spec = new HostMethodSpec(
+              ifaceMethod.name,
+              JavaMethodDescriptor.fromParts(
+                  JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT));
         }
-        var spec = new HostMethodSpec(
-            ifaceMethod.hostMethodName, ifaceMethod.hostMethodDescriptor);
         var dedupeKey = spec.hostName() + spec.hostDescriptor().value();
         if (!emitted.add(dedupeKey)) {
           continue;

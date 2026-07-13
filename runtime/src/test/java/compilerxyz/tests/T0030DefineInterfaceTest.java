@@ -184,12 +184,19 @@ public final class T0030DefineInterfaceTest {
                                                         mb.tupleOf()))))))),
                             mb.call(
                                 mb.field(mb.scopeUse("d"), mb.str("finish")),
-                                mb.tupleOf())))),
+                                mb.tupleOf()),
+                            mb.recordOf(
+                                TList.of(
+                                    new TestMb.RecordPair(
+                                        "do_log",
+                                        mb.field(mb.scopeUse("do_log_fn"), mb.str("func"))),
+                                    new TestMb.RecordPair(
+                                        "upper", mb.field(mb.scopeUse("ndr"), mb.str("new")))))))),
                 mb.bind("do_log", mb.field(mb.scopeUse("defs"), mb.str("do_log"))),
                 mb.bind("make_upper", mb.field(mb.scopeUse("defs"), mb.str("upper"))),
                 mb.call(
                     mb.scopeUse("do_log"),
-                    mb.tupleOf(mb.call(mb.scopeUse("make_upper"), mb.str("hello")))))));
+                    mb.call(mb.scopeUse("make_upper"), mb.str("hello"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
