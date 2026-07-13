@@ -54,7 +54,7 @@ public record TypeStringConst()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -152,13 +152,13 @@ public record TypeStringConst()
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
-    return new TypeStringDynamic().aspectFieldFieldTypeOpt(xx, key);
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
+    return new TypeStringDynamic().aspectFieldTypeOpt(xx, key);
   }
 
   @Override

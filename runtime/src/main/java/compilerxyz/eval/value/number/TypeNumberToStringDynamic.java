@@ -34,7 +34,7 @@ public record TypeNumberToStringDynamic()
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 

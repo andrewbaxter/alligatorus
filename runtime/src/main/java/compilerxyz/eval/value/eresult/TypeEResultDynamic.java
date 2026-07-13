@@ -49,7 +49,7 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/EResult"));
   }
 
@@ -127,7 +127,7 @@ public record TypeEResultDynamic(Type elementType)
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
                   JavaDataDescriptor.fromClass(String.class))));
       if (elementType instanceof AspectConsumeDynamic elemConsume) {
-        var elemDesc = elemConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+        var elemDesc = elemConsume.aspectConsumeDynamicJvmClass(xx);
         if (elemDesc.value().startsWith("L")
             && !elemDesc.value().equals("Ljava/lang/Object;")) {
           seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
@@ -148,12 +148,12 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs().keySet());
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs().getOrNull(key);
     return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }

@@ -53,7 +53,7 @@ public final class DynUtil {
         }
         var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
         if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
-            var fieldTypes = recordSome.value().aspectRecordRecordFieldTypes();
+            var fieldTypes = recordSome.value().aspectRecordFieldTypes();
             var out = new TList<ArgSignatureSlot>(fieldTypes.size());
             for (var entry : fieldTypes.entrySet()) {
                 var et = entry.getValue();
@@ -73,7 +73,7 @@ public final class DynUtil {
     private static EResult<JavaDataDescriptor> jvmDescFor(ExprContext xx, QExprId loc, Type t) {
         var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
-        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicConsumeDynamicJvmClass(xx));
+        return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
     public static CodeDynamic buildFieldGetSequence(QExprId loc, CodeDynamic baseCode, String fieldKey) {
@@ -138,7 +138,6 @@ public final class DynUtil {
         var bodyDyn = body.dynamic();
         if (bodyDyn != null) {
             seq.add(bodyDyn);
-            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         }
         seq.add(
                 new CodeDynamic(
@@ -148,8 +147,9 @@ public final class DynUtil {
                                         org.objectweb.asm.Opcodes.GOTO, loopLabel))));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-        seq.add(JavaBytecodeUtils.literalNull(loc));
-        return dynamicStackToValue(xx, loc, new CodeDynamic(loc, seq), new TypeNullDynamic());
+        return new CodeValue(
+            compilerxyz.eval.Code.of(loc, new CodeDynamic(loc, seq)),
+            Opt.none());
     }
 
     public static EResult<CodeValue> fieldUseDefaultDynamic(
@@ -457,8 +457,8 @@ public final class DynUtil {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
             }
-            var fieldTypes = recordSome.value().aspectRecordRecordFieldTypes();
-            var fieldCvs = recordSome.value().aspectRecordRecordTakeFields(xx, loc, some.value());
+            var fieldTypes = recordSome.value().aspectRecordFieldTypes();
+            var fieldCvs = recordSome.value().aspectRecordTakeFields(xx, loc, some.value());
             if (fieldTypes.size() != fieldCvs.size()) {
                 throw new IllegalStateException(
                         "DynUtil::destructurePositional: record fieldTypes/takeFields size mismatch");

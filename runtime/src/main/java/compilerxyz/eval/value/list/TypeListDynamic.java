@@ -82,7 +82,7 @@ public record TypeListDynamic(Type elementType)
 
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/util/TList"));
   }
 
@@ -202,12 +202,12 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs(xx).keySet());
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs(xx).getOrNull(key);
     return spec == null ? Opt.none() : Opt.some(spec.fieldType());
   }
@@ -268,16 +268,34 @@ public record TypeListDynamic(Type elementType)
     }
 
     var elementDecode = elementDecodeCast(xx, loc);
+    Code bodyCode;
+    if (body.value().optIsSome()) {
+      var dropRes = xx.target.targetDrop(xx, loc, body);
+      if (dropRes.hasErrors()) return dropRes.reerr();
+      var dropCode = dropRes.requireValue("TypeListDynamic::foreach body drop");
+      var bodyDyn = body.code().dynamic();
+      var dropDyn = dropCode.dynamic();
+      if (bodyDyn == null && dropDyn == null) {
+        bodyCode = Code.none(loc);
+      } else {
+        var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+        if (bodyDyn != null) seq.add(bodyDyn);
+        if (dropDyn != null) seq.add(dropDyn);
+        bodyCode = Code.of(loc, new CodeDynamic(loc, seq));
+      }
+    } else {
+      bodyCode = body.code();
+    }
     return EResult.ok(
         DynUtil.foreachSkeleton(xx,
-            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
+            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
   }
 
   private CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
     var decodeSeq = new JavaBytecodeSequence();
     var elemConsumeOpt = AspectConsumeDynamic.getMaybe(xx, elementType);
     if (elemConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> elemConsumeSome) {
-      var elemDesc = elemConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+      var elemDesc = elemConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       var d = elemDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);

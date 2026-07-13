@@ -51,7 +51,7 @@ public record TypeTypeIdDynamic()
   }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromClass(TypeId.class);
   }
 

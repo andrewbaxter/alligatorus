@@ -95,7 +95,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/util/Map$Entry"));
   }
 
@@ -153,7 +153,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // time, so the target descriptor is always object-shaped here.
     var fieldConsumeOpt = AspectConsumeDynamic.getMaybe(xx, spec.type());
     if (fieldConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> fieldConsumeSome) {
-      var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+      var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       var d = fieldDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
@@ -169,12 +169,12 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs().keySet());
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs().getOrNull(key);
     return spec == null ? Opt.none() : Opt.some(spec.type());
   }

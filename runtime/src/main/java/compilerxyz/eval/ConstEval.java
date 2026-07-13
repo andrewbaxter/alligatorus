@@ -119,8 +119,8 @@ public final class ConstEval {
         var baseType = bv.value().valueType();
         var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var aspectField = aspectFieldOpt.get();
-        var primaryOpt = erb.mustEr(aspectField.aspectFieldField(xx, loc, base, field));
+        var aspectFieldField = aspectFieldOpt.get();
+        var primaryOpt = erb.mustEr(aspectFieldField.aspectFieldField(xx, loc, base, field));
         if (primaryOpt.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(primaryOpt.get());
       }
@@ -744,7 +744,7 @@ public final class ConstEval {
       var payloadDesc =
           payloadConsumeRes
               .requireValue("try/catch payload AspectConsumeDynamic")
-              .aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+              .aspectConsumeDynamicJvmClass(xx);
       catch_ = Opt.some(new TryCatchClause(bindingId, payloadDesc, catchCd));
     }
     Opt<CodeDynamic> finally_ = Opt.none();

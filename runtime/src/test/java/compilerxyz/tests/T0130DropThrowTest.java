@@ -331,7 +331,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.field(
                                                         mb.scopeUse("arg"), mb.str("cv"))))))),
                                 new TestMb.RecordPair(
-                                    "consume_dynamic_jvm_class",
+                                    "jvm_class",
                                     mb.call(
                                         mb.field(
                                             mb.field(
@@ -344,7 +344,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                             mb.scopeUse("arg"),
                                                             mb.str("xx")))),
                                                 mb.str("value")),
-                                            mb.str("consume_dynamic_jvm_class")),
+                                            mb.str("jvm_class")),
                                         mb.recordOf(
                                             TList.of(
                                                 new TestMb.RecordPair(

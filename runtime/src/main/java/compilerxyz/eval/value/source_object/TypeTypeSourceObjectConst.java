@@ -82,7 +82,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -594,7 +594,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         SourceObjectEmitter.internalNameFor(
             set.defSetId, objectIndex);
     var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
-    var underlyingDesc = underlyingConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+    var underlyingDesc = underlyingConsume.aspectConsumeDynamicJvmClass(xx);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));
@@ -623,12 +623,12 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     return Opt.none();
   }
 

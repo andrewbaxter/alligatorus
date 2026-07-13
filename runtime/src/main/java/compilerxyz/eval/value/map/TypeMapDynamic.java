@@ -98,7 +98,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
@@ -229,12 +229,12 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.from(fieldSpecs().keySet());
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     var spec = fieldSpecs().getOrNull(key);
     if (spec != null) return Opt.some(spec.fieldType());
     if (key instanceof ConstKey.Str) return Opt.some(valueType);
@@ -308,9 +308,27 @@ public record TypeMapDynamic(Type keyType, Type valueType)
                 JavaInternalName.of("java/util/Map$Entry"))));
     var elementDecode = new CodeDynamic(loc, decodeSeq);
 
+    compilerxyz.eval.Code bodyCode;
+    if (body.value().optIsSome()) {
+      var dropRes = xx.target.targetDrop(xx, loc, body);
+      if (dropRes.hasErrors()) return dropRes.reerr();
+      var dropCode = dropRes.requireValue("TypeMapDynamic::foreach body drop");
+      var bodyDyn = body.code().dynamic();
+      var dropDyn = dropCode.dynamic();
+      if (bodyDyn == null && dropDyn == null) {
+        bodyCode = compilerxyz.eval.Code.none(loc);
+      } else {
+        var combinedSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+        if (bodyDyn != null) combinedSeq.add(bodyDyn);
+        if (dropDyn != null) combinedSeq.add(dropDyn);
+        bodyCode = compilerxyz.eval.Code.of(loc, new CodeDynamic(loc, combinedSeq));
+      }
+    } else {
+      bodyCode = body.code();
+    }
     return EResult.ok(
         compilerxyz.eval.dynamic.DynUtil.foreachSkeleton(xx,
-            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, body.code()));
+            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
   }
 
   @Override

@@ -63,7 +63,7 @@ public final class SourceUnionEmitter {
 
   public static JavaDataDescriptor payloadDescriptor(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type type) {
     if (type instanceof AspectConsumeDynamic consume) {
-      return consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+      return consume.aspectConsumeDynamicJvmClass(xx);
     }
     return JvmConstants.DESC_OBJECT;
   }

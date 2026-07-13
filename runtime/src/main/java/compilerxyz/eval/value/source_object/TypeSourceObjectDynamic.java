@@ -149,7 +149,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
@@ -298,7 +298,7 @@ public final class TypeSourceObjectDynamic
     for (var s : slots) argDescs.add(s.jvmDesc());
     var descObjObj =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            retConsume.aspectConsumeDynamicConsumeDynamicJvmClass(xx),
+            retConsume.aspectConsumeDynamicJvmClass(xx),
             argDescs);
     if (setId == null) {
       throw new AssertionError(
@@ -328,12 +328,12 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     return Opt.none();
   }
 

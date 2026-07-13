@@ -130,7 +130,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(TypeSourceInterfaceConst.class);
   }
 
@@ -387,12 +387,12 @@ public record TypeSourceInterfaceConst(InterfaceData data)
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return new TList<>();
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     for (var m : data.methods) {
       if (m.name.equals(s.value())) {

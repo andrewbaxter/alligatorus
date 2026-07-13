@@ -539,12 +539,12 @@ final class AspectsGen {
             TList.of(
                 new AspectMethod(
                     "Get the record's field name to type mapping.",
-                    "recordFieldTypes",
+                    "fieldTypes",
                     TList.of(),
                     ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, TYPE)),
                 new AspectMethod(
                     "",
-                    "recordTakeFields",
+                    "takeFields",
                     TList.of(xxParam, locParam, new Param("value", VALUE)),
                     ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, EVAL_RES)))),
         new AspectSpec(
@@ -683,14 +683,14 @@ final class AspectsGen {
                     EVAL_RES),
                 new AspectMethod(
                     "Same as {@code field} but return a None if the field doesn't exist.",
-                    "fieldTypeOpt",
+                    "typeOpt",
                     TList.of(xxParam, new Param("key", CONST_KEY)),
                     OPT_TYPE),
                 new AspectMethod(
                     "Enumerate the known field keys on this type. Used to identify sibling fields"
                         + " whose values need to be dropped when one field is extracted. Return"
                         + " empty if the type does not own its fields (e.g. records that borrow).",
-                    "fieldKeys",
+                    "keys",
                     TList.of(xxParam),
                     ParameterizedTypeName.get(TLIST, CONST_KEY)))),
         new AspectSpec(
@@ -830,7 +830,7 @@ final class AspectsGen {
                         + " and CHECKCAST decisions. The presence of this aspect already"
                         + " implies the type has a host stack representation, so this is"
                         + " infallible.",
-                    "consumeDynamicJvmClass",
+                    "jvmClass",
                     TList.of(xxParam),
                     ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
         new AspectSpec(

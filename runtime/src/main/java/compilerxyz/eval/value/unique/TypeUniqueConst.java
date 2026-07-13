@@ -43,7 +43,7 @@ public record TypeUniqueConst()
   public TypeId typeId() { return GenTypeIds.TYPE_UNIQUE_CONST_TYPE_ID; }
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromClass(Unique.class);
   }
 

@@ -386,7 +386,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TOrderedMap<ConstKey, Type> aspectRecordRecordFieldTypes() {
+  public TOrderedMap<ConstKey, Type> aspectRecordFieldTypes() {
     var out = new TOrderedMap<ConstKey, Type>();
     for (var entry : fields.entrySet()) {
       if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
@@ -400,7 +400,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TOrderedMap<ConstKey, EResult<CodeValue>> aspectRecordRecordTakeFields(ExprContext xx, QExprId loc, Value value) {
+  public TOrderedMap<ConstKey, EResult<CodeValue>> aspectRecordTakeFields(ExprContext xx, QExprId loc, Value value) {
     if (!(value instanceof Record r)) {
       throw new IllegalArgumentException(
           "Record::recordTakeFields: expected Record value, got " + value.getClass());
@@ -418,7 +418,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     var slotInfo = computeSlotInfo(fields);
     var klass = CompositeClassEmitter.getOrEmit(xx, slotInfo.sortedTypes());
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of(klass.getName().replace('.', '/')));
@@ -520,7 +520,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     if (!(base instanceof Opt.Some<RecordBaseDynamic>)) {
       return new TList<>();
     }
@@ -530,7 +530,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     var f = fields.getOrNull(key);
     if (f == null) return Opt.none();
     return Opt.some(recordFieldType(f));
@@ -858,7 +858,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (!(srcAsp instanceof Opt.Some<AspectRecord> srcSome)) {
       return false;
     }
-    var srcTypes = srcSome.value().aspectRecordRecordFieldTypes();
+    var srcTypes = srcSome.value().aspectRecordFieldTypes();
     if (srcTypes.size() != fields.size()) {
       return false;
     }
@@ -885,7 +885,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     var srcAsp = srcAspSome.value();
 
     if (srcValue instanceof Record srcRec && srcRec.base instanceof Opt.None<RecordBaseDynamic>) {
-      var srcTakenFields = srcAsp.aspectRecordRecordTakeFields(xx, loc, srcValue);
+      var srcTakenFields = srcAsp.aspectRecordTakeFields(xx, loc, srcValue);
       var erb = new Erb(loc);
       var convertedFields = new TOrderedMap<ConstKey, RecordField>();
       for (var destEntry : fields.entrySet()) {
@@ -927,7 +927,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           "Record::typeCastFrom: unexpected source value class: " + srcValue.getClass());
     }
 
-    var srcFieldTypes = srcAsp.aspectRecordRecordFieldTypes();
+    var srcFieldTypes = srcAsp.aspectRecordFieldTypes();
     var srcSlotInfo = computeSlotInfoFromTypes(srcFieldTypes);
     var destSlotInfo = computeSlotInfoFromTypes(recordFieldTypesRaw(fields));
 

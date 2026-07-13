@@ -119,7 +119,7 @@ public final class SourceDataMethodData {
         var fields =
             new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
         int i = 0;
-        for (var entry : recordSome.value().aspectRecordRecordFieldTypes().entrySet()) {
+        for (var entry : recordSome.value().aspectRecordFieldTypes().entrySet()) {
           var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
           argSlotIds.add(slotId);
           var ibMaybe = AspectInitialBind.getMaybe(xx, entry.getValue());

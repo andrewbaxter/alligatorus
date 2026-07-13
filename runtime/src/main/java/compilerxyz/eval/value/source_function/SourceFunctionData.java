@@ -139,7 +139,7 @@ public final class SourceFunctionData {
       var argTuple = new ArgumentTuple(elemBindings, elemTypes);
       bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
     } else if (recordOpt.optIsSome()) {
-      var fieldTypes = recordOpt.optUnwrap().aspectRecordRecordFieldTypes();
+      var fieldTypes = recordOpt.optUnwrap().aspectRecordFieldTypes();
       var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
       for (var entry : fieldTypes.entrySet()) {
         var et = entry.getValue();
@@ -225,7 +225,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return some.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+      return some.value().aspectConsumeDynamicJvmClass(xx);
     }
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
@@ -235,7 +235,7 @@ public final class SourceFunctionData {
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return EResult.ok(some.value().aspectConsumeDynamicConsumeDynamicJvmClass(xx));
+      return EResult.ok(some.value().aspectConsumeDynamicJvmClass(xx));
     }
     return EResult.ok(
         compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(

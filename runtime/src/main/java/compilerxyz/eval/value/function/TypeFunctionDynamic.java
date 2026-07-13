@@ -69,7 +69,7 @@ public record TypeFunctionDynamic(
     if (arg instanceof compilerxyz.gen.AspectTuple t) {
       for (var elem : t.aspectTupleElementTypes()) argDescs.add(jvmDescOfInstance(xx, elem));
     } else if (arg instanceof compilerxyz.gen.AspectRecord r) {
-      for (var entry : r.aspectRecordRecordFieldTypes().entrySet()) {
+      for (var entry : r.aspectRecordFieldTypes().entrySet()) {
         argDescs.add(jvmDescOfInstance(xx, entry.getValue()));
       }
     } else {
@@ -80,7 +80,7 @@ public record TypeFunctionDynamic(
 
   private static JavaDataDescriptor jvmDescOfInstance(ExprContext xx, Type t) {
     if (t instanceof AspectConsumeDynamic c) {
-      return c.aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+      return c.aspectConsumeDynamicJvmClass(xx);
     }
     throw new IllegalStateException(
         "TypeFunctionDynamic: " + t.getClass() + " does not implement AspectConsumeDynamic");
@@ -99,7 +99,7 @@ public record TypeFunctionDynamic(
     } else {
       var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, arg);
       if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
-        for (var entry : recordSome.value().aspectRecordRecordFieldTypes().entrySet()) {
+        for (var entry : recordSome.value().aspectRecordFieldTypes().entrySet()) {
           var fieldDescRes = jvmDescOf(xx, loc, entry.getValue());
           if (fieldDescRes.hasErrors()) return fieldDescRes.reerr();
           argDescs.add(fieldDescRes.requireValue("TypeFunctionDynamic::descriptor record field"));
@@ -123,7 +123,7 @@ public record TypeFunctionDynamic(
     return EResult.ok(
         consumeRes
             .requireValue("TypeFunctionDynamic::jvmDescOf consume")
-            .aspectConsumeDynamicConsumeDynamicJvmClass(xx));
+            .aspectConsumeDynamicJvmClass(xx));
   }
 
   public EResult<CodeDynamic> emitInvocation(
@@ -151,7 +151,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 

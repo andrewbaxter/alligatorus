@@ -45,7 +45,7 @@ public record TypeCodeValueExternDynamic()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue"));
   }
@@ -139,12 +139,12 @@ public record TypeCodeValueExternDynamic()
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.of(new ConstKey.Str("code"));
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     return switch (s.value()) {
       case "code" -> Opt.some(compilerxyz.eval.Code.dynamicType());

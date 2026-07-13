@@ -114,7 +114,7 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/String"));
   }
 
@@ -201,7 +201,7 @@ public record TypeStringDynamic()
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
-    if (!(aspectFieldFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
+    if (!(aspectFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic string");
     }
     return EResult.ok(
@@ -211,12 +211,12 @@ public record TypeStringDynamic()
   }
 
   @Override
-  public TList<ConstKey> aspectFieldFieldKeys(ExprContext xx) {
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
     return TList.from(METHOD_FIELDS.keySet());
   }
 
   @Override
-  public Opt<Type> aspectFieldFieldTypeOpt(ExprContext xx, ConstKey key) {
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
     return METHOD_FIELDS.getOpt(key);
   }
 

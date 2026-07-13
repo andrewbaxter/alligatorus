@@ -23,7 +23,7 @@ public final class JvmSort {
 
   private static int typedOpcode(ExprContext xx, Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
     if (type instanceof compilerxyz.gen.AspectConsumeDynamic consume) {
-      var desc = consume.aspectConsumeDynamicConsumeDynamicJvmClass(xx).value();
+      var desc = consume.aspectConsumeDynamicJvmClass(xx).value();
       if (!desc.isEmpty()) {
         return switch (desc.charAt(0)) {
           case 'D' -> dOp;

@@ -138,7 +138,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     var underlyingDesc =
         consumeRes
             .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
-            .aspectConsumeDynamicConsumeDynamicJvmClass(xx);
+            .aspectConsumeDynamicJvmClass(xx);
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));

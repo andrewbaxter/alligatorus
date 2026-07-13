@@ -184,35 +184,47 @@ public final class Eval {
       return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
     }
     var cv = cvRes.requireValue("Eval::eval constEval");
-    if (!(cv.value() instanceof Opt.Some<Value> cvValSome)) {
-      return new CompileImport.EvalOutcome.Err(
-          TList.of(
-              new ExprErr(
-                  rootLoc,
-                  TList.of(
-                      new ExprSubErr.Opaque(
-                          "eval: const_eval produced no compile-time value")))));
-    }
-    var cvValue = cvValSome.value();
-    var valueType = cvValue.valueType();
     Opt<CodeDynamic> stage1Code;
     Opt<Value> fallbackValue;
-    if (cv.code().isNone()) {
-      stage1Code = Opt.none();
-      fallbackValue = Opt.some(cvValue);
-    } else {
-      var consumeRes = AspectConsumeDynamic.get(xx, rootLoc, valueType);
-      if (consumeRes.hasErrors()) {
-        return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
+    Type valueType;
+    if (!(cv.value() instanceof Opt.Some<Value> cvValSome)) {
+      var codeDyn = cv.code().dynamic();
+      if (codeDyn == null) {
+        return new CompileImport.EvalOutcome.Err(
+            TList.of(
+                new ExprErr(
+                    rootLoc,
+                    TList.of(
+                        new ExprSubErr.Opaque(
+                            "eval: const_eval produced no compile-time value and no dynamic code")))));
       }
-      var consume = consumeRes.requireValue("Eval::eval consume aspect");
-      var dynamicRes = consume.aspectConsumeDynamicToDynamic(xx, rootLoc, cv);
-      if (dynamicRes.hasErrors()) {
-        return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull());
-      }
-      var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
-      stage1Code = Opt.some(dynamicCode);
+      var nullType = new compilerxyz.eval.value.null_.TypeNullDynamic();
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(codeDyn);
+      seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.literalNull(rootLoc));
+      stage1Code = Opt.some(new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(rootLoc), seq));
       fallbackValue = Opt.none();
+      valueType = nullType;
+    } else {
+      var cvValue = cvValSome.value();
+      valueType = cvValue.valueType();
+      if (cv.code().isNone()) {
+        stage1Code = Opt.none();
+        fallbackValue = Opt.some(cvValue);
+      } else {
+        var consumeRes = AspectConsumeDynamic.get(xx, rootLoc, valueType);
+        if (consumeRes.hasErrors()) {
+          return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
+        }
+        var consume = consumeRes.requireValue("Eval::eval consume aspect");
+        var dynamicRes = consume.aspectConsumeDynamicToDynamic(xx, rootLoc, cv);
+        if (dynamicRes.hasErrors()) {
+          return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull());
+        }
+        var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
+        stage1Code = Opt.some(dynamicCode);
+        fallbackValue = Opt.none();
+      }
     }
     if (stage1Code instanceof Opt.None && vx.definitionSets.isEmpty()) {
       if (!(fallbackValue instanceof Opt.Some<Value> fb)) {
