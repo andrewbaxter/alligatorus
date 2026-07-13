@@ -108,7 +108,9 @@ public final class SourceObjectInterfaceMethodImplData {
       throw new AssertionError("Interface method '" + ifaceMethod.name + "' missing arg_type");
     }
     var dataFieldNames = ifaceMethod.dataFieldNames;
+    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, methodArgType);
     TList<Type> paramTypes;
+    var argParamIds = new TList<BindingId.Local>();
     if (methodArgType instanceof compilerxyz.eval.value.record.Record rec) {
       if (dataFieldNames.size() != rec.fields().size()) {
         throw new AssertionError(
@@ -121,6 +123,7 @@ public final class SourceObjectInterfaceMethodImplData {
                 + ")");
       }
       paramTypes = new TList<>(dataFieldNames.size());
+      var fields = new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
       for (var fieldName : dataFieldNames) {
         var f = rec.fields().getOrNull(new ConstKey.Str(fieldName));
         if (f == null) {
@@ -132,7 +135,50 @@ public final class SourceObjectInterfaceMethodImplData {
               "Record method arg_type field '" + fieldName + "' is not Dynamic");
         }
         paramTypes.add(fd.type());
+        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        argParamIds.add(pid);
+        var ibResult = AspectInitialBind.get(xx, rootLoc, fd.type());
+        if (ibResult.hasErrors()) {
+          return ibResult.reerr();
+        }
+        var ibAspect =
+            ibResult.requireValue(
+                "SourceObjectInterfaceMethodImplData::compile param InitialBind");
+        fields.put(
+            new ConstKey.Str(fieldName),
+            new compilerxyz.eval.value.argrecord.ArgumentEntry(
+                ibAspect.aspectInitialBindInitialBind(pid), fd.type()));
       }
+      var argRecord = new ArgumentRecord(fields);
+      bodyScope.values.put(
+          new ConstKey.Str("arg"), new ArgumentRecordBinding(argRecord));
+    } else if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+      if (!dataFieldNames.isEmpty()) {
+        throw new AssertionError(
+            "Tuple method '"
+                + ifaceMethod.name
+                + "' must have empty data_field_names, got: "
+                + dataFieldNames);
+      }
+      var elemTypes = tupleSome.value().aspectTupleElementTypes();
+      paramTypes = new TList<>(elemTypes.size());
+      var elemBindings = new TList<Binding>(elemTypes.size());
+      for (var elemType : elemTypes) {
+        paramTypes.add(elemType);
+        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        argParamIds.add(pid);
+        var ibResult = AspectInitialBind.get(xx, rootLoc, elemType);
+        if (ibResult.hasErrors()) {
+          return ibResult.reerr();
+        }
+        var ibAspect = ibResult.requireValue(
+            "SourceObjectInterfaceMethodImplData::compile tuple elem InitialBind");
+        elemBindings.add(ibAspect.aspectInitialBindInitialBind(pid));
+      }
+      var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(elemBindings, elemTypes);
+      bodyScope.values.put(
+          new ConstKey.Str("arg"),
+          new compilerxyz.eval.value.argrecord.ArgumentTupleBinding(argTuple));
     } else {
       if (!dataFieldNames.isEmpty()) {
         throw new AssertionError(
@@ -142,30 +188,6 @@ public final class SourceObjectInterfaceMethodImplData {
                 + dataFieldNames);
       }
       paramTypes = TList.of(methodArgType);
-    }
-    var argParamIds = new TList<BindingId.Local>(paramTypes.size());
-    if (methodArgType instanceof compilerxyz.eval.value.record.Record) {
-      var fields = new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
-      for (int i = 0; i < dataFieldNames.size(); i++) {
-        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-        argParamIds.add(pid);
-        var paramType = paramTypes.get(i);
-        var ibResult = AspectInitialBind.get(xx, rootLoc, paramType);
-        if (ibResult.hasErrors()) {
-          return ibResult.reerr();
-        }
-        var ibAspect =
-            ibResult.requireValue(
-                "SourceObjectInterfaceMethodImplData::compile param InitialBind");
-        fields.put(
-            new ConstKey.Str(dataFieldNames.get(i)),
-            new compilerxyz.eval.value.argrecord.ArgumentEntry(
-                ibAspect.aspectInitialBindInitialBind(pid), paramType));
-      }
-      var argRecord = new ArgumentRecord(fields);
-      bodyScope.values.put(
-          new ConstKey.Str("arg"), new ArgumentRecordBinding(argRecord));
-    } else {
       var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       argParamIds.add(argId);
       var argIbMaybe = AspectInitialBind.getMaybe(xx, methodArgType);
