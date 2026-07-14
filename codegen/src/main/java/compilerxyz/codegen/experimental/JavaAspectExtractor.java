@@ -1,8 +1,10 @@
 package compilerxyz.codegen.experimental;
 
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
@@ -25,6 +27,11 @@ import java.util.stream.Stream;
 
 public final class JavaAspectExtractor {
   private JavaAspectExtractor() {}
+
+  static {
+    StaticJavaParser.getParserConfiguration()
+        .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+  }
 
   public static TList<AspectsGen.AspectSpec> scanRoot(Path runtimeSourceRoot) throws IOException {
     var out = new TList<AspectsGen.AspectSpec>();
@@ -52,6 +59,31 @@ public final class JavaAspectExtractor {
     var kind = attrs.get("kind");
     var aspectPrefix = "aspect" + kind;
     var javadoc = attrs.getOrDefault("javadoc", "");
+    var aspectClassName = ClassName.get("compilerxyz.gen", "Aspect" + kind);
+
+    // Nested records declared inside the interface become AspectSpec.nestedRecords.
+    var nestedRecords = new TList<AspectsGen.NestedRecord>();
+    var nestedRecordNames = new java.util.HashSet<String>();
+    for (var member : ifaceDecl.getMembers()) {
+      if (member instanceof RecordDeclaration r) {
+        var components = new TList<AspectsGen.Param>();
+        for (var p : r.getParameters()) {
+          var nullable = p.getAnnotationByName("Nullable").isPresent();
+          components.add(
+              new AspectsGen.Param(
+                  p.getNameAsString(), typeNameOf(p.getType(), importMap), nullable));
+        }
+        nestedRecords.add(new AspectsGen.NestedRecord("", r.getNameAsString(), components));
+        nestedRecordNames.add(r.getNameAsString());
+      }
+    }
+    // Wire nested-record short names to their generated FQNs (compilerxyz.gen.AspectXxx.Name)
+    // so method signatures referencing them resolve correctly.
+    var effectiveImports = new TMap<String, String>();
+    for (var e : importMap.entrySet()) effectiveImports.put(e.getKey(), e.getValue());
+    for (var nr : nestedRecordNames) {
+      effectiveImports.put(nr, aspectClassName.canonicalName() + "." + nr);
+    }
 
     var methods = new TList<AspectsGen.AspectMethod>();
     for (var m : ifaceDecl.getMethods()) {
@@ -68,15 +100,15 @@ public final class JavaAspectExtractor {
         var nullable = p.getAnnotationByName("Nullable").isPresent();
         params.add(
             new AspectsGen.Param(
-                p.getNameAsString(), typeNameOf(p.getType(), importMap), nullable));
+                p.getNameAsString(), typeNameOf(p.getType(), effectiveImports), nullable));
       }
       methods.add(
           new AspectsGen.AspectMethod(
-              "", shortName, params, typeNameOf(m.getType(), importMap)));
+              "", shortName, params, typeNameOf(m.getType(), effectiveImports)));
     }
 
     return new AspectsGen.AspectSpec(
-        javadoc, kind, Long.parseLong(attrs.get("uniqueId")), methods);
+        javadoc, kind, Long.parseLong(attrs.get("uniqueId")), nestedRecords, methods);
   }
 
   private static @org.jspecify.annotations.Nullable ClassOrInterfaceDeclaration

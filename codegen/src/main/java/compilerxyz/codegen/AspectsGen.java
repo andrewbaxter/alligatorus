@@ -534,8 +534,6 @@ public final class AspectsGen {
   }
 
   private static TList<AspectSpec> specs() {
-    var xxParam = new Param("xx", EXPR_CONTEXT);
-    var locParam = new Param("loc", QEXPR_ID);
     return TList.of(
         // AspectNull (id 1001) migrated: scanned from handwritten/AspectNull.java
         // AspectRecord (id 1002) migrated: scanned from handwritten/AspectRecord.java
@@ -551,26 +549,7 @@ public final class AspectsGen {
         // AspectDynamicUnboxed (id 1034) migrated: scanned from handwritten/AspectDynamicUnboxed.java
         // AspectMapDynamic (id 1012) migrated: scanned from handwritten/AspectMapDynamic.java
         // AspectTuple (id 1013) migrated: scanned from handwritten/AspectTuple.java
-        new AspectSpec(
-            "Identity aspect for union",
-            "Union",
-            1014,
-            TList.of(
-                new NestedRecord(
-                    "One union variant (tag, runtime js-tag string, payload type).",
-                    "Variant",
-                    TList.of(
-                        new Param("key", CONST_KEY),
-                        new Param("jsTag", ClassName.get(String.class)),
-                        new Param("type", TYPE)))),
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "variants",
-                    TList.of(),
-                    ParameterizedTypeName.get(
-                        TLIST,
-                        ClassName.get(GEN_PACKAGE, "AspectUnion", "Variant"))))),
+        // AspectUnion (id 1014) migrated: scanned from handwritten/AspectUnion.java
         // AspectField (id 1015) migrated: scanned from handwritten/AspectField.java
         // AspectFunction (id 1116) migrated: scanned from handwritten/AspectFunction.java
         // AspectSet (id 1017) migrated: scanned from handwritten/AspectSet.java
@@ -578,23 +557,7 @@ public final class AspectsGen {
         // AspectOperatorEq (id 1019) migrated: scanned from handwritten/AspectOperatorEq.java
         // AspectOperatorLt (id 1020) migrated: scanned from handwritten/AspectOperatorLt.java
         // AspectInitialBind (id 1021) migrated: scanned from handwritten/AspectInitialBind.java
-        new AspectSpec(
-            "Creates code to bind a value, and returns the binding (binding).",
-            "Bind",
-            1022,
-            TList.of(
-                new NestedRecord(
-                    "Result of {@code bind}: the emitted binding code and the resulting binding.",
-                    "BindResult",
-                    TList.of(new Param("code", CODE), new Param("binding", BINDING)))),
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "bind",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(
-                        ERESULT,
-                        ClassName.get(GEN_PACKAGE, "AspectBind", "BindResult")))))
+        // AspectBind (id 1022) migrated: scanned from handwritten/AspectBind.java
         // AspectBindDynamic (id 1023) migrated: scanned from handwritten/AspectBindDynamic.java
         // AspectConsumeDynamic (id 1024) migrated: scanned from handwritten/AspectConsumeDynamic.java
         // AspectStackValueDynamic (id 1025) migrated: scanned from handwritten/AspectStackValueDynamic.java
