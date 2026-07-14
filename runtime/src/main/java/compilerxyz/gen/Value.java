@@ -15,7 +15,13 @@ import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTrait(
+    uniqueId = 2001L,
+    scopeId = 3001,
+    fieldPrefix = "v",
+    typeIdConstant = "TYPE_VALUE_DYNAMIC_TYPE_ID")
 public interface Value {
+    @compilerxyz.annotations.SourceExposed(name = "type")
     Type valueType();
 
     static Type dynamicType() {

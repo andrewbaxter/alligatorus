@@ -42,22 +42,7 @@ public final class TraitsGen {
 
     var aspectOption = TypeRef.composite1(TYPE_OPTION_DYNAMIC, aspect);
 
-    // Value interface handwritten at runtime/src/main/java/compilerxyz/gen/Value.java;
-    // spec kept to drive holder/registry emission but javaTraitName nulled so
-    // InterfacesGen.writeTrait skips it.
-    var valueSpec =
-        new InterfaceSpec(
-            "value",
-            2001,
-            3001,
-            "v",
-            "Value",
-            null,
-            false,
-            null,
-            "TYPE_VALUE_DYNAMIC_TYPE_ID",
-            "compilerxyz.gen.Value",
-            TList.of(new Method("type", any, new MethodArgs(TList.of()))));
+    // Value (id 2001) migrated: scanned from gen/Value.java @BuiltinTrait
 
     var qexprIdRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "QExprId"));
     var typeSpec =
@@ -115,6 +100,6 @@ public final class TraitsGen {
                             new NamedTypeRef("xx", xxRef),
                             new NamedTypeRef("key", unique))))));
 
-    return TList.of(valueSpec, typeSpec);
+    return TList.of(typeSpec);
   }
 }

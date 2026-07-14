@@ -48,14 +48,92 @@ public final class JavaAspectExtractor {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("@BuiltinAspect")) continue;
-        var spec = extractOne(file);
-        if (spec != null) aspects.add(spec);
-        var iface = extractSourceInterface(file);
-        if (iface != null) interfaces.add(iface);
+        boolean hasAspect = src.contains("@BuiltinAspect");
+        boolean hasTrait = src.contains("BuiltinTrait");
+        if (!hasAspect && !hasTrait) continue;
+        if (hasAspect) {
+          var spec = extractOne(file);
+          if (spec != null) aspects.add(spec);
+          var iface = extractSourceInterface(file);
+          if (iface != null) interfaces.add(iface);
+        }
+        if (hasTrait) {
+          var trait = extractTrait(file);
+          if (trait != null) interfaces.add(trait);
+        }
       }
     }
     return new ScanResult(aspects, interfaces);
+  }
+
+  private static @org.jspecify.annotations.Nullable InterfaceSpec extractTrait(Path sourceFile)
+      throws IOException {
+    var cu = StaticJavaParser.parse(sourceFile);
+    ClassOrInterfaceDeclaration ifaceDecl = null;
+    for (var t : cu.getTypes()) {
+      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) {
+        for (var a : c.getAnnotations()) {
+          var n = a.getNameAsString();
+          if (n.equals("BuiltinTrait") || n.equals("compilerxyz.annotations.BuiltinTrait")) {
+            ifaceDecl = c;
+            break;
+          }
+        }
+      }
+      if (ifaceDecl != null) break;
+    }
+    if (ifaceDecl == null) return null;
+    var traitAnn = ifaceDecl.getAnnotations().stream()
+        .filter(a -> a.getNameAsString().equals("BuiltinTrait")
+            || a.getNameAsString().equals("compilerxyz.annotations.BuiltinTrait"))
+        .findFirst().orElseThrow();
+    var attrs = readAttrs(traitAnn);
+    var importMap = buildImportMap(cu);
+    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
+    var simpleName = ifaceDecl.getNameAsString();
+    var name = snakeCase(simpleName);
+
+    var methods = new TList<Method>();
+    for (var m : ifaceDecl.getMethods()) {
+      var exposedOpt = m.getAnnotationByName("SourceExposed");
+      if (exposedOpt.isEmpty()) continue;
+      var exposedAttrs = readAttrs(exposedOpt.get());
+      var args = new TList<NamedTypeRef>();
+      for (var p : m.getParameters()) {
+        args.add(new NamedTypeRef(stripReservedSuffix(p.getNameAsString()), typeRefOf(p.getType(), importMap)));
+      }
+      methods.add(new Method(exposedAttrs.get("name"), typeRefOf(m.getType(), importMap),
+          new MethodArgs(args)));
+    }
+
+    var typeIdConst = attrs.getOrDefault("typeIdConstant", "");
+    return new InterfaceSpec(
+        name,
+        Integer.parseInt(attrs.get("uniqueId")),
+        Integer.parseInt(attrs.get("scopeId")),
+        attrs.get("fieldPrefix"),
+        simpleName,
+        null,
+        true,
+        null,
+        typeIdConst.isEmpty() ? null : typeIdConst,
+        pkg + "." + simpleName,
+        methods);
+  }
+
+  private static String stripReservedSuffix(String name) {
+    if (name.endsWith("_") && name.length() > 1) return name.substring(0, name.length() - 1);
+    return name;
+  }
+
+  private static String snakeCase(String s) {
+    var sb = new StringBuilder();
+    for (int i = 0; i < s.length(); i++) {
+      var c = s.charAt(i);
+      if (Character.isUpperCase(c) && i > 0) sb.append('_');
+      sb.append(Character.toLowerCase(c));
+    }
+    return sb.toString();
   }
 
   private static @org.jspecify.annotations.Nullable InterfaceSpec extractSourceInterface(
@@ -80,7 +158,7 @@ public final class JavaAspectExtractor {
       var sourceName = exposedAttrs.get("name");
       var args = new TList<NamedTypeRef>();
       for (var p : m.getParameters()) {
-        args.add(new NamedTypeRef(p.getNameAsString(), typeRefOf(p.getType(), importMap)));
+        args.add(new NamedTypeRef(stripReservedSuffix(p.getNameAsString()), typeRefOf(p.getType(), importMap)));
       }
       methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap), new MethodArgs(args)));
     }

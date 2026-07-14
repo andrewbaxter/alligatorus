@@ -19,7 +19,13 @@ import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTrait(
+    uniqueId = 2005L,
+    scopeId = 3005,
+    fieldPrefix = "se",
+    typeIdConstant = "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID")
 public interface Binding {
+    @compilerxyz.annotations.SourceExposed(name = "use")
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
 
     static Type dynamicType() {
