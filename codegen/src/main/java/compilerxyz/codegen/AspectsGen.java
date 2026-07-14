@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
 
-final class AspectsGen {
+public final class AspectsGen {
   private AspectsGen() {}
 
   private static final ClassName ASPECT =
@@ -172,8 +172,8 @@ final class AspectsGen {
 
   private static final TypeName OPT_TYPE = ParameterizedTypeName.get(OPT, TYPE);
 
-  private record Param(String name, TypeName type, boolean nullable) {
-    Param(String name, TypeName type) {
+  public record Param(String name, TypeName type, boolean nullable) {
+    public Param(String name, TypeName type) {
       this(name, type, false);
     }
   }
@@ -181,36 +181,42 @@ final class AspectsGen {
   private static final ClassName NULLABLE =
       ClassName.get("org.jspecify.annotations", "Nullable");
 
-  private record AspectMethod(
+  public record AspectMethod(
       String javadoc,
       String name,
       TList<Param> params,
       TypeName ret,
       @org.jspecify.annotations.Nullable CodeBlock defaultBody,
       boolean sourceVisible) {
-    AspectMethod(String javadoc, String name, TList<Param> params, TypeName ret) {
+    public AspectMethod(String javadoc, String name, TList<Param> params, TypeName ret) {
       this(javadoc, name, params, ret, null, true);
     }
   }
 
-  private record NestedRecord(String javadoc, String name, TList<Param> components) {}
+  public record NestedRecord(String javadoc, String name, TList<Param> components) {}
 
-  private record AspectSpec(
+  public record AspectSpec(
       String javadoc,
       String name,
       long builtinUniqueId,
       TList<NestedRecord> nestedRecords,
       TList<AspectMethod> methods) {
-    AspectSpec(String javadoc, String name, long id, TList<AspectMethod> methods) {
+    public AspectSpec(String javadoc, String name, long id, TList<AspectMethod> methods) {
       this(javadoc, name, id, TList.of(), methods);
     }
   }
 
-  static void run(
-      Path outRoot, Formatter formatter, TSet<Long> builtinUniqueIds, TSet<Long> scopeIds)
+  public static void run(
+      Path outRoot,
+      Formatter formatter,
+      TSet<Long> builtinUniqueIds,
+      TSet<Long> scopeIds,
+      TList<AspectSpec> extraSpecs)
       throws IOException {
     var seenNames = new TSet<String>();
-    var specs = specs();
+    var specs = new TList<AspectSpec>();
+    specs.addAll(specs());
+    specs.addAll(extraSpecs);
     for (var spec : specs) {
       if (!seenNames.add(spec.name)) {
         throw new IllegalStateException("duplicate aspect name: " + spec.name);
@@ -833,16 +839,8 @@ final class AspectsGen {
                     "jvmClass",
                     TList.of(xxParam),
                     ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
-        new AspectSpec(
-            "",
-            "StackValueDynamic",
-            1025,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "toValue",
-                    TList.of(xxParam, locParam, new Param("self_", CODE_DYNAMIC)),
-                    CODE_VALUE))),
+        // AspectStackValueDynamic (id 1025) migrated: scanned from
+        // runtime/src/main/java/compilerxyz/handwritten/AspectStackValueDynamic.java
         new AspectSpec(
             "Called on imported values to convert them from const to dynamic form when"
                 + " appropriate (e.g. instances of source data/union types). Record/tuple types"

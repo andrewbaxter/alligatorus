@@ -30,7 +30,9 @@ public final class GenMain {
     var builtinTypeIds = new TSet<Long>();
     var scopeIds = new TSet<Long>();
 
-    AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
+    var scannedAspects =
+        compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
+    AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, scannedAspects);
 
     var interfaceSpecs = new TList<compilerxyz.codegen.util.InterfaceSpec>();
     interfaceSpecs.addAll(TraitsGen.specs());
