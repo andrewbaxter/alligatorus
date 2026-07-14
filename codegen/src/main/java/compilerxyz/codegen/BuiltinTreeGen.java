@@ -412,150 +412,25 @@ public final class BuiltinTreeGen {
     };
   }
 
+  private static TList<InterfaceSpec> scannedExtras = new TList<>();
+
+  public static void setScannedInterfaceSpecs(TList<InterfaceSpec> specs) {
+    scannedExtras = specs;
+  }
+
   public static TList<InterfaceSpec> extraInterfaceSpecs() {
-    var cve = TypeRef.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC);
-    var xxRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext"));
-    var qexprIdRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "QExprId"));
-    var constKeyRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey"));
-    var typeRef = TypeRef.leaf(TYPE);
-    var eresultCve = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, cve);
-    var optType = TypeRef.composite1(TYPE_OPTION_DYNAMIC, typeRef);
-    var dropRet = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, TypeRef.leaf(CODE_INTERFACE));
+    var out = new TList<InterfaceSpec>();
+    out.addAll(scannedExtras);
+    out.addAll(hardCodedExtraInterfaceSpecs());
+    return out;
+  }
 
-    var aspectFunction =
-        new InterfaceSpec(
-            "aspect_function",
-            1016,
-            3003,
-            "af",
-            "AspectFunction",
-            null,
-            true,
-            null,
-            null,
-            "compilerxyz.gen.AspectFunction",
-            TList.of(
-                new Method(
-                    "call",
-                    eresultCve,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("loc", qexprIdRef),
-                            new NamedTypeRef("self_", cve),
-                            new NamedTypeRef("argument", cve))))));
-
-    var aspectField =
-        new InterfaceSpec(
-            "aspect_field",
-            1030,
-            3004,
-            "afd",
-            "AspectField",
-            null,
-            true,
-            null,
-            null,
-            "compilerxyz.gen.AspectField",
-            TList.of(
-                new Method(
-                    "field",
-                    eresultCve,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("loc", qexprIdRef),
-                            new NamedTypeRef("self_", cve),
-                            new NamedTypeRef("key", cve)))),
-                new Method(
-                    "fieldTypeOpt",
-                    optType,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("key", constKeyRef))))));
-
-    var aspectDropDynamic =
-        new InterfaceSpec(
-            "aspect_drop_dynamic",
-            2008,
-            3008,
-            "dd",
-            "AspectDropDynamic",
-            null,
-            true,
-            null,
-            null,
-            "compilerxyz.gen.AspectDropDynamic",
-            TList.of(
-                new Method(
-                    "drop",
-                    dropRet,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("loc", qexprIdRef),
-                            new NamedTypeRef("cv", cve))))));
-
-    var targetBindSubRefEarly =
-        TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic.target", "TargetBindSub"));
-    var optTargetBindSub = TypeRef.composite1(TYPE_OPTION_DYNAMIC, targetBindSubRefEarly);
-    var eresultOptTargetBindSub =
-        TypeRef.composite1(TYPE_ERESULT_DYNAMIC, optTargetBindSub);
-    var aspectBindDynamic =
-        new InterfaceSpec(
-            "aspect_bind_dynamic",
-            2010,
-            3011,
-            "abd",
-            "AspectBindDynamic",
-            null,
-            true,
-            null,
-            null,
-            "compilerxyz.gen.AspectBindDynamic",
-            TList.of(
-                new Method(
-                    "bindDynamic",
-                    eresultOptTargetBindSub,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("loc", qexprIdRef),
-                            new NamedTypeRef("cv", cve))))));
-
-    var codeDynamicClass = ClassName.get("compilerxyz.eval.dynamic", "CodeDynamic");
-    var codeDynamicRef = TypeRef.leaf(codeDynamicClass);
-    var eresultCodeDyn = TypeRef.composite1(TYPE_ERESULT_DYNAMIC, codeDynamicRef);
-    var javaDataDescriptorRef =
-        TypeRef.leaf(ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor"));
-
-    var aspectConsumeDynamic =
-        new InterfaceSpec(
-            "aspect_consume_dynamic",
-            2009,
-            3010,
-            "cd_",
-            "AspectConsumeDynamic",
-            null,
-            true,
-            null,
-            null,
-            "compilerxyz.gen.AspectConsumeDynamic",
-            TList.of(
-                new Method(
-                    "toDynamic",
-                    eresultCodeDyn,
-                    new MethodArgs(
-                        TList.of(
-                            new NamedTypeRef("xx", xxRef),
-                            new NamedTypeRef("loc", qexprIdRef),
-                            new NamedTypeRef("cv", cve)))),
-                new Method(
-                    "consumeDynamicJvmClass",
-                    javaDataDescriptorRef,
-                    new MethodArgs(
-                        TList.of(new NamedTypeRef("xx", xxRef))))));
+  private static TList<InterfaceSpec> hardCodedExtraInterfaceSpecs() {
+    // AspectFunction migrated: scanned from handwritten/AspectFunction.java @SourceInterface
+    // AspectField migrated: scanned from handwritten/AspectField.java @SourceInterface
+    // AspectDropDynamic migrated: scanned from handwritten/AspectDropDynamic.java @SourceInterface
+    // AspectBindDynamic migrated: scanned from handwritten/AspectBindDynamic.java @SourceInterface
+    // AspectConsumeDynamic migrated: scanned from handwritten/AspectConsumeDynamic.java @SourceInterface
 
     var codeRef = ClassName.get("compilerxyz.eval", "Code");
     var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
@@ -767,11 +642,6 @@ var targetBindSubCls =
             "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, "CodeDyn", TList.<Method>of());
 
     return TList.of(
-        aspectFunction,
-        aspectField,
-        aspectDropDynamic,
-        aspectConsumeDynamic,
-        aspectBindDynamic,
         binding,
         target,
         codeDyn);

@@ -16,6 +16,11 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.AspectsGen;
+import compilerxyz.codegen.util.InterfaceSpec;
+import compilerxyz.codegen.util.Method;
+import compilerxyz.codegen.util.MethodArgs;
+import compilerxyz.codegen.util.NamedTypeRef;
+import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.io.IOException;
@@ -33,18 +38,98 @@ public final class JavaAspectExtractor {
         .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
   }
 
-  public static TList<AspectsGen.AspectSpec> scanRoot(Path runtimeSourceRoot) throws IOException {
-    var out = new TList<AspectsGen.AspectSpec>();
+  public record ScanResult(
+      TList<AspectsGen.AspectSpec> aspects, TList<InterfaceSpec> sourceInterfaces) {}
+
+  public static ScanResult scanRoot(Path runtimeSourceRoot) throws IOException {
+    var aspects = new TList<AspectsGen.AspectSpec>();
+    var interfaces = new TList<InterfaceSpec>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
         if (!src.contains("@BuiltinAspect")) continue;
         var spec = extractOne(file);
-        if (spec != null) out.add(spec);
+        if (spec != null) aspects.add(spec);
+        var iface = extractSourceInterface(file);
+        if (iface != null) interfaces.add(iface);
       }
     }
-    return out;
+    return new ScanResult(aspects, interfaces);
+  }
+
+  private static @org.jspecify.annotations.Nullable InterfaceSpec extractSourceInterface(
+      Path sourceFile) throws IOException {
+    var cu = StaticJavaParser.parse(sourceFile);
+    var ifaceDecl = findAnnotatedInterface(cu);
+    if (ifaceDecl == null) return null;
+    var siAnnOpt = ifaceDecl.getAnnotationByName("SourceInterface");
+    if (siAnnOpt.isEmpty()) return null;
+    var siAttrs = readAttrs(siAnnOpt.get());
+    var kindAttrs = readAttrs(requireAnnotation(ifaceDecl, "BuiltinAspect"));
+    var kind = kindAttrs.get("kind");
+    var aspectPrefix = "aspect" + kind;
+    var importMap = buildImportMap(cu);
+    var name = "aspect_" + camelToSnake(kind);
+
+    var methods = new TList<Method>();
+    for (var m : ifaceDecl.getMethods()) {
+      var exposedOpt = m.getAnnotationByName("SourceExposed");
+      if (exposedOpt.isEmpty()) continue;
+      var exposedAttrs = readAttrs(exposedOpt.get());
+      var sourceName = exposedAttrs.get("name");
+      var args = new TList<NamedTypeRef>();
+      for (var p : m.getParameters()) {
+        args.add(new NamedTypeRef(p.getNameAsString(), typeRefOf(p.getType(), importMap)));
+      }
+      methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap), new MethodArgs(args)));
+    }
+
+    return new InterfaceSpec(
+        name,
+        Integer.parseInt(siAttrs.get("uniqueId")),
+        Integer.parseInt(siAttrs.get("scopeId")),
+        siAttrs.get("fieldPrefix"),
+        "Aspect" + kind,
+        null,
+        true,
+        null,
+        null,
+        "compilerxyz.gen.Aspect" + kind,
+        methods);
+  }
+
+  private static final Map<String, ClassName> COMPOSITE_WRAPPERS = Map.of(
+      "compilerxyz.eval.EResult",
+          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"),
+      "compilerxyz.util.Opt",
+          ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"),
+      "compilerxyz.util.TList",
+          ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic"),
+      "compilerxyz.util.TMap",
+          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
+
+  private static TypeRef typeRefOf(Type t, TMap<String, String> imports) {
+    var tn = typeNameOf(t, imports);
+    if (tn instanceof ClassName cn) return TypeRef.leaf(cn);
+    if (tn instanceof ParameterizedTypeName pt) {
+      var wrapper = COMPOSITE_WRAPPERS.get(pt.rawType.canonicalName());
+      if (wrapper != null && pt.typeArguments.size() == 1
+          && pt.typeArguments.get(0) instanceof ClassName inner) {
+        return TypeRef.composite1(wrapper, TypeRef.leaf(inner));
+      }
+    }
+    return TypeRef.opaque(tn);
+  }
+
+  private static String camelToSnake(String camel) {
+    var sb = new StringBuilder();
+    for (int i = 0; i < camel.length(); i++) {
+      var c = camel.charAt(i);
+      if (Character.isUpperCase(c) && i > 0) sb.append('_');
+      sb.append(Character.toLowerCase(c));
+    }
+    return sb.toString();
   }
 
   private static AspectsGen.@org.jspecify.annotations.Nullable AspectSpec extractOne(Path sourceFile)

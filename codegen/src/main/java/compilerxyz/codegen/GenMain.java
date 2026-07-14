@@ -34,9 +34,9 @@ public final class GenMain {
         compilerxyz.codegen.experimental.DynamicTypeScanner.scanRoot(runtimeSourceRoot);
     AspectsGen.setScannedLeafDescriptors(scannedLeaves);
 
-    var scannedAspects =
-        compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
-    AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, scannedAspects);
+    var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
+    AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, scan.aspects());
+    BuiltinTreeGen.setScannedInterfaceSpecs(scan.sourceInterfaces());
 
     var interfaceSpecs = new TList<compilerxyz.codegen.util.InterfaceSpec>();
     interfaceSpecs.addAll(TraitsGen.specs());
