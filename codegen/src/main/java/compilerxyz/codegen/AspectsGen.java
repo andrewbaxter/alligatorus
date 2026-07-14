@@ -125,7 +125,6 @@ public final class AspectsGen {
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
 
   private static final TMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS = compositeDescriptors();
-  private static final TMap<ClassName, CodeBlock> LEAF_DESCRIPTORS = leafDescriptors();
 
   private static TMap<ClassName, ClassName> compositeDescriptors() {
     var m = new TMap<ClassName, ClassName>();
@@ -133,37 +132,6 @@ public final class AspectsGen {
     m.put(OPT, TYPE_OPTION_DYNAMIC);
     m.put(TLIST, TYPE_LIST_DYNAMIC);
     m.put(ClassName.get("compilerxyz.util", "TMap"), TYPE_MAP_DYNAMIC);
-    return m;
-  }
-
-  /**
-   * Maps a source-value ClassName (as it appears in {@link AspectMethod}) to the CodeBlock that
-   * constructs the runtime {@code Type} descriptor for that value. Returns {@code null} for
-   * unmapped types.
-   */
-  private static TMap<ClassName, CodeBlock> leafDescriptors() {
-    var m = new TMap<ClassName, CodeBlock>();
-    // Static-factory (value class exposes its own dynamicType()).
-    for (var cn :
-        new ClassName[] {
-          TYPE,
-          EXPR_CONTEXT,
-          QEXPR_ID,
-          CODE_VALUE,
-          CODE,
-          CONST_KEY,
-          BINDING_ID,
-          CODE_DYNAMIC,
-          JAVA_DATA_DESCRIPTOR,
-          TARGET_BIND_SUB,
-          INTERFACE_DATA,
-          VALUE,
-          BINDING,
-        }) {
-      m.put(cn, CodeBlock.of("$T.dynamicType()", cn));
-    }
-    // Nullary descriptors — value class distinct from descriptor class.
-    m.put(UNIQUE, CodeBlock.of("new $T()", TYPE_UNIQUE));
     return m;
   }
 
@@ -466,11 +434,8 @@ public final class AspectsGen {
   /** Returns null if the type can't be mapped to a runtime {@code Type} descriptor. */
   private static CodeBlock resolveDescriptor(TypeName tn) {
     if (tn instanceof ClassName cn) {
-      if (scannedLeafDescriptors != null) {
-        var scanned = scannedLeafDescriptors.get(cn);
-        if (scanned != null) return scanned;
-      }
-      return null;
+      if (scannedLeafDescriptors == null) return null;
+      return scannedLeafDescriptors.get(cn);
     }
     if (tn instanceof ParameterizedTypeName pt) {
       var wrapper = COMPOSITE_DESCRIPTORS.get(pt.rawType);
