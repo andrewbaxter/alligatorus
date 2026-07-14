@@ -96,7 +96,7 @@ public record TypeListNewDynamic(Type elementType)
       if (dynRes.hasErrors()) return dynRes.reerr();
       dynamicElements.add(dynRes.requireValue("toDynamic"));
     }
-    Type instanceType = new TypeListDynamic(elementType);
+    Type instanceType = new TypeListDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
     if (retStackRes.hasErrors()) {
       return retStackRes.reerr();

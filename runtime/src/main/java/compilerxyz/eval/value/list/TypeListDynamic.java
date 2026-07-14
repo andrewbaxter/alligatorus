@@ -71,12 +71,6 @@ public record TypeListDynamic(Type elementType)
         AspectStackValueDynamic,
         ExporterAny {
 
-  public TypeListDynamic {
-    if (elementType instanceof compilerxyz.gen.AspectDynamicBoxed b) {
-      elementType = b.aspectDynamicBoxedBoxedForm();
-    }
-  }
-
   @Override
   public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
 

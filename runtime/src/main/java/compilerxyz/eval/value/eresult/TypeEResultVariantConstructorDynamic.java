@@ -63,7 +63,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
-    Type resultType = new TypeEResultDynamic(elementType);
+    Type resultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     if (isOk) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
       if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());

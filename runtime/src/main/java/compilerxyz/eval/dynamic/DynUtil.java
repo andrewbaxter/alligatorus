@@ -316,11 +316,11 @@ public final class DynUtil {
      * through Object-shaped runtime containers.
      */
     public static Type substituteBoxed(ExprContext xx, Type type) {
-        var boxedOpt = compilerxyz.gen.AspectDynamicBoxed.getMaybe(xx, type);
-        if (boxedOpt instanceof Opt.Some<compilerxyz.gen.AspectDynamicBoxed> boxedSome) {
-            return boxedSome.value().aspectDynamicBoxedBoxedForm();
-        }
-        return type;
+        return switch (compilerxyz.gen.AspectDynamicBoxed.getMaybe(xx, type)) {
+            case Opt.Some<compilerxyz.gen.AspectDynamicBoxed> boxedSome ->
+                boxedSome.value().aspectDynamicBoxedBoxedForm();
+            case Opt.None<compilerxyz.gen.AspectDynamicBoxed> n -> type;
+        };
     }
 
     public static CodeValue dynamicStackToValue(ExprContext xx, QExprId loc, CodeDynamic value, Type type_) {

@@ -112,7 +112,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     var underlyingJs =
         underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
 
-    Type resultType = new TypeOptionDynamic(elementType);
+    Type resultType = new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     CodeDynamic newOpt;
     if (isSome) {
       newOpt =

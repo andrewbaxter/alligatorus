@@ -145,7 +145,7 @@ public record TypeFunctionAspectDynamic()
         new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
             Opt.some(
-                compilerxyz.eval.value.ValueDynamic.stack(xx, new TypeOptionDynamic(aspTa)))));
+                compilerxyz.eval.value.ValueDynamic.stack(xx, new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, aspTa))))));
   }
 
   @Override

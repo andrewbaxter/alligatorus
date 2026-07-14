@@ -70,7 +70,7 @@ public record TypeOptionConstructorConst()
         aspectTypeRes
             .requireValue("TypeOptionConstructorConst::call AspectType")
             .aspectTypeType(argValue);
-    Type optType = new TypeOptionDynamic(elementType);
+    Type optType = new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     return EResult.ok(
         new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), optType))));
   }

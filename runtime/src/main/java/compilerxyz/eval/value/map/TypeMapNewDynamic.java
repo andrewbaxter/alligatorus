@@ -59,7 +59,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var instanceType = new TypeMapDynamic(keyType, valueType);
+    var instanceType = new TypeMapDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, keyType), compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType));
     if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
       return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
     }
