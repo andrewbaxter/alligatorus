@@ -35,6 +35,7 @@ import compilerxyz.util.TMap;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7033L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
     implements
         Type,

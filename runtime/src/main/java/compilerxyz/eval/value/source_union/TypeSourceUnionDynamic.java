@@ -30,6 +30,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
 
+@compilerxyz.annotations.BuiltinTypeId(7052L)
 public final class TypeSourceUnionDynamic
     implements
         Type,

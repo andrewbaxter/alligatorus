@@ -43,6 +43,7 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7035L)
 public record TypeOptionDynamic(Type elementType)
     implements
         Type,

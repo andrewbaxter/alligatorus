@@ -54,6 +54,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
+@compilerxyz.annotations.BuiltinTypeId(7049L)
 public record TypeSourceInterfaceConst(InterfaceData data)
     implements
         Type,

@@ -28,6 +28,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7014L)
 public record TypeConstkeyDynamic()
     implements
         Type,

@@ -64,6 +64,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
 
+@compilerxyz.annotations.BuiltinTypeId(7042L)
 public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
     implements
         Type,

@@ -14,6 +14,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.stream.Collectors;
 
+@compilerxyz.annotations.BuiltinTypeId(7100L)
 public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
     implements Type, Value, ExporterAny {
 

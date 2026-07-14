@@ -42,6 +42,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.TypeId;
 
+@compilerxyz.annotations.BuiltinTypeId(7056L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
     implements Type,
         AspectArtifact,

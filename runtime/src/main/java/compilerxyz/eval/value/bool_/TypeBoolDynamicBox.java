@@ -37,6 +37,7 @@ import compilerxyz.util.TList;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7006L)
 public record TypeBoolDynamicBox()
     implements
         Type,

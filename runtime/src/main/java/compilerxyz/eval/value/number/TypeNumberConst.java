@@ -40,6 +40,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7001L)
 public record TypeNumberConst()
     implements
         Type,

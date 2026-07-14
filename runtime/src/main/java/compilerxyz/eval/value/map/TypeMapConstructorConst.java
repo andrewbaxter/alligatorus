@@ -24,6 +24,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7032L)
 public record TypeMapConstructorConst()
     implements
         Type,

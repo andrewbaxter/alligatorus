@@ -43,6 +43,7 @@ import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
 
+@compilerxyz.annotations.BuiltinTypeId(7044L)
 public final class TypeSourceObjectDynamic
     implements
         Type,

@@ -33,6 +33,7 @@ import compilerxyz.util.TList;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7039L)
 public record TypeFunctionAspectDynamic()
     implements
         Type,

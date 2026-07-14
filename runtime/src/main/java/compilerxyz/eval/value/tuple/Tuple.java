@@ -65,6 +65,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
 
+@compilerxyz.annotations.BuiltinTypeId(7043L)
 public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     implements
         Type,

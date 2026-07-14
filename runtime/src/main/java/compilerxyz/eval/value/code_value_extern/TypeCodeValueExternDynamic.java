@@ -28,6 +28,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7020L)
 public record TypeCodeValueExternDynamic()
     implements
         Type,

@@ -31,6 +31,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 
+@compilerxyz.annotations.BuiltinTypeId(7113L)
 public record TypeListPushDynamic(Type elementType)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 

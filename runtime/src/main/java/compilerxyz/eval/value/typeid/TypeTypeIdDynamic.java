@@ -21,6 +21,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 
+@compilerxyz.annotations.BuiltinTypeId(7112L)
 public record TypeTypeIdDynamic()
     implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind {
 

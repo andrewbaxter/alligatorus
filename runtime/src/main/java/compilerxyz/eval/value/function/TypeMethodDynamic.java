@@ -30,6 +30,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(7041L)
 public record TypeMethodDynamic(
     Type receiver,
     Type arg,

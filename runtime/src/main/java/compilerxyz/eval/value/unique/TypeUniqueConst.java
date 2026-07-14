@@ -29,6 +29,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
+@compilerxyz.annotations.BuiltinTypeId(7123L)
 public record TypeUniqueConst()
     implements
         Type,

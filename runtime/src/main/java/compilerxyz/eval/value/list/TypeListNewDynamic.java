@@ -30,6 +30,7 @@ import compilerxyz.util.TList;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7028L)
 public record TypeListNewDynamic(Type elementType)
     implements
         Type,

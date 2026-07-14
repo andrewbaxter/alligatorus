@@ -50,6 +50,7 @@ import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7015L)
 public record TypeUnique()
     implements
         Type,

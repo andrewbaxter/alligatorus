@@ -34,6 +34,7 @@ import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(7037L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
     implements
         Type,

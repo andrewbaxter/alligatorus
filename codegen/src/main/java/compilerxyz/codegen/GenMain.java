@@ -43,7 +43,13 @@ public final class GenMain {
     interfaceSpecs.addAll(BuiltinTreeGen.extraInterfaceSpecs());
     InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
     IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
-    TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds);
+    var scannedTypeIds =
+        compilerxyz.codegen.experimental.BuiltinTypeIdScanner.scanRoot(runtimeSourceRoot);
+    var typeIdExtras = new TList<TypeIdsGen.TypeIdSpec>();
+    for (var s : scannedTypeIds) {
+      typeIdExtras.add(new TypeIdsGen.TypeIdSpec(s.name(), s.id()));
+    }
+    TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds, typeIdExtras);
 
     PushStructsGen.run(
         outRoot, formatter, PushStructsGen.specs(TraitsGen.specs()), builtinUniqueIds, scopeIds);
