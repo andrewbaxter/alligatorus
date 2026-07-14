@@ -567,9 +567,8 @@ public final class BuiltinTreeGen {
     var ifaceBinding = findSpec(extras, "binding");
     var ifaceTarget = findSpec(extras, "target");
     var ifaceCodeDyn = findSpec(extras, "code_dyn");
-    var traits = TraitsGen.specs();
     var ifaceValue = findSpec(extras, "value");
-    var ifaceType = findSpec(traits, "type");
+    var ifaceType = findSpec(extras, "type");
 
     return new Branch(
         TList.of(

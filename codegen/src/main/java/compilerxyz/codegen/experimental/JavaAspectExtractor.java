@@ -194,7 +194,9 @@ public final class JavaAspectExtractor {
 
   private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = Map.of(
       "java.lang.String",
-          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"));
+          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
+      "compilerxyz.eval.Unique",
+          ClassName.get("compilerxyz.eval.value.unique", "TypeUnique"));
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");

@@ -100,6 +100,7 @@ public final class TraitsGen {
                             new NamedTypeRef("xx", xxRef),
                             new NamedTypeRef("key", unique))))));
 
-    return TList.of(typeSpec);
+    // Type (id 2002) migrated: scanned from eval/Type.java @BuiltinTrait
+    return TList.of();
   }
 }

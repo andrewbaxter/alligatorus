@@ -31,6 +31,11 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import static compilerxyz.util.MustCast.mustCast;
 
+@compilerxyz.annotations.BuiltinTrait(
+    uniqueId = 2002L,
+    scopeId = 3002,
+    fieldPrefix = "t",
+    typeIdConstant = "")
 public interface Type extends Value, HasTypeId {
 
   static Type dynamicType() {
@@ -175,15 +180,21 @@ public interface Type extends Value, HasTypeId {
     }
   }
 
-  String typeDesc();
-
-  Opt<Aspect> typeAspect(ExprContext xx, Unique key);
-
-  EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
-
-  boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
-
+  @compilerxyz.annotations.SourceExposed(name = "canCastFrom")
   boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
+  @compilerxyz.annotations.SourceExposed(name = "castFrom")
   EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
+
+  @compilerxyz.annotations.SourceExposed(name = "canCastTo")
+  boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
+
+  @compilerxyz.annotations.SourceExposed(name = "castTo")
+  EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
+
+  @compilerxyz.annotations.SourceExposed(name = "desc")
+  String typeDesc();
+
+  @compilerxyz.annotations.SourceExposed(name = "aspect")
+  Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 }
