@@ -206,6 +206,13 @@ public final class AspectsGen {
     }
   }
 
+  private static @org.jspecify.annotations.Nullable TMap<ClassName, CodeBlock>
+      scannedLeafDescriptors;
+
+  public static void setScannedLeafDescriptors(TMap<ClassName, CodeBlock> scanned) {
+    scannedLeafDescriptors = scanned;
+  }
+
   public static void run(
       Path outRoot,
       Formatter formatter,
@@ -459,12 +466,9 @@ public final class AspectsGen {
   /** Returns null if the type can't be mapped to a runtime {@code Type} descriptor. */
   private static CodeBlock resolveDescriptor(TypeName tn) {
     if (tn instanceof ClassName cn) {
-      var m = LEAF_DESCRIPTORS.get(cn);
-      if (m != null) return m;
-      // Nested classes inside compilerxyz.gen aspects — treat as delegated to the outer aspect's
-      // BindResult-style factory only if we've registered it. Otherwise skip.
-      if (cn.equals(ClassName.get(GEN_PACKAGE, "AspectBind", "BindResult"))) {
-        return CodeBlock.of("$T.dynamicType()", BIND_RESULT_TYPE);
+      if (scannedLeafDescriptors != null) {
+        var scanned = scannedLeafDescriptors.get(cn);
+        if (scanned != null) return scanned;
       }
       return null;
     }

@@ -30,6 +30,10 @@ public final class GenMain {
     var builtinTypeIds = new TSet<Long>();
     var scopeIds = new TSet<Long>();
 
+    var scannedLeaves =
+        compilerxyz.codegen.experimental.DynamicTypeScanner.scanRoot(runtimeSourceRoot);
+    AspectsGen.setScannedLeafDescriptors(scannedLeaves);
+
     var scannedAspects =
         compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, scannedAspects);
