@@ -122,12 +122,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeTypeSourceUnionConst uc)) {
-            return EResult.err(
-                loc,
-                "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: expected"
-                    + " TypeTypeSourceUnionConst, got " + self.getClass());
-          }
+          var uc = compilerxyz.util.MustCast.mustCast(TypeTypeSourceUnionConst.class, self);
           var tu = uc.type_;
           var set = tu.set;
           if (set == null) {

@@ -286,10 +286,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
     var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    if (!(elementScopeId instanceof BindingId.Local localBinding)) {
-      throw new IllegalStateException(
-          "TypeMapDynamic::foreach: element binding must be BindingId.Local");
-    }
+    var localBinding = compilerxyz.util.MustCast.mustCast(BindingId.Local.class, elementScopeId);
     // Iterator.next() returns Object; cast to Map.Entry (the element language
     // type) so the binding slot is typed as promised.
     var decodeSeq = new JavaBytecodeSequence();

@@ -120,12 +120,15 @@ public record TypeEResultDynamic(Type elementType)
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
                   JavaDataDescriptor.fromClass(String.class))));
-      if (elementType instanceof AspectConsumeDynamic elemConsume) {
-        var elemDesc = elemConsume.aspectConsumeDynamicJvmClass(xx);
-        if (elemDesc.value().startsWith("L")
-            && !elemDesc.value().equals("Ljava/lang/Object;")) {
-          seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+      switch (AspectConsumeDynamic.getMaybe(xx, elementType)) {
+        case Opt.Some<AspectConsumeDynamic> elemConsume -> {
+          var elemDesc = elemConsume.value().aspectConsumeDynamicJvmClass(xx);
+          if (elemDesc.value().startsWith("L")
+              && !elemDesc.value().equals("Ljava/lang/Object;")) {
+            seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+          }
         }
+        case Opt.None<AspectConsumeDynamic> n -> {}
       }
       return EResult.ok(new CodeValue(
           Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),

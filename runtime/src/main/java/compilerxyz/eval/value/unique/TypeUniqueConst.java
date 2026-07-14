@@ -84,12 +84,7 @@ public record TypeUniqueConst()
     if (hostValue instanceof ValueObjectConst wrap) {
       hostValue = wrap.data();
     }
-    if (!(hostValue instanceof Unique u)) {
-      return EResult.err(
-          loc,
-          "TypeUniqueConst::toDynamic: expected Unique, got "
-              + (hostValue == null ? "null" : hostValue.getClass().getName()));
-    }
+    var u = compilerxyz.util.MustCast.mustCast(Unique.class, hostValue);
     var key = new JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(

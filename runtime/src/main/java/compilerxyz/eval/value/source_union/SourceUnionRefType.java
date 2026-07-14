@@ -38,12 +38,7 @@ public final class SourceUnionRefType {
       identityAspects.add(GenIdentities.UNION_REF_TYPE_IDENTITY);
       TypeObjectLift lift =
           (xx, loc, host) -> {
-            if (!(host instanceof TypeSourceUnionDynamic ut)) {
-              return EResult.err(
-                  loc,
-                  "union_ref::lift: expected TypeSourceUnionDynamic, got "
-                      + (host == null ? "null" : host.getClass().getName()));
-            }
+            var ut = compilerxyz.util.MustCast.mustCast(TypeSourceUnionDynamic.class, host);
             return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceUnionConst(ut)));
           };
       return new TypeObjectDynamic(

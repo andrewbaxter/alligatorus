@@ -173,12 +173,7 @@ public record TypeStringDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof String s)) {
-      return EResult.err(
-          loc,
-          "TypeStringDynamic::lift: expected java.lang.String, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
-    }
+    var s = compilerxyz.util.MustCast.mustCast(String.class, externalHostValue);
     return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.string.TypeStringConst(), s));
   }
 

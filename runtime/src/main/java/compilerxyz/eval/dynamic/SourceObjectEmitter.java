@@ -407,14 +407,14 @@ public final class SourceObjectEmitter {
 
     var seq = new JavaBytecodeSequence();
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
-    if (!(selfId instanceof BindingId.Local selfLocal)) {
-      throw new IllegalStateException(
-          "SourceObjectEmitter.emit: selfId must be Local, got " + selfId);
-    }
+    var selfLocal = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, selfId);
     JavaDataDescriptor dataFieldDesc =
-        underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
-            ? underlyingConsume.aspectConsumeDynamicJvmClass(xx)
-            : JvmConstants.DESC_OBJECT;
+        switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, underlyingType)) {
+          case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s ->
+              s.value().aspectConsumeDynamicJvmClass(xx);
+          case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+              JvmConstants.DESC_OBJECT;
+        };
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
     seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, selfLocal.key())));
@@ -495,10 +495,7 @@ public final class SourceObjectEmitter {
       throw new IllegalStateException(
           "SourceObjectEmitter.emitInterfaceMethodMethod: impl has no innerBindingId");
     }
-    if (!(selfIdRaw instanceof BindingId.Local selfId)) {
-      throw new IllegalStateException(
-          "SourceObjectEmitter.emitInterfaceMethodMethod: selfId must be Local, got " + selfIdRaw);
-    }
+    var selfId = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, selfIdRaw);
     var argParamIds = m.compiledArgParamIds;
     if (argParamIds == null) {
       throw new IllegalStateException(
@@ -712,11 +709,13 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: missing compiledArgParamTypes");
     }
     for (var argType : argParamTypes) {
-      if (!(argType instanceof compilerxyz.gen.AspectConsumeDynamic argConsume)) {
-        throw new IllegalStateException(
-            "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
-                + argType.typeDesc() + " does not implement AspectConsumeDynamic");
-      }
+      var argConsume = switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, argType)) {
+        case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s -> s.value();
+        case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+            throw new IllegalStateException(
+                "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
+                    + argType.typeDesc() + " does not implement AspectConsumeDynamic");
+      };
       jvmParamDescs.add(argConsume.aspectConsumeDynamicJvmClass(xx));
     }
     JavaDataDescriptor retDesc;

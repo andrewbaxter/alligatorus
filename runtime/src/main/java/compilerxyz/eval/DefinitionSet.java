@@ -252,10 +252,7 @@ public final class DefinitionSet implements ExporterAny {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dep);
                         var v = any.requireValue("DefinitionSet::finalizer dependency artifact");
-                        if (!(v instanceof DefinitionSet depSet)) {
-                          throw new IllegalStateException(
-                              "def-set dependency artifact had wrong type: " + v.getClass());
-                        }
+                        var depSet = mustCast(DefinitionSet.class, v);
                         set.dependencies.putIfAbsent(depSet.defSetId, depSet);
                       }
                       set.finished = true;

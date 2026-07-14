@@ -265,12 +265,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeSourceFunctionConst::finalizer defSet artifact");
-                      if (!(defSetVal instanceof DefinitionSet set)) {
-                        throw new IllegalStateException(
-                            "TypeSourceFunctionConst finalizer: def-set artifact resolved to "
-                                + defSetVal.getClass()
-                                + " (expected DefinitionSet)");
-                      }
+                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
                       funcData.initSetReflectively(set);
                       var argRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(

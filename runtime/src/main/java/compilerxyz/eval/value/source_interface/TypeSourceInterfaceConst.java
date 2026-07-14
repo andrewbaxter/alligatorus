@@ -314,11 +314,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeSourceInterfaceConst::finalizer defSet artifact");
-                      if (!(defSetVal instanceof DefinitionSet set)) {
-                        throw new IllegalStateException(
-                            "TypeSourceInterfaceConst finalizer: defSet artifact resolved to "
-                                + defSetVal.getClass());
-                      }
+                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
                       iface.initSetReflectively(set);
                       var methodsIt = body.methods().iterator();
                       for (var md : iface.methods) {

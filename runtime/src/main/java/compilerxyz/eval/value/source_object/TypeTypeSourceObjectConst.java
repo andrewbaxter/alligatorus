@@ -415,12 +415,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeTypeSourceObjectConst::finalizer defSet artifact");
-                      if (!(defSetVal instanceof DefinitionSet set)) {
-                        throw new IllegalStateException(
-                            "TypeTypeSourceObjectConst finalizer: def-set artifact resolved to "
-                                + defSetVal.getClass()
-                                + " (expected DefinitionSet)");
-                      }
+                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
                       dt.initSetReflectively(set);
                       dt.setId = set.defSetId;
                       var underlyingRes =

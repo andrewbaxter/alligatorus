@@ -256,10 +256,7 @@ public record TypeListDynamic(Type elementType)
     setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
     var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    if (!(elementScopeId instanceof BindingId.Local localBinding)) {
-      throw new IllegalStateException(
-          "TypeListDynamic::foreach: element binding must be BindingId.Local");
-    }
+    var localBinding = compilerxyz.util.MustCast.mustCast(BindingId.Local.class, elementScopeId);
 
     var elementDecode = elementDecodeCast(xx, loc);
     Code bodyCode;

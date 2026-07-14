@@ -100,10 +100,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (!(selfCv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Record::accessOrDrop: CodeValue has no value");
     }
-    if (!(some.value() instanceof Record record)) {
-      throw new IllegalStateException(
-          "Record::accessOrDrop: value is not a Record, got " + some.value().getClass());
-    }
+    var record = compilerxyz.util.MustCast.mustCast(Record.class, some.value());
     return switch (record.base) {
       case Opt.None<RecordBaseDynamic> n ->
           accessOrDropSourceless(xx, loc, selfCv, record, accessKey);

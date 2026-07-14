@@ -169,12 +169,7 @@ public record TypeNumberDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof Double d)) {
-      return EResult.err(
-          loc,
-          "TypeNumberDynamic::lift: expected java.lang.Double, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
-    }
+    var d = compilerxyz.util.MustCast.mustCast(Double.class, externalHostValue);
     return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), d));
   }
 
