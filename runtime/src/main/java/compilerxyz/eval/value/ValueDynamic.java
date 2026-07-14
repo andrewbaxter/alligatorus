@@ -27,6 +27,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
+import static compilerxyz.util.MustCast.mustCast;
 
 public record ValueDynamic(Source source, Type type_) implements Value {
   @Override
@@ -119,12 +120,7 @@ public record ValueDynamic(Source source, Type type_) implements Value {
       }
 
       public static Expr stackFor(ExprContext xx, Type t) {
-        if (!(t instanceof compilerxyz.gen.AspectConsumeDynamic acd)) {
-          throw new IllegalArgumentException(
-              "ValueDynamic.Source.Expr.stackFor: type "
-                  + t
-                  + " is not AspectConsumeDynamic; cannot determine JVM stack size");
-        }
+        var acd = mustCast(compilerxyz.gen.AspectConsumeDynamic.class, t);
         var d = acd.aspectConsumeDynamicJvmClass(xx).value();
         var c = d.charAt(0);
         return new Expr(c == 'D' || c == 'J' ? 2 : 1);

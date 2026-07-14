@@ -27,6 +27,7 @@ import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.Value;
+import static compilerxyz.util.MustCast.mustCast;
 
 public final class DefinitionSet implements ExporterAny {
   public static Type dynamicType() {
@@ -107,11 +108,7 @@ public final class DefinitionSet implements ExporterAny {
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof DefinitionSet set)) {
-            return EResult.err(
-                loc,
-                "DefinitionSet::exporterRootDelegateSelfExport: expected DefinitionSet self, got " + self.getClass());
-          }
+          var set = mustCast(DefinitionSet.class, self);
           var errors = new TList<ExprErr>();
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(

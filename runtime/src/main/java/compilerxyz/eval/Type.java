@@ -29,6 +29,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
+import static compilerxyz.util.MustCast.mustCast;
 
 public interface Type extends Value, HasTypeId {
 
@@ -57,15 +58,7 @@ public interface Type extends Value, HasTypeId {
           new TList<TypeObjectCastRule>(),
           new TList<TypeObjectCastFromRule>(),
           Opt.<TypeObjectLift>some(
-              (xx, loc, host) -> {
-                if (!(host instanceof Type t)) {
-                  return compilerxyz.eval.EResult.err(
-                      loc,
-                      "Type::lift: host is not a Type, got "
-                          + (host == null ? "null" : host.getClass().getName()));
-                }
-                return compilerxyz.eval.EResult.ok(t);
-              }),
+              (xx, loc, host) -> compilerxyz.eval.EResult.ok(mustCast(Type.class, host))),
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
 

@@ -33,6 +33,7 @@ import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
+import static compilerxyz.util.MustCast.mustCast;
 
 public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   BOOL_CONST("bool_const") {
@@ -247,10 +248,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof ExporterRoot er)) {
-            return EResult.err(
-                loc, "ExporterRoot::ROOT::export: expected ExporterRoot, got " + self.getClass());
-          }
+          var er = mustCast(ExporterRoot.class, self);
           return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(er.tag))));
         }
 
@@ -260,11 +258,11 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
           if (!(data instanceof JsonValueString s)) {
             return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data);
           }
-          var v = fromTag(s.value());
-          if (!(v instanceof Opt.Some<ExporterRoot> some)) {
-            return EResult.err(loc, "ExporterRoot::ROOT::import: unknown tag " + s.value());
-          }
-          return EResult.ok(some.value());
+          return switch (fromTag(s.value())) {
+            case Opt.Some<ExporterRoot> some -> EResult.ok(some.value());
+            case Opt.None<ExporterRoot> n ->
+                EResult.err(loc, "ExporterRoot::ROOT::import: unknown tag " + s.value());
+          };
         }
       };
 }

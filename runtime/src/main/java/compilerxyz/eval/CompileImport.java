@@ -11,6 +11,7 @@ import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.gen.Value;
+import static compilerxyz.util.MustCast.mustCast;
 
 public final class CompileImport {
   private CompileImport() {}
@@ -71,11 +72,7 @@ public final class CompileImport {
             var artifact = artifactRes.requireValue("CompileImport::compile artifact export");
             return new CompileRes(allLogs, new CompileResResult.Ok(artifact));
           }
-          if (!(ok.value() instanceof Expr nextExpr)) {
-            throw new AssertionError(
-                "Stage eval Expr: expected Expr value, got " + ok.value().getClass().getName());
-          }
-          rootExpr = nextExpr;
+          rootExpr = mustCast(Expr.class, ok.value());
         }
       }
     }

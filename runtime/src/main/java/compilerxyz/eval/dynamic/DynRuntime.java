@@ -33,6 +33,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.ArrayList;
 import java.util.Map;
+import static compilerxyz.util.MustCast.mustCast;
 
 /**
  * Static entry points for callables that source code invokes. Members are only invoked from
@@ -47,11 +48,7 @@ public final class DynRuntime {
 
   public static StagedExprCell stage(
       ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
-    var treeValue = treeCell.value();
-    if (!(treeValue instanceof Expr tree)) {
-      throw new IllegalStateException(
-          "__stage: tree cell held non-Expr value: " + treeValue.getClass());
-    }
+    var tree = mustCast(Expr.class, treeCell.value());
     var values = new TList<StageLowerValue>(lowerCount);
     var i = 0;
     for (var k = 0; k < lowerCount; k++) {
@@ -161,13 +158,9 @@ public final class DynRuntime {
   }
 
   public static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
-    if (!(arg instanceof Map<?, ?> rawMap)) {
-      throw new IllegalStateException(
-          "DynRuntime.recordToConstKeyExprMap: expected Map, got "
-              + (arg == null ? "null" : arg.getClass()));
-    }
+    var rawMap = mustCast(Map.class, arg);
     var out = new java.util.LinkedHashMap<compilerxyz.eval.ConstKey, Expr>();
-    for (var entry : rawMap.entrySet()) {
+    for (var entry : ((Map<?, ?>) rawMap).entrySet()) {
       compilerxyz.eval.ConstKey ckey;
       var k = entry.getKey();
       if (k instanceof compilerxyz.eval.ConstKey ck) {
@@ -184,13 +177,7 @@ public final class DynRuntime {
       if (v instanceof Expr e) {
         expr = e;
       } else if (v instanceof compilerxyz.eval.expr.StagedExprCell cell) {
-        var inner = cell.value();
-        if (!(inner instanceof Expr e)) {
-          throw new IllegalStateException(
-              "DynRuntime.recordToConstKeyExprMap: StagedExprCell did not contain Expr, got "
-                  + (inner == null ? "null" : inner.getClass()));
-        }
-        expr = e;
+        expr = mustCast(Expr.class, cell.value());
       } else {
         throw new IllegalStateException(
             "DynRuntime.recordToConstKeyExprMap: expected Expr or StagedExprCell value, got "
