@@ -100,7 +100,9 @@ public final class JavaAspectExtractor {
       var exposedAttrs = readAttrs(exposedOpt.get());
       var args = new TList<NamedTypeRef>();
       for (var p : m.getParameters()) {
-        args.add(new NamedTypeRef(stripReservedSuffix(p.getNameAsString()), typeRefOf(p.getType(), importMap)));
+        args.add(new NamedTypeRef(
+            snakeCase(stripReservedSuffix(p.getNameAsString())),
+            typeRefOf(p.getType(), importMap)));
       }
       methods.add(new Method(exposedAttrs.get("name"), typeRefOf(m.getType(), importMap),
           new MethodArgs(args)));
@@ -159,7 +161,9 @@ public final class JavaAspectExtractor {
       var sourceName = exposedAttrs.get("name");
       var args = new TList<NamedTypeRef>();
       for (var p : m.getParameters()) {
-        args.add(new NamedTypeRef(stripReservedSuffix(p.getNameAsString()), typeRefOf(p.getType(), importMap)));
+        args.add(new NamedTypeRef(
+            snakeCase(stripReservedSuffix(p.getNameAsString())),
+            typeRefOf(p.getType(), importMap)));
       }
       methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap), new MethodArgs(args)));
     }
@@ -192,8 +196,15 @@ public final class JavaAspectExtractor {
       "java.lang.String",
           ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"));
 
+  private static final ClassName TYPE_BOOL_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
+  private static final ClassName TYPE_NUMBER_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.number", "TypeNumberDynamic");
+
   private static TypeRef typeRefOf(Type t, TMap<String, String> imports) {
     var tn = typeNameOf(t, imports);
+    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
+    if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_NUMBER_DYNAMIC);
     if (tn instanceof ClassName cn) {
       var descriptor = VALUE_CLASS_DESCRIPTORS.get(cn.canonicalName());
       if (descriptor != null) return TypeRef.leaf(descriptor);
