@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.gen.GenTypeIds;
@@ -59,9 +58,11 @@ public record TypeListPushDynamic(Type elementType)
     return "list(" + elementType.typeDesc() + ").push";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListPushDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_PUSH_DYNAMIC_TYPE_ID, "list_push_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ListPushDynamic();
+    return META;
   }
 
   @Override

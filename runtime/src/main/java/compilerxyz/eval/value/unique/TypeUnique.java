@@ -37,7 +37,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.util.TList;
@@ -76,9 +75,11 @@ public record TypeUnique()
     return "unique";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUnique.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_TYPE_ID, "unique");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.Unique();
+    return META;
   }
 
   @Override

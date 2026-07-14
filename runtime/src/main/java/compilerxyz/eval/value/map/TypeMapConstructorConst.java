@@ -17,7 +17,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
@@ -41,9 +40,11 @@ public record TypeMapConstructorConst()
     return "map constructor";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_CONSTRUCTOR_CONST_TYPE_ID, "map_constructor_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.MapConstructorConst();
+    return META;
   }
 
   @Override

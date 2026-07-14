@@ -20,7 +20,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
@@ -69,9 +68,11 @@ public record TypeBoolDynamicBox()
     return new TypeBoolDynamic();
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamicBox.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_DYNAMIC_BOX_TYPE_ID, "bool_dynamic_box");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.BoolDynamicBox();
+    return META;
   }
 
   @Override

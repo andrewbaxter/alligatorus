@@ -19,7 +19,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
@@ -55,9 +54,11 @@ public record TypeCodeValueExternDynamic()
     return "CodeValueExtern";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeCodeValueExternDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID, "code_value_extern_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.CodeValueExternDynamic();
+    return META;
   }
 
   @Override

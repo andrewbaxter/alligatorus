@@ -21,7 +21,6 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -137,9 +136,11 @@ public record TypeFunctionDynamic(
     return "dynamic func";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, "function_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.FunctionDynamic();
+    return META;
   }
 
   @Override

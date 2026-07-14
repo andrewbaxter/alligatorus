@@ -27,7 +27,6 @@ import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueString;
@@ -63,9 +62,11 @@ public record TypeStringConst()
     return "string";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringConst.class, compilerxyz.gen.GenTypeIds.TYPE_STRING_CONST_TYPE_ID, "string_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.StringConst();
+    return META;
   }
 
   @Override

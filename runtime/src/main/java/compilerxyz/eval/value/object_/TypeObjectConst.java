@@ -72,6 +72,31 @@ public record TypeObjectConst(
         AspectType,
         compilerxyz.gen.AspectLift {
 
+  private static final java.util.concurrent.ConcurrentHashMap<TypeId, compilerxyz.artifact.ExporterRoot> META_EXPORTERS = new java.util.concurrent.ConcurrentHashMap<>();
+
+  public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix, compilerxyz.artifact.ExporterRoot exporter) {
+    var meta = metaOf(hostClass, hostBaseTypeId, descSuffix);
+    META_EXPORTERS.put(meta.typeId(), exporter);
+    return meta;
+  }
+
+  public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix) {
+    var identityAspects = new TList<Unique>();
+    identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY);
+    var castRules = new TList<TypeObjectCastRule>();
+    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY));
+    return new TypeObjectConst(
+        new TypeId.Composite(compilerxyz.gen.GenTypeIds.TYPE_ANY_CONST_TYPE_ID, TList.of(hostBaseTypeId)),
+        "type<" + descSuffix + ">",
+        hostClass,
+        Opt.<Type>none(),
+        identityAspects,
+        castRules,
+        new TList<TypeObjectCastFromRule>(),
+        Opt.<TypeObjectLift>none(),
+        Opt.<ObjectAspectSource>none());
+  }
+
   @Override
   public boolean equals(Object other) {
     return other instanceof TypeObjectConst o && typeId.equals(o.typeId);
@@ -263,17 +288,21 @@ public record TypeObjectConst(
 
   @Override
   public compilerxyz.artifact.ArtifactExporter aspectArtifactExporter() {
-    return this;
+    var metaExporter = META_EXPORTERS.get(typeId);
+    return metaExporter != null ? metaExporter : this;
   }
 
   @Override
   public EResult<compilerxyz.artifact.Artifact> artifactExporterExport(
       ExprContext xx, QExprId loc, compilerxyz.artifact.ExporterAny self) {
-    if (!(self instanceof compilerxyz.eval.value.object_.ValueObjectConst wrapper)) {
-      return EResult.err(
-          loc, typeDesc + "::artifactExporterExport: expected ValueObjectConst, got " + self.getClass());
+    if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst wrapper) {
+      return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, (Type) wrapper.data());
     }
-    return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, (Type) wrapper.data());
+    if (self instanceof compilerxyz.gen.AspectArtifact concrete && concrete != this) {
+      return concrete.aspectArtifactExporter().artifactExporterExport(xx, loc, self);
+    }
+    return EResult.err(
+        loc, typeDesc + "::artifactExporterExport: expected ValueObjectConst or AspectArtifact, got " + self.getClass());
   }
 
   @Override

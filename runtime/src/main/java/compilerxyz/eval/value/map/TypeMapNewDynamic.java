@@ -21,7 +21,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -44,9 +43,11 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
     return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ").new";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_NEW_DYNAMIC_TYPE_ID, "map_new_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.MapNewDynamic();
+    return META;
   }
 
   @Override

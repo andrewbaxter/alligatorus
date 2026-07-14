@@ -28,7 +28,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.safejson.JsonValue;
@@ -71,9 +70,11 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     return "union_new(" + type_.variants.get(variantIndex).tag.toCanonical() + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID, "source_union_new_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceUnionNewConst();
+    return META;
   }
 
   @Override

@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.safejson.JsonValueBoolean;
@@ -46,9 +45,11 @@ public record TypePanicDynamic()
     return "panic";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypePanicDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_PANIC_DYNAMIC_TYPE_ID, "panic_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.PanicDynamic();
+    return META;
   }
 
   @Override

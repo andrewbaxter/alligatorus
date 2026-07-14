@@ -29,7 +29,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.GenIdentities;
@@ -70,9 +69,11 @@ public record TypeOptionDynamic(Type elementType)
     return "option(" + elementType.typeDesc() + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, "option_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.OptionDynamic();
+    return META;
   }
 
   @Override

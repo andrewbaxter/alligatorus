@@ -36,7 +36,6 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValue;
@@ -81,9 +80,11 @@ public record TypeBoolDynamic()
     return new TypeBoolDynamicBox();
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_DYNAMIC_TYPE_ID, "bool_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.BoolDynamic();
+    return META;
   }
 
   @Override

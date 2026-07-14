@@ -27,7 +27,6 @@ import compilerxyz.gen.AspectFunction;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.safejson.JsonValue;

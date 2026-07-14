@@ -23,7 +23,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -43,9 +42,11 @@ public record TypeThrowDynamic()
     return "throw";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeThrowDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_THROW_DYNAMIC_TYPE_ID, "throw_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ThrowDynamic();
+    return META;
   }
 
   @Override

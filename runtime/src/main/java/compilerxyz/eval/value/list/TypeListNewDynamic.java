@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -47,9 +46,11 @@ public record TypeListNewDynamic(Type elementType)
     return "list(" + elementType.typeDesc() + ").new";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, "list_new_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ListNewDynamic();
+    return META;
   }
 
   @Override

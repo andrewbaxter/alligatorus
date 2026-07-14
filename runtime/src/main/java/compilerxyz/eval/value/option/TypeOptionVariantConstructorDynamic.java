@@ -26,7 +26,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
@@ -51,9 +50,11 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     return "option(" + elementType.typeDesc() + ")." + (isSome ? "some" : "none");
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "option_variant_constructor_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.OptionVariantConstructorDynamic();
+    return META;
   }
 
   @Override

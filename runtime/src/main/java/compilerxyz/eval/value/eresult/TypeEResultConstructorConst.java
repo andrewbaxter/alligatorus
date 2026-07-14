@@ -14,7 +14,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectFunction;
@@ -41,9 +40,11 @@ public record TypeEResultConstructorConst()
     return "eresult constructor";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_CONSTRUCTOR_CONST_TYPE_ID, "eresult_constructor_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.EResultConstructorConst();
+    return META;
   }
 
   @Override

@@ -20,7 +20,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValueString;
@@ -52,9 +51,11 @@ public record TypeConstkeyDynamic()
     return "constkey";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeConstkeyDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID, "constkey_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ConstkeyDynamic();
+    return META;
   }
 
   @Override

@@ -39,7 +39,6 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
@@ -118,9 +117,11 @@ public record TypeStringDynamic()
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/String"));
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_STRING_DYNAMIC_TYPE_ID, "string_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.StringDynamic();
+    return META;
   }
 
   @Override

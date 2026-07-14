@@ -48,7 +48,6 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
@@ -109,9 +108,11 @@ public record TypeNumberDynamic()
     return new TypeNumberDynamicBox();
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_DYNAMIC_TYPE_ID, "number_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.NumberDynamic();
+    return META;
   }
 
   @Override

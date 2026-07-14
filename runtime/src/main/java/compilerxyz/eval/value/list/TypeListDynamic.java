@@ -41,7 +41,6 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -85,9 +84,11 @@ public record TypeListDynamic(Type elementType)
     return "list(" + elementType.typeDesc() + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, "list_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ListDynamic();
+    return META;
   }
 
   @Override

@@ -43,7 +43,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
@@ -146,9 +145,11 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return "interface";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceInterfaceConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_CONST_TYPE_ID, "source_interface_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceInterfaceConst();
+    return META;
   }
 
   @Override

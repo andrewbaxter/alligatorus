@@ -19,7 +19,6 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -50,8 +49,12 @@ public record TypeUniqueConst()
   @Override
   public String typeDesc() { return "unique_const"; }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueConst.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_CONST_TYPE_ID, "unique_const");
+
   @Override
-  public Type valueType() { return new TypeRoot.Unique(); }
+  public Type valueType() {
+    return META;
+  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {

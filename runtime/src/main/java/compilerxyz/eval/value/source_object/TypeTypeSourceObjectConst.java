@@ -34,7 +34,6 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
@@ -93,9 +92,11 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return "object(" + (type_.name != null ? type_.name : "?") + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_CONST_TYPE_ID, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceObjectConst();
+    return META;
   }
 
   @Override

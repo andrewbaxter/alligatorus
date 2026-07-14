@@ -13,7 +13,6 @@ import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
@@ -35,9 +34,11 @@ public record TypeFunctionCastValueDynamic()
     return "fn-cast-value";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionCastValueDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID, "function_cast_value_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.FunctionCastValueDynamic();
+    return META;
   }
 
   @Override

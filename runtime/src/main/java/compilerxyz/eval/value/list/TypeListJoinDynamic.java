@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.gen.GenTypeIds;
@@ -58,9 +57,11 @@ public record TypeListJoinDynamic(Type elementType)
     return "list(" + elementType.typeDesc() + ").join";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListJoinDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_JOIN_DYNAMIC_TYPE_ID, "list_join_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ListJoinDynamic();
+    return META;
   }
 
   @Override

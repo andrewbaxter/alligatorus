@@ -21,7 +21,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -104,9 +103,11 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return "map-entry(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapEntryDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_ENTRY_DYNAMIC_TYPE_ID, "map_entry_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.MapEntryDynamic();
+    return META;
   }
 
   @Override

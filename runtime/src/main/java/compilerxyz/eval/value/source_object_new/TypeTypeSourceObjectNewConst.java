@@ -24,7 +24,6 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
@@ -74,9 +73,11 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     return "definition_set_object_new_const";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID, "type_source_object_new_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceObjectNewConst();
+    return META;
   }
 
   @Override

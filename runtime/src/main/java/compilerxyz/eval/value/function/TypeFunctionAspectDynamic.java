@@ -24,7 +24,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.gen.AspectFunction;
@@ -58,9 +57,11 @@ public record TypeFunctionAspectDynamic()
     return "fn-aspect";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionAspectDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_ASPECT_DYNAMIC_TYPE_ID, "function_aspect_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.FunctionAspectDynamic();
+    return META;
   }
 
   @Override

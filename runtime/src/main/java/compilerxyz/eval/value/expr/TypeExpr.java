@@ -33,7 +33,6 @@ import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
@@ -70,9 +69,11 @@ public record TypeExpr()
     return "expr";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExpr.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_TYPE_ID, "expr");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.Expr();
+    return META;
   }
 
   @Override

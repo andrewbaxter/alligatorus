@@ -22,7 +22,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
@@ -56,9 +55,11 @@ public record TypeNumberToStringDynamic()
     return "number.to_string";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberToStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_TO_STRING_DYNAMIC_TYPE_ID, "number_to_string_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.NumberToStringDynamic();
+    return META;
   }
 
   @Override

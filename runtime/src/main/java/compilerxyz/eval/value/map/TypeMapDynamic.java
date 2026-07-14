@@ -42,7 +42,6 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.number.TypeNumberConst;
@@ -93,9 +92,11 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, "map_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.MapDynamic();
+    return META;
   }
 
   @Override

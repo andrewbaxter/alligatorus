@@ -30,7 +30,6 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.safejson.JsonValue;
@@ -70,9 +69,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return "definition_set_function";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceFunctionConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_FUNCTION_CONST_TYPE_ID, "source_function_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceFunctionConst();
+    return META;
   }
 
   @Override

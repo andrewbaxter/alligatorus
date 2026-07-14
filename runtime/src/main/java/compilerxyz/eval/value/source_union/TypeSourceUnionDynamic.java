@@ -22,7 +22,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.util.Opt;
@@ -122,9 +121,11 @@ public final class TypeSourceUnionDynamic
     return "union_dyn";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_DYNAMIC_TYPE_ID, "source_union_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceUnionDynamic();
+    return META;
   }
 
   @Override

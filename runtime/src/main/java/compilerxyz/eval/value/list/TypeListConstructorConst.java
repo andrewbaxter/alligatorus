@@ -16,7 +16,6 @@ import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
@@ -40,9 +39,11 @@ public record TypeListConstructorConst()
     return "list constructor";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_CONSTRUCTOR_CONST_TYPE_ID, "list_constructor_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ListConstructorConst();
+    return META;
   }
 
   @Override

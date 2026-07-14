@@ -20,7 +20,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
@@ -66,9 +65,11 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     return "interface method " + method.name;
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeInterfaceMethodDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INTERFACE_METHOD_DYNAMIC_TYPE_ID, "interface_method_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.FunctionDynamic();
+    return META;
   }
 
   @Override

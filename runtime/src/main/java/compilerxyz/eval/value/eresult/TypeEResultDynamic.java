@@ -17,7 +17,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
@@ -52,9 +51,11 @@ public record TypeEResultDynamic(Type elementType)
     return "eresult(" + elementType.typeDesc() + ")";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_DYNAMIC_TYPE_ID, "eresult_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.EResultDynamic();
+    return META;
   }
 
   @Override

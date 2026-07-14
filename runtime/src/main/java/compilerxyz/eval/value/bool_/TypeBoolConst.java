@@ -25,7 +25,6 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
@@ -59,9 +58,11 @@ public record TypeBoolConst()
     return "bool";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolConst.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_CONST_TYPE_ID, "bool_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.BoolConst();
+    return META;
   }
 
   @Override

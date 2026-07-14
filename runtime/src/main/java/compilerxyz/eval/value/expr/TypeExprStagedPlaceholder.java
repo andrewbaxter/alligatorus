@@ -14,7 +14,6 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.expr.StagedExprCell;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -36,9 +35,11 @@ public record TypeExprStagedPlaceholder()
     return "stage result";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExprStagedPlaceholder.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID, "expr_staged_placeholder");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.ExprStagedPlaceholder();
+    return META;
   }
 
   @Override

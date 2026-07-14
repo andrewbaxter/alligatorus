@@ -20,7 +20,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
@@ -47,9 +46,11 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     return "eresult(" + elementType.typeDesc() + ")." + (isOk ? "ok" : "err");
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "eresult_variant_constructor_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.EResultVariantConstructorDynamic();
+    return META;
   }
 
   @Override

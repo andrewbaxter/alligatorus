@@ -19,7 +19,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.gen.AspectArtifact;
@@ -46,9 +45,11 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
     return "definition_set_union_new_const";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID, "type_source_union_new_const");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.SourceUnionNewConst();
+    return META;
   }
 
   @Override

@@ -10,7 +10,6 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.eval.value.TypeRoot;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -31,9 +30,11 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
     return "map get fn";
   }
 
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapGetFnDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, "map_get_fn_dynamic");
+
   @Override
   public Type valueType() {
-    return new TypeRoot.MapGetFnDynamic();
+    return META;
   }
 
   @Override
