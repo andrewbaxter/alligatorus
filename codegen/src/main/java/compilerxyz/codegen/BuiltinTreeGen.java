@@ -441,6 +441,7 @@ public final class BuiltinTreeGen {
     var bindingCode = TypeRef.leaf(codeRef);
     var bindingCv = TypeRef.leaf(codeValue);
 
+    // Binding interface handwritten at runtime/src/main/java/compilerxyz/gen/Binding.java.
     var binding =
         new InterfaceSpec(
             "binding",
@@ -450,8 +451,9 @@ public final class BuiltinTreeGen {
             "Binding",
             null,
             true,
-            "Binding",
+            null,
             "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID",
+            "compilerxyz.gen.Binding",
             TList.of(
                 new Method(
                     "use",
@@ -519,8 +521,9 @@ var targetBindSubCls =
             "Target",
             null,
             true,
-            "Target",
+            null,
             "TYPE_ANY_TARGET_DYNAMIC_TYPE_ID",
+            "compilerxyz.gen.Target",
             TList.of(
                 new Method(
                     "bind",
@@ -637,9 +640,11 @@ var targetBindSubCls =
                             new NamedTypeRef("cases", caseListOpaque),
                             new NamedTypeRef("fallback", optExpr))))));
 
+    // CodeDyn interface handwritten at runtime/src/main/java/compilerxyz/gen/CodeDyn.java.
     var codeDyn =
         new InterfaceSpec(
-            "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, "CodeDyn", TList.<Method>of());
+            "code_dyn", 2007, 3007, "cd", "CodeDyn", null, true, null,
+            null, "compilerxyz.gen.CodeDyn", TList.<Method>of());
 
     return TList.of(
         binding,
