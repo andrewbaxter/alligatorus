@@ -77,11 +77,13 @@ public final class CompositeClassEmitter {
   }
 
   public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
-    if (!(t instanceof compilerxyz.gen.AspectConsumeDynamic consume)) {
-      throw new IllegalStateException(
-          "CompositeClassEmitter: type (" + t.typeDesc() + ") does not directly implement AspectConsumeDynamic");
-    }
-    return consume.aspectConsumeDynamicJvmClass(xx);
+    return switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, t)) {
+      case Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some ->
+          some.value().aspectConsumeDynamicJvmClass(xx);
+      case Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+          throw new IllegalStateException(
+              "CompositeClassEmitter: type (" + t.typeDesc() + ") does not implement AspectConsumeDynamic");
+    };
   }
 
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {

@@ -63,29 +63,6 @@ public record TypeFunctionDynamic(
   public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.hasTypeIdTypeId(), ret.hasTypeIdTypeId())); }
 
 
-  public JavaMethodDescriptor descriptor(ExprContext xx) {
-    var argDescs = new TList<JavaDataDescriptor>();
-    if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
-    if (arg instanceof compilerxyz.gen.AspectTuple t) {
-      for (var elem : t.aspectTupleElementTypes()) argDescs.add(jvmDescOfInstance(xx, elem));
-    } else if (arg instanceof compilerxyz.gen.AspectRecord r) {
-      for (var entry : r.aspectRecordFieldTypes().entrySet()) {
-        argDescs.add(jvmDescOfInstance(xx, entry.getValue()));
-      }
-    } else {
-      argDescs.add(jvmDescOfInstance(xx, arg));
-    }
-    return JavaMethodDescriptor.fromParts(jvmDescOfInstance(xx, ret), argDescs);
-  }
-
-  private static JavaDataDescriptor jvmDescOfInstance(ExprContext xx, Type t) {
-    if (t instanceof AspectConsumeDynamic c) {
-      return c.aspectConsumeDynamicJvmClass(xx);
-    }
-    throw new IllegalStateException(
-        "TypeFunctionDynamic: " + t.getClass() + " does not implement AspectConsumeDynamic");
-  }
-
   public EResult<JavaMethodDescriptor> descriptor(ExprContext xx, QExprId loc) {
     var argDescs = new TList<JavaDataDescriptor>();
     if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));

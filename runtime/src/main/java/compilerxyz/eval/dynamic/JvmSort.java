@@ -2,6 +2,8 @@ package compilerxyz.eval.dynamic;
 
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
 
 /**
@@ -22,10 +24,11 @@ public final class JvmSort {
   }
 
   private static int typedOpcode(ExprContext xx, Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
-    if (type instanceof compilerxyz.gen.AspectConsumeDynamic consume) {
-      var desc = consume.aspectConsumeDynamicJvmClass(xx).value();
-      if (!desc.isEmpty()) {
-        return switch (desc.charAt(0)) {
+    return switch (AspectConsumeDynamic.getMaybe(xx, type)) {
+      case Opt.Some<AspectConsumeDynamic> some -> {
+        var desc = some.value().aspectConsumeDynamicJvmClass(xx).value();
+        if (desc.isEmpty()) yield aOp;
+        yield switch (desc.charAt(0)) {
           case 'D' -> dOp;
           case 'J' -> jOp;
           case 'F' -> fOp;
@@ -33,7 +36,7 @@ public final class JvmSort {
           default -> aOp;
         };
       }
-    }
-    return aOp;
+      case Opt.None<AspectConsumeDynamic> n -> aOp;
+    };
   }
 }

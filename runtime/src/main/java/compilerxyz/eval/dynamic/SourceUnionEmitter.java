@@ -3,6 +3,7 @@ package compilerxyz.eval.dynamic;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -62,10 +63,10 @@ public final class SourceUnionEmitter {
   }
 
   public static JavaDataDescriptor payloadDescriptor(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type type) {
-    if (type instanceof AspectConsumeDynamic consume) {
-      return consume.aspectConsumeDynamicJvmClass(xx);
-    }
-    return JvmConstants.DESC_OBJECT;
+    return switch (AspectConsumeDynamic.getMaybe(xx, type)) {
+      case Opt.Some<AspectConsumeDynamic> some -> some.value().aspectConsumeDynamicJvmClass(xx);
+      case Opt.None<AspectConsumeDynamic> n -> JvmConstants.DESC_OBJECT;
+    };
   }
 
   private static byte[] emitBase(String baseInternalName, TList<String> variantInternalNames) {
