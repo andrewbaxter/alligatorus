@@ -46,6 +46,49 @@ public final class T0130DropThrowTest {
                 new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
   }
 
+  private static SourceExpr canaryDropBody(TestMb mb, String dropMessage) {
+    var underlyingCodeExpr =
+        mb.field(
+            mb.call(
+                mb.field(
+                    mb.field(
+                        mb.call(
+                            mb.evalAspectLookup(),
+                            mb.tupleOf(
+                                mb.typesString(),
+                                mb.evalAspectDropDynamicLight(),
+                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                        mb.str("value")),
+                    mb.str("drop_dynamic_light")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair(
+                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair(
+                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
+            mb.str("value"));
+    return mb.seqOf(
+        mb.bind("underlying_code_", underlyingCodeExpr),
+        mb.call(
+            mb.field(mb.call(mb.typesEresult(), mb.typesCode()), mb.str("ok")),
+            mb.field(
+                mb.call(
+                    mb.evalConstEval(),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair(
+                                "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                            new TestMb.RecordPair(
+                                "staged",
+                                mb.stage(
+                                    mb.seqOf(
+                                        mb.call(mb.log(), mb.str(dropMessage)),
+                                        mb.graft(mb.scopeUse("underlying_code_")))))))),
+                mb.str("code"))));
+  }
+
   private static SourceExpr canaryBindDynamicBody(TestMb mb) {
     return mb.call(
         mb.field(
@@ -214,29 +257,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "drop",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.typesEresult(), mb.typesCode()),
-                                                    mb.str("ok")),
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.evalConstEval(),
-                                                        mb.recordOf(
-                                                            TList.of(
-                                                                new TestMb.RecordPair(
-                                                                    "xx_",
-                                                                    mb.field(
-                                                                        mb.scopeUse("arg"),
-                                                                        mb.str("xx"))),
-                                                                new TestMb.RecordPair(
-                                                                    "staged",
-                                                                    mb.stage(
-                                                                        mb.call(
-                                                                            mb.log(),
-                                                                            mb.str(
-                                                                                dropMessage))))))),
-                                                    mb.str("code")))))))))),
+                                            canaryDropBody(mb, dropMessage)))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(

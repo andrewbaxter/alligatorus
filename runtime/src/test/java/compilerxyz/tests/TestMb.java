@@ -38,6 +38,10 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_drop_dynamic");
   }
 
+  public SourceExpr evalAspectDropDynamicLight() {
+    return builtin("eval", "aspect_drop_dynamic_light");
+  }
+
   public SourceExpr evalAspectConsumeDynamic() {
     return builtin("eval", "aspect_consume_dynamic");
   }

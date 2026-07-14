@@ -100,53 +100,33 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (!(selfCv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Record::accessOrDrop: CodeValue has no value");
     }
-    var v = some.value();
-    ValueDynamic.Source baseSource;
-    Record record;
-    if (v instanceof ValueDynamic vd) {
-      baseSource = vd.source();
-      record = this;
-    } else if (v instanceof Record r) {
-      record = r;
-      if (r.base instanceof Opt.Some<RecordBaseDynamic> baseSome) {
-        baseSource = baseSome.value().source();
-      } else {
-        return accessOrDropSourceless(xx, loc, selfCv, record, accessKey);
-      }
-    } else {
+    if (!(some.value() instanceof Record record)) {
       throw new IllegalStateException(
-          "Record::accessOrDrop: expected Record or ValueDynamic, got " + v.getClass());
+          "Record::accessOrDrop: value is not a Record, got " + some.value().getClass());
     }
-    return accessOrDropSourced(xx, loc, selfCv, record, baseSource, accessKey);
+    return switch (record.base) {
+      case Opt.None<RecordBaseDynamic> n ->
+          accessOrDropSourceless(xx, loc, selfCv, record, accessKey);
+      case Opt.Some<RecordBaseDynamic> s ->
+          accessOrDropSourced(xx, loc, selfCv, record, s.value().source(), accessKey);
+    };
   }
 
   private EResult<CodeValue> accessOrDropSourceless(
       ExprContext xx, QExprId loc, CodeValue selfCv, Record record, Opt<ConstKey> accessKey) {
-    // Sourceless: no composite heap object. Each field's value code hasn't been
-    // emitted yet — it lives in the RecordField.EvalRes's inner CV until drop
-    // (or field access / consumption / object-construction) consumes it.
-    //
-    // For DROP: iterate reverse canonical order (matching the ordering used
-    // elsewhere), for each field emit fieldCv.code (pushes value; may be Code.none
-    // for pure-const fields) then the drop code (pops it). Net stack-neutral per
-    // field.
-    //
-    // For ACCESS(key=k): siblings same as above; for the accessed field emit
-    // fieldCv.code + STORE to a local. LOAD at the end.
     var seq = new JavaBytecodeSequence();
     var carry = selfCv.code().dynamic();
     if (carry != null) seq.add(carry);
     CodeValue accessedCv = null;
     Type accessedType = null;
     CodeDynamic accessedPushDyn = null;
-    ConstKey accessedKeyResolved = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
-    var sortedKeys = new TList<ConstKey>(record.fields.size());
-    sortedKeys.addAll(record.fields.keySet());
-    sortedKeys.sort(ConstKey.CANONICAL_ORDER);
-    for (int i = sortedKeys.size() - 1; i >= 0; i--) {
-      var k = sortedKeys.get(i);
+    var keys = new TList<ConstKey>(record.fields.size());
+    keys.addAll(record.fields.keySet());
+    for (int i = keys.size() - 1; i >= 0; i--) {
+      var k = keys.get(i);
       var f = record.fields.getOrNull(k);
-      boolean isAccessed = accessedKeyResolved != null && accessedKeyResolved.equals(k);
+      boolean isAccessed =
+          accessKey instanceof Opt.Some<ConstKey> aksSome && aksSome.value().equals(k);
       if (!(f instanceof RecordField.EvalRes er)) {
         // RecordField.Dynamic entries appear only in type-level records (schemas);
         // a value record never contains one under current construction paths.
@@ -240,72 +220,65 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       Record record,
       ValueDynamic.Source baseSource,
       Opt<ConstKey> accessKey) {
-    var slotInfo = computeSlotInfo(fields);
+    var dynamicFieldTypes = new TOrderedMap<ConstKey, Type>();
+    for (var entry : record.fields.entrySet()) {
+      if (entry.getValue() instanceof RecordField.Dynamic d) {
+        dynamicFieldTypes.put(entry.getKey(), d.type());
+      }
+    }
+    var slotInfo = computeSlotInfoFromTypes(dynamicFieldTypes);
     var klass =
         JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
-    boolean stackRooted = DynUtil.isStackRooted(baseSource);
+    return switch (accessKey) {
+      case Opt.None<ConstKey> n -> dropSourced(xx, loc, dynamicFieldTypes, slotInfo, klass, baseSource);
+      case Opt.Some<ConstKey> s ->
+          accessSourced(xx, loc, record, dynamicFieldTypes, slotInfo, klass, baseSource, s.value());
+    };
+  }
 
-    ConstKey accessedKey = accessKey instanceof Opt.Some<ConstKey> aks ? aks.value() : null;
-    Type accessedType = null;
-    int accessedSlot = -1;
-    if (accessedKey != null) {
-      var f = fields.getOrNull(accessedKey);
-      if (f == null) {
-        return EResult.err(loc, "Field '" + accessedKey.toCanonical() + "' not found on record");
-      }
-      accessedType = recordFieldType(f);
-      accessedSlot = slotInfo.slotOfKey().get(accessedKey);
-    }
-
-    // Fast path: pure field-access (no sibling drops needed).
-    if (accessedKey != null && !stackRooted) {
-      // Non-stack source: no sibling drops, just base.realize + GETFIELD.
-      // Do NOT prepend selfCv.code() carry — for non-stack sources the source
-      // already reaches its base (e.g. ALOAD binding, GETFIELD chain); any
-      // carry produced by upstream is a side channel that should not repeat.
-      var loadSeq = new JavaBytecodeSequence();
-      loadSeq.add(baseSource.realize(xx, loc));
-      loadSeq.add(
-          JavaBytecodeUtils.accessField(
-              loc,
-              klass,
-              CompositeClassEmitter.slotFieldName(accessedSlot),
-              CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, new CodeDynamic(loc, loadSeq)),
-              Opt.some(ValueDynamic.stack(xx, accessedType))));
-    }
-
-    // Stack-rooted or drop-only path.
+  private EResult<CodeValue> dropSourced(
+      ExprContext xx,
+      QExprId loc,
+      TOrderedMap<ConstKey, Type> dynamicFieldTypes,
+      compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
+      JavaInternalName klass,
+      ValueDynamic.Source baseSource) {
     var out = new JavaBytecodeSequence();
-    // Do not include selfCv.code() carry (upstream carry is a side channel that
-    // aspectDropDynamicDrop / aspectFieldField ignore per legacy behavior).
+    out.add(baseSource.realize(xx, loc));
+    var dropRes = emitChildDrops(xx, loc, klass, slotInfo, dynamicFieldTypes, Opt.none(), out);
+    if (dropRes.hasErrors()) return dropRes.reerr();
+    out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+  }
 
-    if (accessedKey == null) {
-      // Full drop.
-      if (!stackRooted) {
-        // Non-stack source: base isn't on the stack; defer to enclosing owner.
-        // Emit only the source's own drop code (may be Code.none for Binding).
-        var srcDrop = baseSource.drop(loc).dynamic();
-        if (srcDrop != null) out.add(srcDrop);
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
-      }
-      // Stack-rooted: base ref is on top of stack; realize is a no-op for Expr.
-      // Emit sibling drops (skipping light-only fields, which GC handles) then POP.
-      out.add(baseSource.realize(xx, loc));
-      var dropRes = emitSiblingDrops(xx, loc, klass, slotInfo, /* skipKey */ null, out);
-      if (dropRes.hasErrors()) return dropRes.reerr();
-      out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+  private EResult<CodeValue> accessSourced(
+      ExprContext xx,
+      QExprId loc,
+      Record record,
+      TOrderedMap<ConstKey, Type> dynamicFieldTypes,
+      compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
+      JavaInternalName klass,
+      ValueDynamic.Source baseSource,
+      ConstKey accessedKey) {
+    var f = record.fields.getOrNull(accessedKey);
+    if (f == null) {
+      return EResult.err(loc, "Field '" + accessedKey.toCanonical() + "' not found on record");
     }
-
-    // Field access with stack-rooted base: emit sibling drops (each DUP+GETFIELD+
-    // drop, base preserved), then GETFIELD the accessed slot — no DUP needed
-    // because we consume the base here (the accessed field replaces it on stack).
-    var sibRes = emitSiblingDrops(xx, loc, klass, slotInfo, accessedKey, out);
-    if (sibRes.hasErrors()) return sibRes.reerr();
+    if (!(f instanceof RecordField.Dynamic)) {
+      throw new IllegalStateException(
+          "Record::accessSourced: accessed field '" + accessedKey.toCanonical()
+              + "' is scope-bound (non-dynamic); access should be routed elsewhere");
+    }
+    var accessedType = recordFieldType(f);
+    int accessedSlot = slotInfo.slotOfKey().get(accessedKey);
+    boolean stackRooted = DynUtil.isStackRooted(baseSource);
+    var out = new JavaBytecodeSequence();
+    out.add(baseSource.realize(xx, loc));
+    if (stackRooted) {
+      var sibRes = emitChildDrops(xx, loc, klass, slotInfo, dynamicFieldTypes, Opt.some(accessedKey), out);
+      if (sibRes.hasErrors()) return sibRes.reerr();
+    }
     out.add(
         JavaBytecodeUtils.accessField(
             loc,
@@ -318,24 +291,24 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             Opt.some(ValueDynamic.stack(xx, accessedType))));
   }
 
-  private EResult<Void> emitSiblingDrops(
+  private EResult<Void> emitChildDrops(
       ExprContext xx,
       QExprId loc,
       JavaInternalName klass,
       compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
-      @org.jspecify.annotations.Nullable ConstKey skipKey,
+      TOrderedMap<ConstKey, Type> dynamicFieldTypes,
+      Opt<ConstKey> skipKey,
       JavaBytecodeSequence out) {
-    var sortedKeys = new TList<ConstKey>(fields.size());
-    sortedKeys.addAll(fields.keySet());
-    sortedKeys.sort(ConstKey.CANONICAL_ORDER);
-    for (int i = sortedKeys.size() - 1; i >= 0; i--) {
-      var k = sortedKeys.get(i);
-      if (skipKey != null && skipKey.equals(k)) continue;
-      var t = recordFieldType(fields.getOrNull(k));
+    var keys = new TList<ConstKey>(dynamicFieldTypes.size());
+    keys.addAll(dynamicFieldTypes.keySet());
+    for (int i = keys.size() - 1; i >= 0; i--) {
+      var k = keys.get(i);
+      if (skipKey instanceof Opt.Some<ConstKey> skipSome && skipSome.value().equals(k)) continue;
+      var t = dynamicFieldTypes.getOrNull(k);
       int slotIdx = slotInfo.slotOfKey().get(k);
       var dropRes = childFullDropCode(xx, loc, klass, slotIdx, t, k);
       if (dropRes.hasErrors()) return dropRes.reerr();
-      var dropCode = dropRes.requireValue("Record::emitSiblingDrops child");
+      var dropCode = dropRes.valueOrNull();
       if (dropCode != null) out.add(dropCode);
     }
     return EResult.ok(null);

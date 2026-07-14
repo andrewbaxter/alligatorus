@@ -27,10 +27,7 @@ public final class ExternalCodec {
       var key = entry.key();
       var host = entry.external().hostValue();
       if (host instanceof StagedExprCell cell) {
-        var stored = cell.peek();
-        if (stored == null) {
-          return EResult.err(loc, "ExternalCodec: captured StagedExprCell already consumed");
-        }
+        var stored = cell.value();
         if (!(stored instanceof Expr expr)) {
           return EResult.err(
               loc,

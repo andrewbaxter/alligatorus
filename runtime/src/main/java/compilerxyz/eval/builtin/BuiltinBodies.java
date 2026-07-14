@@ -67,15 +67,10 @@ public final class BuiltinBodies {
           "builtin 5008 (const_eval): xx is not ExprContext, got "
               + (xx_ == null ? "null" : xx_.getClass()));
     }
-    Object exprValue = staged.peek();
-    if (exprValue == null) {
-      throw new IllegalStateException(
-          "builtin 5008 (const_eval): staged cell already null (was consumed elsewhere)");
-    }
+    Object exprValue = staged.value();
     if (!(exprValue instanceof Expr exprAst)) {
       throw new AssertionError(
-          "builtin 5008 (const_eval): staged payload is not Expr, got "
-              + (exprValue == null ? "null" : exprValue.getClass()));
+          "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
     }
     var res = ConstEval.constEval(targetXx, exprAst);
     if (res.hasErrors()) {

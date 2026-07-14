@@ -47,7 +47,7 @@ public final class DynRuntime {
 
   public static StagedExprCell stage(
       ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
-    var treeValue = treeCell.take();
+    var treeValue = treeCell.value();
     if (!(treeValue instanceof Expr tree)) {
       throw new IllegalStateException(
           "__stage: tree cell held non-Expr value: " + treeValue.getClass());
@@ -60,7 +60,7 @@ public final class DynRuntime {
       i += 2;
       if (liftArg == null) {
         var cell = (StagedExprCell) valArg;
-        var cellValue = cell.take();
+        var cellValue = cell.value();
         if (cellValue instanceof Expr expr) {
           values.add(new StageLowerValue.Expr(expr));
         } else {
@@ -98,7 +98,18 @@ public final class DynRuntime {
     }
     var grafts = new TList<CodeValue>(rest.length - i);
     while (i < rest.length) {
-      grafts.add((CodeValue) rest[i]);
+      var raw = rest[i];
+      CodeValue graft;
+      if (raw instanceof CodeValue cv) {
+        graft = cv;
+      } else if (raw instanceof Code code) {
+        graft = new CodeValue(code, Opt.none());
+      } else {
+        throw new RuntimeException(
+            "__stage: graft argument is neither CodeValue nor Code: "
+                + (raw == null ? "null" : raw.getClass().getName()));
+      }
+      grafts.add(graft);
       i += 1;
     }
     var valueIter = values.iterator();
@@ -173,7 +184,7 @@ public final class DynRuntime {
       if (v instanceof Expr e) {
         expr = e;
       } else if (v instanceof compilerxyz.eval.expr.StagedExprCell cell) {
-        var inner = cell.take();
+        var inner = cell.value();
         if (!(inner instanceof Expr e)) {
           throw new IllegalStateException(
               "DynRuntime.recordToConstKeyExprMap: StagedExprCell did not contain Expr, got "

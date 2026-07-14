@@ -991,6 +991,13 @@ var targetBindSubCls =
                 "aspect_drop_dynamic",
                 new Leaf(LeafSpec.interface_(ifaceAspectDropDynamic))),
             new Child(
+                "aspect_drop_dynamic_light",
+                new Leaf(
+                    new LeafSpec(
+                        CodeBlock.of(
+                            "$T.dynamicType()",
+                            ClassName.get("compilerxyz.gen", "AspectDropDynamicLight")), TTOD_TYPE_EXPR))),
+            new Child(
                 "aspect_bind_dynamic",
                 new Leaf(
                     new LeafSpec(

@@ -356,7 +356,7 @@ public final class PushStructsGen {
             .beginControlFlow("if (data.implExpr != null)")
             .addStatement("throw new $T($S)", illegalState, "Function already has an implementation")
             .endControlFlow()
-            .addStatement("data.implExpr = ($T) implCell.take()", valueClass)
+            .addStatement("data.implExpr = ($T) implCell.value()", valueClass)
             .build());
 
     cls.addMethod(
@@ -601,7 +601,7 @@ public final class PushStructsGen {
             .beginControlFlow("if (this.method.implExpr != null)")
             .addStatement("throw new $T($S)", illegalState, "Method already has an implementation")
             .endControlFlow()
-            .addStatement("this.method.implExpr = ($T) implCell.take()", valueClass)
+            .addStatement("this.method.implExpr = ($T) implCell.value()", valueClass)
             .build());
   }
 

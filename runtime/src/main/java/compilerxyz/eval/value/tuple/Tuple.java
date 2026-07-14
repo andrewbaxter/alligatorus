@@ -92,36 +92,26 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (!(selfCv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Tuple::accessOrIndex: CodeValue has no value");
     }
-    var v = some.value();
-    ValueDynamic.Source baseSource;
-    Tuple tuple;
-    if (v instanceof ValueDynamic vd) {
-      baseSource = vd.source();
-      tuple = this;
-    } else if (v instanceof Tuple t) {
-      tuple = t;
-      if (t.base instanceof Opt.Some<TupleBaseDynamic> baseSome) {
-        baseSource = baseSome.value().source();
-      } else {
-        return accessOrIndexSourceless(xx, loc, tuple, accessIndex);
-      }
-    } else {
+    if (!(some.value() instanceof Tuple tuple)) {
       throw new IllegalStateException(
-          "Tuple::accessOrIndex: expected Tuple or ValueDynamic, got " + v.getClass());
+          "Tuple::accessOrIndex: value is not a Tuple, got " + some.value().getClass());
     }
-    return accessOrIndexSourced(xx, loc, tuple, baseSource, accessIndex);
+    return switch (tuple.base) {
+      case Opt.None<TupleBaseDynamic> n -> accessOrIndexSourceless(xx, loc, tuple, accessIndex);
+      case Opt.Some<TupleBaseDynamic> s ->
+          accessOrIndexSourced(xx, loc, tuple, s.value().source(), accessIndex);
+    };
   }
 
   private EResult<CodeValue> accessOrIndexSourceless(
       ExprContext xx, QExprId loc, Tuple tuple, Opt<Integer> accessIndex) {
-    // Same shape as Record.accessOrDropSourceless — see there for the design notes.
     var seq = new JavaBytecodeSequence();
-    Integer accessed = accessIndex instanceof Opt.Some<Integer> aiSome ? aiSome.value() : null;
     CodeValue accessedCv = null;
     Type accessedType = null;
     CodeDynamic accessedPushDyn = null;
     for (int i = tuple.elements.size() - 1; i >= 0; i--) {
-      boolean isAccessed = accessed != null && accessed == i;
+      boolean isAccessed =
+          accessIndex instanceof Opt.Some<Integer> aiSome && aiSome.value() == i;
       var e = tuple.elements.get(i);
       if (!(e instanceof TupleElement.EvalRes er)) {
         throw new IllegalStateException(
@@ -183,7 +173,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           "Sourceless tuple element " + i + " type '" + elemType.typeDesc()
               + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
     }
-    if (accessed != null) {
+    if (accessIndex instanceof Opt.Some<Integer> aiSome) {
       if (accessedCv != null) {
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
@@ -196,7 +186,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                 Code.of(loc, new CodeDynamic(loc, seq)),
                 Opt.some(ValueDynamic.stack(xx, accessedType))));
       }
-      return EResult.err(loc, "Tuple element " + accessed + " not found");
+      return EResult.err(loc, "Tuple element " + aiSome.value() + " not found");
     }
     return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
   }
@@ -207,78 +197,91 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       Tuple tuple,
       ValueDynamic.Source baseSource,
       Opt<Integer> accessIndex) {
-    var elementTypesUnsorted = new TList<Type>(elements.size());
-    for (var e : elements) {
-      if (!(e instanceof TupleElement.Dynamic d)) {
-        throw new IllegalStateException(
-            "Tuple::accessOrIndexSourced: sourced tuple must have Dynamic elements");
+    var dynamicTypes = new TList<Type>();
+    var dynamicIndexOfElement = new TList<Integer>(tuple.elements.size());
+    for (int i = 0; i < tuple.elements.size(); i++) {
+      var e = tuple.elements.get(i);
+      if (e instanceof TupleElement.Dynamic d) {
+        dynamicIndexOfElement.add(dynamicTypes.size());
+        dynamicTypes.add(d.type());
+      } else {
+        dynamicIndexOfElement.add(-1);
       }
-      elementTypesUnsorted.add(d.type());
     }
-    var slotInfo = sortTupleSlots(elementTypesUnsorted);
+    var slotInfo = sortTupleSlots(dynamicTypes);
     var sortedTypes = slotInfo.sortedTypes();
     var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
-    boolean stackRooted = DynUtil.isStackRooted(baseSource);
+    return switch (accessIndex) {
+      case Opt.None<Integer> n ->
+          dropSourced(xx, loc, tuple, dynamicTypes, dynamicIndexOfElement, slotInfo, klass, baseSource);
+      case Opt.Some<Integer> s ->
+          indexSourced(
+              xx, loc, tuple, dynamicTypes, dynamicIndexOfElement, slotInfo, klass, baseSource,
+              s.value());
+    };
+  }
 
-    Integer accessedIdx = accessIndex instanceof Opt.Some<Integer> aiSome ? aiSome.value() : null;
-    Type accessedType = null;
-    int accessedSlot = -1;
-    if (accessedIdx != null) {
-      if (accessedIdx < 0 || accessedIdx >= elementTypesUnsorted.size()) {
-        return EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
-      }
-      accessedType = elementTypesUnsorted.get(accessedIdx);
-      accessedSlot = slotInfo.slotOfKey().get(accessedIdx);
-    }
-
-    // Fast path: pure element-access on non-stack source.
-    if (accessedIdx != null && !stackRooted) {
-      var loadSeq = new JavaBytecodeSequence();
-      loadSeq.add(baseSource.realize(xx, loc));
-      loadSeq.add(
-          JavaBytecodeUtils.accessField(
-              loc,
-              klass,
-              CompositeClassEmitter.slotFieldName(accessedSlot),
-              CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, new CodeDynamic(loc, loadSeq)),
-              Opt.some(ValueDynamic.stack(xx, accessedType))));
-    }
-
+  private EResult<CodeValue> dropSourced(
+      ExprContext xx,
+      QExprId loc,
+      Tuple tuple,
+      TList<Type> dynamicTypes,
+      TList<Integer> dynamicIndexOfElement,
+      CompositeSlotSort.Result<Integer> slotInfo,
+      JavaInternalName klass,
+      ValueDynamic.Source baseSource) {
     var out = new JavaBytecodeSequence();
-
-    if (accessedIdx == null) {
-      // Full drop.
-      if (!stackRooted) {
-        var srcDrop = baseSource.drop(loc).dynamic();
-        if (srcDrop != null) out.add(srcDrop);
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
-      }
-      out.add(baseSource.realize(xx, loc));
-      for (int i = elementTypesUnsorted.size() - 1; i >= 0; i--) {
-        var t = elementTypesUnsorted.get(i);
-        int slotIdx = slotInfo.slotOfKey().get(i);
-        var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
-        if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
-        var siblingDrop = siblingDropRes.requireValue("Tuple::accessOrIndex sibling");
-        if (siblingDrop != null) out.add(siblingDrop);
-      }
-      out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-      return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
-    }
-
-    // Element access with stack-rooted base: sibling drops (each DUP+GETFIELD+drop,
-    // base preserved), then GETFIELD the accessed slot — no DUP needed because
-    // we consume the base here.
-    for (int i = elementTypesUnsorted.size() - 1; i >= 0; i--) {
-      if (accessedIdx == i) continue;
-      var t = elementTypesUnsorted.get(i);
-      int slotIdx = slotInfo.slotOfKey().get(i);
+    out.add(baseSource.realize(xx, loc));
+    for (int i = tuple.elements.size() - 1; i >= 0; i--) {
+      int dynIdx = dynamicIndexOfElement.get(i);
+      if (dynIdx < 0) continue;
+      var t = dynamicTypes.get(dynIdx);
+      int slotIdx = slotInfo.slotOfKey().get(dynIdx);
       var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
       if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
-      out.add(siblingDropRes.requireValue("Tuple::accessOrIndex sibling"));
+      var siblingDrop = siblingDropRes.valueOrNull();
+      if (siblingDrop != null) out.add(siblingDrop);
+    }
+    out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+  }
+
+  private EResult<CodeValue> indexSourced(
+      ExprContext xx,
+      QExprId loc,
+      Tuple tuple,
+      TList<Type> dynamicTypes,
+      TList<Integer> dynamicIndexOfElement,
+      CompositeSlotSort.Result<Integer> slotInfo,
+      JavaInternalName klass,
+      ValueDynamic.Source baseSource,
+      int accessedIdx) {
+    if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
+      return EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
+    }
+    int dynIdx = dynamicIndexOfElement.get(accessedIdx);
+    if (dynIdx < 0) {
+      throw new IllegalStateException(
+          "Tuple::indexSourced: element index " + accessedIdx
+              + " is a scope-bound (non-dynamic) element; access should be routed elsewhere");
+    }
+    var accessedType = dynamicTypes.get(dynIdx);
+    int accessedSlot = slotInfo.slotOfKey().get(dynIdx);
+    boolean stackRooted = DynUtil.isStackRooted(baseSource);
+    var out = new JavaBytecodeSequence();
+    out.add(baseSource.realize(xx, loc));
+    if (stackRooted) {
+      for (int i = tuple.elements.size() - 1; i >= 0; i--) {
+        if (i == accessedIdx) continue;
+        int di = dynamicIndexOfElement.get(i);
+        if (di < 0) continue;
+        var t = dynamicTypes.get(di);
+        int slotIdx = slotInfo.slotOfKey().get(di);
+        var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
+        if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
+        var siblingDrop = siblingDropRes.valueOrNull();
+        if (siblingDrop != null) out.add(siblingDrop);
+      }
     }
     out.add(
         JavaBytecodeUtils.accessField(

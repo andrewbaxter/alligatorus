@@ -156,7 +156,7 @@ public record TypeExpr()
           "TypeExpr::lift: expected StagedExprCell, got "
               + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
     }
-    var inner = cell.take();
+    var inner = cell.value();
     if (!(inner instanceof Value value)) {
       return EResult.err(
           loc,
