@@ -242,9 +242,15 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                             mb.str("none")),
                                         mb.literalNull()))),
                             new TestMb.RecordPair(
-                                "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
+                                "can_cast_to",
+                                mb.seqOf(mb.operatorEq(mb.num(1.0), mb.num(1.0)))),
                             new TestMb.RecordPair(
-                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))))),
+                                "cast_to",
+                                mb.call(
+                                    mb.field(
+                                        mb.call(mb.typesEresult(), mb.typesCve()),
+                                        mb.str("ok")),
+                                    mb.field(mb.scopeUse("arg"), mb.str("cv")))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -944,6 +950,41 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         messages(res),
         () -> "sourced record drop should reverse construction order at end of scope; got "
             + messages(res));
+  }
+
+  @Test
+  public void test01522RecordCastReorderDropSourceless() {
+    // Sourceless variant: record literal cast directly (no intermediate bind).
+    // The cast result is a discarded seq entry, so it drops in place. Its
+    // fields are laid out per the target's declared order (b, a), so the
+    // reverse-iterated drop fires drop_A then drop_B, before "after".
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    var sourceRecord =
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
+    var reorderedType =
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
+                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.as_(sourceRecord, reorderedType),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("drop_A", "drop_B", "after"),
+        messages(res),
+        () ->
+            "sourceless record cast should reorder to target (b, a); reverse-iterated drop"
+                + " -> drop_A then drop_B, before 'after'. Got: " + messages(res));
   }
 
   @Test
