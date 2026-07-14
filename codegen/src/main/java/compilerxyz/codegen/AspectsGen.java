@@ -537,120 +537,20 @@ public final class AspectsGen {
     var xxParam = new Param("xx", EXPR_CONTEXT);
     var locParam = new Param("loc", QEXPR_ID);
     return TList.of(
-        new AspectSpec("Identity aspect for null", "Null", 1001, TList.of()),
-        new AspectSpec(
-            "Identity aspect for record",
-            "Record",
-            1002,
-            TList.of(
-                new AspectMethod(
-                    "Get the record's field name to type mapping.",
-                    "fieldTypes",
-                    TList.of(),
-                    ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, TYPE)),
-                new AspectMethod(
-                    "",
-                    "takeFields",
-                    TList.of(xxParam, locParam, new Param("value", VALUE)),
-                    ParameterizedTypeName.get(TORDERED_MAP, CONST_KEY, EVAL_RES)))),
-        new AspectSpec(
-            "Identity aspect for dynamic number", "NumberDynamic", 1003, TList.of()),
-        new AspectSpec("Identity aspect for dynamic bool", "BoolDynamic", 1004, TList.of()),
-        new AspectSpec(
-            "Identity aspect for dynamic string", "StringDynamic", 1005, TList.of()),
-        new AspectSpec(
-            "Identity aspect for const bool",
-            "BoolConst",
-            1006,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "get",
-                    TList.of(new Param("value", VALUE)),
-                    TypeName.BOOLEAN))),
-        new AspectSpec(
-            "Identity aspect for const number",
-            "NumberConst",
-            1008,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "get",
-                    TList.of(new Param("value", VALUE)),
-                    TypeName.DOUBLE))),
-        new AspectSpec(
-            "Identity aspect for const str",
-            "StringConst",
-            1009,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "get",
-                    TList.of(new Param("value", VALUE)),
-                    ClassName.get(String.class)))),
-        new AspectSpec(
-            "Converts a known type Value into a type rust value",
-            "Type",
-            1010,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "type",
-                    TList.of(new Param("value", VALUE)),
-                    TYPE))),
-        new AspectSpec(
-            "Identity aspect for dynamic list", "ListDynamic", 1011, TList.of()),
-        new AspectSpec(
-            "Marker aspect implemented by unboxed primitive dynamic types (e.g."
-                + " TypeNumberDynamic, TypeBoolDynamic) to point to their JVM boxed"
-                + " counterpart. Container constructors (list, map, tuple) call this at"
-                + " type-construction time to substitute the boxed element type, so that"
-                + " values flowing through Object-shaped containers are typed as boxed"
-                + " and go through the normal typecheck-convert path (which emits the"
-                + " actual {@code valueOf} via the box type's {@code typeCastFrom}).",
-            "DynamicBoxed",
-            1033,
-            TList.of(
-                new AspectMethod(
-                    "Returns the JVM boxed counterpart of this unboxed primitive type.",
-                    "boxedForm",
-                    TList.of(),
-                    TYPE))),
-        new AspectSpec(
-            "Marker aspect implemented by JVM boxed dynamic types (e.g."
-                + " TypeNumberDynamicBox, TypeBoolDynamicBox) to point to their unboxed"
-                + " primitive counterpart. Used by iteration sites that want to load"
-                + " and unbox to the primitive form.",
-            "DynamicUnboxed",
-            1034,
-            TList.of(
-                new AspectMethod(
-                    "Returns the unboxed primitive counterpart of this boxed type.",
-                    "unboxedForm",
-                    TList.of(),
-                    TYPE))),
-        new AspectSpec(
-            "Identity aspect for dynamic map",
-            "MapDynamic",
-            1012,
-            TList.of(
-                new AspectMethod("", "keyType", TList.of(), TYPE),
-                new AspectMethod("", "valueType", TList.of(), TYPE))),
-        new AspectSpec(
-            "Identity aspect for tuple",
-            "Tuple",
-            1013,
-            TList.of(
-                new AspectMethod(
-                    "Get the types of elements",
-                    "elementTypes",
-                    TList.of(),
-                    ParameterizedTypeName.get(TLIST, TYPE)),
-                new AspectMethod(
-                    "",
-                    "takeElements",
-                    TList.of(xxParam, locParam, new Param("value", VALUE)),
-                    ParameterizedTypeName.get(TLIST, EVAL_RES)))),
+        // AspectNull (id 1001) migrated: scanned from handwritten/AspectNull.java
+        // AspectRecord (id 1002) migrated: scanned from handwritten/AspectRecord.java
+        // AspectNumberDynamic (id 1003) migrated: scanned from handwritten/AspectNumberDynamic.java
+        // AspectBoolDynamic (id 1004) migrated: scanned from handwritten/AspectBoolDynamic.java
+        // AspectStringDynamic (id 1005) migrated: scanned from handwritten/AspectStringDynamic.java
+        // AspectBoolConst (id 1006) migrated: scanned from handwritten/AspectBoolConst.java
+        // AspectNumberConst (id 1008) migrated: scanned from handwritten/AspectNumberConst.java
+        // AspectStringConst (id 1009) migrated: scanned from handwritten/AspectStringConst.java
+        // AspectType (id 1010) migrated: scanned from handwritten/AspectType.java
+        // AspectListDynamic (id 1011) migrated: scanned from handwritten/AspectListDynamic.java
+        // AspectDynamicBoxed (id 1033) migrated: scanned from handwritten/AspectDynamicBoxed.java
+        // AspectDynamicUnboxed (id 1034) migrated: scanned from handwritten/AspectDynamicUnboxed.java
+        // AspectMapDynamic (id 1012) migrated: scanned from handwritten/AspectMapDynamic.java
+        // AspectTuple (id 1013) migrated: scanned from handwritten/AspectTuple.java
         new AspectSpec(
             "Identity aspect for union",
             "Union",
@@ -671,121 +571,13 @@ public final class AspectsGen {
                     ParameterizedTypeName.get(
                         TLIST,
                         ClassName.get(GEN_PACKAGE, "AspectUnion", "Variant"))))),
-        new AspectSpec(
-            "Allows field expressions to work on the value of this type",
-            "Field",
-            1015,
-            TList.of(
-                new AspectMethod(
-                    "Return a value representing the access of this field. Error if the field"
-                        + " doesn't exist. Emits only field-access code; sibling-field drop policy"
-                        + " lives in {@link AspectDropDynamic#drop} for the base type.",
-                    "field",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("self_", CODE_VALUE),
-                        new Param("key", CODE_VALUE)),
-                    EVAL_RES),
-                new AspectMethod(
-                    "Same as {@code field} but return a None if the field doesn't exist.",
-                    "typeOpt",
-                    TList.of(xxParam, new Param("key", CONST_KEY)),
-                    OPT_TYPE),
-                new AspectMethod(
-                    "Enumerate the known field keys on this type. Used to identify sibling fields"
-                        + " whose values need to be dropped when one field is extracted. Return"
-                        + " empty if the type does not own its fields (e.g. records that borrow).",
-                    "keys",
-                    TList.of(xxParam),
-                    ParameterizedTypeName.get(TLIST, CONST_KEY)))),
-        new AspectSpec(
-            "Allows the value of this type to be called (as a function)",
-            "Function",
-            1116,
-            TList.of(
-                new AspectMethod(
-                    "Make a call using the function referred to by the value.",
-                    "call",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("self_", CODE_VALUE),
-                        new Param("argument", CODE_VALUE)),
-                    EVAL_RES),
-                new AspectMethod(
-                    "Returns the declared exception type of this function, or None if not"
-                        + " declared.",
-                    "exceptionType",
-                    TList.of(),
-                    OPT_TYPE))),
-        new AspectSpec(
-            "Allows the value to be assigned new data (mutated).",
-            "Set",
-            1017,
-            TList.of(
-                new AspectMethod(
-                    "Mutate the value with the data from a new value.",
-                    "set",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("self_", CODE_VALUE),
-                        new Param("value", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "",
-            "OperatorAdd",
-            1018,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "add",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("base", CODE_VALUE),
-                        new Param("reference", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "",
-            "OperatorEq",
-            1019,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "eq",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("base", CODE_VALUE),
-                        new Param("reference", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "",
-            "OperatorLt",
-            1020,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "lt",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("base", CODE_VALUE),
-                        new Param("reference", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Creates bindings for pre-existing values. Namely function arguments and global"
-                + " scope values that were externally injected.",
-            "InitialBind",
-            1021,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "initialBind",
-                    TList.of(new Param("dynamicKey", BINDING_ID)),
-                    BINDING))),
+        // AspectField (id 1015) migrated: scanned from handwritten/AspectField.java
+        // AspectFunction (id 1116) migrated: scanned from handwritten/AspectFunction.java
+        // AspectSet (id 1017) migrated: scanned from handwritten/AspectSet.java
+        // AspectOperatorAdd (id 1018) migrated: scanned from handwritten/AspectOperatorAdd.java
+        // AspectOperatorEq (id 1019) migrated: scanned from handwritten/AspectOperatorEq.java
+        // AspectOperatorLt (id 1020) migrated: scanned from handwritten/AspectOperatorLt.java
+        // AspectInitialBind (id 1021) migrated: scanned from handwritten/AspectInitialBind.java
         new AspectSpec(
             "Creates code to bind a value, and returns the binding (binding).",
             "Bind",
@@ -802,215 +594,22 @@ public final class AspectsGen {
                     TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
                     ParameterizedTypeName.get(
                         ERESULT,
-                        ClassName.get(GEN_PACKAGE, "AspectBind", "BindResult"))))),
-        new AspectSpec(
-            "Creates code to prepare a value for binding, used by the Dynamic target (call tree"
-                + " rooted in Bind). This may be called recursively, e.g. in records, to prepare"
-                + " elements. If None, the value does not require dynamic binding - this is used"
-                + " by records/tuples to determine if the containing record/tuple also needs"
-                + " dynamic binding.",
-            "BindDynamic",
-            1023,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "bindDynamic",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(
-                        ERESULT, ParameterizedTypeName.get(OPT, TARGET_BIND_SUB))))),
-        new AspectSpec(
-            "Used to ensure a value is fully dynamic (turns const values into dynamic, does"
-                + " nothing for dynamic values).",
-            "ConsumeDynamic",
-            1024,
-            TList.of(
-                new AspectMethod(
-                    "Convert the value to dynamic and return the code that this produced.",
-                    "toDynamic",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE_DYNAMIC)),
-                new AspectMethod(
-                    "The JVM data descriptor for the value {@code toDynamic}'s produced code"
-                        + " leaves on the stack. Primitive types (D, I, J, Z, F) as well as"
-                        + " reference types (L…;) are both valid; drives field descriptors"
-                        + " and CHECKCAST decisions. The presence of this aspect already"
-                        + " implies the type has a host stack representation, so this is"
-                        + " infallible.",
-                    "jvmClass",
-                    TList.of(xxParam),
-                    ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor")))),
-        // AspectStackValueDynamic (id 1025) migrated: scanned from
-        // runtime/src/main/java/compilerxyz/handwritten/AspectStackValueDynamic.java
-        new AspectSpec(
-            "Called on imported values to convert them from const to dynamic form when"
-                + " appropriate (e.g. instances of source data/union types). Record/tuple types"
-                + " apply PostDeserialize to their elements recursively. Default: no-op.",
-            "PostDeserialize",
-            1031,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "postDeserialize",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE_VALUE)))),
-        new AspectSpec(
-            "Called to turn a dynamic host-runtime value back into a typed {@link Value}. Mirrors"
-                + " Rust's {@code AspectLift::lift(&self, &ExprContext, &v8::PinScope,"
-                + " v8::Local<v8::Value>) -> Result<Rc<dyn Value>, String>}, with the v8"
-                + " scope/value pair replaced by the boxed Java object the bytecode produced.",
-            "Lift",
-            1026,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "lift",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param(
-                            "externalHostValue", ClassName.get(Object.class), true)),
-                    ParameterizedTypeName.get(ERESULT, VALUE)))),
-        new AspectSpec(
-            "Allows foreach expressions to be run on the value.",
-            "Iterable",
-            1027,
-            TList.of(
-                new AspectMethod("", "elementType", TList.of(), TYPE),
-                new AspectMethod(
-                    "",
-                    "foreach",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("base", CODE_VALUE),
-                        new Param("elementKey", BINDING_ID),
-                        new Param("body", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Allows a value to be exported from a module.",
-            "Artifact",
-            1028,
-            TList.of(
-                new AspectMethod(
-                    "Returns the exporter", "exporter", TList.of(), ARTIFACT_EXPORTER))),
-        new AspectSpec(
-            "Allows a value to emit cleanup (drop) code when its scope ends, when it is"
-                + " discarded as a Seq entry, or when a sibling field is not extracted."
-                + " Implementations typically delegate to {@link"
-                + " compilerxyz.eval.dynamic.DynUtil#dropDefault} which emits a POP when the"
-                + " value's source root is a stack Expr; types with additional cleanup"
-                + " prepend that before delegating.",
-            "DropDynamic",
-            1032,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "drop",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE)))),
-        new AspectSpec(
-            "Light drop for values that only need to clean up their stack footprint (POP)"
-                + " when discarded — no per-type cleanup. Implementers typically delegate"
-                + " to {@link compilerxyz.eval.dynamic.DynUtil#dropDefault}.",
-            "DropDynamicLight",
-            1035,
-            TList.of(
-                new AspectMethod(
-                    "Emit the drop code for this value.",
-                    "dropDynamicLight",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    ParameterizedTypeName.get(ERESULT, CODE)))),
-        new AspectSpec(
-            "Called on the type of a field's value to produce the CodeValue that a field"
-                + " expression evaluates to when the base is const. Implementations typically"
-                + " return the child CodeValue unmodified.",
-            "FieldUseConst",
-            1036,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "fieldUseConst",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Called on the type of a field's value to produce the CodeValue that a field"
-                + " expression evaluates to when the base is dynamic. Receives the base's"
-                + " Source and the JVM field name owned by the parent's runtime class."
-                + " Implementations typically delegate to {@link"
-                + " compilerxyz.eval.dynamic.DynUtil#fieldUseDefaultDynamic} to wrap this"
-                + " type as a ValueDynamic backed by {@link ValueDynamic.Source.Field}.",
-            "FieldUseDynamic",
-            1037,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "fieldUseDynamic",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("baseSource", VALUE_DYNAMIC_SOURCE),
-                        new Param("javaFieldName", ClassName.get(String.class))),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Called on the type of an element to produce the CodeValue that an element"
-                + " expression evaluates to when the container is const. Implementations"
-                + " typically return the child CodeValue unmodified.",
-            "ElementUseConst",
-            1038,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "elementUseConst",
-                    TList.of(xxParam, locParam, new Param("cv", CODE_VALUE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Called on the type of an element to produce the CodeValue that an element"
-                + " expression evaluates to when the container is dynamic. Receives the fully"
-                + " constructed element Source and the carry Code (load-base bytecode)."
-                + " Implementations typically delegate to {@link"
-                + " compilerxyz.eval.dynamic.DynUtil#elementUseDefaultDynamic} to wrap this"
-                + " type as a ValueDynamic with the given source.",
-            "ElementUseDynamic",
-            1039,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "elementUseDynamic",
-                    TList.of(
-                        xxParam,
-                        locParam,
-                        new Param("elementSource", VALUE_DYNAMIC_SOURCE),
-                        new Param("carry", CODE)),
-                    EVAL_RES))),
-        new AspectSpec(
-            "Creates the loop-variable Binding for an element read out of a homogeneous"
-                + " collection (foreach). Same shape as {@link AspectInitialBind} but"
-                + " specifically for the element-as-loop-variable case; the returned"
-                + " Binding drives {@code bindingUse_} for references to the loop"
-                + " variable inside the foreach body.",
-            "ElementUseDynamicBind",
-            1040,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "elementUseDynamicBind",
-                    TList.of(new Param("dynamicKey", BINDING_ID)),
-                    BINDING))),
-        new AspectSpec(
-            "Identity aspect for aspects (types representing values holding aspect"
-                + " implementations).",
-            "Aspect",
-            1029,
-            TList.of(
-                new AspectMethod(
-                    "",
-                    "getUnique",
-                    TList.of(new Param("value", SOURCE_INTERFACE_DATA)),
-                    UNIQUE),
-                new AspectMethod(
-                    "",
-                    "getIfaceData",
-                    TList.of(new Param("value", SOURCE_INTERFACE_DATA)),
-                    SOURCE_INTERFACE_DATA))));
+                        ClassName.get(GEN_PACKAGE, "AspectBind", "BindResult")))))
+        // AspectBindDynamic (id 1023) migrated: scanned from handwritten/AspectBindDynamic.java
+        // AspectConsumeDynamic (id 1024) migrated: scanned from handwritten/AspectConsumeDynamic.java
+        // AspectStackValueDynamic (id 1025) migrated: scanned from handwritten/AspectStackValueDynamic.java
+        // AspectPostDeserialize (id 1031) migrated: scanned from handwritten/AspectPostDeserialize.java
+        // AspectLift (id 1026) migrated: scanned from handwritten/AspectLift.java
+        // AspectIterable (id 1027) migrated: scanned from handwritten/AspectIterable.java
+        // AspectArtifact (id 1028) migrated: scanned from handwritten/AspectArtifact.java
+        // AspectDropDynamic (id 1032) migrated: scanned from handwritten/AspectDropDynamic.java
+        // AspectDropDynamicLight (id 1035) migrated: scanned from handwritten/AspectDropDynamicLight.java
+        // AspectFieldUseConst (id 1036) migrated: scanned from handwritten/AspectFieldUseConst.java
+        // AspectFieldUseDynamic (id 1037) migrated: scanned from handwritten/AspectFieldUseDynamic.java
+        // AspectElementUseConst (id 1038) migrated: scanned from handwritten/AspectElementUseConst.java
+        // AspectElementUseDynamic (id 1039) migrated: scanned from handwritten/AspectElementUseDynamic.java
+        // AspectElementUseDynamicBind (id 1040) migrated: scanned from handwritten/AspectElementUseDynamicBind.java
+        // AspectAspect (id 1029) migrated: scanned from handwritten/AspectAspect.java
+        );
   }
 }
