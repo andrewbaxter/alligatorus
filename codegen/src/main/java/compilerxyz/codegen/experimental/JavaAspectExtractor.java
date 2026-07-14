@@ -107,6 +107,7 @@ public final class JavaAspectExtractor {
     }
 
     var typeIdConst = attrs.getOrDefault("typeIdConstant", "");
+    var registerInScope = !"false".equals(attrs.getOrDefault("registerInScope", "true"));
     return new InterfaceSpec(
         name,
         Integer.parseInt(attrs.get("uniqueId")),
@@ -114,7 +115,7 @@ public final class JavaAspectExtractor {
         attrs.get("fieldPrefix"),
         simpleName,
         null,
-        true,
+        registerInScope,
         null,
         typeIdConst.isEmpty() ? null : typeIdConst,
         pkg + "." + simpleName,
@@ -187,9 +188,21 @@ public final class JavaAspectExtractor {
       "compilerxyz.util.TMap",
           ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
 
+  private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = Map.of(
+      "java.lang.String",
+          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"));
+
   private static TypeRef typeRefOf(Type t, TMap<String, String> imports) {
     var tn = typeNameOf(t, imports);
-    if (tn instanceof ClassName cn) return TypeRef.leaf(cn);
+    if (tn instanceof ClassName cn) {
+      var descriptor = VALUE_CLASS_DESCRIPTORS.get(cn.canonicalName());
+      if (descriptor != null) return TypeRef.leaf(descriptor);
+      try {
+        return TypeRef.leaf(cn);
+      } catch (IllegalArgumentException e) {
+        // Not in DynamicTypes' leaf table — fall through to opaque.
+      }
+    }
     if (tn instanceof ParameterizedTypeName pt) {
       var wrapper = COMPOSITE_WRAPPERS.get(pt.rawType.canonicalName());
       if (wrapper != null && pt.typeArguments.size() == 1
@@ -350,7 +363,21 @@ public final class JavaAspectExtractor {
 
   private static ClassName classNameOf(String simple, TMap<String, String> imports) {
     var fqn = imports.getOrNull(simple);
-    if (fqn == null) fqn = "java.lang." + simple;
+    if (fqn == null) {
+      // Fall back to well-known package for same-package references in handwritten runtime code.
+      // Types in compilerxyz.eval, compilerxyz.gen, compilerxyz.util rarely need explicit imports
+      // when the reference is in the same package. Try each.
+      for (var pkg : new String[]{"compilerxyz.eval", "compilerxyz.gen", "compilerxyz.util"}) {
+        try {
+          var cls = Class.forName(pkg + "." + simple);
+          fqn = cls.getName();
+          break;
+        } catch (ClassNotFoundException e) {
+          // continue
+        }
+      }
+      if (fqn == null) fqn = "java.lang." + simple;
+    }
     var idx = fqn.lastIndexOf('.');
     return ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
   }
