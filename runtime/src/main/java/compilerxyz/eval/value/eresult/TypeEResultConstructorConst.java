@@ -32,7 +32,7 @@ public record TypeEResultConstructorConst()
         ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return GenTypeIds.TYPE_ERESULT_CONSTRUCTOR_CONST_TYPE_ID;
   }
 

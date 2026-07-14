@@ -34,7 +34,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     var argType = method.argType;
     var retType = method.retType;
     if (argType == null || retType == null) {
@@ -45,7 +45,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     }
     return new TypeId.Composite(
         GenTypeIds.TYPE_INTERFACE_METHOD_DYNAMIC_TYPE_ID,
-        TList.of(argType.typeId(), retType.typeId()));
+        TList.of(argType.hasTypeIdTypeId(), retType.hasTypeIdTypeId()));
   }
 
   @Override

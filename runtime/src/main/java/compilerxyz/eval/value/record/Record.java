@@ -958,8 +958,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         (a, b) -> {
           int c =
               TypeId.CANONICAL_ORDER.compare(
-                  recordFieldType(fields.getOrNull(a)).typeId(),
-                  recordFieldType(fields.getOrNull(b)).typeId());
+                  recordFieldType(fields.getOrNull(a)).hasTypeIdTypeId(),
+                  recordFieldType(fields.getOrNull(b)).hasTypeIdTypeId());
           if (c != 0) return c;
           return ConstKey.CANONICAL_ORDER.compare(a, b);
         });
@@ -1069,7 +1069,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   private static boolean sameTypeIdList(TList<Type> a, TList<Type> b) {
     if (a.size() != b.size()) return false;
     for (int i = 0; i < a.size(); i++) {
-      if (!a.get(i).typeId().equals(b.get(i).typeId())) return false;
+      if (!a.get(i).hasTypeIdTypeId().equals(b.get(i).hasTypeIdTypeId())) return false;
     }
     return true;
   }
@@ -1097,8 +1097,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         (a, b) -> {
           int c =
               TypeId.CANONICAL_ORDER.compare(
-                  recordFieldType(a.getValue()).typeId(),
-                  recordFieldType(b.getValue()).typeId());
+                  recordFieldType(a.getValue()).hasTypeIdTypeId(),
+                  recordFieldType(b.getValue()).hasTypeIdTypeId());
           if (c != 0) return c;
           return ConstKey.CANONICAL_ORDER.compare(a.getKey(), b.getKey());
         });
@@ -1208,7 +1208,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       sorted.addAll(entryLifts);
       sorted.sort(
           (a, b) -> {
-            int c = TypeId.CANONICAL_ORDER.compare(a.type().typeId(), b.type().typeId());
+            int c = TypeId.CANONICAL_ORDER.compare(a.type().hasTypeIdTypeId(), b.type().hasTypeIdTypeId());
             if (c != 0) return c;
             return ConstKey.CANONICAL_ORDER.compare(a.key(), b.key());
           });
@@ -1279,10 +1279,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     var ids = new TList<TypeId>(fields.size());
     for (var entry : fields.entrySet()) {
-      ids.add(recordFieldType(entry.getValue()).typeId());
+      ids.add(recordFieldType(entry.getValue()).hasTypeIdTypeId());
     }
     ids.sort(TypeId.CANONICAL_ORDER);
     return new TypeId.Composite(GenTypeIds.RECORD_TYPE_ID, ids);

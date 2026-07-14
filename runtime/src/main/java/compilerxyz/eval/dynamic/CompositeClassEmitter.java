@@ -22,7 +22,7 @@ public final class CompositeClassEmitter {
       this.typeIds = new TypeId[sortedTypes.size()];
       int h = 1;
       for (int i = 0; i < sortedTypes.size(); i++) {
-        this.typeIds[i] = sortedTypes.get(i).typeId();
+        this.typeIds[i] = sortedTypes.get(i).hasTypeIdTypeId();
         h = 31 * h + this.typeIds[i].hashCode();
       }
       this.hash = h;

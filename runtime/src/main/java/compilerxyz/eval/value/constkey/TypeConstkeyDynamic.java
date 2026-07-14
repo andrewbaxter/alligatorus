@@ -39,7 +39,7 @@ public record TypeConstkeyDynamic()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID; }
 
 
   @Override

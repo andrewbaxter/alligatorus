@@ -32,7 +32,7 @@ public record TypeListConstructorConst()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_LIST_CONSTRUCTOR_CONST_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_LIST_CONSTRUCTOR_CONST_TYPE_ID; }
 
 
   @Override

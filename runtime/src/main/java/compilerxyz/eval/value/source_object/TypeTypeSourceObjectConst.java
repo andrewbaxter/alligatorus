@@ -69,7 +69,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity));
   }
 

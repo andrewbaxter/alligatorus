@@ -39,7 +39,7 @@ public record TypeListNewDynamic(Type elementType)
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
 
 
   @Override

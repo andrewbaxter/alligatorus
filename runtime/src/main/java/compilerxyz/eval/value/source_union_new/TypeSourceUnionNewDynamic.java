@@ -47,7 +47,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
         GenTypeIds.TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID,
         TList.of(

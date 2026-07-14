@@ -50,7 +50,7 @@ public record TypeMethodDynamic(
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, TList.of(receiver.typeId(), arg.typeId(), ret.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, TList.of(receiver.hasTypeIdTypeId(), arg.hasTypeIdTypeId(), ret.hasTypeIdTypeId())); }
 
 
   @Override

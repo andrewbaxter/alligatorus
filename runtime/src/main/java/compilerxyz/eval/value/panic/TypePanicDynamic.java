@@ -38,7 +38,7 @@ public record TypePanicDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_PANIC_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_PANIC_DYNAMIC_TYPE_ID; }
 
 
   @Override

@@ -32,6 +32,8 @@ public final class SourceObjectEmitter {
       JavaInternalName.of("compilerxyz/eval/QExprId");
   private static final JavaInternalName INTNAME_TYPE =
       JavaInternalName.of("compilerxyz/eval/Type");
+  private static final JavaInternalName INTNAME_TYPE_ID =
+      JavaInternalName.of("compilerxyz/eval/TypeId");
   private static final JavaInternalName INTNAME_CODE_VALUE =
       JavaInternalName.of("compilerxyz/eval/CodeValue");
   private static final JavaInternalName INTNAME_CODE =
@@ -79,6 +81,10 @@ public final class SourceObjectEmitter {
       JavaDataDescriptor.fromInternalName(INTNAME_QEXPR_ID);
   private static final JavaDataDescriptor DESC_TYPE =
       JavaDataDescriptor.fromInternalName(INTNAME_TYPE);
+  private static final JavaDataDescriptor DESC_TYPE_ID =
+      JavaDataDescriptor.fromInternalName(INTNAME_TYPE_ID);
+  private static final JavaMethodDescriptor MDESC_HAS_TYPE_ID_TYPE_ID =
+      JavaMethodDescriptor.fromParts(DESC_TYPE_ID);
   private static final JavaDataDescriptor DESC_CODE_VALUE =
       JavaDataDescriptor.fromInternalName(INTNAME_CODE_VALUE);
   private static final JavaDataDescriptor DESC_CODE =
@@ -173,6 +179,8 @@ public final class SourceObjectEmitter {
   public static final String SOURCE_KEY_MAP_FIELD = "_sourceKeyMap";
 
   public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
+
+  public static final String TYPE_ID_FIELD = "_typeId";
 
   public static EmittedSourceObject emit(
       compilerxyz.eval.ExprContext xx,
@@ -304,6 +312,19 @@ public final class SourceObjectEmitter {
     }
     staticFieldValues.put(SOURCE_OBJECT_DATA_FIELD, data);
 
+    if (allFieldNames.add(TYPE_ID_FIELD)) {
+      cw.visitField(
+              Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+              TYPE_ID_FIELD,
+              DESC_TYPE_ID.value(),
+              null,
+              null)
+          .visitEnd();
+    }
+    staticFieldValues.put(TYPE_ID_FIELD, data.hasTypeIdTypeId());
+
+    emitHasTypeIdTypeIdMethod(cw, internalName);
+
     cw.visitField(
             Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
             EvalRootEmitter.EXPR_CONTEXT_FIELD,
@@ -417,6 +438,21 @@ public final class SourceObjectEmitter {
     target.emit(seq, ctx, bodyCode);
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
     JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
+  }
+
+  private static void emitHasTypeIdTypeIdMethod(
+      ClassWriter cw, JavaInternalName internalName) {
+    var mv = cw.visitMethod(
+        Opcodes.ACC_PUBLIC,
+        "hasTypeIdTypeId",
+        MDESC_HAS_TYPE_ID_TYPE_ID.value(),
+        null,
+        null);
+    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
+    var seq = new JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.accessStaticField(loc, internalName, TYPE_ID_FIELD, DESC_TYPE_ID));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
+    JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
   private static int slotWidth(JavaDataDescriptor d) {

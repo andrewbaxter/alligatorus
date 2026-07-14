@@ -63,7 +63,7 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, TList.of(elementType.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
 
 
   @Override

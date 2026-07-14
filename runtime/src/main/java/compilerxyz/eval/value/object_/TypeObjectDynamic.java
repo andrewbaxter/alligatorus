@@ -132,6 +132,11 @@ public record TypeObjectDynamic(
   }
 
   @Override
+  public TypeId hasTypeIdTypeId() {
+    return typeId;
+  }
+
+  @Override
   public Type valueType() {
     return this;
   }

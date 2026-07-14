@@ -53,7 +53,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     var setId = data.setId;
     if (setId == null) {
       throw new IllegalStateException(

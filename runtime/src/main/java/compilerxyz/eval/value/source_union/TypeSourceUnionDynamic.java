@@ -100,7 +100,7 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
   }
 

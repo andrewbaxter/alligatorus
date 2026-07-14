@@ -23,7 +23,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, TList.of(keyType.hasTypeIdTypeId(), valueType.hasTypeIdTypeId())); }
 
 
   @Override

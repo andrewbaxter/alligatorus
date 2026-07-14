@@ -63,7 +63,7 @@ public record TypeUnique()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_UNIQUE_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_UNIQUE_TYPE_ID; }
 
 
   @Override

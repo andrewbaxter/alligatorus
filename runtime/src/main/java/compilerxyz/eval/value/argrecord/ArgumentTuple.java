@@ -34,9 +34,9 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     var ids = new TList<TypeId>(elementTypes.size());
-    for (var t : elementTypes) ids.add(t.typeId());
+    for (var t : elementTypes) ids.add(t.hasTypeIdTypeId());
     return new TypeId.Composite(GenTypeIds.ARGUMENT_TUPLE_TYPE_ID, ids);
   }
 

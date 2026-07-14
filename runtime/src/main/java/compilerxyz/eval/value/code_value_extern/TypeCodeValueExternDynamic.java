@@ -41,7 +41,7 @@ public record TypeCodeValueExternDynamic()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID; }
 
 
   @Override

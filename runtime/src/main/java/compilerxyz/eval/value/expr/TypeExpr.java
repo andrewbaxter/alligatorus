@@ -57,7 +57,7 @@ public record TypeExpr()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_EXPR_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_EXPR_TYPE_ID; }
 
 
   @Override

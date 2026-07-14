@@ -54,7 +54,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
         GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
         compilerxyz.util.TList.of(

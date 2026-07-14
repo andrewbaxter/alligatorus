@@ -19,7 +19,7 @@ public final class CompositeSlotSort {
         (a, b) -> {
           int c =
               TypeId.CANONICAL_ORDER.compare(
-                  entries.getOrNull(a).typeId(), entries.getOrNull(b).typeId());
+                  entries.getOrNull(a).hasTypeIdTypeId(), entries.getOrNull(b).hasTypeIdTypeId());
           if (c != 0) return c;
           return tiebreaker.compare(a, b);
         });

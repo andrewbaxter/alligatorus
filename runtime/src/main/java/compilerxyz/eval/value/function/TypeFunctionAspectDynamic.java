@@ -50,7 +50,7 @@ public record TypeFunctionAspectDynamic()
           JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class));
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_FUNCTION_ASPECT_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_FUNCTION_ASPECT_DYNAMIC_TYPE_ID; }
 
 
   @Override

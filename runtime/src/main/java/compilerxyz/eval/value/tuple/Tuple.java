@@ -1114,7 +1114,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     var ids = new TList<TypeId>(elements.size());
     for (var e : elements) {
       Type t = switch (e) {
@@ -1128,7 +1128,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           yield (Type) new Tuple(Opt.none(), new TList<>());
         }
       };
-      ids.add(t.typeId());
+      ids.add(t.hasTypeIdTypeId());
     }
     ids.sort(TypeId.CANONICAL_ORDER);
     return new TypeId.Composite(GenTypeIds.TUPLE_TYPE_ID, ids);

@@ -27,7 +27,7 @@ public record TypeFunctionCastValueDynamic()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID; }
 
 
   @Override

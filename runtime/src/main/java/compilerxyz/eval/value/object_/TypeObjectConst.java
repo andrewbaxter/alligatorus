@@ -88,6 +88,11 @@ public record TypeObjectConst(
   }
 
   @Override
+  public TypeId hasTypeIdTypeId() {
+    return typeId;
+  }
+
+  @Override
   public Type valueType() {
     return this;
   }

@@ -36,10 +36,10 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
         ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
         GenTypeIds.TYPE_ERESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID,
-        TList.of(elementType.typeId()));
+        TList.of(elementType.hasTypeIdTypeId()));
   }
 
   @Override

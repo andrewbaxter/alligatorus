@@ -57,7 +57,7 @@ public record TypeNumberDynamicBox()
         AspectStackValueDynamic {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_NUMBER_DYNAMIC_BOX_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NUMBER_DYNAMIC_BOX_TYPE_ID; }
 
 
   @Override

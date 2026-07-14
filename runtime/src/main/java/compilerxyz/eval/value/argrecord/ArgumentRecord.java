@@ -94,7 +94,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
   @Override
-  public compilerxyz.eval.TypeId typeId() {
+  public compilerxyz.eval.TypeId hasTypeIdTypeId() {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeId not provided");
   }
 }

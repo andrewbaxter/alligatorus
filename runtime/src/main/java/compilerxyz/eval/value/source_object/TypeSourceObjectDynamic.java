@@ -137,7 +137,7 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
   }
 

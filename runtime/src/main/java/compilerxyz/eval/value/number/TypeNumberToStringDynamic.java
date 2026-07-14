@@ -47,7 +47,7 @@ public record TypeNumberToStringDynamic()
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return GenTypeIds.TYPE_NUMBER_TO_STRING_DYNAMIC_TYPE_ID;
   }
 

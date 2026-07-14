@@ -89,7 +89,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, TList.of(keyType.typeId(), valueType.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, TList.of(keyType.hasTypeIdTypeId(), valueType.hasTypeIdTypeId())); }
 
 
   @Override

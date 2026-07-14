@@ -23,7 +23,7 @@ public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID; }
 
 
   @Override

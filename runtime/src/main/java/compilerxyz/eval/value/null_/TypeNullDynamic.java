@@ -57,7 +57,7 @@ public record TypeNullDynamic()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_NULL_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NULL_DYNAMIC_TYPE_ID; }
 
 
   @Override

@@ -46,7 +46,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
         GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
         TList.of(new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity))));

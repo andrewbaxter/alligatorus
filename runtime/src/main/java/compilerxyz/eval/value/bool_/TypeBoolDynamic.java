@@ -63,7 +63,7 @@ public record TypeBoolDynamic()
         ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_BOOL_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_BOOL_DYNAMIC_TYPE_ID; }
 
 
   @Override

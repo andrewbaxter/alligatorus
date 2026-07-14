@@ -22,7 +22,6 @@ import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
-import compilerxyz.eval.value.typeid.TypeTypeIdDynamic;
 import compilerxyz.eval.value.unique.TypeUnique;
 import compilerxyz.gen.GenIdentities;
 import compilerxyz.gen.GenTypeIds;
@@ -31,7 +30,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 
-public interface Type extends Value {
+public interface Type extends Value, HasTypeId {
 
   static Type dynamicType() {
     return TypeDynamicHolder.INSTANCE;
@@ -78,7 +77,6 @@ public interface Type extends Value {
       var eresultDesc = JavaDataDescriptor.fromClass(EResult.class);
       var boolDesc = JavaDataDescriptor.DESC_BOOL;
       var stringDesc = JavaDataDescriptor.fromClass(String.class);
-      var typeIdDesc = JavaDataDescriptor.fromClass(TypeId.class);
       var uniqueDesc = JavaDataDescriptor.fromClass(Unique.class);
       var optDesc = JavaDataDescriptor.fromClass(Opt.class);
 
@@ -169,20 +167,6 @@ public interface Type extends Value {
             false)));
       }
 
-      // typeId() -> TypeId
-      {
-        var argTuple = new Tuple(Opt.none(), TList.<TupleElement>of());
-        methods.add(new ObjectMethod("id", new TypeMethodDynamic(
-            instance,
-            argTuple,
-            new TypeTypeIdDynamic(),
-            typeIn,
-            "typeId",
-            JavaMethodDescriptor.fromParts(typeIdDesc),
-            true,
-            false)));
-      }
-
       // typeAspect(Unique) -> Opt<Aspect>; xx from ExprContext static field
       methods.add(new ObjectMethod("aspect", new TypeMethodDynamic(
           instance,
@@ -199,8 +183,6 @@ public interface Type extends Value {
   }
 
   String typeDesc();
-
-  TypeId typeId();
 
   Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 

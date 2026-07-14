@@ -25,7 +25,7 @@ public record TypeTypeIdDynamic()
     implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return GenTypeIds.TYPE_TYPE_ID_DYNAMIC_TYPE_ID;
   }
 

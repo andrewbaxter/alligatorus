@@ -68,7 +68,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
         ExporterAny {
 
   @Override
-  public TypeId typeId() {
+  public TypeId hasTypeIdTypeId() {
     return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
   }
 

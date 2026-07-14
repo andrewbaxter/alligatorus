@@ -39,7 +39,7 @@ public record TypeNullConst()
         Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectNull, ExporterAny {
 
   @Override
-  public TypeId typeId() { return GenTypeIds.TYPE_NULL_CONST_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NULL_CONST_TYPE_ID; }
 
 
   @Override

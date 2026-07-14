@@ -60,7 +60,7 @@ public record TypeFunctionDynamic(
   }
 
   @Override
-  public TypeId typeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.typeId(), ret.typeId())); }
+  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.hasTypeIdTypeId(), ret.hasTypeIdTypeId())); }
 
 
   public JavaMethodDescriptor descriptor(ExprContext xx) {

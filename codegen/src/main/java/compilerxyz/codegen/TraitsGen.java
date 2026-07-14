@@ -56,8 +56,6 @@ public final class TraitsGen {
             TList.of(new Method("type", any, new MethodArgs(TList.of()))));
 
     var qexprIdRef = TypeRef.leaf(ClassName.get("compilerxyz.eval", "QExprId"));
-    var typeIdRef =
-        TypeRef.leaf(ClassName.get("compilerxyz.eval.value.typeid", "TypeTypeIdDynamic"));
     var typeSpec =
         new InterfaceSpec(
             "type",
@@ -105,7 +103,6 @@ public final class TraitsGen {
                             new NamedTypeRef("cv", cve),
                             new NamedTypeRef("dest_type", any)))),
                 new Method("desc", string, new MethodArgs(TList.of())),
-                new Method("id", typeIdRef, new MethodArgs(TList.of())),
                 new Method(
                     "aspect",
                     aspectOption,
