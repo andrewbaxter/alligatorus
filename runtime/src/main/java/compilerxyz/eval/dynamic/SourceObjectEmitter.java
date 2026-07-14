@@ -413,7 +413,9 @@ public final class SourceObjectEmitter {
           case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s ->
               s.value().aspectConsumeDynamicJvmClass(xx);
           case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
-              JvmConstants.DESC_OBJECT;
+              throw new IllegalStateException(
+                  "SourceObjectEmitter.emit: underlyingType " + underlyingType.typeDesc()
+                      + " does not implement AspectConsumeDynamic; cannot emit data field access");
         };
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
