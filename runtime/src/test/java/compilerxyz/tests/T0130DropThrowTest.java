@@ -947,6 +947,44 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
   }
 
   @Test
+  public void test01524RecordCastReorderDropSourced() {
+    // Sourced variant: literal -> bind -> cast -> bind again.
+    // The final `r` binding drops first at end-of-scope (LIFO). Its fields
+    // are laid out per the target type's declared order (b, a), so the
+    // reverse-iterated drop fires drop_A then drop_B. Then `src` drops in
+    // its own construction order (a, b) reversed => drop_B then drop_A.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    var sourceRecord =
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
+    var reorderedType =
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
+                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                mb.bind("src", sourceRecord),
+                mb.bind("r", mb.as_(mb.scopeUse("src"), reorderedType)),
+                mb.call(mb.log(), mb.str("after")))));
+    var res = compileOk(modules);
+    assertEquals(
+        TList.of("after", "drop_A", "drop_B", "drop_B", "drop_A"),
+        messages(res),
+        () ->
+            "record cast should reorder r's field layout to match target (b, a); reverse-drop"
+                + " -> drop_A, drop_B; then src drops in its own (a, b) reversed"
+                + " -> drop_B, drop_A. Got: " + messages(res));
+  }
+
+  @Test
   public void test01530RecordSourcelessFieldAccessFirstRuntime() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
