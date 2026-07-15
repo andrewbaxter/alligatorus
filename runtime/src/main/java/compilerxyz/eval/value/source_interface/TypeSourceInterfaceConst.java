@@ -81,6 +81,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return TypeSourceInterfaceConstMeta.INSTANCE;
   }
 
+  @compilerxyz.annotations.BuiltinTypeId(value = 7122L, name = "type_type_source_interface_const")
   static final class TypeSourceInterfaceConstMeta {
     static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
 

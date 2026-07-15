@@ -15,6 +15,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7103L, name = "type_code_dynamic")
 public sealed interface Code permits Code.None, Code.Target {
 
   record None(QExprId loc) implements Code {

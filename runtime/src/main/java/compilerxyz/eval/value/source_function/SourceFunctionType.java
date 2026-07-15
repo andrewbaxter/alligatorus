@@ -20,6 +20,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7057L, name = "type_source_function_dynamic")
 public final class SourceFunctionType {
 
   private SourceFunctionType() {}

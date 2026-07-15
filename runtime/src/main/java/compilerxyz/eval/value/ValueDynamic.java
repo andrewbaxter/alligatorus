@@ -29,6 +29,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import static compilerxyz.util.MustCast.mustCast;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7104L, name = "type_source_dynamic")
 public record ValueDynamic(Source source, Type type_) implements Value {
   @Override
   public Type valueType() {
