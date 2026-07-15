@@ -23,7 +23,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7107L, name = "type_eresult_constructor_const")
+@compilerxyz.annotations.BuiltinTypeId(7107L)
 public record TypeEResultConstructorConst()
     implements
         Type,
@@ -33,7 +33,7 @@ public record TypeEResultConstructorConst()
 
   @Override
   public TypeId hasTypeIdTypeId() {
-    return GenTypeIds.TYPE_ERESULT_CONSTRUCTOR_CONST_TYPE_ID;
+    return GenTypeIds.TYPE_E_RESULT_CONSTRUCTOR_CONST_TYPE_ID;
   }
 
   @Override
@@ -41,7 +41,7 @@ public record TypeEResultConstructorConst()
     return "eresult constructor";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_CONSTRUCTOR_CONST_TYPE_ID, "eresult_constructor_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_CONSTRUCTOR_CONST_TYPE_ID, "eresult_constructor_const");
 
   @Override
   public Type valueType() {

@@ -7,7 +7,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7011L, name = "type_any_const")
+@compilerxyz.annotations.BuiltinTypeId(7011L)
 public final class ObjectConstOfType {
 
   private ObjectConstOfType() {}
@@ -25,7 +25,7 @@ public final class ObjectConstOfType {
       var identityAspects = new TList<Unique>();
       identityAspects.add(GenIdentities.TYPE_IDENTITY);
       return new TypeObjectConst(
-          GenTypeIds.TYPE_ANY_CONST_TYPE_ID,
+          GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID,
           "type",
           Type.class,
           Opt.<Type>none(),

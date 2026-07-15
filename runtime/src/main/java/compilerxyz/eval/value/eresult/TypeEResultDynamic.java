@@ -27,7 +27,7 @@ import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7101L, name = "type_eresult_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7101L)
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,
@@ -39,7 +39,7 @@ public record TypeEResultDynamic(Type elementType)
   @Override
   public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
-        GenTypeIds.TYPE_ERESULT_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId()));
+        GenTypeIds.TYPE_E_RESULT_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId()));
   }
 
   @Override
@@ -52,7 +52,7 @@ public record TypeEResultDynamic(Type elementType)
     return "eresult(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_DYNAMIC_TYPE_ID, "eresult_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_DYNAMIC_TYPE_ID, "eresult_dynamic");
 
   @Override
   public Type valueType() {

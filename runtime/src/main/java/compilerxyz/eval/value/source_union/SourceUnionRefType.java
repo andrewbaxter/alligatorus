@@ -22,7 +22,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinIdentity(6007L)
-@compilerxyz.annotations.BuiltinTypeId(value = 7053L, name = "type_source_union_ref_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7053L)
 public final class SourceUnionRefType {
 
   private SourceUnionRefType() {}
@@ -44,7 +44,7 @@ public final class SourceUnionRefType {
             return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceUnionConst(ut)));
           };
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_UNION_REF_DYNAMIC_TYPE_ID,
+          GenTypeIds.SOURCE_UNION_REF_TYPE_TYPE_ID,
           "union_ref",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),

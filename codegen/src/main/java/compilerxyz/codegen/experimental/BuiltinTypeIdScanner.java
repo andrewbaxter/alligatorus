@@ -52,30 +52,13 @@ public final class BuiltinTypeIdScanner {
       }
     }
     if (ann != null) {
-      var overrideName = readNameOverride(ann);
-      var name = overrideName != null && !overrideName.isEmpty()
-          ? overrideName
-          : snakeCase(t.getNameAsString());
-      out.add(new TypeIdSpec(name, parseIdValue(ann)));
+      out.add(new TypeIdSpec(snakeCase(t.getNameAsString()), parseIdValue(ann)));
     }
     for (var member : t.getMembers()) {
       if (member instanceof TypeDeclaration<?> nested) {
         collect(nested, out);
       }
     }
-  }
-
-  private static @org.jspecify.annotations.Nullable String readNameOverride(AnnotationExpr ann) {
-    if (ann instanceof NormalAnnotationExpr n) {
-      for (var p : n.getPairs()) {
-        if (p.getNameAsString().equals("name")) {
-          if (p.getValue() instanceof com.github.javaparser.ast.expr.StringLiteralExpr s) {
-            return s.asString();
-          }
-        }
-      }
-    }
-    return null;
   }
 
   private static long parseIdValue(AnnotationExpr ann) {

@@ -24,7 +24,7 @@ import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
 @compilerxyz.annotations.BuiltinIdentity(6005L)
-@compilerxyz.annotations.BuiltinTypeId(value = 7050L, name = "type_source_interface_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7050L)
 public final class InterfaceData {
   public @Nullable DefSetId setId;
 
@@ -123,7 +123,7 @@ public final class InterfaceData {
                           JavaDataDescriptor.fromClass(InterfaceData.class))),
                   true)));
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID,
+          GenTypeIds.INTERFACE_DATA_TYPE_ID,
           "definition_set_interface_ref",
           jvmClass,
           JavaDataDescriptor.fromClass(InterfaceData.class),

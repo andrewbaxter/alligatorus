@@ -86,7 +86,7 @@ public record TypeObjectConst(
     var castRules = new TList<TypeObjectCastRule>();
     castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenIdentities.TYPE_IDENTITY));
     return new TypeObjectConst(
-        new TypeId.Composite(compilerxyz.gen.GenTypeIds.TYPE_ANY_CONST_TYPE_ID, TList.of(hostBaseTypeId)),
+        new TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(hostBaseTypeId)),
         "type<" + descSuffix + ">",
         hostClass,
         Opt.<Type>none(),

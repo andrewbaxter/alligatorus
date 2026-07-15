@@ -81,7 +81,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return TypeSourceInterfaceConstMeta.INSTANCE;
   }
 
-  @compilerxyz.annotations.BuiltinTypeId(value = 7122L, name = "type_type_source_interface_const")
+  @compilerxyz.annotations.BuiltinTypeId(7122L)
   static final class TypeSourceInterfaceConstMeta {
     static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
 
@@ -105,7 +105,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
       var identityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
       identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_IDENTITY);
       return new compilerxyz.eval.value.object_.TypeObjectConst(
-          compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_INTERFACE_CONST_TYPE_ID,
+          compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_CONST_META_TYPE_ID,
           "type_source_interface_const_meta",
           TypeSourceInterfaceConst.class,
           compilerxyz.util.Opt.<compilerxyz.eval.Type>none(),

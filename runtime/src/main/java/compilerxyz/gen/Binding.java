@@ -23,8 +23,8 @@ import compilerxyz.util.TList;
     uniqueId = 2005L,
     scopeId = 3005,
     fieldPrefix = "se",
-    typeIdConstant = "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID")
-@compilerxyz.annotations.BuiltinTypeId(value = 7025L, name = "type_any_binding_dynamic")
+    typeIdConstant = "BINDING_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(7025L)
 public interface Binding {
     @compilerxyz.annotations.SourceExposed(name = "use")
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
@@ -42,7 +42,7 @@ public interface Binding {
             var identityAspects = new TList<Unique>();
             identityAspects.add(GenBuiltinInterfaces.builtinBindingIfaceIdentity());
             return new TypeObjectDynamic(
-                    GenTypeIds.TYPE_ANY_BINDING_DYNAMIC_TYPE_ID,
+                    GenTypeIds.BINDING_TYPE_ID,
                     "binding",
                     JavaInternalName.of("compilerxyz/gen/Binding"),
                     JavaDataDescriptor.fromClass(Binding.class),

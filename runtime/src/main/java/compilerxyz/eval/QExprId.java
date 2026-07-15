@@ -14,7 +14,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7022L, name = "type_qexpr_id_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7022L)
 public record QExprId(SourceId source, long expr) {
 
   public static Type dynamicType() {
@@ -29,7 +29,7 @@ public record QExprId(SourceId source, long expr) {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.of("compilerxyz/eval/QExprId");
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_QEXPR_ID_DYNAMIC_TYPE_ID,
+          GenTypeIds.Q_EXPR_ID_TYPE_ID,
           "QExprId",
           jvmClass,
           JavaDataDescriptor.fromClass(QExprId.class),

@@ -44,7 +44,7 @@ public final class BindResultType {
               JavaDataDescriptor.fromClass(compilerxyz.gen.Binding.class),
               compilerxyz.gen.Binding.dynamicType()));
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_BIND_RESULT_DYNAMIC_TYPE_ID,
+          GenTypeIds.BIND_RESULT_TYPE_ID,
           "BindResult",
           jvmClass,
           JavaDataDescriptor.fromClass(AspectBind.BindResult.class),

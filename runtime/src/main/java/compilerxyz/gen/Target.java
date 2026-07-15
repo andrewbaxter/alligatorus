@@ -35,8 +35,8 @@ import compilerxyz.util.TList;
     uniqueId = 2006L,
     scopeId = 3006,
     fieldPrefix = "tg",
-    typeIdConstant = "TYPE_ANY_TARGET_DYNAMIC_TYPE_ID")
-@compilerxyz.annotations.BuiltinTypeId(value = 7024L, name = "type_any_target_dynamic")
+    typeIdConstant = "TARGET_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(7024L)
 public interface Target {
     @compilerxyz.annotations.SourceExposed(name = "bind")
     BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);
@@ -99,7 +99,7 @@ public interface Target {
             var identityAspects = new TList<Unique>();
             identityAspects.add(GenBuiltinInterfaces.builtinTargetIfaceIdentity());
             return new TypeObjectDynamic(
-                    GenTypeIds.TYPE_ANY_TARGET_DYNAMIC_TYPE_ID,
+                    GenTypeIds.TARGET_TYPE_ID,
                     "target",
                     JavaInternalName.of("compilerxyz/gen/Target"),
                     JavaDataDescriptor.fromClass(Target.class),

@@ -37,7 +37,7 @@ import static compilerxyz.util.MustCast.mustCast;
     fieldPrefix = "t",
     typeIdConstant = "")
 @compilerxyz.annotations.BuiltinIdentity(6006L)
-@compilerxyz.annotations.BuiltinTypeId(value = 7012L, name = "type_type_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7012L)
 public interface Type extends Value, HasTypeId {
 
   static Type dynamicType() {
@@ -54,7 +54,7 @@ public interface Type extends Value, HasTypeId {
       identityAspects.add(GenIdentities.TYPE_IDENTITY);
       var methods = new TList<ObjectMethod>();
       var instance = new TypeObjectDynamic(
-          GenTypeIds.TYPE_TYPE_DYNAMIC_TYPE_ID,
+          GenTypeIds.TYPE_TYPE_ID,
           "type",
           JavaInternalName.of("compilerxyz/eval/Type"),
           JavaDataDescriptor.fromClass(Type.class),

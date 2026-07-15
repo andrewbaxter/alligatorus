@@ -19,8 +19,8 @@ import compilerxyz.util.TList;
     uniqueId = 2001L,
     scopeId = 3001,
     fieldPrefix = "v",
-    typeIdConstant = "TYPE_VALUE_DYNAMIC_TYPE_ID")
-@compilerxyz.annotations.BuiltinTypeId(value = 7109L, name = "type_value_dynamic")
+    typeIdConstant = "VALUE_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(7109L)
 public interface Value {
     @compilerxyz.annotations.SourceExposed(name = "type")
     Type valueType();
@@ -38,7 +38,7 @@ public interface Value {
             var identityAspects = new TList<Unique>();
             identityAspects.add(GenBuiltinInterfaces.builtinValueIfaceIdentity());
             return new TypeObjectDynamic(
-                    GenTypeIds.TYPE_VALUE_DYNAMIC_TYPE_ID,
+                    GenTypeIds.VALUE_TYPE_ID,
                     "value",
                     JavaInternalName.of("compilerxyz/gen/Value"),
                     JavaDataDescriptor.fromClass(Value.class),

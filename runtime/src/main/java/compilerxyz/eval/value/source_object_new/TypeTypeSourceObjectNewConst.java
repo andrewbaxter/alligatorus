@@ -38,7 +38,7 @@ import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7047L, name = "type_source_object_new_const")
+@compilerxyz.annotations.BuiltinTypeId(7047L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     implements
         Type,
@@ -56,7 +56,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   @Override
   public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
-        GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
+        GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
         compilerxyz.util.TList.of(
             new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity))));
   }
@@ -74,7 +74,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     return "definition_set_object_new_const";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID, "type_source_object_new_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID, "type_source_object_new_const");
 
   @Override
   public Type valueType() {

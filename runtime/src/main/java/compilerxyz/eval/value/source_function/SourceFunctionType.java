@@ -20,7 +20,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7057L, name = "type_source_function_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7057L)
 public final class SourceFunctionType {
 
   private SourceFunctionType() {}
@@ -45,7 +45,7 @@ public final class SourceFunctionType {
             return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), funcType));
           };
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_FUNCTION_DYNAMIC_TYPE_ID,
+          GenTypeIds.SOURCE_FUNCTION_TYPE_TYPE_ID,
           "definition_set_function",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),

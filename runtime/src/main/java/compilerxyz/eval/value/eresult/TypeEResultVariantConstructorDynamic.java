@@ -28,7 +28,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7102L, name = "type_eresult_variant_constructor_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7102L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
     implements
         Type,
@@ -38,7 +38,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   @Override
   public TypeId hasTypeIdTypeId() {
     return new TypeId.Composite(
-        GenTypeIds.TYPE_ERESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID,
+        GenTypeIds.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID,
         TList.of(elementType.hasTypeIdTypeId()));
   }
 
@@ -47,7 +47,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     return "eresult(" + elementType.typeDesc() + ")." + (isOk ? "ok" : "err");
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_ERESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "eresult_variant_constructor_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "eresult_variant_constructor_dynamic");
 
   @Override
   public Type valueType() {

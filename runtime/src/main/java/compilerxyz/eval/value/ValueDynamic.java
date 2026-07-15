@@ -29,7 +29,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import static compilerxyz.util.MustCast.mustCast;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7104L, name = "type_source_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7104L)
 public record ValueDynamic(Source source, Type type_) implements Value {
   @Override
   public Type valueType() {
@@ -57,7 +57,7 @@ public record ValueDynamic(Source source, Type type_) implements Value {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.of("compilerxyz/eval/value/ValueDynamic$Source");
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_DYNAMIC_TYPE_ID,
+          GenTypeIds.VALUE_DYNAMIC_TYPE_ID,
           "source",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),

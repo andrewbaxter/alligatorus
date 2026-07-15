@@ -15,7 +15,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7103L, name = "type_code_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7103L)
 public sealed interface Code permits Code.None, Code.Target {
 
   record None(QExprId loc) implements Code {
@@ -57,7 +57,7 @@ public sealed interface Code permits Code.None, Code.Target {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.of("compilerxyz/eval/Code");
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_CODE_DYNAMIC_TYPE_ID,
+          GenTypeIds.CODE_TYPE_ID,
           "code",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),

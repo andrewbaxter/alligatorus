@@ -44,7 +44,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7051L, name = "type_source_union_const")
+@compilerxyz.annotations.BuiltinTypeId(7051L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     implements
         Type,
@@ -81,7 +81,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     return "union";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_CONST_TYPE_ID, "type_source_union_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_CONST_TYPE_ID, "type_source_union_const");
 
   @Override
   public Type valueType() {

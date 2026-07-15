@@ -20,7 +20,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinIdentity(6011L)
-@compilerxyz.annotations.BuiltinTypeId(value = 7026L, name = "type_code_dyn_handle_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7026L)
 public final class CodeDynHandleType {
 
   private CodeDynHandleType() {}
@@ -38,7 +38,7 @@ public final class CodeDynHandleType {
       identityAspects.add(GenIdentities.CODE_DYN_HANDLE_TYPE_IDENTITY);
       identityAspects.add(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity());
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_CODE_DYN_HANDLE_DYNAMIC_TYPE_ID,
+          GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID,
           "code_dyn",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),

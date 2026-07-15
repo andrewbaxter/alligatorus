@@ -55,7 +55,7 @@ import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.TypeId;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7045L, name = "type_source_object_const")
+@compilerxyz.annotations.BuiltinTypeId(7045L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     implements
         Type,
@@ -93,7 +93,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return "object(" + (type_.name != null ? type_.name : "?") + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_CONST_TYPE_ID, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_CONST_TYPE_ID, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
 
   @Override
   public Type valueType() {

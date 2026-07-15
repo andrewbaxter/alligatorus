@@ -7,15 +7,11 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a runtime Type class with its stable builtin TypeId. Codegen scans for these and emits
- * the corresponding GenTypeIds.TYPE_&lt;NAME&gt;_TYPE_ID constant. By default the name is derived
- * from the class name (snake_case); use {@link #name} to override when the derived name doesn't
- * match the historical GenTypeIds constant.
+ * the corresponding GenTypeIds.&lt;NAME&gt;_TYPE_ID constant. The constant name is always derived
+ * from the class name (snake_case, uppercased, with {@code _TYPE_ID} suffix).
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface BuiltinTypeId {
   long value();
-
-  /** Snake_case identity name. Empty = derive from class name. */
-  String name() default "";
 }

@@ -33,7 +33,7 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7054L, name = "type_source_union_new_const")
+@compilerxyz.annotations.BuiltinTypeId(7054L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 
@@ -46,7 +46,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
     return "definition_set_union_new_const";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID, "type_source_union_new_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID, "type_source_union_new_const");
 
   @Override
   public Type valueType() {

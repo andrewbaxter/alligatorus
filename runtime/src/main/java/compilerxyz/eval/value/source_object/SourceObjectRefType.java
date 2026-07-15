@@ -20,7 +20,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(value = 7046L, name = "type_source_object_ref_dynamic")
+@compilerxyz.annotations.BuiltinTypeId(7046L)
 public final class SourceObjectRefType {
 
   private SourceObjectRefType() {}
@@ -45,7 +45,7 @@ public final class SourceObjectRefType {
             return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeTypeSourceObjectConst(dt)));
           };
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_OBJECT_REF_DYNAMIC_TYPE_ID,
+          GenTypeIds.SOURCE_OBJECT_REF_TYPE_TYPE_ID,
           "definition_set_object_ref",
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
