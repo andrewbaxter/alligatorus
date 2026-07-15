@@ -37,6 +37,10 @@ public final class GenMain {
     var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     AspectsGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, scan.aspects());
     BuiltinTreeGen.setScannedInterfaceSpecs(scan.sourceInterfaces());
+    BuiltinTreeGen.setScannedInterfacePaths(scan.interfacePaths());
+    var pathEntries =
+        compilerxyz.codegen.experimental.BuiltinPathScanner.scanRoot(runtimeSourceRoot);
+    BuiltinTreeGen.setScannedPathEntries(pathEntries);
 
     var interfaceSpecs = new TList<compilerxyz.codegen.util.InterfaceSpec>();
     interfaceSpecs.addAll(TraitsGen.specs());

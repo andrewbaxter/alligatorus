@@ -4,5 +4,6 @@ package compilerxyz.gen;
     uniqueId = 2007L,
     scopeId = 3007,
     fieldPrefix = "cd",
-    typeIdConstant = "")
+    typeIdConstant = "",
+    path = "eval.code_dyn")
 public interface CodeDyn {}

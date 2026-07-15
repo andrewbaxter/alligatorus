@@ -23,7 +23,9 @@ import compilerxyz.util.TList;
     uniqueId = 2005L,
     scopeId = 3005,
     fieldPrefix = "se",
-    typeIdConstant = "BINDING_TYPE_ID")
+    typeIdConstant = "BINDING_TYPE_ID",
+    path = "eval.binding")
+@compilerxyz.annotations.BuiltinPath("types.binding")
 @compilerxyz.annotations.BuiltinTypeId(7025L)
 public interface Binding {
     @compilerxyz.annotations.SourceExposed(name = "use")

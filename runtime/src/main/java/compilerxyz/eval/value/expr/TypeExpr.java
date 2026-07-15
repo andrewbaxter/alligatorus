@@ -44,6 +44,7 @@ import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7016L)
 @compilerxyz.annotations.BuiltinIdentity(6013L)
+@compilerxyz.annotations.BuiltinPath("types.expr")
 public record TypeExpr()
     implements
         Type,

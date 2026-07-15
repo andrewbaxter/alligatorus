@@ -14,7 +14,7 @@ import compilerxyz.eval.aspect.Aspect;
     uniqueId = 1032L,
     kind = "DropDynamic",
     javadoc = "Allows a value to emit cleanup (drop) code when its scope ends.")
-@SourceInterface(uniqueId = 2008L, scopeId = 3008, fieldPrefix = "dd")
+@SourceInterface(uniqueId = 2008L, scopeId = 3008, fieldPrefix = "dd", path = "eval.aspect_drop_dynamic")
 public interface AspectDropDynamic extends Aspect {
   @SourceExposed(name = "drop")
   EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv);

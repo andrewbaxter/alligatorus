@@ -30,6 +30,7 @@ import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7020L)
 @compilerxyz.annotations.BuiltinIdentity(6002L)
+@compilerxyz.annotations.BuiltinPath("types.cve")
 public record TypeCodeValueExternDynamic()
     implements
         Type,

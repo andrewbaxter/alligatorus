@@ -24,6 +24,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 
 @compilerxyz.annotations.BuiltinTypeId(7107L)
+@compilerxyz.annotations.BuiltinPath("types.eresult")
 public record TypeEResultConstructorConst()
     implements
         Type,

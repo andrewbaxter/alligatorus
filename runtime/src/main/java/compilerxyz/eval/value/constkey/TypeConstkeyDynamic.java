@@ -29,6 +29,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7014L)
+@compilerxyz.annotations.BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
     implements
         Type,

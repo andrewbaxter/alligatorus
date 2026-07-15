@@ -54,6 +54,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7008L)
+@compilerxyz.annotations.BuiltinPath("types.string")
 public record TypeStringDynamic()
     implements
         Type,

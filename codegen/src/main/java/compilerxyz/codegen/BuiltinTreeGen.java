@@ -15,7 +15,9 @@ import compilerxyz.codegen.util.MethodArgs;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
+import compilerxyz.codegen.experimental.BuiltinPathScanner;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -170,6 +172,11 @@ public final class BuiltinTreeGen {
         throw new IllegalStateException(
             "BuiltinTreeGen: no BuiltinBodies method mapped for scope id " + builtinScopeId);
       }
+      return functionByName(methodName, args, retDynamicType);
+    }
+
+    public static LeafSpec functionByName(
+        String methodName, TList<NamedTypeRef> args, CodeBlock retDynamicType) {
       var innerExpr = CodeBlock.of(
           "new $T($L, $L, $T.of($S), $S, true)",
           TYPE_FUNCTION_DYNAMIC,
@@ -413,9 +420,19 @@ public final class BuiltinTreeGen {
   }
 
   private static TList<InterfaceSpec> scannedExtras = new TList<>();
+  private static TMap<String, String> scannedInterfacePaths = new TMap<>();
+  private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();
 
   public static void setScannedInterfaceSpecs(TList<InterfaceSpec> specs) {
     scannedExtras = specs;
+  }
+
+  public static void setScannedInterfacePaths(TMap<String, String> paths) {
+    scannedInterfacePaths = paths;
+  }
+
+  public static void setScannedPathEntries(TList<BuiltinPathScanner.Entry> entries) {
+    scannedPathEntries = entries;
   }
 
   public static TList<InterfaceSpec> extraInterfaceSpecs() {
@@ -451,307 +468,159 @@ public final class BuiltinTreeGen {
   }
 
   public static NodeSpec canonicalSpec() {
-    return new Branch(
-        TList.of(
-            new Child(
-                "throw",
-                new Leaf(
-                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_THROW_DYNAMIC)))),
-            new Child(
-                "panic",
-                new Leaf(
-                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_PANIC_DYNAMIC)))),
-            new Child(
-                "log",
-                new Leaf(
-                    LeafSpec.function(
-                        5001,
-                        TList.of(
-                            new NamedTypeRef(
-                                "message",
-                                TypeRef.leaf(TYPE_STRING_DYNAMIC))),
-                        unitTupleDynamic()))),
-            new Child(
-                "define",
-                new Leaf(
-                    LeafSpec.function(
-                        5002,
-                        TList.of(),
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"))))),
-            new Child("types", typesBranch()),
-            new Child("eval", evalBranch())));
-  }
+    // Collect (path, leaf) pairs from all sources.
+    var pathToLeaf = new java.util.LinkedHashMap<String, LeafSpec>();
 
-  private static NodeSpec typesBranch() {
-    return new Branch(
-        TList.of(
-            new Child(
-                "list",
-                new Leaf(
-                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_LIST_CONSTRUCTOR_CONST)))),
-            new Child(
-                "map",
-                new Leaf(
-                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_MAP_CONSTRUCTOR_CONST)))),
-            new Child(
-                "option",
-                new Leaf(
-                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_OPTION_CONSTRUCTOR_CONST)))),
-            new Child(
-                "eresult",
-                new Leaf(
-                    LeafSpec.constructor(DynamicTypes.leaf(TYPE_ERESULT_CONSTRUCTOR_CONST)))),
-            new Child(
-                "code",
-                new Leaf(
-                    new LeafSpec(DynamicTypes.leaf(CODE_INTERFACE), OCT_TYPE_EXPR))),
-            new Child(
-                "string",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_STRING_DYNAMIC), OCT_TYPE_EXPR))),
-            new Child(
-                "number",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_NUMBER_DYNAMIC), OCT_TYPE_EXPR))),
-            new Child(
-                "null",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_NULL_DYNAMIC), OCT_TYPE_EXPR))),
-            new Child(
-                "bool",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_BOOL_DYNAMIC), OCT_TYPE_EXPR))),
-            new Child(
-                "binding",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "Binding")), OCT_TYPE_EXPR))),
-            new Child(
-                "bind_result",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get(
-                                "compilerxyz.eval.value.bind_result", "BindResultType")), OCT_TYPE_EXPR))),
-            new Child(
-                "constkey",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_CONSTKEY_DYNAMIC), OCT_TYPE_EXPR))),
-            new Child(
-                "expr", new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE_EXPR), OCT_TYPE_EXPR))),
-            new Child(
-                "type",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(TYPE), OCT_TYPE_EXPR))),
-            new Child(
-                "aspect",
-                new Leaf(new LeafSpec(DynamicTypes.leaf(ASPECT_INTERFACE), OCT_TYPE_EXPR))),
-            new Child(
-                "codedyn",
-                new Leaf(
-                    new LeafSpec(
-                        DynamicTypes.leaf(CODE_DYN_HANDLE_TYPE), OCT_TYPE_EXPR))),
-            new Child(
-                "cve",
-                new Leaf(
-                    new LeafSpec(
-                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC), OCT_TYPE_EXPR)))));
-  }
+    // 1) Scanner-produced @BuiltinPath entries.
+    for (var entry : scannedPathEntries) {
+      LeafSpec spec = switch (entry) {
+        case BuiltinPathScanner.TypeLeaf tl ->
+            LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), OCT_TYPE_EXPR);
+        case BuiltinPathScanner.FunctionLeaf fl ->
+            LeafSpec.functionByName(fl.methodName(), fl.args(), fl.retType().dynamicType());
+      };
+      if (pathToLeaf.put(entry.path(), spec) != null) {
+        throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.path());
+      }
+    }
 
-  private static NodeSpec evalBranch() {
+    // 2) Interface leaves via @SourceInterface(path=...) / @BuiltinTrait(path=...).
     var extras = extraInterfaceSpecs();
-    var ifaceAspectFunction = findSpec(extras, "aspect_function");
-    var ifaceAspectField = findSpec(extras, "aspect_field");
-    var ifaceAspectDropDynamic = findSpec(extras, "aspect_drop_dynamic");
-    var ifaceAspectBindDynamic = findSpec(extras, "aspect_bind_dynamic");
-    var ifaceAspectConsumeDynamic = findSpec(extras, "aspect_consume_dynamic");
-    var ifaceBinding = findSpec(extras, "binding");
-    var ifaceTarget = findSpec(extras, "target");
-    var ifaceCodeDyn = findSpec(extras, "code_dyn");
-    var ifaceValue = findSpec(extras, "value");
-    var ifaceType = findSpec(extras, "type");
+    for (var s : extras) {
+      var path = scannedInterfacePaths.getOrNull(s.name());
+      if (path == null || path.isEmpty()) continue;
+      if (pathToLeaf.put(path, LeafSpec.interface_(s)) != null) {
+        throw new IllegalStateException("duplicate interface path: " + path);
+      }
+    }
 
-    return new Branch(
-        TList.of(
-            new Child(
-                "aspect_lookup",
-                new Leaf(
-                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_FUNCTION_ASPECT_DYNAMIC)))),
-            new Child(
-                "cast_value",
-                new Leaf(
-                    LeafSpec.initialBind(DynamicTypes.leaf(TYPE_FUNCTION_CAST_VALUE_DYNAMIC)))),
+    // 3) Hand-coded specials — TTOD-style, .ID-style, and remaining entries
+    //    that don't fit type-leaf / function-leaf / interface-leaf.
+    addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "AspectDropDynamicLight")), TTOD_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_bind_dynamic",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "AspectBindDynamic")), TTOD_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_consume_dynamic",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")), TTOD_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_bind",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "AspectBind")), TTOD_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_string_dynamic",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectStringDynamic")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_function_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectFunction")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_field_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectField")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_bind_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBind")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectDropDynamic")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_consume_dynamic_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_bind_dynamic_id",
+        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBindDynamic")),
+        TUC_TYPE_EXPR);
 
-            new Child(
-                "const_eval",
-                new Leaf(
-                    LeafSpec.function(
-                        5008,
-                        TList.of(
-                            new NamedTypeRef(
-                                "xx_",
-                                TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext"))),
-                            new NamedTypeRef("staged", TypeRef.leaf(TYPE_EXPR))),
-                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC)))),
-            new Child(
-                "codevalue",
-                new Leaf(
-                    LeafSpec.function(
-                        5005,
-                        TList.of(
-                            new NamedTypeRef(
-                                "code", TypeRef.leaf(CODE_INTERFACE)),
-                            new NamedTypeRef(
-                                "value", TypeRef.leaf(VALUE_INTERFACE))),
-                        DynamicTypes.leaf(TYPE_CODE_VALUE_EXTERN_DYNAMIC)))),
-            new Child(
-                "stack",
-                new Leaf(
-                    LeafSpec.function(
-                        5013,
-                        TList.of(
-                            new NamedTypeRef(
-                                "type", TypeRef.leaf(ClassName.get("compilerxyz.eval", "Type")))),
-                        DynamicTypes.leaf(VALUE_INTERFACE)))),
-            new Child(
-                "str_to_json",
-                new Leaf(
-                    LeafSpec.function(
-                        5003,
-                        TList.of(
-                            new NamedTypeRef(
-                                "s",
-                                TypeRef.leaf(TYPE_STRING_DYNAMIC))),
-                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
-            new Child(
-                "constkey_to_str",
-                new Leaf(
-                    LeafSpec.function(
-                        5004,
-                        TList.of(
-                            new NamedTypeRef(
-                                "key", TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey")))),
-                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
-            new Child(
-                "gen_binding_name",
-                new Leaf(
-                    LeafSpec.function(
-                        5006,
-                        TList.of(
-                            new NamedTypeRef(
-                                "_xx",
-                                TypeRef.leaf(ClassName.get("compilerxyz.eval", "ExprContext")))),
-                        DynamicTypes.leaf(TYPE_STRING_DYNAMIC)))),
-            new Child(
-                "new_expr_context",
-                new Leaf(
-                    LeafSpec.function(
-                        5009,
-                        TList.of(
-                            new NamedTypeRef(
-                                "target_arg",
-                                TypeRef.leaf(ClassName.get("compilerxyz.gen", "Target"))),
-                            new NamedTypeRef(
-                                "scope_arg",
-                                TypeRef.composite2(
-                                    TYPE_MAP_DYNAMIC,
-                                    TypeRef.leaf(ClassName.get("compilerxyz.eval", "ConstKey")),
-                                    TypeRef.leaf(ClassName.get("compilerxyz.gen", "Binding"))))),
-                        DynamicTypes.leaf(ClassName.get("compilerxyz.eval", "ExprContext"))))),
-            new Child("aspect_function", new Leaf(LeafSpec.interface_(ifaceAspectFunction))),
-            new Child("aspect_field", new Leaf(LeafSpec.interface_(ifaceAspectField))),
-            new Child(
-                "aspect_drop_dynamic",
-                new Leaf(LeafSpec.interface_(ifaceAspectDropDynamic))),
-            new Child(
-                "aspect_drop_dynamic_light",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectDropDynamicLight")), TTOD_TYPE_EXPR))),
-            new Child(
-                "aspect_bind_dynamic",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectBindDynamic")), TTOD_TYPE_EXPR))),
-            new Child(
-                "aspect_consume_dynamic",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")), TTOD_TYPE_EXPR))),
-            new Child(
-                "bind_result",
-                new Leaf(
-                    LeafSpec.function(
-                        5015,
-                        TList.of(
-                            new NamedTypeRef("code", TypeRef.leaf(CODE_INTERFACE)),
-                            new NamedTypeRef(
-                                "binding",
-                                TypeRef.leaf(ClassName.get("compilerxyz.gen", "Binding")))),
-                        DynamicTypes.leaf(
-                            ClassName.get(
-                                "compilerxyz.eval.value.bind_result", "BindResultType"))))),
-            new Child(
-                "aspect_bind",
-                new Leaf(
-                    new LeafSpec(
-                        CodeBlock.of(
-                            "$T.dynamicType()",
-                            ClassName.get("compilerxyz.gen", "AspectBind")), TTOD_TYPE_EXPR))),
-            new Child(
-                "aspect_string_dynamic",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectStringDynamic")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_function_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectFunction")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_field_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectField")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_bind_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBind")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_drop_dynamic_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectDropDynamic")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_consume_dynamic_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")),
-                    TUC_TYPE_EXPR))),
-            new Child(
-                "aspect_bind_dynamic_id",
-                new Leaf(new LeafSpec(
-                    CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBindDynamic")),
-                    TUC_TYPE_EXPR))),
-            new Child("binding", new Leaf(LeafSpec.interface_(ifaceBinding))),
-            new Child("target", new Leaf(LeafSpec.interface_(ifaceTarget))),
-            new Child("code_dyn", new Leaf(LeafSpec.interface_(ifaceCodeDyn))),
-            new Child("value", new Leaf(LeafSpec.interface_(ifaceValue))),
-            new Child("type_", new Leaf(LeafSpec.interface_(ifaceType)))));
+    return buildTree(pathToLeaf);
   }
 
-  private static InterfaceSpec findSpec(TList<InterfaceSpec> specs, String name) {
-    for (var s : specs) if (s.name().equals(name)) return s;
-    throw new IllegalStateException("missing extra-interface spec: " + name);
+  private static void addSpecial(
+      java.util.LinkedHashMap<String, LeafSpec> m,
+      String path,
+      CodeBlock innerExpr,
+      CodeBlock valueTypeExpr) {
+    if (m.put(path, LeafSpec.of(innerExpr, valueTypeExpr)) != null) {
+      throw new IllegalStateException("duplicate special path: " + path);
+    }
   }
 
-  private static CodeBlock unitTupleDynamic() {
-    return DynamicTypes.leaf(TYPE_NULL_DYNAMIC);
+  /** Static hard-coded ORDER for children of well-known branches, to preserve generated-file layout. */
+  private static final java.util.Map<String, java.util.List<String>> BRANCH_ORDER =
+      java.util.Map.of(
+          "",
+              java.util.List.of("throw", "panic", "log", "define", "types", "eval"),
+          "types",
+              java.util.List.of(
+                  "list", "map", "option", "eresult", "code", "string", "number", "null",
+                  "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
+                  "codedyn", "cve"),
+          "eval",
+              java.util.List.of(
+                  "aspect_lookup", "cast_value", "const_eval", "codevalue", "stack",
+                  "str_to_json", "constkey_to_str", "gen_binding_name", "new_expr_context",
+                  "aspect_function", "aspect_field", "aspect_drop_dynamic",
+                  "aspect_drop_dynamic_light", "aspect_bind_dynamic",
+                  "aspect_consume_dynamic", "bind_result", "aspect_bind",
+                  "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
+                  "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
+                  "aspect_bind_dynamic_id",
+                  "binding", "target", "code_dyn", "value", "type_"));
+
+  private record TreeNode(
+      java.util.LinkedHashMap<String, TreeNode> children,
+      @org.jspecify.annotations.Nullable LeafSpec leaf) {
+    TreeNode() {
+      this(new java.util.LinkedHashMap<>(), null);
+    }
+    TreeNode(LeafSpec leaf) {
+      this(new java.util.LinkedHashMap<>(), leaf);
+    }
+  }
+
+  private static NodeSpec buildTree(java.util.LinkedHashMap<String, LeafSpec> pathToLeaf) {
+    var root = new TreeNode();
+    for (var e : pathToLeaf.entrySet()) {
+      var parts = e.getKey().split("\\.");
+      var cur = root;
+      for (int i = 0; i < parts.length - 1; i++) {
+        var name = parts[i];
+        var next = cur.children().get(name);
+        if (next == null) {
+          next = new TreeNode();
+          cur.children().put(name, next);
+        }
+        if (next.leaf() != null) {
+          throw new IllegalStateException(
+              "path collision (leaf where branch needed): " + e.getKey());
+        }
+        cur = next;
+      }
+      var leafName = parts[parts.length - 1];
+      if (cur.children().containsKey(leafName)) {
+        throw new IllegalStateException("path collision: " + e.getKey());
+      }
+      cur.children().put(leafName, new TreeNode(e.getValue()));
+    }
+    return toNodeSpec(root, "");
+  }
+
+  private static NodeSpec toNodeSpec(TreeNode n, String branchPath) {
+    if (n.leaf() != null) return new Leaf(n.leaf());
+    var children = new TList<Child>();
+    var order = BRANCH_ORDER.get(branchPath);
+    var remaining = new java.util.LinkedHashMap<>(n.children());
+    if (order != null) {
+      for (var name : order) {
+        var child = remaining.remove(name);
+        if (child == null) continue;
+        children.add(new Child(name, toNodeSpec(child,
+            branchPath.isEmpty() ? name : branchPath + "." + name)));
+      }
+    }
+    for (var e : remaining.entrySet()) {
+      children.add(new Child(e.getKey(), toNodeSpec(e.getValue(),
+          branchPath.isEmpty() ? e.getKey() : branchPath + "." + e.getKey())));
+    }
+    return new Branch(children);
   }
 
   private static void validate(NodeSpec root, TSet<Long> scopeIds) {

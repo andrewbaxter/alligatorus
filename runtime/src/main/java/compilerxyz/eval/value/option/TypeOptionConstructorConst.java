@@ -24,6 +24,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7036L)
+@compilerxyz.annotations.BuiltinPath("types.option")
 public record TypeOptionConstructorConst()
     implements
         Type,

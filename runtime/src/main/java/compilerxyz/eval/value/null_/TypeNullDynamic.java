@@ -43,6 +43,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7010L)
+@compilerxyz.annotations.BuiltinPath("types.null")
 public record TypeNullDynamic()
     implements
         Type,

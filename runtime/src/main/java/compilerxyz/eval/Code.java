@@ -16,6 +16,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinTypeId(7103L)
+@compilerxyz.annotations.BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 
   record None(QExprId loc) implements Code {

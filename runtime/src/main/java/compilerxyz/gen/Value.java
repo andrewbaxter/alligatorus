@@ -19,7 +19,8 @@ import compilerxyz.util.TList;
     uniqueId = 2001L,
     scopeId = 3001,
     fieldPrefix = "v",
-    typeIdConstant = "VALUE_TYPE_ID")
+    typeIdConstant = "VALUE_TYPE_ID",
+    path = "eval.value")
 @compilerxyz.annotations.BuiltinTypeId(7109L)
 public interface Value {
     @compilerxyz.annotations.SourceExposed(name = "type")

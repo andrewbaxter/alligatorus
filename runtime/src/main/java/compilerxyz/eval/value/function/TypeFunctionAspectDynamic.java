@@ -34,6 +34,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7039L)
+@compilerxyz.annotations.BuiltinPath("eval.aspect_lookup")
 public record TypeFunctionAspectDynamic()
     implements
         Type,

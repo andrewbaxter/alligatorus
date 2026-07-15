@@ -19,6 +19,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7040L)
+@compilerxyz.annotations.BuiltinPath("eval.cast_value")
 public record TypeFunctionCastValueDynamic()
     implements
         Type,

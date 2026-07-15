@@ -47,6 +47,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7005L)
+@compilerxyz.annotations.BuiltinPath("types.bool")
 public record TypeBoolDynamic()
     implements
         Type,

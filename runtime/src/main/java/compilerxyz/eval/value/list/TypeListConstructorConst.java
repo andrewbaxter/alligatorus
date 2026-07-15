@@ -24,6 +24,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7029L)
+@compilerxyz.annotations.BuiltinPath("types.list")
 public record TypeListConstructorConst()
     implements
         Type,

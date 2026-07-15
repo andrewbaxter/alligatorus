@@ -21,6 +21,7 @@ import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinIdentity(6011L)
 @compilerxyz.annotations.BuiltinTypeId(7026L)
+@compilerxyz.annotations.BuiltinPath("types.codedyn")
 public final class CodeDynHandleType {
 
   private CodeDynHandleType() {}

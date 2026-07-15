@@ -35,7 +35,9 @@ import static compilerxyz.util.MustCast.mustCast;
     uniqueId = 2002L,
     scopeId = 3002,
     fieldPrefix = "t",
-    typeIdConstant = "")
+    typeIdConstant = "",
+    path = "eval.type_")
+@compilerxyz.annotations.BuiltinPath("types.type")
 @compilerxyz.annotations.BuiltinIdentity(6006L)
 @compilerxyz.annotations.BuiltinTypeId(7012L)
 public interface Type extends Value, HasTypeId {

@@ -35,7 +35,8 @@ import compilerxyz.util.TList;
     uniqueId = 2006L,
     scopeId = 3006,
     fieldPrefix = "tg",
-    typeIdConstant = "TARGET_TYPE_ID")
+    typeIdConstant = "TARGET_TYPE_ID",
+    path = "eval.target")
 @compilerxyz.annotations.BuiltinTypeId(7024L)
 public interface Target {
     @compilerxyz.annotations.SourceExposed(name = "bind")

@@ -31,6 +31,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7018L)
+@compilerxyz.annotations.BuiltinPath("throw")
 public record TypeThrowDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 

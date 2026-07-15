@@ -34,6 +34,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7019L)
+@compilerxyz.annotations.BuiltinPath("panic")
 public record TypePanicDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 

@@ -17,6 +17,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinPath("types.bind_result")
 public final class BindResultType {
 
   private BindResultType() {}
