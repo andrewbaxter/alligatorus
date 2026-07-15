@@ -22,21 +22,9 @@ public final class IdentitiesGen {
   public record IdentitySpec(String name, long builtinUniqueId) {}
 
   private static TList<IdentitySpec> specs() {
-    return TList.of(
-        // 6001 expr_context_ref_type_identity — @BuiltinIdentity on ExprContext
-        // 6002 code_value_extern_type_identity — on TypeCodeValueExternDynamic
-        // 6003 type_unique_identity — on TypeUnique
-        new IdentitySpec("interface_const_identity", 6004),
-        new IdentitySpec("interface_ref_type_identity", 6005),
-        new IdentitySpec("type_code_struct_identity", 6009),
-        new IdentitySpec("type_code_enum_identity", 6010));
-        // 6006 type_type_identity — on Type
-        // 6007 union_ref_type_identity — on SourceUnionRefType
-        // 6008 type_option_identity — on TypeOptionDynamic
-        // 6011 type_code_dyn_handle_identity — on CodeDynHandleType
-        // 6012 type_aspect_identity — on Aspect
-        // 6013 expr_type_identity — on TypeExpr
-        // 6014 java_data_descriptor_type_identity — on JavaDataDescriptor
+    // All 14 identities migrated to @BuiltinIdentity annotations or deleted as dead.
+    // Dead: type_code_struct_identity (6009), type_code_enum_identity (6010) — zero refs.
+    return TList.of();
   }
 
   public static void run(

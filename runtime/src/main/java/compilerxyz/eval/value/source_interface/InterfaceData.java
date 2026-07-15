@@ -23,6 +23,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
+@compilerxyz.annotations.BuiltinIdentity(name = "interface_ref_type_identity", value = 6005L)
 public final class InterfaceData {
   public @Nullable DefSetId setId;
 

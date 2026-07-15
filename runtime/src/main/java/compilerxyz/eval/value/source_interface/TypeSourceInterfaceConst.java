@@ -55,6 +55,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
 @compilerxyz.annotations.BuiltinTypeId(7049L)
+@compilerxyz.annotations.BuiltinIdentity(name = "interface_const_identity", value = 6004L)
 public record TypeSourceInterfaceConst(InterfaceData data)
     implements
         Type,
