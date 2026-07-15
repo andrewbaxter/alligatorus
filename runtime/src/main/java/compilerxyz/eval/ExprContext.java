@@ -17,7 +17,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@compilerxyz.annotations.BuiltinIdentity(name = "expr_context_ref_type_identity", value = 6001L)
+@compilerxyz.annotations.BuiltinIdentity(6001L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7021L, name = "type_expr_context_dynamic")
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
@@ -59,11 +59,11 @@ public final class ExprContext {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.of("compilerxyz/eval/ExprContext");
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.EXPR_CONTEXT_REF_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.EXPR_CONTEXT_IDENTITY);
       var castFromRules = new TList<TypeObjectCastFromRule>();
       castFromRules.add(
           new TypeObjectCastFromRule.RestampFromIdentity(
-              GenIdentities.EXPR_CONTEXT_REF_TYPE_IDENTITY));
+              GenIdentities.EXPR_CONTEXT_IDENTITY));
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_EXPR_CONTEXT_DYNAMIC_TYPE_ID,
           "ExprContext",

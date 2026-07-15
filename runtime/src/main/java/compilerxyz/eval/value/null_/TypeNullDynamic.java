@@ -87,7 +87,7 @@ public record TypeNullDynamic()
         || key.equals(AspectNull.ID)
         || key.equals(AspectStackValueDynamic.ID)
         || key.equals(AspectArtifact.ID)
-        || key.equals(GenIdentities.TYPE_TYPE_IDENTITY)) {
+        || key.equals(GenIdentities.TYPE_IDENTITY)) {
       return Opt.some(this);
     }
     if (key.equals(AspectPostDeserialize.ID)) {
@@ -149,7 +149,7 @@ public record TypeNullDynamic()
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return AspectNull.getMaybe(xx, destType).optIsSome()
-        || destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome();
+        || destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome();
   }
 
   @Override

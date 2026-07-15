@@ -32,16 +32,16 @@ public final class TypeTypeObjectDynamic {
 
     private static TypeObjectConst build() {
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_TYPE_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_IDENTITY));
       castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
-          GenIdentities.INTERFACE_REF_TYPE_IDENTITY,
+          GenIdentities.INTERFACE_DATA_IDENTITY,
           JavaInternalName.fromClass(TypeObjectDynamic.class),
           "getInterfaceData",
           JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromClass(InterfaceData.class),
               TList.of())));
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.TYPE_IDENTITY);
       return new TypeObjectConst(
           GenTypeIds.TYPE_TYPE_OBJECT_DYNAMIC_TYPE_ID,
           "type_object_dynamic_meta",

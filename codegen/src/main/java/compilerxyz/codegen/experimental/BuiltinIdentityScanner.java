@@ -3,10 +3,8 @@ package compilerxyz.codegen.experimental;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import compilerxyz.util.TList;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,20 +41,18 @@ public final class BuiltinIdentityScanner {
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
       if (n.equals("BuiltinIdentity") || n.equals("compilerxyz.annotations.BuiltinIdentity")) {
-        String name = null;
         Long value = null;
         if (a instanceof NormalAnnotationExpr n2) {
           for (var p : n2.getPairs()) {
-            switch (p.getNameAsString()) {
-              case "name" -> name = ((StringLiteralExpr) p.getValue()).asString();
-              case "value" -> value = parseLong(p);
-            }
+            if (p.getNameAsString().equals("value")) value = parseLong(p.getValue().toString());
           }
+        } else if (a instanceof SingleMemberAnnotationExpr s) {
+          value = parseLong(s.getMemberValue().toString());
         }
-        if (name == null || value == null) {
-          throw new IllegalStateException("@BuiltinIdentity missing name or value on " + t.getNameAsString());
+        if (value == null) {
+          throw new IllegalStateException("@BuiltinIdentity missing value on " + t.getNameAsString());
         }
-        out.add(new IdentitySpec(name, value));
+        out.add(new IdentitySpec(snakeCase(t.getNameAsString()), value));
       }
     }
     for (var member : t.getMembers()) {
@@ -64,9 +60,22 @@ public final class BuiltinIdentityScanner {
     }
   }
 
-  private static long parseLong(MemberValuePair p) {
-    var raw = p.getValue().toString();
+  private static long parseLong(String raw) {
     if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
     return Long.parseLong(raw);
+  }
+
+  private static String snakeCase(String className) {
+    var sb = new StringBuilder();
+    for (int i = 0; i < className.length(); i++) {
+      char c = className.charAt(i);
+      if (Character.isUpperCase(c)) {
+        if (i > 0) sb.append('_');
+        sb.append(Character.toLowerCase(c));
+      } else {
+        sb.append(c);
+      }
+    }
+    return sb.toString();
   }
 }

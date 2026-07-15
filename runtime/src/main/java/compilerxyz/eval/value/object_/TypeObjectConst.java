@@ -82,9 +82,9 @@ public record TypeObjectConst(
 
   public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix) {
     var identityAspects = new TList<Unique>();
-    identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY);
+    identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
-    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY));
+    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenIdentities.TYPE_IDENTITY));
     return new TypeObjectConst(
         new TypeId.Composite(compilerxyz.gen.GenTypeIds.TYPE_ANY_CONST_TYPE_ID, TList.of(hostBaseTypeId)),
         "type<" + descSuffix + ">",

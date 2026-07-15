@@ -132,7 +132,7 @@ public final class TypeSourceUnionDynamic
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(identity)
-        || key.equals(GenIdentities.UNION_REF_TYPE_IDENTITY)
+        || key.equals(GenIdentities.SOURCE_UNION_REF_TYPE_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectBindDynamic.ID)
         || key.equals(AspectConsumeDynamic.ID)

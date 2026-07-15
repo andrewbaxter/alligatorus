@@ -21,7 +21,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(name = "union_ref_type_identity", value = 6007L)
+@compilerxyz.annotations.BuiltinIdentity(6007L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7053L, name = "type_source_union_ref_dynamic")
 public final class SourceUnionRefType {
 
@@ -37,7 +37,7 @@ public final class SourceUnionRefType {
     private static TypeObjectDynamic build() {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.UNION_REF_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.SOURCE_UNION_REF_TYPE_IDENTITY);
       TypeObjectLift lift =
           (xx, loc, host) -> {
             var ut = compilerxyz.util.MustCast.mustCast(TypeSourceUnionDynamic.class, host);

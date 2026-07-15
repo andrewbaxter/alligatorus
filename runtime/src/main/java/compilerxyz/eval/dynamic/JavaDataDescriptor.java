@@ -15,7 +15,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(name = "java_data_descriptor_type_identity", value = 6014L)
+@compilerxyz.annotations.BuiltinIdentity(6014L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7120L, name = "type_java_data_descriptor_dynamic")
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
@@ -98,11 +98,11 @@ public class JavaDataDescriptor {
         private static TypeObjectDynamic build() {
             var jvmClass = JavaInternalName.of("compilerxyz/eval/dynamic/JavaDataDescriptor");
             var identityAspects = new TList<Unique>();
-            identityAspects.add(GenIdentities.JAVA_DATA_DESCRIPTOR_TYPE_IDENTITY);
+            identityAspects.add(GenIdentities.JAVA_DATA_DESCRIPTOR_IDENTITY);
             var castFromRules = new TList<TypeObjectCastFromRule>();
             castFromRules.add(
                 new TypeObjectCastFromRule.RestampFromIdentity(
-                    GenIdentities.JAVA_DATA_DESCRIPTOR_TYPE_IDENTITY));
+                    GenIdentities.JAVA_DATA_DESCRIPTOR_IDENTITY));
             return new TypeObjectDynamic(
                 GenTypeIds.TYPE_JAVA_DATA_DESCRIPTOR_DYNAMIC_TYPE_ID,
                 "JavaDataDescriptor",

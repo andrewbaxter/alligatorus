@@ -21,9 +21,9 @@ public final class ObjectConstOfType {
 
     private static TypeObjectConst build() {
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_TYPE_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_IDENTITY));
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.TYPE_IDENTITY);
       return new TypeObjectConst(
           GenTypeIds.TYPE_ANY_CONST_TYPE_ID,
           "type",

@@ -51,7 +51,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7015L)
-@compilerxyz.annotations.BuiltinIdentity(name = "type_unique_identity", value = 6003L)
+@compilerxyz.annotations.BuiltinIdentity(6003L)
 public record TypeUnique()
     implements
         Type,

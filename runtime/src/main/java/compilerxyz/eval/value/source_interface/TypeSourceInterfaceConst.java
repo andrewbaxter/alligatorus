@@ -55,7 +55,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
 @compilerxyz.annotations.BuiltinTypeId(7049L)
-@compilerxyz.annotations.BuiltinIdentity(name = "interface_const_identity", value = 6004L)
+@compilerxyz.annotations.BuiltinIdentity(6004L)
 public record TypeSourceInterfaceConst(InterfaceData data)
     implements
         Type,
@@ -93,17 +93,17 @@ public record TypeSourceInterfaceConst(InterfaceData data)
               compilerxyz.eval.value.object_.TypeObjectCastRule>();
       castRules.add(
           new compilerxyz.eval.value.object_.TypeObjectCastRule.RestampToIdentity(
-              compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY));
+              compilerxyz.gen.GenIdentities.TYPE_IDENTITY));
       castRules.add(
           new compilerxyz.eval.value.object_.TypeObjectCastRule.InvokeVirtualByDestIdentity(
-              compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY,
+              compilerxyz.gen.GenIdentities.INTERFACE_DATA_IDENTITY,
               compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
               "getInterfaceData",
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(InterfaceData.class),
                   compilerxyz.util.TList.of())));
       var identityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
-      identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY);
+      identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_IDENTITY);
       return new compilerxyz.eval.value.object_.TypeObjectConst(
           compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_INTERFACE_CONST_TYPE_ID,
           "type_source_interface_const_meta",
@@ -158,7 +158,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(data.identity)
-        || key.equals(GenIdentities.INTERFACE_CONST_IDENTITY)
+        || key.equals(GenIdentities.TYPE_SOURCE_INTERFACE_CONST_IDENTITY)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
@@ -427,17 +427,17 @@ public record TypeSourceInterfaceConst(InterfaceData data)
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()
-        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome();
+    return destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_DATA_IDENTITY).optIsSome()
+        || destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_IDENTITY).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
     }
-    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_REF_TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, compilerxyz.gen.GenIdentities.INTERFACE_DATA_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
         return EResult.err(

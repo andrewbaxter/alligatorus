@@ -36,7 +36,7 @@ import static compilerxyz.util.MustCast.mustCast;
     scopeId = 3002,
     fieldPrefix = "t",
     typeIdConstant = "")
-@compilerxyz.annotations.BuiltinIdentity(name = "type_type_identity", value = 6006L)
+@compilerxyz.annotations.BuiltinIdentity(6006L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7012L, name = "type_type_dynamic")
 public interface Type extends Value, HasTypeId {
 
@@ -51,7 +51,7 @@ public interface Type extends Value, HasTypeId {
 
     private static TypeObjectDynamic build() {
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.TYPE_IDENTITY);
       var methods = new TList<ObjectMethod>();
       var instance = new TypeObjectDynamic(
           GenTypeIds.TYPE_TYPE_DYNAMIC_TYPE_ID,

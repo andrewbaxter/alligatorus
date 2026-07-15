@@ -23,7 +23,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@compilerxyz.annotations.BuiltinIdentity(name = "interface_ref_type_identity", value = 6005L)
+@compilerxyz.annotations.BuiltinIdentity(6005L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7050L, name = "type_source_interface_dynamic")
 public final class InterfaceData {
   public @Nullable DefSetId setId;
@@ -106,13 +106,13 @@ public final class InterfaceData {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.of("compilerxyz/eval/value/source_interface/InterfaceData");
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.INTERFACE_REF_TYPE_IDENTITY);
+      identityAspects.add(GenIdentities.INTERFACE_DATA_IDENTITY);
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_REF_TYPE_IDENTITY));
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_CONST_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.INTERFACE_DATA_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_SOURCE_INTERFACE_CONST_IDENTITY));
       castRules.add(
           new TypeObjectCastRule.CallByDestIdentity(
-              GenIdentities.TYPE_TYPE_IDENTITY,
+              GenIdentities.TYPE_IDENTITY,
               new TypeObjectCastRule.DynRuntimeHelper(
                   compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
                   "fromInterfaceData",

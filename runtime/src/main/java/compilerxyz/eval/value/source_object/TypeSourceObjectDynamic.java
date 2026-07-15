@@ -395,14 +395,14 @@ public final class TypeSourceObjectDynamic
         return true;
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome()) {
       for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
           return true;
         }
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenIdentities.ASPECT_IDENTITY).optIsSome()) {
       return true;
     }
     return false;
@@ -414,7 +414,7 @@ public final class TypeSourceObjectDynamic
       return EResult.ok(
           new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
       for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
@@ -471,7 +471,7 @@ public final class TypeSourceObjectDynamic
                 Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceConst(impl.interface_)))));
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_ASPECT_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenIdentities.ASPECT_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
         return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");

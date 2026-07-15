@@ -17,7 +17,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(name = "type_aspect_identity", value = 6012L)
+@compilerxyz.annotations.BuiltinIdentity(6012L)
 @compilerxyz.annotations.BuiltinTypeId(value = 7013L, name = "type_aspect_dynamic")
 public interface Aspect {
 
@@ -33,7 +33,7 @@ public interface Aspect {
     private static TypeObjectDynamic build() {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
       var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_ASPECT_IDENTITY);
+      identityAspects.add(GenIdentities.ASPECT_IDENTITY);
       return new TypeObjectDynamic(
           GenTypeIds.TYPE_ASPECT_DYNAMIC_TYPE_ID,
           "aspect",

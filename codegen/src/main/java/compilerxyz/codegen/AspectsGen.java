@@ -316,7 +316,7 @@ public final class AspectsGen {
     b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
     b.addStatement(
-        "castRules.add(new $T($T.INTERFACE_REF_TYPE_IDENTITY, $T.fromClass($T.class), $S, "
+        "castRules.add(new $T($T.INTERFACE_DATA_IDENTITY, $T.fromClass($T.class), $S, "
             + "$T.fromParts($T.fromClass($T.class), $T.of())))",
         CAST_RULE_INVOKE_VIRTUAL_BY_DEST_IDENTITY,
         GEN_IDENTITIES,

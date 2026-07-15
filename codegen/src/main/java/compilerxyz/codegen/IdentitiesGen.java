@@ -61,7 +61,7 @@ public final class IdentitiesGen {
       cls.addField(
               FieldSpec.builder(
                               UNIQUE,
-                              upper(spec.name),
+                              constantName(spec.name),
                               Modifier.PUBLIC,
                               Modifier.STATIC,
                               Modifier.FINAL)
@@ -73,7 +73,9 @@ public final class IdentitiesGen {
     GenMain.write(outRoot, file, formatter);
   }
 
-  private static String upper(String snake) {
-    return snake.toUpperCase(java.util.Locale.ROOT);
+  private static String constantName(String snake) {
+    var s = snake;
+    if (s.endsWith("_identity")) s = s.substring(0, s.length() - "_identity".length());
+    return s.toUpperCase(java.util.Locale.ROOT) + "_IDENTITY";
   }
 }

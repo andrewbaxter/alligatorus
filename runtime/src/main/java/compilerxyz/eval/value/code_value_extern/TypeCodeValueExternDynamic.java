@@ -29,7 +29,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7020L)
-@compilerxyz.annotations.BuiltinIdentity(name = "code_value_extern_type_identity", value = 6002L)
+@compilerxyz.annotations.BuiltinIdentity(6002L)
 public record TypeCodeValueExternDynamic()
     implements
         Type,
@@ -65,7 +65,7 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.CODE_VALUE_EXTERN_TYPE_IDENTITY)
+    if (key.equals(GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
         || key.equals(AspectDropDynamicLight.ID)
@@ -158,7 +158,7 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.CODE_VALUE_EXTERN_TYPE_IDENTITY).optIsSome();
+    return sourceType.typeAspect(xx, GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
@@ -167,7 +167,7 @@ public record TypeCodeValueExternDynamic()
       return EResult.err(loc, "TypeCodeValueExternDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    if (sourceType.typeAspect(xx, GenIdentities.CODE_VALUE_EXTERN_TYPE_IDENTITY).optIsSome()) {
+    if (sourceType.typeAspect(xx, GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(
               cv.code(),

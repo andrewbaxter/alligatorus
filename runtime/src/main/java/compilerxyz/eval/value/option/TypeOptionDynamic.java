@@ -44,7 +44,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7035L)
-@compilerxyz.annotations.BuiltinIdentity(name = "type_option_identity", value = 6008L)
+@compilerxyz.annotations.BuiltinIdentity(6008L)
 public record TypeOptionDynamic(Type elementType)
     implements
         Type,
@@ -80,7 +80,7 @@ public record TypeOptionDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_OPTION_IDENTITY)
+    if (key.equals(GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
@@ -100,7 +100,7 @@ public record TypeOptionDynamic(Type elementType)
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override
@@ -109,7 +109,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.err(loc, "TypeOptionDynamic::typeCastFrom: CodeValue has no compile-time value");
     }
     var sourceType = some.value().valueType();
-    if (!(sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_IDENTITY) instanceof Opt.Some<Aspect>)) {
+    if (!(sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>)) {
       return EResult.err(loc, "Cannot convert to option");
     }
     return EResult.ok(

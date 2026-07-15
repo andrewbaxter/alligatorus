@@ -43,7 +43,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7016L)
-@compilerxyz.annotations.BuiltinIdentity(name = "expr_type_identity", value = 6013L)
+@compilerxyz.annotations.BuiltinIdentity(6013L)
 public record TypeExpr()
     implements
         Type,
@@ -80,7 +80,7 @@ public record TypeExpr()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.EXPR_TYPE_IDENTITY)
+    if (key.equals(GenIdentities.TYPE_EXPR_IDENTITY)
         || key.equals(AspectArtifact.ID)
         || key.equals(AspectBind.ID)
         || key.equals(AspectConsumeDynamic.ID)
@@ -139,7 +139,7 @@ public record TypeExpr()
     }
     var sourceValue = someVal.value();
     var sourceType = sourceValue.valueType();
-    if (sourceType.typeAspect(xx, GenIdentities.EXPR_TYPE_IDENTITY).optIsSome()) {
+    if (sourceType.typeAspect(xx, GenIdentities.TYPE_EXPR_IDENTITY).optIsSome()) {
       if (sourceValue instanceof Expr expr) {
         return EResult.ok(new CodeValue(cv.code(), Opt.some(expr)));
       }
