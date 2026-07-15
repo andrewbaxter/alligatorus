@@ -19,6 +19,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinIdentity(name = "type_code_dyn_handle_identity", value = 6011L)
 public final class CodeDynHandleType {
 
   private CodeDynHandleType() {}

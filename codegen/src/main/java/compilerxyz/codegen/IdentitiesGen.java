@@ -23,20 +23,20 @@ public final class IdentitiesGen {
 
   private static TList<IdentitySpec> specs() {
     return TList.of(
-        new IdentitySpec("expr_context_ref_type_identity", 6001),
-        new IdentitySpec("code_value_extern_type_identity", 6002),
-        // type_unique_identity (6003) migrated: @BuiltinIdentity on TypeUnique
+        // 6001 expr_context_ref_type_identity — @BuiltinIdentity on ExprContext
+        // 6002 code_value_extern_type_identity — on TypeCodeValueExternDynamic
+        // 6003 type_unique_identity — on TypeUnique
         new IdentitySpec("interface_const_identity", 6004),
         new IdentitySpec("interface_ref_type_identity", 6005),
-        // type_type_identity (6006) migrated: @BuiltinIdentity on Type
-        new IdentitySpec("union_ref_type_identity", 6007),
-        // type_option_identity (6008) migrated: @BuiltinIdentity on TypeOptionDynamic
         new IdentitySpec("type_code_struct_identity", 6009),
-        new IdentitySpec("type_code_enum_identity", 6010),
-        new IdentitySpec("type_code_dyn_handle_identity", 6011),
-        // type_aspect_identity (6012) migrated: @BuiltinIdentity on Aspect
-        // expr_type_identity (6013) migrated: @BuiltinIdentity on TypeExpr
-        new IdentitySpec("java_data_descriptor_type_identity", 6014));
+        new IdentitySpec("type_code_enum_identity", 6010));
+        // 6006 type_type_identity — on Type
+        // 6007 union_ref_type_identity — on SourceUnionRefType
+        // 6008 type_option_identity — on TypeOptionDynamic
+        // 6011 type_code_dyn_handle_identity — on CodeDynHandleType
+        // 6012 type_aspect_identity — on Aspect
+        // 6013 expr_type_identity — on TypeExpr
+        // 6014 java_data_descriptor_type_identity — on JavaDataDescriptor
   }
 
   public static void run(

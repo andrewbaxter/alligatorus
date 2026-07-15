@@ -29,6 +29,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7020L)
+@compilerxyz.annotations.BuiltinIdentity(name = "code_value_extern_type_identity", value = 6002L)
 public record TypeCodeValueExternDynamic()
     implements
         Type,

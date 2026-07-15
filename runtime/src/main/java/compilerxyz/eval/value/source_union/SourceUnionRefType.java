@@ -21,6 +21,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinIdentity(name = "union_ref_type_identity", value = 6007L)
 public final class SourceUnionRefType {
 
   private SourceUnionRefType() {}
