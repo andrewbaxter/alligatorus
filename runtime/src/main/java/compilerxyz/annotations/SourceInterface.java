@@ -16,9 +16,4 @@ public @interface SourceInterface {
   long uniqueId();
 
   int scopeId();
-
-  String fieldPrefix();
-
-  /** Dot-separated language path in the builtin scope tree; empty means not placed in tree. */
-  String path() default "";
 }

@@ -7,19 +7,16 @@ public record InterfaceSpec(
     String name,
     int builtinUniqueId,
     int scopeId,
-    String fieldPrefix,
     String kind,
     @Nullable String description,
     boolean registerInScope,
     @Nullable String javaTraitName,
-    @Nullable String typeIdConstantName,
     @Nullable String hostInterfaceBinaryName,
     TList<Method> methods) {
   public InterfaceSpec(
       String name,
       int builtinUniqueId,
       int scopeId,
-      String fieldPrefix,
       String kind,
       @Nullable String description,
       boolean registerInScope,
@@ -29,37 +26,10 @@ public record InterfaceSpec(
         name,
         builtinUniqueId,
         scopeId,
-        fieldPrefix,
         kind,
         description,
         registerInScope,
         javaTraitName,
-        null,
-        null,
-        methods);
-  }
-
-  public InterfaceSpec(
-      String name,
-      int builtinUniqueId,
-      int scopeId,
-      String fieldPrefix,
-      String kind,
-      @Nullable String description,
-      boolean registerInScope,
-      @Nullable String javaTraitName,
-      @Nullable String typeIdConstantName,
-      TList<Method> methods) {
-    this(
-        name,
-        builtinUniqueId,
-        scopeId,
-        fieldPrefix,
-        kind,
-        description,
-        registerInScope,
-        javaTraitName,
-        typeIdConstantName,
         null,
         methods);
   }

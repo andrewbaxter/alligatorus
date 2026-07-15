@@ -40,13 +40,11 @@ public final class JavaAspectExtractor {
 
   public record ScanResult(
       TList<AspectsGen.AspectSpec> aspects,
-      TList<InterfaceSpec> sourceInterfaces,
-      TMap<String, String> interfacePaths) {}
+      TList<InterfaceSpec> sourceInterfaces) {}
 
   public static ScanResult scanRoot(Path runtimeSourceRoot) throws IOException {
     var aspects = new TList<AspectsGen.AspectSpec>();
     var interfaces = new TList<InterfaceSpec>();
-    var paths = new TMap<String, String>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
@@ -60,47 +58,17 @@ public final class JavaAspectExtractor {
           var iface = extractSourceInterface(file);
           if (iface != null) {
             interfaces.add(iface);
-            var p = extractSourceInterfacePath(file);
-            if (p != null && !p.isEmpty()) paths.put(iface.name(), p);
           }
         }
         if (hasTrait) {
           var trait = extractTrait(file);
           if (trait != null) {
             interfaces.add(trait);
-            var p = extractTraitPath(file);
-            if (p != null && !p.isEmpty()) paths.put(trait.name(), p);
           }
         }
       }
     }
-    return new ScanResult(aspects, interfaces, paths);
-  }
-
-  private static @org.jspecify.annotations.Nullable String extractSourceInterfacePath(Path file)
-      throws IOException {
-    var cu = StaticJavaParser.parse(file);
-    var ifaceDecl = findAnnotatedInterface(cu);
-    if (ifaceDecl == null) return null;
-    var ann = ifaceDecl.getAnnotationByName("SourceInterface");
-    if (ann.isEmpty()) return null;
-    return readAttrs(ann.get()).getOrDefault("path", "");
-  }
-
-  private static @org.jspecify.annotations.Nullable String extractTraitPath(Path file)
-      throws IOException {
-    var cu = StaticJavaParser.parse(file);
-    for (var t : cu.getTypes()) {
-      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) {
-        for (var a : c.getAnnotations()) {
-          var n = a.getNameAsString();
-          if (n.equals("BuiltinTrait") || n.equals("compilerxyz.annotations.BuiltinTrait")) {
-            return readAttrs(a).getOrDefault("path", "");
-          }
-        }
-      }
-    }
-    return null;
+    return new ScanResult(aspects, interfaces);
   }
 
   private static @org.jspecify.annotations.Nullable InterfaceSpec extractTrait(Path sourceFile)
@@ -145,18 +113,15 @@ public final class JavaAspectExtractor {
           new MethodArgs(args)));
     }
 
-    var typeIdConst = attrs.getOrDefault("typeIdConstant", "");
     var registerInScope = !"false".equals(attrs.getOrDefault("registerInScope", "true"));
     return new InterfaceSpec(
         name,
         Integer.parseInt(attrs.get("uniqueId")),
         Integer.parseInt(attrs.get("scopeId")),
-        attrs.get("fieldPrefix"),
         simpleName,
         null,
         registerInScope,
         null,
-        typeIdConst.isEmpty() ? null : typeIdConst,
         pkg + "." + simpleName,
         methods);
   }
@@ -209,11 +174,9 @@ public final class JavaAspectExtractor {
         name,
         Integer.parseInt(siAttrs.get("uniqueId")),
         Integer.parseInt(siAttrs.get("scopeId")),
-        siAttrs.get("fieldPrefix"),
         "Aspect" + kind,
         null,
         true,
-        null,
         null,
         "compilerxyz.gen.Aspect" + kind,
         methods);

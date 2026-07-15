@@ -20,12 +20,4 @@ public @interface BuiltinTrait {
   long uniqueId();
 
   int scopeId();
-
-  String fieldPrefix();
-
-  /** GenTypeIds constant name used for the trait's runtime Type descriptor. */
-  String typeIdConstant();
-
-  /** Dot-separated language path in the builtin scope tree; empty means not placed in tree. */
-  String path() default "";
 }

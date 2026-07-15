@@ -1,6 +1,7 @@
 package compilerxyz.handwritten;
 
 import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
 import compilerxyz.annotations.SourceInterface;
 import compilerxyz.eval.CodeValue;
@@ -15,7 +16,8 @@ import compilerxyz.util.Opt;
     uniqueId = 1116L,
     kind = "Function",
     javadoc = "Allows the value of this type to be called (as a function)")
-@SourceInterface(uniqueId = 1016L, scopeId = 3003, fieldPrefix = "af", path = "eval.aspect_function")
+@SourceInterface(uniqueId = 1016L, scopeId = 3003)
+@BuiltinPath("eval.aspect_function")
 public interface AspectFunction extends Aspect {
   @SourceExposed(name = "call")
   EResult<CodeValue> aspectFunctionCall(

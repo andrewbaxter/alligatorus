@@ -84,14 +84,10 @@ public final class InterfacesGen {
   private static void validate(
       TList<InterfaceSpec> specs, TSet<Long> builtinUniqueIds, TSet<Long> scopeIds) {
     var names = new TSet<String>();
-    var prefixes = new TSet<String>();
     var kinds = new TSet<String>();
     for (var spec : specs) {
       if (!names.add(spec.name())) {
         throw new IllegalStateException("duplicate interface name: " + spec.name());
-      }
-      if (!prefixes.add(spec.fieldPrefix())) {
-        throw new IllegalStateException("duplicate field_prefix: " + spec.fieldPrefix());
       }
       if (!kinds.add(spec.kind())) {
         throw new IllegalStateException("duplicate kind: " + spec.kind());
@@ -128,22 +124,6 @@ public final class InterfacesGen {
                               Modifier.PUBLIC,
                               Modifier.FINAL)
                       .build());
-
-      var ifaceUpper = upper(spec.name());
-      for (var i = 0; i < spec.methods().size(); i++) {
-        var m = spec.methods().get(i);
-        var fieldName = "_im_" + spec.fieldPrefix() + i;
-        var constName = "IM_" + ifaceUpper + "_" + upper(m.sourceName()) + "_FIELD";
-        holder.addField(
-                FieldSpec.builder(
-                                String.class,
-                                constName,
-                                Modifier.PUBLIC,
-                                Modifier.STATIC,
-                                Modifier.FINAL)
-                        .initializer("$S", fieldName)
-                        .build());
-      }
 
       holder.addMethod(
               MethodSpec.methodBuilder(identityMethodName(spec))
@@ -311,34 +291,10 @@ public final class InterfacesGen {
       trait.addMethod(method.build());
     }
 
-    if (spec.typeIdConstantName() != null) {
-      addDynamicTypeFactory(trait, spec);
-    }
-
     var file = JavaFile.builder(GEN_PACKAGE, trait.build()).build();
     GenMain.write(outRoot, file, formatter);
   }
 
-  private static final ClassName TYPE_OBJECT_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
-  private static final ClassName OBJECT_DROP_KIND =
-      ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
-  private static final ClassName OBJECT_DATA_FIELD =
-      ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
-  private static final ClassName OBJECT_METHOD =
-      ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
-  private static final ClassName TYPE_OBJECT_CAST_RULE =
-      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
-  private static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
-      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
-  private static final ClassName TYPE_OBJECT_LIFT =
-      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectLift");
-  private static final ClassName OBJECT_ASPECT_SOURCE =
-      ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource");
-  private static final ClassName GEN_TYPE_IDS =
-      ClassName.get("compilerxyz.gen", "GenTypeIds");
-  private static final ClassName GEN_BUILTIN_INTERFACES =
-      ClassName.get("compilerxyz.gen", "GenBuiltinInterfaces");
   private static final ClassName JAVA_INTERNAL_NAME =
       ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
   private static final ClassName JAVA_DATA_DESCRIPTOR =
@@ -380,69 +336,6 @@ public final class InterfacesGen {
     if (tn instanceof ClassName cn) return cn;
     if (tn instanceof ParameterizedTypeName pt) return pt.rawType;
     return null;
-  }
-
-  private static void addDynamicTypeFactory(TypeSpec.Builder trait, InterfaceSpec spec) {
-    var traitClass = ClassName.get("compilerxyz.gen", spec.javaTraitName());
-    var jvmInternalPath = "compilerxyz/gen/" + spec.javaTraitName();
-
-    trait.addMethod(
-        MethodSpec.methodBuilder("dynamicType")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(TYPE)
-            .addStatement("return DynamicType.INSTANCE")
-            .build());
-
-    var holder =
-        TypeSpec.classBuilder("DynamicType")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
-
-    holder.addField(
-        FieldSpec.builder(
-                TYPE_OBJECT_DYNAMIC, "INSTANCE", Modifier.STATIC, Modifier.FINAL)
-            .initializer("build()")
-            .build());
-
-    holder.addMethod(
-        MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
-
-    var build =
-        MethodSpec.methodBuilder("build")
-            .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-            .returns(TYPE_OBJECT_DYNAMIC);
-    build.addStatement("var identityAspects = new $T<$T>()", TLIST, UNIQUE);
-    build.addStatement(
-        "identityAspects.add($T.$N())", GEN_BUILTIN_INTERFACES, identityMethodName(spec));
-    build.addStatement(
-        "return new $T($T.$N, $S, $T.of($S), $T.fromClass($T.class), "
-            + "new $T<$T>(), new $T<$T>(), $T.DYNAMIC_LIGHT, identityAspects, "
-            + "new $T<$T>(), new $T<$T>(), $T.<$T>none(), $T.<$T>none(), $T.<$T>none())",
-        TYPE_OBJECT_DYNAMIC,
-        GEN_TYPE_IDS,
-        spec.typeIdConstantName(),
-        spec.name(),
-        JAVA_INTERNAL_NAME,
-        jvmInternalPath,
-        JAVA_DATA_DESCRIPTOR,
-        traitClass,
-        TLIST,
-        OBJECT_DATA_FIELD,
-        TLIST,
-        OBJECT_METHOD,
-        OBJECT_DROP_KIND,
-        TLIST,
-        TYPE_OBJECT_CAST_RULE,
-        TLIST,
-        TYPE_OBJECT_CAST_FROM_RULE,
-        OPT,
-        TYPE_OBJECT_LIFT,
-        OPT,
-        OBJECT_ASPECT_SOURCE,
-        OPT,
-        JAVA_INTERNAL_NAME);
-    holder.addMethod(build.build());
-
-    trait.addType(holder.build());
   }
 
   private static String fieldNameForSpec(InterfaceSpec spec) {

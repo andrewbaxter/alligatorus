@@ -15,7 +15,7 @@ import compilerxyz.util.Opt;
     uniqueId = 1023L,
     kind = "BindDynamic",
     javadoc = "Creates code to prepare a value for binding, used by the Dynamic target.")
-@SourceInterface(uniqueId = 2010L, scopeId = 3011, fieldPrefix = "abd")
+@SourceInterface(uniqueId = 2010L, scopeId = 3011)
 public interface AspectBindDynamic extends Aspect {
   @SourceExposed(name = "bindDynamic")
   EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(

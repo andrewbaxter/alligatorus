@@ -2,8 +2,6 @@ package compilerxyz.gen;
 
 @compilerxyz.annotations.BuiltinTrait(
     uniqueId = 2007L,
-    scopeId = 3007,
-    fieldPrefix = "cd",
-    typeIdConstant = "",
-    path = "eval.code_dyn")
+    scopeId = 3007)
+@compilerxyz.annotations.BuiltinPath("eval.code_dyn")
 public interface CodeDyn {}

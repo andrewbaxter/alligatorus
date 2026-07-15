@@ -15,7 +15,7 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
     uniqueId = 1024L,
     kind = "ConsumeDynamic",
     javadoc = "Used to ensure a value is fully dynamic.")
-@SourceInterface(uniqueId = 2009L, scopeId = 3010, fieldPrefix = "cd_")
+@SourceInterface(uniqueId = 2009L, scopeId = 3010)
 public interface AspectConsumeDynamic extends Aspect {
   @SourceExposed(name = "toDynamic")
   EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv);

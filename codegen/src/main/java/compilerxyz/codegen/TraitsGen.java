@@ -50,11 +50,9 @@ public final class TraitsGen {
             "type",
             2002,
             3002,
-            "t",
             "Type",
             null,
             false,
-            null,
             null,
             "compilerxyz.eval.Type",
             TList.of(

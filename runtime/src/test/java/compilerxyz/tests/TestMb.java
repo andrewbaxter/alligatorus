@@ -55,7 +55,7 @@ public final class TestMb extends ModuleBuilder {
   }
 
   public SourceExpr evalType() {
-    return builtin("eval", "type_");
+    return builtin("eval", "type");
   }
 
   public SourceExpr evalBinding() {
@@ -134,10 +134,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "bool");
   }
 
-  public SourceExpr typesBinding() {
-    return builtin("types", "binding");
-  }
-
   public SourceExpr typesBindResult() {
     return builtin("types", "bind_result");
   }
@@ -188,10 +184,6 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr typesString() {
     return builtin("types", "string");
-  }
-
-  public SourceExpr typesType() {
-    return builtin("types", "type");
   }
 
   @SafeVarargs

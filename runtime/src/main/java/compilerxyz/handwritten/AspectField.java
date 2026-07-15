@@ -1,6 +1,7 @@
 package compilerxyz.handwritten;
 
 import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
 import compilerxyz.annotations.SourceInterface;
 import compilerxyz.eval.CodeValue;
@@ -17,7 +18,8 @@ import compilerxyz.util.TList;
     uniqueId = 1015L,
     kind = "Field",
     javadoc = "Allows field expressions to work on the value of this type")
-@SourceInterface(uniqueId = 1030L, scopeId = 3004, fieldPrefix = "afd", path = "eval.aspect_field")
+@SourceInterface(uniqueId = 1030L, scopeId = 3004)
+@BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {
   @SourceExposed(name = "field")
   EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);

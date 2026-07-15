@@ -17,7 +17,6 @@ import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
 import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -420,15 +419,10 @@ public final class BuiltinTreeGen {
   }
 
   private static TList<InterfaceSpec> scannedExtras = new TList<>();
-  private static TMap<String, String> scannedInterfacePaths = new TMap<>();
   private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();
 
   public static void setScannedInterfaceSpecs(TList<InterfaceSpec> specs) {
     scannedExtras = specs;
-  }
-
-  public static void setScannedInterfacePaths(TMap<String, String> paths) {
-    scannedInterfacePaths = paths;
   }
 
   public static void setScannedPathEntries(TList<BuiltinPathScanner.Entry> entries) {
@@ -471,26 +465,39 @@ public final class BuiltinTreeGen {
     // Collect (path, leaf) pairs from all sources.
     var pathToLeaf = new java.util.LinkedHashMap<String, LeafSpec>();
 
+    // Build a lookup: host-interface binary name -> InterfaceSpec, so that a
+    // @BuiltinPath scanned on an interface class becomes an interface-const
+    // leaf (TypeSourceInterfaceConst wrapping the interfaces holder field)
+    // rather than a plain type leaf (which would require the class to expose
+    // a static dynamicType()).
+    var extras = extraInterfaceSpecs();
+    var interfaceByHostName = new java.util.HashMap<String, InterfaceSpec>();
+    for (var s : extras) {
+      var host = s.effectiveHostInterfaceBinaryName();
+      if (host != null) interfaceByHostName.put(host, s);
+      // Aspect specs are keyed by the generated compilerxyz.gen.AspectXxx name,
+      // but @BuiltinPath is applied on the handwritten source class
+      // (compilerxyz.handwritten.AspectXxx). Register that alias too.
+      if (host != null && host.startsWith("compilerxyz.gen.Aspect")) {
+        var handwritten = "compilerxyz.handwritten." + host.substring("compilerxyz.gen.".length());
+        interfaceByHostName.put(handwritten, s);
+      }
+    }
+
     // 1) Scanner-produced @BuiltinPath entries.
     for (var entry : scannedPathEntries) {
       LeafSpec spec = switch (entry) {
-        case BuiltinPathScanner.TypeLeaf tl ->
-            LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), OCT_TYPE_EXPR);
+        case BuiltinPathScanner.TypeLeaf tl -> {
+          var host = tl.typeClass().canonicalName();
+          var ifaceSpec = interfaceByHostName.get(host);
+          if (ifaceSpec != null) yield LeafSpec.interface_(ifaceSpec);
+          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), OCT_TYPE_EXPR);
+        }
         case BuiltinPathScanner.FunctionLeaf fl ->
             LeafSpec.functionByName(fl.methodName(), fl.args(), fl.retType().dynamicType());
       };
       if (pathToLeaf.put(entry.path(), spec) != null) {
         throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.path());
-      }
-    }
-
-    // 2) Interface leaves via @SourceInterface(path=...) / @BuiltinTrait(path=...).
-    var extras = extraInterfaceSpecs();
-    for (var s : extras) {
-      var path = scannedInterfacePaths.getOrNull(s.name());
-      if (path == null || path.isEmpty()) continue;
-      if (pathToLeaf.put(path, LeafSpec.interface_(s)) != null) {
-        throw new IllegalStateException("duplicate interface path: " + path);
       }
     }
 
@@ -563,7 +570,7 @@ public final class BuiltinTreeGen {
                   "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
                   "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
                   "aspect_bind_dynamic_id",
-                  "binding", "target", "code_dyn", "value", "type_"));
+                  "binding", "target", "code_dyn", "value", "type"));
 
   private record TreeNode(
       java.util.LinkedHashMap<String, TreeNode> children,
