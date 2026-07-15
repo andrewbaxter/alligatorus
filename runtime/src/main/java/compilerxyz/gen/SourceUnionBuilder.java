@@ -1,5 +1,6 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
@@ -10,6 +11,7 @@ import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic;
 import java.lang.String;
 
+@BuiltinPushStruct(uniqueId = 3007L)
 public final class SourceUnionBuilder {
     public final TypeSourceUnionDynamic type_;
 

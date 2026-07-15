@@ -57,8 +57,15 @@ public final class GenMain {
     }
     TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds, typeIdExtras);
 
+    var scannedPushStructs =
+        compilerxyz.codegen.experimental.BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);
     PushStructsGen.run(
-        outRoot, formatter, PushStructsGen.specs(TraitsGen.specs()), builtinUniqueIds, scopeIds);
+        outRoot,
+        formatter,
+        PushStructsGen.specs(TraitsGen.specs()),
+        scannedPushStructs,
+        builtinUniqueIds,
+        scopeIds);
     BuiltinTreeGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
   }

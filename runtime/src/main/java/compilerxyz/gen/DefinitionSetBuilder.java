@@ -1,0 +1,73 @@
+package compilerxyz.gen;
+
+import compilerxyz.annotations.BuiltinPushStruct;
+import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.SourceId;
+import compilerxyz.eval.Type;
+import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
+import compilerxyz.eval.value.source_function.SourceFunctionData;
+import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
+import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
+import java.lang.String;
+
+@BuiltinPushStruct(uniqueId = 3009L)
+public final class DefinitionSetBuilder {
+    public final DefinitionSet inner;
+
+    public DefinitionSetBuilder(DefinitionSet inner) {
+        this.inner = inner;
+    }
+
+    public static Type dynamicType() {
+        return GenObjectTypes.definitionSetBuilder();
+    }
+
+    public SourceFuncResult func(ExprContext xx, String name) {
+        var data = new SourceFunctionData(this.inner.defSetId, name, this.inner);
+        data.funcIdx = this.inner.functions.size();
+        this.inner.functions.add(data);
+        return new SourceFuncResult(new TypeSourceFunctionConst(data));
+    }
+
+    public SourceObjectBuilder object(ExprContext xx, String name) {
+        var identity = DynRuntime.freshUnique(xx);
+        var data = new TypeSourceObjectDynamic(this.inner.defSetId, name, identity, this.inner);
+        data.objIdx = this.inner.objects.size();
+        this.inner.objects.add(data);
+        return new SourceObjectBuilder(data);
+    }
+
+    public SourceUnionBuilder union(ExprContext xx) {
+        var identity = DynRuntime.freshUnique(xx);
+        var data = new TypeSourceUnionDynamic(this.inner, identity);
+        this.inner.unions.add(data);
+        return new SourceUnionBuilder(data);
+    }
+
+    public SourceInterfaceResult interface_(ExprContext xx) {
+        var identity = DynRuntime.freshUnique(xx);
+        var iface = new InterfaceData(this.inner.defSetId, identity, null, this.inner);
+        var ifaceIndex = (long) this.inner.interfaces.size();
+        this.inner.interfaces.add(iface);
+        iface.compiledBinaryName = SourceInterfaceEmitter.binaryNameFor(this.inner.defSetId, ifaceIndex);
+        return new SourceInterfaceResult(new TypeSourceInterfaceConst(iface));
+    }
+
+    public void finish(ExprContext xx) {
+        var _loc = new QExprId(new SourceId(-1L), -1L);
+        for (long _i = 0; _i < this.inner.interfaces.size(); _i++) {
+            var _iface = this.inner.interfaces.get((int) _i);
+            var _r = _iface.finish(_loc, _i);
+            if (_r.hasErrors()) {
+                throw new IllegalStateException("DefinitionSetBuilder.finish: " + _r.errorsOrNull());
+            }
+        }
+        this.inner.finished = true;
+    }
+}

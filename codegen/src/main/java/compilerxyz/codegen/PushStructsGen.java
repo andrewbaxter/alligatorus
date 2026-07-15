@@ -119,15 +119,19 @@ public final class PushStructsGen {
       Path outRoot,
       Formatter formatter,
       TList<PushStructSpec> specs,
+      TList<PushStructSpec> extraSpecs,
       TSet<Long> builtinUniqueIds,
       TSet<Long> scopeIds)
       throws IOException {
-    validate(specs, builtinUniqueIds);
-    for (var spec : specs) {
+    var all = new TList<PushStructSpec>();
+    all.addAll(specs);
+    all.addAll(extraSpecs);
+    validate(all, builtinUniqueIds);
+    for (var spec : all) {
       if (HANDWRITTEN_STRUCTS.contains(spec.name())) continue;
       writeDataClass(outRoot, formatter, spec);
     }
-    writeGenObjectTypes(outRoot, formatter, specs);
+    writeGenObjectTypes(outRoot, formatter, all);
   }
 
   private static void validate(TList<PushStructSpec> specs, TSet<Long> builtinUniqueIds) {
@@ -657,7 +661,7 @@ public final class PushStructsGen {
       for (int i = 0; i < spec.methods().size(); i++) {
         var meth = spec.methods().get(i);
         var dynRuntimeMethod = meth.dynRuntimeMethod();
-        if (dynRuntimeMethod == null) {
+        if (dynRuntimeMethod == null && !INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
           throw new IllegalStateException(
               "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
         }
@@ -705,7 +709,7 @@ public final class PushStructsGen {
     if (isSelfReferential) {
       for (var meth : spec.methods()) {
         var dynRuntimeMethod = meth.dynRuntimeMethod();
-        if (dynRuntimeMethod == null) {
+        if (dynRuntimeMethod == null && !INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
           throw new IllegalStateException(
               "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
         }
@@ -741,7 +745,14 @@ public final class PushStructsGen {
    * from the PushStructSpec.
    */
   private static final TSet<String> HANDWRITTEN_STRUCTS =
-      TSet.of("SourceUnionBuilder");
+      TSet.of(
+          "DefinitionSetBuilder",
+          "SourceFuncResult",
+          "SourceInterfaceMethodResult",
+          "SourceInterfaceResult",
+          "SourceObjectBuilder",
+          "SourceObjectMethodResult",
+          "SourceUnionBuilder");
 
   private static CodeBlock methodFunctionType(
       PushStructSpec spec, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {
@@ -928,285 +939,9 @@ public final class PushStructsGen {
   }
 
   public static TList<PushStructSpec> specs(TList<InterfaceSpec> traitSpecs) {
-    var string = TypeRef.leaf(TYPE_STRING_DYNAMIC);
-    var bool = TypeRef.leaf(TYPE_BOOL_DYNAMIC);
-    var anyTypeArg = TypeRef.leaf(TYPE_RT);
-    var stagedExprArg = TypeRef.leaf(TYPE_EXPR);
-    var uniqueArg = TypeRef.leaf(TYPE_UNIQUE_RT);
-    var ifaceRefArg = TypeRef.leaf(INTERFACE_REF);
-    var recordArg =
-        new TypeRef(
-            ParameterizedTypeName.get(
-                ClassName.get("java.util", "Map"),
-                ClassName.get("compilerxyz.eval", "ConstKey"),
-                ClassName.get("compilerxyz.eval", "Expr")),
-            recordArgDyn());
-
-    var empty = CodeBlock.of("");
-
-    var retVoid = TypeRef.opaque(TypeName.VOID);
-    var retSourceFuncResult = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceFuncResult"));
-    var retSourceObjectBuilder = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceObjectBuilder"));
-    var retSourceInterfaceResult =
-        TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceInterfaceResult"));
-    var retSourceInterfaceMethodResult =
-        TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceInterfaceMethodResult"));
-    var retSourceObjectMethodResult =
-        TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceObjectMethodResult"));
-    var retSourceUnionBuilder = TypeRef.leaf(ClassName.get(GEN_PACKAGE, "SourceUnionBuilder"));
-    var retDefinitionSetBuilder =
-        TypeRef.leaf(ClassName.get(GEN_PACKAGE, "DefinitionSetBuilder"));
-    var retSourceUnionNewRef = TypeRef.leaf(SOURCE_UNION_NEW_REF);
-
-    var definitionSetBuilder =
-        new PushStructSpec(
-            "DefinitionSetBuilder",
-            3009L,
-            TList.of(new NamedTypeRef("inner", TypeRef.leaf(DEFINITION_SET))),
-            TList.of(),
-            TList.of(
-                new PushMethod(
-                    "func",
-                    TList.of(new NamedTypeRef("name", string)),
-                    objRef("SourceFuncResult"),
-                    empty,
-                    "defSetBuilderFunc",
-                    retSourceFuncResult),
-                new PushMethod(
-                    "object",
-                    TList.of(new NamedTypeRef("name", string)),
-                    objRef("SourceObjectBuilder"),
-                    empty,
-                    "defSetBuilderObject",
-                    retSourceObjectBuilder),
-                new PushMethod(
-                    "union", TList.of(), objRef("SourceUnionBuilder"), empty,
-                    "defSetBuilderUnion", retSourceUnionBuilder),
-                new PushMethod(
-                    "interface", TList.of(), objRef("SourceInterfaceResult"), empty,
-                    "defSetBuilderInterface", retSourceInterfaceResult),
-                new PushMethod(
-                    "finish", TList.of(), "()", empty,
-                    "defSetBuilderFinish", retVoid)));
-
-    var sourceFuncResult =
-        new PushStructSpec(
-            "SourceFuncResult",
-            3003L,
-            TList.of(new NamedTypeRef("func_ref", TypeRef.leaf(TYPE_SOURCE_FUNCTION_CONST))),
-            TList.of(
-                new PushField(
-                    "func",
-                    "func_ref",
-                    TypeRef.leaf(TYPE_SOURCE_FUNCTION_CONST),
-                    empty)),
-            TList.of(
-                new PushMethod(
-                    "set_description",
-                    TList.of(new NamedTypeRef("description", string)),
-                    "()",
-                    empty,
-                    "srcFuncSetDescription",
-                    retVoid),
-                new PushMethod(
-                    "impl_",
-                    TList.of(
-                        new NamedTypeRef("arg", anyTypeArg),
-                        new NamedTypeRef("ret", anyTypeArg),
-                        new NamedTypeRef("impl_body", stagedExprArg)),
-                    "()",
-                    empty,
-                    "srcFuncSetTypesAndImpl",
-                    retVoid),
-                new PushMethod(
-                    "set_exception_type",
-                    TList.of(new NamedTypeRef("exception_type", anyTypeArg)),
-                    "()",
-                    empty,
-                    "srcFuncSetExcType",
-                    retVoid)));
-
-    var sourceObjectMethodResult =
-        new PushStructSpec(
-            "SourceObjectMethodResult",
-            3004L,
-            TList.of(new NamedTypeRef("method", TypeRef.leaf(SOURCE_DATA_METHOD_DATA))),
-            TList.of(),
-            TList.of(
-                new PushMethod(
-                    "impl_",
-                    TList.of(
-                        new NamedTypeRef("arg", anyTypeArg),
-                        new NamedTypeRef("ret", anyTypeArg),
-                        new NamedTypeRef("impl_body", stagedExprArg)),
-                    "()",
-                    empty,
-                    "srcObjectMethodSetTypesAndImpl",
-                    retVoid)));
-
-    var sourceInterfaceResult =
-        new PushStructSpec(
-            "SourceInterfaceResult",
-            3005L,
-            TList.of(
-                new NamedTypeRef("interface_ref", TypeRef.leaf(SOURCE_INTERFACE_CONST))),
-            TList.of(
-                new PushField(
-                    "type_",
-                    "interface_ref",
-                    TypeRef.leaf(SOURCE_INTERFACE_CONST),
-                    empty)),
-            TList.of(
-                new PushMethod(
-                    "set_description",
-                    TList.of(new NamedTypeRef("description", string)),
-                    "()",
-                    empty,
-                    "srcInterfaceSetDescription",
-                    retVoid),
-                new PushMethod(
-                    "func",
-                    TList.of(new NamedTypeRef("name", string)),
-                    objRef("SourceInterfaceMethodResult"),
-                    empty,
-                    "srcInterfaceAddMethod",
-                    retSourceInterfaceMethodResult),
-                new PushMethod(
-                    "set_is_aspect",
-                    TList.of(new NamedTypeRef("is_aspect", bool)),
-                    "()",
-                    empty,
-                    "srcInterfaceSetIsAspect",
-                    retVoid)));
-
-    var sourceObjectMethods = new TList<PushMethod>();
-    sourceObjectMethods.add(
-        new PushMethod(
-            "set_description",
-            TList.of(new NamedTypeRef("description", string)),
-            "()",
-            empty,
-            "srcObjectSetDescription",
-            retVoid));
-    sourceObjectMethods.add(
-        new PushMethod(
-            "set_inner",
-            TList.of(new NamedTypeRef("type_ref", anyTypeArg)),
-            "()",
-            empty,
-            "srcObjectSetInnerType",
-            retVoid));
-    sourceObjectMethods.add(
-        new PushMethod(
-            "func",
-            TList.of(new NamedTypeRef("name", string)),
-            objRef("SourceObjectMethodResult"),
-            empty,
-            "srcObjectAddMethod",
-            retSourceObjectMethodResult));
-    sourceObjectMethods.add(
-        new PushMethod(
-            "impl_interface",
-            TList.of(
-                new NamedTypeRef("iface_ref", ifaceRefArg),
-                new NamedTypeRef("record", recordArg)),
-            "()",
-            empty,
-            "srcObjectImplInterface",
-            retVoid));
-    var retTypeSourceObjectNewConst = TypeRef.leaf(TYPE_SOURCE_OBJECT_NEW_CONST);
-    for (var traitSpec : traitSpecs) {
-      if (traitSpec.registerInScope()) continue;
-      var runtimeName =
-          traitSpec.name().equals("value")
-              ? "srcObjectImplValue"
-              : traitSpec.name().equals("type")
-                  ? "srcObjectImplTypeInterface"
-                  : null;
-      if (runtimeName == null) {
-        throw new IllegalStateException(
-            "PushStructsGen: no DynRuntime method mapped for trait '" + traitSpec.name() + "'");
-      }
-      sourceObjectMethods.add(
-          new PushMethod(
-              traitSpec.name(),
-              TList.of(new NamedTypeRef("record", recordArg)),
-              "()",
-              empty,
-              runtimeName,
-              retVoid));
-    }
-    var sourceObjectResult =
-        new PushStructSpec(
-            "SourceObjectBuilder",
-            3006L,
-            TList.of(
-                new NamedTypeRef("type_", TypeRef.leaf(SOURCE_OBJECT_REF)),
-                new NamedTypeRef(
-                    "new_ref",
-                    retTypeSourceObjectNewConst,
-                    CodeBlock.of("new $T(type_)", TYPE_SOURCE_OBJECT_NEW_CONST))),
-            TList.of(
-                new PushField(
-                    "type_ref_",
-                    "type_",
-                    TypeRef.leaf(SOURCE_OBJECT_REF),
-                    empty),
-                new PushField(
-                    "new",
-                    "new_ref",
-                    retTypeSourceObjectNewConst,
-                    empty)),
-            TList.<PushMethod>from(sourceObjectMethods));
-
-    var sourceUnionBuilder =
-        new PushStructSpec(
-            "SourceUnionBuilder",
-            3007L,
-            TList.of(new NamedTypeRef("type_", TypeRef.leaf(SOURCE_UNION_DATA))),
-            TList.of(
-                new PushField(
-                    "type_",
-                    "type_",
-                    TypeRef.leaf(SOURCE_UNION_REF),
-                    empty)),
-            TList.of(
-                new PushMethod(
-                    "variant",
-                    TList.of(
-                        new NamedTypeRef("tag", string),
-                        new NamedTypeRef("type_ref", anyTypeArg)),
-                    SOURCE_UNION_NEW_REF_TYPE.canonicalName() + ".dynamicType()",
-                    empty,
-                    "srcUnionAddVariant",
-                    retSourceUnionNewRef)));
-
-    var sourceInterfaceMethodResult =
-        new PushStructSpec(
-            "SourceInterfaceMethodResult",
-            3008L,
-            TList.of(new NamedTypeRef("method", TypeRef.leaf(SOURCE_INTERFACE_METHOD_DATA))),
-            TList.of(),
-            TList.of(
-                new PushMethod(
-                    "impl_",
-                    TList.of(
-                        new NamedTypeRef("arg", anyTypeArg),
-                        new NamedTypeRef("ret", anyTypeArg)),
-                    "()",
-                    empty,
-                    "srcInterfaceMethodSetTypes",
-                    retVoid)));
-
-    return TList.of(
-        definitionSetBuilder,
-        sourceFuncResult,
-        sourceObjectMethodResult,
-        sourceInterfaceResult,
-        sourceObjectResult,
-        sourceUnionBuilder,
-        sourceInterfaceMethodResult);
+    return TList.of();
   }
+
 
   private static String pushMethodName(String name) {
     return name.endsWith("_") ? name.substring(0, name.length() - 1) : name;
