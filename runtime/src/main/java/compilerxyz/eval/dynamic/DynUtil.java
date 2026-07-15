@@ -28,6 +28,8 @@ import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.util.Opt;
+import java.util.Iterator;
+import java.util.Map;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 
@@ -112,7 +114,7 @@ public final class DynUtil {
         seq.add(iteratorSetup);
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
-        var iteratorName = JavaInternalName.of("java/util/Iterator");
+        var iteratorName = JavaInternalName.fromClass(Iterator.class);
         seq.add(
                 JavaBytecodeUtils.callInterfaceMethod(
                         loc,
@@ -396,7 +398,7 @@ public final class DynUtil {
             setSeq.add(
                     JavaBytecodeUtils.callInterfaceMethod(
                             loc,
-                            JavaInternalName.of("java/util/Map"),
+                            JavaInternalName.fromClass(Map.class),
                             "put",
                             JavaMethodDescriptor.fromParts(
                                     JvmConstants.DESC_OBJECT,

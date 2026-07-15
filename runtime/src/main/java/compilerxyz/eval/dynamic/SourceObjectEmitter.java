@@ -1,79 +1,98 @@
 package compilerxyz.eval.dynamic;
 
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.Counter;
 import compilerxyz.eval.DefSetId;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.EvalContext;
+import compilerxyz.eval.Expr;
+import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ImportInstall;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeId;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
+import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
-import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.source_object.SourceObjectInstance;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import compilerxyz.eval.ConstKey;
-import compilerxyz.eval.value.source_interface.InterfaceMethodData;
+import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectLift;
+import compilerxyz.gen.Binding;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
 import org.jspecify.annotations.Nullable;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
 
     private static final JavaInternalName INTNAME_DYN_RUNTIME =
-            JavaInternalName.of("compilerxyz/eval/dynamic/DynRuntime");
+            JavaInternalName.fromClass(DynRuntime.class);
     private static final JavaInternalName INTNAME_DYN_UTIL =
-            JavaInternalName.of("compilerxyz/eval/dynamic/DynUtil");
+            JavaInternalName.fromClass(DynUtil.class);
   private static final JavaInternalName INTNAME_EXPR_CONTEXT =
-      JavaInternalName.of("compilerxyz/eval/ExprContext");
+      JavaInternalName.fromClass(ExprContext.class);
   private static final JavaInternalName INTNAME_QEXPR_ID =
-      JavaInternalName.of("compilerxyz/eval/QExprId");
+      JavaInternalName.fromClass(QExprId.class);
   private static final JavaInternalName INTNAME_TYPE =
-      JavaInternalName.of("compilerxyz/eval/Type");
+      JavaInternalName.fromClass(Type.class);
   private static final JavaInternalName INTNAME_TYPE_ID =
-      JavaInternalName.of("compilerxyz/eval/TypeId");
+      JavaInternalName.fromClass(TypeId.class);
   private static final JavaInternalName INTNAME_CODE_VALUE =
-      JavaInternalName.of("compilerxyz/eval/CodeValue");
+      JavaInternalName.fromClass(CodeValue.class);
   private static final JavaInternalName INTNAME_CODE =
-      JavaInternalName.of("compilerxyz/eval/Code");
+      JavaInternalName.fromClass(Code.class);
   private static final JavaInternalName INTNAME_EXPR =
-      JavaInternalName.of("compilerxyz/eval/Expr");
+      JavaInternalName.fromClass(Expr.class);
   private static final JavaInternalName INTNAME_ERESULT =
-      JavaInternalName.of("compilerxyz/eval/EResult");
+      JavaInternalName.fromClass(EResult.class);
   private static final JavaInternalName INTNAME_CONST_KEY =
-      JavaInternalName.of("compilerxyz/eval/ConstKey");
+      JavaInternalName.fromClass(ConstKey.class);
   private static final JavaInternalName INTNAME_UNIQUE =
-      JavaInternalName.of("compilerxyz/eval/Unique");
+      JavaInternalName.fromClass(Unique.class);
   private static final JavaInternalName INTNAME_BINDING_ID =
-      JavaInternalName.of("compilerxyz/eval/BindingId");
+      JavaInternalName.fromClass(BindingId.class);
   private static final JavaInternalName INTNAME_BINDING =
-      JavaInternalName.of("compilerxyz/gen/Binding");
+      JavaInternalName.fromClass(Binding.class);
   private static final JavaInternalName INTNAME_PAIR =
-      JavaInternalName.of("compilerxyz/util/Pair");
+      JavaInternalName.fromClass(Pair.class);
   private static final JavaInternalName INTNAME_OPT =
-      JavaInternalName.of("compilerxyz/util/Opt");
+      JavaInternalName.fromClass(Opt.class);
   private static final JavaInternalName INTNAME_OPT_SOME =
-      JavaInternalName.of("compilerxyz/util/Opt$Some");
+      JavaInternalName.fromClass(Opt.Some.class);
   private static final JavaInternalName INTNAME_TLIST =
-      JavaInternalName.of("compilerxyz/util/TList");
+      JavaInternalName.fromClass(TList.class);
   private static final JavaInternalName INTNAME_TARGET_BIND_SUB =
-      JavaInternalName.of("compilerxyz/eval/dynamic/target/TargetBindSub");
+      JavaInternalName.fromClass(TargetBindSub.class);
   private static final JavaInternalName INTNAME_SOURCE_OBJECT_INSTANCE =
-      JavaInternalName.of("compilerxyz/eval/value/source_object/SourceObjectInstance");
+      JavaInternalName.fromClass(SourceObjectInstance.class);
   private static final JavaInternalName INTNAME_ASPECT_BIND =
-      JavaInternalName.of("compilerxyz/gen/AspectBind");
+      JavaInternalName.fromClass(AspectBind.class);
   private static final JavaInternalName INTNAME_ASPECT_BIND_DYNAMIC =
-      JavaInternalName.of("compilerxyz/gen/AspectBindDynamic");
+      JavaInternalName.fromClass(AspectBindDynamic.class);
   private static final JavaInternalName INTNAME_ASPECT_CONSUME_DYNAMIC =
-      JavaInternalName.of("compilerxyz/gen/AspectConsumeDynamic");
+      JavaInternalName.fromClass(AspectConsumeDynamic.class);
   private static final JavaInternalName INTNAME_ASPECT_INITIAL_BIND =
-      JavaInternalName.of("compilerxyz/gen/AspectInitialBind");
+      JavaInternalName.fromClass(AspectInitialBind.class);
   private static final JavaInternalName INTNAME_ASPECT_LIFT =
-      JavaInternalName.of("compilerxyz/gen/AspectLift");
+      JavaInternalName.fromClass(AspectLift.class);
   private static final JavaInternalName INTNAME_OBJECT_ARRAY_ELEM =
-      JavaInternalName.of("[Ljava/lang/Object;");
+      JavaInternalName.fromClass(Object[].class);
 
     private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
             JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT);

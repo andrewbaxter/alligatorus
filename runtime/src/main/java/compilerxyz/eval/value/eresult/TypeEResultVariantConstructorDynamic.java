@@ -82,11 +82,11 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
       okSeq.add(
           JavaBytecodeUtils.callStaticMethod(
               loc,
-              JavaInternalName.of("compilerxyz/eval/EResult"),
+              JavaInternalName.fromClass(EResult.class),
               "ok",
               JavaMethodDescriptor.fromParts(
                   JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.of("compilerxyz/eval/EResult")),
+                      JavaInternalName.fromClass(EResult.class)),
                   TList.of(JvmConstants.DESC_OBJECT))));
       return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType));
     }
@@ -113,16 +113,16 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     errSeq.add(
         JavaBytecodeUtils.callStaticMethod(
             loc,
-            JavaInternalName.of("compilerxyz/eval/EResult"),
+            JavaInternalName.fromClass(EResult.class),
             "err",
             JavaMethodDescriptor.fromParts(
                 JavaDataDescriptor.fromInternalName(
-                    JavaInternalName.of("compilerxyz/eval/EResult")),
+                    JavaInternalName.fromClass(EResult.class)),
                 TList.of(
                     JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.of("compilerxyz/eval/QExprId")),
+                        JavaInternalName.fromClass(QExprId.class)),
                     JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.of("java/lang/String"))))));
+                        JavaInternalName.fromClass(String.class))))));
     return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType));
   }
 

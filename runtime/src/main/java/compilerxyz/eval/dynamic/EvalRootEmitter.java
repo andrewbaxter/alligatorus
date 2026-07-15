@@ -1,6 +1,7 @@
 package compilerxyz.eval.dynamic;
 
 import compilerxyz.eval.EvalContext;
+import compilerxyz.eval.ExprContext;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
@@ -14,7 +15,7 @@ public final class EvalRootEmitter {
   public static final String EXPR_CONTEXT_FIELD = "__exprContext";
 
   public static final JavaDataDescriptor DESC_EXPR_CONTEXT =
-      JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/ExprContext"));
+      JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(ExprContext.class));
 
   private static final JavaMethodDescriptor MDESC_RUN =
       JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of());

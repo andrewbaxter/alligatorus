@@ -103,7 +103,7 @@ public record TypeListNewDynamic(Type elementType)
     if (retStackRes.hasErrors()) {
       return retStackRes.reerr();
     }
-    var tlistIntname = JavaInternalName.of("compilerxyz/util/TList");
+    var tlistIntname = JavaInternalName.fromClass(TList.class);
     var descObject = JavaDataDescriptor.fromClass(Object.class);
     var addDesc =
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));

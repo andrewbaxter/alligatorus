@@ -29,6 +29,7 @@ import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import java.util.List;
 import org.objectweb.asm.Opcodes;
 
 @compilerxyz.annotations.BuiltinTypeId(7113L)
@@ -98,7 +99,7 @@ public record TypeListPushDynamic(Type elementType)
     var retStackRes = AspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var listName = JavaInternalName.of("java/util/List");
+    var listName = JavaInternalName.fromClass(List.class);
     var descObject = JavaDataDescriptor.fromClass(Object.class);
     var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
 

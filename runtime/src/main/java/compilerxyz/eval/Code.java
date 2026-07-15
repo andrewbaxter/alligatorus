@@ -56,7 +56,7 @@ public sealed interface Code permits Code.None, Code.Target {
     private CodeDynamicType() {}
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/eval/Code");
+      var jvmClass = JavaInternalName.fromClass(Code.class);
       return new TypeObjectDynamic(
           GenTypeIds.CODE_TYPE_ID,
           "code",

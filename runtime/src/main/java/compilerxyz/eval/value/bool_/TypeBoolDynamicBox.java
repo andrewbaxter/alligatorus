@@ -61,7 +61,7 @@ public record TypeBoolDynamicBox()
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"));
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class));
   }
 
   @Override
@@ -165,10 +165,10 @@ public record TypeBoolDynamicBox()
   private static CodeDynamic valueOfBoolean(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
-        JavaInternalName.of("java/lang/Boolean"),
+        JavaInternalName.fromClass(Boolean.class),
         "valueOf",
         JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/Boolean")),
+            JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Boolean.class)),
             TList.of(JavaDataDescriptor.DESC_BOOL)));
   }
 

@@ -44,7 +44,7 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/eval/EResult"));
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class));
   }
 
   @Override
@@ -117,7 +117,7 @@ public record TypeEResultDynamic(Type elementType)
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
               loc,
-              JavaInternalName.of("compilerxyz/eval/EResult"),
+              JavaInternalName.fromClass(EResult.class),
               "requireValue",
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,

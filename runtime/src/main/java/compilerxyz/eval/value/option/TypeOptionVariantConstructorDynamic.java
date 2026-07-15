@@ -120,7 +120,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       newOpt =
           JavaBytecodeUtils.instantiate(
               loc,
-              JavaInternalName.of("compilerxyz/util/Opt$Some"),
+              JavaInternalName.fromClass(Opt.Some.class),
               JavaMethodDescriptor.fromConstructorParts(
                   TList.of(JvmConstants.DESC_OBJECT)),
               underlyingJs);
@@ -128,11 +128,11 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       newOpt =
           JavaBytecodeUtils.callStaticInterfaceMethod(
               new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
-              JavaInternalName.of("compilerxyz/util/Opt"),
+              JavaInternalName.fromClass(Opt.class),
               "none",
               JavaMethodDescriptor.fromParts(
                   JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.of("compilerxyz/util/Opt")),
+                      JavaInternalName.fromClass(Opt.class)),
                   TList.of()));
     }
     return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newOpt, resultType));

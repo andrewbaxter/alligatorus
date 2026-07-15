@@ -64,7 +64,7 @@ public record TypeExpr()
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/expr/StagedExprCell"));
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.expr.StagedExprCell.class));
   }
 
   @Override

@@ -186,11 +186,11 @@ public record TypeOptionDynamic(Type elementType)
           compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
               loc,
               compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-                  compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some"))));
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class))));
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
               loc,
-              compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some"),
+              compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class),
               "value",
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)));
@@ -208,7 +208,7 @@ public record TypeOptionDynamic(Type elementType)
       seq.add(selfDyn);
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(
-              loc, compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/util/Opt$Some")));
+              loc, compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class)));
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),

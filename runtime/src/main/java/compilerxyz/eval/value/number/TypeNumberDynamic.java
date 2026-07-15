@@ -272,22 +272,22 @@ public record TypeNumberDynamic()
   public static CodeDynamic boxDouble(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"),
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class),
         "valueOf",
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-                compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double")),
+                compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class)),
             TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE)));
   }
 
   public static CodeDynamic boxBoolean(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean"),
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class),
         "valueOf",
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-                compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Boolean")),
+                compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class)),
             TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL)));
   }
 

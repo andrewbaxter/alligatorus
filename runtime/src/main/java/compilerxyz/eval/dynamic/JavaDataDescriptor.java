@@ -96,7 +96,7 @@ public class JavaDataDescriptor {
         private JavaDataDescriptorDynamicType() {}
 
         private static TypeObjectDynamic build() {
-            var jvmClass = JavaInternalName.of("compilerxyz/eval/dynamic/JavaDataDescriptor");
+            var jvmClass = JavaInternalName.fromClass(JavaDataDescriptor.class);
             var identityAspects = new TList<Unique>();
             identityAspects.add(GenIdentities.JAVA_DATA_DESCRIPTOR_IDENTITY);
             var castFromRules = new TList<TypeObjectCastFromRule>();

@@ -43,7 +43,7 @@ public record TypeFunctionAspectDynamic()
         ExporterAny {
 
   private static final JavaInternalName INTNAME_TYPE =
-      JavaInternalName.of("compilerxyz/eval/Type");
+      JavaInternalName.fromClass(Type.class);
   private static final JavaMethodDescriptor DESC_TYPE_ASPECT =
       JavaMethodDescriptor.fromParts(
           JavaDataDescriptor.fromClass(compilerxyz.util.Opt.class),

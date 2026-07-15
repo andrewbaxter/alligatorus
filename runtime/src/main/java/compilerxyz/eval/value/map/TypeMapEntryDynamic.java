@@ -32,6 +32,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import java.util.Map;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
@@ -51,7 +52,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
 
   private static final JavaInternalName MAP_ENTRY_INAME =
-      JavaInternalName.of("java/util/Map$Entry");
+      JavaInternalName.fromClass(Map.Entry.class);
 
   private record FieldSpec(Type type, String jvmGetter) {}
 
@@ -96,7 +97,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.of("java/util/Map$Entry"));
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(Map.Entry.class));
   }
 
   @Override

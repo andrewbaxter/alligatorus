@@ -27,7 +27,7 @@ public record QExprId(SourceId source, long expr) {
     private QExprIdDynamicType() {}
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/eval/QExprId");
+      var jvmClass = JavaInternalName.fromClass(QExprId.class);
       return new TypeObjectDynamic(
           GenTypeIds.Q_EXPR_ID_TYPE_ID,
           "QExprId",

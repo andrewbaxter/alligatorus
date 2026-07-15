@@ -59,6 +59,10 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.util.TOrderedMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -274,9 +278,9 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     if (baseDynRes.hasErrors()) return baseDynRes.reerr();
     var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
 
-    var mapName = JavaInternalName.of("java/util/Map");
-    var setName = JavaInternalName.of("java/util/Set");
-    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var mapName = JavaInternalName.fromClass(Map.class);
+    var setName = JavaInternalName.fromClass(Set.class);
+    var iteratorName = JavaInternalName.fromClass(Iterator.class);
     var entrySetMethod =
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
     var iterMethod =
@@ -295,7 +299,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     decodeSeq.add(
         JavaBytecodeUtils.cast(loc,
             JavaDataDescriptor.fromInternalName(
-                JavaInternalName.of("java/util/Map$Entry"))));
+                JavaInternalName.fromClass(Map.Entry.class))));
     var elementDecode = new CodeDynamic(loc, decodeSeq);
 
     compilerxyz.eval.Code bodyCode;
@@ -382,7 +386,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.errs(erb.errors());
     }
     var keyToDynamic = keyToDynamicOpt.get();
-    var torderedMapIntname = JavaInternalName.of("compilerxyz/util/TOrderedMap");
+    var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
     var descObject = JavaDataDescriptor.fromClass(Object.class);
     var putDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject, descObject));
     var seq = new JavaBytecodeSequence();
@@ -474,7 +478,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     }
     var entrySlot =
         new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    var entryClassName = JavaInternalName.of("java/util/Map$Entry");
+    var entryClassName = JavaInternalName.fromClass(Map.Entry.class);
 
     var bodySeq = new JavaBytecodeSequence();
     if (keyDropOpt instanceof Opt.Some<AspectDropDynamic> keyDropSome) {
@@ -522,9 +526,9 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       if (valDropDyn != null) bodySeq.add(valDropDyn);
     }
 
-    var mapName = JavaInternalName.of("java/util/Map");
-    var setName = JavaInternalName.of("java/util/Set");
-    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var mapName = JavaInternalName.fromClass(Map.class);
+    var setName = JavaInternalName.fromClass(Set.class);
+    var iteratorName = JavaInternalName.fromClass(Iterator.class);
     var entrySetMethod =
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
     var iterMethod =

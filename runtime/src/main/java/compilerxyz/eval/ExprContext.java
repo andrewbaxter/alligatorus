@@ -57,7 +57,7 @@ public final class ExprContext {
     private ExprContextDynamicType() {}
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/eval/ExprContext");
+      var jvmClass = JavaInternalName.fromClass(ExprContext.class);
       var identityAspects = new TList<Unique>();
       identityAspects.add(GenIdentities.EXPR_CONTEXT_IDENTITY);
       var castFromRules = new TList<TypeObjectCastFromRule>();

@@ -97,11 +97,11 @@ public record TypeListJoinDynamic(Type elementType)
     var retStackRes = AspectStackValueDynamic.get(xx, loc, sepType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var stringName = JavaInternalName.of("java/lang/String");
+    var stringName = JavaInternalName.fromClass(String.class);
     var charSeqDesc =
-        JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/CharSequence"));
+        JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(CharSequence.class));
     var iterableDesc =
-        JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/Iterable"));
+        JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Iterable.class));
     var stringDesc = JavaDataDescriptor.fromClass(String.class);
     var joinDesc = JavaMethodDescriptor.fromParts(stringDesc, TList.of(charSeqDesc, iterableDesc));
 

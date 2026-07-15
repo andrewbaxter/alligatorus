@@ -55,7 +55,7 @@ public interface Type extends Value, HasTypeId {
       var instance = new TypeObjectDynamic(
           GenTypeIds.TYPE_TYPE_ID,
           "type",
-          JavaInternalName.of("compilerxyz/eval/Type"),
+          JavaInternalName.fromClass(Type.class),
           JavaDataDescriptor.fromClass(Type.class),
           new TList<ObjectDataField>(),
           methods,
@@ -68,7 +68,7 @@ public interface Type extends Value, HasTypeId {
           Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
 
-      var typeIn = JavaInternalName.of("compilerxyz/eval/Type");
+      var typeIn = JavaInternalName.fromClass(Type.class);
       var exprCtxDesc = JavaDataDescriptor.fromClass(ExprContext.class);
       var qexprIdDesc = JavaDataDescriptor.fromClass(QExprId.class);
       var typeDesc_ = JavaDataDescriptor.fromClass(Type.class);

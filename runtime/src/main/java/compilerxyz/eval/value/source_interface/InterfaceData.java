@@ -104,7 +104,7 @@ public final class InterfaceData {
     private InterfaceDataDynamicType() {}
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/eval/value/source_interface/InterfaceData");
+      var jvmClass = JavaInternalName.fromClass(InterfaceData.class);
       var identityAspects = new TList<Unique>();
       identityAspects.add(GenIdentities.INTERFACE_DATA_IDENTITY);
       var castRules = new TList<TypeObjectCastRule>();

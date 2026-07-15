@@ -51,6 +51,7 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import java.util.Iterator;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -77,7 +78,7 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(JavaInternalName.of("compilerxyz/util/TList"));
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
   }
 
   @Override
@@ -248,8 +249,8 @@ public record TypeListDynamic(Type elementType)
     if (baseDynRes.hasErrors()) return baseDynRes.reerr();
     var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
 
-    var iterableName = JavaInternalName.of("java/lang/Iterable");
-    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var iterableName = JavaInternalName.fromClass(Iterable.class);
+    var iteratorName = JavaInternalName.fromClass(Iterator.class);
     var iterMethod =
         JavaMethodDescriptor.fromParts(
             JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
@@ -343,8 +344,8 @@ public record TypeListDynamic(Type elementType)
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
 
-    var iterableName = JavaInternalName.of("java/lang/Iterable");
-    var iteratorName = JavaInternalName.of("java/util/Iterator");
+    var iterableName = JavaInternalName.fromClass(Iterable.class);
+    var iteratorName = JavaInternalName.fromClass(Iterator.class);
     var iterMethod =
         JavaMethodDescriptor.fromParts(
             JavaDataDescriptor.fromJVMName(iteratorName), TList.of());

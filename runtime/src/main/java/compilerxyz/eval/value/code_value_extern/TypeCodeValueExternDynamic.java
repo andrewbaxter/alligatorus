@@ -49,7 +49,7 @@ public record TypeCodeValueExternDynamic()
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue"));
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(CodeValue.class));
   }
 
   @Override
@@ -122,10 +122,10 @@ public record TypeCodeValueExternDynamic()
     }
     var codeType = compilerxyz.eval.Code.dynamicType();
     var codeValueInternal =
-        compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/CodeValue");
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(CodeValue.class);
     var codeDesc =
         compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-            compilerxyz.eval.dynamic.JavaInternalName.of("compilerxyz/eval/Code"));
+            compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.Code.class));
     var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
     seq.add(selfDyn);
     seq.add(

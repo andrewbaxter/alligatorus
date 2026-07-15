@@ -54,9 +54,9 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
       JavaInternalName.fromClass(DynException.class);
   private static final JavaInternalName INTNAME_EXPR_CONTEXT =
-      JavaInternalName.of("compilerxyz/eval/ExprContext");
+      JavaInternalName.fromClass(ExprContext.class);
   private static final JavaInternalName INTNAME_OBJECT_ARRAY_ELEM =
-      JavaInternalName.of("[Ljava/lang/Object;");
+      JavaInternalName.fromClass(Object[].class);
 
   private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
       JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT);

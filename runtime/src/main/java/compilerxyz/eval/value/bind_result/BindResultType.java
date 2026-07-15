@@ -30,7 +30,7 @@ public final class BindResultType {
     static final TypeObjectDynamic INSTANCE = build();
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/gen/AspectBind$BindResult");
+      var jvmClass = JavaInternalName.fromClass(AspectBind.BindResult.class);
       var dataFields = new TList<ObjectDataField>();
       dataFields.add(
           new ObjectDataField(

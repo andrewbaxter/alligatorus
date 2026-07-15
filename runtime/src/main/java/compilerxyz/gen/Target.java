@@ -100,7 +100,7 @@ public interface Target {
             return new TypeObjectDynamic(
                     GenTypeIds.TARGET_TYPE_ID,
                     "target",
-                    JavaInternalName.of("compilerxyz/gen/Target"),
+                    JavaInternalName.fromClass(Target.class),
                     JavaDataDescriptor.fromClass(Target.class),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),

@@ -43,7 +43,7 @@ public interface Binding {
             return new TypeObjectDynamic(
                     GenTypeIds.BINDING_TYPE_ID,
                     "binding",
-                    JavaInternalName.of("compilerxyz/gen/Binding"),
+                    JavaInternalName.fromClass(Binding.class),
                     JavaDataDescriptor.fromClass(Binding.class),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),

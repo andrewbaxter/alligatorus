@@ -68,7 +68,7 @@ public record TypeNumberDynamicBox()
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.of("java/lang/Double"));
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class));
   }
 
   @Override
@@ -207,7 +207,7 @@ public record TypeNumberDynamicBox()
   private static CodeDynamic doubleValueUnbox(QExprId loc) {
     return JavaBytecodeUtils.callMethod(
         loc,
-        JavaInternalName.of("java/lang/Double"),
+        JavaInternalName.fromClass(Double.class),
         "doubleValue",
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_DOUBLE, TList.of()));
   }
@@ -215,10 +215,10 @@ public record TypeNumberDynamicBox()
   private static CodeDynamic valueOfDouble(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
-        JavaInternalName.of("java/lang/Double"),
+        JavaInternalName.fromClass(Double.class),
         "valueOf",
         JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromInternalName(JavaInternalName.of("java/lang/Double")),
+            JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Double.class)),
             TList.of(JavaDataDescriptor.DESC_DOUBLE)));
   }
 

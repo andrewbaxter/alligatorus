@@ -39,7 +39,7 @@ public interface Value {
             return new TypeObjectDynamic(
                     GenTypeIds.VALUE_TYPE_ID,
                     "value",
-                    JavaInternalName.of("compilerxyz/gen/Value"),
+                    JavaInternalName.fromClass(Value.class),
                     JavaDataDescriptor.fromClass(Value.class),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),

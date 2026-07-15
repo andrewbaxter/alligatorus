@@ -55,7 +55,7 @@ public record ValueDynamic(Source source, Type type_) implements Value {
     private SourceDynamicType() {}
 
     private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.of("compilerxyz/eval/value/ValueDynamic$Source");
+      var jvmClass = JavaInternalName.fromClass(ValueDynamic.Source.class);
       return new TypeObjectDynamic(
           GenTypeIds.VALUE_DYNAMIC_TYPE_ID,
           "source",

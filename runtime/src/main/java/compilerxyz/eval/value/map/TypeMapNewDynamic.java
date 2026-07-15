@@ -24,6 +24,7 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.util.TOrderedMap;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
@@ -72,7 +73,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
       var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
       if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-      var torderedMapIntname = JavaInternalName.of("compilerxyz/util/TOrderedMap");
+      var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
       var newMap =
           JavaBytecodeUtils.instantiate(
               loc,

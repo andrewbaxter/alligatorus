@@ -262,7 +262,7 @@ public record TypeUnique()
     seq.add(
         JavaBytecodeUtils.callMethod(
             loc,
-            JavaInternalName.of("java/lang/Object"),
+            JavaInternalName.fromClass(Object.class),
             "equals",
             JavaMethodDescriptor.fromParts(
                 JavaDataDescriptor.DESC_BOOL,
