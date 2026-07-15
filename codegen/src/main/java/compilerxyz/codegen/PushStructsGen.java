@@ -124,6 +124,7 @@ public final class PushStructsGen {
       throws IOException {
     validate(specs, builtinUniqueIds);
     for (var spec : specs) {
+      if (HANDWRITTEN_STRUCTS.contains(spec.name())) continue;
       writeDataClass(outRoot, formatter, spec);
     }
     writeGenObjectTypes(outRoot, formatter, specs);
@@ -733,6 +734,14 @@ public final class PushStructsGen {
           "SourceObjectBuilder",
           "SourceObjectMethodResult",
           "SourceUnionBuilder");
+
+  /**
+   * Push structs whose Java class lives in runtime source (handwritten). Codegen skips
+   * generating the {@code .java} for these but still emits their GenObjectTypes registry entry
+   * from the PushStructSpec.
+   */
+  private static final TSet<String> HANDWRITTEN_STRUCTS =
+      TSet.of("SourceUnionBuilder");
 
   private static CodeBlock methodFunctionType(
       PushStructSpec spec, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {
