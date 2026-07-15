@@ -14,6 +14,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7022L, name = "type_qexpr_id_dynamic")
 public record QExprId(SourceId source, long expr) {
 
   public static Type dynamicType() {

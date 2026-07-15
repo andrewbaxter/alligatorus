@@ -38,6 +38,7 @@ import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7047L, name = "type_source_object_new_const")
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     implements
         Type,

@@ -7,6 +7,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7011L, name = "type_any_const")
 public final class ObjectConstOfType {
 
   private ObjectConstOfType() {}

@@ -20,6 +20,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinIdentity(name = "type_code_dyn_handle_identity", value = 6011L)
+@compilerxyz.annotations.BuiltinTypeId(value = 7026L, name = "type_code_dyn_handle_dynamic")
 public final class CodeDynHandleType {
 
   private CodeDynHandleType() {}

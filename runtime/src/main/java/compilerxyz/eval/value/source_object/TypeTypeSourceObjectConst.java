@@ -55,6 +55,7 @@ import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.TypeId;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7045L, name = "type_source_object_const")
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     implements
         Type,

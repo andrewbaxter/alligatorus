@@ -37,6 +37,7 @@ import static compilerxyz.util.MustCast.mustCast;
     fieldPrefix = "t",
     typeIdConstant = "")
 @compilerxyz.annotations.BuiltinIdentity(name = "type_type_identity", value = 6006L)
+@compilerxyz.annotations.BuiltinTypeId(value = 7012L, name = "type_type_dynamic")
 public interface Type extends Value, HasTypeId {
 
   static Type dynamicType() {

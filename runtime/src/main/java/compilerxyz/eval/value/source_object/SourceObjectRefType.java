@@ -20,6 +20,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7046L, name = "type_source_object_ref_dynamic")
 public final class SourceObjectRefType {
 
   private SourceObjectRefType() {}

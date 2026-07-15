@@ -18,6 +18,7 @@ import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
 @compilerxyz.annotations.BuiltinIdentity(name = "expr_context_ref_type_identity", value = 6001L)
+@compilerxyz.annotations.BuiltinTypeId(value = 7021L, name = "type_expr_context_dynamic")
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
   public final ImportStateId importState;

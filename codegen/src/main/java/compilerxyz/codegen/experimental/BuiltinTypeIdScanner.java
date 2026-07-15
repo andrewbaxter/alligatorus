@@ -52,7 +52,11 @@ public final class BuiltinTypeIdScanner {
       }
     }
     if (ann != null) {
-      out.add(new TypeIdSpec(snakeCase(t.getNameAsString()), parseIdValue(ann)));
+      var overrideName = readNameOverride(ann);
+      var name = overrideName != null && !overrideName.isEmpty()
+          ? overrideName
+          : snakeCase(t.getNameAsString());
+      out.add(new TypeIdSpec(name, parseIdValue(ann)));
     }
     for (var member : t.getMembers()) {
       if (member instanceof TypeDeclaration<?> nested) {
@@ -61,12 +65,32 @@ public final class BuiltinTypeIdScanner {
     }
   }
 
+  private static @org.jspecify.annotations.Nullable String readNameOverride(AnnotationExpr ann) {
+    if (ann instanceof NormalAnnotationExpr n) {
+      for (var p : n.getPairs()) {
+        if (p.getNameAsString().equals("name")) {
+          if (p.getValue() instanceof com.github.javaparser.ast.expr.StringLiteralExpr s) {
+            return s.asString();
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   private static long parseIdValue(AnnotationExpr ann) {
     String raw;
     if (ann instanceof SingleMemberAnnotationExpr s) {
       raw = s.getMemberValue().toString();
     } else if (ann instanceof NormalAnnotationExpr n) {
-      raw = n.getPairs().get(0).getValue().toString();
+      raw = null;
+      for (var p : n.getPairs()) {
+        if (p.getNameAsString().equals("value")) {
+          raw = p.getValue().toString();
+          break;
+        }
+      }
+      if (raw == null) throw new IllegalStateException("@BuiltinTypeId missing value");
     } else {
       throw new IllegalStateException("Unhandled @BuiltinTypeId form: " + ann);
     }

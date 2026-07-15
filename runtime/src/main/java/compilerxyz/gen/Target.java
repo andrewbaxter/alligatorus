@@ -36,6 +36,7 @@ import compilerxyz.util.TList;
     scopeId = 3006,
     fieldPrefix = "tg",
     typeIdConstant = "TYPE_ANY_TARGET_DYNAMIC_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(value = 7024L, name = "type_any_target_dynamic")
 public interface Target {
     @compilerxyz.annotations.SourceExposed(name = "bind")
     BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);

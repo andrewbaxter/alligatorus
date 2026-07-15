@@ -16,6 +16,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinIdentity(name = "java_data_descriptor_type_identity", value = 6014L)
+@compilerxyz.annotations.BuiltinTypeId(value = 7120L, name = "type_java_data_descriptor_dynamic")
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
     public static final JavaDataDescriptor DESC_INT = new JavaDataDescriptor("I");

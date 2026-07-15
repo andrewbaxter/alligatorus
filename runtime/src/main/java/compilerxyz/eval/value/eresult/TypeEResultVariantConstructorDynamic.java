@@ -28,6 +28,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7102L, name = "type_eresult_variant_constructor_dynamic")
 public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
     implements
         Type,

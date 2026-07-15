@@ -27,6 +27,7 @@ import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7101L, name = "type_eresult_dynamic")
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,

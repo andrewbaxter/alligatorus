@@ -19,6 +19,7 @@ import compilerxyz.util.TList;
  * TypeObjectDynamic instance decides at runtime whether it represents an interface
  * (returns InterfaceData) or not (throws).
  */
+@compilerxyz.annotations.BuiltinTypeId(7121L)
 public final class TypeTypeObjectDynamic {
   private TypeTypeObjectDynamic() {}
 

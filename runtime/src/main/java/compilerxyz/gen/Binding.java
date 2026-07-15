@@ -24,6 +24,7 @@ import compilerxyz.util.TList;
     scopeId = 3005,
     fieldPrefix = "se",
     typeIdConstant = "TYPE_ANY_BINDING_DYNAMIC_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(value = 7025L, name = "type_any_binding_dynamic")
 public interface Binding {
     @compilerxyz.annotations.SourceExposed(name = "use")
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);

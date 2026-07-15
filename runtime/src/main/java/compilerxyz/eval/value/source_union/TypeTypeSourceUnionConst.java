@@ -44,6 +44,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7051L, name = "type_source_union_const")
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     implements
         Type,

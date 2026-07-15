@@ -23,6 +23,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7107L, name = "type_eresult_constructor_const")
 public record TypeEResultConstructorConst()
     implements
         Type,

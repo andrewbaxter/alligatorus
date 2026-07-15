@@ -33,6 +33,7 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 
+@compilerxyz.annotations.BuiltinTypeId(value = 7054L, name = "type_source_union_new_const")
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 

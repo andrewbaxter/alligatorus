@@ -20,6 +20,7 @@ import compilerxyz.util.TList;
     scopeId = 3001,
     fieldPrefix = "v",
     typeIdConstant = "TYPE_VALUE_DYNAMIC_TYPE_ID")
+@compilerxyz.annotations.BuiltinTypeId(value = 7109L, name = "type_value_dynamic")
 public interface Value {
     @compilerxyz.annotations.SourceExposed(name = "type")
     Type valueType();
