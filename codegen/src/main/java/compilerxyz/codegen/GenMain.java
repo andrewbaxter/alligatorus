@@ -42,7 +42,13 @@ public final class GenMain {
     interfaceSpecs.addAll(TraitsGen.specs());
     interfaceSpecs.addAll(BuiltinTreeGen.extraInterfaceSpecs());
     InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
-    IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
+    var scannedIdentities =
+        compilerxyz.codegen.experimental.BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
+    var identityExtras = new TList<IdentitiesGen.IdentitySpec>();
+    for (var s : scannedIdentities) {
+      identityExtras.add(new IdentitiesGen.IdentitySpec(s.name(), s.value()));
+    }
+    IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, identityExtras);
     var scannedTypeIds =
         compilerxyz.codegen.experimental.BuiltinTypeIdScanner.scanRoot(runtimeSourceRoot);
     var typeIdExtras = new TList<TypeIdsGen.TypeIdSpec>();

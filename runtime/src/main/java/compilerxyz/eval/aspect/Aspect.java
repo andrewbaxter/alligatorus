@@ -17,6 +17,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
+@compilerxyz.annotations.BuiltinIdentity(name = "type_aspect_identity", value = 6012L)
 public interface Aspect {
 
   static Type dynamicType() {

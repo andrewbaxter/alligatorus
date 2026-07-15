@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
 
-final class IdentitiesGen {
+public final class IdentitiesGen {
   private IdentitiesGen() {}
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
@@ -19,30 +19,36 @@ final class IdentitiesGen {
   private static final ClassName UNIQUE_BUILTIN =
       ClassName.get("compilerxyz.eval", "Unique", "Builtin");
 
-  private record IdentitySpec(String name, long builtinUniqueId) {}
+  public record IdentitySpec(String name, long builtinUniqueId) {}
 
   private static TList<IdentitySpec> specs() {
     return TList.of(
         new IdentitySpec("expr_context_ref_type_identity", 6001),
         new IdentitySpec("code_value_extern_type_identity", 6002),
-        new IdentitySpec("type_unique_identity", 6003),
+        // type_unique_identity (6003) migrated: @BuiltinIdentity on TypeUnique
         new IdentitySpec("interface_const_identity", 6004),
         new IdentitySpec("interface_ref_type_identity", 6005),
-        new IdentitySpec("type_type_identity", 6006),
+        // type_type_identity (6006) migrated: @BuiltinIdentity on Type
         new IdentitySpec("union_ref_type_identity", 6007),
-        new IdentitySpec("type_option_identity", 6008),
+        // type_option_identity (6008) migrated: @BuiltinIdentity on TypeOptionDynamic
         new IdentitySpec("type_code_struct_identity", 6009),
         new IdentitySpec("type_code_enum_identity", 6010),
         new IdentitySpec("type_code_dyn_handle_identity", 6011),
-        new IdentitySpec("type_aspect_identity", 6012),
-        new IdentitySpec("expr_type_identity", 6013),
+        // type_aspect_identity (6012) migrated: @BuiltinIdentity on Aspect
+        // expr_type_identity (6013) migrated: @BuiltinIdentity on TypeExpr
         new IdentitySpec("java_data_descriptor_type_identity", 6014));
   }
 
-  static void run(
-      Path outRoot, Formatter formatter, TSet<Long> builtinUniqueIds, TSet<Long> scopeIds)
+  public static void run(
+      Path outRoot,
+      Formatter formatter,
+      TSet<Long> builtinUniqueIds,
+      TSet<Long> scopeIds,
+      TList<IdentitySpec> extras)
       throws IOException {
-    var specs = specs();
+    var specs = new TList<IdentitySpec>();
+    specs.addAll(specs());
+    specs.addAll(extras);
     var seenNames = new TSet<String>();
     for (var spec : specs) {
       if (!seenNames.add(spec.name)) {

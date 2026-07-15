@@ -44,6 +44,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7035L)
+@compilerxyz.annotations.BuiltinIdentity(name = "type_option_identity", value = 6008L)
 public record TypeOptionDynamic(Type elementType)
     implements
         Type,

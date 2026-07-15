@@ -43,6 +43,7 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 
 @compilerxyz.annotations.BuiltinTypeId(7016L)
+@compilerxyz.annotations.BuiltinIdentity(name = "expr_type_identity", value = 6013L)
 public record TypeExpr()
     implements
         Type,
