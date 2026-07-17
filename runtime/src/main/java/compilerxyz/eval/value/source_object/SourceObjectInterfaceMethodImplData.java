@@ -90,17 +90,17 @@ public final class SourceObjectInterfaceMethodImplData {
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     outerBindingId = outerId;
 
-    var bodyScope = new Scope(null);
-    bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
+    var bodyScope = new Scope();
+    bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
     TypeSourceObjectDynamic outerType = dtData;
     var outerIb = AspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
-      bodyScope.values.put(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
+      bodyScope.pushNamed(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
     }
 
     var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
     if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
-      bodyScope.values.put(
+      bodyScope.pushNamed(
           new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
     }
     var methodArgType = ifaceMethod.argType;
@@ -150,7 +150,7 @@ public final class SourceObjectInterfaceMethodImplData {
                 ibAspect.aspectInitialBindInitialBind(pid), fd.type()));
       }
       var argRecord = new ArgumentRecord(fields);
-      bodyScope.values.put(
+      bodyScope.pushNamed(
           new ConstKey.Str("arg"), new ArgumentRecordBinding(argRecord));
     } else if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
       if (!dataFieldNames.isEmpty()) {
@@ -176,7 +176,7 @@ public final class SourceObjectInterfaceMethodImplData {
         elemBindings.add(ibAspect.aspectInitialBindInitialBind(pid));
       }
       var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(elemBindings, elemTypes);
-      bodyScope.values.put(
+      bodyScope.pushNamed(
           new ConstKey.Str("arg"),
           new compilerxyz.eval.value.argrecord.ArgumentTupleBinding(argTuple));
     } else {
@@ -192,7 +192,7 @@ public final class SourceObjectInterfaceMethodImplData {
       argParamIds.add(argId);
       var argIbMaybe = AspectInitialBind.getMaybe(xx, methodArgType);
       if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
-        bodyScope.values.put(
+        bodyScope.pushNamed(
             new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(argId));
       }
     }

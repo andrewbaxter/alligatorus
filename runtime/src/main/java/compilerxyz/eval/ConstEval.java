@@ -58,16 +58,7 @@ public final class ConstEval {
         var keyConstOpt = erb.mustRes(keyConstRes);
         if (keyConstOpt.isEmpty()) yield EResult.errs(erb.errors());
         var ck = keyConstOpt.get();
-        var at = xx.scope;
-        Binding found = null;
-        while (at != null) {
-          var b = at.values.getOrNull(ck);
-          if (b != null) {
-            found = b;
-            break;
-          }
-          at = at.parent;
-        }
+        Binding found = xx.scope.lookup(ck);
         if (found == null) {
           erb.errPush("No bound value with id [" + ck + "]");
           yield EResult.errs(erb.errors());
@@ -228,7 +219,7 @@ public final class ConstEval {
       java.util.function.Supplier<EResult<CodeValue>> body) {
     var endKey = new compilerxyz.eval.dynamic.JumpKey();
     var frame = new ReturnFrame(label, endKey);
-    frame.dropStackDepthAtPush = xx.dropStack.size();
+    frame.scopeDepthAtPush = xx.scope.depth();
     xx.returnStack.add(frame);
     EResult<CodeValue> inner;
     try {
@@ -304,8 +295,13 @@ public final class ConstEval {
     if (valCv.code() instanceof Code.Target t && t.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic valCd) {
       seq.add(valCd);
     }
-    for (int i = xx.dropStack.size() - 1; i >= target.dropStackDepthAtPush; i--) {
-      var d = xx.dropStack.get(i);
+    for (int i = xx.scope.depth() - 1; i >= target.scopeDepthAtPush; i--) {
+      var dropRes = xx.scope.entries.get(i).bindingDrop(xx, loc);
+      if (dropRes.hasErrors()) {
+        dropRes.drainInto(erb.errors());
+        return EResult.errs(erb.errors());
+      }
+      var d = dropRes.requireValue("constEvalReturn drop");
       if (d instanceof Code.Target dt && dt.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic dcd) {
         seq.add(dcd);
       }
@@ -328,17 +324,16 @@ public final class ConstEval {
   }
 
   private static EResult<CodeValue> constEvalSeq(ExprContext xx, QExprId loc, Expr.Seq e) {
-    var childScope = new Scope(xx.scope);
-    var childXx = xx.child(childScope);
     var erb = new Erb(loc);
+    var initialScopeDepth = xx.scope.depth();
     var endKey = new compilerxyz.eval.dynamic.JumpKey();
     var thisFrame = new ReturnFrame(Opt.none(), endKey);
-    thisFrame.dropStackDepthAtPush = childXx.dropStack.size();
-    childXx.returnStack.add(thisFrame);
+    thisFrame.scopeDepthAtPush = xx.scope.depth();
+    xx.returnStack.add(thisFrame);
 
     class Frame {
       final TList<Code> codes = new TList<>();
-      Code dropCode = Code.none(loc);
+      @org.jspecify.annotations.Nullable Binding binding = null;
     }
 
     var frames = new TList<Frame>();
@@ -360,14 +355,14 @@ public final class ConstEval {
         continue;
       }
       if (pendingDiscard != null) {
-        var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, sub.loc(), pendingDiscard));
+        var dropOpt = erb.mustErMaybeUnreachable(xx.target.targetDrop(xx, sub.loc(), pendingDiscard));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(dropOpt.get());
         pendingDiscard = null;
       }
       if (sub.variant() instanceof Expr.Bind bind) {
-        var bopt = erb.mustEr(constEval(childXx, bind.base()));
-        var vopt = erb.mustErMaybeUnreachable(constEval(childXx, bind.value()));
+        var bopt = erb.mustEr(constEval(xx, bind.base()));
+        var vopt = erb.mustErMaybeUnreachable(constEval(xx, bind.value()));
         if (bopt.isEmpty() || vopt.isEmpty()) return EResult.errs(erb.errors());
         var base = bopt.get();
         var value = vopt.get();
@@ -375,7 +370,7 @@ public final class ConstEval {
           erb.errPush("Bind: base has no compile-time value");
           return EResult.errs(erb.errors());
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(childXx, sub.loc(), baseV.value()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, sub.loc(), baseV.value()));
         if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(base.code());
         if (!(value.value() instanceof Opt.Some<Value> valV)) {
@@ -388,23 +383,19 @@ public final class ConstEval {
           return EResult.errs(erb.errors());
         }
         var valType = valV.value().valueType();
-        var bindAspectOpt = erb.mustEr(AspectBind.get(childXx, sub.loc(), valType));
+        var bindAspectOpt = erb.mustEr(AspectBind.get(xx, sub.loc(), valType));
         if (bindAspectOpt.isEmpty()) return EResult.errs(erb.errors());
-        var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(childXx, sub.loc(), value));
+        var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(xx, sub.loc(), value));
         if (brOpt.isEmpty()) return EResult.errs(erb.errors());
         var br = brOpt.get();
-        var bindingUseCv = br.binding().bindingUse(childXx, sub.loc(), Code.none(sub.loc()));
-        var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, sub.loc(), bindingUseCv));
-        if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(br.code());
         var nf = new Frame();
-        nf.dropCode = dropOpt.get();
+        nf.binding = br.binding();
         frames.add(nf);
-        childXx.dropStack.add(dropOpt.get());
-        childXx.scope.values.put(ckOpt.get(), br.binding());
+        xx.scope.pushNamed(ckOpt.get(), br.binding());
         lastVal = Opt.some(emptyTupleValue());
       } else {
-        var ropt = erb.mustErMaybeUnreachable(constEval(childXx, sub));
+        var ropt = erb.mustErMaybeUnreachable(constEval(xx, sub));
         if (ropt.isEmpty()) return EResult.errs(erb.errors());
         var r = ropt.get();
         frames.get(frames.size() - 1).codes.add(r.code());
@@ -417,36 +408,36 @@ public final class ConstEval {
       }
     }
     if (pendingDiscard != null) {
-      var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, loc, pendingDiscard));
+      var dropOpt = erb.mustErMaybeUnreachable(xx.target.targetDrop(xx, loc, pendingDiscard));
       if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
       frames.get(frames.size() - 1).codes.add(dropOpt.get());
       pendingDiscard = null;
     }
     while (frames.size() > 1) {
       var inner = frames.remove(frames.size() - 1);
-      if (inner.dropCode.isNone()) {
+      if (inner.binding == null) {
         frames.get(frames.size() - 1).codes.addAll(inner.codes);
       } else {
-        var bodyOpt = erb.mustErMaybeUnreachable(childXx.target.targetSeq(loc, inner.codes));
+        var dropRes = erb.mustErMaybeUnreachable(inner.binding.bindingDrop(xx, loc));
+        if (dropRes.isEmpty()) return EResult.errs(erb.errors());
+        var bodyOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, inner.codes));
         if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
         var wrappedOpt =
-            erb.mustErMaybeUnreachable(childXx.target.targetTryFinally(loc, bodyOpt.get(), inner.dropCode));
+            erb.mustErMaybeUnreachable(xx.target.targetTryFinally(loc, bodyOpt.get(), dropRes.get()));
         if (wrappedOpt.isEmpty()) return EResult.errs(erb.errors());
         frames.get(frames.size() - 1).codes.add(wrappedOpt.get());
       }
     }
-    childXx.returnStack.remove(childXx.returnStack.size() - 1);
-    while (childXx.dropStack.size() > thisFrame.dropStackDepthAtPush) {
-      childXx.dropStack.remove(childXx.dropStack.size() - 1);
-    }
+    xx.returnStack.remove(xx.returnStack.size() - 1);
+    xx.scope.truncate(initialScopeDepth);
     var outer = frames.remove(0);
     outer.codes.add(Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc,
         new compilerxyz.eval.dynamic.JavaBytecodeLand(endKey))));
-    var seqOpt = erb.mustErMaybeUnreachable(childXx.target.targetSeq(loc, outer.codes));
+    var seqOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, outer.codes));
     if (seqOpt.isEmpty()) return EResult.errs(erb.errors());
     if (thisFrame.wasTargeted
         && (thisFrame.firstReturnValue != null || !(lastVal instanceof Opt.Some<Value>))) {
-      lastVal = Opt.some(scopeResultValue(childXx, thisFrame));
+      lastVal = Opt.some(scopeResultValue(xx, thisFrame));
     }
     var cv = new CodeValue(seqOpt.get(), lastVal);
     if (erb.errors().isEmpty()) {
@@ -539,21 +530,20 @@ public final class ConstEval {
         elemBindRes
             .requireValue("Foreach: AspectElementUseDynamicBind")
             .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
-    var childScope = new Scope(xx.scope);
-    childScope.values.put(ekOpt.get(), elementBinding);
-    var childXx = xx.child(childScope);
+    var initialScopeDepth = xx.scope.depth();
     // The loop skeleton keeps the iterator on the operand stack across body
-    // iterations. If body escapes via a Return-Jump to an outer scope, that
-    // Jump would leave the iterator dangling. Push a POP onto the shared
-    // dropStack so Return's inline-drop walk pops the iterator before Jump.
-    var popCode = compilerxyz.eval.Code.of(
-        compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-    childXx.dropStack.add(popCode);
+    // iterations; a Return-Jump escaping the body would leave the iterator
+    // dangling. Pushing a synthetic BindingIteratorStack (whose bindingDrop
+    // emits POP) has Return's inline-drop walk restore the operand stack
+    // before Jump. The element key is pushed as a named entry immediately
+    // after so it shadows any outer name; the iterator sits below.
+    xx.scope.push(new compilerxyz.eval.binding.BindingIteratorStack());
+    xx.scope.pushNamed(ekOpt.get(), elementBinding);
     EResult<CodeValue> bodyOptResult;
     try {
-      bodyOptResult = constEval(childXx, e.body());
+      bodyOptResult = constEval(xx, e.body());
     } finally {
-      childXx.dropStack.remove(childXx.dropStack.size() - 1);
+      xx.scope.truncate(initialScopeDepth);
     }
     var bodyOpt = erb.mustErMaybeUnreachable(bodyOptResult);
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -856,17 +846,23 @@ public final class ConstEval {
           erb.mustRes(Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
       if (bnCkOpt.isEmpty()) return EResult.errs(erb.errors());
       var bindingId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-      var catchScope = new Scope(xx.scope);
+      var catchInitialDepth = xx.scope.depth();
       var ibMaybe = AspectInitialBind.getMaybe(xx, bodyExcType);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        catchScope.values.put(bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
+        xx.scope.pushNamed(
+            bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
       }
-      var catchXx = xx.child(catchScope);
-      var catchCvOpt = erb.mustErMaybeUnreachable(constEval(catchXx, catchObj.body()));
+      EResult<CodeValue> catchCvOptResult;
+      try {
+        catchCvOptResult = constEval(xx, catchObj.body());
+      } finally {
+        xx.scope.truncate(catchInitialDepth);
+      }
+      var catchCvOpt = erb.mustErMaybeUnreachable(catchCvOptResult);
       if (catchCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var catchCv = catchCvOpt.get();
       if (bodyType != null && catchCv.value() instanceof Opt.Some<Value>) {
-        var convOpt = erb.mustErMaybeUnreachable(Eval.typecheckConvert(catchXx, loc, bodyType, catchCv));
+        var convOpt = erb.mustErMaybeUnreachable(Eval.typecheckConvert(xx, loc, bodyType, catchCv));
         if (convOpt.isEmpty()) return EResult.errs(erb.errors());
         catchCv = convOpt.get();
       }

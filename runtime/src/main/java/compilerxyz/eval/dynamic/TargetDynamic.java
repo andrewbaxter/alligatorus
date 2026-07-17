@@ -422,13 +422,19 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       var payloadDesc =
           compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, branch.variantType());
       var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
-      var caseScope = new compilerxyz.eval.Scope(xx.scope);
+      var caseInitialDepth = xx.scope.depth();
       var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        caseScope.values.put(elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
+        xx.scope.pushNamed(
+            elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
       }
-      var caseXx = xx.child(caseScope);
-      var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(caseXx, branch.body()));
+      EResult<CodeValue> bodyCvOptResult;
+      try {
+        bodyCvOptResult = ConstEval.constEval(xx, branch.body());
+      } finally {
+        xx.scope.truncate(caseInitialDepth);
+      }
+      var bodyCvOpt = erb.mustErMaybeUnreachable(bodyCvOptResult);
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
       boolean bodyControlEnded = !(bodyCv.value() instanceof Opt.Some<Value>);
@@ -437,7 +443,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         if (resultType == null) {
           resultType = ((Opt.Some<Value>) bodyCv.value()).value().valueType();
         } else {
-          var convertedOpt = erb.mustEr(Eval.typecheckConvert(caseXx, loc, resultType, bodyCv));
+          var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, bodyCv));
           if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
           bodyCv = convertedOpt.get();
         }
@@ -450,7 +456,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
             : new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence());
         bodyDyn = bodyCd;
       } else {
-        var bodyDynOpt = cvToDynamic(erb, caseXx, loc, bodyCv);
+        var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
         if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
         bodyDyn = bodyDynOpt.get();
       }

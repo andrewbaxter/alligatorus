@@ -58,7 +58,7 @@ public final class CompileImport {
                               new ArtifactBodyExporter.Root()))));
             }
             var vx = new EvalContext(cix);
-            var rootScope = new Scope(null);
+            var rootScope = new Scope();
             var target = new TargetDynamic(vx.nextLocalId);
             var xx =
                 new ExprContext(

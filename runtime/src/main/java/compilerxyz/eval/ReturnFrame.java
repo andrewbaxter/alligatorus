@@ -10,7 +10,7 @@ public final class ReturnFrame {
   public final JumpKey endKey;
   public boolean wasTargeted = false;
   public @Nullable Value firstReturnValue;
-  public int dropStackDepthAtPush;
+  public int scopeDepthAtPush;
 
   public ReturnFrame(Opt<String> label, JumpKey endKey) {
     this.label = label;

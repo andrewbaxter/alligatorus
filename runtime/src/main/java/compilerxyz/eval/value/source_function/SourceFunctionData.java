@@ -118,8 +118,8 @@ public final class SourceFunctionData {
         compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
 
-    var bodyScope = new Scope(null);
-    bodyScope.values.putAll(Eval.bodyBuiltinScope(xx));
+    var bodyScope = new Scope();
+    bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
 
     var argSlots = new TList<DefSetFunctionsEmitter.ArgSlot>();
     var tupleOpt = AspectTuple.getMaybe(xx, argT);
@@ -137,7 +137,7 @@ public final class SourceFunctionData {
         elemBindings.add(ibSome.value().aspectInitialBindInitialBind(slotId));
       }
       var argTuple = new ArgumentTuple(elemBindings, elemTypes);
-      bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
+      bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
     } else if (recordOpt.optIsSome()) {
       var fieldTypes = recordOpt.optUnwrap().aspectRecordFieldTypes();
       var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
@@ -152,13 +152,13 @@ public final class SourceFunctionData {
         fields.put(entry.getKey(), new ArgumentEntry(ibSome.value().aspectInitialBindInitialBind(slotId), et));
       }
       var argRec = new ArgumentRecord(fields);
-      bodyScope.values.put(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
+      bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
     } else {
       var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
       var ibMaybe = AspectInitialBind.getMaybe(xx, argT);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        bodyScope.values.put(new ConstKey.Str("arg"), ibSome.value().aspectInitialBindInitialBind(slotId));
+        bodyScope.pushNamed(new ConstKey.Str("arg"), ibSome.value().aspectInitialBindInitialBind(slotId));
       }
     }
     var funcXx =

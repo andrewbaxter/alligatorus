@@ -168,7 +168,7 @@ public final class Eval {
       CompileImportContext cix, ImportStateId importState, Expr expr) {
     var rootLoc = expr.loc();
     var vx = new EvalContext(cix);
-    var rootScope = new Scope(null);
+    var rootScope = new Scope();
     var target = new TargetDynamic(vx.nextLocalId);
     var xx = new ExprContext(rootScope, target, vx, importState, new TypeStringConst());
     var scopeRes = initBuiltinScope(xx, rootLoc, importState);
@@ -176,7 +176,9 @@ public final class Eval {
       return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull());
     }
     var scopeEntries = scopeRes.requireValue("Eval::eval initBuiltinScope");
-    rootScope.values.putAll(scopeEntries);
+    for (var entry : scopeEntries.entrySet()) {
+      rootScope.pushNamed(entry.getKey(), entry.getValue());
+    }
     var binaryName = EvalRootEmitter.allocateBinaryName();
     vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);

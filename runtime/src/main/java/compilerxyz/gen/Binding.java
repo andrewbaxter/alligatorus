@@ -2,6 +2,7 @@ package compilerxyz.gen;
 
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -27,6 +28,19 @@ import compilerxyz.util.TList;
 public interface Binding {
     @compilerxyz.annotations.SourceExposed(name = "use")
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
+
+    /**
+     * Produce the drop code for this binding at emission time. Called by
+     * scope-exit unwind (try/finally wrap) and by Return's inline-drop walk;
+     * always invoked at the moment the drop will be emitted, so the code
+     * can reflect the binding's current state (e.g., a type refined by
+     * intervening Set operations) rather than a snapshot taken at bind
+     * time.
+     */
+    default EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+        var useCv = bindingUse(xx, loc, Code.none(loc));
+        return xx.target.targetDrop(xx, loc, useCv);
+    }
 
     static Type dynamicType() {
         return DynamicType.INSTANCE;
