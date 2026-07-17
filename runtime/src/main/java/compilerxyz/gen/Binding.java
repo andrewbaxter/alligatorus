@@ -42,6 +42,22 @@ public interface Binding {
         return xx.target.targetDrop(xx, loc, useCv);
     }
 
+    /**
+     * Fork this binding for a branch. Any mutable state the binding carries
+     * (including a mutable type) must be cloned so subsequent mutations on
+     * the fork do not affect this binding.
+     */
+    Binding bindingFork();
+
+    /**
+     * Merge this binding (the receiver, representing one branch's outcome)
+     * with the outcomes of the other branches. If the outcomes are
+     * incompatible — e.g., a mutable type ended up in mutually-exclusive
+     * states across branches — return an error. Otherwise return the
+     * unified binding to install as the post-branch state.
+     */
+    EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, compilerxyz.util.TList<Binding> others);
+
     static Type dynamicType() {
         return DynamicType.INSTANCE;
     }

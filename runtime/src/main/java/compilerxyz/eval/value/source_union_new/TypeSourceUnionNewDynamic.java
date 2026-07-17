@@ -168,6 +168,23 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
       return new CodeValue(Code.none(loc), Opt.some(value));
     }
+
+    @Override
+    public Binding bindingFork() {
+      return this;
+    }
+
+    @Override
+    public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+      for (var other : others) {
+        if (other != this && !this.equals(other)) {
+          return EResult.err(loc,
+              "cannot merge " + getClass().getSimpleName()
+                  + " with a differently-typed binding across branches");
+        }
+      }
+      return EResult.ok(this);
+    }
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

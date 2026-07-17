@@ -316,11 +316,18 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var boolDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_BOXED_BOOL);
     compilerxyz.eval.Type resultType = null;
     boolean allControlEnded = true;
+    // Fork/merge scope across branches so any type mutations inside one
+    // branch don't leak into siblings, and incompatible mutations across
+    // branches surface as a compile error at the merge.
+    var initialScope = xx.scope.fork();
+    var branchScopes = new TList<compilerxyz.eval.Scope>();
     for (var branch : conditions) {
       var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition());
       if (condDynOpt.isEmpty()) return EResult.errs(erb.errors());
+      xx.scope.replace(initialScope.fork());
       var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, branch.body()));
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
+      branchScopes.add(xx.scope.fork());
       var bodyCv = bodyCvOpt.get();
       boolean bodyControlEnded = !(bodyCv.value() instanceof Opt.Some<Value>);
       if (!bodyControlEnded) allControlEnded = false;
@@ -354,8 +361,10 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextLabel));
     }
     if (else_ instanceof Opt.Some<Expr> someElse) {
+      xx.scope.replace(initialScope.fork());
       var elseCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someElse.value()));
       if (elseCvOpt.isEmpty()) return EResult.errs(erb.errors());
+      branchScopes.add(xx.scope.fork());
       var elseCv = elseCvOpt.get();
       boolean elseControlEnded = !(elseCv.value() instanceof Opt.Some<Value>);
       if (!elseControlEnded) allControlEnded = false;
@@ -378,9 +387,23 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       }
     } else {
       // No else: any condition may fall through — the "no branch matched"
-      // path reaches endLabel with an implicit null value.
+      // path reaches endLabel with an implicit null value, and its scope
+      // is the initial (un-mutated) scope.
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
       allControlEnded = false;
+      branchScopes.add(initialScope.fork());
+    }
+    // Merge branch scopes back into xx.scope. The first branch's fork
+    // becomes the merge receiver; the rest are passed to bindingMerge.
+    if (branchScopes.isEmpty()) {
+      xx.scope.replace(initialScope);
+    } else {
+      var merged = branchScopes.get(0);
+      var rest = new TList<compilerxyz.eval.Scope>(branchScopes.size() - 1);
+      for (int i = 1; i < branchScopes.size(); i++) rest.add(branchScopes.get(i));
+      var mergeRes = merged.merge(xx, loc, rest);
+      if (mergeRes.hasErrors()) return mergeRes.reerr();
+      xx.scope.replace(merged);
     }
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
@@ -416,13 +439,18 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var endLabel = new LabelNode();
     compilerxyz.eval.Type resultType = null;
     boolean allControlEnded = true;
+    // Fork/merge scope across match cases + fallback so any type mutations
+    // in one case don't leak into siblings and incompatible mutations
+    // across branches surface as a compile error at the merge.
+    var initialScope = xx.scope.fork();
+    var branchScopes = new TList<compilerxyz.eval.Scope>();
     for (var branch : cases) {
       var variantInternal =
           JavaInternalName.of(branch.variantBinaryName().replace('.', '/'));
       var payloadDesc =
           compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, branch.variantType());
       var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
-      var caseInitialDepth = xx.scope.depth();
+      xx.scope.replace(initialScope.fork());
       var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
         xx.scope.pushNamed(
@@ -432,8 +460,9 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       try {
         bodyCvOptResult = ConstEval.constEval(xx, branch.body());
       } finally {
-        xx.scope.truncate(caseInitialDepth);
+        xx.scope.truncate(initialScope.depth());
       }
+      branchScopes.add(xx.scope.fork());
       var bodyCvOpt = erb.mustErMaybeUnreachable(bodyCvOptResult);
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
@@ -487,8 +516,10 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
     }
     if (fallback instanceof Opt.Some<Expr> someFallback) {
+      xx.scope.replace(initialScope.fork());
       var fallbackCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someFallback.value()));
       if (fallbackCvOpt.isEmpty()) return EResult.errs(erb.errors());
+      branchScopes.add(xx.scope.fork());
       var fallbackCv = fallbackCvOpt.get();
       boolean fallbackControlEnded = !(fallbackCv.value() instanceof Opt.Some<Value>);
       if (!fallbackControlEnded) allControlEnded = false;
@@ -520,6 +551,20 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     } else {
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+      // No fallback: the "no case matched" runtime path (which shouldn't fire
+      // for an exhaustive match) is treated as the untouched initial scope.
+      branchScopes.add(initialScope.fork());
+    }
+    // Merge branch scopes back into xx.scope.
+    if (branchScopes.isEmpty()) {
+      xx.scope.replace(initialScope);
+    } else {
+      var merged = branchScopes.get(0);
+      var rest = new TList<compilerxyz.eval.Scope>(branchScopes.size() - 1);
+      for (int i = 1; i < branchScopes.size(); i++) rest.add(branchScopes.get(i));
+      var mergeRes = merged.merge(xx, loc, rest);
+      if (mergeRes.hasErrors()) return mergeRes.reerr();
+      xx.scope.replace(merged);
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     if (allControlEnded) {

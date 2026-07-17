@@ -531,6 +531,10 @@ public final class ConstEval {
             .requireValue("Foreach: AspectElementUseDynamicBind")
             .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
     var initialScopeDepth = xx.scope.depth();
+    // Fork/merge across the loop's implicit branches: the zero-iteration case
+    // (body never runs — scope unchanged) and the one-or-more case (body
+    // runs, may mutate). Both must be compatible at the merge point.
+    var initialScope = xx.scope.fork();
     // The loop skeleton keeps the iterator on the operand stack across body
     // iterations; a Return-Jump escaping the body would leave the iterator
     // dangling. Pushing a synthetic BindingIteratorStack (whose bindingDrop
@@ -547,6 +551,13 @@ public final class ConstEval {
     }
     var bodyOpt = erb.mustErMaybeUnreachable(bodyOptResult);
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
+    // Merge the body-ran scope with the body-never-ran (initial) scope.
+    var bodyRanScope = xx.scope.fork();
+    var others = new TList<Scope>();
+    others.add(initialScope);
+    var mergeRes = bodyRanScope.merge(xx, loc, others);
+    if (mergeRes.hasErrors()) return mergeRes.reerr();
+    xx.scope.replace(bodyRanScope);
     var out = erb.mustErMaybeUnreachable(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyOpt.get()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(out.get());
@@ -820,8 +831,13 @@ public final class ConstEval {
       bodyExcType = xx.currentExceptionType;
     }
     var bodyXx = xx.withExceptionType(bodyExcType);
+    // Fork scope for the try body — it and the catch body run in exclusive
+    // control-flow branches (either the body completes without throwing or
+    // the catch fires) that must be merged into one post-try scope.
+    var initialScope = xx.scope.fork();
     var bodyOpt = erb.mustErMaybeUnreachable(constEval(bodyXx, e.body()));
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
+    var bodyRanScope = xx.scope.fork();
     var bodyCv = bodyOpt.get();
     Type bodyType;
     if (bodyCv.value() instanceof Opt.Some<Value> bv2) {
@@ -846,6 +862,7 @@ public final class ConstEval {
           erb.mustRes(Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
       if (bnCkOpt.isEmpty()) return EResult.errs(erb.errors());
       var bindingId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+      xx.scope.replace(initialScope.fork());
       var catchInitialDepth = xx.scope.depth();
       var ibMaybe = AspectInitialBind.getMaybe(xx, bodyExcType);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
@@ -858,6 +875,12 @@ public final class ConstEval {
       } finally {
         xx.scope.truncate(catchInitialDepth);
       }
+      var catchRanScope = xx.scope.fork();
+      var mergeOthers = new TList<Scope>();
+      mergeOthers.add(catchRanScope);
+      var mergeRes = bodyRanScope.merge(xx, loc, mergeOthers);
+      if (mergeRes.hasErrors()) return mergeRes.reerr();
+      xx.scope.replace(bodyRanScope);
       var catchCvOpt = erb.mustErMaybeUnreachable(catchCvOptResult);
       if (catchCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var catchCv = catchCvOpt.get();

@@ -7,6 +7,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.gen.Binding;
+import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 
 /**
@@ -25,5 +26,22 @@ public final class BindingIteratorStack implements Binding {
   @Override
   public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
     return EResult.ok(Code.of(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
+  }
+
+  @Override
+  public Binding bindingFork() {
+    return this;
+  }
+
+  @Override
+  public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+    for (var other : others) {
+      if (other != this && !this.equals(other)) {
+        return EResult.err(loc,
+            "cannot merge " + getClass().getSimpleName()
+                + " with a differently-typed binding across branches");
+      }
+    }
+    return EResult.ok(this);
   }
 }

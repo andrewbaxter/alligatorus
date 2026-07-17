@@ -4,6 +4,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -28,5 +29,22 @@ public record BindingTupleDynamic(BindingId dynamicKey, TList<Type> elements)
             new Tuple(
                 Opt.some(new TupleBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
                 resultElements)));
+  }
+
+  @Override
+  public Binding bindingFork() {
+    return this;
+  }
+
+  @Override
+  public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+    for (var other : others) {
+      if (other != this && !this.equals(other)) {
+        return EResult.err(loc,
+            "cannot merge " + getClass().getSimpleName()
+                + " with a differently-typed binding across branches");
+      }
+    }
+    return EResult.ok(this);
   }
 }

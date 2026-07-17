@@ -4,9 +4,11 @@ import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.util.TList;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
@@ -32,5 +34,22 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     }
     Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
     return new CodeValue(Code.of(loc, dyn), Opt.some(value));
+  }
+
+  @Override
+  public Binding bindingFork() {
+    return this;
+  }
+
+  @Override
+  public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+    for (var other : others) {
+      if (other != this && !this.equals(other)) {
+        return EResult.err(loc,
+            "cannot merge " + getClass().getSimpleName()
+                + " with a differently-typed binding across branches");
+      }
+    }
+    return EResult.ok(this);
   }
 }
