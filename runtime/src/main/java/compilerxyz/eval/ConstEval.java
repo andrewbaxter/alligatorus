@@ -194,10 +194,10 @@ public final class ConstEval {
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
-      case Expr.Foreach e -> constEvalForeach(xx, loc, e);
-      case Expr.Match e -> constEvalMatch(xx, loc, e);
+      case Expr.Foreach e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalForeach(xx, loc, e));
+      case Expr.Match e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalMatch(xx, loc, e));
       case Expr.Import e -> constEvalImport(xx, loc, e);
-      case Expr.If e -> constEvalIf(xx, loc, e);
+      case Expr.If e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalIf(xx, loc, e));
       case Expr.As e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustEr(constEval(xx, e.base()));
@@ -215,13 +215,126 @@ public final class ConstEval {
         yield EResult.ok(converted.get());
       }
       case Expr.Try e -> constEvalTry(xx, loc, e);
+      case Expr.Labeled e ->
+          wrapControlFrame(xx, loc, Opt.some(e.label()), () -> constEval(xx, e.inner()));
+      case Expr.Return e -> constEvalReturn(xx, loc, e);
     };
+  }
+
+  private static EResult<CodeValue> wrapControlFrame(
+      ExprContext xx,
+      QExprId loc,
+      Opt<String> label,
+      java.util.function.Supplier<EResult<CodeValue>> body) {
+    var endKey = new compilerxyz.eval.dynamic.JumpKey();
+    var frame = new ReturnFrame(label, endKey);
+    frame.dropStackDepthAtPush = xx.dropStack.size();
+    xx.returnStack.add(frame);
+    EResult<CodeValue> inner;
+    try {
+      inner = body.get();
+    } finally {
+      xx.returnStack.remove(xx.returnStack.size() - 1);
+    }
+    if (inner.valueOrNull() == null) return inner;
+    var innerCv = inner.requireValue("wrapControlFrame body");
+    Opt<Value> resultValue = innerCv.value();
+    if (frame.wasTargeted
+        && (frame.firstReturnValue != null || !(resultValue instanceof Opt.Some<Value>))) {
+      resultValue = Opt.some(scopeResultValue(xx, frame));
+    }
+    var wrapped = wrapWithLand(loc, innerCv, endKey, resultValue);
+    var errs = inner.errorsOrNull();
+    if (errs != null && !errs.isEmpty()) return EResult.mixed(wrapped, errs);
+    return EResult.ok(wrapped);
+  }
+
+  private static CodeValue wrapWithLand(
+      QExprId loc, CodeValue inner, compilerxyz.eval.dynamic.JumpKey endKey, Opt<Value> resultValue) {
+    var land = new compilerxyz.eval.dynamic.CodeDynamic(loc,
+        new compilerxyz.eval.dynamic.JavaBytecodeLand(endKey));
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    if (inner.code() instanceof Code.Target t && t.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic cd) {
+      seq.add(cd);
+    }
+    seq.add(land);
+    return new CodeValue(Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc, seq)), resultValue);
+  }
+
+  private static EResult<CodeValue> constEvalReturn(ExprContext xx, QExprId loc, Expr.Return e) {
+    var erb = new Erb(loc);
+    ReturnFrame target = null;
+    var stack = xx.returnStack;
+    for (int i = stack.size() - 1; i >= 0; i--) {
+      var f = stack.get(i);
+      if (e.label() instanceof Opt.Some<String> lbl) {
+        if (f.label instanceof Opt.Some<String> flbl && flbl.value().equals(lbl.value())) {
+          target = f;
+          break;
+        }
+      } else {
+        target = f;
+        break;
+      }
+    }
+    if (target == null) {
+      if (e.label() instanceof Opt.Some<String> lbl) {
+        erb.errPush("return: no enclosing scope with label '" + lbl.value() + "'");
+      } else {
+        erb.errPush("return: no enclosing control scope");
+      }
+      return EResult.errs(erb.errors());
+    }
+    target.wasTargeted = true;
+    CodeValue valCv;
+    if (e.value() instanceof Opt.Some<Expr> someV) {
+      var vOpt = erb.mustErMaybeUnreachable(constEval(xx, someV.value()));
+      if (vOpt.isEmpty()) return EResult.errs(erb.errors());
+      valCv = vOpt.get();
+    } else {
+      valCv = new CodeValue(Code.none(loc), Opt.some(emptyTupleValue()));
+    }
+    if (!(valCv.value() instanceof Opt.Some<Value> someVal)) {
+      return EResult.ok(new CodeValue(valCv.code(), Opt.none()));
+    }
+    if (target.firstReturnValue == null) {
+      target.firstReturnValue = someVal.value();
+    }
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    if (valCv.code() instanceof Code.Target t && t.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic valCd) {
+      seq.add(valCd);
+    }
+    for (int i = xx.dropStack.size() - 1; i >= target.dropStackDepthAtPush; i--) {
+      var d = xx.dropStack.get(i);
+      if (d instanceof Code.Target dt && dt.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic dcd) {
+        seq.add(dcd);
+      }
+    }
+    seq.add(new compilerxyz.eval.dynamic.CodeDynamic(loc,
+        new compilerxyz.eval.dynamic.JavaBytecodeJump(target.endKey)));
+    var retCode = Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc, seq));
+    return EResult.ok(new CodeValue(retCode, Opt.none()));
+  }
+
+  private static Value emptyTupleValue() {
+    return new Tuple(Opt.none(), new TList<>());
+  }
+
+  private static Value scopeResultValue(ExprContext xx, ReturnFrame frame) {
+    if (frame.firstReturnValue == null) {
+      return emptyTupleValue();
+    }
+    return frame.firstReturnValue;
   }
 
   private static EResult<CodeValue> constEvalSeq(ExprContext xx, QExprId loc, Expr.Seq e) {
     var childScope = new Scope(xx.scope);
     var childXx = xx.child(childScope);
     var erb = new Erb(loc);
+    var endKey = new compilerxyz.eval.dynamic.JumpKey();
+    var thisFrame = new ReturnFrame(Opt.none(), endKey);
+    thisFrame.dropStackDepthAtPush = childXx.dropStack.size();
+    childXx.returnStack.add(thisFrame);
 
     class Frame {
       final TList<Code> codes = new TList<>();
@@ -230,7 +343,7 @@ public final class ConstEval {
 
     var frames = new TList<Frame>();
     frames.add(new Frame());
-    Opt<Value> lastVal = Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null));
+    Opt<Value> lastVal = Opt.some(emptyTupleValue());
     CodeValue pendingDiscard = null;
     boolean controlEnded = false;
     var subs = e.exprs();
@@ -287,8 +400,9 @@ public final class ConstEval {
         var nf = new Frame();
         nf.dropCode = dropOpt.get();
         frames.add(nf);
+        childXx.dropStack.add(dropOpt.get());
         childXx.scope.values.put(ckOpt.get(), br.binding());
-        lastVal = Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null));
+        lastVal = Opt.some(emptyTupleValue());
       } else {
         var ropt = erb.mustErMaybeUnreachable(constEval(childXx, sub));
         if (ropt.isEmpty()) return EResult.errs(erb.errors());
@@ -299,12 +413,14 @@ public final class ConstEval {
           lastVal = Opt.none();
           continue;
         }
-        if (idx + 1 < total) {
-          pendingDiscard = r;
-        } else {
-          lastVal = r.value();
-        }
+        pendingDiscard = r;
       }
+    }
+    if (pendingDiscard != null) {
+      var dropOpt = erb.mustErMaybeUnreachable(childXx.target.targetDrop(childXx, loc, pendingDiscard));
+      if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
+      frames.get(frames.size() - 1).codes.add(dropOpt.get());
+      pendingDiscard = null;
     }
     while (frames.size() > 1) {
       var inner = frames.remove(frames.size() - 1);
@@ -319,9 +435,19 @@ public final class ConstEval {
         frames.get(frames.size() - 1).codes.add(wrappedOpt.get());
       }
     }
+    childXx.returnStack.remove(childXx.returnStack.size() - 1);
+    while (childXx.dropStack.size() > thisFrame.dropStackDepthAtPush) {
+      childXx.dropStack.remove(childXx.dropStack.size() - 1);
+    }
     var outer = frames.remove(0);
+    outer.codes.add(Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc,
+        new compilerxyz.eval.dynamic.JavaBytecodeLand(endKey))));
     var seqOpt = erb.mustErMaybeUnreachable(childXx.target.targetSeq(loc, outer.codes));
     if (seqOpt.isEmpty()) return EResult.errs(erb.errors());
+    if (thisFrame.wasTargeted
+        && (thisFrame.firstReturnValue != null || !(lastVal instanceof Opt.Some<Value>))) {
+      lastVal = Opt.some(scopeResultValue(childXx, thisFrame));
+    }
     var cv = new CodeValue(seqOpt.get(), lastVal);
     if (erb.errors().isEmpty()) {
       return EResult.ok(cv);
@@ -416,7 +542,20 @@ public final class ConstEval {
     var childScope = new Scope(xx.scope);
     childScope.values.put(ekOpt.get(), elementBinding);
     var childXx = xx.child(childScope);
-    var bodyOpt = erb.mustErMaybeUnreachable(constEval(childXx, e.body()));
+    // The loop skeleton keeps the iterator on the operand stack across body
+    // iterations. If body escapes via a Return-Jump to an outer scope, that
+    // Jump would leave the iterator dangling. Push a POP onto the shared
+    // dropStack so Return's inline-drop walk pops the iterator before Jump.
+    var popCode = compilerxyz.eval.Code.of(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+    childXx.dropStack.add(popCode);
+    EResult<CodeValue> bodyOptResult;
+    try {
+      bodyOptResult = constEval(childXx, e.body());
+    } finally {
+      childXx.dropStack.remove(childXx.dropStack.size() - 1);
+    }
+    var bodyOpt = erb.mustErMaybeUnreachable(bodyOptResult);
     if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
     var out = erb.mustErMaybeUnreachable(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyOpt.get()));
     if (out.isEmpty()) return EResult.errs(erb.errors());
@@ -833,6 +972,10 @@ public final class ConstEval {
       case Expr.Literal ignored -> {}
       case Expr.ScopeUse ignored -> {}
       case Expr.Import ignored -> {}
+      case Expr.Labeled lb -> findMatchedLowersInner(lb.inner(), sd, ld, out);
+      case Expr.Return rt -> {
+        if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedLowersInner(someV.value(), sd, ld, out);
+      }
       case Expr.As as -> {
         findMatchedLowersInner(as.base(), sd, ld, out);
         findMatchedLowersInner(as.target(), sd, ld, out);
@@ -928,6 +1071,10 @@ public final class ConstEval {
       case Expr.Literal ignored -> {}
       case Expr.ScopeUse ignored -> {}
       case Expr.Import ignored -> {}
+      case Expr.Labeled lb -> findMatchedGraftsInner(lb.inner(), sd, out);
+      case Expr.Return rt -> {
+        if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedGraftsInner(someV.value(), sd, out);
+      }
       case Expr.As as -> {
         findMatchedGraftsInner(as.base(), sd, out);
         findMatchedGraftsInner(as.target(), sd, out);

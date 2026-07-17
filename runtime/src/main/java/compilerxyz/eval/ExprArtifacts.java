@@ -116,6 +116,27 @@ public final class ExprArtifacts {
                 new Expr.Import(
                     spec.requireValue("ExprArtifacts::exprFromArtifact Import spec"))));
       }
+      case ArtifactExpr.Variant.Labeled lb -> {
+        var inner = exprFromArtifact(xx, lb.inner());
+        if (inner.hasErrors()) return inner.reerr();
+        return EResult.ok(
+            new Expr(
+                loc,
+                new Expr.Labeled(
+                    lb.label(),
+                    inner.requireValue("ExprArtifacts::exprFromArtifact Labeled inner"))));
+      }
+      case ArtifactExpr.Variant.Return rt -> {
+        Opt<Expr> value;
+        if (rt.value() instanceof Opt.Some<ArtifactExpr> some) {
+          var vv = exprFromArtifact(xx, some.value());
+          if (vv.hasErrors()) return vv.reerr();
+          value = Opt.some(vv.requireValue("ExprArtifacts::exprFromArtifact Return value"));
+        } else {
+          value = Opt.none();
+        }
+        return EResult.ok(new Expr(loc, new Expr.Return(rt.label(), value)));
+      }
       case ArtifactExpr.Variant.Literal l -> {
         var errors = new TList<ExprErr>();
         var imported = ArtifactSupport.importArtifact(xx, loc, l.value());
@@ -431,6 +452,27 @@ public final class ExprArtifacts {
                 loc,
                 new ArtifactExpr.Variant.Import(
                     spec.requireValue("ExprArtifacts::exprToArtifact Import spec"))));
+      }
+      case Expr.Labeled lb -> {
+        var inner = exprToArtifact(xx, lb.inner());
+        if (inner.hasErrors()) return inner.reerr();
+        return EResult.ok(
+            new ArtifactExpr(
+                loc,
+                new ArtifactExpr.Variant.Labeled(
+                    lb.label(),
+                    inner.requireValue("ExprArtifacts::exprToArtifact Labeled inner"))));
+      }
+      case Expr.Return rt -> {
+        Opt<ArtifactExpr> value;
+        if (rt.value() instanceof Opt.Some<Expr> some) {
+          var vv = exprToArtifact(xx, some.value());
+          if (vv.hasErrors()) return vv.reerr();
+          value = Opt.some(vv.requireValue("ExprArtifacts::exprToArtifact Return value"));
+        } else {
+          value = Opt.none();
+        }
+        return EResult.ok(new ArtifactExpr(loc, new ArtifactExpr.Variant.Return(rt.label(), value)));
       }
       case Expr.Literal l -> {
         var peeked = l.value().peek();

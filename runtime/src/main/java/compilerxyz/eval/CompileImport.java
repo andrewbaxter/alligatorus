@@ -99,6 +99,9 @@ public final class CompileImport {
       case Expr.Literal lit -> 0;
       case Expr.ScopeUse u -> 0;
       case Expr.Import imp -> 0;
+      case Expr.Labeled lb -> maxLowerExcess(lb.inner(), sd, ld);
+      case Expr.Return rt ->
+          rt.value() instanceof Opt.Some<Expr> someV ? maxLowerExcess(someV.value(), sd, ld) : 0;
       case Expr.As a -> Math.max(maxLowerExcess(a.base(), sd, ld), maxLowerExcess(a.target(), sd, ld));
       case Expr.Call c -> Math.max(maxLowerExcess(c.func(), sd, ld), maxLowerExcess(c.arg(), sd, ld));
       case Expr.Bind b -> Math.max(maxLowerExcess(b.base(), sd, ld), maxLowerExcess(b.value(), sd, ld));

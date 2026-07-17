@@ -66,7 +66,7 @@ public final class BuiltinPathScanner {
         var pkg = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse("");
         var imports = buildImportMap(cu);
         for (var t : cu.getTypes()) {
-          walkType(pkg, "", t, imports, out);
+          walkType(pkg, pkg, "", t, imports, out);
         }
       }
     }
@@ -75,6 +75,7 @@ public final class BuiltinPathScanner {
 
   private static void walkType(
       String pkg,
+      String sourcePkg,
       String enclosing,
       TypeDeclaration<?> t,
       TMap<String, String> imports,
@@ -100,7 +101,7 @@ public final class BuiltinPathScanner {
               "@BuiltinPath on method " + m.getNameAsString() + " requires first arg ExprContext xx");
         }
         var first = params.get(0);
-        var firstTy = typeNameOf(first.getType(), imports);
+        var firstTy = typeNameOf(first.getType(), imports, sourcePkg);
         if (!(firstTy instanceof ClassName ficn)
             || !ficn.canonicalName().equals("compilerxyz.eval.ExprContext")) {
           throw new IllegalStateException(
@@ -111,16 +112,16 @@ public final class BuiltinPathScanner {
         }
         for (int i = 1; i < params.size(); i++) {
           var p = params.get(i);
-          args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports)));
+          args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg)));
         }
-        var retType = typeRefOf(m.getType(), imports);
+        var retType = typeRefOf(m.getType(), imports, sourcePkg);
         out.add(new FunctionLeaf(mpath, scopeId, m.getNameAsString(), args, retType));
       }
     }
     for (var member : t.getMembers()) {
       if (member instanceof TypeDeclaration<?> nested) {
         var nextEnclosing = enclosing.isEmpty() ? simple : enclosing + "." + simple;
-        walkType(pkg, nextEnclosing, nested, imports, out);
+        walkType(pkg, sourcePkg, nextEnclosing, nested, imports, out);
       }
     }
   }
@@ -215,9 +216,9 @@ public final class BuiltinPathScanner {
   private static final ClassName TYPE_NULL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
-  private static TypeRef typeRefOf(Type t, TMap<String, String> imports) {
+  private static TypeRef typeRefOf(Type t, TMap<String, String> imports, String sourcePkg) {
     if (t.isVoidType()) return TypeRef.leaf(TYPE_NULL_DYNAMIC);
-    var tn = typeNameOf(t, imports);
+    var tn = typeNameOf(t, imports, sourcePkg);
     if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
     if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_NUMBER_DYNAMIC);
     if (tn instanceof ClassName cn && cn.canonicalName().equals("java.lang.Object")) {
@@ -247,7 +248,7 @@ public final class BuiltinPathScanner {
     return TypeRef.opaque(tn);
   }
 
-  private static TypeName typeNameOf(Type t, TMap<String, String> imports) {
+  private static TypeName typeNameOf(Type t, TMap<String, String> imports, String sourcePkg) {
     if (t instanceof PrimitiveType p) {
       return switch (p.getType()) {
         case BOOLEAN -> TypeName.BOOLEAN;
@@ -265,16 +266,16 @@ public final class BuiltinPathScanner {
       if (c.getScope().isPresent()) {
         var scope = c.getScope().get();
         var scopeName = scope.getNameAsString();
-        var scopeCn = classNameOf(scopeName, imports);
+        var scopeCn = classNameOf(scopeName, imports, sourcePkg);
         raw = scopeCn.nestedClass(c.getNameAsString());
       } else {
-        raw = classNameOf(c.getNameAsString(), imports);
+        raw = classNameOf(c.getNameAsString(), imports, sourcePkg);
       }
       if (c.getTypeArguments().isPresent() && !c.getTypeArguments().get().isEmpty()) {
         var argsList = c.getTypeArguments().get();
         var argNames = new TypeName[argsList.size()];
         for (int i = 0; i < argsList.size(); i++) {
-          argNames[i] = typeNameOf(argsList.get(i), imports);
+          argNames[i] = typeNameOf(argsList.get(i), imports, sourcePkg);
         }
         return ParameterizedTypeName.get(raw, argNames);
       }
@@ -283,19 +284,14 @@ public final class BuiltinPathScanner {
     throw new IllegalStateException("Unhandled type: " + t + " (" + t.getClass() + ")");
   }
 
-  private static ClassName classNameOf(String simple, TMap<String, String> imports) {
+  private static ClassName classNameOf(String simple, TMap<String, String> imports, String sourcePkg) {
     var fqn = imports.getOrNull(simple);
     if (fqn == null) {
-      for (var pkg : new String[]{"compilerxyz.eval", "compilerxyz.gen", "compilerxyz.util"}) {
-        try {
-          var cls = Class.forName(pkg + "." + simple);
-          fqn = cls.getName();
-          break;
-        } catch (ClassNotFoundException e) {
-          // continue
-        }
+      try {
+        fqn = Class.forName("java.lang." + simple).getName();
+      } catch (ClassNotFoundException e) {
+        fqn = sourcePkg + "." + simple;
       }
-      if (fqn == null) fqn = "java.lang." + simple;
     }
     var idx = fqn.lastIndexOf('.');
     return ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));

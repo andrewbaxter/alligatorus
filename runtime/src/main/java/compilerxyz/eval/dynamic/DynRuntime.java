@@ -283,6 +283,20 @@ public final class DynRuntime {
       case Expr.Literal lit -> expr;
       case Expr.ScopeUse u -> expr;
       case Expr.Import imp -> expr;
+      case Expr.Labeled lb ->
+          new Expr(
+              loc,
+              new Expr.Labeled(
+                  lb.label(), cloneWithLowerSubstitutions(lb.inner(), sd, ld, values, grafts)));
+      case Expr.Return rt -> {
+        Opt<Expr> newValue;
+        if (rt.value() instanceof Opt.Some<Expr> someV) {
+          newValue = Opt.some(cloneWithLowerSubstitutions(someV.value(), sd, ld, values, grafts));
+        } else {
+          newValue = Opt.none();
+        }
+        yield new Expr(loc, new Expr.Return(rt.label(), newValue));
+      }
       case Expr.As a ->
           new Expr(
               loc,

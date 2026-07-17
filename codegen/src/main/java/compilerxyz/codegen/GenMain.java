@@ -5,9 +5,11 @@ import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.JavaFormatterOptions;
 import com.squareup.javapoet.JavaFile;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
 
@@ -21,6 +23,19 @@ public final class GenMain {
     }
     var outRoot = Path.of(args[0]);
     var runtimeSourceRoot = Path.of(args[1]);
+    if (Files.exists(outRoot)) {
+      try (var walk = Files.walk(outRoot)) {
+        walk.sorted(Comparator.reverseOrder())
+            .forEach(
+                p -> {
+                  try {
+                    Files.delete(p);
+                  } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                  }
+                });
+      }
+    }
     Files.createDirectories(outRoot);
 
     var formatter = Formatter.createFormatter(

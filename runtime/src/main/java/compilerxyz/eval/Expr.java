@@ -52,6 +52,9 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     public record Import(Expr spec) implements Variant {
     }
 
+    public record Labeled(String label, Expr inner) implements Variant {
+    }
+
     public record Literal(LitValue value) implements Variant {
     }
 
@@ -79,6 +82,9 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     }
 
     public record RecordEntry(Expr key, Expr value) {
+    }
+
+    public record Return(Opt<String> label, Opt<Expr> value) implements Variant {
     }
 
     public record ScopeUse(Expr key) implements Variant {

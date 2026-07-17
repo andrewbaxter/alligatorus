@@ -75,8 +75,8 @@ public final class T0100ImportTest {
                                                         mb.str("toUpperCase")),
                                                     mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
-                mb.call(mb.scopeUse("ctor"), mb.str("hello")))));
+                            mb.return_(mb.field(mb.scopeUse("ndr"), mb.str("new")))))),
+                mb.return_(mb.call(mb.scopeUse("ctor"), mb.str("hello"))))));
     modules.put(
         "main",
         new SourceModule.V1(
@@ -121,7 +121,7 @@ public final class T0100ImportTest {
                             new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello")))))),
                 mb.call(
                     mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.scopeUse("f"))));
+                mb.return_(mb.scopeUse("f")))));
     modules.put(
         "module_a",
         new SourceModule.V1(
@@ -148,7 +148,7 @@ public final class T0100ImportTest {
                                         mb.literalNull())))))),
                 mb.call(
                     mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.scopeUse("f"))));
+                mb.return_(mb.scopeUse("f")))));
     modules.put(
         "main",
         new SourceModule.V1(

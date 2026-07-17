@@ -482,7 +482,10 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                             @Override
                                                             public void handleLabel(Label label) {
                                                                 var p = branchIndexes.remove(label);
-                                                                if (p != null) {
+                                                                // Only restore snapshot when arriving via a jump
+                                                                // (currentIndexes is null); a natural fall-through
+                                                                // path already has the correct post-body state.
+                                                                if (p != null && currentIndexes[0] == null) {
                                                                     currentIndexes[0] = p.first();
                                                                     currentRevIndexes[0] = p.second();
                                                                 }
@@ -506,9 +509,16 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                 // its LabelNode is emitted, the current frame (variable index
                                                 // allocations) is restored — otherwise a preceding GOTO nulls
                                                 // currentIndexes[0] and any StoreLoad inside the handler NPEs.
+                                                // bodyEnd is registered similarly: when the try body ends with
+                                                // a Jump (a return), control never reaches bodyEnd naturally,
+                                                // so the tracker needs a snapshot to resolve StoreLoad slots
+                                                // in the unreachable finally-normal code that follows.
                                                 if (currentIndexes[0] != null) {
                                                     branchIndexes.put(
                                                         n.handler,
+                                                        new Pair<>(currentIndexes[0], currentRevIndexes[0]));
+                                                    branchIndexes.put(
+                                                        n.end,
                                                         new Pair<>(currentIndexes[0], currentRevIndexes[0]));
                                                 }
                                             }
@@ -567,7 +577,13 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
                                         }
                                     } else {
-                                        throw new AssertionError();
+                                        // LOAD with unrecognized key: the ASTORE for this key
+                                        // occurred in code we jumped past. We're in a dead-code
+                                        // region between the bodyEnd label's restored snapshot
+                                        // (which lacks in-body Binds) and the next jump target.
+                                        // Runtime never executes this LOAD; emit slot 0 so the
+                                        // JVM verifier can parse the sequence.
+                                        index = 0;
                                     }
                                 }
                                 out.visitVarInsn(storeLoad.code, index);

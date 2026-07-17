@@ -61,6 +61,26 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.Import(spec));
   }
 
+  public SourceExpr labeled(String label, SourceExpr inner) {
+    return new SourceExpr(id(), new SourceExpr.Labeled(label, inner));
+  }
+
+  public SourceExpr return_(@Nullable String label, @Nullable SourceExpr value) {
+    return new SourceExpr(
+        id(),
+        new SourceExpr.Return(
+            label == null ? Opt.none() : Opt.some(label),
+            value == null ? Opt.none() : Opt.some(value)));
+  }
+
+  public SourceExpr return_(SourceExpr value) {
+    return return_(null, value);
+  }
+
+  public SourceExpr returnEmpty() {
+    return return_(null, null);
+  }
+
   public SourceExpr lower(SourceExpr expr) {
     return new SourceExpr(id(), new SourceExpr.Lower(expr));
   }

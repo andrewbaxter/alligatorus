@@ -25,6 +25,8 @@ public final class ExprContext {
   public final Scope scope;
   public final Target target;
   public final EvalContext vx;
+  public final TList<ReturnFrame> returnStack;
+  public final TList<Code> dropStack;
 
   public ExprContext(
       Scope scope,
@@ -32,19 +34,32 @@ public final class ExprContext {
       EvalContext vx,
       ImportStateId importState,
       @Nullable Type currentExceptionType) {
+    this(scope, target, vx, importState, currentExceptionType, new TList<>(), new TList<>());
+  }
+
+  public ExprContext(
+      Scope scope,
+      Target target,
+      EvalContext vx,
+      ImportStateId importState,
+      @Nullable Type currentExceptionType,
+      TList<ReturnFrame> returnStack,
+      TList<Code> dropStack) {
     this.scope = scope;
     this.target = target;
     this.vx = vx;
     this.importState = importState;
     this.currentExceptionType = currentExceptionType;
+    this.returnStack = returnStack;
+    this.dropStack = dropStack;
   }
 
   public ExprContext child(Scope childScope) {
-    return new ExprContext(childScope, target, vx, importState, currentExceptionType);
+    return new ExprContext(childScope, target, vx, importState, currentExceptionType, returnStack, dropStack);
   }
 
   public ExprContext withExceptionType(@Nullable Type newExceptionType) {
-    return new ExprContext(scope, target, vx, importState, newExceptionType);
+    return new ExprContext(scope, target, vx, importState, newExceptionType, returnStack, dropStack);
   }
 
   public static Type dynamicType() {

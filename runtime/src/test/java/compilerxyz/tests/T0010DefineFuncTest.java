@@ -42,7 +42,7 @@ public final class T0010DefineFuncTest {
                                             "impl_body",
                                             mb.stage(mb.call(mb.log(), mb.str("hello"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -86,7 +86,7 @@ public final class T0010DefineFuncTest {
                                                         mb.str("toUpperCase")),
                                                     mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.call(
                     mb.log(),
                     mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
@@ -132,7 +132,7 @@ public final class T0010DefineFuncTest {
                                                         mb.str("toUpperCase")),
                                                     mb.tupleOf())))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.call(
                     mb.log(),
                     mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));

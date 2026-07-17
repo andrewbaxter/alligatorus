@@ -315,50 +315,76 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var endLabel = new LabelNode();
     var boolDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_BOXED_BOOL);
     compilerxyz.eval.Type resultType = null;
+    boolean allControlEnded = true;
     for (var branch : conditions) {
       var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition());
       if (condDynOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, branch.body()));
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
-      if (resultType == null) {
-        if (!(bodyCv.value() instanceof Opt.Some<Value> some)) {
-          return EResult.err(loc, "TargetDynamic::if_: body CodeValue has no value");
+      boolean bodyControlEnded = !(bodyCv.value() instanceof Opt.Some<Value>);
+      if (!bodyControlEnded) allControlEnded = false;
+      if (!bodyControlEnded) {
+        if (resultType == null) {
+          resultType = ((Opt.Some<Value>) bodyCv.value()).value().valueType();
+        } else {
+          var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, bodyCv));
+          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
+          bodyCv = convertedOpt.get();
         }
-        resultType = some.value().valueType();
-      } else {
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, bodyCv));
-        if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-        bodyCv = convertedOpt.get();
       }
-      var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
-      if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
+      CodeDynamic bodyDyn;
+      if (bodyControlEnded) {
+        bodyDyn = bodyCv.code() instanceof compilerxyz.eval.Code.Target ct
+            && ct.impl() instanceof CodeDynamic cd
+            ? cd
+            : new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence());
+      } else {
+        var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
+        if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
+        bodyDyn = bodyDynOpt.get();
+      }
       var nextLabel = new LabelNode();
       seq.add(condDynOpt.get());
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextLabel)));
-      seq.add(bodyDynOpt.get());
-      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
+      seq.add(bodyDyn);
+      if (!bodyControlEnded) {
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
+      }
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextLabel));
     }
     if (else_ instanceof Opt.Some<Expr> someElse) {
       var elseCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someElse.value()));
       if (elseCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var elseCv = elseCvOpt.get();
-      if (resultType == null) {
-        if (!(elseCv.value() instanceof Opt.Some<Value> some)) {
-          return EResult.err(loc, "TargetDynamic::if_: else CodeValue has no value");
+      boolean elseControlEnded = !(elseCv.value() instanceof Opt.Some<Value>);
+      if (!elseControlEnded) allControlEnded = false;
+      if (!elseControlEnded) {
+        if (resultType == null) {
+          resultType = ((Opt.Some<Value>) elseCv.value()).value().valueType();
+        } else {
+          var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, elseCv));
+          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
+          elseCv = convertedOpt.get();
         }
-        resultType = some.value().valueType();
+        var elseDynOpt = cvToDynamic(erb, xx, loc, elseCv);
+        if (elseDynOpt.isEmpty()) return EResult.errs(erb.errors());
+        seq.add(elseDynOpt.get());
       } else {
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, elseCv));
-        if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-        elseCv = convertedOpt.get();
+        if (elseCv.code() instanceof compilerxyz.eval.Code.Target ct
+            && ct.impl() instanceof CodeDynamic ecd) {
+          seq.add(ecd);
+        }
       }
-      var elseDynOpt = cvToDynamic(erb, xx, loc, elseCv);
-      if (elseDynOpt.isEmpty()) return EResult.errs(erb.errors());
-      seq.add(elseDynOpt.get());
     } else {
+      // No else: any condition may fall through — the "no branch matched"
+      // path reaches endLabel with an implicit null value.
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+      allControlEnded = false;
+    }
+    if (allControlEnded) {
+      return EResult.ok(new CodeValue(
+          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), Opt.none()));
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     var finalType =
@@ -389,6 +415,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
 
     var endLabel = new LabelNode();
     compilerxyz.eval.Type resultType = null;
+    boolean allControlEnded = true;
     for (var branch : cases) {
       var variantInternal =
           JavaInternalName.of(branch.variantBinaryName().replace('.', '/'));
@@ -404,18 +431,29 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       var bodyCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(caseXx, branch.body()));
       if (bodyCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var bodyCv = bodyCvOpt.get();
-      if (resultType == null) {
-        if (!(bodyCv.value() instanceof Opt.Some<Value> some)) {
-          return EResult.err(loc, "TargetDynamic::match_: case CodeValue has no value");
+      boolean bodyControlEnded = !(bodyCv.value() instanceof Opt.Some<Value>);
+      if (!bodyControlEnded) allControlEnded = false;
+      if (!bodyControlEnded) {
+        if (resultType == null) {
+          resultType = ((Opt.Some<Value>) bodyCv.value()).value().valueType();
+        } else {
+          var convertedOpt = erb.mustEr(Eval.typecheckConvert(caseXx, loc, resultType, bodyCv));
+          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
+          bodyCv = convertedOpt.get();
         }
-        resultType = some.value().valueType();
-      } else {
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(caseXx, loc, resultType, bodyCv));
-        if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-        bodyCv = convertedOpt.get();
       }
-      var bodyDynOpt = cvToDynamic(erb, caseXx, loc, bodyCv);
-      if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
+      CodeDynamic bodyDyn;
+      if (bodyControlEnded) {
+        var bodyCd = bodyCv.code() instanceof compilerxyz.eval.Code.Target ct
+            && ct.impl() instanceof CodeDynamic cd
+            ? cd
+            : new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence());
+        bodyDyn = bodyCd;
+      } else {
+        var bodyDynOpt = cvToDynamic(erb, caseXx, loc, bodyCv);
+        if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
+        bodyDyn = bodyDynOpt.get();
+      }
       var nextCaseLabel = new LabelNode();
       seq.add(
           new CodeDynamic(
@@ -436,31 +474,52 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           new CodeDynamic(
               new CodeLoc.Some(loc),
               new JavaBytecodeStoreLoad(Opcodes.ASTORE, payloadBinding.key())));
-      seq.add(bodyDynOpt.get());
-      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
+      seq.add(bodyDyn);
+      if (!bodyControlEnded) {
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
+      }
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
     }
     if (fallback instanceof Opt.Some<Expr> someFallback) {
       var fallbackCvOpt = erb.mustErMaybeUnreachable(ConstEval.constEval(xx, someFallback.value()));
       if (fallbackCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var fallbackCv = fallbackCvOpt.get();
-      if (resultType == null) {
-        if (!(fallbackCv.value() instanceof Opt.Some<Value> some)) {
-          return EResult.err(loc, "TargetDynamic::match_: fallback CodeValue has no value");
+      boolean fallbackControlEnded = !(fallbackCv.value() instanceof Opt.Some<Value>);
+      if (!fallbackControlEnded) allControlEnded = false;
+      if (!fallbackControlEnded) {
+        if (resultType == null) {
+          resultType = ((Opt.Some<Value>) fallbackCv.value()).value().valueType();
+        } else {
+          var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, fallbackCv));
+          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
+          fallbackCv = convertedOpt.get();
         }
-        resultType = some.value().valueType();
+        var fallbackDynOpt = cvToDynamic(erb, xx, loc, fallbackCv);
+        if (fallbackDynOpt.isEmpty()) return EResult.errs(erb.errors());
+        seq.add(fallbackDynOpt.get());
       } else {
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, resultType, fallbackCv));
-        if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-        fallbackCv = convertedOpt.get();
+        if (fallbackCv.code() instanceof compilerxyz.eval.Code.Target ct
+            && ct.impl() instanceof CodeDynamic fcd) {
+          seq.add(fcd);
+        }
       }
-      var fallbackDynOpt = cvToDynamic(erb, xx, loc, fallbackCv);
-      if (fallbackDynOpt.isEmpty()) return EResult.errs(erb.errors());
-      seq.add(fallbackDynOpt.get());
+    } else if (allControlEnded) {
+      // Every case body is control-ended; no fallback is needed since the
+      // match is exhaustive. Emit an unreachable ATHROW so verifier does not
+      // require a fall-through value here.
+      seq.add(JavaBytecodeUtils.instantiate(loc,
+          JavaInternalName.of("java/lang/AssertionError"),
+          JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID),
+          new CodeDynamic(loc, new compilerxyz.eval.dynamic.JavaBytecodeSequence())));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     } else {
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
+    if (allControlEnded) {
+      return EResult.ok(new CodeValue(
+          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), Opt.none()));
+    }
     var finalType =
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
     var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));

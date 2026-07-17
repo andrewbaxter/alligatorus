@@ -107,9 +107,9 @@ public final class JavaAspectExtractor {
       for (var p : m.getParameters()) {
         args.add(new NamedTypeRef(
             snakeCase(stripReservedSuffix(p.getNameAsString())),
-            typeRefOf(p.getType(), importMap)));
+            typeRefOf(p.getType(), importMap, pkg)));
       }
-      methods.add(new Method(exposedAttrs.get("name"), typeRefOf(m.getType(), importMap),
+      methods.add(new Method(exposedAttrs.get("name"), typeRefOf(m.getType(), importMap, pkg),
           new MethodArgs(args)));
     }
 
@@ -152,6 +152,7 @@ public final class JavaAspectExtractor {
     var kindAttrs = readAttrs(requireAnnotation(ifaceDecl, "BuiltinAspect"));
     var kind = kindAttrs.get("kind");
     var aspectPrefix = "aspect" + kind;
+    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
     var importMap = buildImportMap(cu);
     var name = "aspect_" + camelToSnake(kind);
 
@@ -165,9 +166,9 @@ public final class JavaAspectExtractor {
       for (var p : m.getParameters()) {
         args.add(new NamedTypeRef(
             snakeCase(stripReservedSuffix(p.getNameAsString())),
-            typeRefOf(p.getType(), importMap)));
+            typeRefOf(p.getType(), importMap, pkg)));
       }
-      methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap), new MethodArgs(args)));
+      methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap, pkg), new MethodArgs(args)));
     }
 
     return new InterfaceSpec(
@@ -203,8 +204,8 @@ public final class JavaAspectExtractor {
   private static final ClassName TYPE_NUMBER_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.number", "TypeNumberDynamic");
 
-  private static TypeRef typeRefOf(Type t, TMap<String, String> imports) {
-    var tn = typeNameOf(t, imports);
+  private static TypeRef typeRefOf(Type t, TMap<String, String> imports, String sourcePkg) {
+    var tn = typeNameOf(t, imports, sourcePkg);
     if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
     if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_NUMBER_DYNAMIC);
     if (tn instanceof ClassName cn) {
@@ -244,6 +245,7 @@ public final class JavaAspectExtractor {
     var annot = requireAnnotation(ifaceDecl, "BuiltinAspect");
     var attrs = readAttrs(annot);
     var importMap = buildImportMap(cu);
+    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
 
     var kind = attrs.get("kind");
     var aspectPrefix = "aspect" + kind;
@@ -260,7 +262,7 @@ public final class JavaAspectExtractor {
           var nullable = p.getAnnotationByName("Nullable").isPresent();
           components.add(
               new AspectsGen.Param(
-                  p.getNameAsString(), typeNameOf(p.getType(), importMap), nullable));
+                  p.getNameAsString(), typeNameOf(p.getType(), importMap, pkg), nullable));
         }
         nestedRecords.add(new AspectsGen.NestedRecord("", r.getNameAsString(), components));
         nestedRecordNames.add(r.getNameAsString());
@@ -289,11 +291,11 @@ public final class JavaAspectExtractor {
         var nullable = p.getAnnotationByName("Nullable").isPresent();
         params.add(
             new AspectsGen.Param(
-                p.getNameAsString(), typeNameOf(p.getType(), effectiveImports), nullable));
+                p.getNameAsString(), typeNameOf(p.getType(), effectiveImports, pkg), nullable));
       }
       methods.add(
           new AspectsGen.AspectMethod(
-              "", shortName, params, typeNameOf(m.getType(), effectiveImports)));
+              "", shortName, params, typeNameOf(m.getType(), effectiveImports, pkg)));
     }
 
     return new AspectsGen.AspectSpec(
@@ -346,7 +348,7 @@ public final class JavaAspectExtractor {
     return m;
   }
 
-  private static TypeName typeNameOf(Type t, TMap<String, String> imports) {
+  private static TypeName typeNameOf(Type t, TMap<String, String> imports, String sourcePkg) {
     if (t instanceof PrimitiveType p) {
       return switch (p.getType()) {
         case BOOLEAN -> TypeName.BOOLEAN;
@@ -360,12 +362,12 @@ public final class JavaAspectExtractor {
       };
     }
     if (t instanceof ClassOrInterfaceType c) {
-      var raw = classNameOf(c.getNameAsString(), imports);
+      var raw = classNameOf(c.getNameAsString(), imports, sourcePkg);
       if (c.getTypeArguments().isPresent() && !c.getTypeArguments().get().isEmpty()) {
         var argsList = c.getTypeArguments().get();
         var argNames = new TypeName[argsList.size()];
         for (int i = 0; i < argsList.size(); i++) {
-          argNames[i] = typeNameOf(argsList.get(i), imports);
+          argNames[i] = typeNameOf(argsList.get(i), imports, sourcePkg);
         }
         return ParameterizedTypeName.get(raw, argNames);
       }
@@ -374,22 +376,14 @@ public final class JavaAspectExtractor {
     throw new IllegalStateException("Unhandled type: " + t + " (" + t.getClass() + ")");
   }
 
-  private static ClassName classNameOf(String simple, TMap<String, String> imports) {
+  private static ClassName classNameOf(String simple, TMap<String, String> imports, String sourcePkg) {
     var fqn = imports.getOrNull(simple);
     if (fqn == null) {
-      // Fall back to well-known package for same-package references in handwritten runtime code.
-      // Types in compilerxyz.eval, compilerxyz.gen, compilerxyz.util rarely need explicit imports
-      // when the reference is in the same package. Try each.
-      for (var pkg : new String[]{"compilerxyz.eval", "compilerxyz.gen", "compilerxyz.util"}) {
-        try {
-          var cls = Class.forName(pkg + "." + simple);
-          fqn = cls.getName();
-          break;
-        } catch (ClassNotFoundException e) {
-          // continue
-        }
+      try {
+        fqn = Class.forName("java.lang." + simple).getName();
+      } catch (ClassNotFoundException e) {
+        fqn = sourcePkg + "." + simple;
       }
-      if (fqn == null) fqn = "java.lang." + simple;
     }
     var idx = fqn.lastIndexOf('.');
     return ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));

@@ -35,6 +35,8 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
 
     record Import(ArtifactExpr spec) implements Variant {}
 
+    record Labeled(String label, ArtifactExpr inner) implements Variant {}
+
     record Literal(Artifact value) implements Variant {}
 
     record Lower(ArtifactExpr expr) implements Variant {}
@@ -53,6 +55,8 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
     record OperatorLt(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
 
     record Record(TList<RecordEntryA> entries) implements Variant {}
+
+    record Return(Opt<String> label, Opt<ArtifactExpr> value) implements Variant {}
 
     record ScopeUse(ArtifactExpr key) implements Variant {}
 

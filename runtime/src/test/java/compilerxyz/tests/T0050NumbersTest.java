@@ -84,9 +84,9 @@ public final class T0050NumbersTest {
                                                                         mb.scopeUse("arg"),
                                                                         mb.num(7.0))))),
                                                         null),
-                                                    mb.scopeUse("arg"))))))),
+                                                    mb.return_(mb.scopeUse("arg")))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.field(mb.scopeUse("builder"), mb.str("func"))))),
+                            mb.return_(mb.field(mb.scopeUse("builder"), mb.str("func")))))),
                 mb.call(
                     mb.log(),
                     mb.call(

@@ -116,6 +116,10 @@ public final class SourceModuleToModule {
                   sourceExprToExpr(sourceId, a.base()), sourceExprToExpr(sourceId, a.target()));
           case SourceExpr.Import imp ->
               new Expr.Import(sourceExprToExpr(sourceId, imp.spec()));
+          case SourceExpr.Labeled lb ->
+              new Expr.Labeled(lb.label(), sourceExprToExpr(sourceId, lb.inner()));
+          case SourceExpr.Return r ->
+              new Expr.Return(r.label(), mapOpt(sourceId, r.value()));
           case SourceExpr.Try t -> {
             var catchPort =
                 t.catchClause()

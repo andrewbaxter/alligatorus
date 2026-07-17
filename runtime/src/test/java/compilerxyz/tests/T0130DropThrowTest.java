@@ -71,7 +71,7 @@ public final class T0130DropThrowTest {
             mb.str("value"));
     return mb.seqOf(
         mb.bind("underlying_code_", underlyingCodeExpr),
-        mb.call(
+        mb.return_(mb.call(
             mb.field(mb.call(mb.typesEresult(), mb.typesCode()), mb.str("ok")),
             mb.field(
                 mb.call(
@@ -85,8 +85,8 @@ public final class T0130DropThrowTest {
                                 mb.stage(
                                     mb.seqOf(
                                         mb.call(mb.log(), mb.str(dropMessage)),
-                                        mb.graft(mb.scopeUse("underlying_code_")))))))),
-                mb.str("code"))));
+                                        mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))),
+                mb.str("code")))));
   }
 
   private static SourceExpr canaryBindDynamicBody(TestMb mb) {
@@ -145,7 +145,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             new TestMb.RecordPair(
                                 "can_cast_from",
                                 mb.seqOf(
-                                    mb.field(
+                                    mb.return_(mb.field(
                                         mb.call(
                                             mb.field(
                                                 mb.field(
@@ -153,7 +153,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.str("source_type")),
                                                 mb.str("aspect")),
                                             mb.evalAspectStringDynamic()),
-                                        mb.str("is_some")))),
+                                        mb.str("is_some"))))),
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(
@@ -191,7 +191,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.call(
                                                         mb.evalStack(),
                                                         mb.scopeUse("outer")))))))),
-                            new TestMb.RecordPair("desc", mb.seqOf(mb.str(name))),
+                            new TestMb.RecordPair("desc", mb.seqOf(mb.return_(mb.str(name)))),
                             new TestMb.RecordPair(
                                 "aspect",
                                 mb.ifOf(
@@ -243,7 +243,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                         mb.literalNull()))),
                             new TestMb.RecordPair(
                                 "can_cast_to",
-                                mb.seqOf(mb.operatorEq(mb.num(1.0), mb.num(1.0)))),
+                                mb.seqOf(mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
                             new TestMb.RecordPair(
                                 "cast_to",
                                 mb.call(
@@ -379,7 +379,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                         mb.scopeUse("arg"),
                                                         mb.str("xx"))))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.field(mb.scopeUse("u"), mb.str("new")))),
+                mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
         mb.literalNull());
   }
 
@@ -508,7 +508,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                             "impl_body",
                                             mb.stage(mb.throw_(mb.str("x"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.call(mb.scopeUse("my_func"), mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -548,7 +548,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                             "impl_body",
                                             mb.stage(mb.throw_(mb.str("x"))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
                     new TestMb.Catch(
@@ -780,9 +780,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                 mb.seqOf(
                                                     mb.bind(
                                                         "x", mb.throw_(mb.str("boom"))),
-                                                    mb.literalNull())))))),
+                                                    mb.return_(mb.literalNull()))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
                     new TestMb.Catch(
@@ -834,7 +834,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                         mb.log(),
                                                         mb.str("unreachable")))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.scopeUse("f")))),
+                            mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
                     new TestMb.Catch(

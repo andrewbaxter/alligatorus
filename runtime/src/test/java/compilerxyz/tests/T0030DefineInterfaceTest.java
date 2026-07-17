@@ -79,7 +79,7 @@ public final class T0030DefineInterfaceTest {
                                                                         mb.str("toUpperCase")),
                                                                     mb.tupleOf())))))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.field(mb.scopeUse("ndr"), mb.str("new"))))),
+                            mb.return_(mb.field(mb.scopeUse("ndr"), mb.str("new")))))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                 mb.call(
                     mb.log(),
@@ -185,13 +185,13 @@ public final class T0030DefineInterfaceTest {
                             mb.call(
                                 mb.field(mb.scopeUse("d"), mb.str("finish")),
                                 mb.tupleOf()),
-                            mb.recordOf(
+                            mb.return_(mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
                                         "do_log",
                                         mb.field(mb.scopeUse("do_log_fn"), mb.str("func"))),
                                     new TestMb.RecordPair(
-                                        "upper", mb.field(mb.scopeUse("ndr"), mb.str("new")))))))),
+                                        "upper", mb.field(mb.scopeUse("ndr"), mb.str("new"))))))))),
                 mb.bind("do_log", mb.field(mb.scopeUse("defs"), mb.str("do_log"))),
                 mb.bind("make_upper", mb.field(mb.scopeUse("defs"), mb.str("upper"))),
                 mb.call(

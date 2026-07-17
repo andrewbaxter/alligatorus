@@ -30,7 +30,7 @@ public final class T0140PanicTest {
                         new TestMb.RecordPair(
                             "impl_body", mb.stage(mb.panic(mb.str(message))))))),
             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-            mb.scopeUse("f")));
+            mb.return_(mb.scopeUse("f"))));
   }
 
   private static SourceExpr panickyFnWithExceptionType(TestMb mb, String message) {
@@ -53,7 +53,7 @@ public final class T0140PanicTest {
                         new TestMb.RecordPair(
                             "impl_body", mb.stage(mb.panic(mb.str(message))))))),
             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-            mb.scopeUse("f")));
+            mb.return_(mb.scopeUse("f"))));
   }
 
   @Test

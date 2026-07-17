@@ -62,7 +62,7 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "can_cast_from",
                                 mb.seqOf(
-                                    mb.field(
+                                    mb.return_(mb.field(
                                         mb.call(
                                             mb.field(
                                                 mb.field(
@@ -70,7 +70,7 @@ public final class T0120ImplTypeTest {
                                                     mb.str("source_type")),
                                                 mb.str("aspect")),
                                             mb.evalAspectStringDynamic()),
-                                        mb.str("is_some")))),
+                                        mb.str("is_some"))))),
                             new TestMb.RecordPair(
                                 "cast_from",
                                 mb.call(
@@ -96,7 +96,7 @@ public final class T0120ImplTypeTest {
                                                                         mb.str("cv"))),
                                                                 mb.str("toUpperCase")),
                                                             mb.tupleOf())))))))),
-                            new TestMb.RecordPair("desc", mb.seqOf(mb.str("upper"))),
+                            new TestMb.RecordPair("desc", mb.seqOf(mb.return_(mb.str("upper")))),
                             new TestMb.RecordPair(
                                 "aspect",
                                 mb.call(
@@ -109,7 +109,7 @@ public final class T0120ImplTypeTest {
                             new TestMb.RecordPair(
                                 "cast_to", mb.panic(mb.str("unimpl cast_to"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.field(mb.scopeUse("u"), mb.str("new")))),
+                mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
         mb.literalNull());
   }
 

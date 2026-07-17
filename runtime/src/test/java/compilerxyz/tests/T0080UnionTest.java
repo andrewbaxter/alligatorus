@@ -51,13 +51,13 @@ public final class T0080UnionTest {
                                             new TestMb.RecordPair(
                                                 "type_ref", mb.typesNumber()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.recordOf(
+                            mb.return_(mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
                                         "type",
                                         mb.field(mb.scopeUse("builder"), mb.str("type"))),
                                     new TestMb.RecordPair("str", mb.scopeUse("new_str")),
-                                    new TestMb.RecordPair("num", mb.scopeUse("new_num"))))))),
+                                    new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                 mb.bind(
                     "x",
                     mb.call(
@@ -122,13 +122,13 @@ public final class T0080UnionTest {
                                             new TestMb.RecordPair(
                                                 "type_ref", mb.typesNumber()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.recordOf(
+                            mb.return_(mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
                                         "type",
                                         mb.field(mb.scopeUse("builder"), mb.str("type"))),
                                     new TestMb.RecordPair("str", mb.scopeUse("new_str")),
-                                    new TestMb.RecordPair("num", mb.scopeUse("new_num"))))))),
+                                    new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                 mb.bind(
                     "x",
                     mb.call(
@@ -186,13 +186,13 @@ public final class T0080UnionTest {
                                             new TestMb.RecordPair(
                                                 "type_ref", mb.typesNumber()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.recordOf(
+                            mb.return_(mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
                                         "type",
                                         mb.field(mb.scopeUse("builder"), mb.str("type"))),
                                     new TestMb.RecordPair("str", mb.scopeUse("new_str")),
-                                    new TestMb.RecordPair("num", mb.scopeUse("new_num"))))))),
+                                    new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                 mb.bind(
                     "x",
                     mb.call(
@@ -251,13 +251,13 @@ public final class T0080UnionTest {
                                             new TestMb.RecordPair(
                                                 "type_ref", mb.typesNumber()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.recordOf(
+                            mb.return_(mb.recordOf(
                                 TList.of(
                                     new TestMb.RecordPair(
                                         "type",
                                         mb.field(mb.scopeUse("builder"), mb.str("type"))),
                                     new TestMb.RecordPair("str", mb.scopeUse("new_str")),
-                                    new TestMb.RecordPair("num", mb.scopeUse("new_num"))))))),
+                                    new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                 mb.bind(
                     "x",
                     mb.call(
