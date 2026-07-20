@@ -115,7 +115,7 @@ public record TypeFunctionAspectDynamic()
     }
     var auq = aspTa.id();
 
-    var anyDyn = Type.dynamicType();
+    var anyDyn = compilerxyz.gen.GenType.dynamicType();
     var subjectConvertedRes =
         compilerxyz.eval.Eval.typecheckConvert(xx, loc, anyDyn, subjectCv);
     if (subjectConvertedRes.hasErrors()) return subjectConvertedRes.reerr();

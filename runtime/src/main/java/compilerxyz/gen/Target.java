@@ -1,5 +1,6 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -9,10 +10,7 @@ import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.target.BindResult;
 import compilerxyz.eval.dynamic.target.IfBranch;
 import compilerxyz.eval.dynamic.target.RecordBindField;
@@ -20,21 +18,10 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.dynamic.target.TargetCase;
 import compilerxyz.eval.dynamic.target.TryCatchClause;
 import compilerxyz.eval.dynamic.target.TupleBindSlot;
-import compilerxyz.eval.value.object_.ObjectAspectSource;
-import compilerxyz.eval.value.object_.ObjectDataField;
-import compilerxyz.eval.value.object_.ObjectDropKind;
-import compilerxyz.eval.value.object_.ObjectMethod;
-import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
-import compilerxyz.eval.value.object_.TypeObjectCastRule;
-import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectMeta;
-import compilerxyz.eval.TypeId;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrait(
-    uniqueId = 2006L,
-    scopeId = 3006)
+@Builtin(uniqueId = 2006L, scopeId = 3006)
 @compilerxyz.annotations.BuiltinPath("eval.target")
 @compilerxyz.annotations.BuiltinTypeId(7024L)
 public interface Target {
@@ -86,27 +73,4 @@ public interface Target {
             TList<TargetCase> cases,
             Opt<Expr> fallback);
 
-    static Type dynamicType() {
-        return DynamicType.INSTANCE;
-    }
-
-    final class DynamicType {
-        static final TypeObjectDynamic INSTANCE = build();
-
-        private DynamicType() {}
-
-        private static TypeObjectDynamic build() {
-            var trivialIdentityAspects = new TList<Unique>();
-            trivialIdentityAspects.add(GenBuiltinInterfaces.builtinTargetIfaceIdentity());
-            return new TypeObjectDynamic(
-                    new TypeObjectMeta(GenTypeIds.TARGET_TYPE_ID, "target", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
-                    JavaInternalName.fromClass(Target.class),
-                    JavaDataDescriptor.fromClass(Target.class),
-                    Target.class,
-                    new TList<ObjectDataField>(),
-                    new TList<ObjectMethod>(),
-                    ObjectDropKind.DYNAMIC_LIGHT,
-                    Opt.<JavaInternalName>none());
-        }
-    }
 }

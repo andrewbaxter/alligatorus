@@ -28,7 +28,7 @@ import compilerxyz.gen.GenAspectTuple;
 
 public final class SourceDataMethodData {
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   public final String name;

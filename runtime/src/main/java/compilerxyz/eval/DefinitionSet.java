@@ -31,7 +31,7 @@ import static compilerxyz.util.MustCast.mustCast;
 
 public final class DefinitionSet implements ExporterAny {
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();

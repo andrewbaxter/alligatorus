@@ -183,11 +183,28 @@ public final class DynamicTypes {
         ClassName.get("compilerxyz.util", "TMap"));
   }
 
+  private static final java.util.Set<ClassName> GEN_TRAITS =
+      java.util.Set.of(
+          ClassName.get("compilerxyz.gen", "Value"),
+          ClassName.get("compilerxyz.gen", "Binding"),
+          ClassName.get("compilerxyz.gen", "Target"),
+          ClassName.get("compilerxyz.gen", "CodeDyn"),
+          ClassName.get("compilerxyz.eval", "Type"));
+
   public static CodeBlock leaf(ClassName descriptor) {
     var entry = leafEntry(descriptor);
     return switch (entry.kind()) {
       case NULLARY_NEW -> CodeBlock.of("new $T()", descriptor);
-      case STATIC_FACTORY -> CodeBlock.of("$T.dynamicType()", descriptor);
+      case STATIC_FACTORY -> {
+        if (GEN_TRAITS.contains(descriptor)) {
+          // Trait interfaces (Value/Binding/Target/Type/CodeDyn) no longer
+          // carry a handwritten dynamicType() — route through the codegen
+          // companion GenX.dynamicType() instead.
+          var gen = ClassName.get("compilerxyz.gen", "Gen" + descriptor.simpleName());
+          yield CodeBlock.of("$T.dynamicType()", gen);
+        }
+        yield CodeBlock.of("$T.dynamicType()", descriptor);
+      }
       case DELEGATED -> CodeBlock.of("$T.dynamicType()", entry.factoryOwner());
     };
   }

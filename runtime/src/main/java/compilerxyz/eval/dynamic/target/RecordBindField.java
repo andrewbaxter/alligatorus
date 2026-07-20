@@ -5,6 +5,6 @@ import compilerxyz.eval.Type;
 
 public record RecordBindField(ConstKey key, TargetBindSub sub) {
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 }

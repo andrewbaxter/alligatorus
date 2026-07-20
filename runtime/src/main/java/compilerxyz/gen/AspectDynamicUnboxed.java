@@ -1,13 +1,10 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 
-@BuiltinAspect(
-    uniqueId = 1034L,
-    kind = "DynamicUnboxed",
-    javadoc = "Marker aspect implemented by JVM boxed dynamic types to point to their unboxed primitive counterpart.")
+@Builtin(uniqueId = 1034L)
 @compilerxyz.annotations.BuiltinTypeId(7210L)
 public interface AspectDynamicUnboxed extends Aspect {
   Type aspectDynamicUnboxedUnboxedForm();

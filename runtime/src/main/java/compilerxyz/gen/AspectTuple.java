@@ -1,6 +1,6 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
@@ -10,7 +10,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Value;
 import compilerxyz.util.TList;
 
-@BuiltinAspect(uniqueId = 1013L, kind = "Tuple", javadoc = "Identity aspect for tuple")
+@Builtin(uniqueId = 1013L)
 @compilerxyz.annotations.BuiltinTypeId(7235L)
 public interface AspectTuple extends Aspect {
   TList<Type> aspectTupleElementTypes();

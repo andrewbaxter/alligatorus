@@ -46,7 +46,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   @Override

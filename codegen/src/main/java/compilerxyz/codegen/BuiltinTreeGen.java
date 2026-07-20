@@ -434,11 +434,11 @@ public final class BuiltinTreeGen {
     var bindingCode = TypeRef.leaf(codeRef);
     var bindingCv = TypeRef.leaf(codeValue);
 
-    // Binding (id 2005) migrated: scanned from gen/Binding.java @BuiltinTrait
+    // Binding (id 2005) migrated: scanned from gen/Binding.java @Builtin
 
-    // Target (id 2006) migrated: scanned from gen/Target.java @BuiltinTrait
+    // Target (id 2006) migrated: scanned from gen/Target.java @Builtin
 
-    // CodeDyn (id 2007) migrated: scanned from gen/CodeDyn.java @BuiltinTrait
+    // CodeDyn (id 2007) migrated: scanned from gen/CodeDyn.java @Builtin
 
     return TList.of();
   }

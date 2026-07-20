@@ -152,7 +152,16 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.scopeUse("arg"),
                                                     mb.str("source_type")),
                                                 mb.str("aspect")),
-                                            mb.evalAspectStringDynamic()),
+                                            mb.recordOf(
+                                                TList.of(
+                                                    new TestMb.RecordPair(
+                                                        "xx",
+                                                        mb.field(
+                                                            mb.scopeUse("arg"),
+                                                            mb.str("xx"))),
+                                                    new TestMb.RecordPair(
+                                                        "key",
+                                                        mb.evalAspectStringDynamic())))),
                                         mb.str("is_some"))))),
                             new TestMb.RecordPair(
                                 "cast_from",

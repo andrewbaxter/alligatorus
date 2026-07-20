@@ -4,7 +4,6 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
@@ -15,8 +14,7 @@ import com.github.javaparser.ast.type.Type;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import compilerxyz.codegen.AspectsGen;
-import compilerxyz.codegen.TraitsGen;
+import compilerxyz.codegen.BuiltinInterfacesGen;
 import compilerxyz.codegen.util.InterfaceSpec;
 import compilerxyz.codegen.util.Method;
 import compilerxyz.codegen.util.MethodArgs;
@@ -40,96 +38,125 @@ public final class JavaAspectExtractor {
   }
 
   public record ScanResult(
-      TList<AspectsGen.AspectSpec> aspects,
-      TList<InterfaceSpec> sourceInterfaces,
-      TList<TraitsGen.TraitSpec> traits) {}
+      TList<BuiltinInterfacesGen.BuiltinSpec> builtins,
+      TList<InterfaceSpec> sourceInterfaces) {}
 
   public static ScanResult scanRoot(Path runtimeSourceRoot) throws IOException {
-    var aspects = new TList<AspectsGen.AspectSpec>();
+    var builtins = new TList<BuiltinInterfacesGen.BuiltinSpec>();
     var interfaces = new TList<InterfaceSpec>();
-    var traits = new TList<TraitsGen.TraitSpec>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        boolean hasAspect = src.contains("@BuiltinAspect");
-        boolean hasTrait = src.contains("BuiltinTrait");
-        if (!hasAspect && !hasTrait) continue;
-        if (hasAspect) {
-          var spec = extractOne(file);
-          if (spec != null) aspects.add(spec);
+        if (!src.contains("@Builtin(") && !src.contains("@compilerxyz.annotations.Builtin(")) continue;
+        var cu = StaticJavaParser.parse(file);
+        var decl = findBuiltinInterface(cu);
+        if (decl == null) continue;
+        var isAspect = interfaceExtendsAspect(decl);
+        var builtin = extractBuiltinSpec(file, cu, decl, isAspect);
+        if (builtin != null) builtins.add(builtin);
+        if (isAspect) {
           var iface = extractSourceInterface(file);
-          if (iface != null) {
-            interfaces.add(iface);
-          }
-        }
-        if (hasTrait) {
+          if (iface != null) interfaces.add(iface);
+        } else {
           var trait = extractTrait(file);
-          if (trait != null) {
-            interfaces.add(trait);
-          }
-          var traitSpec = extractTraitSpec(file);
-          if (traitSpec != null) {
-            traits.add(traitSpec);
-          }
+          if (trait != null) interfaces.add(trait);
         }
       }
     }
-    return new ScanResult(aspects, interfaces, traits);
+    return new ScanResult(builtins, interfaces);
   }
 
-  private static TraitsGen.@org.jspecify.annotations.Nullable TraitSpec extractTraitSpec(
-      Path sourceFile) throws IOException {
-    var cu = StaticJavaParser.parse(sourceFile);
-    ClassOrInterfaceDeclaration ifaceDecl = null;
-    for (var t : cu.getTypes()) {
-      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) {
-        for (var a : c.getAnnotations()) {
-          var n = a.getNameAsString();
-          if (n.equals("BuiltinTrait") || n.equals("compilerxyz.annotations.BuiltinTrait")) {
-            ifaceDecl = c;
-            break;
-          }
-        }
-      }
-      if (ifaceDecl != null) break;
-    }
-    if (ifaceDecl == null) return null;
+  private static BuiltinInterfacesGen.@org.jspecify.annotations.Nullable BuiltinSpec
+      extractBuiltinSpec(
+          Path sourceFile,
+          CompilationUnit cu,
+          ClassOrInterfaceDeclaration ifaceDecl,
+          boolean isAspect) {
     var simpleName = ifaceDecl.getNameAsString();
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
     var typeIdAnn = ifaceDecl.getAnnotationByName("BuiltinTypeId")
         .orElseThrow(() -> new IllegalStateException(
-            "@BuiltinTrait interface " + simpleName + " missing required @BuiltinTypeId"));
+            "@Builtin interface " + simpleName + " missing required @BuiltinTypeId"));
     var typeId = readSingleLongAttr(typeIdAnn);
+    var builtinAnn = getBuiltinAnnotation(ifaceDecl);
+    var attrs = readAttrs(builtinAnn);
+    var uniqueIdStr = attrs.get("uniqueId");
+    if (uniqueIdStr == null) {
+      throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
+    }
+    var uniqueId = Long.parseLong(uniqueIdStr);
     Long trivialIdentity = null;
     var tiaOpt = ifaceDecl.getAnnotationByName("BuiltinTrivialIdentityAspect");
     if (tiaOpt.isPresent()) {
       trivialIdentity = readSingleLongAttr(tiaOpt.get());
     }
-    return new TraitsGen.TraitSpec(simpleName, pkg, typeId, trivialIdentity);
+    var importMap = buildImportMap(cu);
+    // Nested records declared inside an aspect interface become
+    // compilerxyz.gen.AspectXxx.NestedName in generated code; wire their short
+    // names so method signatures referencing them resolve correctly.
+    var effectiveImports = new TMap<String, String>();
+    for (var e : importMap.entrySet()) effectiveImports.put(e.getKey(), e.getValue());
+    if (isAspect) {
+      for (var member : ifaceDecl.getMembers()) {
+        if (member instanceof com.github.javaparser.ast.body.RecordDeclaration r) {
+          effectiveImports.put(
+              r.getNameAsString(), pkg + "." + simpleName + "." + r.getNameAsString());
+        }
+      }
+    }
+    var methods = new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Method>();
+    for (var m : ifaceDecl.getMethods()) {
+      // Aspects emit all abstract methods (so their TOD advertises AspectField
+      // via method count); traits emit only @SourceExposed methods.
+      if (!m.isAbstract()) continue;
+      if (!isAspect && m.getAnnotationByName("SourceExposed").isEmpty()) continue;
+      var sourceName = compilerxyz.codegen.util.NameDerivation.snakeCase(
+          deriveSourceName(m.getNameAsString(), simpleName));
+      var params = new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Param>();
+      for (var p : m.getParameters()) {
+        params.add(new compilerxyz.codegen.util.BuiltinMethodEmit.Param(
+            compilerxyz.codegen.util.NameDerivation.snakeCase(stripReservedSuffix(p.getNameAsString())),
+            typeNameOf(p.getType(), effectiveImports, pkg)));
+      }
+      methods.add(new compilerxyz.codegen.util.BuiltinMethodEmit.Method(
+          sourceName,
+          m.getNameAsString(),
+          params,
+          typeNameOf(m.getType(), effectiveImports, pkg),
+          true));
+    }
+    return new BuiltinInterfacesGen.BuiltinSpec(
+        simpleName, pkg, typeId, uniqueId, isAspect, trivialIdentity, methods);
+  }
+
+  private static @org.jspecify.annotations.Nullable ClassOrInterfaceDeclaration
+      findBuiltinInterface(CompilationUnit cu) {
+    for (var t : cu.getTypes()) {
+      if (t instanceof ClassOrInterfaceDeclaration c
+          && c.isInterface()
+          && (c.getAnnotationByName("Builtin").isPresent()
+              || c.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent())) {
+        return c;
+      }
+    }
+    return null;
+  }
+
+  private static boolean interfaceExtendsAspect(ClassOrInterfaceDeclaration decl) {
+    for (var ext : decl.getExtendedTypes()) {
+      var n = ext.getNameAsString();
+      if (n.equals("Aspect") || n.equals("compilerxyz.eval.aspect.Aspect")) return true;
+    }
+    return false;
   }
 
   private static @org.jspecify.annotations.Nullable InterfaceSpec extractTrait(Path sourceFile)
       throws IOException {
     var cu = StaticJavaParser.parse(sourceFile);
-    ClassOrInterfaceDeclaration ifaceDecl = null;
-    for (var t : cu.getTypes()) {
-      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) {
-        for (var a : c.getAnnotations()) {
-          var n = a.getNameAsString();
-          if (n.equals("BuiltinTrait") || n.equals("compilerxyz.annotations.BuiltinTrait")) {
-            ifaceDecl = c;
-            break;
-          }
-        }
-      }
-      if (ifaceDecl != null) break;
-    }
+    var ifaceDecl = findBuiltinInterface(cu);
     if (ifaceDecl == null) return null;
-    var traitAnn = ifaceDecl.getAnnotations().stream()
-        .filter(a -> a.getNameAsString().equals("BuiltinTrait")
-            || a.getNameAsString().equals("compilerxyz.annotations.BuiltinTrait"))
-        .findFirst().orElseThrow();
+    var traitAnn = getBuiltinAnnotation(ifaceDecl);
     var attrs = readAttrs(traitAnn);
     var importMap = buildImportMap(cu);
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
@@ -197,13 +224,17 @@ public final class JavaAspectExtractor {
   private static @org.jspecify.annotations.Nullable InterfaceSpec extractSourceInterface(
       Path sourceFile) throws IOException {
     var cu = StaticJavaParser.parse(sourceFile);
-    var ifaceDecl = findAnnotatedInterface(cu);
+    var ifaceDecl = findBuiltinInterface(cu);
     if (ifaceDecl == null) return null;
     var siAnnOpt = ifaceDecl.getAnnotationByName("SourceInterface");
     if (siAnnOpt.isEmpty()) return null;
     var siAttrs = readAttrs(siAnnOpt.get());
-    var kindAttrs = readAttrs(requireAnnotation(ifaceDecl, "BuiltinAspect"));
-    var kind = kindAttrs.get("kind");
+    var simpleName = ifaceDecl.getNameAsString();
+    if (!simpleName.startsWith("Aspect")) {
+      throw new IllegalStateException(
+          "@Builtin aspect interface must be named AspectXxx: " + simpleName);
+    }
+    var kind = simpleName.substring("Aspect".length());
     var aspectPrefix = "aspect" + kind;
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
     var importMap = buildImportMap(cu);
@@ -289,86 +320,11 @@ public final class JavaAspectExtractor {
     return sb.toString();
   }
 
-  private static AspectsGen.@org.jspecify.annotations.Nullable AspectSpec extractOne(Path sourceFile)
-      throws IOException {
-    var cu = StaticJavaParser.parse(sourceFile);
-    var ifaceDecl = findAnnotatedInterface(cu);
-    if (ifaceDecl == null) return null;
-    var annot = requireAnnotation(ifaceDecl, "BuiltinAspect");
-    var attrs = readAttrs(annot);
-    var typeIdAnn = ifaceDecl.getAnnotationByName("BuiltinTypeId")
+  private static AnnotationExpr getBuiltinAnnotation(ClassOrInterfaceDeclaration decl) {
+    return decl.getAnnotationByName("Builtin")
+        .or(() -> decl.getAnnotationByName("compilerxyz.annotations.Builtin"))
         .orElseThrow(() -> new IllegalStateException(
-            "@BuiltinAspect interface " + ifaceDecl.getNameAsString()
-                + " is missing required @BuiltinTypeId"));
-    var typeIdValue = readSingleLongAttr(typeIdAnn);
-    var importMap = buildImportMap(cu);
-    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-
-    var kind = attrs.get("kind");
-    var aspectPrefix = "aspect" + kind;
-    var javadoc = attrs.getOrDefault("javadoc", "");
-    var aspectClassName = ClassName.get("compilerxyz.gen", "Aspect" + kind);
-
-    // Nested records declared inside the interface become AspectSpec.nestedRecords.
-    var nestedRecords = new TList<AspectsGen.NestedRecord>();
-    var nestedRecordNames = new java.util.HashSet<String>();
-    for (var member : ifaceDecl.getMembers()) {
-      if (member instanceof RecordDeclaration r) {
-        var components = new TList<AspectsGen.Param>();
-        for (var p : r.getParameters()) {
-          var nullable = p.getAnnotationByName("Nullable").isPresent();
-          components.add(
-              new AspectsGen.Param(
-                  p.getNameAsString(), typeNameOf(p.getType(), importMap, pkg), nullable));
-        }
-        nestedRecords.add(new AspectsGen.NestedRecord("", r.getNameAsString(), components));
-        nestedRecordNames.add(r.getNameAsString());
-      }
-    }
-    // Wire nested-record short names to their generated FQNs (compilerxyz.gen.AspectXxx.Name)
-    // so method signatures referencing them resolve correctly.
-    var effectiveImports = new TMap<String, String>();
-    for (var e : importMap.entrySet()) effectiveImports.put(e.getKey(), e.getValue());
-    for (var nr : nestedRecordNames) {
-      effectiveImports.put(nr, aspectClassName.canonicalName() + "." + nr);
-    }
-
-    var methods = new TList<AspectsGen.AspectMethod>();
-    for (var m : ifaceDecl.getMethods()) {
-      if (!m.isAbstract()) continue;
-      var javaName = m.getNameAsString();
-      if (!javaName.startsWith(aspectPrefix)) {
-        throw new IllegalStateException(
-            "Method " + javaName + " does not start with expected aspect prefix " + aspectPrefix);
-      }
-      var afterPrefix = javaName.substring(aspectPrefix.length());
-      var shortName = Character.toLowerCase(afterPrefix.charAt(0)) + afterPrefix.substring(1);
-      var params = new TList<AspectsGen.Param>();
-      for (var p : m.getParameters()) {
-        var nullable = p.getAnnotationByName("Nullable").isPresent();
-        params.add(
-            new AspectsGen.Param(
-                p.getNameAsString(), typeNameOf(p.getType(), effectiveImports, pkg), nullable));
-      }
-      methods.add(
-          new AspectsGen.AspectMethod(
-              "", shortName, params, typeNameOf(m.getType(), effectiveImports, pkg)));
-    }
-
-    return new AspectsGen.AspectSpec(
-        javadoc, kind, Long.parseLong(attrs.get("uniqueId")), typeIdValue, nestedRecords, methods);
-  }
-
-  private static @org.jspecify.annotations.Nullable ClassOrInterfaceDeclaration
-      findAnnotatedInterface(CompilationUnit cu) {
-    for (var t : cu.getTypes()) {
-      if (t instanceof ClassOrInterfaceDeclaration c
-          && c.isInterface()
-          && c.getAnnotationByName("BuiltinAspect").isPresent()) {
-        return c;
-      }
-    }
-    return null;
+            "@Builtin missing on " + decl.getNameAsString()));
   }
 
   private static AnnotationExpr requireAnnotation(

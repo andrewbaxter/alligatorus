@@ -1,8 +1,8 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.aspect.Aspect;
 
-@BuiltinAspect(uniqueId = 1003L, kind = "NumberDynamic", javadoc = "Identity aspect for dynamic number")
+@Builtin(uniqueId = 1003L)
 @compilerxyz.annotations.BuiltinTypeId(7225L)
 public interface AspectNumberDynamic extends Aspect {}

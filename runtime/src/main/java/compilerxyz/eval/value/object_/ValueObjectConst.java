@@ -19,7 +19,7 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
    * Type extended Value.
    */
   public static Value ofType(Type t) {
-    var td = (compilerxyz.eval.value.object_.TypeObjectDynamic) Type.dynamicType();
+    var td = (compilerxyz.eval.value.object_.TypeObjectDynamic) compilerxyz.gen.GenType.dynamicType();
     var paired = new TypeObjectConst(td.meta(), td.hostClass(), compilerxyz.util.Opt.<Type>none());
     return new ValueObjectConst(paired, t);
   }

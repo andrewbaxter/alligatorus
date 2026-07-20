@@ -1,6 +1,6 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
 import compilerxyz.annotations.SourceInterface;
@@ -14,10 +14,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@BuiltinAspect(
-    uniqueId = 1015L,
-    kind = "Field",
-    javadoc = "Allows field expressions to work on the value of this type")
+@Builtin(uniqueId = 1015L)
 @compilerxyz.annotations.BuiltinTypeId(7214L)
 @SourceInterface(uniqueId = 1030L, scopeId = 3004)
 @BuiltinPath("eval.aspect_field")

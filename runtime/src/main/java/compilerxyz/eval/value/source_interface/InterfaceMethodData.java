@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 public final class InterfaceMethodData {
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   public final String name;

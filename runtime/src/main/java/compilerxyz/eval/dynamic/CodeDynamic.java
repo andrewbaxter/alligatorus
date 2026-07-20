@@ -10,7 +10,7 @@ public record CodeDynamic(CodeLoc loc, JavaBytecode code) implements TargetCode,
   }
 
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   @Override

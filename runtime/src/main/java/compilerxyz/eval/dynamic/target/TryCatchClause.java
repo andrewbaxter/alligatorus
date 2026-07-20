@@ -8,6 +8,6 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 public record TryCatchClause(
     BindingId.Local binding, JavaDataDescriptor payloadDesc, CodeDynamic body) {
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 }

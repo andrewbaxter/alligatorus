@@ -205,7 +205,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                 tu.artifactIdCell.set(idValue);
                 for (var v : body.variants()) {
                   tu.variants.add(
-                      new SourceUnionVariant(v.tag(), v.jsTag(), Type.dynamicType()));
+                      new SourceUnionVariant(v.tag(), v.jsTag(), compilerxyz.gen.GenType.dynamicType()));
                 }
                 var imported = new ImportedSourceUnionConst(tu);
                 var deps = new TList<Artifact>();

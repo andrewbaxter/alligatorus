@@ -406,7 +406,7 @@ public final class TypeSourceObjectDynamic
         if (sourceCode == null) {
           return EResult.err(loc, "cast " + typeDesc() + " -> any: source has no runtime code");
         }
-        return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, Type.dynamicType()));
+        return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.gen.GenType.dynamicType()));
       }
     }
     for (var impl : interfaceImpls) {
@@ -415,9 +415,9 @@ public final class TypeSourceObjectDynamic
         Type resultType = null;
         if (builtinKind != null) {
           switch (builtinKind) {
-            case TYPE -> resultType = Type.dynamicType();
-            case TARGET -> resultType = Target.dynamicType();
-            case BINDING -> resultType = Binding.dynamicType();
+            case TYPE -> resultType = compilerxyz.gen.GenType.dynamicType();
+            case TARGET -> resultType = compilerxyz.gen.GenTarget.dynamicType();
+            case BINDING -> resultType = compilerxyz.gen.GenBinding.dynamicType();
             case CODE_DYN -> {
               return EResult.err(
                   loc,

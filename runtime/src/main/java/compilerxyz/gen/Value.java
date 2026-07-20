@@ -1,24 +1,9 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
-import compilerxyz.eval.Unique;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.value.object_.ObjectAspectSource;
-import compilerxyz.eval.value.object_.ObjectDataField;
-import compilerxyz.eval.value.object_.ObjectDropKind;
-import compilerxyz.eval.value.object_.ObjectMethod;
-import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
-import compilerxyz.eval.value.object_.TypeObjectCastRule;
-import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectMeta;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrait(
-    uniqueId = 2001L,
-    scopeId = 3001)
+@Builtin(uniqueId = 2001L, scopeId = 3001)
 @compilerxyz.annotations.BuiltinPath("eval.value")
 @compilerxyz.annotations.BuiltinTypeId(7109L)
 public interface Value extends compilerxyz.artifact.Artifactable {
@@ -33,29 +18,5 @@ public interface Value extends compilerxyz.artifact.Artifactable {
       var exporter = asp.requireValue("Value::exportArtifact aspect").aspectArtifactExporter();
       return exporter.artifactExporterExport(xx, loc,
           compilerxyz.artifact.ArtifactSupport.valueAsExporterAny(this));
-    }
-
-    static Type dynamicType() {
-        return DynamicType.INSTANCE;
-    }
-
-    final class DynamicType {
-        static final TypeObjectDynamic INSTANCE = build();
-
-        private DynamicType() {}
-
-        private static TypeObjectDynamic build() {
-            var trivialIdentityAspects = new TList<Unique>();
-            trivialIdentityAspects.add(GenBuiltinInterfaces.builtinValueIfaceIdentity());
-            return new TypeObjectDynamic(
-                    new TypeObjectMeta(GenTypeIds.VALUE_TYPE_ID, "value", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
-                    JavaInternalName.fromClass(Value.class),
-                    JavaDataDescriptor.fromClass(Value.class),
-                    Value.class,
-                    new TList<ObjectDataField>(),
-                    new TList<ObjectMethod>(),
-                    ObjectDropKind.DYNAMIC_LIGHT,
-                    Opt.<JavaInternalName>none());
-        }
     }
 }

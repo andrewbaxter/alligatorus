@@ -1,6 +1,6 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -11,10 +11,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.value.bind_result.BindResultType;
 import compilerxyz.gen.Binding;
 
-@BuiltinAspect(
-    uniqueId = 1022L,
-    kind = "Bind",
-    javadoc = "Creates code to bind a value, and returns the binding (binding).")
+@Builtin(uniqueId = 1022L)
 @compilerxyz.annotations.BuiltinTypeId(7202L)
 public interface AspectBind extends Aspect {
   record BindResult(Code code, Binding binding) {

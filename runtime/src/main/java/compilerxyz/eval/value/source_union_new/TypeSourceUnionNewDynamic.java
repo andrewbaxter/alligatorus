@@ -46,7 +46,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     implements Type, AspectBind, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
-    return Type.dynamicType();
+    return compilerxyz.gen.GenType.dynamicType();
   }
 
   @Override

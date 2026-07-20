@@ -45,7 +45,7 @@ public final class BindResultType {
               "binding",
               "binding",
               JavaDataDescriptor.fromClass(compilerxyz.gen.Binding.class),
-              Binding.dynamicType()));
+              compilerxyz.gen.GenBinding.dynamicType()));
       var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.BIND_RESULT_TYPE_IDENTITY);
       return new TypeObjectDynamic(
