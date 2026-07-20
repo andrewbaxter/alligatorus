@@ -48,12 +48,10 @@ public interface Value extends compilerxyz.artifact.Artifactable {
             var trivialIdentityAspects = new TList<Unique>();
             trivialIdentityAspects.add(GenBuiltinInterfaces.builtinValueIfaceIdentity());
             return new TypeObjectDynamic(
-                    GenTypeIds.VALUE_TYPE_ID,
-                    new TypeObjectMeta("value", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+                    new TypeObjectMeta(GenTypeIds.VALUE_TYPE_ID, "value", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
                     JavaInternalName.fromClass(Value.class),
                     JavaDataDescriptor.fromClass(Value.class),
                     Value.class,
-                    new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.VALUE_TYPE_ID)),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),
                     ObjectDropKind.DYNAMIC_LIGHT,

@@ -35,12 +35,10 @@ public final class SourceUnionRefType {
       var trivialIdentityAspects = new TList<Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.SOURCE_UNION_REF_TYPE_IDENTITY);
       return new TypeObjectDynamic(
-          GenTypeIds.SOURCE_UNION_REF_TYPE_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("union_ref", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.SOURCE_UNION_REF_TYPE_TYPE_ID, "union_ref", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           Object.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.SOURCE_UNION_REF_TYPE_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

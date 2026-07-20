@@ -72,12 +72,10 @@ public final class ExprContext {
           new TypeObjectCastFromRule.RestampFromIdentity(
               GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY));
       return new TypeObjectDynamic(
-          GenTypeIds.EXPR_CONTEXT_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.EXPR_CONTEXT_TYPE_ID, "ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(ExprContext.class),
           ExprContext.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.EXPR_CONTEXT_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

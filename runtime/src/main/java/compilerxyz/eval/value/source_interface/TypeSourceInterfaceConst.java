@@ -112,10 +112,9 @@ public record TypeSourceInterfaceConst(InterfaceData data)
                   compilerxyz.util.TList.of())));
       var trivialIdentityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
-      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta("type_source_interface_const_meta", trivialIdentityAspects, castRules, new compilerxyz.util.TList<
+      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta(compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_CONST_META_TYPE_ID, "type_source_interface_const_meta", trivialIdentityAspects, castRules, new compilerxyz.util.TList<
               compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), compilerxyz.util.Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none());
       return new compilerxyz.eval.value.object_.TypeObjectConst(
-          compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_CONST_META_TYPE_ID,
           meta,
           TypeSourceInterfaceConst.class,
           compilerxyz.util.Opt.<compilerxyz.eval.Type>none());

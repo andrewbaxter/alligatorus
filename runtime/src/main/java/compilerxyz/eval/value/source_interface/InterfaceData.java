@@ -123,12 +123,10 @@ public final class InterfaceData {
                           JavaDataDescriptor.fromClass(InterfaceData.class))),
                   true)));
       return new TypeObjectDynamic(
-          GenTypeIds.INTERFACE_DATA_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("definition_set_interface_ref", trivialIdentityAspects, castRules, new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData())),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.INTERFACE_DATA_TYPE_ID, "definition_set_interface_ref", trivialIdentityAspects, castRules, new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData())),
           jvmClass,
           JavaDataDescriptor.fromClass(InterfaceData.class),
           InterfaceData.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.INTERFACE_DATA_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

@@ -111,9 +111,11 @@ public final class TraitsGen {
     }
     build.addStatement(
         "var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
+    build.addStatement(
+        "var typeId = $T.$L", GEN_TYPE_IDS, typeIdConstName);
     if (spec.trivialIdentityAspectValue() != null) {
       build.addStatement(
-          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>some(new $T(new $T($LL))))",
           TYPE_OBJECT_META,
           snakeCase(spec.simpleName()),
@@ -126,7 +128,7 @@ public final class TraitsGen {
           spec.trivialIdentityAspectValue());
     } else {
       build.addStatement(
-          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>none())",
           TYPE_OBJECT_META,
           snakeCase(spec.simpleName()),
@@ -136,18 +138,12 @@ public final class TraitsGen {
           OBJECT_ASPECT_SOURCE);
     }
     build.addStatement(
-        "var typeId = $T.$L", GEN_TYPE_IDS, typeIdConstName);
-    build.addStatement(
-        "return new $T(typeId, meta, jvmClass, $T.fromClass($T.class), $T.class, "
-            + "new $T($T.OBJECT_CONST_OF_TYPE_TYPE_ID, $T.of(typeId)), "
+        "return new $T(meta, jvmClass, $T.fromClass($T.class), $T.class, "
             + "new $T<$T>(), new $T<$T>(), $T.DYNAMIC_LIGHT, $T.some(jvmClass))",
         TYPE_OBJECT_DYNAMIC,
         JAVA_DATA_DESCRIPTOR,
         traitRef,
         traitRef,
-        TYPE_ID_COMPOSITE,
-        GEN_TYPE_IDS,
-        TLIST,
         TLIST,
         OBJECT_DATA_FIELD,
         TLIST,

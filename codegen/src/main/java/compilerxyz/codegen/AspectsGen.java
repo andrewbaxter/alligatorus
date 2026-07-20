@@ -290,7 +290,7 @@ public final class AspectsGen {
 
     b.addStatement("var typeId = new $T($LL)", TYPE_ID_BUILTIN, typeIdValue);
     b.addStatement(
-        "var meta = new $T($S, new $T<$T>(), castRules, new $T<$T>(), "
+        "var meta = new $T(typeId, $S, new $T<$T>(), castRules, new $T<$T>(), "
             + "$T.<$T>some(new $T($T.AspectId)))",
         TYPE_OBJECT_META,
         typeDesc,
@@ -303,14 +303,10 @@ public final class AspectsGen {
         OBJECT_ASPECT_SOURCE_STATIC,
         self);
     b.addStatement(
-        "var instance = new $T(typeId, meta, jvmInterface, jvmInterfaceDesc, $T.class, "
-            + "new $T($T.OBJECT_CONST_OF_TYPE_TYPE_ID, $T.of(typeId)), "
+        "var instance = new $T(meta, jvmInterface, jvmInterfaceDesc, $T.class, "
             + "new $T<$T>(), methods, $T.DYNAMIC, $T.some(jvmInterface))",
         TYPE_OBJECT_DYNAMIC,
         aspectIfaceRef,
-        TYPE_ID_COMPOSITE,
-        GEN_TYPE_IDS,
-        TLIST,
         TLIST,
         OBJECT_DATA_FIELD,
         OBJECT_DROP_KIND,

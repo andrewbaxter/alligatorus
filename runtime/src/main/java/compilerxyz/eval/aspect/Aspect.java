@@ -34,14 +34,12 @@ public interface Aspect {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
       var trivialIdentityAspects = new TList<Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.ASPECT_IDENTITY);
-      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta("aspect", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
+      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.ASPECT_TYPE_ID, "aspect", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
       return new TypeObjectDynamic(
-          GenTypeIds.ASPECT_TYPE_ID,
           meta,
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           Object.class,
-          new compilerxyz.eval.TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.ASPECT_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

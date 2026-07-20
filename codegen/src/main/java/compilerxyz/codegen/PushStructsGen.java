@@ -691,7 +691,7 @@ public final class PushStructsGen {
     }
     builder.addStatement("var __typeId = new $T.Builtin($LL)", TYPE_ID, spec.builtinUniqueId());
     builder.addStatement(
-        "var __meta = new $T($S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
+        "var __meta = new $T(__typeId, $S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
         TYPE_OBJECT_META,
         spec.name(),
         TLIST,
@@ -702,8 +702,8 @@ public final class PushStructsGen {
         TYPE_OBJECT_CAST_FROM_RULE,
         OPT);
     builder.addStatement(
-        "$N = new $T(__typeId, __meta, $T.of($S), $T.fromClass($T.class), $T.class, "
-            + "new $T($T.OBJECT_CONST_OF_TYPE_TYPE_ID, $T.of(__typeId)), $L, $L, $T.DYNAMIC, $T.none())",
+        "$N = new $T(__meta, $T.of($S), $T.fromClass($T.class), $T.class, "
+            + "$L, $L, $T.DYNAMIC, $T.none())",
         fieldName,
         TYPE_OBJECT_DYNAMIC,
         JAVA_INTERNAL_NAME,
@@ -711,9 +711,6 @@ public final class PushStructsGen {
         JAVA_DATA_DESCRIPTOR,
         specClass,
         specClass,
-        TYPE_ID_COMPOSITE,
-        GEN_TYPE_IDS,
-        TLIST,
         dataFieldsList.build(),
         methodsList.build(),
         OBJECT_DROP_KIND,

@@ -38,12 +38,10 @@ public final class CodeDynHandleType {
       trivialIdentityAspects.add(GenTrivialIdentityAspects.CODE_DYN_HANDLE_TYPE_IDENTITY);
       trivialIdentityAspects.add(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity());
       return new TypeObjectDynamic(
-          GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("code_dyn", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID, "code_dyn", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           Object.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

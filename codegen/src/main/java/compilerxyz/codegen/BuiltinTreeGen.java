@@ -60,14 +60,21 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.gen", "GenAspectInitialBind");
   private static final ClassName VALUE_OBJECT_CONST =
       ClassName.get("compilerxyz.eval.value.object_", "ValueObjectConst");
-  private static final ClassName OBJECT_CONST_OF_TYPE =
-      ClassName.get("compilerxyz.eval.value.object_", "ObjectConstOfType");
-  private static final ClassName TYPE_TYPE_OBJECT_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.object_", "TypeTypeObjectDynamic");
-  private static final CodeBlock OCT_TYPE_EXPR =
-      CodeBlock.of("$T.dynamicType()", OBJECT_CONST_OF_TYPE);
-  private static final CodeBlock TTOD_TYPE_EXPR =
-      CodeBlock.of("$T.dynamicType()", TYPE_TYPE_OBJECT_DYNAMIC);
+  private static final ClassName TYPE_OBJECT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName TYPE_OBJECT_CONST_CLS =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectConst");
+  private static final ClassName GEN_TYPE_IDS_CLS =
+      ClassName.get("compilerxyz.gen", "GenTypeIds");
+  private static final CodeBlock TOD_SELF_TYPE_EXPR =
+      CodeBlock.of("$T.constType()", TYPE_OBJECT_DYNAMIC);
+  private static final CodeBlock TYPE_WRAPPER_EXPR =
+      CodeBlock.of(
+          "$T.metaOf($T.class, $T.TYPE_TYPE_ID, $S)",
+          TYPE_OBJECT_CONST_CLS,
+          ClassName.get("compilerxyz.eval", "Type"),
+          GEN_TYPE_IDS_CLS,
+          "type");
   private static final ClassName TYPE_UNIQUE_CONST =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueConst");
   private static final CodeBlock TUC_TYPE_EXPR =
@@ -155,7 +162,7 @@ public final class BuiltinTreeGen {
     }
 
     public static LeafSpec initialBind(CodeBlock typeExpr) {
-      return new LeafSpec(typeExpr, OCT_TYPE_EXPR);
+      return new LeafSpec(typeExpr, TYPE_WRAPPER_EXPR);
     }
 
     public static LeafSpec interface_(InterfaceSpec spec) {
@@ -184,11 +191,11 @@ public final class BuiltinTreeGen {
           JAVA_INTERNAL_NAME,
           "compilerxyz/eval/builtin/BuiltinBodies",
           methodName);
-      return new LeafSpec(innerExpr, OCT_TYPE_EXPR);
+      return new LeafSpec(innerExpr, TYPE_WRAPPER_EXPR);
     }
 
     public static LeafSpec constructor(CodeBlock typeExpr) {
-      return new LeafSpec(typeExpr, OCT_TYPE_EXPR);
+      return new LeafSpec(typeExpr, TYPE_WRAPPER_EXPR);
     }
   }
 
@@ -314,10 +321,9 @@ public final class BuiltinTreeGen {
     st.body.addStatement("$T $N = $L", Object.class, type, innerExpr);
     st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
     st.body.addStatement(
-        "$T $N = new compilerxyz.eval.binding.BindingValue(new $T($N, $N))",
+        "$T $N = new compilerxyz.eval.binding.BindingObjectConst($N, $N)",
         BINDING,
         binding,
-        VALUE_OBJECT_CONST,
         wrapper,
         type);
     return new String[] {binding, wrapper};
@@ -467,7 +473,7 @@ public final class BuiltinTreeGen {
           var host = tl.typeClass().canonicalName();
           var ifaceSpec = interfaceByHostName.get(host);
           if (ifaceSpec != null) yield LeafSpec.interface_(ifaceSpec);
-          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), OCT_TYPE_EXPR);
+          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), TYPE_WRAPPER_EXPR);
         }
         case BuiltinPathScanner.FunctionLeaf fl ->
             LeafSpec.functionByName(fl.methodName(), fl.args(), fl.retType().dynamicType());
@@ -481,16 +487,16 @@ public final class BuiltinTreeGen {
     //    that don't fit type-leaf / function-leaf / interface-leaf.
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectBind")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectBind")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_string_dynamic",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
         TUC_TYPE_EXPR);

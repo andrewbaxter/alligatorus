@@ -52,12 +52,10 @@ public interface Binding {
             var trivialIdentityAspects = new TList<Unique>();
             trivialIdentityAspects.add(GenBuiltinInterfaces.builtinBindingIfaceIdentity());
             return new TypeObjectDynamic(
-                    GenTypeIds.BINDING_TYPE_ID,
-                    new TypeObjectMeta("binding", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+                    new TypeObjectMeta(GenTypeIds.BINDING_TYPE_ID, "binding", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
                     JavaInternalName.fromClass(Binding.class),
                     JavaDataDescriptor.fromClass(Binding.class),
                     Binding.class,
-                    new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.BINDING_TYPE_ID)),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),
                     ObjectDropKind.DYNAMIC_LIGHT,

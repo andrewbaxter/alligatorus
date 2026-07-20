@@ -50,13 +50,12 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @SuppressWarnings("rawtypes")
+@compilerxyz.annotations.BuiltinTypeId(7121L)
 public record TypeObjectDynamic(
-    TypeId typeId,
     TypeObjectMeta meta,
     JavaInternalName jvmClass,
     JavaDataDescriptor jvmClassDesc,
     Class hostClass,
-    TypeId matchingConstTypeId,
     TList<ObjectDataField> dataFields,
     TList<ObjectMethod> methods,
     ObjectDropKind dropKind,
@@ -148,17 +147,17 @@ public record TypeObjectDynamic(
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof TypeObjectDynamic o && typeId.equals(o.typeId);
+    return other instanceof TypeObjectDynamic o && meta.typeId().equals(o.meta.typeId());
   }
 
   @Override
   public int hashCode() {
-    return typeId.hashCode();
+    return meta.typeId().hashCode();
   }
 
   @Override
   public TypeId hasTypeIdTypeId() {
-    return typeId;
+    return meta.typeId();
   }
 
                 public Type valueType() {
@@ -396,8 +395,43 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-    var pairedConst = new TypeObjectConst(matchingConstTypeId, meta, hostClass, Opt.<Type>none());
+    var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<Type>none());
     return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue));
+  }
+
+  /**
+   * Compile-time type of a value whose {@code data} is a TypeObjectDynamic
+   * instance. Returned as a TypeObjectConst because TOD instances are only ever
+   * wrapped in {@link ValueObjectConst}, which requires a const-side type.
+   */
+  public static Type constType() {
+    return SelfConstType.INSTANCE;
+  }
+
+  private static final class SelfConstType {
+    static final TypeObjectConst INSTANCE = build();
+
+    private static TypeObjectConst build() {
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
+      var castRules = new TList<TypeObjectCastRule>();
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
+      castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
+          compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
+          JavaInternalName.fromClass(TypeObjectDynamic.class),
+          "getInterfaceData",
+          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+              JavaDataDescriptor.fromClass(InterfaceData.class),
+              TList.of())));
+      var meta = new TypeObjectMeta(
+          compilerxyz.gen.GenTypeIds.TYPE_OBJECT_DYNAMIC_TYPE_ID,
+          "type_object_dynamic",
+          trivialIdentityAspects,
+          castRules,
+          new TList<TypeObjectCastFromRule>(),
+          Opt.<ObjectAspectSource>none());
+      return new TypeObjectConst(meta, Type.class, Opt.<Type>none());
+    }
   }
 
 }

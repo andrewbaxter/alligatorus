@@ -59,7 +59,6 @@ import compilerxyz.gen.GenAspectType;
  */
 @SuppressWarnings("rawtypes")
 public record TypeObjectConst(
-    TypeId typeId,
     TypeObjectMeta meta,
     Class externalHostClass,
     Opt<Type> deferDynamic)
@@ -82,9 +81,9 @@ public record TypeObjectConst(
   private static final java.util.concurrent.ConcurrentHashMap<TypeId, compilerxyz.artifact.ExporterRoot> META_EXPORTERS = new java.util.concurrent.ConcurrentHashMap<>();
 
   public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix, compilerxyz.artifact.ExporterRoot exporter) {
-    var meta = metaOf(hostClass, hostBaseTypeId, descSuffix);
-    META_EXPORTERS.put(meta.typeId(), exporter);
-    return meta;
+    var toc = metaOf(hostClass, hostBaseTypeId, descSuffix);
+    META_EXPORTERS.put(toc.meta().typeId(), exporter);
+    return toc;
   }
 
   public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix) {
@@ -92,9 +91,8 @@ public record TypeObjectConst(
     trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
     castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
-    var meta = new TypeObjectMeta("type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
+    var meta = new TypeObjectMeta(hostBaseTypeId, "type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
     return new TypeObjectConst(
-        new TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(hostBaseTypeId)),
         meta,
         hostClass,
         Opt.<Type>none());
@@ -102,12 +100,12 @@ public record TypeObjectConst(
 
   @Override
   public boolean equals(Object other) {
-    return other instanceof TypeObjectConst o && typeId.equals(o.typeId);
+    return other instanceof TypeObjectConst o && meta.typeId().equals(o.meta.typeId());
   }
 
   @Override
   public int hashCode() {
-    return typeId.hashCode();
+    return meta.typeId().hashCode();
   }
 
   public String typeDesc() {
@@ -132,7 +130,7 @@ public record TypeObjectConst(
 
   @Override
   public TypeId hasTypeIdTypeId() {
-    return typeId;
+    return meta.typeId();
   }
 
                 public Type valueType() {
@@ -303,7 +301,7 @@ public record TypeObjectConst(
 
   @Override
   public compilerxyz.artifact.ArtifactExporter aspectArtifactExporter() {
-    var metaExporter = META_EXPORTERS.get(typeId);
+    var metaExporter = META_EXPORTERS.get(meta.typeId());
     return metaExporter != null ? metaExporter : this;
   }
 

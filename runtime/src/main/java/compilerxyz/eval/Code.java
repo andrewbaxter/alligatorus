@@ -61,12 +61,10 @@ public sealed interface Code permits Code.None, Code.Target {
       var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.CODE_IDENTITY);
       return new TypeObjectDynamic(
-          GenTypeIds.CODE_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("code", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.CODE_TYPE_ID, "code", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           Code.class,
-          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.CODE_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

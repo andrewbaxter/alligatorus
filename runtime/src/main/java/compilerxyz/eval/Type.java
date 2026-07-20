@@ -68,12 +68,10 @@ public interface Type extends HasTypeId, compilerxyz.artifact.Artifactable {
       trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
       var methods = new TList<ObjectMethod>();
       var instance = new TypeObjectDynamic(
-          GenTypeIds.TYPE_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("type", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.TYPE_TYPE_ID, "type", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           JavaInternalName.fromClass(Type.class),
           JavaDataDescriptor.fromClass(Type.class),
           Type.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.TYPE_TYPE_ID)),
           new TList<ObjectDataField>(),
           methods,
           ObjectDropKind.DYNAMIC_LIGHT,

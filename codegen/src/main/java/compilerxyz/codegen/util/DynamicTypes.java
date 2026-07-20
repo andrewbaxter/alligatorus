@@ -117,10 +117,6 @@ public final class DynamicTypes {
         "compilerxyz.eval.value.bind_result",
         "BindResultType",
         ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"));
-    factory(
-        "compilerxyz.eval.value.object_",
-        "ObjectConstOfType",
-        ClassName.get("compilerxyz.eval", "Type"));
     factory("compilerxyz.eval.value.source_object", "SourceObjectRefType");
     factory("compilerxyz.eval.value.source_object_new", "SourceObjectNewRefType");
     factory("compilerxyz.eval.value.source_union", "SourceUnionRefType");

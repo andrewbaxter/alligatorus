@@ -30,12 +30,10 @@ public final class SourceUnionNewRefType {
     private static TypeObjectDynamic build() {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
       return new TypeObjectDynamic(
-          GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID,
-          new compilerxyz.eval.value.object_.TypeObjectMeta("union_new_ref", new compilerxyz.util.TList<compilerxyz.eval.Unique>(), new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID, "union_new_ref", new compilerxyz.util.TList<compilerxyz.eval.Unique>(), new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           Object.class,
-          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

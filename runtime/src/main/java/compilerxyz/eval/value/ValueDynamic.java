@@ -57,12 +57,10 @@ public record ValueDynamic(Source source, Type type_) implements Value {
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.fromClass(ValueDynamic.Source.class);
       return new TypeObjectDynamic(
-          GenTypeIds.VALUE_DYNAMIC_TYPE_ID,
-          new TypeObjectMeta("source", new compilerxyz.util.TList<compilerxyz.eval.Unique>(), new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new TypeObjectMeta(GenTypeIds.VALUE_DYNAMIC_TYPE_ID, "source", new compilerxyz.util.TList<compilerxyz.eval.Unique>(), new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
           ValueDynamic.Source.class,
-          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.VALUE_DYNAMIC_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

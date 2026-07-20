@@ -33,12 +33,10 @@ public record QExprId(SourceId source, long expr) {
       var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.Q_EXPR_ID_IDENTITY);
       return new TypeObjectDynamic(
-          GenTypeIds.Q_EXPR_ID_TYPE_ID,
-          new TypeObjectMeta("QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new TypeObjectMeta(GenTypeIds.Q_EXPR_ID_TYPE_ID, "QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(QExprId.class),
           QExprId.class,
-          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.Q_EXPR_ID_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,

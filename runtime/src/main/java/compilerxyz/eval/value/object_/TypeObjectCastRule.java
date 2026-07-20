@@ -80,6 +80,7 @@ public sealed interface TypeObjectCastRule {
       }
       var seq = new JavaBytecodeSequence();
       seq.add(sourceCode);
+      seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(ownerClass)));
       seq.add(JavaBytecodeUtils.callMethod(loc, ownerClass, methodName, descriptor));
       var retDesc = descriptor.value();
       var retStart = retDesc.indexOf(')') + 1;

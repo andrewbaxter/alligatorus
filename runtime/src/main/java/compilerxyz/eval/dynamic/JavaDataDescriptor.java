@@ -105,12 +105,10 @@ public class JavaDataDescriptor {
                 new TypeObjectCastFromRule.RestampFromIdentity(
                     GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY));
             return new TypeObjectDynamic(
-                GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID,
-                new TypeObjectMeta("JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
+                new TypeObjectMeta(GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID, "JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
                 jvmClass,
                 JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
                 JavaDataDescriptor.class,
-                new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID)),
                 new TList<ObjectDataField>(),
                 new TList<ObjectMethod>(),
                 ObjectDropKind.DYNAMIC_LIGHT,
