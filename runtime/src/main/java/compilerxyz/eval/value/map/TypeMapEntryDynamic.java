@@ -35,6 +35,11 @@ import compilerxyz.util.TMap;
 import java.util.Map;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
 
 @compilerxyz.annotations.BuiltinTypeId(7033L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
@@ -107,18 +112,17 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapEntryDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_ENTRY_DYNAMIC_TYPE_ID, "map_entry_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectElementUseDynamicBind.ID)) {
+    if (key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamic.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -154,7 +158,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // field type's declared JVM class so the stack shape matches the language
     // type. Container element types are already box-substituted at construction
     // time, so the target descriptor is always object-shaped here.
-    var fieldConsumeOpt = AspectConsumeDynamic.getMaybe(xx, spec.type());
+    var fieldConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, spec.type());
     if (fieldConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> fieldConsumeSome) {
       var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       var d = fieldDesc.value();
@@ -204,7 +208,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

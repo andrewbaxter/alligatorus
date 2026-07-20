@@ -21,6 +21,10 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectRecord;
+import compilerxyz.gen.GenAspectTuple;
 
 public final class SourceDataMethodData {
   public static Type dynamicType() {
@@ -81,11 +85,11 @@ public final class SourceDataMethodData {
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var bodyScope = new Scope();
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
-    var outerIb = AspectInitialBind.getMaybe(xx, outerType);
+    var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
       bodyScope.pushNamed(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
     }
-    var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
+    var selfIb = GenAspectInitialBind.getMaybe(xx, underlyingType);
     if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
       bodyScope.pushNamed(new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
     }
@@ -96,14 +100,14 @@ public final class SourceDataMethodData {
       if (slotsRes.hasErrors()) return slotsRes.reerr();
       argSlots = slotsRes.requireValue("SourceDataMethodData::finish argSignatureSlots");
       argSlotIds = new TList<>(argSlots.size());
-      var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
-      var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+      var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+      var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
       if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
         var elemBindings = new TList<compilerxyz.gen.Binding>(argSlots.size());
         for (var slot : argSlots) {
           var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
           argSlotIds.add(slotId);
-          var ibMaybe = AspectInitialBind.getMaybe(xx, slot.elementType());
+          var ibMaybe = GenAspectInitialBind.getMaybe(xx, slot.elementType());
           if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
             return EResult.err(rootLoc,
                 "SourceDataMethodData::finish tuple element type "
@@ -122,7 +126,7 @@ public final class SourceDataMethodData {
         for (var entry : recordSome.value().aspectRecordFieldTypes().entrySet()) {
           var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
           argSlotIds.add(slotId);
-          var ibMaybe = AspectInitialBind.getMaybe(xx, entry.getValue());
+          var ibMaybe = GenAspectInitialBind.getMaybe(xx, entry.getValue());
           if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
             return EResult.err(rootLoc,
                 "SourceDataMethodData::finish record field type "
@@ -139,7 +143,7 @@ public final class SourceDataMethodData {
       } else {
         var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         argSlotIds.add(slotId);
-        var argIbMaybe = AspectInitialBind.getMaybe(xx, argType);
+        var argIbMaybe = GenAspectInitialBind.getMaybe(xx, argType);
         if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
           bodyScope.pushNamed(new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(slotId));
         }
@@ -162,7 +166,7 @@ public final class SourceDataMethodData {
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
       var valueType = someVal.value().valueType();
-      var consumeResult = AspectConsumeDynamic.get(methodXx, rootLoc, valueType);
+      var consumeResult = GenAspectConsumeDynamic.get(methodXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
       }

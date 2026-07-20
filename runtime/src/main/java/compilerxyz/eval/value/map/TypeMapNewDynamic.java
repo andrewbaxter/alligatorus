@@ -13,6 +13,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectTuple;
@@ -27,6 +28,9 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectTuple;
 
 @compilerxyz.annotations.BuiltinTypeId(7031L)
 public record TypeMapNewDynamic(Type keyType, Type valueType)
@@ -47,14 +51,13 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_NEW_DYNAMIC_TYPE_ID, "map_new_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -67,10 +70,10 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
       return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
     }
     var argType = argSome.value().valueType();
-    var argTupleOpt = AspectTuple.getMaybe(xx, argType);
+    var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
     if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome
         && argTupleSome.value().aspectTupleElementTypes().isEmpty()) {
-      var retStackRes = AspectStackValueDynamic.get(xx, loc, instanceType);
+      var retStackRes = GenAspectStackValueDynamic.get(xx, loc, instanceType);
       if (retStackRes.hasErrors()) return retStackRes.reerr();
 
       var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
@@ -103,7 +106,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

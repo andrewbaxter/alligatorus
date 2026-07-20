@@ -43,6 +43,15 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectType;
+import compilerxyz.gen.GenAspectUnion;
 
 @compilerxyz.annotations.BuiltinTypeId(7051L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
@@ -83,25 +92,24 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_CONST_TYPE_ID, "type_source_union_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(type_.identity)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectType.ID)
-        || key.equals(AspectUnion.ID)) {
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectType.AspectId)
+        || key.equals(GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -149,7 +157,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                             : nullArtifact();
                     var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
                     for (var v : tu.variants) {
-                      var tArtRes = ArtifactSupport.exportArtifact(xx, loc, v.type);
+                      var tArtRes = v.type.exportArtifact(xx, loc);
                       tArtRes.drainInto(errors);
                       var tArt =
                           tArtRes.valueOrNull() != null
@@ -245,7 +253,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new TypeTypeSourceUnionConst(type_));
+      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeTypeSourceUnionConst(type_)));
     }
   }
 
@@ -293,7 +301,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

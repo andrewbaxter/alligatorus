@@ -13,6 +13,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.gen.AspectType;
@@ -23,6 +24,10 @@ import compilerxyz.util.Opt;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectTuple;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7032L)
 @compilerxyz.annotations.BuiltinPath("types.map")
@@ -44,17 +49,16 @@ public record TypeMapConstructorConst()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_CONSTRUCTOR_CONST_TYPE_ID, "map_constructor_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -68,7 +72,7 @@ public record TypeMapConstructorConst()
     }
     var argValue = argSome.value();
     var argMeta = argValue.valueType();
-    var aspectTupleOpt = AspectTuple.getMaybe(xx, argMeta);
+    var aspectTupleOpt = GenAspectTuple.getMaybe(xx, argMeta);
     if (!(aspectTupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
       return EResult.err(loc, "map() requires a tuple of (key_type, value_type)");
     }
@@ -93,11 +97,11 @@ public record TypeMapConstructorConst()
     }
     var keyValue = keySome.value();
     var valueValue = valueSome.value();
-    var keyAtRes = AspectType.get(xx, loc, keyValue.valueType());
+    var keyAtRes = GenAspectType.get(xx, loc, keyValue.valueType());
     if (keyAtRes.hasErrors()) return keyAtRes.reerr();
     var keyType =
         keyAtRes.requireValue("TypeMapConstructorConst::call key AspectType").aspectTypeType(keyValue);
-    var valueAtRes = AspectType.get(xx, loc, valueValue.valueType());
+    var valueAtRes = GenAspectType.get(xx, loc, valueValue.valueType());
     if (valueAtRes.hasErrors()) return valueAtRes.reerr();
     var valueType =
         valueAtRes.requireValue("TypeMapConstructorConst::call value AspectType").aspectTypeType(valueValue);
@@ -105,7 +109,7 @@ public record TypeMapConstructorConst()
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), mapType))));
+        new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(mapType))));
   }
 
   @Override
@@ -125,7 +129,7 @@ public record TypeMapConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

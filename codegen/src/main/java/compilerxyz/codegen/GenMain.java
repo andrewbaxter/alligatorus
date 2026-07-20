@@ -56,8 +56,8 @@ public final class GenMain {
         compilerxyz.codegen.experimental.BuiltinPathScanner.scanRoot(runtimeSourceRoot);
     BuiltinTreeGen.setScannedPathEntries(pathEntries);
 
+    TraitsGen.run(outRoot, formatter, scan.traits());
     var interfaceSpecs = new TList<compilerxyz.codegen.util.InterfaceSpec>();
-    interfaceSpecs.addAll(TraitsGen.specs());
     interfaceSpecs.addAll(BuiltinTreeGen.extraInterfaceSpecs());
     InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
     var scannedIdentities =
@@ -80,7 +80,7 @@ public final class GenMain {
     PushStructsGen.run(
         outRoot,
         formatter,
-        PushStructsGen.specs(TraitsGen.specs()),
+        PushStructsGen.specs(new TList<>()),
         scannedPushStructs,
         builtinUniqueIds,
         scopeIds);

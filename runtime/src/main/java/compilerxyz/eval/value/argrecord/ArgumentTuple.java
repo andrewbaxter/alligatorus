@@ -24,8 +24,7 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
     return "argument_tuple(" + inner + ")";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return this;
   }
 
@@ -48,7 +47,7 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
@@ -65,5 +64,11 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

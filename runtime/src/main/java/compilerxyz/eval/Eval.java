@@ -30,6 +30,10 @@ import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinTree;
 import compilerxyz.gen.Value;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectStringConst;
 
 public final class Eval {
 
@@ -58,7 +62,7 @@ public final class Eval {
 
   public static Result<ConstKey, String> extractConstKey(ExprContext xx, QExprId loc, Value v) {
     var typeRes = v.valueType();
-    var stringConst = AspectStringConst.getMaybe(xx, typeRes);
+    var stringConst = GenAspectStringConst.getMaybe(xx, typeRes);
     if (stringConst instanceof Opt.Some<AspectStringConst> some) {
       return Result.ok(new ConstKey.Str(some.value().aspectStringConstGet(v)));
     }
@@ -81,7 +85,7 @@ public final class Eval {
     var callerExc = xx.currentExceptionType;
     var erb = new Erb(loc);
     var catchBinding = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    var initialBindOpt = erb.mustEr(AspectInitialBind.get(xx, loc, calleeExcType));
+    var initialBindOpt = erb.mustEr(GenAspectInitialBind.get(xx, loc, calleeExcType));
     if (initialBindOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
@@ -110,9 +114,6 @@ public final class Eval {
     }
     var erb = new Erb(loc);
     var sourceType = ((Opt.Some<Value>) source.value()).value().valueType();
-    if (sourceType.equals(destType)) {
-      return EResult.ok(source);
-    }
     CodeValue dest;
     if (sourceType.typeCanCastTo(xx, loc, destType)) {
       var castOpt = erb.mustEr(sourceType.typeCastTo(xx, loc, source, destType));
@@ -214,7 +215,7 @@ public final class Eval {
         stage1Code = Opt.none();
         fallbackValue = Opt.some(cvValue);
       } else {
-        var consumeRes = AspectConsumeDynamic.get(xx, rootLoc, valueType);
+        var consumeRes = GenAspectConsumeDynamic.get(xx, rootLoc, valueType);
         if (consumeRes.hasErrors()) {
           return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
         }
@@ -345,7 +346,7 @@ public final class Eval {
     if (fallbackValue instanceof Opt.Some<Value> fb) {
       finalValue = fb.value();
     } else {
-      var liftRes = AspectLift.get(xx, rootLoc, valueType);
+      var liftRes = GenAspectLift.get(xx, rootLoc, valueType);
       if (liftRes.hasErrors()) {
         return new CompileImport.EvalOutcome.Err(liftRes.errorsOrNull());
       }

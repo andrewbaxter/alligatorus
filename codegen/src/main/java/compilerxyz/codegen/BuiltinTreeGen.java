@@ -55,9 +55,9 @@ public final class BuiltinTreeGen {
   private static final ClassName TYPE_UNIQUE_RT =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
   private static final ClassName ASPECT_BIND =
-      ClassName.get("compilerxyz.gen", "AspectBind");
+      ClassName.get("compilerxyz.gen", "GenAspectBind");
   private static final ClassName ASPECT_INITIAL_BIND =
-      ClassName.get("compilerxyz.gen", "AspectInitialBind");
+      ClassName.get("compilerxyz.gen", "GenAspectInitialBind");
   private static final ClassName VALUE_OBJECT_CONST =
       ClassName.get("compilerxyz.eval.value.object_", "ValueObjectConst");
   private static final ClassName OBJECT_CONST_OF_TYPE =
@@ -310,40 +310,16 @@ public final class BuiltinTreeGen {
       CodeBlock innerExpr, CodeBlock valueTypeExpr, EmitState st) {
     var type = st.next("type");
     var wrapper = st.next("wrapper");
-    var cv = st.next("cv");
-    var bindRes = st.next("bindRes");
-    var br = st.next("br");
     var binding = st.next("binding");
     st.body.addStatement("$T $N = $L", Object.class, type, innerExpr);
     st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
     st.body.addStatement(
-        "var $N = new $T($T.none(loc), $T.some(new $T($N, $N)))",
-        cv,
-        CODE_VALUE,
-        CODE_RT,
-        OPT,
+        "$T $N = new compilerxyz.eval.binding.BindingValue(new $T($N, $N))",
+        BINDING,
+        binding,
         VALUE_OBJECT_CONST,
         wrapper,
         type);
-    st.body.addStatement("var $N = $T.get(xx, loc, $N)", bindRes, ASPECT_BIND, wrapper);
-    st.body.beginControlFlow("if ($N.hasErrors())", bindRes);
-    st.body.addStatement("return $N.reerr()", bindRes);
-    st.body.endControlFlow();
-    st.body.addStatement(
-        "var $N = $N.requireValue($S).aspectBindBind(xx, loc, $N)",
-        br,
-        bindRes,
-        "installRoot Const bind aspect",
-        cv);
-    st.body.beginControlFlow("if ($N.hasErrors())", br);
-    st.body.addStatement("return $N.reerr()", br);
-    st.body.endControlFlow();
-    st.body.addStatement(
-        "$T $N = $N.requireValue($S).binding()",
-        BINDING,
-        binding,
-        br,
-        "installRoot Const bind result");
     return new String[] {binding, wrapper};
   }
 
@@ -505,36 +481,36 @@ public final class BuiltinTreeGen {
     //    that don't fit type-leaf / function-leaf / interface-leaf.
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "AspectDropDynamicLight")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TTOD_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "AspectBindDynamic")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TTOD_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TTOD_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind",
         CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "AspectBind")), TTOD_TYPE_EXPR);
+            ClassName.get("compilerxyz.gen", "GenAspectBind")), TTOD_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_string_dynamic",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectStringDynamic")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_function_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectFunction")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFunction")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_field_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectField")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectField")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBind")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBind")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectDropDynamic")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamic")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectConsumeDynamic")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")),
         TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic_id",
-        CodeBlock.of("$T.ID", ClassName.get("compilerxyz.gen", "AspectBindDynamic")),
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
         TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);

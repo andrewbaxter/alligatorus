@@ -14,6 +14,7 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectArtifact;
 
 public final class ArtifactSupport {
   private ArtifactSupport() {}
@@ -27,7 +28,7 @@ public final class ArtifactSupport {
   public static EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc, Value v) {
     var errors = new TList<ExprErr>();
     var t = v.valueType();
-    var asp = AspectArtifact.get(xx, loc, t);
+    var asp = GenAspectArtifact.get(xx, loc, t);
     if (asp.hasErrors()) {
       asp.drainInto(errors);
       return errsOrEmpty(errors);
@@ -55,7 +56,7 @@ public final class ArtifactSupport {
       return errsOrEmpty(errors);
     }
     var type = typeRes.requireValue("ArtifactSupport::exporterAnyToArtifactExporter type");
-    var aspRes = AspectArtifact.get(xx, loc, type);
+    var aspRes = GenAspectArtifact.get(xx, loc, type);
     if (aspRes.hasErrors()) {
       aspRes.drainInto(errors);
       return errsOrEmpty(errors);

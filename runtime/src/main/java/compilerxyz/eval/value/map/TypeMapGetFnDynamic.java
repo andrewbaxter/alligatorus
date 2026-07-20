@@ -10,6 +10,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -33,14 +34,13 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapGetFnDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, "map_get_fn_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -66,7 +66,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

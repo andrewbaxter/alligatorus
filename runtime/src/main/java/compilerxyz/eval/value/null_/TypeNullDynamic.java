@@ -33,7 +33,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
@@ -41,6 +41,15 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectNull;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7010L)
 @compilerxyz.annotations.BuiltinPath("types.null")
@@ -73,25 +82,24 @@ public record TypeNullDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NULL_DYNAMIC_TYPE_ID, "null_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)
-        || key.equals(AspectNull.ID)
-        || key.equals(AspectStackValueDynamic.ID)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(GenIdentities.TYPE_IDENTITY)) {
+    if (key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectNull.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -139,18 +147,18 @@ public record TypeNullDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return AspectNull.getMaybe(xx, sourceType).optIsSome();
+    return GenAspectNull.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return AspectNull.getMaybe(xx, destType).optIsSome()
-        || destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome();
+    return GenAspectNull.getMaybe(xx, destType).optIsSome()
+        || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
   }
 
   @Override
@@ -159,7 +167,7 @@ public record TypeNullDynamic()
       return EResult.err(loc, "TypeNullDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    var nullRes = AspectNull.get(xx, loc, sourceType);
+    var nullRes = GenAspectNull.get(xx, loc, sourceType);
     if (nullRes.hasErrors()) {
       return nullRes.reerr();
     }

@@ -13,6 +13,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -28,6 +29,9 @@ import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7115L)
 public record TypeNumberToStringDynamic()
@@ -58,16 +62,15 @@ public record TypeNumberToStringDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberToStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_TO_STRING_DYNAMIC_TYPE_ID, "number_to_string_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -82,7 +85,7 @@ public record TypeNumberToStringDynamic()
     }
 
     var retType = new TypeStringDynamic();
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, retType);
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var helperName = JavaInternalName.fromClass(NumberFormat.class);
@@ -116,7 +119,7 @@ public record TypeNumberToStringDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

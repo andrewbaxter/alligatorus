@@ -17,6 +17,9 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectLift;
 
 @compilerxyz.annotations.BuiltinTypeId(7017L)
 public record TypeExprStagedPlaceholder()
@@ -38,15 +41,14 @@ public record TypeExprStagedPlaceholder()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExprStagedPlaceholder.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID, "expr_staged_placeholder");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID) || key.equals(AspectLift.ID)) {
+    if (key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId) || key.equals(GenAspectLift.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -86,7 +88,7 @@ public record TypeExprStagedPlaceholder()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
@@ -112,5 +114,11 @@ public record TypeExprStagedPlaceholder()
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

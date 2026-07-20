@@ -54,6 +54,14 @@ import compilerxyz.eval.value.source_function.ExternalCodec;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7045L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
@@ -95,20 +103,19 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_CONST_TYPE_ID, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(type_.identity)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)) {
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     for (var impl : type_.interfaceImpls) {
@@ -116,7 +123,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         return Opt.some(this);
       }
     }
-    if (key.equals(AspectType.ID)) {
+    if (key.equals(GenAspectType.AspectId)) {
       for (var impl : type_.interfaceImpls) {
         if (impl.interface_.builtinKind
             == BuiltinInterfaceKind.TYPE) {
@@ -124,7 +131,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         }
       }
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -132,7 +139,19 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
-    return ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
+    // TTOSC is now used only as a type-descriptor (source-object VALUES wrap in TSOC).
+    // Route to SOURCE_OBJECT_CONST which handles the bare-TTOSC delegate shape.
+    return ExporterRoot.SOURCE_OBJECT_CONST;
+  }
+
+  /**
+   * Bare-TTOSC-as-type-descriptor export: route to SOURCE_OBJECT_CONST (TTOSC's own DELEGATE),
+   * distinct from {@link #aspectArtifactExporter()} which is the value-of-TTOSC path.
+   */
+  @Override
+  public compilerxyz.eval.EResult<Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return ExporterRoot.SOURCE_OBJECT_CONST.artifactExporterExport(xx, loc, this);
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -182,7 +201,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                                 "TypeTypeSourceObjectConst::exporterExport defSet")
                             : nullArtifact();
                     var underlyingArtRes =
-                        ArtifactSupport.exportArtifact(xx, loc, underlyingFinal);
+                        underlyingFinal.exportArtifact(xx, loc);
                     underlyingArtRes.drainInto(errors);
                     var underlyingArt =
                         underlyingArtRes.valueOrNull() != null
@@ -232,14 +251,14 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                                             + "' has not been compiled"))));
                         continue;
                       }
-                      var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argT);
+                      var argArtRes = argT.exportArtifact(xx, loc);
                       argArtRes.drainInto(errors);
                       var argArt =
                           argArtRes.valueOrNull() != null
                               ? argArtRes.requireValue(
                                   "TypeTypeSourceObjectConst::exporterExport method arg")
                               : nullArtifact();
-                      var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retT);
+                      var retArtRes = retT.exportArtifact(xx, loc);
                       retArtRes.drainInto(errors);
                       var retArt =
                           retArtRes.valueOrNull() != null
@@ -268,7 +287,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       Artifact userIface = null;
                       if (kind == null) {
                         var ifaceConst = new TypeSourceInterfaceConst(impl.interface_);
-                        var ifaceArtRes = ArtifactSupport.exportArtifact(xx, loc, ifaceConst);
+                        var ifaceArtRes = ifaceConst.exportArtifact(xx, loc);
                         ifaceArtRes.drainInto(errors);
                         userIface =
                             ifaceArtRes.valueOrNull() != null
@@ -528,7 +547,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new TypeTypeSourceObjectConst(type_));
+      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeTypeSourceObjectConst(type_)));
     }
   }
 
@@ -565,7 +584,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingConsume =
         consumeRes.requireValue("TypeTypeSourceObjectConst::toDynamic consume");
@@ -697,7 +716,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

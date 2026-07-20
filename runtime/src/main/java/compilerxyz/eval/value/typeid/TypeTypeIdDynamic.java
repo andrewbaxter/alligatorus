@@ -20,6 +20,10 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
 
 @compilerxyz.annotations.BuiltinTypeId(7112L)
 public record TypeTypeIdDynamic()
@@ -35,17 +39,16 @@ public record TypeTypeIdDynamic()
     return "type_id";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return this;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();

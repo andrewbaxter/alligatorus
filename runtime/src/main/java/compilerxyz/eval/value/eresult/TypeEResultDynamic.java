@@ -26,8 +26,13 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
 @compilerxyz.annotations.BuiltinTypeId(7101L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6017L)
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,
@@ -54,16 +59,16 @@ public record TypeEResultDynamic(Type elementType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_DYNAMIC_TYPE_ID, "eresult_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -122,7 +127,7 @@ public record TypeEResultDynamic(Type elementType)
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
                   JavaDataDescriptor.fromClass(String.class))));
-      var elemConsumeRes = AspectConsumeDynamic.get(xx, loc, elementType);
+      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
       var elemDesc = elemConsumeRes.requireValue("TypeEResultDynamic::field value AspectConsumeDynamic")
           .aspectConsumeDynamicJvmClass(xx);
@@ -140,7 +145,7 @@ public record TypeEResultDynamic(Type elementType)
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
-          EResult.ok(new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), f.type()))));
+          EResult.ok(new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
     };
   }
 
@@ -172,7 +177,7 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
@@ -184,10 +189,18 @@ public record TypeEResultDynamic(Type elementType)
   }
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    if (!destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY).optIsSome()) {
+      return false;
+    }
+    if (!(destType instanceof TypeEResultDynamic destE)) return false;
+    return elementType.typeCanCastTo(xx, loc, destE.elementType)
+        || destE.elementType.typeCanCastFrom(xx, loc, elementType);
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY).optIsSome()) {
+      return EResult.ok(cv);
+    }
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

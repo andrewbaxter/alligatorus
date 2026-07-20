@@ -45,6 +45,18 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectBoolConst;
+import compilerxyz.gen.GenAspectBoolDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectDynamicBoxed;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7005L)
 @compilerxyz.annotations.BuiltinPath("types.bool")
@@ -84,26 +96,25 @@ public record TypeBoolDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_DYNAMIC_TYPE_ID, "bool_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBoolDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectDynamicBoxed.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectStackValueDynamic.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)
-        || key.equals(AspectArtifact.ID)) {
+    if (key.equals(GenAspectBoolDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectDynamicBoxed.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -159,18 +170,18 @@ public record TypeBoolDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return AspectBoolConst.getMaybe(xx, sourceType).optIsSome()
-        || AspectBoolDynamic.getMaybe(xx, sourceType).optIsSome();
+    return GenAspectBoolConst.getMaybe(xx, sourceType).optIsSome()
+        || GenAspectBoolDynamic.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return AspectBoolDynamic.getMaybe(xx, destType).optIsSome();
+    return GenAspectBoolDynamic.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
@@ -179,7 +190,7 @@ public record TypeBoolDynamic()
       return EResult.err(loc, "TypeBoolDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    var boolConstOpt = AspectBoolConst.getMaybe(xx, sourceType);
+    var boolConstOpt = GenAspectBoolConst.getMaybe(xx, sourceType);
     if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
       boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());
       var seq = new JavaBytecodeSequence();

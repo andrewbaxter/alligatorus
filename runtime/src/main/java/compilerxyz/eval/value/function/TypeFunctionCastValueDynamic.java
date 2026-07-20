@@ -12,11 +12,13 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectInitialBind;
 
 @compilerxyz.annotations.BuiltinTypeId(7040L)
 @compilerxyz.annotations.BuiltinPath("eval.cast_value")
@@ -38,14 +40,13 @@ public record TypeFunctionCastValueDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionCastValueDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID, "function_cast_value_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -76,7 +77,7 @@ public record TypeFunctionCastValueDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

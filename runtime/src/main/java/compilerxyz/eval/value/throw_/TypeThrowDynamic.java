@@ -15,6 +15,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynException;
@@ -29,6 +30,8 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
 
 @compilerxyz.annotations.BuiltinTypeId(7018L)
 @compilerxyz.annotations.BuiltinPath("throw")
@@ -46,14 +49,13 @@ public record TypeThrowDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeThrowDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_THROW_DYNAMIC_TYPE_ID, "throw_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -73,7 +75,7 @@ public record TypeThrowDynamic()
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, excType);
+    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, excType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var valueDynRes =
         consumeRes
@@ -113,7 +115,7 @@ public record TypeThrowDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

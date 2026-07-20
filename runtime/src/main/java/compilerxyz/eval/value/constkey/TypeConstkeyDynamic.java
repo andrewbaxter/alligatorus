@@ -27,8 +27,15 @@ import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStringConst;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
 @compilerxyz.annotations.BuiltinTypeId(7014L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6015L)
 @compilerxyz.annotations.BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
     implements
@@ -55,17 +62,17 @@ public record TypeConstkeyDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeConstkeyDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID, "constkey_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -88,7 +95,7 @@ public record TypeConstkeyDynamic()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return AspectStringConst.getMaybe(xx, sourceType).optIsSome();
+    return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override
@@ -97,7 +104,7 @@ public record TypeConstkeyDynamic()
       return EResult.err(loc, "TypeConstkeyDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
+    var stringConstOpt = GenAspectStringConst.getMaybe(xx, sourceType);
     if (!(stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome)) {
       return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");
     }
@@ -117,7 +124,7 @@ public record TypeConstkeyDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new TypeConstkeyDynamic());
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeConstkeyDynamic()));
   }
 
   @Override
@@ -130,10 +137,13 @@ public record TypeConstkeyDynamic()
 
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY).optIsSome();
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY).optIsSome()) {
+      return EResult.ok(cv);
+    }
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

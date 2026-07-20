@@ -22,7 +22,8 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
+import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -31,8 +32,7 @@ import static compilerxyz.util.MustCast.mustCast;
 
 @compilerxyz.annotations.BuiltinTypeId(7104L)
 public record ValueDynamic(Source source, Type type_) implements Value {
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return type_;
   }
 
@@ -58,17 +58,14 @@ public record ValueDynamic(Source source, Type type_) implements Value {
       var jvmClass = JavaInternalName.fromClass(ValueDynamic.Source.class);
       return new TypeObjectDynamic(
           GenTypeIds.VALUE_DYNAMIC_TYPE_ID,
-          "source",
+          new TypeObjectMeta("source", new compilerxyz.util.TList<compilerxyz.eval.Unique>(), new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
+          ValueDynamic.Source.class,
+          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.VALUE_DYNAMIC_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          new TList<Unique>(),
-          new TList<TypeObjectCastRule>(),
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

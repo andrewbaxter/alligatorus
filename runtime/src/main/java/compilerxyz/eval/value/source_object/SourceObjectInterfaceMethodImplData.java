@@ -26,6 +26,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectTuple;
 
 public final class SourceObjectInterfaceMethodImplData {
   public final int interfaceMethodIndex;
@@ -93,12 +96,12 @@ public final class SourceObjectInterfaceMethodImplData {
     var bodyScope = new Scope();
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
     TypeSourceObjectDynamic outerType = dtData;
-    var outerIb = AspectInitialBind.getMaybe(xx, outerType);
+    var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
       bodyScope.pushNamed(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
     }
 
-    var selfIb = AspectInitialBind.getMaybe(xx, underlyingType);
+    var selfIb = GenAspectInitialBind.getMaybe(xx, underlyingType);
     if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
       bodyScope.pushNamed(
           new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
@@ -108,7 +111,7 @@ public final class SourceObjectInterfaceMethodImplData {
       throw new AssertionError("Interface method '" + ifaceMethod.name + "' missing arg_type");
     }
     var dataFieldNames = ifaceMethod.dataFieldNames;
-    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, methodArgType);
+    var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, methodArgType);
     TList<Type> paramTypes;
     var argParamIds = new TList<BindingId.Local>();
     if (methodArgType instanceof compilerxyz.eval.value.record.Record rec) {
@@ -137,7 +140,7 @@ public final class SourceObjectInterfaceMethodImplData {
         paramTypes.add(fd.type());
         var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         argParamIds.add(pid);
-        var ibResult = AspectInitialBind.get(xx, rootLoc, fd.type());
+        var ibResult = GenAspectInitialBind.get(xx, rootLoc, fd.type());
         if (ibResult.hasErrors()) {
           return ibResult.reerr();
         }
@@ -167,7 +170,7 @@ public final class SourceObjectInterfaceMethodImplData {
         paramTypes.add(elemType);
         var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         argParamIds.add(pid);
-        var ibResult = AspectInitialBind.get(xx, rootLoc, elemType);
+        var ibResult = GenAspectInitialBind.get(xx, rootLoc, elemType);
         if (ibResult.hasErrors()) {
           return ibResult.reerr();
         }
@@ -190,7 +193,7 @@ public final class SourceObjectInterfaceMethodImplData {
       paramTypes = TList.of(methodArgType);
       var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       argParamIds.add(argId);
-      var argIbMaybe = AspectInitialBind.getMaybe(xx, methodArgType);
+      var argIbMaybe = GenAspectInitialBind.getMaybe(xx, methodArgType);
       if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
         bodyScope.pushNamed(
             new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(argId));
@@ -215,7 +218,7 @@ public final class SourceObjectInterfaceMethodImplData {
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
       var valueType = someVal.value().valueType();
-      var consumeResult = AspectConsumeDynamic.get(methodXx, rootLoc, valueType);
+      var consumeResult = GenAspectConsumeDynamic.get(methodXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
       }

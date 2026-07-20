@@ -10,12 +10,13 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinTypeId(7103L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6016L)
 @compilerxyz.annotations.BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 
@@ -57,19 +58,18 @@ public sealed interface Code permits Code.None, Code.Target {
 
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.fromClass(Code.class);
+      var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.CODE_IDENTITY);
       return new TypeObjectDynamic(
           GenTypeIds.CODE_TYPE_ID,
-          "code",
+          new compilerxyz.eval.value.object_.TypeObjectMeta("code", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
+          Code.class,
+          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.CODE_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          new TList<Unique>(),
-          new TList<TypeObjectCastRule>(),
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

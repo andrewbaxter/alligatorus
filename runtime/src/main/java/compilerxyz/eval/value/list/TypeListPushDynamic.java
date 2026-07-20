@@ -15,6 +15,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -31,6 +32,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.List;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7113L)
 public record TypeListPushDynamic(Type elementType)
@@ -62,16 +66,15 @@ public record TypeListPushDynamic(Type elementType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListPushDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_PUSH_DYNAMIC_TYPE_ID, "list_push_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -83,7 +86,7 @@ public record TypeListPushDynamic(Type elementType)
     var convertedRes = Eval.typecheckConvert(xx, loc, elementType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("typecheckConvert");
-    var consumeRes = AspectConsumeDynamic.get(xx, loc, elementType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var argDynRes =
         consumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, converted);
@@ -96,7 +99,7 @@ public record TypeListPushDynamic(Type elementType)
     }
 
     var retType = new TypeNullDynamic();
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, retType);
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var listName = JavaInternalName.fromClass(List.class);
@@ -132,7 +135,7 @@ public record TypeListPushDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

@@ -15,7 +15,6 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -23,21 +22,37 @@ import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.eval.value.unique.TypeUnique;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import static compilerxyz.util.MustCast.mustCast;
 
 @compilerxyz.annotations.BuiltinTrait(
     uniqueId = 2002L,
     scopeId = 3002)
 @compilerxyz.annotations.BuiltinPath("eval.type")
-@compilerxyz.annotations.BuiltinIdentity(6006L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6006L)
 @compilerxyz.annotations.BuiltinTypeId(7012L)
-public interface Type extends Value, HasTypeId {
+public interface Type extends HasTypeId, compilerxyz.artifact.Artifactable {
+
+  /**
+   * Default: a Type exports itself as an artifact by asking its own AspectArtifact for its
+   * exporter and delegating. Requires {@code this} to implement both AspectArtifact and
+   * ExporterAny; Types that don't need to be exportable can omit those interfaces and this
+   * default will fail at call time.
+   */
+  @Override
+  default EResult<compilerxyz.artifact.Artifact> exportArtifact(ExprContext xx, QExprId loc) {
+    if (!(this instanceof compilerxyz.gen.AspectArtifact aa)) {
+      return EResult.err(loc, typeDesc() + " does not implement AspectArtifact");
+    }
+    if (!(this instanceof compilerxyz.artifact.ExporterAny ea)) {
+      return EResult.err(loc, typeDesc() + " does not implement ExporterAny");
+    }
+    return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
+  }
 
   static Type dynamicType() {
     return TypeDynamicHolder.INSTANCE;
@@ -49,23 +64,19 @@ public interface Type extends Value, HasTypeId {
     private TypeDynamicHolder() {}
 
     private static TypeObjectDynamic build() {
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_IDENTITY);
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
       var methods = new TList<ObjectMethod>();
       var instance = new TypeObjectDynamic(
           GenTypeIds.TYPE_TYPE_ID,
-          "type",
+          new compilerxyz.eval.value.object_.TypeObjectMeta("type", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           JavaInternalName.fromClass(Type.class),
           JavaDataDescriptor.fromClass(Type.class),
+          Type.class,
+          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.TYPE_TYPE_ID)),
           new TList<ObjectDataField>(),
           methods,
           ObjectDropKind.DYNAMIC_LIGHT,
-          identityAspects,
-          new TList<TypeObjectCastRule>(),
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>some(
-              (xx, loc, host) -> compilerxyz.eval.EResult.ok(mustCast(Type.class, host))),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
 
       var typeIn = JavaInternalName.fromClass(Type.class);
@@ -181,21 +192,21 @@ public interface Type extends Value, HasTypeId {
     }
   }
 
-  @compilerxyz.annotations.SourceExposed(name = "canCastFrom")
+  @compilerxyz.annotations.SourceExposed
   boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
-  @compilerxyz.annotations.SourceExposed(name = "castFrom")
+  @compilerxyz.annotations.SourceExposed
   EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
 
-  @compilerxyz.annotations.SourceExposed(name = "canCastTo")
+  @compilerxyz.annotations.SourceExposed
   boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
 
-  @compilerxyz.annotations.SourceExposed(name = "castTo")
+  @compilerxyz.annotations.SourceExposed
   EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
 
-  @compilerxyz.annotations.SourceExposed(name = "desc")
+  @compilerxyz.annotations.SourceExposed
   String typeDesc();
 
-  @compilerxyz.annotations.SourceExposed(name = "aspect")
+  @compilerxyz.annotations.SourceExposed
   Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 }

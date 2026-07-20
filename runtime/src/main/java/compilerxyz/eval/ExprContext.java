@@ -10,14 +10,13 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@compilerxyz.annotations.BuiltinIdentity(6001L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6001L)
 @compilerxyz.annotations.BuiltinTypeId(7021L)
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
@@ -66,25 +65,22 @@ public final class ExprContext {
 
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.fromClass(ExprContext.class);
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.EXPR_CONTEXT_IDENTITY);
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY);
       var castFromRules = new TList<TypeObjectCastFromRule>();
       castFromRules.add(
           new TypeObjectCastFromRule.RestampFromIdentity(
-              GenIdentities.EXPR_CONTEXT_IDENTITY));
+              GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY));
       return new TypeObjectDynamic(
           GenTypeIds.EXPR_CONTEXT_TYPE_ID,
-          "ExprContext",
+          new compilerxyz.eval.value.object_.TypeObjectMeta("ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(ExprContext.class),
+          ExprContext.class,
+          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.EXPR_CONTEXT_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          identityAspects,
-          new TList<TypeObjectCastRule>(),
-          castFromRules,
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

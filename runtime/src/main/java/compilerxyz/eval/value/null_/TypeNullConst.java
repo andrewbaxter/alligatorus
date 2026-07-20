@@ -32,6 +32,12 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectNull;
+import compilerxyz.gen.GenAspectPostDeserialize;
 
 @compilerxyz.annotations.BuiltinTypeId(7009L)
 public record TypeNullConst()
@@ -54,21 +60,20 @@ public record TypeNullConst()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullConst.class, compilerxyz.gen.GenTypeIds.TYPE_NULL_CONST_TYPE_ID, "null_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectNull.ID)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)) {
+    if (key.equals(GenAspectNull.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -127,7 +132,7 @@ public record TypeNullConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

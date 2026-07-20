@@ -9,13 +9,14 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
+import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(6014L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6014L)
 @compilerxyz.annotations.BuiltinTypeId(7120L)
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
@@ -97,25 +98,22 @@ public class JavaDataDescriptor {
 
         private static TypeObjectDynamic build() {
             var jvmClass = JavaInternalName.fromClass(JavaDataDescriptor.class);
-            var identityAspects = new TList<Unique>();
-            identityAspects.add(GenIdentities.JAVA_DATA_DESCRIPTOR_IDENTITY);
+            var trivialIdentityAspects = new TList<Unique>();
+            trivialIdentityAspects.add(GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY);
             var castFromRules = new TList<TypeObjectCastFromRule>();
             castFromRules.add(
                 new TypeObjectCastFromRule.RestampFromIdentity(
-                    GenIdentities.JAVA_DATA_DESCRIPTOR_IDENTITY));
+                    GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY));
             return new TypeObjectDynamic(
                 GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID,
-                "JavaDataDescriptor",
+                new TypeObjectMeta("JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
                 jvmClass,
                 JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
+                JavaDataDescriptor.class,
+                new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID)),
                 new TList<ObjectDataField>(),
                 new TList<ObjectMethod>(),
                 ObjectDropKind.DYNAMIC_LIGHT,
-                identityAspects,
-                new TList<TypeObjectCastRule>(),
-                castFromRules,
-                Opt.<TypeObjectLift>none(),
-                Opt.<ObjectAspectSource>none(),
                 Opt.<JavaInternalName>none());
         }
     }

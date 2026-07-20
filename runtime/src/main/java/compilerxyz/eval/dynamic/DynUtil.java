@@ -32,6 +32,13 @@ import java.util.Iterator;
 import java.util.Map;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDynamicBoxed;
+import compilerxyz.gen.GenAspectRecord;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectTuple;
 
 public final class DynUtil {
     private DynUtil() {
@@ -41,7 +48,7 @@ public final class DynUtil {
 
     public static EResult<TList<ArgSignatureSlot>> argSignatureSlots(
             ExprContext xx, QExprId loc, Type argType) {
-        var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
             var elemTypes = tupleSome.value().aspectTupleElementTypes();
             var out = new TList<ArgSignatureSlot>(elemTypes.size());
@@ -53,7 +60,7 @@ public final class DynUtil {
             }
             return EResult.ok(out);
         }
-        var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
         if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
             var fieldTypes = recordSome.value().aspectRecordFieldTypes();
             var out = new TList<ArgSignatureSlot>(fieldTypes.size());
@@ -73,7 +80,7 @@ public final class DynUtil {
     }
 
     private static EResult<JavaDataDescriptor> jvmDescFor(ExprContext xx, QExprId loc, Type t) {
-        var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
+        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, t);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
@@ -187,7 +194,7 @@ public final class DynUtil {
             Binding binding = new BindingValue(some.value());
             return EResult.ok(new AspectBind.BindResult(cv.code(), binding));
         }
-        var bindDynOpt = AspectBindDynamic.getMaybe(xx, vtype);
+        var bindDynOpt = GenAspectBindDynamic.getMaybe(xx, vtype);
         if (!(bindDynOpt instanceof Opt.Some<AspectBindDynamic> bindDynSome)) {
             return EResult.err(loc, "Type (" + vtype.typeDesc() + ") is missing aspect AspectBindDynamic");
         }
@@ -242,7 +249,7 @@ public final class DynUtil {
         boolean stackRooted = isStackRooted(source);
         TList<CodeDynamic> childDrops = new TList<>();
         for (var child : children) {
-            var childDropOpt = compilerxyz.gen.AspectDropDynamic.getMaybe(xx, child.childType());
+            var childDropOpt = compilerxyz.gen.GenAspectDropDynamic.getMaybe(xx, child.childType());
             if (!(childDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamic> childDropSome)) {
                 continue;
             }
@@ -318,7 +325,7 @@ public final class DynUtil {
      * through Object-shaped runtime containers.
      */
     public static Type substituteBoxed(ExprContext xx, Type type) {
-        return switch (compilerxyz.gen.AspectDynamicBoxed.getMaybe(xx, type)) {
+        return switch (compilerxyz.gen.GenAspectDynamicBoxed.getMaybe(xx, type)) {
             case Opt.Some<compilerxyz.gen.AspectDynamicBoxed> boxedSome ->
                 boxedSome.value().aspectDynamicBoxedBoxedForm();
             case Opt.None<compilerxyz.gen.AspectDynamicBoxed> n -> type;
@@ -368,7 +375,7 @@ public final class DynUtil {
             return EResult.err(loc, "dynamicSet: converted value has no compile-time value");
         }
         Type valueType = convSome.value().valueType();
-        var valueToDynRes = AspectConsumeDynamic.get(xx, loc, valueType);
+        var valueToDynRes = GenAspectConsumeDynamic.get(xx, loc, valueType);
         if (valueToDynRes.hasErrors()) {
             return valueToDynRes.reerr();
         }
@@ -379,7 +386,7 @@ public final class DynUtil {
         }
         var valueCode = valueCodeRes.requireValue("DynUtil::dynamicSet consume.toDynamic");
         var selfCode = self_.code().dynamic();
-        var nullStackRes = AspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
+        var nullStackRes = GenAspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
         if (nullStackRes.hasErrors()) {
             return nullStackRes.reerr();
         }
@@ -441,7 +448,7 @@ public final class DynUtil {
      */
     public static EResult<TList<CodeDynamic>> destructurePositional(
             ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-        var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
@@ -454,7 +461,7 @@ public final class DynUtil {
             }
             return destructureFromElements(xx, loc, elementTypes, elemCvs);
         }
-        var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, argType);
+        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
         if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
             if (!(converted.value() instanceof Opt.Some<Value> some)) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
@@ -479,7 +486,7 @@ public final class DynUtil {
             }
             return destructureFromElements(xx, loc, elemTypes, elemCvs);
         }
-        var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
+        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);
         if (consumeRes.hasErrors()) return consumeRes.reerr();
         var argDyn =
                 consumeRes
@@ -499,7 +506,7 @@ public final class DynUtil {
             var elemCvRes = elemCvs.get(i);
             if (elemCvRes.hasErrors()) return elemCvRes.reerr();
             var elemCv = elemCvRes.requireValue("DynUtil::destructurePositional element");
-            var consumeRes = AspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
+            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
             if (consumeRes.hasErrors()) return consumeRes.reerr();
             var elemDyn =
                     consumeRes

@@ -18,6 +18,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import java.util.stream.Collectors;
+import compilerxyz.gen.GenAspectField;
 
 public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     implements Type, Value, AspectField, ExporterAny {
@@ -29,14 +30,13 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     return "argument_record(" + keys + ")";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return this;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectField.ID)) {
+    if (key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -75,7 +75,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
@@ -96,5 +96,11 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   @Override
   public compilerxyz.eval.TypeId hasTypeIdTypeId() {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeId not provided");
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

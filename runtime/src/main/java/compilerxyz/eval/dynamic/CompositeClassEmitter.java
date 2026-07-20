@@ -10,6 +10,7 @@ import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 public final class CompositeClassEmitter {
   private CompositeClassEmitter() {}
@@ -77,7 +78,7 @@ public final class CompositeClassEmitter {
   }
 
   public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
-    return switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, t)) {
+    return switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, t)) {
       case Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some ->
           some.value().aspectConsumeDynamicJvmClass(xx);
       case Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->

@@ -43,7 +43,7 @@ public final class ExternalCodec {
         out.add(new ArtifactExternal.StagedExpr(key, exprArt));
       } else if (host instanceof StageLiftCell liftCell) {
         var srcTypeArtRes =
-            ArtifactSupport.exportArtifact(xx, loc, liftCell.sourceType());
+            liftCell.sourceType().exportArtifact(xx, loc);
         if (srcTypeArtRes.hasErrors()) {
           srcTypeArtRes.drainInto(errors);
           return EResult.errs(errors);
@@ -52,7 +52,7 @@ public final class ExternalCodec {
             srcTypeArtRes.requireValue("ExternalCodec::export StageLift source type artifact");
         out.add(new ArtifactExternal.StageLift(key, srcTypeArt));
       } else if (host instanceof Type wrappedType) {
-        var typeArtRes = ArtifactSupport.exportArtifact(xx, loc, wrappedType);
+        var typeArtRes = wrappedType.exportArtifact(xx, loc);
         if (typeArtRes.hasErrors()) {
           typeArtRes.drainInto(errors);
           return EResult.errs(errors);

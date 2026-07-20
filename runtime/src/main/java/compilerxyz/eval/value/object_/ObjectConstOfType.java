@@ -2,7 +2,7 @@ package compilerxyz.eval.value.object_;
 
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -21,19 +21,15 @@ public final class ObjectConstOfType {
 
     private static TypeObjectConst build() {
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_IDENTITY));
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_IDENTITY);
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
+      var meta = new TypeObjectMeta("type", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
       return new TypeObjectConst(
           GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID,
-          "type",
+          meta,
           Type.class,
-          Opt.<Type>none(),
-          identityAspects,
-          castRules,
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none());
+          Opt.<Type>none());
     }
   }
 }

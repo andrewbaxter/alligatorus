@@ -24,10 +24,14 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectOperatorEq;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectOperatorEq;
 
 @compilerxyz.annotations.BuiltinTypeId(7123L)
 public record TypeUniqueConst()
@@ -52,18 +56,17 @@ public record TypeUniqueConst()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueConst.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_CONST_TYPE_ID, "unique_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_UNIQUE_IDENTITY)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectOperatorEq.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectOperatorEq.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -124,7 +127,7 @@ public record TypeUniqueConst()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override
@@ -150,5 +153,5 @@ public record TypeUniqueConst()
   public EResult<Type> exporterAnyAsType() { return EResult.ok(new TypeUniqueConst()); }
 
   @Override
-  public EResult<Value> exporterAnyAsValue() { return EResult.ok(this); }
+  public EResult<Value> exporterAnyAsValue() { return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this)); }
 }

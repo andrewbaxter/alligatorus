@@ -33,23 +33,33 @@ import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStackValueDynamic;
+import org.jspecify.annotations.Nullable;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectAspect;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
+@SuppressWarnings("rawtypes")
 public record TypeObjectDynamic(
     TypeId typeId,
-    String typeDesc,
+    TypeObjectMeta meta,
     JavaInternalName jvmClass,
     JavaDataDescriptor jvmClassDesc,
+    Class hostClass,
+    TypeId matchingConstTypeId,
     TList<ObjectDataField> dataFields,
     TList<ObjectMethod> methods,
     ObjectDropKind dropKind,
-    TList<Unique> identityAspects,
-    TList<TypeObjectCastRule> castRules,
-    TList<TypeObjectCastFromRule> castFromRules,
-    Opt<TypeObjectLift> lift,
-    Opt<ObjectAspectSource> aspectSource,
     Opt<JavaInternalName> interfaceRepresented)
     implements
         Type,
@@ -62,18 +72,38 @@ public record TypeObjectDynamic(
         AspectBind,
         AspectBindDynamic,
         AspectInitialBind,
-        compilerxyz.gen.AspectLift,
+        AspectLift,
         AspectStackValueDynamic {
+
+  public String typeDesc() {
+    return meta.typeDesc();
+  }
+
+  public TList<Unique> trivialIdentityAspects() {
+    return meta.trivialIdentityAspects();
+  }
+
+  public TList<TypeObjectCastRule> castRules() {
+    return meta.castRules();
+  }
+
+  public TList<TypeObjectCastFromRule> castFromRules() {
+    return meta.castFromRules();
+  }
+
+  public Opt<ObjectAspectSource> aspectSource() {
+    return meta.aspectSource();
+  }
 
   @Override
   public Unique id() {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(
-          typeDesc + "::id: TypeObjectDynamic is not an aspect metatype");
+          typeDesc() + "::id: TypeObjectDynamic is not an aspect metatype");
     }
     if (!(some.value() instanceof ObjectAspectSource.Static staticSrc)) {
       throw new IllegalStateException(
-          typeDesc + "::id: aspect id is not statically known");
+          typeDesc() + "::id: aspect id is not statically known");
     }
     return staticSrc.id();
   }
@@ -81,20 +111,20 @@ public record TypeObjectDynamic(
   public InterfaceData getInterfaceData() {
     if (!(interfaceRepresented instanceof Opt.Some<JavaInternalName> ir)) {
       throw new IllegalStateException(
-          typeDesc + "::getInterfaceData: does not represent an interface");
+          typeDesc() + "::getInterfaceData: does not represent an interface");
     }
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> aspSome)
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> aspSome)
         || !(aspSome.value() instanceof ObjectAspectSource.Static staticSrc)) {
       throw new IllegalStateException(
-          typeDesc + "::getInterfaceData: missing static aspect source");
+          typeDesc() + "::getInterfaceData: missing static aspect source");
     }
     var data = new InterfaceData(null, staticSrc.id(), null);
-    data.description = typeDesc;
+    data.description = typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
     for (var m : methods) {
       if (!(m.funcType() instanceof compilerxyz.eval.value.function.TypeMethodDynamic mt)) {
         throw new IllegalStateException(
-            typeDesc + "::getInterfaceData: method " + m.langName()
+            typeDesc() + "::getInterfaceData: method " + m.langName()
                 + " funcType is not TypeMethodDynamic");
       }
       var md = new compilerxyz.eval.value.source_interface.InterfaceMethodData(m.langName());
@@ -127,47 +157,39 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public String typeDesc() {
-    return typeDesc;
-  }
-
-  @Override
   public TypeId hasTypeIdTypeId() {
     return typeId;
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return this;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
-    if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(AspectField.ID)) {
+    if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
-    if (aspectSource instanceof Opt.Some && key.equals(AspectAspect.ID)) {
-      return Opt.some(this);
-    }
-    if (lift instanceof Opt.Some && key.equals(compilerxyz.gen.AspectLift.ID)) {
+    if (aspectSource() instanceof Opt.Some && key.equals(GenAspectAspect.AspectId)) {
       return Opt.some(this);
     }
     switch (dropKind) {
       case DYNAMIC -> {
-        if (key.equals(AspectDropDynamic.ID)) return Opt.some(this);
+        if (key.equals(GenAspectDropDynamic.AspectId)) return Opt.some(this);
       }
       case DYNAMIC_LIGHT -> {
-        if (key.equals(AspectDropDynamicLight.ID)) return Opt.some(this);
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) return Opt.some(this);
       }
     }
-    for (var idAspect : identityAspects) {
+    for (var idAspect : trivialIdentityAspects()) {
       if (key.equals(idAspect)) return Opt.some(this);
     }
     return Opt.none();
@@ -175,9 +197,9 @@ public record TypeObjectDynamic(
 
   @Override
   public Unique aspectAspectGetUnique(InterfaceData value) {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new IllegalStateException(
-          typeDesc + "::getUnique: TypeObjectDynamic does not represent an aspect");
+          typeDesc() + "::getUnique: TypeObjectDynamic does not represent an aspect");
     }
     return switch (some.value()) {
       case ObjectAspectSource.Static staticSrc -> staticSrc.id();
@@ -187,21 +209,21 @@ public record TypeObjectDynamic(
 
   @Override
   public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
       throw new UnsupportedOperationException(
-          typeDesc + "::getIfaceData: TypeObjectDynamic has no aspect source");
+          typeDesc() + "::getIfaceData: TypeObjectDynamic has no aspect source");
     }
     return switch (some.value()) {
       case ObjectAspectSource.Static ignored ->
           throw new UnsupportedOperationException(
-              typeDesc + "::getIfaceData: static aspect has no InterfaceData");
+              typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
       case ObjectAspectSource.FromInterfaceData ignored -> value;
     };
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    for (var rule : castFromRules) {
+    for (var rule : castFromRules()) {
       if (rule.matches(xx, sourceType)) return true;
     }
     return false;
@@ -210,20 +232,28 @@ public record TypeObjectDynamic(
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, typeDesc + "::typeCastFrom: CodeValue has no value");
+      return EResult.err(loc, typeDesc() + "::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    for (var rule : castFromRules) {
+    for (var rule : castFromRules()) {
       if (rule.matches(xx, sourceType)) {
         return rule.apply(xx, this, loc, cv, sourceType);
       }
     }
-    return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc);
+    return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    for (var rule : castRules) {
+    if (interfaceRepresented instanceof Opt.Some
+        && destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+            .optIsSome()) {
+      return true;
+    }
+    for (var idAspect : trivialIdentityAspects()) {
+      if (destType.typeAspect(xx, idAspect).optIsSome()) return true;
+    }
+    for (var rule : castRules()) {
       if (rule.matches(xx, destType)) return true;
     }
     return false;
@@ -231,30 +261,57 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    for (var rule : castRules) {
+    if (interfaceRepresented instanceof Opt.Some
+        && destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+            .optIsSome()) {
+      var sourceCode = cv.code().dynamic();
+      if (sourceCode == null) {
+        return EResult.err(
+            loc,
+            "cast " + typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
+      }
+      var seq = new JavaBytecodeSequence();
+      seq.add(sourceCode);
+      seq.add(
+          JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.fromClass(TypeObjectDynamic.class),
+              "getInterfaceData",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromClass(InterfaceData.class), TList.of())));
+      var call = new CodeDynamic(loc, seq);
+      return EResult.ok(
+          new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(xx, destType))));
+    }
+    for (var idAspect : trivialIdentityAspects()) {
+      if (destType.typeAspect(xx, idAspect).optIsSome()) {
+        return EResult.ok(cv);
+      }
+    }
+    for (var rule : castRules()) {
       if (rule.matches(xx, destType)) {
         return rule.apply(xx, this, loc, cv, destType);
       }
     }
-    return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
+    return EResult.err(loc, "Cannot cast " + typeDesc() + " to " + destType.typeDesc());
   }
 
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, typeDesc + "::field: key has no compile-time value");
+      return EResult.err(loc, typeDesc() + "::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
     if (!(ck instanceof ConstKey.Str ckStr)) {
-      return EResult.err(loc, typeDesc + ": unknown field " + ck.toCanonical());
+      return EResult.err(loc, typeDesc() + ": unknown field " + ck.toCanonical());
     }
     var keyStr = ckStr.value();
     var dyn = self_.code().dynamic();
     if (dyn == null) {
-      return EResult.err(loc, typeDesc + ": self has no dynamic code");
+      return EResult.err(loc, typeDesc() + ": self has no dynamic code");
     }
     for (var f : dataFields) {
       if (f.langName().equals(keyStr)) {
@@ -274,7 +331,7 @@ public record TypeObjectDynamic(
             new CodeValue(self_.code(), Opt.some(ValueDynamic.stack(xx, m.funcType()))));
       }
     }
-    return EResult.err(loc, typeDesc + ": unknown field '" + keyStr);
+    return EResult.err(loc, typeDesc() + ": unknown field '" + keyStr);
   }
 
   @Override
@@ -338,11 +395,9 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(lift instanceof Opt.Some<TypeObjectLift> some)) {
-      return EResult.err(loc, typeDesc + "::lift: no lift impl registered");
-    }
-    return some.value().typeObjectLift(xx, loc, externalHostValue);
+  public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
+    var pairedConst = new TypeObjectConst(matchingConstTypeId, meta, hostClass, Opt.<Type>none());
+    return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue));
   }
+
 }

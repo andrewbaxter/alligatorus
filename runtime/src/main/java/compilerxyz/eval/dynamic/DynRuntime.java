@@ -34,6 +34,7 @@ import compilerxyz.util.TList;
 import java.util.ArrayList;
 import java.util.Map;
 import static compilerxyz.util.MustCast.mustCast;
+import compilerxyz.gen.GenAspectLift;
 
 /**
  * Static entry points for callables that source code invokes. Members are only invoked from
@@ -72,7 +73,7 @@ public final class DynRuntime {
                 liftCell.vx(),
                 liftCell.importState(),
                 liftCell.currentExceptionType());
-        var liftRes = AspectLift.get(liftXx, liftCell.loc(), liftCell.sourceType());
+        var liftRes = GenAspectLift.get(liftXx, liftCell.loc(), liftCell.sourceType());
         if (liftRes.hasErrors()) {
           throw new IllegalStateException(
               "__stage: AspectLift lookup failed for source type "

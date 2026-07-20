@@ -12,8 +12,7 @@ public record Expr(QExprId loc, Variant variant) implements Value {
         return new TypeExpr();
     }
 
-    @Override
-    public Type valueType() {
+                                public Type valueType() {
         return new TypeExpr();
     }
 

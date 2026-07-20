@@ -16,6 +16,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.AspectsGen;
+import compilerxyz.codegen.TraitsGen;
 import compilerxyz.codegen.util.InterfaceSpec;
 import compilerxyz.codegen.util.Method;
 import compilerxyz.codegen.util.MethodArgs;
@@ -40,11 +41,13 @@ public final class JavaAspectExtractor {
 
   public record ScanResult(
       TList<AspectsGen.AspectSpec> aspects,
-      TList<InterfaceSpec> sourceInterfaces) {}
+      TList<InterfaceSpec> sourceInterfaces,
+      TList<TraitsGen.TraitSpec> traits) {}
 
   public static ScanResult scanRoot(Path runtimeSourceRoot) throws IOException {
     var aspects = new TList<AspectsGen.AspectSpec>();
     var interfaces = new TList<InterfaceSpec>();
+    var traits = new TList<TraitsGen.TraitSpec>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
@@ -65,10 +68,45 @@ public final class JavaAspectExtractor {
           if (trait != null) {
             interfaces.add(trait);
           }
+          var traitSpec = extractTraitSpec(file);
+          if (traitSpec != null) {
+            traits.add(traitSpec);
+          }
         }
       }
     }
-    return new ScanResult(aspects, interfaces);
+    return new ScanResult(aspects, interfaces, traits);
+  }
+
+  private static TraitsGen.@org.jspecify.annotations.Nullable TraitSpec extractTraitSpec(
+      Path sourceFile) throws IOException {
+    var cu = StaticJavaParser.parse(sourceFile);
+    ClassOrInterfaceDeclaration ifaceDecl = null;
+    for (var t : cu.getTypes()) {
+      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) {
+        for (var a : c.getAnnotations()) {
+          var n = a.getNameAsString();
+          if (n.equals("BuiltinTrait") || n.equals("compilerxyz.annotations.BuiltinTrait")) {
+            ifaceDecl = c;
+            break;
+          }
+        }
+      }
+      if (ifaceDecl != null) break;
+    }
+    if (ifaceDecl == null) return null;
+    var simpleName = ifaceDecl.getNameAsString();
+    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
+    var typeIdAnn = ifaceDecl.getAnnotationByName("BuiltinTypeId")
+        .orElseThrow(() -> new IllegalStateException(
+            "@BuiltinTrait interface " + simpleName + " missing required @BuiltinTypeId"));
+    var typeId = readSingleLongAttr(typeIdAnn);
+    Long trivialIdentity = null;
+    var tiaOpt = ifaceDecl.getAnnotationByName("BuiltinTrivialIdentityAspect");
+    if (tiaOpt.isPresent()) {
+      trivialIdentity = readSingleLongAttr(tiaOpt.get());
+    }
+    return new TraitsGen.TraitSpec(simpleName, pkg, typeId, trivialIdentity);
   }
 
   private static @org.jspecify.annotations.Nullable InterfaceSpec extractTrait(Path sourceFile)
@@ -102,14 +140,14 @@ public final class JavaAspectExtractor {
     for (var m : ifaceDecl.getMethods()) {
       var exposedOpt = m.getAnnotationByName("SourceExposed");
       if (exposedOpt.isEmpty()) continue;
-      var exposedAttrs = readAttrs(exposedOpt.get());
+      var derivedName = deriveSourceName(m.getNameAsString(), simpleName);
       var args = new TList<NamedTypeRef>();
       for (var p : m.getParameters()) {
         args.add(new NamedTypeRef(
             snakeCase(stripReservedSuffix(p.getNameAsString())),
             typeRefOf(p.getType(), importMap, pkg)));
       }
-      methods.add(new Method(exposedAttrs.get("name"), typeRefOf(m.getType(), importMap, pkg),
+      methods.add(new Method(derivedName, typeRefOf(m.getType(), importMap, pkg),
           new MethodArgs(args)));
     }
 
@@ -124,6 +162,21 @@ public final class JavaAspectExtractor {
         null,
         pkg + "." + simpleName,
         methods);
+  }
+
+  /**
+   * Derive the source-visible method name from the Java method name and the enclosing
+   * interface name. If the Java name starts with the interface name (lowercase first char),
+   * strip that prefix and lowercase the first remaining char. Otherwise return the Java
+   * name unchanged.
+   */
+  private static String deriveSourceName(String javaMethodName, String interfaceSimpleName) {
+    var prefix = Character.toLowerCase(interfaceSimpleName.charAt(0)) + interfaceSimpleName.substring(1);
+    if (javaMethodName.startsWith(prefix) && javaMethodName.length() > prefix.length()) {
+      var rest = javaMethodName.substring(prefix.length());
+      return Character.toLowerCase(rest.charAt(0)) + rest.substring(1);
+    }
+    return javaMethodName;
   }
 
   private static String stripReservedSuffix(String name) {
@@ -160,8 +213,7 @@ public final class JavaAspectExtractor {
     for (var m : ifaceDecl.getMethods()) {
       var exposedOpt = m.getAnnotationByName("SourceExposed");
       if (exposedOpt.isEmpty()) continue;
-      var exposedAttrs = readAttrs(exposedOpt.get());
-      var sourceName = exposedAttrs.get("name");
+      var sourceName = deriveSourceName(m.getNameAsString(), "Aspect" + kind);
       var args = new TList<NamedTypeRef>();
       for (var p : m.getParameters()) {
         args.add(new NamedTypeRef(
@@ -244,6 +296,11 @@ public final class JavaAspectExtractor {
     if (ifaceDecl == null) return null;
     var annot = requireAnnotation(ifaceDecl, "BuiltinAspect");
     var attrs = readAttrs(annot);
+    var typeIdAnn = ifaceDecl.getAnnotationByName("BuiltinTypeId")
+        .orElseThrow(() -> new IllegalStateException(
+            "@BuiltinAspect interface " + ifaceDecl.getNameAsString()
+                + " is missing required @BuiltinTypeId"));
+    var typeIdValue = readSingleLongAttr(typeIdAnn);
     var importMap = buildImportMap(cu);
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
 
@@ -299,7 +356,7 @@ public final class JavaAspectExtractor {
     }
 
     return new AspectsGen.AspectSpec(
-        javadoc, kind, Long.parseLong(attrs.get("uniqueId")), nestedRecords, methods);
+        javadoc, kind, Long.parseLong(attrs.get("uniqueId")), typeIdValue, nestedRecords, methods);
   }
 
   private static @org.jspecify.annotations.Nullable ClassOrInterfaceDeclaration
@@ -318,6 +375,25 @@ public final class JavaAspectExtractor {
       com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node, String name) {
     return node.getAnnotationByName(name)
         .orElseThrow(() -> new IllegalStateException("Missing @" + name));
+  }
+
+  private static long readSingleLongAttr(AnnotationExpr annot) {
+    if (annot instanceof com.github.javaparser.ast.expr.SingleMemberAnnotationExpr sm) {
+      var raw = sm.getMemberValue().toString();
+      if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
+      return Long.parseLong(raw);
+    }
+    if (annot instanceof NormalAnnotationExpr n) {
+      for (var p : n.getPairs()) {
+        if (p.getNameAsString().equals("value")) {
+          var raw = p.getValue().toString();
+          if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
+          return Long.parseLong(raw);
+        }
+      }
+    }
+    throw new IllegalStateException(
+        "readSingleLongAttr: no value found in @" + annot.getNameAsString());
   }
 
   private static Map<String, String> readAttrs(AnnotationExpr annot) {

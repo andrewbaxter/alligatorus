@@ -27,7 +27,7 @@ public final class BuiltinIdentityScanner {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("BuiltinIdentity")) continue;
+        if (!src.contains("BuiltinTrivialIdentityAspect")) continue;
         var cu = StaticJavaParser.parse(file);
         for (var t : cu.getTypes()) {
           collect(t, out);
@@ -40,7 +40,7 @@ public final class BuiltinIdentityScanner {
   private static void collect(TypeDeclaration<?> t, TList<IdentitySpec> out) {
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
-      if (n.equals("BuiltinIdentity") || n.equals("compilerxyz.annotations.BuiltinIdentity")) {
+      if (n.equals("BuiltinTrivialIdentityAspect") || n.equals("compilerxyz.annotations.BuiltinTrivialIdentityAspect")) {
         Long value = null;
         if (a instanceof NormalAnnotationExpr n2) {
           for (var p : n2.getPairs()) {
@@ -50,7 +50,7 @@ public final class BuiltinIdentityScanner {
           value = parseLong(s.getMemberValue().toString());
         }
         if (value == null) {
-          throw new IllegalStateException("@BuiltinIdentity missing value on " + t.getNameAsString());
+          throw new IllegalStateException("@BuiltinTrivialIdentityAspect missing value on " + t.getNameAsString());
         }
         out.add(new IdentitySpec(snakeCase(t.getNameAsString()), value));
       }

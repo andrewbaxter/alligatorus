@@ -9,12 +9,14 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @compilerxyz.annotations.BuiltinTypeId(7022L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6018L)
 public record QExprId(SourceId source, long expr) {
 
   public static Type dynamicType() {
@@ -28,19 +30,18 @@ public record QExprId(SourceId source, long expr) {
 
     private static TypeObjectDynamic build() {
       var jvmClass = JavaInternalName.fromClass(QExprId.class);
+      var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.Q_EXPR_ID_IDENTITY);
       return new TypeObjectDynamic(
           GenTypeIds.Q_EXPR_ID_TYPE_ID,
-          "QExprId",
+          new TypeObjectMeta("QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(QExprId.class),
+          QExprId.class,
+          new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.Q_EXPR_ID_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          new TList<Unique>(),
-          new TList<TypeObjectCastRule>(),
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

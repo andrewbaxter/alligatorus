@@ -64,6 +64,19 @@ import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectElementUseConst;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectNull;
+import compilerxyz.gen.GenAspectNumberConst;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectTuple;
 
 @compilerxyz.annotations.BuiltinTypeId(7043L)
 public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
@@ -137,7 +150,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       var elemSome = (Opt.Some<Value>) elemCv.value();
       Type elemType = elemSome.value().valueType();
       if (isAccessed) {
-        var useConstOpt = AspectElementUseConst.getMaybe(xx, elemType);
+        var useConstOpt = GenAspectElementUseConst.getMaybe(xx, elemType);
         if (useConstOpt instanceof Opt.Some<AspectElementUseConst> useConstSome) {
           var useRes = useConstSome.value().aspectElementUseConstElementUseConst(xx, loc, elemCv);
           if (useRes.hasErrors()) return useRes.reerr();
@@ -153,7 +166,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         continue;
       }
       if (elemDyn != null) seq.add(elemDyn);
-      var fullDropOpt = AspectDropDynamic.getMaybe(xx, elemType);
+      var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, elemType);
       if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullDropSome) {
         var dropRes = fullDropSome.value().aspectDropDynamicDrop(xx, loc, elemCv);
         if (dropRes.hasErrors()) return dropRes.reerr();
@@ -161,7 +174,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         if (dropDyn != null) seq.add(dropDyn);
         continue;
       }
-      var lightDropOpt = AspectDropDynamicLight.getMaybe(xx, elemType);
+      var lightDropOpt = GenAspectDropDynamicLight.getMaybe(xx, elemType);
       if (lightDropOpt instanceof Opt.Some<AspectDropDynamicLight> lightSome) {
         var dropRes = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, elemCv);
         if (dropRes.hasErrors()) return dropRes.reerr();
@@ -304,7 +317,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   private EResult<@org.jspecify.annotations.Nullable CodeDynamic> tupleChildDropCode(
       ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
       int elementIndex) {
-    var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
+    var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, childType);
     if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullSome) {
       var seq = new JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
@@ -324,7 +337,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (d != null) seq.add(d);
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    if (AspectDropDynamicLight.getMaybe(xx, childType)
+    if (GenAspectDropDynamicLight.getMaybe(xx, childType)
         instanceof Opt.Some<AspectDropDynamicLight>) {
       // Light-drop only: skip — GC handles it when the composite is dropped.
       return EResult.ok(null);
@@ -372,8 +385,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     return "tuple(" + inner + ")";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
 
     var slotTypes = new TList<TupleElement>(elements.size());
     for (var e : elements) {
@@ -397,24 +409,24 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectTuple.ID)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenAspectTuple.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamic.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectLift.ID)) {
+    if (key.equals(GenAspectLift.AspectId)) {
       var elementLifts = new TList<AspectLift>(elements.size());
       var elementTypes = new TList<Type>(elements.size());
       for (var e : elements) {
         if (!(e instanceof TupleElement.Dynamic d)) {
           return Opt.none();
         }
-        var elemLiftOpt = AspectLift.getMaybe(xx, d.type());
+        var elemLiftOpt = GenAspectLift.getMaybe(xx, d.type());
         if (!(elemLiftOpt instanceof Opt.Some<AspectLift> elemLiftSome)) {
           return Opt.none();
         }
@@ -430,7 +442,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     // The empty tuple `()` is the language-level unit value and converts to null.
     return elements.isEmpty()
-        && compilerxyz.gen.AspectNull.getMaybe(xx, destType).optIsSome();
+        && compilerxyz.gen.GenAspectNull.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
@@ -449,7 +461,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    var sourceTuple = AspectTuple.getMaybe(xx, sourceType);
+    var sourceTuple = GenAspectTuple.getMaybe(xx, sourceType);
     if (!sourceTuple.optIsSome()) {
       return false;
     }
@@ -614,7 +626,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                         }
                         default -> throw new IllegalStateException();
                       }
-                      var artRes = ArtifactSupport.exportArtifact(xx, loc, elemType);
+                      var artRes = elemType.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         elementArtifacts.add(
@@ -831,7 +843,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
               "Tuple::bindSub: const element CodeValue has no value");
         }
         var elemType = elemSome.value().valueType();
-        var bindRes = AspectBind.get(xx, loc, elemType);
+        var bindRes = GenAspectBind.get(xx, loc, elemType);
         if (bindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull()));
           continue;
@@ -860,7 +872,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
               "Tuple::bindSub: const element CodeValue has no value");
         }
         var elemType = elemSome.value().valueType();
-        var bindRes = AspectBind.get(xx, loc, elemType);
+        var bindRes = GenAspectBind.get(xx, loc, elemType);
         if (bindRes.hasErrors()) {
           scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull()));
           continue;
@@ -920,7 +932,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         continue;
       }
       var elemCv = elemRes.requireValue("Tuple::toDynamic element value");
-      var lookup = AspectConsumeDynamic.get(xx, loc, elemType);
+      var lookup = GenAspectConsumeDynamic.get(xx, loc, elemType);
       if (lookup.hasErrors()) {
         if (errors == null) errors = new TList<>();
         lookup.drainInto(errors);
@@ -1062,7 +1074,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
@@ -1072,7 +1084,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.err(loc, "Tuple::field: key has no compile-time value");
     }
     var keyVal = keySome.value();
-    var numConst = AspectNumberConst.getMaybe(xx, keyVal.valueType());
+    var numConst = GenAspectNumberConst.getMaybe(xx, keyVal.valueType());
     if (!(numConst instanceof Opt.Some<AspectNumberConst> numSome)) {
       return EResult.err(loc, "Tuple::field: key must be a compile-time number");
     }
@@ -1136,5 +1148,11 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
     ids.sort(TypeId.CANONICAL_ORDER);
     return new TypeId.Composite(GenTypeIds.TUPLE_TYPE_ID, ids);
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

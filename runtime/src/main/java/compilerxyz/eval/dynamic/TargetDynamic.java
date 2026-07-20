@@ -49,6 +49,12 @@ import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 public final class TargetDynamic implements compilerxyz.gen.Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
@@ -104,11 +110,11 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
     var value = cv.value().optUnwrap();
     var vtype = value.valueType();
-    var dropAspect = AspectDropDynamic.getMaybe(xx, vtype);
+    var dropAspect = GenAspectDropDynamic.getMaybe(xx, vtype);
     if (dropAspect.optIsSome()) {
       return dropAspect.optUnwrap().aspectDropDynamicDrop(xx, loc, cv);
     }
-    var lightAspect = AspectDropDynamicLight.getMaybe(xx, vtype);
+    var lightAspect = GenAspectDropDynamicLight.getMaybe(xx, vtype);
     if (lightAspect.optIsSome()) {
       return lightAspect.optUnwrap().aspectDropDynamicLightDropDynamicLight(xx, loc, cv);
     }
@@ -412,7 +418,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     var finalType =
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
-    var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
+    var stackOpt = erb.mustEr(GenAspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
@@ -451,7 +457,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, branch.variantType());
       var payloadBinding = new BindingId.Local(new JavaBytecodeBindingKey());
       xx.scope.replace(initialScope.fork());
-      var ibMaybe = AspectInitialBind.getMaybe(xx, branch.variantType());
+      var ibMaybe = GenAspectInitialBind.getMaybe(xx, branch.variantType());
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
         xx.scope.pushNamed(
             elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
@@ -573,7 +579,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
     var finalType =
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
-    var stackOpt = erb.mustEr(AspectStackValueDynamic.get(xx, loc, finalType));
+    var stackOpt = erb.mustEr(GenAspectStackValueDynamic.get(xx, loc, finalType));
     if (stackOpt.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(stackOpt.get().aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
   }
@@ -585,7 +591,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       return Optional.empty();
     }
     var vtype = some.value().valueType();
-    var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
+    var consumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, vtype));
     if (consumeOpt.isEmpty()) return Optional.empty();
     return erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
   }
@@ -634,7 +640,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         xx.vx.externals.add(
             new EvalContext.ExternalEntry(
                 liftKey, vtype, new External(StageLiftCell.class, liftCell)));
-        var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
+        var consumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -660,7 +666,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
         }
         var vtype = some.value().valueType();
-        var consumeOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, vtype));
+        var consumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, vtype));
         if (consumeOpt.isEmpty()) return EResult.errs(erb.errors());
         var innerJsOpt = erb.mustEr(consumeOpt.get().aspectConsumeDynamicToDynamic(xx, loc, cv));
         if (innerJsOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -724,7 +730,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           "Target::maybeBindSub: CodeValue has no value; Rust unwraps unconditionally");
     }
     var vtype = some.value().valueType();
-    var bindDynOpt = compilerxyz.gen.AspectBindDynamic.getMaybe(xx, vtype);
+    var bindDynOpt = compilerxyz.gen.GenAspectBindDynamic.getMaybe(xx, vtype);
     if (!(bindDynOpt instanceof Opt.Some<compilerxyz.gen.AspectBindDynamic> bindDynSome)) {
       return EResult.ok(Opt.none());
     }

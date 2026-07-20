@@ -5,6 +5,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 /**
  * Helpers for translating a language {@link Type}'s declared JVM data descriptor into the
@@ -24,7 +25,7 @@ public final class JvmSort {
   }
 
   private static int typedOpcode(ExprContext xx, Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
-    return switch (AspectConsumeDynamic.getMaybe(xx, type)) {
+    return switch (GenAspectConsumeDynamic.getMaybe(xx, type)) {
       case Opt.Some<AspectConsumeDynamic> some -> {
         var desc = some.value().aspectConsumeDynamicJvmClass(xx).value();
         if (desc.isEmpty()) yield aOp;

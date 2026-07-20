@@ -25,6 +25,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -41,6 +42,12 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.TypeId;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7056L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
@@ -48,9 +55,21 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         AspectArtifact,
         AspectBind,
         AspectBindDynamic,
+        compilerxyz.gen.AspectDropDynamicLight,
+        compilerxyz.gen.AspectInitialBind,
         AspectFunction,
         AspectType,
         ExporterAny {
+
+  @Override
+  public compilerxyz.eval.value.binding.BindingDynamicBinding aspectInitialBindInitialBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  }
 
   @Override
   public TypeId hasTypeIdTypeId() {
@@ -72,21 +91,22 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceFunctionConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_FUNCTION_CONST_TYPE_ID, "source_function_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectFunction.ID)
-        || key.equals(AspectType.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectDropDynamicLight.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -169,14 +189,14 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                             ? defSetArtRes.requireValue(
                                 "TypeSourceFunctionConst::exporterExport defSet")
                             : nullArtifact();
-                    var argArtRes = ArtifactSupport.exportArtifact(xx, loc, argType);
+                    var argArtRes = argType.exportArtifact(xx, loc);
                     argArtRes.drainInto(errors);
                     var argArt =
                         argArtRes.valueOrNull() != null
                             ? argArtRes.requireValue(
                                 "TypeSourceFunctionConst::exporterExport arg")
                             : nullArtifact();
-                    var retArtRes = ArtifactSupport.exportArtifact(xx, loc, retType);
+                    var retArtRes = retType.exportArtifact(xx, loc);
                     retArtRes.drainInto(errors);
                     var retArt =
                         retArtRes.valueOrNull() != null
@@ -341,7 +361,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
 
     var retStackRes =
-        compilerxyz.gen.AspectStackValueDynamic.get(xx, loc, retType);
+        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, false);
@@ -372,7 +392,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   private record SourceFunctionConstBinding(Value value) implements Binding {
@@ -407,7 +427,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), new TypeSourceFunctionConst(data)));
+      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeSourceFunctionConst(data)));
     }
   }
   @Override

@@ -39,6 +39,16 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectNumberConst;
+import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.gen.GenAspectOperatorLt;
+import compilerxyz.gen.GenAspectPostDeserialize;
 
 @compilerxyz.annotations.BuiltinTypeId(7001L)
 public record TypeNumberConst()
@@ -71,25 +81,24 @@ public record TypeNumberConst()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberConst.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_CONST_TYPE_ID, "number_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectNumberConst.ID)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectOperatorAdd.ID)
-        || key.equals(AspectOperatorEq.ID)
-        || key.equals(AspectOperatorLt.ID)) {
+    if (key.equals(GenAspectNumberConst.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectOperatorAdd.AspectId)
+        || key.equals(GenAspectOperatorEq.AspectId)
+        || key.equals(GenAspectOperatorLt.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -210,7 +219,7 @@ public record TypeNumberConst()
       return EResult.err(loc, op + ": CodeValue has no compile-time value");
     }
     var v = some.value();
-    var typeAspect = AspectNumberConst.getMaybe(xx, v.valueType());
+    var typeAspect = GenAspectNumberConst.getMaybe(xx, v.valueType());
     if (!(typeAspect instanceof Opt.Some<AspectNumberConst> a)) {
       return EResult.err(loc, op + ": type " + v.valueType().typeDesc() + " is not numeric");
     }
@@ -259,7 +268,7 @@ public record TypeNumberConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

@@ -27,11 +27,15 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectTuple;
 
 @compilerxyz.annotations.BuiltinTypeId(7039L)
 @compilerxyz.annotations.BuiltinPath("eval.aspect_lookup")
@@ -61,14 +65,13 @@ public record TypeFunctionAspectDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionAspectDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_ASPECT_DYNAMIC_TYPE_ID, "function_aspect_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -81,7 +84,7 @@ public record TypeFunctionAspectDynamic()
     }
     var argVal = argSome.value();
     var argType = argVal.valueType();
-    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, argType);
+    var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
     if (!(tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome)) {
       return EResult.err(loc, "aspect_lookup: expected 3-tuple arg (subject, aspect_type, xx)");
     }
@@ -112,14 +115,14 @@ public record TypeFunctionAspectDynamic()
     }
     var auq = aspTa.id();
 
-    var anyDyn = compilerxyz.eval.Type.dynamicType();
+    var anyDyn = Type.dynamicType();
     var subjectConvertedRes =
         compilerxyz.eval.Eval.typecheckConvert(xx, loc, anyDyn, subjectCv);
     if (subjectConvertedRes.hasErrors()) return subjectConvertedRes.reerr();
     var subjectConverted =
         subjectConvertedRes.requireValue("aspect_lookup subject convert");
     var subjectConsumeRes =
-        compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, anyDyn);
+        compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, anyDyn);
     if (subjectConsumeRes.hasErrors()) return subjectConsumeRes.reerr();
     var subjectDynRes =
         subjectConsumeRes
@@ -168,7 +171,7 @@ public record TypeFunctionAspectDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

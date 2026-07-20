@@ -12,14 +12,13 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
 import compilerxyz.gen.GenBuiltinInterfaces;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(6011L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6011L)
 @compilerxyz.annotations.BuiltinTypeId(7026L)
 @compilerxyz.annotations.BuiltinPath("types.codedyn")
 public final class CodeDynHandleType {
@@ -35,22 +34,19 @@ public final class CodeDynHandleType {
 
     private static TypeObjectDynamic build() {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.CODE_DYN_HANDLE_TYPE_IDENTITY);
-      identityAspects.add(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity());
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.CODE_DYN_HANDLE_TYPE_IDENTITY);
+      trivialIdentityAspects.add(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity());
       return new TypeObjectDynamic(
           GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID,
-          "code_dyn",
+          new compilerxyz.eval.value.object_.TypeObjectMeta("code_dyn", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
+          Object.class,
+          new compilerxyz.eval.TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, compilerxyz.util.TList.of(GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          identityAspects,
-          new TList<TypeObjectCastRule>(),
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

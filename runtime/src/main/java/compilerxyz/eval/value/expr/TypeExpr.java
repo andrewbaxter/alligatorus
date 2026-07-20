@@ -33,7 +33,7 @@ import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
@@ -41,9 +41,16 @@ import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7016L)
-@compilerxyz.annotations.BuiltinIdentity(6013L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6013L)
 @compilerxyz.annotations.BuiltinPath("types.expr")
 public record TypeExpr()
     implements
@@ -74,21 +81,20 @@ public record TypeExpr()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExpr.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_TYPE_ID, "expr");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_EXPR_IDENTITY)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)
-        || key.equals(AspectType.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -140,7 +146,7 @@ public record TypeExpr()
     }
     var sourceValue = someVal.value();
     var sourceType = sourceValue.valueType();
-    if (sourceType.typeAspect(xx, GenIdentities.TYPE_EXPR_IDENTITY).optIsSome()) {
+    if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY).optIsSome()) {
       if (sourceValue instanceof Expr expr) {
         return EResult.ok(new CodeValue(cv.code(), Opt.some(expr)));
       }
@@ -208,7 +214,7 @@ public record TypeExpr()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
@@ -226,5 +232,11 @@ public record TypeExpr()
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

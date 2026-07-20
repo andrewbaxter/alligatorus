@@ -8,6 +8,7 @@ import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectIterable;
 import compilerxyz.gen.AspectOperatorAdd;
@@ -38,6 +39,21 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.langhelp.Sources;
 import compilerxyz.gen.Value;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBoolConst;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectIterable;
+import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.gen.GenAspectOperatorLt;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectSet;
+import compilerxyz.gen.GenAspectType;
+import compilerxyz.gen.GenAspectUnion;
 
 public final class ConstEval {
   private ConstEval() {}
@@ -74,7 +90,7 @@ public final class ConstEval {
         var arg = aopt.get();
         var fv = (Opt.Some<Value>) func.value();
         var funcType = fv.value().valueType();
-        var aspectFnOpt = erb.mustEr(AspectFunction.get(xx, loc, funcType));
+        var aspectFnOpt = erb.mustEr(GenAspectFunction.get(xx, loc, funcType));
         if (aspectFnOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectFn = aspectFnOpt.get();
         var calleeExc = aspectFn.aspectFunctionExceptionType();
@@ -93,7 +109,7 @@ public final class ConstEval {
         var value = vopt.get();
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
-        var setOpt = erb.mustEr(AspectSet.get(xx, loc, baseType));
+        var setOpt = erb.mustEr(GenAspectSet.get(xx, loc, baseType));
         if (setOpt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(setOpt.get().aspectSetSet(xx, loc, base, value));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -108,7 +124,7 @@ public final class ConstEval {
         var field = fopt.get();
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
-        var aspectFieldOpt = erb.mustEr(AspectField.get(xx, loc, baseType));
+        var aspectFieldOpt = erb.mustEr(GenAspectField.get(xx, loc, baseType));
         if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
         var aspectFieldField = aspectFieldOpt.get();
         var primaryOpt = erb.mustEr(aspectFieldField.aspectFieldField(xx, loc, base, field));
@@ -153,7 +169,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(AspectOperatorLt.get(xx, loc, bv.value().valueType()));
+        var aopt = erb.mustEr(GenAspectOperatorLt.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorLtLt(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -166,7 +182,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(AspectOperatorEq.get(xx, loc, bv.value().valueType()));
+        var aopt = erb.mustEr(GenAspectOperatorEq.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorEqEq(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -179,7 +195,7 @@ public final class ConstEval {
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(AspectOperatorAdd.get(xx, loc, bv.value().valueType()));
+        var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
@@ -198,7 +214,7 @@ public final class ConstEval {
         var target = topt.get();
         var tv = (Opt.Some<Value>) target.value();
         var targetMeta = tv.value().valueType();
-        var aspectTypeOpt = erb.mustEr(AspectType.get(xx, loc, targetMeta));
+        var aspectTypeOpt = erb.mustEr(GenAspectType.get(xx, loc, targetMeta));
         if (aspectTypeOpt.isEmpty()) yield EResult.errs(erb.errors());
         var targetType = aspectTypeOpt.get().aspectTypeType(tv.value());
         var converted = erb.mustEr(Eval.typecheckConvert(xx, loc, targetType, base));
@@ -383,7 +399,7 @@ public final class ConstEval {
           return EResult.errs(erb.errors());
         }
         var valType = valV.value().valueType();
-        var bindAspectOpt = erb.mustEr(AspectBind.get(xx, sub.loc(), valType));
+        var bindAspectOpt = erb.mustEr(GenAspectBind.get(xx, sub.loc(), valType));
         if (bindAspectOpt.isEmpty()) return EResult.errs(erb.errors());
         var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(xx, sub.loc(), value));
         if (brOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -519,11 +535,11 @@ public final class ConstEval {
     if (ekOpt.isEmpty()) return EResult.errs(erb.errors());
     var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
-    var iterOpt = erb.mustEr(AspectIterable.get(xx, loc, baseType));
+    var iterOpt = erb.mustEr(GenAspectIterable.get(xx, loc, baseType));
     if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
     var iterable = iterOpt.get();
     var elementType = iterable.aspectIterableElementType();
-    var elemBindRes = AspectElementUseDynamicBind.get(xx, loc, elementType);
+    var elemBindRes = GenAspectElementUseDynamicBind.get(xx, loc, elementType);
     if (elemBindRes.hasErrors()) return elemBindRes.reerr();
     var elementScopeId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     var elementBinding =
@@ -576,7 +592,7 @@ public final class ConstEval {
     var elementKey = ekOpt.get();
     var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
-    var unionOpt = erb.mustEr(AspectUnion.get(xx, loc, baseType));
+    var unionOpt = erb.mustEr(GenAspectUnion.get(xx, loc, baseType));
     if (unionOpt.isEmpty()) return EResult.errs(erb.errors());
     var variants = unionOpt.get().aspectUnionVariants();
     var caseTags = new TList<ConstKey>();
@@ -757,7 +773,7 @@ public final class ConstEval {
     if (valueRes.isEmpty()) return EResult.errs(erb.errors());
     var cv = new CodeValue(Code.none(loc), Opt.some(valueRes.get()));
     var valueType = valueRes.get().valueType();
-    var pdRes = erb.mustEr(AspectPostDeserialize.get(xx, loc, valueType));
+    var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
     if (pdRes.isEmpty()) return EResult.errs(erb.errors());
     var finalRes = erb.mustEr(pdRes.get().aspectPostDeserializePostDeserialize(xx, loc, cv));
     if (finalRes.isEmpty()) return EResult.errs(erb.errors());
@@ -774,7 +790,7 @@ public final class ConstEval {
       var cond = condOpt.get();
       var cv = (Opt.Some<Value>) cond.value();
       var condType = cv.value().valueType();
-      var boolAspect = AspectBoolConst.getMaybe(xx, condType);
+      var boolAspect = GenAspectBoolConst.getMaybe(xx, condType);
       if (boolAspect instanceof Opt.Some<AspectBoolConst> some) {
         var val = some.value().aspectBoolConstGet(cv.value());
         conditionsEvaluated.add(new IfEval(val, cond, branch.body()));
@@ -824,7 +840,7 @@ public final class ConstEval {
       var etCv = etCvOpt.get();
       var etv = (Opt.Some<Value>) etCv.value();
       var etMeta = etv.value().valueType();
-      var atOpt = erb.mustEr(AspectType.get(xx, loc, etMeta));
+      var atOpt = erb.mustEr(GenAspectType.get(xx, loc, etMeta));
       if (atOpt.isEmpty()) return EResult.errs(erb.errors());
       bodyExcType = atOpt.get().aspectTypeType(etv.value());
     } else {
@@ -864,7 +880,7 @@ public final class ConstEval {
       var bindingId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       xx.scope.replace(initialScope.fork());
       var catchInitialDepth = xx.scope.depth();
-      var ibMaybe = AspectInitialBind.getMaybe(xx, bodyExcType);
+      var ibMaybe = GenAspectInitialBind.getMaybe(xx, bodyExcType);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
         xx.scope.pushNamed(
             bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
@@ -897,7 +913,7 @@ public final class ConstEval {
         erb.errPush("Try catch body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
-      var payloadConsumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, bodyExcType);
+      var payloadConsumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, bodyExcType);
       if (payloadConsumeRes.hasErrors()) return payloadConsumeRes.reerr();
       var payloadDesc =
           payloadConsumeRes
@@ -918,7 +934,7 @@ public final class ConstEval {
       Code finallyDropCode = Code.none(loc);
       if (finCv.value() instanceof Opt.Some<Value> finV) {
         var finType = finV.value().valueType();
-        var dropMaybe = AspectDropDynamic.getMaybe(xx, finType);
+        var dropMaybe = GenAspectDropDynamic.getMaybe(xx, finType);
         if (dropMaybe instanceof Opt.Some<AspectDropDynamic> dropSome) {
           var dropOpt = erb.mustEr(dropSome.value().aspectDropDynamicDrop(xx, loc, finCv));
           if (dropOpt.isEmpty()) return EResult.errs(erb.errors());

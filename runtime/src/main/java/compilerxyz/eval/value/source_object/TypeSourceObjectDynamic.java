@@ -16,6 +16,7 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.gen.Target;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -34,7 +35,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
@@ -42,6 +43,16 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectFunction;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7044L)
 public final class TypeSourceObjectDynamic
@@ -162,21 +173,20 @@ public final class TypeSourceObjectDynamic
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceObjectDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_DYNAMIC_TYPE_ID, "source_object_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(identity)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)) {
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)) {
       return Opt.some(this);
     }
 
@@ -186,15 +196,18 @@ public final class TypeSourceObjectDynamic
       }
       var kind = impl.interface_.builtinKind;
       if (kind != null) {
+        // Only advertise aspects that TSOD actually implements. Aspects declared by
+        // impl_interface but not implemented on this Type return None here — the source
+        // code's user-defined implementation runs via a different dispatch path.
         boolean exposes = switch (kind) {
-          case ASPECT_BIND_DYNAMIC -> key.equals(AspectBindDynamic.ID);
-          case ASPECT_CONSUME_DYNAMIC -> key.equals(AspectConsumeDynamic.ID);
-          case ASPECT_DROP_DYNAMIC -> key.equals(compilerxyz.gen.AspectDropDynamic.ID);
-          case ASPECT_FIELD -> key.equals(compilerxyz.gen.AspectField.ID);
-          case ASPECT_FUNCTION -> key.equals(compilerxyz.gen.AspectFunction.ID);
-          case BINDING -> key.equals(AspectBindDynamic.ID);
-          case TYPE -> key.equals(compilerxyz.gen.AspectType.ID);
-          case VALUE, TARGET, CODE_DYN -> false;
+          case ASPECT_BIND_DYNAMIC -> key.equals(GenAspectBindDynamic.AspectId);
+          case ASPECT_CONSUME_DYNAMIC -> key.equals(GenAspectConsumeDynamic.AspectId);
+          case ASPECT_FIELD -> key.equals(compilerxyz.gen.GenAspectField.AspectId);
+          case BINDING -> key.equals(GenAspectBindDynamic.AspectId);
+          case TYPE -> key.equals(compilerxyz.gen.GenAspectType.AspectId);
+          // TSOD does not implement AspectDropDynamic or AspectFunction — advertising
+          // them would fail at cast time. VALUE/TARGET/CODE_DYN unused.
+          case ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, VALUE, TARGET, CODE_DYN -> false;
         };
         if (exposes) return Opt.some(this);
       }
@@ -347,42 +360,8 @@ public final class TypeSourceObjectDynamic
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-    var ut = underlyingType;
-    if (ut == null) {
-      return EResult.err(
-          loc, "TypeSourceObjectDynamic::lift: object underlying type not finalised");
-    }
-    var underlyingLiftOpt = AspectLift.getMaybe(xx, ut);
-    if (underlyingLiftOpt.optIsNone()) {
-      return EResult.err(
-          loc,
-          "TypeSourceObjectDynamic::lift: underlying type ("
-              + ut.typeDesc()
-              + ") missing AspectLift");
-    }
-    var underlyingLift = underlyingLiftOpt.optUnwrap();
-    Object underlyingHost;
-
-    if (externalHostValue instanceof SourceObjectInstance) {
-      try {
-        var field = externalHostValue.getClass().getField(SourceObjectEmitter.DATA_INSTANCE_FIELD);
-        underlyingHost = field.get(externalHostValue);
-      } catch (NoSuchFieldException | IllegalAccessException e) {
-        throw new AssertionError(
-            "TypeSourceObjectDynamic::lift: source-object instance "
-                + externalHostValue.getClass().getName()
-                + " missing "
-                + SourceObjectEmitter.DATA_INSTANCE_FIELD
-                + " field",
-            e);
-      }
-    } else {
-      underlyingHost = externalHostValue;
-    }
-    return underlyingLift
-        .aspectLiftLift(xx, loc, underlyingHost)
-        .map(underlying -> new compilerxyz.eval.value.object_.ValueObjectConst(
-            new compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst(this), underlying));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(
+        new TypeSourceObjectConst(this), externalHostValue));
   }
 
   @Override
@@ -395,14 +374,14 @@ public final class TypeSourceObjectDynamic
         return true;
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
           return true;
         }
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.ASPECT_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
       return true;
     }
     return false;
@@ -414,7 +393,7 @@ public final class TypeSourceObjectDynamic
       return EResult.ok(
           new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
     }
-    if (destType.typeAspect(xx, GenIdentities.TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
       for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
@@ -437,8 +416,8 @@ public final class TypeSourceObjectDynamic
         if (builtinKind != null) {
           switch (builtinKind) {
             case TYPE -> resultType = Type.dynamicType();
-            case TARGET -> resultType = compilerxyz.gen.Target.dynamicType();
-            case BINDING -> resultType = compilerxyz.gen.Binding.dynamicType();
+            case TARGET -> resultType = Target.dynamicType();
+            case BINDING -> resultType = Binding.dynamicType();
             case CODE_DYN -> {
               return EResult.err(
                   loc,
@@ -471,7 +450,7 @@ public final class TypeSourceObjectDynamic
                 Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceConst(impl.interface_)))));
       }
     }
-    if (destType.typeAspect(xx, GenIdentities.ASPECT_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
       if (sourceCode == null) {
         return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
@@ -498,7 +477,7 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

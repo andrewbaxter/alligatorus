@@ -63,6 +63,18 @@ import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectFieldUseConst;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectRecord;
+import compilerxyz.gen.GenAspectType;
 
 @compilerxyz.annotations.BuiltinTypeId(7042L)
 public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
@@ -153,7 +165,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var fieldSome = (Opt.Some<Value>) fieldCv.value();
       Type fieldType = fieldSome.value().valueType();
       if (isAccessed) {
-        var useConstOpt = AspectFieldUseConst.getMaybe(xx, fieldType);
+        var useConstOpt = GenAspectFieldUseConst.getMaybe(xx, fieldType);
         if (useConstOpt instanceof Opt.Some<AspectFieldUseConst> useConstSome) {
           var useRes = useConstSome.value().aspectFieldUseConstFieldUseConst(xx, loc, fieldCv);
           if (useRes.hasErrors()) return useRes.reerr();
@@ -170,7 +182,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       }
       // Sibling: emit push code + drop code. Try full drop first, then light.
       if (fieldDyn != null) seq.add(fieldDyn);
-      var fullDropOpt = AspectDropDynamic.getMaybe(xx, fieldType);
+      var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, fieldType);
       if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullDropSome) {
         var dropRes = fullDropSome.value().aspectDropDynamicDrop(xx, loc, fieldCv);
         if (dropRes.hasErrors()) return dropRes.reerr();
@@ -178,7 +190,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         if (dropDyn != null) seq.add(dropDyn);
         continue;
       }
-      var lightDropOpt = compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, fieldType);
+      var lightDropOpt = compilerxyz.gen.GenAspectDropDynamicLight.getMaybe(xx, fieldType);
       if (lightDropOpt instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight> lightSome) {
         var dropRes = lightSome.value().aspectDropDynamicLightDropDynamicLight(xx, loc, fieldCv);
         if (dropRes.hasErrors()) return dropRes.reerr();
@@ -324,7 +336,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   private EResult<@org.jspecify.annotations.Nullable CodeDynamic> childFullDropCode(
       ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
       ConstKey key) {
-    var fullDropOpt = AspectDropDynamic.getMaybe(xx, childType);
+    var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, childType);
     if (fullDropOpt instanceof Opt.Some<AspectDropDynamic> fullSome) {
       var seq = new JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
@@ -344,7 +356,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (d != null) seq.add(d);
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    if (compilerxyz.gen.AspectDropDynamicLight.getMaybe(xx, childType)
+    if (compilerxyz.gen.GenAspectDropDynamicLight.getMaybe(xx, childType)
         instanceof Opt.Some<compilerxyz.gen.AspectDropDynamicLight>) {
       // Light-drop only: no per-field side effect, GC handles it when the composite
       // is dropped. Skip emitting DUP+GETFIELD+POP for this sibling entirely.
@@ -412,8 +424,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     return "record(" + inner + ")";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
 
     var fieldTypes = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
@@ -425,18 +436,18 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamic.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectFieldUseDynamic.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectRecord.ID)
-        || key.equals(AspectType.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamic.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectFieldUseDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectRecord.AspectId)
+        || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectLift.ID)) {
+    if (key.equals(GenAspectLift.AspectId)) {
       var entryLifts = new TList<RecordLift.Entry>(fields.size());
       for (var entry : fields.entrySet()) {
         var k = entry.getKey();
@@ -444,7 +455,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         if (!(f instanceof RecordField.Dynamic d)) {
           return Opt.none();
         }
-        var entryLiftOpt = AspectLift.getMaybe(xx, d.type());
+        var entryLiftOpt = GenAspectLift.getMaybe(xx, d.type());
         if (!(entryLiftOpt instanceof Opt.Some<AspectLift> entryLiftSome)) {
           return Opt.none();
         }
@@ -573,7 +584,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                         }
                         default -> throw new IllegalStateException();
                       }
-                      var artRes = ArtifactSupport.exportArtifact(xx, loc, fieldType);
+                      var artRes = fieldType.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       fieldArts.put(
                           key,
@@ -764,7 +775,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
               "Record::bindSub: const field CodeValue has no value");
         }
         var fieldType = fieldSome.value().valueType();
-        var bindRes = AspectBind.get(xx, loc, fieldType);
+        var bindRes = GenAspectBind.get(xx, loc, fieldType);
         if (bindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
           continue;
@@ -793,7 +804,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
               "Record::bindSub: const field CodeValue has no value");
         }
         var fieldType = fieldSome.value().valueType();
-        var bindRes = AspectBind.get(xx, loc, fieldType);
+        var bindRes = GenAspectBind.get(xx, loc, fieldType);
         if (bindRes.hasErrors()) {
           scopeFields.put(br.key(), new RecordScopeField.Error(bindRes.errorsOrNull()));
           continue;
@@ -825,7 +836,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    var srcAsp = AspectRecord.getMaybe(xx, sourceType);
+    var srcAsp = GenAspectRecord.getMaybe(xx, sourceType);
     if (!(srcAsp instanceof Opt.Some<AspectRecord> srcSome)) {
       return false;
     }
@@ -848,7 +859,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     var srcValue = some.value();
     var srcType = srcValue.valueType();
-    var srcAspOpt = AspectRecord.getMaybe(xx, srcType);
+    var srcAspOpt = GenAspectRecord.getMaybe(xx, srcType);
     if (!(srcAspOpt instanceof Opt.Some<AspectRecord> srcAspSome)) {
       throw new IllegalStateException(
           "Record::typeCastFrom: source is not AspectRecord: " + srcType.typeDesc());
@@ -1101,7 +1112,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                 "Record::toDynamic: field '" + key.toCanonical() + "' CodeValue has no value");
           }
           var elemType = elemValueSome.value().valueType();
-          var toDynOpt = AspectConsumeDynamic.getMaybe(xx, elemType);
+          var toDynOpt = GenAspectConsumeDynamic.getMaybe(xx, elemType);
           if (!(toDynOpt instanceof Opt.Some<AspectConsumeDynamic> toDynSome)) {
             if (errors == null) errors = new TList<>();
             errors.add(
@@ -1165,7 +1176,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   public static final class RecordLift implements AspectLift {
@@ -1280,5 +1291,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
   }
 }

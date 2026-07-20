@@ -22,6 +22,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
@@ -37,6 +38,8 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7055L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
@@ -73,14 +76,13 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID, "source_union_new_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID) || key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectBind.AspectId) || key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -124,7 +126,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -160,7 +162,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   private record SourceUnionNewConstBinding(Value value) implements Binding {

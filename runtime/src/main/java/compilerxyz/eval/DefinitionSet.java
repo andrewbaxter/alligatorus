@@ -118,7 +118,7 @@ public final class DefinitionSet implements ExporterAny {
                     var objects = new TList<Artifact>(set.objects.size());
                     for (var dt : set.objects) {
                       var dtConst = new TypeTypeSourceObjectConst(dt);
-                      var artRes = ArtifactSupport.exportArtifact(xx, loc, dtConst);
+                      var artRes = dtConst.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         objects.add(
@@ -128,7 +128,7 @@ public final class DefinitionSet implements ExporterAny {
                     var functions = new TList<Artifact>(set.functions.size());
                     for (var f : set.functions) {
                       var fConst = new TypeSourceFunctionConst(f);
-                      var artRes = ArtifactSupport.exportArtifact(xx, loc, fConst);
+                      var artRes = fConst.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         functions.add(
@@ -138,7 +138,7 @@ public final class DefinitionSet implements ExporterAny {
                     var interfaces = new TList<Artifact>(set.interfaces.size());
                     for (var i : set.interfaces) {
                       var iConst = new TypeSourceInterfaceConst(i);
-                      var artRes = ArtifactSupport.exportArtifact(xx, loc, iConst);
+                      var artRes = iConst.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         interfaces.add(

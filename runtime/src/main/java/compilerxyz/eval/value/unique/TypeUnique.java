@@ -26,7 +26,7 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -49,9 +49,15 @@ import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectOperatorEq;
 
 @compilerxyz.annotations.BuiltinTypeId(7015L)
-@compilerxyz.annotations.BuiltinIdentity(6003L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6003L)
 public record TypeUnique()
     implements
         Type,
@@ -79,20 +85,19 @@ public record TypeUnique()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUnique.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_TYPE_ID, "unique");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_UNIQUE_IDENTITY)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectOperatorEq.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectOperatorEq.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -212,7 +217,7 @@ public record TypeUnique()
     if (cv.value() instanceof Opt.Some<Value> some) {
       var srcType = some.value().valueType();
       if (!(srcType instanceof TypeUnique)) {
-        var asp = AspectConsumeDynamic.getMaybe(xx, srcType);
+        var asp = GenAspectConsumeDynamic.getMaybe(xx, srcType);
         if (asp instanceof Opt.Some<AspectConsumeDynamic> aspSome) {
           return aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
         }
@@ -281,7 +286,7 @@ public record TypeUnique()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override
@@ -290,7 +295,7 @@ public record TypeUnique()
     if (!(cv.value() instanceof Opt.Some<Value> some)) return EResult.ok(cv);
     var srcType = some.value().valueType();
     if (srcType instanceof TypeUnique) return EResult.ok(cv);
-    var asp = AspectConsumeDynamic.getMaybe(xx, srcType);
+    var asp = GenAspectConsumeDynamic.getMaybe(xx, srcType);
     if (!(asp instanceof Opt.Some<AspectConsumeDynamic> aspSome)) return EResult.ok(cv);
     var dynRes = aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
     if (dynRes.hasErrors()) return dynRes.reerr();
@@ -309,7 +314,7 @@ public record TypeUnique()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

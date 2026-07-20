@@ -16,6 +16,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynPanic;
@@ -32,6 +33,8 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
 
 @compilerxyz.annotations.BuiltinTypeId(7019L)
 @compilerxyz.annotations.BuiltinPath("panic")
@@ -49,14 +52,13 @@ public record TypePanicDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypePanicDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_PANIC_DYNAMIC_TYPE_ID, "panic_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID) || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -71,7 +73,7 @@ public record TypePanicDynamic()
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var toDynamicOpt = erb.mustEr(AspectConsumeDynamic.get(xx, loc, stringType));
+    var toDynamicOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, stringType));
     if (toDynamicOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
@@ -112,7 +114,7 @@ public record TypePanicDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

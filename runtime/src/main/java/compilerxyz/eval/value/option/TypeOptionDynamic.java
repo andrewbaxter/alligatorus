@@ -31,7 +31,7 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
@@ -42,9 +42,16 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7035L)
-@compilerxyz.annotations.BuiltinIdentity(6008L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6008L)
 public record TypeOptionDynamic(Type elementType)
     implements
         Type,
@@ -73,21 +80,20 @@ public record TypeOptionDynamic(Type elementType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, "option_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY)
-        || key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -100,7 +106,7 @@ public record TypeOptionDynamic(Type elementType)
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override
@@ -109,7 +115,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.err(loc, "TypeOptionDynamic::typeCastFrom: CodeValue has no compile-time value");
     }
     var sourceType = some.value().valueType();
-    if (!(sourceType.typeAspect(xx, GenIdentities.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>)) {
+    if (!(sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>)) {
       return EResult.err(loc, "Cannot convert to option");
     }
     return EResult.ok(
@@ -221,7 +227,7 @@ public record TypeOptionDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), f.type()))));
+              new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
     };
   }
 
@@ -266,7 +272,7 @@ public record TypeOptionDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

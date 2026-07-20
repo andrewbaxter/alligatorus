@@ -11,13 +11,12 @@ import compilerxyz.eval.value.object_.ObjectDropKind;
 import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinIdentity(6012L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6012L)
 @compilerxyz.annotations.BuiltinTypeId(7013L)
 @compilerxyz.annotations.BuiltinPath("types.aspect")
 public interface Aspect {
@@ -33,21 +32,19 @@ public interface Aspect {
 
     private static TypeObjectDynamic build() {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.ASPECT_IDENTITY);
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.ASPECT_IDENTITY);
+      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta("aspect", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
       return new TypeObjectDynamic(
           GenTypeIds.ASPECT_TYPE_ID,
-          "aspect",
+          meta,
           jvmClass,
           JavaDataDescriptor.fromInternalName(jvmClass),
+          Object.class,
+          new compilerxyz.eval.TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.ASPECT_TYPE_ID)),
           new TList<ObjectDataField>(),
           new TList<ObjectMethod>(),
           ObjectDropKind.DYNAMIC_LIGHT,
-          identityAspects,
-          new TList<TypeObjectCastRule>(),
-          new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none(),
           Opt.<JavaInternalName>none());
     }
   }

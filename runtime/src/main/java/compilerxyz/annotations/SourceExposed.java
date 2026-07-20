@@ -6,12 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks an aspect method as exposed via the enclosing type's {@link SourceInterface} tree
- * registration. The {@code name} is the source-visible method name (may differ from the derived
- * aspect method short-name).
+ * Marks an aspect/trait method as exposed via the enclosing type's SourceInterface tree
+ * registration. The source-visible name is derived from the Java method name: strip the
+ * lowercase-first-char interface-name prefix, lowercase the first remaining char.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.SOURCE)
-public @interface SourceExposed {
-  String name();
-}
+public @interface SourceExposed {}

@@ -87,6 +87,12 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.dynamic", "JavaBytecodeUtils");
   private static final ClassName TYPE_OBJECT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName TYPE_OBJECT_META =
+      ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
+  private static final ClassName TYPE_ID_COMPOSITE =
+      ClassName.get("compilerxyz.eval", "TypeId", "Composite");
+  private static final ClassName GEN_TYPE_IDS =
+      ClassName.get("compilerxyz.gen", "GenTypeIds");
   private static final ClassName OBJECT_DROP_KIND =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
   private static final ClassName TYPE_OBJECT_CAST_RULE =
@@ -683,28 +689,34 @@ public final class PushStructsGen {
     if (isSelfReferential) {
       builder.addStatement("var __methods = new $T<$T>()", TLIST, OBJECT_METHOD);
     }
+    builder.addStatement("var __typeId = new $T.Builtin($LL)", TYPE_ID, spec.builtinUniqueId());
     builder.addStatement(
-        "$N = new $T(new $T.Builtin($LL), $S, $T.of($S), $T.fromClass($T.class), $L, $L, $T.DYNAMIC, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none(), $T.none(), $T.none())",
-        fieldName,
-        TYPE_OBJECT_DYNAMIC,
-        TYPE_ID,
-        spec.builtinUniqueId(),
+        "var __meta = new $T($S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
+        TYPE_OBJECT_META,
         spec.name(),
-        JAVA_INTERNAL_NAME,
-        jvmInternal,
-        JAVA_DATA_DESCRIPTOR,
-        specClass,
-        dataFieldsList.build(),
-        methodsList.build(),
-        OBJECT_DROP_KIND,
         TLIST,
         UNIQUE,
         TLIST,
         TYPE_OBJECT_CAST_RULE,
         TLIST,
         TYPE_OBJECT_CAST_FROM_RULE,
-        OPT,
-        OPT,
+        OPT);
+    builder.addStatement(
+        "$N = new $T(__typeId, __meta, $T.of($S), $T.fromClass($T.class), $T.class, "
+            + "new $T($T.OBJECT_CONST_OF_TYPE_TYPE_ID, $T.of(__typeId)), $L, $L, $T.DYNAMIC, $T.none())",
+        fieldName,
+        TYPE_OBJECT_DYNAMIC,
+        JAVA_INTERNAL_NAME,
+        jvmInternal,
+        JAVA_DATA_DESCRIPTOR,
+        specClass,
+        specClass,
+        TYPE_ID_COMPOSITE,
+        GEN_TYPE_IDS,
+        TLIST,
+        dataFieldsList.build(),
+        methodsList.build(),
+        OBJECT_DROP_KIND,
         OPT);
     if (isSelfReferential) {
       for (var meth : spec.methods()) {

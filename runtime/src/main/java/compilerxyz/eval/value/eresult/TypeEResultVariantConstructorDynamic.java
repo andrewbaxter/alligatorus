@@ -24,9 +24,11 @@ import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7102L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
@@ -49,14 +51,13 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "eresult_variant_constructor_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -69,7 +70,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     if (isOk) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
       if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-      var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, elementType);
+      var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (consumeRes.hasErrors()) return consumeRes.reerr();
       var innerJsRes =
           consumeRes
@@ -138,7 +139,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

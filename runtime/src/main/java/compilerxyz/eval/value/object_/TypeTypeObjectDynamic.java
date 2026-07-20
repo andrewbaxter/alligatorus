@@ -6,7 +6,7 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -32,26 +32,22 @@ public final class TypeTypeObjectDynamic {
 
     private static TypeObjectConst build() {
       var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenIdentities.TYPE_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
       castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
-          GenIdentities.INTERFACE_DATA_IDENTITY,
+          GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
           JavaInternalName.fromClass(TypeObjectDynamic.class),
           "getInterfaceData",
           JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromClass(InterfaceData.class),
               TList.of())));
-      var identityAspects = new TList<Unique>();
-      identityAspects.add(GenIdentities.TYPE_IDENTITY);
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
+      var meta = new TypeObjectMeta("type_object_dynamic_meta", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
       return new TypeObjectConst(
           GenTypeIds.TYPE_TYPE_OBJECT_DYNAMIC_TYPE_ID,
-          "type_object_dynamic_meta",
+          meta,
           TypeObjectDynamic.class,
-          Opt.<Type>none(),
-          identityAspects,
-          castRules,
-          new TList<TypeObjectCastFromRule>(),
-          Opt.<TypeObjectLift>none(),
-          Opt.<ObjectAspectSource>none());
+          Opt.<Type>none());
     }
   }
 }

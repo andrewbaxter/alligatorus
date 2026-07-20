@@ -22,7 +22,7 @@ public final class IdentitiesGen {
   public record IdentitySpec(String name, long builtinUniqueId) {}
 
   private static TList<IdentitySpec> specs() {
-    // All 14 identities migrated to @BuiltinIdentity annotations or deleted as dead.
+    // All 14 identities migrated to @BuiltinTrivialIdentityAspect annotations or deleted as dead.
     // Dead: type_code_struct_identity (6009), type_code_enum_identity (6010) — zero refs.
     return TList.of();
   }
@@ -49,7 +49,7 @@ public final class IdentitiesGen {
     }
 
       var cls =
-              TypeSpec.classBuilder("GenIdentities")
+              TypeSpec.classBuilder("GenTrivialIdentityAspects")
                       .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
     cls.addMethod(

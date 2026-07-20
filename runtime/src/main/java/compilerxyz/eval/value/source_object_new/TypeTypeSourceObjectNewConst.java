@@ -29,6 +29,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectPostDeserialize;
 import org.jspecify.annotations.Nullable;
@@ -37,6 +38,11 @@ import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectPostDeserialize;
 
 @compilerxyz.annotations.BuiltinTypeId(7047L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
@@ -76,21 +82,20 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID, "type_source_object_new_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectFunction.ID)
-        || key.equals(AspectLift.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectLift.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -156,7 +161,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                   dt.newArtifactIdCell,
                   () -> {
                     var parentConst = new TypeTypeSourceObjectConst(dt);
-                    var objectArtRes = ArtifactSupport.exportArtifact(xx, loc, parentConst);
+                    var objectArtRes = parentConst.exportArtifact(xx, loc);
                     objectArtRes.drainInto(errors);
                     var objectArt =
                         objectArtRes.valueOrNull() != null
@@ -253,7 +258,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

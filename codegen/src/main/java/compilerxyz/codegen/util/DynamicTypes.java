@@ -155,6 +155,14 @@ public final class DynamicTypes {
     factory("compilerxyz.gen", "Value");
     factory("compilerxyz.gen", "Binding");
     factory("compilerxyz.gen", "Target");
+    // Aspects: dynamicType() lives on the GenAspectXxx companion class.
+    for (var name : new String[] {
+        "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
+        "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
+        "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
+        "AspectArtifact", "AspectAspect"}) {
+      delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);
+    }
 
     // Composite descriptors.
     composite(

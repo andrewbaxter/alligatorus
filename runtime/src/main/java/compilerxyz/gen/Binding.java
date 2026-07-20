@@ -6,6 +6,7 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -16,7 +17,7 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -26,37 +27,17 @@ import compilerxyz.util.TList;
 @compilerxyz.annotations.BuiltinPath("eval.binding")
 @compilerxyz.annotations.BuiltinTypeId(7025L)
 public interface Binding {
-    @compilerxyz.annotations.SourceExposed(name = "use")
+    @compilerxyz.annotations.SourceExposed
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
 
-    /**
-     * Produce the drop code for this binding at emission time. Called by
-     * scope-exit unwind (try/finally wrap) and by Return's inline-drop walk;
-     * always invoked at the moment the drop will be emitted, so the code
-     * can reflect the binding's current state (e.g., a type refined by
-     * intervening Set operations) rather than a snapshot taken at bind
-     * time.
-     */
     default EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         var useCv = bindingUse(xx, loc, Code.none(loc));
         return xx.target.targetDrop(xx, loc, useCv);
     }
 
-    /**
-     * Fork this binding for a branch. Any mutable state the binding carries
-     * (including a mutable type) must be cloned so subsequent mutations on
-     * the fork do not affect this binding.
-     */
     Binding bindingFork();
 
-    /**
-     * Merge this binding (the receiver, representing one branch's outcome)
-     * with the outcomes of the other branches. If the outcomes are
-     * incompatible — e.g., a mutable type ended up in mutually-exclusive
-     * states across branches — return an error. Otherwise return the
-     * unified binding to install as the post-branch state.
-     */
-    EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, compilerxyz.util.TList<Binding> others);
+    EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others);
 
     static Type dynamicType() {
         return DynamicType.INSTANCE;
@@ -68,21 +49,18 @@ public interface Binding {
         private DynamicType() {}
 
         private static TypeObjectDynamic build() {
-            var identityAspects = new TList<Unique>();
-            identityAspects.add(GenBuiltinInterfaces.builtinBindingIfaceIdentity());
+            var trivialIdentityAspects = new TList<Unique>();
+            trivialIdentityAspects.add(GenBuiltinInterfaces.builtinBindingIfaceIdentity());
             return new TypeObjectDynamic(
                     GenTypeIds.BINDING_TYPE_ID,
-                    "binding",
+                    new TypeObjectMeta("binding", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
                     JavaInternalName.fromClass(Binding.class),
                     JavaDataDescriptor.fromClass(Binding.class),
+                    Binding.class,
+                    new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.BINDING_TYPE_ID)),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),
                     ObjectDropKind.DYNAMIC_LIGHT,
-                    identityAspects,
-                    new TList<TypeObjectCastRule>(),
-                    new TList<TypeObjectCastFromRule>(),
-                    Opt.<TypeObjectLift>none(),
-                    Opt.<ObjectAspectSource>none(),
                     Opt.<JavaInternalName>none());
         }
     }

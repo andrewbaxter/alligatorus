@@ -23,12 +23,18 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7041L)
 public record TypeMethodDynamic(
@@ -66,18 +72,17 @@ public record TypeMethodDynamic(
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMethodDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, "method_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -94,7 +99,7 @@ public record TypeMethodDynamic(
     var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
     var argsDynRes = compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
     if (argsDynRes.hasErrors()) return argsDynRes.reerr();
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var seq = new JavaBytecodeSequence();
@@ -161,7 +166,7 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

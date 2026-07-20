@@ -37,6 +37,7 @@ import compilerxyz.util.TOrderedSet;
 import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
@@ -428,7 +429,7 @@ public final class SourceObjectEmitter {
     var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
     var selfLocal = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, selfId);
     JavaDataDescriptor dataFieldDesc =
-        switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, underlyingType)) {
+        switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, underlyingType)) {
           case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s ->
               s.value().aspectConsumeDynamicJvmClass(xx);
           case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
@@ -533,8 +534,14 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.emitInterfaceMethodMethod: compiledArgParamTypes missing or mismatched");
     }
     for (int i = 0; i < argParamIds.size(); i++) {
-      var argConsume = (compilerxyz.gen.AspectConsumeDynamic) argParamTypes.get(i);
-      var argDesc = argConsume.aspectConsumeDynamicJvmClass(xx);
+      var argType = argParamTypes.get(i);
+      var argConsumeOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType);
+      if (!(argConsumeOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> argConsumeSome)) {
+        throw new IllegalStateException(
+            "SourceObjectEmitter.emitInterfaceMethodMethod: arg type " + argType.typeDesc()
+                + " does not implement AspectConsumeDynamic");
+      }
+      var argDesc = argConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       jvmParamKeys.add(argParamIds.get(i).key());
       jvmParamWides.add(slotWidth(argDesc) == 2);
     }
@@ -692,8 +699,13 @@ public final class SourceObjectEmitter {
     if (argParamTypes != null) {
       for (var argType : argParamTypes) {
         seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, hostSlot));
-        var argConsume = (compilerxyz.gen.AspectConsumeDynamic) argType;
-        var argDesc = argConsume.aspectConsumeDynamicJvmClass(xx);
+        var argConsumeOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType);
+        if (!(argConsumeOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> argConsumeSome)) {
+          throw new IllegalStateException(
+              "SourceObjectEmitter.emitHostAdapter: arg type " + argType.typeDesc()
+                  + " does not implement AspectConsumeDynamic");
+        }
+        var argDesc = argConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
         hostSlot += slotWidth(argDesc);
       }
     }
@@ -730,7 +742,7 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: missing compiledArgParamTypes");
     }
     for (var argType : argParamTypes) {
-      var argConsume = switch (compilerxyz.gen.AspectConsumeDynamic.getMaybe(xx, argType)) {
+      var argConsume = switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType)) {
         case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s -> s.value();
         case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
             throw new IllegalStateException(

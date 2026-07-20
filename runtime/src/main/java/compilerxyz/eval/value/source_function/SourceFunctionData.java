@@ -32,6 +32,10 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectRecord;
+import compilerxyz.gen.GenAspectTuple;
 
 public final class SourceFunctionData {
   public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
@@ -122,15 +126,15 @@ public final class SourceFunctionData {
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
 
     var argSlots = new TList<DefSetFunctionsEmitter.ArgSlot>();
-    var tupleOpt = AspectTuple.getMaybe(xx, argT);
-    var recordOpt = AspectRecord.getMaybe(xx, argT);
+    var tupleOpt = GenAspectTuple.getMaybe(xx, argT);
+    var recordOpt = GenAspectRecord.getMaybe(xx, argT);
     if (tupleOpt.optIsSome()) {
       var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
       var elemBindings = new TList<Binding>();
       for (var et : elemTypes) {
         var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
-        var ibMaybe = AspectInitialBind.getMaybe(xx, et);
+        var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
         if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
           return EResult.err(rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBind");
         }
@@ -145,7 +149,7 @@ public final class SourceFunctionData {
         var et = entry.getValue();
         var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
         argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
-        var ibMaybe = AspectInitialBind.getMaybe(xx, et);
+        var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
         if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
           return EResult.err(rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBind");
         }
@@ -156,7 +160,7 @@ public final class SourceFunctionData {
     } else {
       var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
       argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
-      var ibMaybe = AspectInitialBind.getMaybe(xx, argT);
+      var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
       if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
         bodyScope.pushNamed(new ConstKey.Str("arg"), ibSome.value().aspectInitialBindInitialBind(slotId));
       }
@@ -178,7 +182,7 @@ public final class SourceFunctionData {
     CodeDynamic bodyCode;
     if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
       var valueType = someVal.value().valueType();
-      var consumeResult = AspectConsumeDynamic.get(funcXx, rootLoc, valueType);
+      var consumeResult = GenAspectConsumeDynamic.get(funcXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
       }
@@ -223,7 +227,7 @@ public final class SourceFunctionData {
 
   private static compilerxyz.eval.dynamic.JavaDataDescriptor jvmDescFor(
       ExprContext xx, QExprId loc, Type t) {
-    var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
+    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
       return some.value().aspectConsumeDynamicJvmClass(xx);
     }
@@ -233,7 +237,7 @@ public final class SourceFunctionData {
 
   private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescForRes(
       ExprContext xx, QExprId loc, Type t) {
-    var consumeOpt = AspectConsumeDynamic.getMaybe(xx, t);
+    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
       return EResult.ok(some.value().aspectConsumeDynamicJvmClass(xx));
     }

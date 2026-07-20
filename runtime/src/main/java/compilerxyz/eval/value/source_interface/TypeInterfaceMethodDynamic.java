@@ -23,11 +23,15 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7119L)
 public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodData method)
@@ -68,16 +72,15 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeInterfaceMethodDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INTERFACE_METHOD_DYNAMIC_TYPE_ID, "interface_method_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectInitialBind.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -104,7 +107,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeInterfaceMethodDynamic typecheckConvert");
-    var consumeRes = AspectConsumeDynamic.get(xx, loc, argType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var argDynRes =
         consumeRes
@@ -113,7 +116,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     if (argDynRes.hasErrors()) return argDynRes.reerr();
     var argDyn = argDynRes.requireValue("TypeInterfaceMethodDynamic argDyn");
 
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, retType);
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var descObject = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
@@ -125,7 +128,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     seq.add(argDyn);
     var hostName = method.hostMethodName == null ? method.name : method.hostMethodName;
     seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
-    var retConsumeOpt = AspectConsumeDynamic.getMaybe(xx, retType);
+    var retConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, retType);
     if (retConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> retConsumeSome) {
       var retDesc = retConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       if (!retDesc.value().equals(descObject.value())) {
@@ -158,7 +161,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

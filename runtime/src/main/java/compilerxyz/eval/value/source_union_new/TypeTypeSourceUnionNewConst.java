@@ -24,6 +24,7 @@ import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
@@ -32,6 +33,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectPostDeserialize;
 
 @compilerxyz.annotations.BuiltinTypeId(7054L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
@@ -48,19 +52,18 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID, "type_source_union_new_const");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -121,7 +124,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                   variant.newArtifactIdCell,
                   () -> {
                     var parentConst = new TypeTypeSourceUnionConst(tu);
-                    var tuArtRes = ArtifactSupport.exportArtifact(xx, loc, parentConst);
+                    var tuArtRes = parentConst.exportArtifact(xx, loc);
                     tuArtRes.drainInto(errors);
                     var tuArt =
                         tuArtRes.valueOrNull() != null
@@ -220,7 +223,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

@@ -1,6 +1,7 @@
 package compilerxyz.gen;
 
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -11,7 +12,7 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectLift;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -20,9 +21,19 @@ import compilerxyz.util.TList;
     scopeId = 3001)
 @compilerxyz.annotations.BuiltinPath("eval.value")
 @compilerxyz.annotations.BuiltinTypeId(7109L)
-public interface Value {
-    @compilerxyz.annotations.SourceExposed(name = "type")
+public interface Value extends compilerxyz.artifact.Artifactable {
+    @compilerxyz.annotations.SourceExposed
     Type valueType();
+
+    @Override
+    default compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+        compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
+      var asp = compilerxyz.gen.GenAspectArtifact.get(xx, loc, valueType());
+      if (asp.hasErrors()) return asp.reerr();
+      var exporter = asp.requireValue("Value::exportArtifact aspect").aspectArtifactExporter();
+      return exporter.artifactExporterExport(xx, loc,
+          compilerxyz.artifact.ArtifactSupport.valueAsExporterAny(this));
+    }
 
     static Type dynamicType() {
         return DynamicType.INSTANCE;
@@ -34,21 +45,18 @@ public interface Value {
         private DynamicType() {}
 
         private static TypeObjectDynamic build() {
-            var identityAspects = new TList<Unique>();
-            identityAspects.add(GenBuiltinInterfaces.builtinValueIfaceIdentity());
+            var trivialIdentityAspects = new TList<Unique>();
+            trivialIdentityAspects.add(GenBuiltinInterfaces.builtinValueIfaceIdentity());
             return new TypeObjectDynamic(
                     GenTypeIds.VALUE_TYPE_ID,
-                    "value",
+                    new TypeObjectMeta("value", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
                     JavaInternalName.fromClass(Value.class),
                     JavaDataDescriptor.fromClass(Value.class),
+                    Value.class,
+                    new TypeId.Composite(GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(GenTypeIds.VALUE_TYPE_ID)),
                     new TList<ObjectDataField>(),
                     new TList<ObjectMethod>(),
                     ObjectDropKind.DYNAMIC_LIGHT,
-                    identityAspects,
-                    new TList<TypeObjectCastRule>(),
-                    new TList<TypeObjectCastFromRule>(),
-                    Opt.<TypeObjectLift>none(),
-                    Opt.<ObjectAspectSource>none(),
                     Opt.<JavaInternalName>none());
         }
     }

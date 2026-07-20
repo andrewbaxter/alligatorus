@@ -19,6 +19,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JvmConstants;
@@ -33,6 +34,8 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7037L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
@@ -53,14 +56,13 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionVariantConstructorDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_TYPE_ID, "option_variant_constructor_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectArtifact.ID) || key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId) || key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -104,7 +106,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -150,7 +152,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {

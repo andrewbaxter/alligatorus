@@ -55,6 +55,17 @@ import java.util.Iterator;
 import java.util.function.Function;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectIterable;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectStringDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7027L)
 public record TypeListDynamic(Type elementType)
@@ -88,27 +99,26 @@ public record TypeListDynamic(Type elementType)
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, "list_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectDropDynamic.ID)) {
-      return AspectDropDynamic.getMaybe(xx, elementType).optIsSome()
+    if (key.equals(GenAspectDropDynamic.AspectId)) {
+      return GenAspectDropDynamic.getMaybe(xx, elementType).optIsSome()
           ? Opt.some(this)
           : Opt.none();
     }
-    if (key.equals(AspectArtifact.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectIterable.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectIterable.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -165,7 +175,7 @@ public record TypeListDynamic(Type elementType)
     var m = TMap.<ConstKey, FieldSpec>of();
     m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
     m.put(new ConstKey.Str("push"), new FieldSpec.Method(new TypeListPushDynamic(elementType)));
-    if (AspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
+    if (GenAspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {
       m.put(
           new ConstKey.Str("join"),
           new FieldSpec.Method(new TypeListJoinDynamic(elementType)));
@@ -189,7 +199,7 @@ public record TypeListDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), f.type()))));
+              new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
       case FieldSpec.Method m ->
           EResult.ok(
               new CodeValue(
@@ -242,7 +252,7 @@ public record TypeListDynamic(Type elementType)
   @Override
   public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
-    var baseConsumeRes = AspectConsumeDynamic.get(xx, loc, this);
+    var baseConsumeRes = GenAspectConsumeDynamic.get(xx, loc, this);
     if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
     var baseDynRes =
         baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
@@ -287,7 +297,7 @@ public record TypeListDynamic(Type elementType)
 
   private CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
     var decodeSeq = new JavaBytecodeSequence();
-    var elemConsumeOpt = AspectConsumeDynamic.getMaybe(xx, elementType);
+    var elemConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, elementType);
     if (elemConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> elemConsumeSome) {
       var elemDesc = elemConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       var d = elemDesc.value();
@@ -313,7 +323,7 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
@@ -323,7 +333,7 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
-    var elemDropRes = AspectDropDynamic.get(xx, loc, elementType);
+    var elemDropRes = GenAspectDropDynamic.get(xx, loc, elementType);
     if (elemDropRes.hasErrors()) return elemDropRes.reerr();
     var elemDrop = elemDropRes.requireValue("TypeListDynamic::drop element AspectDropDynamic");
     if (!(cv.value() instanceof Opt.Some<Value> some)

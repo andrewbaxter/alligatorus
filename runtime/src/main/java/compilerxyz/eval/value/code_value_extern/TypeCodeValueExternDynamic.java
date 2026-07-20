@@ -21,15 +21,21 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7020L)
-@compilerxyz.annotations.BuiltinIdentity(6002L)
+@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6002L)
 @compilerxyz.annotations.BuiltinPath("types.cve")
 public record TypeCodeValueExternDynamic()
     implements
@@ -59,20 +65,19 @@ public record TypeCodeValueExternDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeCodeValueExternDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_CODE_VALUE_EXTERN_DYNAMIC_TYPE_ID, "code_value_extern_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectStackValueDynamic.ID)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -159,7 +164,7 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome();
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
@@ -168,7 +173,7 @@ public record TypeCodeValueExternDynamic()
       return EResult.err(loc, "TypeCodeValueExternDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    if (sourceType.typeAspect(xx, GenIdentities.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome()) {
+    if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(
               cv.code(),
@@ -184,7 +189,7 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
@@ -197,10 +202,13 @@ public record TypeCodeValueExternDynamic()
 
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome();
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CODE_VALUE_EXTERN_DYNAMIC_IDENTITY).optIsSome()) {
+      return EResult.ok(cv);
+    }
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

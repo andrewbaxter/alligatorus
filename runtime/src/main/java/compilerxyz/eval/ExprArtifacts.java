@@ -5,6 +5,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.Value;
+import compilerxyz.gen.GenAspectArtifact;
 
 public final class ExprArtifacts {
   private ExprArtifacts() {}
@@ -482,7 +483,7 @@ public final class ExprArtifacts {
         var value = someV.value();
         var errors = new TList<ExprErr>();
         var type = value.valueType();
-        var aspRes = AspectArtifact.get(xx, expr.loc(), type);
+        var aspRes = GenAspectArtifact.get(xx, expr.loc(), type);
         if (aspRes.hasErrors()) {
           aspRes.drainInto(errors);
           return EResult.errs(errors);

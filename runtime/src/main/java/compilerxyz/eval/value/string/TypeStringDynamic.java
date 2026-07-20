@@ -52,6 +52,19 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectSet;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectStringConst;
+import compilerxyz.gen.GenAspectStringDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7008L)
 @compilerxyz.annotations.BuiltinPath("types.string")
@@ -121,27 +134,26 @@ public record TypeStringDynamic()
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_STRING_DYNAMIC_TYPE_ID, "string_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectStringDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectStackValueDynamic.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectLift.ID)
-        || key.equals(AspectSet.ID)
-        || key.equals(AspectArtifact.ID)) {
+    if (key.equals(GenAspectStringDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectSet.AspectId)
+        || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(AspectPostDeserialize.ID)) {
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
       return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     return Opt.none();
@@ -225,18 +237,18 @@ public record TypeStringDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return AspectStringConst.getMaybe(xx, sourceType).optIsSome()
-        || AspectStringDynamic.getMaybe(xx, sourceType).optIsSome();
+    return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome()
+        || GenAspectStringDynamic.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return AspectStringDynamic.getMaybe(xx, destType).optIsSome();
+    return GenAspectStringDynamic.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
@@ -245,7 +257,7 @@ public record TypeStringDynamic()
       return EResult.err(loc, "TypeStringDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    var stringConstOpt = AspectStringConst.getMaybe(xx, sourceType);
+    var stringConstOpt = GenAspectStringConst.getMaybe(xx, sourceType);
     if (stringConstOpt instanceof Opt.Some<AspectStringConst> stringConstSome) {
       String strVal = stringConstSome.value().aspectStringConstGet(some.value());
       // Concatenate the source's existing dynamic code (if any) with an LDC of the string

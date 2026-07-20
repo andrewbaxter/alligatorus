@@ -26,12 +26,21 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectRecord;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectTuple;
 
 @compilerxyz.annotations.BuiltinTypeId(7038L)
 public record TypeFunctionDynamic(
@@ -47,17 +56,7 @@ public record TypeFunctionDynamic(
         AspectDropDynamicLight,
         AspectFunction,
         AspectInitialBind,
-        compilerxyz.gen.AspectLift,
         ExporterAny {
-
-  @Override
-  public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    // The externalHostValue can be either an actual TypeFunctionDynamic (rare) or the JVM
-    // receiver value for a method-value access. Either way, the compile-time type is the
-    // TypeFunctionDynamic itself, so wrap `this` as the const value.
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ObjectConstOfType.dynamicType(), this));
-  }
 
   @Override
   public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, TList.of(arg.hasTypeIdTypeId(), ret.hasTypeIdTypeId())); }
@@ -66,7 +65,7 @@ public record TypeFunctionDynamic(
   public EResult<JavaMethodDescriptor> descriptor(ExprContext xx, QExprId loc) {
     var argDescs = new TList<JavaDataDescriptor>();
     if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
-    var tupleOpt = compilerxyz.gen.AspectTuple.getMaybe(xx, arg);
+    var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, arg);
     if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
       for (var elem : tupleSome.value().aspectTupleElementTypes()) {
         var elemDescRes = jvmDescOf(xx, loc, elem);
@@ -74,7 +73,7 @@ public record TypeFunctionDynamic(
         argDescs.add(elemDescRes.requireValue("TypeFunctionDynamic::descriptor tuple elem"));
       }
     } else {
-      var recordOpt = compilerxyz.gen.AspectRecord.getMaybe(xx, arg);
+      var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, arg);
       if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
         for (var entry : recordSome.value().aspectRecordFieldTypes().entrySet()) {
           var fieldDescRes = jvmDescOf(xx, loc, entry.getValue());
@@ -95,7 +94,7 @@ public record TypeFunctionDynamic(
   }
 
   private static EResult<JavaDataDescriptor> jvmDescOf(ExprContext xx, QExprId loc, Type t) {
-    var consumeRes = AspectConsumeDynamic.get(xx, loc, t);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, t);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     return EResult.ok(
         consumeRes
@@ -139,19 +138,17 @@ public record TypeFunctionDynamic(
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_DYNAMIC_TYPE_ID, "function_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectFunction.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(compilerxyz.gen.AspectLift.ID)) {
+    if (key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -162,7 +159,7 @@ public record TypeFunctionDynamic(
     var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
-    var retStackRes = AspectStackValueDynamic.get(xx, loc, ret);
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
@@ -211,7 +208,7 @@ public record TypeFunctionDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

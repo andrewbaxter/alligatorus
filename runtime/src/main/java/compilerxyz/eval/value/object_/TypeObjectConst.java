@@ -29,10 +29,22 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectAspect;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectType;
 
 /**
  * Compile-time-only sibling to {@link TypeObjectDynamic}. Values of a
@@ -48,14 +60,9 @@ import compilerxyz.util.TList;
 @SuppressWarnings("rawtypes")
 public record TypeObjectConst(
     TypeId typeId,
-    String typeDesc,
+    TypeObjectMeta meta,
     Class externalHostClass,
-    Opt<Type> deferDynamic,
-    TList<Unique> identityAspects,
-    TList<TypeObjectCastRule> castRules,
-    TList<TypeObjectCastFromRule> castFromRules,
-    Opt<TypeObjectLift> lift,
-    Opt<ObjectAspectSource> aspectSource)
+    Opt<Type> deferDynamic)
     implements
         Type,
         compilerxyz.eval.TypeAspect,
@@ -69,8 +76,8 @@ public record TypeObjectConst(
         AspectField,
         AspectFunction,
         AspectInitialBind,
-        AspectType,
-        compilerxyz.gen.AspectLift {
+        compilerxyz.gen.AspectLift,
+        AspectType {
 
   private static final java.util.concurrent.ConcurrentHashMap<TypeId, compilerxyz.artifact.ExporterRoot> META_EXPORTERS = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -81,20 +88,16 @@ public record TypeObjectConst(
   }
 
   public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix) {
-    var identityAspects = new TList<Unique>();
-    identityAspects.add(compilerxyz.gen.GenIdentities.TYPE_IDENTITY);
+    var trivialIdentityAspects = new TList<Unique>();
+    trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
-    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenIdentities.TYPE_IDENTITY));
+    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
+    var meta = new TypeObjectMeta("type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
     return new TypeObjectConst(
         new TypeId.Composite(compilerxyz.gen.GenTypeIds.OBJECT_CONST_OF_TYPE_TYPE_ID, TList.of(hostBaseTypeId)),
-        "type<" + descSuffix + ">",
+        meta,
         hostClass,
-        Opt.<Type>none(),
-        identityAspects,
-        castRules,
-        new TList<TypeObjectCastFromRule>(),
-        Opt.<TypeObjectLift>none(),
-        Opt.<ObjectAspectSource>none());
+        Opt.<Type>none());
   }
 
   @Override
@@ -107,9 +110,24 @@ public record TypeObjectConst(
     return typeId.hashCode();
   }
 
-  @Override
   public String typeDesc() {
-    return typeDesc;
+    return meta.typeDesc();
+  }
+
+  public TList<Unique> trivialIdentityAspects() {
+    return meta.trivialIdentityAspects();
+  }
+
+  public TList<TypeObjectCastRule> castRules() {
+    return meta.castRules();
+  }
+
+  public TList<TypeObjectCastFromRule> castFromRules() {
+    return meta.castFromRules();
+  }
+
+  public Opt<ObjectAspectSource> aspectSource() {
+    return meta.aspectSource();
   }
 
   @Override
@@ -117,45 +135,42 @@ public record TypeObjectConst(
     return typeId;
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return this;
   }
 
   @Override
   public Unique id() {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
-      throw new IllegalStateException(typeDesc + "::id: not an aspect metatype");
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
+      throw new IllegalStateException(typeDesc() + "::id: not an aspect metatype");
     }
     if (!(some.value() instanceof ObjectAspectSource.Static staticSrc)) {
-      throw new IllegalStateException(typeDesc + "::id: aspect id is not statically known");
+      throw new IllegalStateException(typeDesc() + "::id: aspect id is not statically known");
     }
     return staticSrc.id();
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(compilerxyz.gen.AspectBindDynamic.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectType.ID)
-        || key.equals(AspectField.ID)
-        || key.equals(AspectFunction.ID)
-        || key.equals(compilerxyz.gen.AspectArtifact.ID)) {
+    if (key.equals(GenAspectBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectType.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectFunction.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.AspectPostDeserialize.ID)) {
+    if (key.equals(compilerxyz.gen.GenAspectPostDeserialize.AspectId)) {
       return Opt.some(compilerxyz.eval.aspect.PostDeserializeIdentity.INSTANCE);
     }
-    if (aspectSource instanceof Opt.Some && key.equals(AspectAspect.ID)) {
+    if (aspectSource() instanceof Opt.Some && key.equals(GenAspectAspect.AspectId)) {
       return Opt.some(this);
     }
-    if (lift instanceof Opt.Some && key.equals(compilerxyz.gen.AspectLift.ID)) {
-      return Opt.some(this);
-    }
-    for (var idAspect : identityAspects) {
+    for (var idAspect : trivialIdentityAspects()) {
       if (key.equals(idAspect)) return Opt.some(this);
     }
     return Opt.none();
@@ -163,8 +178,8 @@ public record TypeObjectConst(
 
   @Override
   public Unique aspectAspectGetUnique(InterfaceData value) {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
-      throw new IllegalStateException(typeDesc + "::getUnique: no aspect source");
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
+      throw new IllegalStateException(typeDesc() + "::getUnique: no aspect source");
     }
     return switch (some.value()) {
       case ObjectAspectSource.Static staticSrc -> staticSrc.id();
@@ -174,26 +189,26 @@ public record TypeObjectConst(
 
   @Override
   public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
-    if (!(aspectSource instanceof Opt.Some<ObjectAspectSource> some)) {
-      throw new UnsupportedOperationException(typeDesc + "::getIfaceData: no aspect source");
+    if (!(aspectSource() instanceof Opt.Some<ObjectAspectSource> some)) {
+      throw new UnsupportedOperationException(typeDesc() + "::getIfaceData: no aspect source");
     }
     return switch (some.value()) {
       case ObjectAspectSource.Static ignored ->
           throw new UnsupportedOperationException(
-              typeDesc + "::getIfaceData: static aspect has no InterfaceData");
+              typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
       case ObjectAspectSource.FromInterfaceData ignored -> value;
     };
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    for (var rule : castRules) if (rule.matches(xx, destType)) return true;
+    for (var rule : castRules()) if (rule.matches(xx, destType)) return true;
     return false;
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    for (var rule : castRules) {
+    for (var rule : castRules()) {
       if (rule.matches(xx, destType)) {
         CodeValue materialized = cv;
         if (cv.code().dynamic() == null) {
@@ -201,37 +216,37 @@ public record TypeObjectConst(
           if (dynRes.hasErrors()) return dynRes.reerr();
           materialized =
               new CodeValue(
-                  Code.of(loc, dynRes.requireValue(typeDesc + "::typeCastTo materialize")),
+                  Code.of(loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize")),
                   cv.value());
         }
         return rule.apply(xx, null, loc, materialized, destType);
       }
     }
-    return EResult.err(loc, "Cannot cast " + typeDesc + " to " + destType.typeDesc());
+    return EResult.err(loc, "Cannot cast " + typeDesc() + " to " + destType.typeDesc());
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    for (var rule : castFromRules) if (rule.matches(xx, sourceType)) return true;
+    for (var rule : castFromRules()) if (rule.matches(xx, sourceType)) return true;
     return false;
   }
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, typeDesc + "::typeCastFrom: CodeValue has no value");
+      return EResult.err(loc, typeDesc() + "::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    for (var rule : castFromRules) {
+    for (var rule : castFromRules()) {
       if (rule.matches(xx, sourceType)) {
-        // castFromRules were designed for TypeObjectDynamic; we pass null dest
+        // castFromRules() were designed for TypeObjectDynamic; we pass null dest
         // since it's not a TypeObjectDynamic. RestampFromIdentity ignores dest
         // for the value shape but does use it for the stack type — pass this
         // instead.
         return rule.apply(xx, null, loc, cv, sourceType);
       }
     }
-    return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc);
+    return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
   }
 
   @Override
@@ -244,7 +259,7 @@ public record TypeObjectConst(
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, typeDesc + "::toDynamic: no compile-time value");
+      return EResult.err(loc, typeDesc() + "::toDynamic: no compile-time value");
     }
     Object hostValue = some.value();
     if (hostValue instanceof ValueObjectConst wrap) {
@@ -295,14 +310,18 @@ public record TypeObjectConst(
   @Override
   public EResult<compilerxyz.artifact.Artifact> artifactExporterExport(
       ExprContext xx, QExprId loc, compilerxyz.artifact.ExporterAny self) {
-    if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst wrapper) {
-      return compilerxyz.artifact.ArtifactSupport.exportArtifact(xx, loc, (Type) wrapper.data());
+    // If self is a ValueObjectConst wrapping a Type (from ofType), delegate to the wrapped
+    // Type's own exportArtifact — which routes to its specific exporter (e.g.
+    // SOURCE_OBJECT_CONST for TypeTypeSourceObjectConst).
+    if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst wrapper
+        && wrapper.data() instanceof Type innerType) {
+      return innerType.exportArtifact(xx, loc);
     }
     if (self instanceof compilerxyz.gen.AspectArtifact concrete && concrete != this) {
       return concrete.aspectArtifactExporter().artifactExporterExport(xx, loc, self);
     }
     return EResult.err(
-        loc, typeDesc + "::artifactExporterExport: expected ValueObjectConst or AspectArtifact, got " + self.getClass());
+        loc, typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type or AspectArtifact, got " + self.getClass());
   }
 
   @Override
@@ -311,17 +330,9 @@ public record TypeObjectConst(
       QExprId loc,
       Opt<compilerxyz.artifact.ArtifactIdSource> id,
       compilerxyz.safejson.JsonValue data) {
-    return EResult.err(loc, typeDesc + "::artifactExporterImportFromData: should not be invoked");
+    return EResult.err(loc, typeDesc() + "::artifactExporterImportFromData: should not be invoked");
   }
 
-  @Override
-  public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(lift instanceof Opt.Some<TypeObjectLift> some)) {
-      return EResult.err(loc, typeDesc + "::lift: no lift impl registered");
-    }
-    return some.value().typeObjectLift(xx, loc, externalHostValue);
-  }
 
   // Field / Function / Type: toDynamic + delegate to deferDynamic.
 
@@ -329,10 +340,10 @@ public record TypeObjectConst(
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var innerRes = extractInnerType(loc, self, "field");
     if (innerRes.hasErrors()) return innerRes.reerr();
-    var inner = innerRes.requireValue(typeDesc + "::field inner");
-    var asp = AspectField.get(xx, loc, inner);
+    var inner = innerRes.requireValue(typeDesc() + "::field inner");
+    var asp = GenAspectField.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc + "::field inner AspectField").aspectFieldField(xx, loc, self, key);
+    return asp.requireValue(typeDesc() + "::field inner AspectField").aspectFieldField(xx, loc, self, key);
   }
 
   @Override
@@ -350,16 +361,16 @@ public record TypeObjectConst(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var innerRes = extractInnerType(loc, self, "call");
     if (innerRes.hasErrors()) return innerRes.reerr();
-    var inner = innerRes.requireValue(typeDesc + "::call inner");
-    var asp = AspectFunction.get(xx, loc, inner);
+    var inner = innerRes.requireValue(typeDesc() + "::call inner");
+    var asp = GenAspectFunction.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc + "::call inner AspectFunction")
+    return asp.requireValue(typeDesc() + "::call inner AspectFunction")
         .aspectFunctionCall(xx, loc, self, argument);
   }
 
   private EResult<Type> extractInnerType(QExprId loc, CodeValue self, String op) {
     if (!(self.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, typeDesc + "::" + op + ": self has no compile-time value");
+      return EResult.err(loc, typeDesc() + "::" + op + ": self has no compile-time value");
     }
     var v = some.value();
     if (v instanceof compilerxyz.eval.value.object_.ValueObjectConst wrap) {
@@ -370,7 +381,7 @@ public record TypeObjectConst(
     }
     return EResult.err(
         loc,
-        typeDesc + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
+        typeDesc() + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
   }
 
   @Override
@@ -389,47 +400,53 @@ public record TypeObjectConst(
       return t;
     }
     throw new IllegalArgumentException(
-        typeDesc + "::type_: expected Type or ValueObjectConst, got " + value.getClass());
+        typeDesc() + "::type_: expected Type or ValueObjectConst, got " + value.getClass());
   }
 
   private EResult<CodeValue> deferField(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     if (!(deferDynamic instanceof Opt.Some<Type> some)) {
-      return EResult.err(loc, typeDesc + "::field: no deferDynamic configured");
+      return EResult.err(loc, typeDesc() + "::field: no deferDynamic configured");
     }
     var target = some.value();
     var dyn = materializeAsDynamic(xx, loc, self);
     if (dyn.hasErrors()) return dyn.reerr();
-    var asp = AspectField.get(xx, loc, target);
+    var asp = GenAspectField.get(xx, loc, target);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc + "::field target AspectField")
-        .aspectFieldField(xx, loc, dyn.requireValue(typeDesc + "::field dyn self"), key);
+    return asp.requireValue(typeDesc() + "::field target AspectField")
+        .aspectFieldField(xx, loc, dyn.requireValue(typeDesc() + "::field dyn self"), key);
   }
 
   private EResult<CodeValue> deferCall(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     if (!(deferDynamic instanceof Opt.Some<Type> some)) {
-      return EResult.err(loc, typeDesc + "::call: no deferDynamic configured");
+      return EResult.err(loc, typeDesc() + "::call: no deferDynamic configured");
     }
     var target = some.value();
     var dyn = materializeAsDynamic(xx, loc, self);
     if (dyn.hasErrors()) return dyn.reerr();
-    var asp = AspectFunction.get(xx, loc, target);
+    var asp = GenAspectFunction.get(xx, loc, target);
     if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc + "::call target AspectFunction")
-        .aspectFunctionCall(xx, loc, dyn.requireValue(typeDesc + "::call dyn self"), argument);
+    return asp.requireValue(typeDesc() + "::call target AspectFunction")
+        .aspectFunctionCall(xx, loc, dyn.requireValue(typeDesc() + "::call dyn self"), argument);
   }
 
   private EResult<CodeValue> materializeAsDynamic(ExprContext xx, QExprId loc, CodeValue self) {
     var dynRes = aspectConsumeDynamicToDynamic(xx, loc, self);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    var dyn = dynRes.requireValue(typeDesc + "::materializeAsDynamic");
+    var dyn = dynRes.requireValue(typeDesc() + "::materializeAsDynamic");
     var target =
         deferDynamic instanceof Opt.Some<Type> some
             ? some.value()
             : this;
     return EResult.ok(
         new CodeValue(Code.of(loc, dyn), Opt.some(ValueDynamic.stack(xx, target))));
+  }
+
+  @Override
+  public EResult<Value> aspectLiftLift(
+      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
+    return EResult.ok(new ValueObjectConst(this, externalHostValue));
   }
 
 }

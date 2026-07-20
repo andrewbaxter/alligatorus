@@ -23,12 +23,18 @@ import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.GenIdentities;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectUnion;
 
 @compilerxyz.annotations.BuiltinTypeId(7052L)
 public final class TypeSourceUnionDynamic
@@ -124,21 +130,20 @@ public final class TypeSourceUnionDynamic
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_DYNAMIC_TYPE_ID, "source_union_dynamic");
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return META;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(identity)
-        || key.equals(GenIdentities.SOURCE_UNION_REF_TYPE_IDENTITY)
-        || key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectConsumeDynamic.ID)
-        || key.equals(AspectDropDynamicLight.ID)
-        || key.equals(AspectInitialBind.ID)
-        || key.equals(AspectUnion.ID)) {
+        || key.equals(GenTrivialIdentityAspects.SOURCE_UNION_REF_TYPE_IDENTITY)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -182,7 +187,7 @@ public final class TypeSourceUnionDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   @Override

@@ -24,6 +24,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectFunction;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -36,6 +37,9 @@ import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 @compilerxyz.annotations.BuiltinTypeId(7048L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
@@ -67,16 +71,15 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     return "definition_set_object_new";
   }
 
-  @Override
-  public Type valueType() {
+                public Type valueType() {
     return new TypeTypeSourceObjectNewConst(type_);
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(AspectBind.ID)
-        || key.equals(AspectBindDynamic.ID)
-        || key.equals(AspectFunction.ID)) {
+    if (key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -117,7 +120,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.AspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -159,7 +162,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(this);
+    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
 
   private record SourceObjectNewConstBinding(Value value) implements Binding {
