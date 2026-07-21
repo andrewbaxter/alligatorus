@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.unique;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
@@ -110,7 +111,7 @@ public record TypeUniqueConst()
       return EResult.ok(
           new CodeValue(
               Code.none(loc),
-              Opt.some(
+              EvalOutcome.ofValue(
                   new ValueObjectConst(
                       new compilerxyz.eval.value.bool_.TypeBoolConst(),
                       bs.value().equals(rs.value())))));

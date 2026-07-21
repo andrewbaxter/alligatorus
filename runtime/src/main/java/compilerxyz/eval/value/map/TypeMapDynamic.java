@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -208,7 +209,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return switch (spec) {
         case FieldSpec.Factory f ->
             EResult.ok(
-                new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+                new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
         case FieldSpec.GetFn g -> {
           var selfDyn = self.code().dynamic();
           if (selfDyn == null) {
@@ -217,7 +218,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           yield EResult.ok(
               new CodeValue(
                   Code.of(loc, selfDyn),
-                  Opt.some(ValueDynamic.stack(xx, g.type()))));
+                  EvalOutcome.ofValue(ValueDynamic.stack(xx, g.type()))));
         }
       };
     }
@@ -233,7 +234,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(loc, fieldUse),
-            Opt.some(new ValueDynamic(childSource, valueType))));
+            EvalOutcome.ofValue(new ValueDynamic(childSource, valueType))));
   }
 
   @Override
@@ -380,7 +381,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     if (!(some.value() instanceof Record record)) {
       return EResult.err(
@@ -413,11 +414,11 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       CodeValue keyCv;
       switch (fieldKey) {
         case ConstKey.Str s ->
-            keyCv = new CodeValue(Code.none(loc), Opt.some(
+            keyCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(
                 new ValueObjectConst(new TypeStringConst(), s.value())));
         case ConstKey.Uint u ->
             keyCv =
-                new CodeValue(Code.none(loc), Opt.some(
+                new CodeValue(Code.none(loc), EvalOutcome.ofValue(
                     new ValueObjectConst(new TypeIntConst(), (long) u.value())));
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
@@ -456,7 +457,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   private static boolean typesConvertible(
@@ -508,7 +509,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var keyCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, keyType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, keyType)));
       var keyDropRes = keyDropSome.value().aspectDropDynamicDrop(xx, loc, keyCv);
       if (keyDropRes.hasErrors()) return keyDropRes.reerr();
       var keyDropDyn = keyDropRes.requireValue("map key drop").dynamic();
@@ -530,7 +531,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var valCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadValSeq)),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, valueType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, valueType)));
       var valDropRes = valDropSome.value().aspectDropDynamicDrop(xx, loc, valCv);
       if (valDropRes.hasErrors()) return valDropRes.reerr();
       var valDropDyn = valDropRes.requireValue("map value drop").dynamic();

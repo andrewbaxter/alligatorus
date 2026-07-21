@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -30,7 +31,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
     }
     return new CodeValue(
         Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey)),
-        Opt.some(
+        EvalOutcome.ofValue(
             new Record(
                 Opt.some(new RecordBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
                 resultFields)));

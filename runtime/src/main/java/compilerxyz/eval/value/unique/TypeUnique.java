@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.unique;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -241,7 +242,7 @@ public record TypeUnique()
     var r = extractUnique(reference);
     if (b instanceof Opt.Some<Unique> bs && r instanceof Opt.Some<Unique> rs) {
       return EResult.ok(
-          new CodeValue(Code.none(loc), Opt.some(
+          new CodeValue(Code.none(loc), EvalOutcome.ofValue(
               new compilerxyz.eval.value.object_.ValueObjectConst(
                   new compilerxyz.eval.value.bool_.TypeBoolConst(),
                   bs.value().equals(rs.value())))));
@@ -259,7 +260,7 @@ public record TypeUnique()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
-            Opt.some(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
   }
 
   private static CodeDynamic emitUniqueEqCall(
@@ -302,7 +303,7 @@ public record TypeUnique()
     if (!(asp instanceof Opt.Some<AspectConsumeDynamic> aspSome)) return EResult.ok(cv);
     var dynRes = aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUnique::typeCastFrom")), cv.value()));
+    return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUnique::typeCastFrom")), cv.outcome()));
   }
 
   @Override

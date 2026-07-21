@@ -1,5 +1,6 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -101,7 +102,7 @@ public final class DynRuntime {
       if (raw instanceof CodeValue cv) {
         graft = cv;
       } else if (raw instanceof Code code) {
-        graft = new CodeValue(code, Opt.none());
+        graft = new CodeValue(code, EvalOutcome.NO_VALUE);
       } else {
         throw new RuntimeException(
             "__stage: graft argument is neither CodeValue nor Code: "

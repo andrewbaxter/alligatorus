@@ -408,6 +408,12 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic_id",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
         TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_set_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectSet")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_operator_add_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectOperatorAdd")),
+        TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);
   }
@@ -441,7 +447,7 @@ public final class BuiltinTreeGen {
                   "aspect_consume_dynamic", "bind_result", "aspect_bind",
                   "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
                   "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
-                  "aspect_bind_dynamic_id",
+                  "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",
                   "binding", "target", "code_dyn", "value", "type"));
 
   private record TreeNode(

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.string;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -220,7 +221,7 @@ public record TypeStringDynamic()
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            Opt.some(ValueDynamic.stack(xx, fieldTypeSome.value()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeSome.value()))));
   }
 
   @Override
@@ -275,12 +276,12 @@ public record TypeStringDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(result),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -288,7 +289,7 @@ public record TypeStringDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

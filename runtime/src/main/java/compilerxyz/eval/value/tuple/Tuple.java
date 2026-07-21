@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -193,18 +194,18 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (accessedCv != null) {
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
       }
       if (accessedPushDyn != null) {
         seq.add(accessedPushDyn);
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),
-                Opt.some(ValueDynamic.stack(xx, accessedType))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
       }
       return EResult.err(loc, "Tuple element " + aiSome.value() + " not found");
     }
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
   }
 
   private EResult<CodeValue> accessOrIndexSourced(
@@ -259,7 +260,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (siblingDrop != null) out.add(siblingDrop);
     }
     out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
   }
 
   private EResult<CodeValue> indexSourced(
@@ -308,7 +309,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     return EResult.ok(
         new CodeValue(
             Code.of(loc, new CodeDynamic(loc, out)),
-            Opt.some(ValueDynamic.stack(xx, accessedType))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
   }
 
   /**
@@ -332,7 +333,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       var childCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-              Opt.some(ValueDynamic.stack(xx, childType)));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, childType)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Tuple::tupleChildDropCode drop").dynamic();
@@ -457,7 +458,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             compilerxyz.eval.Code.of(
                 loc,
                 JavaBytecodeUtils.literalNull(loc)),
-            Opt.some(
+            EvalOutcome.ofValue(
                 compilerxyz.eval.value.ValueDynamic.stack(xx, destType))));
   }
 
@@ -479,7 +480,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     if (!(some.value() instanceof Tuple tuple)) {
       throw new IllegalStateException(
@@ -532,7 +533,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (!erb.errors().isEmpty()) {
       return EResult.errs(erb.errors());
     }
-    return EResult.ok(new CodeValue(cv.code(), Opt.some(new Tuple(Opt.none(), convertedElements))));
+    return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Tuple(Opt.none(), convertedElements))));
   }
 
   @Override
@@ -810,7 +811,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
               elemCv = boxedRes.requireValue("Tuple::bindSub boxed element");
             }
           }
-          var savedValue = elemCv.value();
+          var savedValue = elemCv.outcome();
           var subRes = xx.target.targetMaybeBindSub(xx, loc, elemCv);
           if (subRes.hasErrors()) {
             if (errors == null) errors = new TList<>();
@@ -977,12 +978,12 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
     if (elements.isEmpty()) {
-      return new CodeValue(Code.of(loc, value), Opt.some(new Tuple(Opt.none(), new TList<>())));
+      return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(new Tuple(Opt.none(), new TList<>())));
     }
     var source = ValueDynamic.Source.Expr.stackFor(xx, this);
     return new CodeValue(
         Code.of(loc, value),
-        Opt.some(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));
+        EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));
   }
 
   @Override
@@ -1060,7 +1061,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         var liftedValue = lifted.requireValue("Tuple TupleLift::lift element value");
         out.add(
             new TupleElement.EvalRes(
-                EResult.ok(new CodeValue(Code.none(loc), Opt.some(liftedValue)))));
+                EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(liftedValue)))));
       }
       if (errors != null && !errors.isEmpty()) {
         return EResult.errs(errors);

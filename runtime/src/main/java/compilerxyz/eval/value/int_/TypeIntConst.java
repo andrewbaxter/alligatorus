@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.int_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -210,7 +211,7 @@ public record TypeIntConst()
     return EResult.ok(
         new CodeValue(
             base.code(),
-            Opt.some(
+            EvalOutcome.ofValue(
                 f.apply(
                     baseN.requireValue("extractLong(base)"),
                     refN.requireValue("extractLong(reference)")))));

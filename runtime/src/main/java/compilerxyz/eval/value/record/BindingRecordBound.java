@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -50,7 +51,7 @@ public record BindingRecordBound(
           };
       resultFields.put(entry.getKey(), rf);
     }
-    return new CodeValue(useCode, Opt.some(new Record(base, resultFields)));
+    return new CodeValue(useCode, EvalOutcome.ofValue(new Record(base, resultFields)));
   }
 
   @Override

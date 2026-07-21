@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -25,7 +26,7 @@ public record BindingTupleDynamic(BindingId dynamicKey, TList<Type> elements)
     }
     return new CodeValue(
         Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey)),
-        Opt.some(
+        EvalOutcome.ofValue(
             new Tuple(
                 Opt.some(new TupleBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
                 resultElements)));

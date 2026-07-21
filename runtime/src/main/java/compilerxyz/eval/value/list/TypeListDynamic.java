@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.list;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -201,12 +202,12 @@ public record TypeListDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+              new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
       case FieldSpec.Method m ->
           EResult.ok(
               new CodeValue(
                   self.code(),
-                  Opt.some(ValueDynamic.stack(xx, m.type()))));
+                  EvalOutcome.ofValue(ValueDynamic.stack(xx, m.type()))));
     };
   }
 
@@ -351,7 +352,7 @@ public record TypeListDynamic(Type elementType)
     var elementCv =
         new CodeValue(
             Code.of(loc, loadElement),
-            Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType)));
+            EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType)));
     var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");

@@ -1,5 +1,6 @@
 package compilerxyz.eval.binding;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -14,7 +15,7 @@ import compilerxyz.util.TList;
 public record BindingObjectConst(Type type, Object data) implements Binding {
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
-    return new CodeValue(Code.none(loc), Opt.some(new ValueObjectConst(type, data)));
+    return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(type, data)));
   }
 
   @Override

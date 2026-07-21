@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -81,7 +82,7 @@ public record TypeOptionConstructorConst()
             .aspectTypeType(argValue);
     Type optType = new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(optType))));
+        new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(optType))));
   }
 
   @Override

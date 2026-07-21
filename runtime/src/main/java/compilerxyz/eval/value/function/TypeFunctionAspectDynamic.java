@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -153,7 +154,7 @@ public record TypeFunctionAspectDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
-            Opt.some(
+            EvalOutcome.ofValue(
                 compilerxyz.eval.value.ValueDynamic.stack(xx, new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, aspTa))))));
   }
 

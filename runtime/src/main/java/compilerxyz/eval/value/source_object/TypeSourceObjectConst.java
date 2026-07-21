@@ -71,9 +71,17 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectType.AspectId)) {
+    if (key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)) {
       return Opt.some(this);
+    }
+    if (key.equals(compilerxyz.gen.GenAspectType.AspectId)) {
+      for (var impl : dynamic.interfaceImpls) {
+        if (impl.interface_.builtinKind
+            == compilerxyz.eval.value.source_interface.BuiltinInterfaceKind.TYPE) {
+          return Opt.some(this);
+        }
+      }
+      return Opt.none();
     }
     return dynamic.typeAspect(xx, key);
   }

@@ -93,6 +93,7 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.panic", "TypePanicDynamic");
     nullary("compilerxyz.eval.value.function", "TypeFunctionAspectDynamic");
     nullary("compilerxyz.eval.value.function", "TypeFunctionCastValueDynamic");
+    nullary("compilerxyz.eval.value.function", "TypeFunctionMustReinterpretConst");
     nullary("compilerxyz.eval.value.list", "TypeListConstructorConst");
     nullary("compilerxyz.eval.value.map", "TypeMapConstructorConst");
     nullary("compilerxyz.eval.value.option", "TypeOptionConstructorConst");

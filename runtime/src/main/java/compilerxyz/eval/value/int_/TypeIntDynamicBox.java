@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.int_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.gen.Binding;
@@ -180,7 +181,7 @@ public record TypeIntDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -188,7 +189,7 @@ public record TypeIntDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -204,7 +205,7 @@ public record TypeIntDynamicBox()
     var unboxedSelf =
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, unboxed)));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, unboxed)));
     return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
   }
 

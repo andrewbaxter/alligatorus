@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -112,7 +113,7 @@ public record TypeMapConstructorConst()
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(mapType))));
+        new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(mapType))));
   }
 
   @Override

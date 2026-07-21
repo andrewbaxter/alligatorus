@@ -266,7 +266,17 @@ public final class SourceObjectEmitter {
     realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
     realCtorSeq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_OBJECT, "<init>", MDESC_OBJECT_INIT));
     realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-    realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 1));
+    {
+      var c = dataFieldDesc.value().charAt(0);
+      int loadOp = switch (c) {
+        case 'J' -> Opcodes.LLOAD;
+        case 'D' -> Opcodes.DLOAD;
+        case 'F' -> Opcodes.FLOAD;
+        case 'I', 'B', 'C', 'S', 'Z' -> Opcodes.ILOAD;
+        default -> Opcodes.ALOAD;
+      };
+      realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, loadOp, 1));
+    }
     realCtorSeq.add(JavaBytecodeUtils.setField(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
     realCtorSeq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
     realCtorSeq.render(realCtor, TList.of());
@@ -439,7 +449,7 @@ public final class SourceObjectEmitter {
         };
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
-    seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, selfLocal.key())));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOpcodeFor(dataFieldDesc), selfLocal.key())));
 
     var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
     initialSlots.add(new JavaBytecodeSequence.InitialSlot(
@@ -480,6 +490,16 @@ public final class SourceObjectEmitter {
   private static int slotWidth(JavaDataDescriptor d) {
     var v = d.value();
     return (v.equals("D") || v.equals("J")) ? 2 : 1;
+  }
+
+  private static int storeOpcodeFor(JavaDataDescriptor d) {
+    return switch (d.value().charAt(0)) {
+      case 'J' -> Opcodes.LSTORE;
+      case 'D' -> Opcodes.DSTORE;
+      case 'F' -> Opcodes.FSTORE;
+      case 'I', 'B', 'C', 'S', 'Z' -> Opcodes.ISTORE;
+      default -> Opcodes.ASTORE;
+    };
   }
 
   private static void collectMethodFields(
@@ -572,7 +592,7 @@ public final class SourceObjectEmitter {
             : JvmConstants.DESC_OBJECT;
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
     seq.add(JavaBytecodeUtils.accessField(loc, internalName, DATA_INSTANCE_FIELD, innerDesc));
-    seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, selfId.key())));
+    seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOpcodeFor(innerDesc), selfId.key())));
 
     var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
     initialSlots.add(new JavaBytecodeSequence.InitialSlot(

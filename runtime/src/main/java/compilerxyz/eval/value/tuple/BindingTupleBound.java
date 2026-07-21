@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -45,7 +46,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
           };
       resultElements.add(te);
     }
-    return new CodeValue(useCode, Opt.some(new Tuple(base, resultElements)));
+    return new CodeValue(useCode, EvalOutcome.ofValue(new Tuple(base, resultElements)));
   }
 
   @Override

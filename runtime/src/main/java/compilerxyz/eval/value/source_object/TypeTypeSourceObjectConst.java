@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -560,7 +561,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     }
     var erb = new Erb(loc);
     var rawUnderlyingCv =
-        new CodeValue(Code.none(loc), Opt.some((Value) instance.data()));
+        new CodeValue(Code.none(loc), EvalOutcome.ofValue((Value) instance.data()));
     var convertedOpt =
         erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, rawUnderlyingCv));
     if (convertedOpt.isEmpty()) {
@@ -617,7 +618,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),
-            Opt.some(ValueDynamic.stack(xx, dynType)));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType)));
     return dynType.aspectFieldField(xx, loc, selfDynamic, key);
   }
 

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ArtifactIdSource;
@@ -339,7 +340,7 @@ public final class TypeSourceObjectDynamic
             descObjObj,
             false,
             false);
-    return EResult.ok(new CodeValue(self.code(), Opt.some(ValueDynamic.stack(xx, fieldType))));
+    return EResult.ok(new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldType))));
   }
 
   @Override
@@ -391,7 +392,7 @@ public final class TypeSourceObjectDynamic
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, identity).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
@@ -447,7 +448,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
@@ -467,7 +468,7 @@ public final class TypeSourceObjectDynamic
 
   private CodeValue emitBuiltinCast(
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
-    return new CodeValue(Code.of(loc, sourceCode), Opt.some(ValueDynamic.stack(xx, resultType)));
+    return new CodeValue(Code.of(loc, sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
   }
 
   @Override

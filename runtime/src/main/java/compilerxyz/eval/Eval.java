@@ -103,7 +103,7 @@ public final class Eval {
     if (wrappedCodeOpt.isEmpty()) {
       return EResult.errs(erb.errors());
     }
-    return EResult.ok(new CodeValue(wrappedCodeOpt.get(), callCv.value()));
+    return EResult.ok(new CodeValue(wrappedCodeOpt.get(), callCv.outcome()));
   }
 
   public static EResult<CodeValue> typecheckConvert(

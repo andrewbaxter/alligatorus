@@ -50,6 +50,18 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_bind_dynamic");
   }
 
+  public SourceExpr evalAspectSet() {
+    return builtin("eval", "aspect_set");
+  }
+
+  public SourceExpr evalOperatorAdd() {
+    return builtin("eval", "operator_add");
+  }
+
+  public SourceExpr mustReinterpret() {
+    return builtin("must_reinterpret");
+  }
+
   public SourceExpr evalValue() {
     return builtin("eval", "value");
   }
@@ -80,6 +92,14 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalAspectBindDynamicId() {
     return builtin("eval", "aspect_bind_dynamic_id");
+  }
+
+  public SourceExpr evalAspectSetId() {
+    return builtin("eval", "aspect_set_id");
+  }
+
+  public SourceExpr evalOperatorAddId() {
+    return builtin("eval", "aspect_operator_add_id");
   }
 
   public SourceExpr evalBindResult() {

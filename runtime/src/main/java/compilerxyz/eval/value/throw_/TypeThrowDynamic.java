@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.throw_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -98,7 +99,7 @@ public record TypeThrowDynamic()
     seq.add(JavaBytecodeUtils.invokeSpecial(loc, excInternal, "<init>", ctorDesc));
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     var throwCode = new CodeDynamic(loc, seq);
-    return EResult.ok(new CodeValue(Code.of(loc, throwCode), Opt.none()));
+    return EResult.ok(new CodeValue(Code.of(loc, throwCode), EvalOutcome.CONTROL_ENDED));
   }
 
   @Override

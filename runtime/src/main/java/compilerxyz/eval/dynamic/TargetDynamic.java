@@ -1,5 +1,6 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -413,7 +414,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
-          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), Opt.none()));
+          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     var finalType =
@@ -575,7 +576,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
-          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), Opt.none()));
+          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
     var finalType =
         resultType == null ? (compilerxyz.eval.Type) new TypeNullDynamic() : resultType;
@@ -650,7 +651,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
     for (var cv : graftValues) {
       if (cv.code().isNone()) {
-        var graftCv = new CodeValue(Code.none(loc), cv.value());
+        var graftCv = new CodeValue(Code.none(loc), cv.outcome());
         var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
         var graftType =
@@ -698,7 +699,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var stageCall = new CodeDynamic(loc, stageSeq);
     var resultValue =
         ValueDynamic.stack(xx, new TypeExprStagedPlaceholder());
-    return EResult.ok(new CodeValue(Code.of(loc, stageCall), Opt.some(resultValue)));
+    return EResult.ok(new CodeValue(Code.of(loc, stageCall), EvalOutcome.ofValue(resultValue)));
   }
 
   public void emit(JavaBytecodeSequence seq, EmitCtx ctx, CodeDynamic code) {

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -215,7 +216,7 @@ public record TypeObjectConst(
           materialized =
               new CodeValue(
                   Code.of(loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize")),
-                  cv.value());
+                  cv.outcome());
         }
         return rule.apply(xx, null, loc, materialized, destType);
       }
@@ -438,7 +439,7 @@ public record TypeObjectConst(
             ? some.value()
             : this;
     return EResult.ok(
-        new CodeValue(Code.of(loc, dyn), Opt.some(ValueDynamic.stack(xx, target))));
+        new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(ValueDynamic.stack(xx, target))));
   }
 
   @Override

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.list;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -82,7 +83,7 @@ public record TypeListConstructorConst()
     elementType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType);
     Type listType = new TypeListDynamic(elementType);
     return EResult.ok(
-        new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(listType))));
+        new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(listType))));
   }
 
   @Override

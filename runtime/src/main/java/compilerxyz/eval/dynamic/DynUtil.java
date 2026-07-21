@@ -1,5 +1,6 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -158,19 +159,19 @@ public final class DynUtil {
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         return new CodeValue(
             compilerxyz.eval.Code.of(loc, new CodeDynamic(loc, seq)),
-            Opt.none());
+            EvalOutcome.NO_VALUE);
     }
 
     public static EResult<CodeValue> fieldUseDefaultDynamic(
             ExprContext xx, QExprId loc, Type self, ValueDynamic.Source baseSource, String javaFieldName) {
         var childSource = new ValueDynamic.Source.Field(baseSource, javaFieldName);
         var code = compilerxyz.eval.Code.of(loc, renderSource(xx, loc, childSource));
-        return EResult.ok(new CodeValue(code, Opt.some(new ValueDynamic(childSource, self))));
+        return EResult.ok(new CodeValue(code, EvalOutcome.ofValue(new ValueDynamic(childSource, self))));
     }
 
     public static EResult<CodeValue> elementUseDefaultDynamic(
             ExprContext xx, QExprId loc, Type self, ValueDynamic.Source elementSource, Code carry) {
-        return EResult.ok(new CodeValue(carry, Opt.some(new ValueDynamic(elementSource, self))));
+        return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueDynamic(elementSource, self))));
     }
 
     public static CodeDynamic renderSource(
@@ -259,7 +260,7 @@ public final class DynUtil {
             var childCv =
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
-                            Opt.some(ValueDynamic.stack(xx, child.childType())));
+                            EvalOutcome.ofValue(ValueDynamic.stack(xx, child.childType())));
             var childDropRes = childDropSome.value().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
@@ -335,7 +336,7 @@ public final class DynUtil {
     public static CodeValue dynamicStackToValue(ExprContext xx, QExprId loc, CodeDynamic value, Type type_) {
         var dynValue =
                 ValueDynamic.stack(xx, type_);
-        return new CodeValue(Code.of(loc, value), Opt.some(dynValue));
+        return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(dynValue));
     }
 
     public static CodeDynamic wrapWithCarry(QExprId loc, Code carry, CodeDynamic dynamicCode) {

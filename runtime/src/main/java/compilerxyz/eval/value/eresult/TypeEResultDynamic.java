@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -140,7 +141,7 @@ public record TypeEResultDynamic(Type elementType)
       }
       return EResult.ok(new CodeValue(
           Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-          Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType))));
+          EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
@@ -148,7 +149,7 @@ public record TypeEResultDynamic(Type elementType)
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
-          EResult.ok(new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+          EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
     };
   }
 

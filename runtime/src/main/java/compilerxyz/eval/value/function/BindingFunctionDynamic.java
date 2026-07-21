@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -20,7 +21,7 @@ public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic t
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
     Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
-    return new CodeValue(Code.none(loc), Opt.some(value));
+    return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
   }
 
   @Override

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -210,19 +211,19 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (accessedCv != null) {
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.value()));
+        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
       }
       if (accessedPushDyn != null) {
         seq.add(accessedPushDyn);
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),
-                Opt.some(ValueDynamic.stack(xx, accessedType))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
       }
       return EResult.err(
           loc, "Field '" + aksReq.value().toCanonical() + "' not found on record value");
     }
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), Opt.none()));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
   }
 
   private EResult<CodeValue> accessOrDropSourced(
@@ -261,7 +262,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     var dropRes = emitChildDrops(xx, loc, klass, slotInfo, dynamicFieldTypes, Opt.none(), out);
     if (dropRes.hasErrors()) return dropRes.reerr();
     out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), Opt.none()));
+    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
   }
 
   private EResult<CodeValue> accessSourced(
@@ -300,7 +301,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     return EResult.ok(
         new CodeValue(
             Code.of(loc, new CodeDynamic(loc, out)),
-            Opt.some(ValueDynamic.stack(xx, accessedType))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
   }
 
   private EResult<Void> emitChildDrops(
@@ -351,7 +352,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var childCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-              Opt.some(ValueDynamic.stack(xx, childType)));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, childType)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Record::childFullDropCode drop").dynamic();
@@ -500,7 +501,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       newFields.put(entry.getKey(), new RecordField.Dynamic(t));
     }
     Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(childSource)), newFields);
-    return EResult.ok(new CodeValue(fieldCode, Opt.some(innerRecord)));
+    return EResult.ok(new CodeValue(fieldCode, EvalOutcome.ofValue(innerRecord)));
   }
 
   @Override
@@ -740,7 +741,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             continue;
           }
           var elemCv = inner.requireValue("Record::bindSub field value");
-          var savedValue = elemCv.value();
+          var savedValue = elemCv.outcome();
           var subRes = xx.target.targetMaybeBindSub(xx, loc, elemCv);
           if (subRes.hasErrors()) {
             if (errors == null) errors = new TList<>();
@@ -897,7 +898,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         return EResult.errs(erb.errors());
       }
       return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(new Record(Opt.none(), convertedFields))));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), convertedFields))));
     }
 
     ValueDynamic.Source sourcedSource;
@@ -918,7 +919,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     if (sameTypeIdList(srcSlotInfo.sortedTypes(), destSlotInfo.sortedTypes())) {
       var sourcedResult =
           new Record(Opt.some(new RecordBaseDynamic(sourcedSource)), asDynamicFields(fields));
-      return EResult.ok(new CodeValue(cv.code(), Opt.some((Value) sourcedResult)));
+      return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue((Value) sourcedResult)));
     }
 
     CodeDynamic carryDyn = cv.code().dynamic();
@@ -967,7 +968,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var srcFieldCv =
           new CodeValue(
               Code.of(loc, loadDyn),
-              Opt.some(compilerxyz.eval.value.ValueDynamic.stack(xx, srcFieldType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, srcFieldType)));
       var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destType, srcFieldCv));
       if (convOpt.isEmpty()) {
         return EResult.errs(erb.errors());
@@ -1005,7 +1006,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         new RecordBaseDynamic(ValueDynamic.Source.Expr.stackFor(xx, this)));
     var newRecord = new Record(newBase, asDynamicFields(fields));
     return EResult.ok(
-        new CodeValue(Code.of(loc, finalDyn), Opt.some((Value) newRecord)));
+        new CodeValue(Code.of(loc, finalDyn), EvalOutcome.ofValue((Value) newRecord)));
   }
 
   private static TOrderedMap<ConstKey, RecordField> asDynamicFields(
@@ -1253,7 +1254,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         out.put(
             entry.key(),
             new RecordField.EvalRes(
-                EResult.ok(new CodeValue(Code.none(loc), Opt.some(liftedValue)))));
+                EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(liftedValue)))));
       }
       if (errors != null && !errors.isEmpty()) {
         return EResult.errs(errors);

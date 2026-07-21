@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -81,7 +82,7 @@ public record TypeEResultConstructorConst()
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .aspectTypeType(argValue);
     Type eresultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
-    return EResult.ok(new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(eresultType))));
+    return EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(eresultType))));
   }
 
   @Override

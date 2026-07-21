@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.code_value_extern;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
@@ -181,7 +182,7 @@ public record TypeCodeValueExternDynamic()
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     return EResult.err(loc, "Cannot convert to CodeValueExtern");
   }

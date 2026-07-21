@@ -1,5 +1,6 @@
 package compilerxyz.eval;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 
 import compilerxyz.gen.AspectBind;
@@ -62,7 +63,7 @@ public final class ConstEval {
     var loc = expr.loc();
     return switch (expr.variant()) {
       case Expr.Literal lit ->
-          EResult.ok(new CodeValue(Code.none(loc), Opt.some(lit.value().consume())));
+          EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(lit.value().consume())));
       case Expr.ScopeUse p -> {
         var erb = new Erb(loc);
         var keyR = constEval(xx, p.key());
@@ -159,7 +160,7 @@ public final class ConstEval {
           elements.add(new TupleElement.EvalRes(elRes));
         }
         if (!erb.errors().isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(new CodeValue(Code.none(loc), Opt.some(new Tuple(Opt.none(), elements))));
+        yield EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), elements))));
       }
       case Expr.Record r -> constEvalRecord(xx, loc, r);
       case Expr.OperatorLt e -> {
@@ -265,7 +266,8 @@ public final class ConstEval {
       seq.add(cd);
     }
     seq.add(land);
-    return new CodeValue(Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc, seq)), resultValue);
+    return new CodeValue(Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc, seq)),
+        resultValue instanceof Opt.Some<Value> s ? EvalOutcome.ofValue(s.value()) : EvalOutcome.NO_VALUE);
   }
 
   private static EResult<CodeValue> constEvalReturn(ExprContext xx, QExprId loc, Expr.Return e) {
@@ -299,10 +301,10 @@ public final class ConstEval {
       if (vOpt.isEmpty()) return EResult.errs(erb.errors());
       valCv = vOpt.get();
     } else {
-      valCv = new CodeValue(Code.none(loc), Opt.some(emptyTupleValue()));
+      valCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(emptyTupleValue()));
     }
-    if (!(valCv.value() instanceof Opt.Some<Value> someVal)) {
-      return EResult.ok(new CodeValue(valCv.code(), Opt.none()));
+    if (!(valCv.outcome() instanceof EvalOutcome.HasValue someVal)) {
+      return EResult.ok(new CodeValue(valCv.code(), EvalOutcome.CONTROL_ENDED));
     }
     if (target.firstReturnValue == null) {
       target.firstReturnValue = someVal.value();
@@ -325,7 +327,7 @@ public final class ConstEval {
     seq.add(new compilerxyz.eval.dynamic.CodeDynamic(loc,
         new compilerxyz.eval.dynamic.JavaBytecodeJump(target.endKey)));
     var retCode = Code.of(new compilerxyz.eval.dynamic.CodeDynamic(loc, seq));
-    return EResult.ok(new CodeValue(retCode, Opt.none()));
+    return EResult.ok(new CodeValue(retCode, EvalOutcome.CONTROL_ENDED));
   }
 
   private static Value emptyTupleValue() {
@@ -415,7 +417,7 @@ public final class ConstEval {
         if (ropt.isEmpty()) return EResult.errs(erb.errors());
         var r = ropt.get();
         frames.get(frames.size() - 1).codes.add(r.code());
-        if (r.value() instanceof Opt.None<Value>) {
+        if (r.outcome() instanceof EvalOutcome.ControlEnded) {
           controlEnded = true;
           lastVal = Opt.none();
           continue;
@@ -455,7 +457,8 @@ public final class ConstEval {
         && (thisFrame.firstReturnValue != null || !(lastVal instanceof Opt.Some<Value>))) {
       lastVal = Opt.some(scopeResultValue(xx, thisFrame));
     }
-    var cv = new CodeValue(seqOpt.get(), lastVal);
+    var cv = new CodeValue(seqOpt.get(),
+        lastVal instanceof Opt.Some<Value> lvs ? EvalOutcome.ofValue(lvs.value()) : (controlEnded ? EvalOutcome.CONTROL_ENDED : EvalOutcome.NO_VALUE));
     if (erb.errors().isEmpty()) {
       return EResult.ok(cv);
     }
@@ -519,7 +522,7 @@ public final class ConstEval {
     for (var entry : entries.entrySet()) {
       fields.put(entry.getKey(), new RecordField.EvalRes(entry.getValue()));
     }
-    return EResult.ok(new CodeValue(code, Opt.some(new Record(Opt.none(), fields))));
+    return EResult.ok(new CodeValue(code, EvalOutcome.ofValue(new Record(Opt.none(), fields))));
   }
 
   private static EResult<CodeValue> constEvalForeach(
@@ -771,7 +774,7 @@ public final class ConstEval {
     if (exporterRes.isEmpty()) return EResult.errs(erb.errors());
     var valueRes = erb.mustEr(exporterRes.get().exporterAnyAsValue());
     if (valueRes.isEmpty()) return EResult.errs(erb.errors());
-    var cv = new CodeValue(Code.none(loc), Opt.some(valueRes.get()));
+    var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(valueRes.get()));
     var valueType = valueRes.get().valueType();
     var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
     if (pdRes.isEmpty()) return EResult.errs(erb.errors());
@@ -812,7 +815,7 @@ public final class ConstEval {
         if (elseOpt.isEmpty()) return EResult.errs(erb.errors());
         return EResult.ok(elseOpt.get());
       }
-      return EResult.ok(new CodeValue(Code.none(loc), Opt.some(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))));
+      return EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))));
     } else {
       var branches = new TList<IfBranch>(conditionsEvaluated.size());
       for (var ie : conditionsEvaluated) {
@@ -961,7 +964,8 @@ public final class ConstEval {
     var tryOpt =
         erb.mustEr(xx.target.targetTryCatchFinally(loc, bodyCd, catch_, finally_));
     if (tryOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(new CodeValue(Code.of(loc, tryOpt.get()), resultValue));
+    return EResult.ok(new CodeValue(Code.of(loc, tryOpt.get()),
+        resultValue instanceof Opt.Some<Value> rvs ? EvalOutcome.ofValue(rvs.value()) : EvalOutcome.NO_VALUE));
   }
 
   private static EResult<CodeValue> constEvalStage(ExprContext xx, QExprId loc, Expr.Stage e) {
@@ -971,7 +975,7 @@ public final class ConstEval {
     findMatchedGraftsInner(e.expr(), 0, matchedGrafts);
     if (matchedLowers.isEmpty() && matchedGrafts.isEmpty()) {
 
-      return EResult.ok(new CodeValue(Code.none(loc), Opt.some(e.expr())));
+      return EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(e.expr())));
     }
     var erb = new Erb(loc);
     var lowerValues = new TList<CodeValue>(matchedLowers.size());

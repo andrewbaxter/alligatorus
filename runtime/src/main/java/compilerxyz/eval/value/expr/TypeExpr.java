@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.expr;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
@@ -152,13 +153,13 @@ public record TypeExpr()
     var sourceType = sourceValue.valueType();
     if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY).optIsSome()) {
       if (sourceValue instanceof Expr expr) {
-        return EResult.ok(new CodeValue(cv.code(), Opt.some(expr)));
+        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(expr)));
       }
       return EResult.ok(cv);
     }
     var literalExpr =
         new Expr(loc, new Expr.Literal(Expr.LitValue.shared(sourceValue)));
-    return EResult.ok(new CodeValue(cv.code(), Opt.some(literalExpr)));
+    return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(literalExpr)));
   }
 
   @Override

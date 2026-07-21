@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.source_interface;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -393,7 +394,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     return EResult.ok(
         new CodeValue(
             self.code(),
-            Opt.some(ValueDynamic.stack(xx, fieldType))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldType))));
   }
 
   @Override
@@ -440,7 +441,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, destType))));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
     }
     if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
@@ -461,7 +462,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, seq)),
-              Opt.some(ValueDynamic.stack(xx, destType))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
     }
     return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
   }

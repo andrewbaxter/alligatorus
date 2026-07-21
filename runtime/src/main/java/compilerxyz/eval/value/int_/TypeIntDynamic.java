@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.int_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -216,7 +217,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            Opt.some(ValueDynamic.stack(xx, fieldTypeSome.value()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeSome.value()))));
   }
 
   @Override
@@ -239,7 +240,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -253,7 +254,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
   }
 
   @Override
@@ -267,7 +268,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
   }
 
   @Override
@@ -367,12 +368,12 @@ public record TypeIntDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -380,7 +381,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

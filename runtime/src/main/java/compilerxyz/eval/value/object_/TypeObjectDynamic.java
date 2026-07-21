@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.gen.Binding;
@@ -285,7 +286,7 @@ public record TypeObjectDynamic(
                   JavaDataDescriptor.fromClass(InterfaceData.class), TList.of())));
       var call = new CodeDynamic(loc, seq);
       return EResult.ok(
-          new CodeValue(Code.of(loc, call), Opt.some(ValueDynamic.stack(xx, destType))));
+          new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
     }
     for (var idAspect : trivialIdentityAspects()) {
       if (destType.typeAspect(xx, idAspect).optIsSome()) {
@@ -326,13 +327,13 @@ public record TypeObjectDynamic(
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, loadSeq)),
-                Opt.some(ValueDynamic.stack(xx, f.fieldType()))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, f.fieldType()))));
       }
     }
     for (var m : methods) {
       if (m.langName().equals(keyStr)) {
         return EResult.ok(
-            new CodeValue(self_.code(), Opt.some(ValueDynamic.stack(xx, m.funcType()))));
+            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, m.funcType()))));
       }
     }
     return EResult.err(loc, typeDesc() + ": unknown field '" + keyStr);

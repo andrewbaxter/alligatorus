@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
@@ -174,7 +175,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, spec.type()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, spec.type()))));
   }
 
   @Override

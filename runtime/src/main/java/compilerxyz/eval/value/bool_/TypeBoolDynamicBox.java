@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.gen.Binding;
@@ -162,7 +163,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -170,7 +171,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   private static CodeDynamic valueOfBoolean(QExprId loc) {

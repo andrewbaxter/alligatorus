@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.binding;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -33,7 +34,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
       dyn = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey);
     }
     Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
-    return new CodeValue(Code.of(loc, dyn), Opt.some(value));
+    return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));
   }
 
   @Override

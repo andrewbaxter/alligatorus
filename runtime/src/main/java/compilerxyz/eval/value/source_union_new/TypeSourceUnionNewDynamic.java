@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.source_union_new;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -170,7 +171,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   private record SourceUnionNewConstBinding(Value value) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
-      return new CodeValue(Code.none(loc), Opt.some(value));
+      return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -205,12 +206,12 @@ public record TypeBoolDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
-              Opt.some(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -218,7 +219,7 @@ public record TypeBoolDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            Opt.some(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -122,7 +123,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.err(loc, "Cannot convert to option");
     }
     return EResult.ok(
-        new CodeValue(cv.code(), Opt.some(ValueDynamic.stack(xx, this))));
+        new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
   }
 
   @Override
@@ -206,7 +207,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              Opt.some(ValueDynamic.stack(xx, elementType))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType))));
     }
     if (ck instanceof ConstKey.Str s2 && s2.value().equals("is_some")) {
       var selfDyn = self.code().dynamic();
@@ -221,7 +222,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              Opt.some(ValueDynamic.stack(xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+              EvalOutcome.ofValue(ValueDynamic.stack(xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
@@ -230,7 +231,7 @@ public record TypeOptionDynamic(Type elementType)
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), Opt.some(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+              new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
     };
   }
 

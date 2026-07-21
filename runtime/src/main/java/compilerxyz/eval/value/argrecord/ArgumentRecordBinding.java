@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.argrecord;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -12,7 +13,7 @@ import compilerxyz.util.TList;
 public record ArgumentRecordBinding(ArgumentRecord record) implements Binding {
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
-    return new CodeValue(Code.none(loc), Opt.some(record));
+    return new CodeValue(Code.none(loc), EvalOutcome.ofValue(record));
   }
 
   @Override

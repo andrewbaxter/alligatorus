@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.constkey;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
@@ -118,7 +119,7 @@ public record TypeConstkeyDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, literal),
-            Opt.some(ValueDynamic.stack(xx, new TypeConstkeyDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeConstkeyDynamic()))));
   }
 
   @Override

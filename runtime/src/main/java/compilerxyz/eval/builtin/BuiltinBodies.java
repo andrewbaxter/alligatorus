@@ -1,5 +1,6 @@
 package compilerxyz.eval.builtin;
 
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.CompileId;
@@ -56,7 +57,7 @@ public final class BuiltinBodies {
 
   @BuiltinPath(value = "eval.codevalue", scopeId = 5005L)
   public static CodeValue codevalue(ExprContext xx, Code code, Value value) {
-    return new CodeValue(code, Opt.some(value));
+    return new CodeValue(code, EvalOutcome.ofValue(value));
   }
 
   @BuiltinPath(value = "eval.gen_binding_name", scopeId = 5006L)
