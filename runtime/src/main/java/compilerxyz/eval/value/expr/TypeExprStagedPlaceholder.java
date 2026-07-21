@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.expr;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -21,7 +23,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 
-@compilerxyz.annotations.BuiltinTypeId(7017L)
+@BuiltinTypeId(7017L)
 public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
 

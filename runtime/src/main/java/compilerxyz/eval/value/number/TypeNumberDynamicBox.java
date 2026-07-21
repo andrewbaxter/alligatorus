@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.number;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -54,7 +56,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7003L)
+@BuiltinTypeId(7003L)
 public record TypeNumberDynamicBox()
     implements
         Type,

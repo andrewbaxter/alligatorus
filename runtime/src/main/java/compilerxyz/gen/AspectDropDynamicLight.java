@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -9,7 +11,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
 @Builtin(uniqueId = 1035L)
-@compilerxyz.annotations.BuiltinTypeId(7208L)
+@BuiltinTypeId(7208L)
 public interface AspectDropDynamicLight extends Aspect {
   EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv);
 }

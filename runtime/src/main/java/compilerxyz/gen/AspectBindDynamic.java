@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.SourceExposed;
 import compilerxyz.annotations.SourceInterface;
@@ -12,7 +14,7 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 1023L)
-@compilerxyz.annotations.BuiltinTypeId(7203L)
+@BuiltinTypeId(7203L)
 @SourceInterface(uniqueId = 2010L, scopeId = 3011)
 public interface AspectBindDynamic extends Aspect {
   @SourceExposed

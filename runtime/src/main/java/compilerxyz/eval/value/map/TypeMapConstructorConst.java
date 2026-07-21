@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -29,8 +32,8 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7032L)
-@compilerxyz.annotations.BuiltinPath("types.map")
+@BuiltinTypeId(7032L)
+@BuiltinPath("types.map")
 public record TypeMapConstructorConst()
     implements
         Type,

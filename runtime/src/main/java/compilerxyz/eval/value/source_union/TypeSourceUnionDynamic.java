@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_union;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -36,7 +38,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectUnion;
 
-@compilerxyz.annotations.BuiltinTypeId(7052L)
+@BuiltinTypeId(7052L)
 public final class TypeSourceUnionDynamic
     implements
         Type,

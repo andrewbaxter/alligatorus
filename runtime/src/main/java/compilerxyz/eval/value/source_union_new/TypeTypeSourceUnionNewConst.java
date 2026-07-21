@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_union_new;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -37,7 +39,7 @@ import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@compilerxyz.annotations.BuiltinTypeId(7054L)
+@BuiltinTypeId(7054L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 

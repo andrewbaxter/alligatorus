@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.string;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -66,8 +69,8 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenAspectStringDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7008L)
-@compilerxyz.annotations.BuiltinPath("types.string")
+@BuiltinTypeId(7008L)
+@BuiltinPath("types.string")
 public record TypeStringDynamic()
     implements
         Type,

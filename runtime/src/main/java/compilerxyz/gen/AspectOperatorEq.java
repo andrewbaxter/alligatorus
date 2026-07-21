@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -8,7 +10,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
 @Builtin(uniqueId = 1019L)
-@compilerxyz.annotations.BuiltinTypeId(7227L)
+@BuiltinTypeId(7227L)
 public interface AspectOperatorEq extends Aspect {
   EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference);

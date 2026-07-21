@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -42,7 +44,7 @@ import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
-@compilerxyz.annotations.BuiltinTypeId(7038L)
+@BuiltinTypeId(7038L)
 public record TypeFunctionDynamic(
     Type arg,
     Type ret,

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -36,7 +38,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7041L)
+@BuiltinTypeId(7041L)
 public record TypeMethodDynamic(
     Type receiver,
     Type arg,

@@ -48,7 +48,7 @@ public final class JavaAspectExtractor {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("@Builtin(") && !src.contains("@compilerxyz.annotations.Builtin(")) continue;
+        if (!src.contains("@Builtin(")) continue;
         var cu = StaticJavaParser.parse(file);
         var decl = findBuiltinInterface(cu);
         if (decl == null) continue;

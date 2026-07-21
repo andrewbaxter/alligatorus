@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.list;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -67,7 +69,7 @@ import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7027L)
+@BuiltinTypeId(7027L)
 public record TypeListDynamic(Type elementType)
     implements
         Type,

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -16,7 +18,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(7046L)
+@BuiltinTypeId(7046L)
 public final class SourceObjectRefType {
 
   private SourceObjectRefType() {}

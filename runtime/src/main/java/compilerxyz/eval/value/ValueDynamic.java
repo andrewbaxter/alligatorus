@@ -1,5 +1,7 @@
 package compilerxyz.eval.value;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.ExprContext;
@@ -30,7 +32,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import static compilerxyz.util.MustCast.mustCast;
 
-@compilerxyz.annotations.BuiltinTypeId(7104L)
+@BuiltinTypeId(7104L)
 public record ValueDynamic(Source source, Type type_) implements Value {
                 public Type valueType() {
     return type_;

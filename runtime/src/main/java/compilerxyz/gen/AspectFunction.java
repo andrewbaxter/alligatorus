@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
@@ -13,7 +15,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 1116L)
-@compilerxyz.annotations.BuiltinTypeId(7217L)
+@BuiltinTypeId(7217L)
 @SourceInterface(uniqueId = 1016L, scopeId = 3003)
 @BuiltinPath("eval.aspect_function")
 public interface AspectFunction extends Aspect {

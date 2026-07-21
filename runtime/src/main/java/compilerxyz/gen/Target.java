@@ -1,6 +1,9 @@
 package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.annotations.SourceExposed;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -22,49 +25,49 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 2006L, scopeId = 3006)
-@compilerxyz.annotations.BuiltinPath("eval.target")
-@compilerxyz.annotations.BuiltinTypeId(7024L)
+@BuiltinPath("eval.target")
+@BuiltinTypeId(7024L)
 public interface Target {
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<Opt<TargetBindSub>> targetMaybeBindSub(ExprContext xx, QExprId loc, CodeValue cv);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<TargetBindSub> targetCodeToBindSub(QExprId loc, Code code, Type type_);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     TargetBindSub targetBindSubRecord(ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     TargetBindSub targetBindSubTuple(ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<Code> targetCastException(
             ExprContext xx, QExprId loc, Code callCode, BindingId catchBinding, CodeValue castCv);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<Code> targetTryFinally(QExprId loc, Code body, Code finally_);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<CodeValue> targetStage(
             ExprContext xx, QExprId loc, Expr tree, TList<CodeValue> lowerValues, TList<CodeValue> graftValues);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<Expr> else_);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<CodeDynamic> targetTryCatchFinally(
             QExprId loc, CodeDynamic body, Opt<TryCatchClause> catch_, Opt<CodeDynamic> finally_);
 
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     EResult<CodeValue> targetMatch(
             ExprContext xx,
             QExprId loc,

@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.bind_result;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Binding;
@@ -18,8 +21,8 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6019L)
-@compilerxyz.annotations.BuiltinPath("types.bind_result")
+@BuiltinTrivialIdentityAspect(6019L)
+@BuiltinPath("types.bind_result")
 public final class BindResultType {
 
   private BindResultType() {}

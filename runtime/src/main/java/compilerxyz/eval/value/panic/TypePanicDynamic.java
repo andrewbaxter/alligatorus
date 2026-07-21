@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.panic;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -36,8 +39,8 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@compilerxyz.annotations.BuiltinTypeId(7019L)
-@compilerxyz.annotations.BuiltinPath("panic")
+@BuiltinTypeId(7019L)
+@BuiltinPath("panic")
 public record TypePanicDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 

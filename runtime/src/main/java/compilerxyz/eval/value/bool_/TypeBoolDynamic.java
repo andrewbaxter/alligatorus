@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -58,8 +61,8 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7005L)
-@compilerxyz.annotations.BuiltinPath("types.bool")
+@BuiltinTypeId(7005L)
+@BuiltinPath("types.bool")
 public record TypeBoolDynamic()
     implements
         Type,

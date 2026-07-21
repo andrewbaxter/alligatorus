@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -27,8 +30,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7036L)
-@compilerxyz.annotations.BuiltinPath("types.option")
+@BuiltinTypeId(7036L)
+@BuiltinPath("types.option")
 public record TypeOptionConstructorConst()
     implements
         Type,

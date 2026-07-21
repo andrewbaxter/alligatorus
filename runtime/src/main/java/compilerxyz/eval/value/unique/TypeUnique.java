@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.unique;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -56,8 +59,8 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectOperatorEq;
 
-@compilerxyz.annotations.BuiltinTypeId(7015L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6003L)
+@BuiltinTypeId(7015L)
+@BuiltinTrivialIdentityAspect(6003L)
 public record TypeUnique()
     implements
         Type,

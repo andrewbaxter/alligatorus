@@ -1,5 +1,9 @@
 package compilerxyz.eval.aspect;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -16,9 +20,9 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6012L)
-@compilerxyz.annotations.BuiltinTypeId(7013L)
-@compilerxyz.annotations.BuiltinPath("types.aspect")
+@BuiltinTrivialIdentityAspect(6012L)
+@BuiltinTypeId(7013L)
+@BuiltinPath("types.aspect")
 public interface Aspect {
 
   static Type dynamicType() {

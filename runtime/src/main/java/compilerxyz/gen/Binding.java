@@ -1,6 +1,9 @@
 package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.annotations.SourceExposed;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -9,10 +12,10 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 2005L, scopeId = 3005)
-@compilerxyz.annotations.BuiltinPath("eval.binding")
-@compilerxyz.annotations.BuiltinTypeId(7025L)
+@BuiltinPath("eval.binding")
+@BuiltinTypeId(7025L)
 public interface Binding {
-    @compilerxyz.annotations.SourceExposed
+    @SourceExposed
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
 
     default EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {

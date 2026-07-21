@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
@@ -15,7 +17,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 1015L)
-@compilerxyz.annotations.BuiltinTypeId(7214L)
+@BuiltinTypeId(7214L)
 @SourceInterface(uniqueId = 1030L, scopeId = 3004)
 @BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {

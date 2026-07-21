@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_object_new;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -41,7 +43,7 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7048L)
+@BuiltinTypeId(7048L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 

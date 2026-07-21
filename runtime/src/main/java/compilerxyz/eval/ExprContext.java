@@ -1,5 +1,8 @@
 package compilerxyz.eval;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.gen.Target;
@@ -16,8 +19,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6001L)
-@compilerxyz.annotations.BuiltinTypeId(7021L)
+@BuiltinTrivialIdentityAspect(6001L)
+@BuiltinTypeId(7021L)
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
   public final ImportStateId importState;

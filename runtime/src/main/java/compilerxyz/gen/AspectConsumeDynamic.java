@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.SourceExposed;
 import compilerxyz.annotations.SourceInterface;
@@ -12,7 +14,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 
 @Builtin(uniqueId = 1024L)
-@compilerxyz.annotations.BuiltinTypeId(7206L)
+@BuiltinTypeId(7206L)
 @SourceInterface(uniqueId = 2009L, scopeId = 3010)
 public interface AspectConsumeDynamic extends Aspect {
   @SourceExposed

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -50,7 +52,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @SuppressWarnings("rawtypes")
-@compilerxyz.annotations.BuiltinTypeId(7121L)
+@BuiltinTypeId(7121L)
 public record TypeObjectDynamic(
     TypeObjectMeta meta,
     JavaInternalName jvmClass,

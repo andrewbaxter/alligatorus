@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.string;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -44,7 +46,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStringConst;
 
-@compilerxyz.annotations.BuiltinTypeId(7007L)
+@BuiltinTypeId(7007L)
 public record TypeStringConst()
     implements
         Type,

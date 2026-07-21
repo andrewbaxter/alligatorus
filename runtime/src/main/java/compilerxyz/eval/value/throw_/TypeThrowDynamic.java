@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.throw_;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -33,8 +36,8 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@compilerxyz.annotations.BuiltinTypeId(7018L)
-@compilerxyz.annotations.BuiltinPath("throw")
+@BuiltinTypeId(7018L)
+@BuiltinPath("throw")
 public record TypeThrowDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 

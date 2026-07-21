@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.code_value_extern;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -34,9 +38,9 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7020L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6002L)
-@compilerxyz.annotations.BuiltinPath("types.cve")
+@BuiltinTypeId(7020L)
+@BuiltinTrivialIdentityAspect(6002L)
+@BuiltinPath("types.cve")
 public record TypeCodeValueExternDynamic()
     implements
         Type,

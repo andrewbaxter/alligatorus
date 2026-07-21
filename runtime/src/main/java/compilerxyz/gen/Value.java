@@ -1,22 +1,29 @@
 package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.annotations.SourceExposed;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.Artifactable;
+import compilerxyz.artifact.ArtifactSupport;
+import compilerxyz.eval.EResult;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 
 @Builtin(uniqueId = 2001L, scopeId = 3001)
-@compilerxyz.annotations.BuiltinPath("eval.value")
-@compilerxyz.annotations.BuiltinTypeId(7109L)
-public interface Value extends compilerxyz.artifact.Artifactable {
-    @compilerxyz.annotations.SourceExposed
+@BuiltinPath("eval.value")
+@BuiltinTypeId(7109L)
+public interface Value extends Artifactable {
+    @SourceExposed
     Type valueType();
 
     @Override
-    default compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
-        compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
-      var asp = compilerxyz.gen.GenAspectArtifact.get(xx, loc, valueType());
+    default EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc) {
+      var asp = GenAspectArtifact.get(xx, loc, valueType());
       if (asp.hasErrors()) return asp.reerr();
       var exporter = asp.requireValue("Value::exportArtifact aspect").aspectArtifactExporter();
-      return exporter.artifactExporterExport(xx, loc,
-          compilerxyz.artifact.ArtifactSupport.valueAsExporterAny(this));
+      return exporter.artifactExporterExport(xx, loc, ArtifactSupport.valueAsExporterAny(this));
     }
 }

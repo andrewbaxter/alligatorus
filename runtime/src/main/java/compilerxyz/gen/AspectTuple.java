@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -11,7 +13,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 1013L)
-@compilerxyz.annotations.BuiltinTypeId(7235L)
+@BuiltinTypeId(7235L)
 public interface AspectTuple extends Aspect {
   TList<Type> aspectTupleElementTypes();
 

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.unique;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -33,7 +35,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectOperatorEq;
 
-@compilerxyz.annotations.BuiltinTypeId(7123L)
+@BuiltinTypeId(7123L)
 public record TypeUniqueConst()
     implements
         Type,

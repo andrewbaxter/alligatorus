@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -47,7 +49,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7006L)
+@BuiltinTypeId(7006L)
 public record TypeBoolDynamicBox()
     implements
         Type,

@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -37,8 +40,8 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectTuple;
 
-@compilerxyz.annotations.BuiltinTypeId(7039L)
-@compilerxyz.annotations.BuiltinPath("eval.aspect_lookup")
+@BuiltinTypeId(7039L)
+@BuiltinPath("eval.aspect_lookup")
 public record TypeFunctionAspectDynamic()
     implements
         Type,

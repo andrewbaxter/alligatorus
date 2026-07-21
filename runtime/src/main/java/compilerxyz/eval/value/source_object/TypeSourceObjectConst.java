@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -17,7 +19,7 @@ import compilerxyz.util.Opt;
  * <p>Distinct from {@link TypeTypeSourceObjectConst} which is the meta-type of type-descriptor
  * values (i.e., the type of TypeSourceObjectDynamic-valued expressions themselves).
  */
-@compilerxyz.annotations.BuiltinTypeId(7238L)
+@BuiltinTypeId(7238L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     implements Type,
         compilerxyz.gen.AspectArtifact,

@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.code;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -18,9 +22,9 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6011L)
-@compilerxyz.annotations.BuiltinTypeId(7026L)
-@compilerxyz.annotations.BuiltinPath("types.codedyn")
+@BuiltinTrivialIdentityAspect(6011L)
+@BuiltinTypeId(7026L)
+@BuiltinPath("types.codedyn")
 public final class CodeDynHandleType {
 
   private CodeDynHandleType() {}

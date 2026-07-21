@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -76,7 +78,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7042L)
+@BuiltinTypeId(7042L)
 public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
     implements
         Type,

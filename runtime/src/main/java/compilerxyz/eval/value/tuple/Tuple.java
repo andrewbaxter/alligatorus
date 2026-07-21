@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -78,7 +80,7 @@ import compilerxyz.gen.GenAspectNumberConst;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
-@compilerxyz.annotations.BuiltinTypeId(7043L)
+@BuiltinTypeId(7043L)
 public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     implements
         Type,

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_union_new;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -41,7 +43,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7055L)
+@BuiltinTypeId(7055L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectBind, AspectFunction, ExporterAny {
 

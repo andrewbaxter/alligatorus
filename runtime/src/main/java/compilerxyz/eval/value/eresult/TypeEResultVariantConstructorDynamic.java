@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -30,7 +32,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7102L)
+@BuiltinTypeId(7102L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
     implements
         Type,

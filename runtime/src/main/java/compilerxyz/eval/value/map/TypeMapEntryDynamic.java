@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -41,7 +43,7 @@ import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@compilerxyz.annotations.BuiltinTypeId(7033L)
+@BuiltinTypeId(7033L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
     implements
         Type,

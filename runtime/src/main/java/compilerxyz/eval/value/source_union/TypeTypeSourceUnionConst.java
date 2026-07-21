@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_union;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -53,7 +55,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
 
-@compilerxyz.annotations.BuiltinTypeId(7051L)
+@BuiltinTypeId(7051L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     implements
         Type,

@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.null_;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -51,8 +54,8 @@ import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7010L)
-@compilerxyz.annotations.BuiltinPath("types.null")
+@BuiltinTypeId(7010L)
+@BuiltinPath("types.null")
 public record TypeNullDynamic()
     implements
         Type,

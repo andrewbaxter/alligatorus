@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.null_;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -39,7 +41,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@compilerxyz.annotations.BuiltinTypeId(7009L)
+@BuiltinTypeId(7009L)
 public record TypeNullConst()
     implements
         Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectNull, ExporterAny {

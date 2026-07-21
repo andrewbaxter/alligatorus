@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.number;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -50,7 +52,7 @@ import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@compilerxyz.annotations.BuiltinTypeId(7001L)
+@BuiltinTypeId(7001L)
 public record TypeNumberConst()
     implements
         Type,

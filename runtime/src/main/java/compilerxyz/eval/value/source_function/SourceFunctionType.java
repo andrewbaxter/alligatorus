@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_function;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -16,7 +18,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(7057L)
+@BuiltinTypeId(7057L)
 public final class SourceFunctionType {
 
   private SourceFunctionType() {}

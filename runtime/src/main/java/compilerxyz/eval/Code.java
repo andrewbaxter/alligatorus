@@ -1,5 +1,9 @@
 package compilerxyz.eval;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -15,9 +19,9 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(7103L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6016L)
-@compilerxyz.annotations.BuiltinPath("types.code")
+@BuiltinTypeId(7103L)
+@BuiltinTrivialIdentityAspect(6016L)
+@BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 
   record None(QExprId loc) implements Code {

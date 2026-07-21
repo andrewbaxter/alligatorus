@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.source_union;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -17,8 +20,8 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6007L)
-@compilerxyz.annotations.BuiltinTypeId(7053L)
+@BuiltinTrivialIdentityAspect(6007L)
+@BuiltinTypeId(7053L)
 public final class SourceUnionRefType {
 
   private SourceUnionRefType() {}

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -54,7 +56,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7044L)
+@BuiltinTypeId(7044L)
 public final class TypeSourceObjectDynamic
     implements
         Type,

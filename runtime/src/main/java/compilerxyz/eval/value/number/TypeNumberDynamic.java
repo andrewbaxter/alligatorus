@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.number;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -82,8 +85,8 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7002L)
-@compilerxyz.annotations.BuiltinPath("types.number")
+@BuiltinTypeId(7002L)
+@BuiltinPath("types.number")
 public record TypeNumberDynamic()
     implements
         Type,

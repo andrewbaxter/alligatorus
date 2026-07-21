@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.source_object_new;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -44,7 +46,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@compilerxyz.annotations.BuiltinTypeId(7047L)
+@BuiltinTypeId(7047L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     implements
         Type,

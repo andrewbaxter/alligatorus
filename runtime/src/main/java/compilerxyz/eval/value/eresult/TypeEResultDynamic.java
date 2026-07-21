@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -31,8 +34,8 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-@compilerxyz.annotations.BuiltinTypeId(7101L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6017L)
+@BuiltinTypeId(7101L)
+@BuiltinTrivialIdentityAspect(6017L)
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,

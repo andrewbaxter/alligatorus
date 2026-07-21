@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -20,8 +23,8 @@ import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@compilerxyz.annotations.BuiltinTypeId(7040L)
-@compilerxyz.annotations.BuiltinPath("eval.cast_value")
+@BuiltinTypeId(7040L)
+@BuiltinPath("eval.cast_value")
 public record TypeFunctionCastValueDynamic()
     implements
         Type,

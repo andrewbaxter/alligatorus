@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -40,7 +42,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@compilerxyz.annotations.BuiltinTypeId(7004L)
+@BuiltinTypeId(7004L)
 public record TypeBoolConst()
     implements
         Type,

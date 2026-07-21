@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.source_interface;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -62,8 +65,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7049L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6004L)
+@BuiltinTypeId(7049L)
+@BuiltinTrivialIdentityAspect(6004L)
 public record TypeSourceInterfaceConst(InterfaceData data)
     implements
         Type,
@@ -89,7 +92,7 @@ public record TypeSourceInterfaceConst(InterfaceData data)
     return TypeSourceInterfaceConstMeta.INSTANCE;
   }
 
-  @compilerxyz.annotations.BuiltinTypeId(7122L)
+  @BuiltinTypeId(7122L)
   static final class TypeSourceInterfaceConstMeta {
     static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
 

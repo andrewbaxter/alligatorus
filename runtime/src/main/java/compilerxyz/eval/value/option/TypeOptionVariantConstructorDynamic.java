@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -37,7 +39,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@compilerxyz.annotations.BuiltinTypeId(7037L)
+@BuiltinTypeId(7037L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
     implements
         Type,

@@ -1,5 +1,7 @@
 package compilerxyz.eval.value.typeid;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -25,7 +27,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@compilerxyz.annotations.BuiltinTypeId(7112L)
+@BuiltinTypeId(7112L)
 public record TypeTypeIdDynamic()
     implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectInitialBind {
 

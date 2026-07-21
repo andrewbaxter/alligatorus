@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.constkey;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -34,9 +38,9 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-@compilerxyz.annotations.BuiltinTypeId(7014L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6015L)
-@compilerxyz.annotations.BuiltinPath("types.constkey")
+@BuiltinTypeId(7014L)
+@BuiltinTrivialIdentityAspect(6015L)
+@BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
     implements
         Type,

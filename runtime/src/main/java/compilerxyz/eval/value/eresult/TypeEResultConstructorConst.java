@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -27,8 +30,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@compilerxyz.annotations.BuiltinTypeId(7107L)
-@compilerxyz.annotations.BuiltinPath("types.eresult")
+@BuiltinTypeId(7107L)
+@BuiltinPath("types.eresult")
 public record TypeEResultConstructorConst()
     implements
         Type,

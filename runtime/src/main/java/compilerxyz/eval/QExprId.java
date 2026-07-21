@@ -1,5 +1,8 @@
 package compilerxyz.eval;
 
+import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
@@ -15,8 +18,8 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@compilerxyz.annotations.BuiltinTypeId(7022L)
-@compilerxyz.annotations.BuiltinTrivialIdentityAspect(6018L)
+@BuiltinTypeId(7022L)
+@BuiltinTrivialIdentityAspect(6018L)
 public record QExprId(SourceId source, long expr) {
 
   public static Type dynamicType() {

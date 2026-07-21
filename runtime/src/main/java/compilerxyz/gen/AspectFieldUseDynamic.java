@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -9,7 +11,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.value.ValueDynamic.Source;
 
 @Builtin(uniqueId = 1037L)
-@compilerxyz.annotations.BuiltinTypeId(7216L)
+@BuiltinTypeId(7216L)
 public interface AspectFieldUseDynamic extends Aspect {
   EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx, QExprId loc, Source baseSource, String javaFieldName);

@@ -1,5 +1,7 @@
 package compilerxyz.gen;
 
+import compilerxyz.annotations.BuiltinTypeId;
+
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.SourceExposed;
@@ -12,7 +14,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
 @Builtin(uniqueId = 1032L)
-@compilerxyz.annotations.BuiltinTypeId(7207L)
+@BuiltinTypeId(7207L)
 @SourceInterface(uniqueId = 2008L, scopeId = 3008)
 @BuiltinPath("eval.aspect_drop_dynamic")
 public interface AspectDropDynamic extends Aspect {
