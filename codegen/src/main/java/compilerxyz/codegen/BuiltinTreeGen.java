@@ -10,8 +10,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.InterfaceSpec;
-import compilerxyz.codegen.util.Method;
-import compilerxyz.codegen.util.MethodArgs;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
@@ -153,16 +151,10 @@ public final class BuiltinTreeGen {
 
   public record Branch(TList<Child> children) implements NodeSpec {}
 
-  public record Leaf(LeafSpec leaf) implements NodeSpec {}
+  public record LeafSpec(CodeBlock data, CodeBlock type) implements NodeSpec {
 
-  public record LeafSpec(CodeBlock innerExpr, CodeBlock valueTypeExpr) {
-
-    public static LeafSpec of(CodeBlock innerExpr, CodeBlock valueTypeExpr) {
-      return new LeafSpec(innerExpr, valueTypeExpr);
-    }
-
-    public static LeafSpec initialBind(CodeBlock typeExpr) {
-      return new LeafSpec(typeExpr, TYPE_WRAPPER_EXPR);
+    public static LeafSpec of(CodeBlock data, CodeBlock type) {
+      return new LeafSpec(data, type);
     }
 
     public static LeafSpec interface_(InterfaceSpec spec) {
@@ -170,15 +162,6 @@ public final class BuiltinTreeGen {
           CodeBlock.of("new $T(interfaces.$N)", TYPE_INTERFACE_CONST, ifaceHolderFieldName(spec));
       var wrapperExpr = CodeBlock.of("$T.dynamicType()", TYPE_INTERFACE_CONST);
       return new LeafSpec(innerExpr, wrapperExpr);
-    }
-
-    public static LeafSpec function(long builtinScopeId, TList<NamedTypeRef> args, CodeBlock retDynamicType) {
-      var methodName = BUILTIN_METHOD_NAMES.get(builtinScopeId);
-      if (methodName == null) {
-        throw new IllegalStateException(
-            "BuiltinTreeGen: no BuiltinBodies method mapped for scope id " + builtinScopeId);
-      }
-      return functionByName(methodName, args, retDynamicType);
     }
 
     public static LeafSpec functionByName(
@@ -192,10 +175,6 @@ public final class BuiltinTreeGen {
           "compilerxyz/eval/builtin/BuiltinBodies",
           methodName);
       return new LeafSpec(innerExpr, TYPE_WRAPPER_EXPR);
-    }
-
-    public static LeafSpec constructor(CodeBlock typeExpr) {
-      return new LeafSpec(typeExpr, TYPE_WRAPPER_EXPR);
     }
   }
 
@@ -253,7 +232,7 @@ public final class BuiltinTreeGen {
   private static String[] emitNode(NodeSpec node, EmitState st) {
     return switch (node) {
       case Branch b -> emitBranch(b, st);
-      case Leaf l -> emitLeaf(l.leaf(), st);
+      case LeafSpec ls -> emitLeaf(ls, st);
     };
   }
 
@@ -282,21 +261,8 @@ public final class BuiltinTreeGen {
   }
 
   private static String[] emitLeaf(LeafSpec spec, EmitState st) {
-    return emitConstLeaf(spec.innerExpr(), spec.valueTypeExpr(), st);
+    return emitConstLeaf(spec.data(), spec.type(), st);
   }
-
-  private static final java.util.Map<Long, String> BUILTIN_METHOD_NAMES =
-      java.util.Map.ofEntries(
-          java.util.Map.entry(5001L, "log"),
-          java.util.Map.entry(5002L, "define"),
-          java.util.Map.entry(5003L, "strToJson"),
-          java.util.Map.entry(5004L, "constkeyToStr"),
-          java.util.Map.entry(5005L, "codevalue"),
-          java.util.Map.entry(5006L, "genBindingName"),
-          java.util.Map.entry(5008L, "constEval"),
-          java.util.Map.entry(5009L, "newExprContext"),
-          java.util.Map.entry(5013L, "stack"),
-          java.util.Map.entry(5015L, "bindResult"));
 
   private static final ClassName JAVA_INTERNAL_NAME =
       ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
@@ -525,9 +491,9 @@ public final class BuiltinTreeGen {
   private static void addSpecial(
       java.util.LinkedHashMap<String, LeafSpec> m,
       String path,
-      CodeBlock innerExpr,
-      CodeBlock valueTypeExpr) {
-    if (m.put(path, LeafSpec.of(innerExpr, valueTypeExpr)) != null) {
+      CodeBlock data,
+      CodeBlock type) {
+    if (m.put(path, LeafSpec.of(data, type)) != null) {
       throw new IllegalStateException("duplicate special path: " + path);
     }
   }
@@ -593,7 +559,7 @@ public final class BuiltinTreeGen {
   }
 
   private static NodeSpec toNodeSpec(TreeNode n, String branchPath) {
-    if (n.leaf() != null) return new Leaf(n.leaf());
+    if (n.leaf() != null) return n.leaf();
     var children = new TList<Child>();
     var order = BRANCH_ORDER.get(branchPath);
     var remaining = new java.util.LinkedHashMap<>(n.children());
@@ -648,9 +614,7 @@ public final class BuiltinTreeGen {
               scopeIds);
         }
       }
-      case Leaf l -> validateLeaf(l.leaf(), path, scopeIds);
+      case LeafSpec ls -> {}
     }
   }
-
-  private static void validateLeaf(LeafSpec spec, String path, TSet<Long> scopeIds) {}
 }

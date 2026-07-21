@@ -18,8 +18,8 @@ import java.util.stream.Stream;
 /**
  * Discovers every class/interface/record under the runtime source root that exposes a nullary
  * {@code public static dynamicType()}. Returns a map from the enclosing type's ClassName to the
- * CodeBlock that constructs its runtime {@code Type} descriptor. AspectsGen (and other
- * generators) use this instead of a hand-maintained leaf-descriptor table.
+ * CodeBlock that constructs its runtime {@code Type} descriptor. BuiltinInterfacesGen (and
+ * other generators) use this instead of a hand-maintained leaf-descriptor table.
  */
 public final class DynamicTypeScanner {
   private DynamicTypeScanner() {}
