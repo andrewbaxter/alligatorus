@@ -7,4 +7,4 @@ import compilerxyz.eval.aspect.Aspect;
 
 @Builtin(uniqueId = 1003L)
 @BuiltinTypeId(7225L)
-public interface AspectNumberDynamic extends Aspect {}
+public interface AspectIntDynamic extends Aspect {}

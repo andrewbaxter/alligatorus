@@ -3,7 +3,6 @@ package compilerxyz.gen;
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
-import compilerxyz.annotations.SourceExposed;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
 import compilerxyz.artifact.ArtifactSupport;
@@ -16,7 +15,6 @@ import compilerxyz.eval.Type;
 @BuiltinPath("eval.value")
 @BuiltinTypeId(7109L)
 public interface Value extends Artifactable {
-    @SourceExposed
     Type valueType();
 
     @Override

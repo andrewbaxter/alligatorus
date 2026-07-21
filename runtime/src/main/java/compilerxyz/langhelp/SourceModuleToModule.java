@@ -5,7 +5,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.null_.TypeNullConst;
-import compilerxyz.eval.value.number.TypeNumberConst;
+import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceLiteral;
@@ -145,7 +145,7 @@ public final class SourceModuleToModule {
       case SourceLiteral.Str s -> Expr.LitValue.shared(
           new ValueObjectConst(new TypeStringConst(), s.value()));
       case SourceLiteral.Number n -> Expr.LitValue.shared(
-          new ValueObjectConst(new TypeNumberConst(), n.value()));
+          new ValueObjectConst(new TypeIntConst(), (long) n.value()));
     };
   }
 

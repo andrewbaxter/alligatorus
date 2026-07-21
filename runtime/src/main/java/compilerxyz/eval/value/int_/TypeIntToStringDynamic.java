@@ -1,4 +1,4 @@
-package compilerxyz.eval.value.number;
+package compilerxyz.eval.value.int_;
 
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -36,7 +36,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @BuiltinTypeId(7115L)
-public record TypeNumberToStringDynamic()
+public record TypeIntToStringDynamic()
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
@@ -49,20 +49,20 @@ public record TypeNumberToStringDynamic()
       ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(loc, "TypeNumberToStringDynamic::toDynamic: CodeValue has no dynamic code");
+    return EResult.err(loc, "TypeIntToStringDynamic::toDynamic: CodeValue has no dynamic code");
   }
 
   @Override
   public TypeId hasTypeIdTypeId() {
-    return GenTypeIds.TYPE_NUMBER_TO_STRING_DYNAMIC_TYPE_ID;
+    return GenTypeIds.TYPE_INT_TO_STRING_DYNAMIC_TYPE_ID;
   }
 
   @Override
   public String typeDesc() {
-    return "number.to_string";
+    return "int.to_string";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberToStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_TO_STRING_DYNAMIC_TYPE_ID, "number_to_string_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntToStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INT_TO_STRING_DYNAMIC_TYPE_ID, "int_to_string_dynamic");
 
                 public Type valueType() {
     return META;
@@ -83,17 +83,17 @@ public record TypeNumberToStringDynamic()
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var selfDyn = self.code().dynamic();
     if (selfDyn == null) {
-      return EResult.err(loc, "TypeNumberToStringDynamic::call: self has no dynamic code");
+      return EResult.err(loc, "TypeIntToStringDynamic::call: self has no dynamic code");
     }
 
     var retType = new TypeStringDynamic();
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var helperName = JavaInternalName.fromClass(NumberFormat.class);
+    var helperName = JavaInternalName.fromClass(IntFormat.class);
     var stringDesc = JavaDataDescriptor.fromClass(String.class);
     var formatDesc =
-        JavaMethodDescriptor.fromParts(stringDesc, TList.of(JavaDataDescriptor.DESC_DOUBLE));
+        JavaMethodDescriptor.fromParts(stringDesc, TList.of(JavaDataDescriptor.DESC_LONG));
 
     var seq = new JavaBytecodeSequence();
     seq.add(selfDyn);

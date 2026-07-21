@@ -13,16 +13,16 @@ import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
 import compilerxyz.eval.ExprErr;
 
-public final class T0050NumbersTest {
+public final class T0050IntsTest {
   @Test
-  public void test00000NumberLit() {
+  public void test00000IntLit() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
         "main",
         new SourceModule.V1(
             mb.seqOf(
-                mb.bind("x", mb.as_(mb.num(4.0), mb.typesNumber())),
+                mb.bind("x", mb.as_(mb.num(4.0), mb.typesInt())),
                 mb.ifOf(
                     TList.of(
                         new TestMb.Branch(
@@ -45,7 +45,7 @@ public final class T0050NumbersTest {
   }
 
   @Test
-  public void test00100NumberDynamic() {
+  public void test00100IntDynamic() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
@@ -66,8 +66,8 @@ public final class T0050NumbersTest {
                                 mb.field(mb.scopeUse("builder"), mb.str("impl")),
                                 mb.recordOf(
                                     TList.of(
-                                        new TestMb.RecordPair("arg", mb.typesNumber()),
-                                        new TestMb.RecordPair("ret", mb.typesNumber()),
+                                        new TestMb.RecordPair("arg", mb.typesInt()),
+                                        new TestMb.RecordPair("ret", mb.typesInt()),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(

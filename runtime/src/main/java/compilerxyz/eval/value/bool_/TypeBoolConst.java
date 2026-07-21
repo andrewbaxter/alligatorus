@@ -142,7 +142,7 @@ public record TypeBoolConst()
         && v.data() instanceof Boolean bv) {
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.literalBool(loc, bv));
-      seq.add(compilerxyz.eval.value.number.TypeNumberDynamic.boxBoolean(loc));
+      seq.add(compilerxyz.eval.value.int_.TypeIntDynamic.boxBoolean(loc));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
     return EResult.err(loc, "TypeBoolConst::toDynamic: expected bool ValueObjectConst");

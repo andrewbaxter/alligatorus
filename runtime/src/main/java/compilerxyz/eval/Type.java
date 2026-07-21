@@ -4,7 +4,6 @@ import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
-import compilerxyz.annotations.SourceExposed;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
 import compilerxyz.artifact.ExporterAny;
@@ -35,21 +34,15 @@ public interface Type extends HasTypeId, Artifactable {
     return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
   }
 
-  @SourceExposed
   boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
-  @SourceExposed
   EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
 
-  @SourceExposed
   boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
 
-  @SourceExposed
   EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
 
-  @SourceExposed
   String typeDesc();
 
-  @SourceExposed
   Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 }

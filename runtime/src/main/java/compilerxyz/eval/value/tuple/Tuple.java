@@ -34,7 +34,7 @@ import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectElementUseConst;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectNumberConst;
+import compilerxyz.gen.AspectInt;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectDropDynamicLight;
@@ -76,7 +76,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectNull;
-import compilerxyz.gen.GenAspectNumberConst;
+import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
@@ -1086,14 +1086,14 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.err(loc, "Tuple::field: key has no compile-time value");
     }
     var keyVal = keySome.value();
-    var numConst = GenAspectNumberConst.getMaybe(xx, keyVal.valueType());
-    if (!(numConst instanceof Opt.Some<AspectNumberConst> numSome)) {
-      return EResult.err(loc, "Tuple::field: key must be a compile-time number");
+    var numConst = GenAspectInt.getMaybe(xx, keyVal.valueType());
+    if (!(numConst instanceof Opt.Some<AspectInt> numSome)) {
+      return EResult.err(loc, "Tuple::field: key must be a compile-time int");
     }
-    double d = numSome.value().aspectNumberConstGet(keyVal);
+    long d = numSome.value().aspectIntGet(keyVal);
     int idx = (int) d;
-    if ((double) idx != d) {
-      return EResult.err(loc, "Tuple::field: index must be an integer, got " + d);
+    if ((long) idx != d) {
+      return EResult.err(loc, "Tuple::field: index out of int range, got " + d);
     }
     return accessOrIndex(xx, loc, self_, Opt.some(idx));
   }

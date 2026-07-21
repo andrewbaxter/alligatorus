@@ -51,13 +51,12 @@ public final class GenMain {
 
     var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.run(outRoot, formatter, builtinUniqueIds, scan.builtins());
-    BuiltinTreeGen.setScannedInterfaceSpecs(scan.sourceInterfaces());
+    var hostNames = new java.util.HashSet<String>();
+    for (var s : scan.builtins()) hostNames.add(s.pkg() + "." + s.simpleName());
+    BuiltinTreeGen.setBuiltinInterfaceHostNames(hostNames);
     var pathEntries =
         compilerxyz.codegen.experimental.BuiltinPathScanner.scanRoot(runtimeSourceRoot);
     BuiltinTreeGen.setScannedPathEntries(pathEntries);
-    var interfaceSpecs = new TList<compilerxyz.codegen.util.InterfaceSpec>();
-    interfaceSpecs.addAll(BuiltinTreeGen.extraInterfaceSpecs());
-    InterfacesGen.run(outRoot, formatter, interfaceSpecs, builtinUniqueIds, scopeIds);
     var scannedIdentities =
         compilerxyz.codegen.experimental.BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
     var identityExtras = new TList<IdentitiesGen.IdentitySpec>();

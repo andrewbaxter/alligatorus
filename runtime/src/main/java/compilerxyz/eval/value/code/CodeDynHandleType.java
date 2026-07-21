@@ -16,7 +16,6 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
@@ -40,7 +39,7 @@ public final class CodeDynHandleType {
       var jvmClass = JvmConstants.INTNAME_OBJECT;
       var trivialIdentityAspects = new TList<Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.CODE_DYN_HANDLE_TYPE_IDENTITY);
-      trivialIdentityAspects.add(GenBuiltinInterfaces.builtinCodeDynIfaceIdentity());
+      trivialIdentityAspects.add(new Unique.Builtin(2007L));
       return new TypeObjectDynamic(
           new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.CODE_DYN_HANDLE_TYPE_TYPE_ID, "code_dyn", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,

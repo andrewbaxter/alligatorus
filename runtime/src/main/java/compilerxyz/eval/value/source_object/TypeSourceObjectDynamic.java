@@ -36,7 +36,7 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -193,9 +193,6 @@ public final class TypeSourceObjectDynamic
     }
 
     for (var impl : interfaceImpls) {
-      if (key.equals(impl.interface_.identity)) {
-        return Opt.some(this);
-      }
       var kind = impl.interface_.builtinKind;
       if (kind != null) {
         // Only advertise aspects that TSOD actually implements. Aspects declared by
@@ -209,7 +206,8 @@ public final class TypeSourceObjectDynamic
           case TYPE -> key.equals(compilerxyz.gen.GenAspectType.AspectId);
           // TSOD does not implement AspectDropDynamic or AspectFunction — advertising
           // them would fail at cast time. VALUE/TARGET/CODE_DYN unused.
-          case ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, VALUE, TARGET, CODE_DYN -> false;
+          case ASPECT_BIND, ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, ASPECT_OPERATOR_ADD, ASPECT_SET,
+              VALUE, TARGET, CODE_DYN -> false;
         };
         if (exposes) return Opt.some(this);
       }
@@ -449,7 +447,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceConst(impl.interface_)))));
+                Opt.some(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
       }
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {

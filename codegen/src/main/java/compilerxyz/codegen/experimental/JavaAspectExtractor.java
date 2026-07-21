@@ -15,11 +15,6 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.BuiltinInterfacesGen;
-import compilerxyz.codegen.util.InterfaceSpec;
-import compilerxyz.codegen.util.Method;
-import compilerxyz.codegen.util.MethodArgs;
-import compilerxyz.codegen.util.NamedTypeRef;
-import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.io.IOException;
@@ -37,13 +32,10 @@ public final class JavaAspectExtractor {
         .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
   }
 
-  public record ScanResult(
-      TList<BuiltinInterfacesGen.BuiltinSpec> builtins,
-      TList<InterfaceSpec> sourceInterfaces) {}
+  public record ScanResult(TList<BuiltinInterfacesGen.BuiltinSpec> builtins) {}
 
   public static ScanResult scanRoot(Path runtimeSourceRoot) throws IOException {
     var builtins = new TList<BuiltinInterfacesGen.BuiltinSpec>();
-    var interfaces = new TList<InterfaceSpec>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
@@ -55,16 +47,9 @@ public final class JavaAspectExtractor {
         var isAspect = interfaceExtendsAspect(decl);
         var builtin = extractBuiltinSpec(file, cu, decl, isAspect);
         if (builtin != null) builtins.add(builtin);
-        if (isAspect) {
-          var iface = extractSourceInterface(file);
-          if (iface != null) interfaces.add(iface);
-        } else {
-          var trait = extractTrait(file);
-          if (trait != null) interfaces.add(trait);
-        }
       }
     }
-    return new ScanResult(builtins, interfaces);
+    return new ScanResult(builtins);
   }
 
   private static BuiltinInterfacesGen.@org.jspecify.annotations.Nullable BuiltinSpec
@@ -107,10 +92,7 @@ public final class JavaAspectExtractor {
     }
     var methods = new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Method>();
     for (var m : ifaceDecl.getMethods()) {
-      // Aspects emit all abstract methods (so their TOD advertises AspectField
-      // via method count); traits emit only @SourceExposed methods.
       if (!m.isAbstract()) continue;
-      if (!isAspect && m.getAnnotationByName("SourceExposed").isEmpty()) continue;
       var sourceName = compilerxyz.codegen.util.NameDerivation.snakeCase(
           deriveSourceName(m.getNameAsString(), simpleName));
       var params = new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Param>();
@@ -151,46 +133,6 @@ public final class JavaAspectExtractor {
     return false;
   }
 
-  private static @org.jspecify.annotations.Nullable InterfaceSpec extractTrait(Path sourceFile)
-      throws IOException {
-    var cu = StaticJavaParser.parse(sourceFile);
-    var ifaceDecl = findBuiltinInterface(cu);
-    if (ifaceDecl == null) return null;
-    var traitAnn = getBuiltinAnnotation(ifaceDecl);
-    var attrs = readAttrs(traitAnn);
-    var importMap = buildImportMap(cu);
-    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var simpleName = ifaceDecl.getNameAsString();
-    var name = snakeCase(simpleName);
-
-    var methods = new TList<Method>();
-    for (var m : ifaceDecl.getMethods()) {
-      var exposedOpt = m.getAnnotationByName("SourceExposed");
-      if (exposedOpt.isEmpty()) continue;
-      var derivedName = deriveSourceName(m.getNameAsString(), simpleName);
-      var args = new TList<NamedTypeRef>();
-      for (var p : m.getParameters()) {
-        args.add(new NamedTypeRef(
-            snakeCase(stripReservedSuffix(p.getNameAsString())),
-            typeRefOf(p.getType(), importMap, pkg)));
-      }
-      methods.add(new Method(derivedName, typeRefOf(m.getType(), importMap, pkg),
-          new MethodArgs(args)));
-    }
-
-    var registerInScope = !"false".equals(attrs.getOrDefault("registerInScope", "true"));
-    return new InterfaceSpec(
-        name,
-        Integer.parseInt(attrs.get("uniqueId")),
-        Integer.parseInt(attrs.get("scopeId")),
-        simpleName,
-        null,
-        registerInScope,
-        null,
-        pkg + "." + simpleName,
-        methods);
-  }
-
   /**
    * Derive the source-visible method name from the Java method name and the enclosing
    * interface name. If the Java name starts with the interface name (lowercase first char),
@@ -221,51 +163,6 @@ public final class JavaAspectExtractor {
     return sb.toString();
   }
 
-  private static @org.jspecify.annotations.Nullable InterfaceSpec extractSourceInterface(
-      Path sourceFile) throws IOException {
-    var cu = StaticJavaParser.parse(sourceFile);
-    var ifaceDecl = findBuiltinInterface(cu);
-    if (ifaceDecl == null) return null;
-    var siAnnOpt = ifaceDecl.getAnnotationByName("SourceInterface");
-    if (siAnnOpt.isEmpty()) return null;
-    var siAttrs = readAttrs(siAnnOpt.get());
-    var simpleName = ifaceDecl.getNameAsString();
-    if (!simpleName.startsWith("Aspect")) {
-      throw new IllegalStateException(
-          "@Builtin aspect interface must be named AspectXxx: " + simpleName);
-    }
-    var kind = simpleName.substring("Aspect".length());
-    var aspectPrefix = "aspect" + kind;
-    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var importMap = buildImportMap(cu);
-    var name = "aspect_" + camelToSnake(kind);
-
-    var methods = new TList<Method>();
-    for (var m : ifaceDecl.getMethods()) {
-      var exposedOpt = m.getAnnotationByName("SourceExposed");
-      if (exposedOpt.isEmpty()) continue;
-      var sourceName = deriveSourceName(m.getNameAsString(), "Aspect" + kind);
-      var args = new TList<NamedTypeRef>();
-      for (var p : m.getParameters()) {
-        args.add(new NamedTypeRef(
-            snakeCase(stripReservedSuffix(p.getNameAsString())),
-            typeRefOf(p.getType(), importMap, pkg)));
-      }
-      methods.add(new Method(sourceName, typeRefOf(m.getType(), importMap, pkg), new MethodArgs(args)));
-    }
-
-    return new InterfaceSpec(
-        name,
-        Integer.parseInt(siAttrs.get("uniqueId")),
-        Integer.parseInt(siAttrs.get("scopeId")),
-        "Aspect" + kind,
-        null,
-        true,
-        null,
-        "compilerxyz.gen.Aspect" + kind,
-        methods);
-  }
-
   private static final Map<String, ClassName> COMPOSITE_WRAPPERS = Map.of(
       "compilerxyz.eval.EResult",
           ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"),
@@ -284,41 +181,8 @@ public final class JavaAspectExtractor {
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-  private static final ClassName TYPE_NUMBER_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.number", "TypeNumberDynamic");
-
-  private static TypeRef typeRefOf(Type t, TMap<String, String> imports, String sourcePkg) {
-    var tn = typeNameOf(t, imports, sourcePkg);
-    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
-    if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_NUMBER_DYNAMIC);
-    if (tn instanceof ClassName cn) {
-      var descriptor = VALUE_CLASS_DESCRIPTORS.get(cn.canonicalName());
-      if (descriptor != null) return TypeRef.leaf(descriptor);
-      try {
-        return TypeRef.leaf(cn);
-      } catch (IllegalArgumentException e) {
-        // Not in DynamicTypes' leaf table — fall through to opaque.
-      }
-    }
-    if (tn instanceof ParameterizedTypeName pt) {
-      var wrapper = COMPOSITE_WRAPPERS.get(pt.rawType.canonicalName());
-      if (wrapper != null && pt.typeArguments.size() == 1
-          && pt.typeArguments.get(0) instanceof ClassName inner) {
-        return TypeRef.composite1(wrapper, TypeRef.leaf(inner));
-      }
-    }
-    return TypeRef.opaque(tn);
-  }
-
-  private static String camelToSnake(String camel) {
-    var sb = new StringBuilder();
-    for (int i = 0; i < camel.length(); i++) {
-      var c = camel.charAt(i);
-      if (Character.isUpperCase(c) && i > 0) sb.append('_');
-      sb.append(Character.toLowerCase(c));
-    }
-    return sb.toString();
-  }
+  private static final ClassName TYPE_INT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
 
   private static AnnotationExpr getBuiltinAnnotation(ClassOrInterfaceDeclaration decl) {
     return decl.getAnnotationByName("Builtin")

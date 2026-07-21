@@ -40,7 +40,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
@@ -54,7 +54,6 @@ import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.source_function.ExternalCodec;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
-import compilerxyz.gen.GenBuiltinInterfaces;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
@@ -288,7 +287,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       BuiltinInterfaceKind kind = impl.interface_.builtinKind;
                       Artifact userIface = null;
                       if (kind == null) {
-                        var ifaceConst = new TypeSourceInterfaceConst(impl.interface_);
+                        var ifaceConst = new TypeSourceInterfaceDynamic(impl.interface_);
                         var ifaceArtRes = ifaceConst.exportArtifact(xx, loc);
                         ifaceArtRes.drainInto(errors);
                         userIface =
@@ -476,9 +475,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       for (var impl : body.interfaceImpls()) {
                         InterfaceData iface;
                         if (impl.builtinKind() != null) {
-                          iface =
-                              BuiltinInterfaceRegistry
-                                  .resolve(xx2.vx.ix.importState, impl.builtinKind());
+                          iface = BuiltinInterfaceRegistry.resolve(impl.builtinKind());
                         } else {
                           var ifaceArt = impl.userIface();
                           if (ifaceArt == null) {
@@ -492,7 +489,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           var ifaceVal =
                               ifaceAny.requireValue(
                                   "TypeTypeSourceObjectConst::finalizer user iface artifact");
-                          if (!(ifaceVal instanceof TypeSourceInterfaceConst ic)) {
+                          if (!(ifaceVal instanceof TypeSourceInterfaceDynamic ic)) {
                             throw new IllegalStateException(
                                 "TypeTypeSourceObjectConst finalizer: user iface artifact resolved to "
                                     + ifaceVal.getClass());
@@ -524,22 +521,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               });
         }
       };
-
-  private static InterfaceData builtinInterfaceOf(
-      GenBuiltinInterfaces ifaces, BuiltinInterfaceKind kind) {
-    return switch (kind) {
-      case VALUE -> ifaces.value;
-      case TYPE -> ifaces.type_;
-      case ASPECT_FUNCTION -> ifaces.aspect_function;
-      case ASPECT_FIELD -> ifaces.aspect_field;
-      case ASPECT_DROP_DYNAMIC -> ifaces.aspect_drop_dynamic;
-      case ASPECT_CONSUME_DYNAMIC -> ifaces.aspect_consume_dynamic;
-      case ASPECT_BIND_DYNAMIC -> ifaces.aspect_bind_dynamic;
-      case BINDING -> ifaces.binding;
-      case TARGET -> ifaces.target;
-      case CODE_DYN -> ifaces.code_dyn;
-    };
-  }
 
   public record ImportedSourceObjectConst(TypeSourceObjectDynamic type_) implements ExporterAny {
     @Override

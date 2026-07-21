@@ -49,7 +49,7 @@ public final class T0080UnionTest {
                                         TList.of(
                                             new TestMb.RecordPair("tag", mb.str("numtag")),
                                             new TestMb.RecordPair(
-                                                "type_ref", mb.typesNumber()))))),
+                                                "type_ref", mb.typesInt()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.recordOf(
                                 TList.of(
@@ -120,7 +120,7 @@ public final class T0080UnionTest {
                                         TList.of(
                                             new TestMb.RecordPair("tag", mb.str("numtag")),
                                             new TestMb.RecordPair(
-                                                "type_ref", mb.typesNumber()))))),
+                                                "type_ref", mb.typesInt()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.recordOf(
                                 TList.of(
@@ -184,7 +184,7 @@ public final class T0080UnionTest {
                                         TList.of(
                                             new TestMb.RecordPair("tag", mb.str("numtag")),
                                             new TestMb.RecordPair(
-                                                "type_ref", mb.typesNumber()))))),
+                                                "type_ref", mb.typesInt()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.recordOf(
                                 TList.of(
@@ -249,7 +249,7 @@ public final class T0080UnionTest {
                                         TList.of(
                                             new TestMb.RecordPair("tag", mb.str("numtag")),
                                             new TestMb.RecordPair(
-                                                "type_ref", mb.typesNumber()))))),
+                                                "type_ref", mb.typesInt()))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.recordOf(
                                 TList.of(

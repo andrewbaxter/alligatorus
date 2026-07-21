@@ -298,7 +298,17 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                             "value",
                                                             mb.call(
                                                                 mb.evalStack(),
-                                                                mb.scopeUse("outer"))))))))))))),
+                                                                mb.scopeUse("outer"))))))),
+                                        new TestMb.RecordPair(
+                                            "fork", mb.scopeUse("outer")),
+                                        new TestMb.RecordPair(
+                                            "merge",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesEresult(), mb.evalBinding()),
+                                                    mb.str("ok")),
+                                                mb.scopeUse("outer"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(

@@ -13,7 +13,7 @@ import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
@@ -137,7 +137,7 @@ public final class DefinitionSet implements ExporterAny {
                     }
                     var interfaces = new TList<Artifact>(set.interfaces.size());
                     for (var i : set.interfaces) {
-                      var iConst = new TypeSourceInterfaceConst(i);
+                      var iConst = new TypeSourceInterfaceDynamic(i);
                       var artRes = iConst.exportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
@@ -242,7 +242,7 @@ public final class DefinitionSet implements ExporterAny {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
                         var v = any.requireValue("DefinitionSet::finalizer interface artifact");
-                        if (!(v instanceof TypeSourceInterfaceConst iConst)) {
+                        if (!(v instanceof TypeSourceInterfaceDynamic iConst)) {
                           throw new IllegalStateException(
                               "def-set interface artifact had wrong type: " + v.getClass());
                         }

@@ -67,7 +67,7 @@ public final class DynamicTypes {
     // Nullary Type descriptors — value classes are unboxed / distinct where appropriate.
     nullary("compilerxyz.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
     nullary("compilerxyz.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
-    nullary("compilerxyz.eval.value.number", "TypeNumberDynamic", TypeName.DOUBLE);
+    nullary("compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.LONG);
     nullary("compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
     nullary(
         "compilerxyz.eval.value.unique",
@@ -123,7 +123,7 @@ public final class DynamicTypes {
     factory("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
     factory("compilerxyz.eval.value.source_function", "SourceFunctionType");
     factory("compilerxyz.eval.value.source_interface", "InterfaceData");
-    factory("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
+    factory("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceDynamic");
     factory("compilerxyz.eval.dynamic", "JavaDataDescriptor");
     factory("compilerxyz.eval.dynamic.target", "TargetBindSub");
     factory("compilerxyz.eval.dynamic.target", "BindResult");
@@ -149,6 +149,12 @@ public final class DynamicTypes {
         "compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic",
         "compilerxyz.eval.value.source_union", "SourceUnionRefType");
     factory("compilerxyz.gen", "Value");
+    LEAVES.put(
+        ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
+        new LeafEntry(
+            LeafKind.DELEGATED,
+            ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
+            ClassName.get("compilerxyz.eval.value.bind_result", "BindResultType")));
     factory("compilerxyz.gen", "Binding");
     factory("compilerxyz.gen", "Target");
     // Aspects: dynamicType() lives on the GenAspectXxx companion class.
@@ -156,7 +162,7 @@ public final class DynamicTypes {
         "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
         "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
         "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
-        "AspectArtifact", "AspectAspect"}) {
+        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectSet"}) {
       delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);
     }
 

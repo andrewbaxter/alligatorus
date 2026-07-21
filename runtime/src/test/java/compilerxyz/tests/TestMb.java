@@ -174,8 +174,8 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "null");
   }
 
-  public SourceExpr typesNumber() {
-    return builtin("types", "number");
+  public SourceExpr typesInt() {
+    return builtin("types", "int");
   }
 
   public SourceExpr typesOption() {

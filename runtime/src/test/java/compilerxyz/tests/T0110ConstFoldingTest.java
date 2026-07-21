@@ -46,7 +46,7 @@ public final class T0110ConstFoldingTest {
         "main",
         new SourceModule.V1(
             mb.seqOf(
-                mb.bind("x", mb.as_(mb.num(7.0), mb.typesNumber())),
+                mb.bind("x", mb.as_(mb.num(7.0), mb.typesInt())),
                 mb.ifOf(
                     TList.of(
                         new TestMb.Branch(

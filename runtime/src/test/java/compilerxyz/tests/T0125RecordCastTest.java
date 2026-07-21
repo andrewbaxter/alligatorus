@@ -20,13 +20,13 @@ public final class T0125RecordCastTest {
     var reorderedType =
         mb.recordOf(
             TList.of(
-                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesNumber())),
-                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesNumber()))));
+                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesInt())),
+                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesInt()))));
     var sourceRecord =
         mb.recordOf(
             TList.of(
-                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesNumber())),
-                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesNumber()))));
+                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesInt())),
+                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesInt()))));
     modules.put(
         "main",
         new SourceModule.V1(
@@ -59,13 +59,13 @@ public final class T0125RecordCastTest {
     var reorderedType =
         mb.recordOf(
             TList.of(
-                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesNumber())),
-                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesNumber()))));
+                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesInt())),
+                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesInt()))));
     var sourceRecord =
         mb.recordOf(
             TList.of(
-                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesNumber())),
-                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesNumber()))));
+                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesInt())),
+                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesInt()))));
     modules.put(
         "main",
         new SourceModule.V1(

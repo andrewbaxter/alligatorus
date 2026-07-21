@@ -293,7 +293,7 @@ public final class PushStructsGen {
             .addStatement(
                 "return new $T(new $T(iface))",
                 sourceInterfaceResult,
-                SOURCE_INTERFACE_CONST)
+                SOURCE_INTERFACE_DYNAMIC)
             .build());
 
     var qexprIdCls = ClassName.get("compilerxyz.eval", "QExprId");
@@ -887,9 +887,9 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_function", "SourceFunctionType");
   private static final ClassName INTERFACE_REF =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
-  private static final ClassName SOURCE_INTERFACE_CONST =
+  private static final ClassName SOURCE_INTERFACE_DYNAMIC =
       ClassName.get(
-          "compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
+          "compilerxyz.eval.value.source_interface", "TypeSourceInterfaceDynamic");
   private static final ClassName SOURCE_INTERFACE_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
   private static final ClassName SOURCE_OBJECT_REF =

@@ -112,12 +112,12 @@ public final class InterfaceData {
       trivialIdentityAspects.add(GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY);
       var castRules = new TList<TypeObjectCastRule>();
       castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY));
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_CONST_IDENTITY));
+      castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY));
       castRules.add(
           new TypeObjectCastRule.CallByDestIdentity(
               GenTrivialIdentityAspects.TYPE_IDENTITY,
               new TypeObjectCastRule.DynRuntimeHelper(
-                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceConst.class),
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceDynamic.class),
                   "fromInterfaceData",
                   JavaMethodDescriptor.fromParts(
                       JavaDataDescriptor.fromClass(compilerxyz.eval.Type.class),

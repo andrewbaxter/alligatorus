@@ -119,7 +119,10 @@ public record TypeObjectDynamic(
       throw new IllegalStateException(
           typeDesc() + "::getInterfaceData: missing static aspect source");
     }
-    var data = new InterfaceData(null, staticSrc.id(), null);
+    var kind =
+        compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry.kindForAspectId(
+            staticSrc.id());
+    var data = new InterfaceData(null, staticSrc.id(), kind);
     data.description = typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
     for (var m : methods) {

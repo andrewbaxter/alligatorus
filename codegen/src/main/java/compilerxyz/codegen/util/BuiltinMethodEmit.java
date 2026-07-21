@@ -58,6 +58,12 @@ public final class BuiltinMethodEmit {
       ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
   private static final ClassName TYPE_MAP_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic");
+  private static final ClassName TYPE_BOOL_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
+  private static final ClassName TYPE_INT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
+  private static final ClassName TYPE_NULL_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
   private static final TMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS = compositeDescriptors();
 
@@ -158,7 +164,14 @@ public final class BuiltinMethodEmit {
   /** Resolve a Java {@link TypeName} to a runtime-type descriptor expression. */
   public static @Nullable CodeBlock resolveDescriptor(
       TypeName tn, TMap<ClassName, CodeBlock> leafDescriptors) {
+    if (tn.equals(TypeName.BOOLEAN)) return CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC);
+    if (tn.equals(TypeName.LONG)) return CodeBlock.of("new $T()", TYPE_INT_DYNAMIC);
+    if (tn.equals(TypeName.VOID)) return CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC);
     if (tn instanceof ClassName cn) {
+      if (cn.equals(ClassName.get(String.class))) {
+        return CodeBlock.of(
+            "new $T()", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"));
+      }
       return leafDescriptors.get(cn);
     }
     if (tn instanceof ParameterizedTypeName pt) {
@@ -180,9 +193,11 @@ public final class BuiltinMethodEmit {
     return null;
   }
 
-  /** Raw class name of a type (drops type parameters). Null for primitives. */
+  /** Raw class name of a type (drops type parameters). Primitive types map to their JVM class. */
   public static @Nullable TypeName rawClass(TypeName tn) {
-    if (tn.isPrimitive()) return null;
+    if (tn.equals(TypeName.BOOLEAN)) return TypeName.BOOLEAN;
+    if (tn.equals(TypeName.LONG)) return TypeName.LONG;
+    if (tn.equals(TypeName.VOID)) return TypeName.VOID;
     if (tn instanceof ClassName cn) return cn;
     if (tn instanceof ParameterizedTypeName pt) return pt.rawType;
     return null;

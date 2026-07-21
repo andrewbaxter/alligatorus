@@ -184,33 +184,31 @@ public final class BuiltinInterfacesGen {
       if (spec.trivialIdentity != null) {
         b.addStatement(
             "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.trivialIdentity);
-        b.addStatement(
-            "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
-                + "$T.<$T>some(new $T(new $T($LL))))",
-            TYPE_OBJECT_META, typeDesc,
-            TLIST, TYPE_OBJECT_CAST_FROM_RULE,
-            OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
-            UNIQUE_BUILTIN, spec.trivialIdentity);
-      } else {
-        b.addStatement(
-            "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
-                + "$T.<$T>none())",
-            TYPE_OBJECT_META, typeDesc,
-            TLIST, TYPE_OBJECT_CAST_FROM_RULE,
-            OPT, OBJECT_ASPECT_SOURCE);
       }
       b.addStatement(
+          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
+              + "$T.<$T>some(new $T(new $T($LL))))",
+          TYPE_OBJECT_META, typeDesc,
+          TLIST, TYPE_OBJECT_CAST_FROM_RULE,
+          OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
+          UNIQUE_BUILTIN,
+          spec.trivialIdentity != null ? spec.trivialIdentity : spec.uniqueId);
+      b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "new $T<$T>(), methods, $T.DYNAMIC_LIGHT, $T.<$T>none())",
-          TYPE_OBJECT_DYNAMIC, interfaceRef, TLIST, OBJECT_DATA_FIELD, OBJECT_DROP_KIND,
-          OPT, JAVA_INTERNAL_NAME);
+              + "new $T<$T>(), methods, $T.DYNAMIC_LIGHT, $T.some(jvmClass))",
+          TYPE_OBJECT_DYNAMIC, interfaceRef, TLIST, OBJECT_DATA_FIELD, OBJECT_DROP_KIND, OPT);
     }
 
     if (scannedLeafDescriptors != null) {
+      // Substitute the just-built `instance` for any method-param reference to
+      // this interface's own Java class — Gen<X>.dynamicType() would return
+      // null during Holder.INSTANCE initialization.
+      var descriptors = new TMap<ClassName, CodeBlock>();
+      for (var e : scannedLeafDescriptors.entrySet()) descriptors.put(e.getKey(), e.getValue());
+      descriptors.put(interfaceRef, CodeBlock.of("instance"));
       for (var m : spec.methods) {
-        if (!m.sourceVisible()) continue;
         BuiltinMethodEmit.emitObjectMethod(
-            b, interfaceRef, "instance", "methods", m, scannedLeafDescriptors);
+            b, interfaceRef, "instance", "methods", m, descriptors);
       }
     }
 

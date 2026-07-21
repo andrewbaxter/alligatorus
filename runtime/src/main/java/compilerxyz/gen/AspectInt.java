@@ -8,6 +8,6 @@ import compilerxyz.gen.Value;
 
 @Builtin(uniqueId = 1008L)
 @BuiltinTypeId(7224L)
-public interface AspectNumberConst extends Aspect {
-  double aspectNumberConstGet(Value value);
+public interface AspectInt extends Aspect {
+  long aspectIntGet(Value value);
 }

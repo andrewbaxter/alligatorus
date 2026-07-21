@@ -13,13 +13,13 @@ import compilerxyz.eval.value.list.TypeListDynamic;
 import compilerxyz.eval.value.map.TypeMapDynamic;
 import compilerxyz.eval.value.null_.TypeNullConst;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
-import compilerxyz.eval.value.number.TypeNumberConst;
-import compilerxyz.eval.value.number.TypeNumberDynamic;
+import compilerxyz.eval.value.int_.TypeIntConst;
+import compilerxyz.eval.value.int_.TypeIntDynamic;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.eval.value.source_object_new.TypeTypeSourceObjectNewConst;
@@ -78,16 +78,16 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
       return TypeNullDynamic.DELEGATE;
     }
   },
-  NUMBER_CONST("number_const") {
+  INT_CONST("int_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeNumberConst.DELEGATE;
+      return TypeIntConst.DELEGATE;
     }
   },
-  NUMBER_DYNAMIC("number_dynamic") {
+  INT_DYNAMIC("int_dynamic") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeNumberDynamic.DELEGATE;
+      return TypeIntDynamic.DELEGATE;
     }
   },
   OPTION_DYNAMIC("option_dynamic") {
@@ -138,10 +138,10 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
       return TypeSourceFunctionConst.DELEGATE;
     }
   },
-  SOURCE_INTERFACE_CONST("source_interface_const") {
+  SOURCE_INTERFACE_DYNAMIC("source_interface_dynamic") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeSourceInterfaceConst.DELEGATE;
+      return TypeSourceInterfaceDynamic.DELEGATE;
     }
   },
   SOURCE_OBJECT_CONST("source_object_const") {

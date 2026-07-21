@@ -9,9 +9,7 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.codegen.util.InterfaceSpec;
 import compilerxyz.codegen.util.NamedTypeRef;
-import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
 import compilerxyz.util.TList;
@@ -79,8 +77,6 @@ public final class BuiltinTreeGen {
       CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);
   private static final ClassName IMPORT_INSTALL =
       ClassName.get("compilerxyz.eval", "ImportInstall");
-  private static final ClassName TYPE_INTERFACE_CONST =
-      ClassName.get("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceConst");
   private static final ClassName TYPE_FUNCTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
   private static final ClassName BINDING_ID_BUILTIN =
@@ -108,8 +104,8 @@ public final class BuiltinTreeGen {
 
   private static final ClassName TYPE_STRING_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
-  private static final ClassName TYPE_NUMBER_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.number", "TypeNumberDynamic");
+  private static final ClassName TYPE_INT_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
   private static final ClassName TYPE_NULL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
   private static final ClassName TYPE_BOOL_DYNAMIC =
@@ -155,13 +151,6 @@ public final class BuiltinTreeGen {
 
     public static LeafSpec of(CodeBlock data, CodeBlock type) {
       return new LeafSpec(data, type);
-    }
-
-    public static LeafSpec interface_(InterfaceSpec spec) {
-      var innerExpr =
-          CodeBlock.of("new $T(interfaces.$N)", TYPE_INTERFACE_CONST, ifaceHolderFieldName(spec));
-      var wrapperExpr = CodeBlock.of("$T.dynamicType()", TYPE_INTERFACE_CONST);
-      return new LeafSpec(innerExpr, wrapperExpr);
     }
 
     public static LeafSpec functionByName(
@@ -218,8 +207,7 @@ public final class BuiltinTreeGen {
             .returns(ParameterizedTypeName.get(ERESULT, BINDING))
             .addParameter(ParameterSpec.builder(EXPR_CONTEXT, "xx").build())
             .addParameter(ParameterSpec.builder(QEXPR_ID, "loc").build())
-            .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build())
-            .addParameter(ParameterSpec.builder(GEN_BUILTIN_INTERFACES, "interfaces").build());
+            .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build());
 
     var st = new EmitState();
     var vars = emitNode(root, st);
@@ -353,93 +341,32 @@ public final class BuiltinTreeGen {
     return CodeBlock.of("new $T($T.none(), $L)", record, opt, entries.build());
   }
 
-  private static String ifaceHolderFieldName(InterfaceSpec spec) {
-    var s = spec.name().replace('-', '_');
-    return switch (s) {
-      case "type", "class", "interface", "if", "else", "for", "while", "do", "return", "switch",
-          "case", "default", "break", "continue", "new", "this", "super", "null", "true", "false",
-          "void", "int", "long", "short", "byte", "char", "boolean", "float", "double", "static",
-          "final", "public", "private", "protected", "abstract", "package", "import", "throws",
-          "throw", "try", "catch", "finally", "enum", "record", "instanceof", "extends",
-          "implements" -> s + "_";
-      default -> s;
-    };
-  }
-
-  private static TList<InterfaceSpec> scannedExtras = new TList<>();
   private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();
-
-  public static void setScannedInterfaceSpecs(TList<InterfaceSpec> specs) {
-    scannedExtras = specs;
-  }
+  private static java.util.Set<String> builtinInterfaceHostNames = java.util.Set.of();
 
   public static void setScannedPathEntries(TList<BuiltinPathScanner.Entry> entries) {
     scannedPathEntries = entries;
   }
 
-  public static TList<InterfaceSpec> extraInterfaceSpecs() {
-    var out = new TList<InterfaceSpec>();
-    out.addAll(scannedExtras);
-    out.addAll(hardCodedExtraInterfaceSpecs());
-    return out;
-  }
-
-  private static TList<InterfaceSpec> hardCodedExtraInterfaceSpecs() {
-    // AspectFunction migrated: scanned from handwritten/AspectFunction.java @SourceInterface
-    // AspectField migrated: scanned from handwritten/AspectField.java @SourceInterface
-    // AspectDropDynamic migrated: scanned from handwritten/AspectDropDynamic.java @SourceInterface
-    // AspectBindDynamic migrated: scanned from handwritten/AspectBindDynamic.java @SourceInterface
-    // AspectConsumeDynamic migrated: scanned from handwritten/AspectConsumeDynamic.java @SourceInterface
-
-    var codeRef = ClassName.get("compilerxyz.eval", "Code");
-    var qexprId = ClassName.get("compilerxyz.eval", "QExprId");
-    var codeValue = ClassName.get("compilerxyz.eval", "CodeValue");
-    var exprContext = ClassName.get("compilerxyz.eval", "ExprContext");
-    var bindingXx = TypeRef.leaf(exprContext);
-    var bindingLoc = TypeRef.leaf(qexprId);
-    var bindingCode = TypeRef.leaf(codeRef);
-    var bindingCv = TypeRef.leaf(codeValue);
-
-    // Binding (id 2005) migrated: scanned from gen/Binding.java @Builtin
-
-    // Target (id 2006) migrated: scanned from gen/Target.java @Builtin
-
-    // CodeDyn (id 2007) migrated: scanned from gen/CodeDyn.java @Builtin
-
-    return TList.of();
+  public static void setBuiltinInterfaceHostNames(java.util.Set<String> names) {
+    builtinInterfaceHostNames = names;
   }
 
   public static NodeSpec canonicalSpec() {
     // Collect (path, leaf) pairs from all sources.
     var pathToLeaf = new java.util.LinkedHashMap<String, LeafSpec>();
 
-    // Build a lookup: host-interface binary name -> InterfaceSpec, so that a
-    // @BuiltinPath scanned on an interface class becomes an interface-const
-    // leaf (TypeSourceInterfaceConst wrapping the interfaces holder field)
-    // rather than a plain type leaf (which would require the class to expose
-    // a static dynamicType()).
-    var extras = extraInterfaceSpecs();
-    var interfaceByHostName = new java.util.HashMap<String, InterfaceSpec>();
-    for (var s : extras) {
-      var host = s.effectiveHostInterfaceBinaryName();
-      if (host != null) interfaceByHostName.put(host, s);
-      // Aspect specs are keyed by the generated compilerxyz.gen.AspectXxx name,
-      // but @BuiltinPath is applied on the handwritten source class
-      // (compilerxyz.handwritten.AspectXxx). Register that alias too.
-      if (host != null && host.startsWith("compilerxyz.gen.Aspect")) {
-        var handwritten = "compilerxyz.handwritten." + host.substring("compilerxyz.gen.".length());
-        interfaceByHostName.put(handwritten, s);
-      }
-    }
-
-    // 1) Scanner-produced @BuiltinPath entries.
+    // Scanner-produced @BuiltinPath entries. @Builtin interface classes yield
+    // a TypeObjectDynamic (via Gen<X>.dynamicType()), so their source-visible
+    // wrapper is TypeObjectDynamic.constType() rather than the plain Type
+    // wrapper.
     for (var entry : scannedPathEntries) {
       LeafSpec spec = switch (entry) {
         case BuiltinPathScanner.TypeLeaf tl -> {
           var host = tl.typeClass().canonicalName();
-          var ifaceSpec = interfaceByHostName.get(host);
-          if (ifaceSpec != null) yield LeafSpec.interface_(ifaceSpec);
-          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), TYPE_WRAPPER_EXPR);
+          var wrapper =
+              builtinInterfaceHostNames.contains(host) ? TOD_SELF_TYPE_EXPR : TYPE_WRAPPER_EXPR;
+          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), wrapper);
         }
         case BuiltinPathScanner.FunctionLeaf fl ->
             LeafSpec.functionByName(fl.methodName(), fl.args(), fl.retType().dynamicType());
@@ -460,9 +387,6 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic",
         CodeBlock.of("$T.dynamicType()",
             ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TOD_SELF_TYPE_EXPR);
-    addSpecial(pathToLeaf, "eval.aspect_bind",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectBind")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_string_dynamic",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
         TUC_TYPE_EXPR);
@@ -505,7 +429,7 @@ public final class BuiltinTreeGen {
               java.util.List.of("throw", "panic", "log", "define", "types", "eval"),
           "types",
               java.util.List.of(
-                  "list", "map", "option", "eresult", "code", "string", "number", "null",
+                  "list", "map", "option", "eresult", "code", "string", "int", "null",
                   "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
                   "codedyn", "cve"),
           "eval",

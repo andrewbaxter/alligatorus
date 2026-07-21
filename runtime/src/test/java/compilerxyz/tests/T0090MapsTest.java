@@ -27,7 +27,7 @@ public final class T0090MapsTest {
                         mb.field(
                             mb.call(
                                 mb.typesMap(),
-                                mb.tupleOf(mb.typesString(), mb.typesNumber())),
+                                mb.tupleOf(mb.typesString(), mb.typesInt())),
                             mb.str("new")),
                         mb.tupleOf())),
                 mb.set(mb.field(mb.scopeUse("my_map"), mb.str("a")), mb.num(10.)),

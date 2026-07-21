@@ -77,7 +77,7 @@ public final class T0150ReturnTest {
                 mb.bind(
                     "my_list",
                     mb.call(
-                        mb.field(mb.call(mb.typesList(), mb.typesNumber()), mb.str("new")),
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
                         mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
                 mb.foreach(
                     mb.scopeUse("my_list"),
@@ -152,7 +152,7 @@ public final class T0150ReturnTest {
                 mb.bind(
                     "my_list",
                     mb.call(
-                        mb.field(mb.call(mb.typesList(), mb.typesNumber()), mb.str("new")),
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
                         mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
                 mb.labeled(
                     "outer",

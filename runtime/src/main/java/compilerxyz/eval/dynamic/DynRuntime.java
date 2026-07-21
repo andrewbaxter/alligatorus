@@ -116,48 +116,6 @@ public final class DynRuntime {
     return new StagedExprCell(newTree);
   }
 
-  public static void implBuiltinInterface(
-      ExprContext xx,
-      compilerxyz.eval.value.source_object.TypeSourceObjectDynamic dtData,
-      Object arg,
-      String ifaceField) {
-    var record = recordToConstKeyExprMap(arg);
-    var ds = lookupDefSet(xx, dtData.setId);
-    var vx = xx.vx;
-    var builtinIfaces =
-        compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry.bundle(vx.ix.importState);
-    compilerxyz.eval.value.source_interface.InterfaceData ifaceData;
-    try {
-      ifaceData =
-          (compilerxyz.eval.value.source_interface.InterfaceData)
-              compilerxyz.gen.GenBuiltinInterfaces.class.getField(ifaceField).get(builtinIfaces);
-    } catch (ReflectiveOperationException e) {
-      throw new IllegalStateException(
-          "DynRuntime.implBuiltinInterface: missing builtin interface field '"
-              + ifaceField
-              + "'",
-          e);
-    }
-    var impl =
-        new compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData(ifaceData);
-    impl.implIdx = dtData.interfaceImpls.size();
-    for (int idx = 0; idx < ifaceData.methods.size(); idx++) {
-      var im = ifaceData.methods.get(idx);
-      var ckey = new compilerxyz.eval.ConstKey.Str(im.name);
-      var expr = record.get(ckey);
-      if (expr == null) {
-        throw new IllegalStateException(
-            "Missing implementation for builtin interface method '" + im.name + "'");
-      }
-      var mImpl =
-          new compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData(idx);
-      mImpl.implExpr = expr;
-      mImpl.methodImplIdx = impl.methodImpls.size();
-      impl.methodImpls.add(mImpl);
-    }
-    dtData.interfaceImpls.add(impl);
-  }
-
   public static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
     var rawMap = mustCast(Map.class, arg);
     var out = new java.util.LinkedHashMap<compilerxyz.eval.ConstKey, Expr>();

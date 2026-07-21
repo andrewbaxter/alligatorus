@@ -58,6 +58,15 @@ public final class DynamicTypeScanner {
       mirror.put(mirrored, e.getValue());
     }
     for (var e : mirror.entrySet()) out.put(e.getKey(), e.getValue());
+    // @Builtin trait interfaces (Type/Value/Binding/Target/CodeDyn) have their
+    // dynamicType() on the codegen companion GenX, not the interface itself.
+    // Register them so method signatures referencing the raw trait resolve.
+    for (var name : new String[] {"Value", "Binding", "Target", "CodeDyn"}) {
+      var cn = ClassName.get("compilerxyz.gen", name);
+      out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "Gen" + name)));
+    }
+    var typeCn = ClassName.get("compilerxyz.eval", "Type");
+    out.put(typeCn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenType")));
     return out;
   }
 

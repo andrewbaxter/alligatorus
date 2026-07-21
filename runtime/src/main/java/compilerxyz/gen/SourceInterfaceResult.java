@@ -5,16 +5,16 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import java.lang.Boolean;
 import java.lang.IllegalStateException;
 import java.lang.String;
 
 @BuiltinPushStruct(uniqueId = 3005L)
 public final class SourceInterfaceResult {
-    public final TypeSourceInterfaceConst type_;
+    public final TypeSourceInterfaceDynamic type_;
 
-    public SourceInterfaceResult(TypeSourceInterfaceConst type_) {
+    public SourceInterfaceResult(TypeSourceInterfaceDynamic type_) {
         this.type_ = type_;
     }
 

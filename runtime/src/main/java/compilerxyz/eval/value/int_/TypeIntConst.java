@@ -1,4 +1,4 @@
-package compilerxyz.eval.value.number;
+package compilerxyz.eval.value.int_;
 
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -24,7 +24,7 @@ import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
-import compilerxyz.gen.AspectNumberConst;
+import compilerxyz.gen.AspectInt;
 import compilerxyz.gen.AspectOperatorAdd;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
@@ -46,14 +46,14 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
-import compilerxyz.gen.GenAspectNumberConst;
+import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectOperatorAdd;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
 @BuiltinTypeId(7001L)
-public record TypeNumberConst()
+public record TypeIntConst()
     implements
         Type,
         AspectArtifact,
@@ -61,14 +61,14 @@ public record TypeNumberConst()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
-        AspectNumberConst,
+        AspectInt,
         AspectOperatorAdd,
         AspectOperatorEq,
         AspectOperatorLt,
         ExporterAny {
 
   @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NUMBER_CONST_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_INT_CONST_TYPE_ID; }
 
 
   @Override
@@ -78,10 +78,10 @@ public record TypeNumberConst()
 
   @Override
   public String typeDesc() {
-    return "number";
+    return "int";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberConst.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_CONST_TYPE_ID, "number_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntConst.class, compilerxyz.gen.GenTypeIds.TYPE_INT_CONST_TYPE_ID, "int_const");
 
                 public Type valueType() {
     return META;
@@ -89,7 +89,7 @@ public record TypeNumberConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenAspectNumberConst.AspectId)
+    if (key.equals(GenAspectInt.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -108,7 +108,7 @@ public record TypeNumberConst()
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
-    return ExporterRoot.NUMBER_CONST;
+    return ExporterRoot.INT_CONST;
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -121,13 +121,13 @@ public record TypeNumberConst()
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
           if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-              && v.data() instanceof Double dv) {
+              && v.data() instanceof Long dv) {
             data = new JsonValueNumber(dv);
-          } else if (self instanceof TypeNumberConst) {
+          } else if (self instanceof TypeIntConst) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
-                loc, "TypeNumberConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
+                loc, "TypeIntConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
           }
           return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
@@ -136,11 +136,11 @@ public record TypeNumberConst()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           return switch (data) {
-            case JsonValueNull ignored -> EResult.ok(new TypeNumberConst());
+            case JsonValueNull ignored -> EResult.ok(new TypeIntConst());
             case JsonValueNumber n -> EResult.ok(
-                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), n.value()));
+                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), (long) n.value()));
             default -> EResult.err(
-                loc, "TypeNumberConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+                loc, "TypeIntConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
         }
       };
@@ -150,43 +150,43 @@ public record TypeNumberConst()
     if (cv.value() instanceof Opt.Some<Value> some) {
       return EResult.ok(new BindResult(Code.none(loc), new BindingValue(some.value())));
     }
-    return EResult.err(loc, "TypeNumberConst::bind: CodeValue has no compile-time value");
+    return EResult.err(loc, "TypeIntConst::bind: CodeValue has no compile-time value");
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some
         && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-        && v.data() instanceof Double dv) {
+        && v.data() instanceof Long dv) {
       var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-      seq.add(JavaBytecodeUtils.literalDouble(loc, dv));
-      seq.add(TypeNumberDynamic.boxDouble(loc));
+      seq.add(JavaBytecodeUtils.literalLong(loc, dv));
+      seq.add(TypeIntDynamic.boxLong(loc));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
-    return EResult.err(loc, "TypeNumberConst::toDynamic: expected number ValueObjectConst");
+    return EResult.err(loc, "TypeIntConst::toDynamic: expected int ValueObjectConst");
   }
 
   @Override
-  public double aspectNumberConstGet(Value value) {
+  public long aspectIntGet(Value value) {
     if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-        && v.data() instanceof Double dv) return dv;
+        && v.data() instanceof Long dv) return dv;
     throw new IllegalArgumentException(
-        "TypeNumberConst::get: expected number ValueObjectConst, got " + value.getClass());
+        "TypeIntConst::get: expected int ValueObjectConst, got " + value.getClass());
   }
 
   @Override
   public EResult<CodeValue> aspectOperatorAddAdd(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOpNumber(
+    return binOpInt(
         xx, loc, base, reference,
-        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), a + b),
+        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), a + b),
         "add");
   }
 
   @Override
   public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOpNumber(xx, loc, base, reference,
+    return binOpInt(xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
             new compilerxyz.eval.value.bool_.TypeBoolConst(), a == b),
         "eq");
@@ -195,42 +195,42 @@ public record TypeNumberConst()
   @Override
   public EResult<CodeValue> aspectOperatorLtLt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-    return binOpNumber(xx, loc, base, reference,
+    return binOpInt(xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
             new compilerxyz.eval.value.bool_.TypeBoolConst(), a < b),
         "lt");
   }
 
-  private EResult<CodeValue> binOpNumber(
-      ExprContext xx, QExprId loc, CodeValue base, CodeValue ref, BinNum f, String op) {
-    var baseN = extractDouble(xx, loc, base, op);
+  private EResult<CodeValue> binOpInt(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue ref, BinInt f, String op) {
+    var baseN = extractLong(xx, loc, base, op);
     if (baseN.hasErrors()) return EResult.err(loc, opErrMsg(op, "base", baseN));
-    var refN = extractDouble(xx, loc, ref, op);
+    var refN = extractLong(xx, loc, ref, op);
     if (refN.hasErrors()) return EResult.err(loc, opErrMsg(op, "reference", refN));
     return EResult.ok(
         new CodeValue(
             base.code(),
             Opt.some(
                 f.apply(
-                    baseN.requireValue("extractDouble(base)"),
-                    refN.requireValue("extractDouble(reference)")))));
+                    baseN.requireValue("extractLong(base)"),
+                    refN.requireValue("extractLong(reference)")))));
   }
 
-  private EResult<Double> extractDouble(ExprContext xx, QExprId loc, CodeValue cv, String op) {
+  private EResult<Long> extractLong(ExprContext xx, QExprId loc, CodeValue cv, String op) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, op + ": CodeValue has no compile-time value");
     }
     var v = some.value();
-    var typeAspect = GenAspectNumberConst.getMaybe(xx, v.valueType());
-    if (!(typeAspect instanceof Opt.Some<AspectNumberConst> a)) {
-      return EResult.err(loc, op + ": type " + v.valueType().typeDesc() + " is not numeric");
+    var typeAspect = GenAspectInt.getMaybe(xx, v.valueType());
+    if (!(typeAspect instanceof Opt.Some<AspectInt> a)) {
+      return EResult.err(loc, op + ": type " + v.valueType().typeDesc() + " is not integer");
     }
-    return EResult.ok(a.value().aspectNumberConstGet(v));
+    return EResult.ok(a.value().aspectIntGet(v));
   }
 
   private static String opErrMsg(String op, String side, EResult<?> r) {
     var errs = r.errorsOrNull();
-    return "TypeNumberConst::"
+    return "TypeIntConst::"
         + op
         + ": "
         + side
@@ -239,18 +239,18 @@ public record TypeNumberConst()
   }
 
   @FunctionalInterface
-  private interface BinNum {
-    Value apply(double a, double b);
+  private interface BinInt {
+    Value apply(long a, long b);
   }
 
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
-    var dyn = new TypeNumberDynamic();
+    var dyn = new TypeIntDynamic();
     var convertedRes = dyn.typeCastFrom(xx, loc, self_);
     if (convertedRes.hasErrors()) {
       return convertedRes.reerr();
     }
-    return dyn.aspectFieldField(xx, loc, convertedRes.requireValue("TypeNumberDynamic::typeCastFrom"), key);
+    return dyn.aspectFieldField(xx, loc, convertedRes.requireValue("TypeIntDynamic::typeCastFrom"), key);
   }
 
   @Override
@@ -260,12 +260,12 @@ public record TypeNumberConst()
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    return new TypeNumberDynamic().aspectFieldTypeOpt(xx, key);
+    return new TypeIntDynamic().aspectFieldTypeOpt(xx, key);
   }
 
   @Override
   public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(new TypeNumberConst());
+    return EResult.ok(new TypeIntConst());
   }
 
   @Override

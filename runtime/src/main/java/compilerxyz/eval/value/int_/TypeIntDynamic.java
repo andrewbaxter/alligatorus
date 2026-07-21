@@ -1,4 +1,4 @@
-package compilerxyz.eval.value.number;
+package compilerxyz.eval.value.int_;
 
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
@@ -34,8 +34,8 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.AspectNumberConst;
-import compilerxyz.gen.AspectNumberDynamic;
+import compilerxyz.gen.AspectInt;
+import compilerxyz.gen.AspectIntDynamic;
 import compilerxyz.gen.AspectOperatorAdd;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
@@ -76,8 +76,8 @@ import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
-import compilerxyz.gen.GenAspectNumberConst;
-import compilerxyz.gen.GenAspectNumberDynamic;
+import compilerxyz.gen.GenAspectInt;
+import compilerxyz.gen.GenAspectIntDynamic;
 import compilerxyz.gen.GenAspectOperatorAdd;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
@@ -86,8 +86,8 @@ import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @BuiltinTypeId(7002L)
-@BuiltinPath("types.number")
-public record TypeNumberDynamic()
+@BuiltinPath("types.int")
+public record TypeIntDynamic()
     implements
         Type,
         AspectArtifact,
@@ -100,7 +100,7 @@ public record TypeNumberDynamic()
         AspectInitialBind,
         AspectElementUseDynamicBind,
         AspectLift,
-        AspectNumberDynamic,
+        AspectIntDynamic,
         AspectOperatorAdd,
         AspectOperatorEq,
         AspectOperatorLt,
@@ -109,29 +109,29 @@ public record TypeNumberDynamic()
         ExporterAny {
 
   @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NUMBER_DYNAMIC_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_INT_DYNAMIC_TYPE_ID; }
 
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
-          new Pair<>(new ConstKey.Str("to_string"), new TypeNumberToStringDynamic()));
+          new Pair<>(new ConstKey.Str("to_string"), new TypeIntToStringDynamic()));
 
   @Override
   public String typeDesc() {
-    return "dynamic number";
+    return "dynamic int";
   }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE;
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_LONG;
   }
 
   @Override
   public Type aspectDynamicBoxedBoxedForm() {
-    return new TypeNumberDynamicBox();
+    return new TypeIntDynamicBox();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNumberDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NUMBER_DYNAMIC_TYPE_ID, "number_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INT_DYNAMIC_TYPE_ID, "int_dynamic");
 
                 public Type valueType() {
     return META;
@@ -139,7 +139,7 @@ public record TypeNumberDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenAspectNumberDynamic.AspectId)
+    if (key.equals(GenAspectIntDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectDynamicBoxed.AspectId)
@@ -165,7 +165,7 @@ public record TypeNumberDynamic()
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
-    return ExporterRoot.NUMBER_DYNAMIC;
+    return ExporterRoot.INT_DYNAMIC;
   }
 
   @Override
@@ -192,8 +192,8 @@ public record TypeNumberDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    var d = compilerxyz.util.MustCast.mustCast(Double.class, externalHostValue);
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNumberConst(), d));
+    var d = compilerxyz.util.MustCast.mustCast(Long.class, externalHostValue);
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), d));
   }
 
   @Override
@@ -205,13 +205,13 @@ public record TypeNumberDynamic()
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var erb = new Erb(loc);
     if (!(key.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, "TypeNumberDynamic::field: key has no compile-time value");
+      return EResult.err(loc, "TypeIntDynamic::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
     if (!(aspectFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic number");
+      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic int");
     }
     return EResult.ok(
         new CodeValue(
@@ -235,7 +235,7 @@ public record TypeNumberDynamic()
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DADD));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LADD));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -248,7 +248,7 @@ public record TypeNumberDynamic()
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPL));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFEQ));
     return EResult.ok(
         new CodeValue(
@@ -262,7 +262,7 @@ public record TypeNumberDynamic()
     var seqRes = binOpSeq(xx, loc, base, reference);
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DCMPG));
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
     seq.add(compareToBoolBytecode(loc, Opcodes.IFLT));
     return EResult.ok(
         new CodeValue(
@@ -289,15 +289,15 @@ public record TypeNumberDynamic()
     return EResult.ok(seq);
   }
 
-  public static CodeDynamic boxDouble(QExprId loc) {
+  public static CodeDynamic boxLong(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class),
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Long.class),
         "valueOf",
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-                compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class)),
-            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE)));
+                compilerxyz.eval.dynamic.JavaInternalName.fromClass(Long.class)),
+            TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_LONG)));
   }
 
   public static CodeDynamic boxBoolean(QExprId loc) {
@@ -340,30 +340,30 @@ public record TypeNumberDynamic()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return GenAspectNumberConst.getMaybe(xx, sourceType).optIsSome()
-        || GenAspectNumberDynamic.getMaybe(xx, sourceType).optIsSome();
+    return GenAspectInt.getMaybe(xx, sourceType).optIsSome()
+        || GenAspectIntDynamic.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return GenAspectNumberDynamic.getMaybe(xx, destType).optIsSome();
+    return GenAspectIntDynamic.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "TypeNumberDynamic::typeCastFrom: CodeValue has no value");
+      return EResult.err(loc, "TypeIntDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    var numConstOpt = GenAspectNumberConst.getMaybe(xx, sourceType);
-    if (numConstOpt instanceof Opt.Some<AspectNumberConst> numConstSome) {
-      double numVal = numConstSome.value().aspectNumberConstGet(some.value());
+    var numConstOpt = GenAspectInt.getMaybe(xx, sourceType);
+    if (numConstOpt instanceof Opt.Some<AspectInt> numConstSome) {
+      long numVal = numConstSome.value().aspectIntGet(some.value());
       var seq = new JavaBytecodeSequence();
       var existingDyn = cv.code().dynamic();
       if (existingDyn != null) {
         seq.add(existingDyn);
       }
-      seq.add(JavaBytecodeUtils.literalDouble(loc, numVal));
+      seq.add(JavaBytecodeUtils.literalLong(loc, numVal));
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
@@ -391,9 +391,9 @@ public record TypeNumberDynamic()
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeNumberDynamic)) {
+          if (!(self instanceof TypeIntDynamic)) {
             return EResult.err(
-                loc, "TypeNumberDynamic::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
+                loc, "TypeIntDynamic::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
           }
           return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
         }
@@ -402,10 +402,10 @@ public record TypeNumberDynamic()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeNumberDynamic());
+            return EResult.ok(new TypeIntDynamic());
           }
           return EResult.err(
-              loc, "TypeNumberDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+              loc, "TypeIntDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
         }
       };
 

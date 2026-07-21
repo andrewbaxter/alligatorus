@@ -4,8 +4,6 @@ import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.SourceExposed;
-import compilerxyz.annotations.SourceInterface;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
@@ -18,13 +16,10 @@ import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 1015L)
 @BuiltinTypeId(7214L)
-@SourceInterface(uniqueId = 1030L, scopeId = 3004)
 @BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {
-  @SourceExposed
   EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);
 
-  @SourceExposed
   Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key);
 
   TList<ConstKey> aspectFieldKeys(ExprContext xx);

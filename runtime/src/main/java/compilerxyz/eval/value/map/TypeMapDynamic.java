@@ -46,7 +46,7 @@ import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.number.TypeNumberConst;
+import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -418,7 +418,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         case ConstKey.Uint u ->
             keyCv =
                 new CodeValue(Code.none(loc), Opt.some(
-                    new ValueObjectConst(new TypeNumberConst(), (double) u.value())));
+                    new ValueObjectConst(new TypeIntConst(), (long) u.value())));
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
       if (keyConvOpt.isEmpty()) return EResult.errs(erb.errors());

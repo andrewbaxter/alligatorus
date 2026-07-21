@@ -31,7 +31,7 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.list;
     exports compilerxyz.eval.value.map;
     exports compilerxyz.eval.value.null_;
-    exports compilerxyz.eval.value.number;
+    exports compilerxyz.eval.value.int_;
     exports compilerxyz.eval.value.object_;
     exports compilerxyz.eval.value.option;
     exports compilerxyz.eval.value.panic;

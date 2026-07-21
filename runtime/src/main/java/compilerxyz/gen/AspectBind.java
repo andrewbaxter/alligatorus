@@ -3,6 +3,7 @@ package compilerxyz.gen;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -15,6 +16,7 @@ import compilerxyz.gen.Binding;
 
 @Builtin(uniqueId = 1022L)
 @BuiltinTypeId(7202L)
+@BuiltinPath("eval.aspect_bind")
 public interface AspectBind extends Aspect {
   record BindResult(Code code, Binding binding) {
     public static Type dynamicType() {

@@ -27,7 +27,6 @@ import compilerxyz.eval.dynamic.DynException;
 import compilerxyz.eval.dynamic.DynPanic;
 import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
-import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.gen.GenBuiltinTree;
 import compilerxyz.gen.Value;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -151,9 +150,7 @@ public final class Eval {
 
   public static EResult<TMap<ConstKey, Binding>> initBuiltinScope(
       ExprContext xx, QExprId loc, ImportStateId importState) {
-    var interfaces = BuiltinInterfaceRegistry.bundle(importState);
-    var bindingRes =
-        GenBuiltinTree.installRoot(xx, loc, importState, interfaces);
+    var bindingRes = GenBuiltinTree.installRoot(xx, loc, importState);
     if (bindingRes.hasErrors()) {
       return bindingRes.reerr();
     }

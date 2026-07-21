@@ -11,7 +11,7 @@ import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.eval.value.source_interface.TypeSourceInterfaceConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import java.lang.String;
@@ -56,7 +56,7 @@ public final class DefinitionSetBuilder {
         var ifaceIndex = (long) this.inner.interfaces.size();
         this.inner.interfaces.add(iface);
         iface.compiledBinaryName = SourceInterfaceEmitter.binaryNameFor(this.inner.defSetId, ifaceIndex);
-        return new SourceInterfaceResult(new TypeSourceInterfaceConst(iface));
+        return new SourceInterfaceResult(new TypeSourceInterfaceDynamic(iface));
     }
 
     public void finish(ExprContext xx) {
