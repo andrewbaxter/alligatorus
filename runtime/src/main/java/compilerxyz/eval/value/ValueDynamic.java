@@ -118,8 +118,12 @@ public record ValueDynamic(Source source, Type type_) implements Value {
       }
 
       public static Expr stackFor(ExprContext xx, Type t) {
-        var acd = mustCast(compilerxyz.gen.AspectConsumeDynamic.class, t);
-        var d = acd.aspectConsumeDynamicJvmClass(xx).value();
+        var acdOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, t);
+        if (!(acdOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some)) {
+          throw new IllegalStateException(
+              "stackFor: type has no AspectConsumeDynamic: " + t);
+        }
+        var d = some.value().aspectConsumeDynamicJvmClass(xx).value();
         var c = d.charAt(0);
         return new Expr(c == 'D' || c == 'J' ? 2 : 1);
       }

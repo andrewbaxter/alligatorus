@@ -864,8 +864,7 @@ public final class ConstEval {
     } else {
       bodyType = null;
     }
-    var bodyCd = bodyCv.code().dynamic();
-    if (bodyCd == null) {
+    if (bodyCv.code().dynamic() == null && bodyCv.value() instanceof Opt.Some<Value>) {
       erb.errPush("Try body must produce CodeDynamic (got Code.none)");
       return EResult.errs(erb.errors());
     }
@@ -911,8 +910,7 @@ public final class ConstEval {
       if (!(resultValue instanceof Opt.Some<Value>)) {
         resultValue = catchCv.value();
       }
-      var catchCd = catchCv.code().dynamic();
-      if (catchCd == null) {
+      if (catchCv.code().dynamic() == null && catchCv.value() instanceof Opt.Some<Value>) {
         erb.errPush("Try catch body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
@@ -922,7 +920,7 @@ public final class ConstEval {
           payloadConsumeRes
               .requireValue("try/catch payload AspectConsumeDynamic")
               .aspectConsumeDynamicJvmClass(xx);
-      catch_ = Opt.some(new TryCatchClause(bindingId, payloadDesc, catchCd));
+      catch_ = Opt.some(new TryCatchClause(bindingId, payloadDesc, catchCv));
     }
     Opt<CodeDynamic> finally_ = Opt.none();
     if (e.finallyBlock() instanceof Opt.Some<Expr> finSome) {
@@ -962,7 +960,7 @@ public final class ConstEval {
       finally_ = Opt.some(combinedFinally);
     }
     var tryOpt =
-        erb.mustEr(xx.target.targetTryCatchFinally(loc, bodyCd, catch_, finally_));
+        erb.mustEr(xx.target.targetTryCatchFinally(xx, loc, bodyCv, catch_, finally_));
     if (tryOpt.isEmpty()) return EResult.errs(erb.errors());
     return EResult.ok(new CodeValue(Code.of(loc, tryOpt.get()),
         resultValue instanceof Opt.Some<Value> rvs ? EvalOutcome.ofValue(rvs.value()) : EvalOutcome.NO_VALUE));

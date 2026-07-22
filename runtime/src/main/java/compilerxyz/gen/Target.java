@@ -52,7 +52,11 @@ public interface Target {
     EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<Expr> else_);
 
     EResult<CodeDynamic> targetTryCatchFinally(
-            QExprId loc, CodeDynamic body, Opt<TryCatchClause> catch_, Opt<CodeDynamic> finally_);
+            ExprContext xx,
+            QExprId loc,
+            CodeValue body,
+            Opt<TryCatchClause> catch_,
+            Opt<CodeDynamic> finally_);
 
     EResult<CodeValue> targetMatch(
             ExprContext xx,

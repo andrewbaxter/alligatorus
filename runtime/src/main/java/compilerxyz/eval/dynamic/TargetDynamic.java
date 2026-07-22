@@ -182,29 +182,20 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
 
   @Override
   public EResult<CodeDynamic> targetTryCatchFinally(
+      ExprContext xx,
       QExprId loc,
-      CodeDynamic body,
+      CodeValue body,
       Opt<TryCatchClause> catch_,
       Opt<CodeDynamic> finally_) {
+    var erb = new Erb(loc);
     var bodyStart = new Label();
     var bodyEnd = new Label();
     var handler = new Label();
-    var afterBody = new Label();
     var end = new Label();
     var finallyHandler = finally_ instanceof Opt.Some<?> ? new Label() : null;
 
-    var resultKey = new JavaBytecodeBindingKey();
     var seq = new JavaBytecodeSequence();
 
-    // Reserve the JVM slot for resultKey (and for catch payload / finally exc if
-    // present) up front, before any jumps. The frame-index tracker requires all
-    // control-flow paths that reach a label to agree on the variable set —
-    // reserving early avoids the case where the try body's GOTO to afterBody has
-    // fewer slots than the handler's GOTO to the same label.
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
     JavaBytecodeBindingKey finallyExcKey = null;
     if (finallyHandler != null) {
       finallyExcKey = new JavaBytecodeBindingKey();
@@ -223,10 +214,6 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
                   Opcodes.ASTORE, someCatchInit.value().binding().key())));
     }
 
-    // Emit try-catch table entries BEFORE the body. The frame-index tracker
-    // snapshots at try-catch declaration time to be able to restore the frame
-    // at the handler label — if these come after the body's terminating GOTO,
-    // currentIndexes is null and the snapshot is missed.
     if (catch_ instanceof Opt.Some<TryCatchClause> someCatch) {
       seq.add(
           new CodeDynamic(
@@ -242,19 +229,26 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
 
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
-    seq.add(body);
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
+    boolean bodyHasValue = body.value() instanceof Opt.Some<Value>;
+    if (bodyHasValue) {
+      var bodyDynOpt = cvToDynamic(erb, xx, loc, body);
+      if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
+      seq.add(bodyDynOpt.get());
+    } else {
+      var bodyDyn = body.code().dynamic();
+      if (bodyDyn != null) seq.add(bodyDyn);
+    }
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
-    seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
+    if (bodyHasValue) {
+      if (finally_ instanceof Opt.Some<CodeDynamic> someFinallyBody) {
+        seq.add(someFinallyBody.value());
+      }
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
+    }
 
     if (catch_ instanceof Opt.Some<TryCatchClause> someCatch2) {
       var clause = someCatch2.value();
       seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(handler)));
-      // Stack: DynException (JVM auto-pushed on catch). Panics use DynPanic,
-      // which is not a DynException, so the JVM catch table excludes them and
-      // they propagate past this handler untouched.
       seq.add(
           JavaBytecodeUtils.accessField(
               loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
@@ -266,25 +260,29 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           new CodeDynamic(
               new CodeLoc.Some(loc),
               new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
-      seq.add(clause.body());
-      seq.add(
-          new CodeDynamic(
-              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, resultKey)));
-      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(afterBody))));
+      boolean catchHasValue = clause.body().value() instanceof Opt.Some<Value>;
+      if (catchHasValue) {
+        var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body());
+        if (catchDynOpt.isEmpty()) return EResult.errs(erb.errors());
+        seq.add(catchDynOpt.get());
+      } else {
+        var catchDyn = clause.body().code().dynamic();
+        if (catchDyn != null) seq.add(catchDyn);
+      }
+      if (catchHasValue) {
+        if (finally_ instanceof Opt.Some<CodeDynamic> someFinallyCatch) {
+          seq.add(someFinallyCatch.value());
+        }
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
+      }
     }
 
-    seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(afterBody)));
-    if (finally_ instanceof Opt.Some<CodeDynamic> someFinally) {
-      // Caller passes finally_ already drop-wrapped (stack-neutral) — the drop
-      // aspect emits its own POP.
-      seq.add(someFinally.value());
-      seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
-
+    if (finallyHandler != null && finally_ instanceof Opt.Some<CodeDynamic> someFinallyHandler) {
       seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyHandler)));
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
-      seq.add(someFinally.value());
+      seq.add(someFinallyHandler.value());
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, finallyExcKey)));
@@ -292,9 +290,6 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     }
 
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(end)));
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, resultKey)));
     return EResult.ok(new CodeDynamic(loc, seq));
   }
 

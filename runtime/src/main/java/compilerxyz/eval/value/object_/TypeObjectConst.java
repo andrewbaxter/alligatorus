@@ -340,6 +340,22 @@ public record TypeObjectConst(
     var innerRes = extractInnerType(loc, self, "field");
     if (innerRes.hasErrors()) return innerRes.reerr();
     var inner = innerRes.requireValue(typeDesc() + "::field inner");
+    if (key.value() instanceof Opt.Some<Value> keySome) {
+      var ckRes = compilerxyz.eval.Eval.extractConstKey(xx, loc, keySome.value());
+      if (ckRes instanceof compilerxyz.util.Result.Ok<compilerxyz.eval.ConstKey, String> ok
+          && compilerxyz.gen.GenType.Holder.INSTANCE.aspectFieldTypeOpt(xx, ok.value()).optIsSome()) {
+        CodeValue selfLifted = self;
+        if (self.code().isNone()) {
+          var liftRes = aspectConsumeDynamicToDynamic(xx, loc, self);
+          if (liftRes.hasErrors()) return liftRes.reerr();
+          selfLifted =
+              new CodeValue(
+                  Code.of(loc, liftRes.requireValue(typeDesc() + "::field lift")),
+                  self.outcome());
+        }
+        return compilerxyz.gen.GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
+      }
+    }
     var asp = GenAspectField.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();
     return asp.requireValue(typeDesc() + "::field inner AspectField").aspectFieldField(xx, loc, self, key);
