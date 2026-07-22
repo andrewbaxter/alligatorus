@@ -4,6 +4,8 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.RecordDeclaration;
+import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
@@ -42,10 +44,18 @@ public final class JavaAspectExtractor {
         var src = Files.readString(file);
         if (!src.contains("@Builtin(")) continue;
         var cu = StaticJavaParser.parse(file);
-        var decl = findBuiltinInterface(cu);
+        var decl = findBuiltinType(cu);
         if (decl == null) continue;
-        var isAspect = interfaceExtendsAspect(decl);
-        var builtin = extractBuiltinSpec(file, cu, decl, isAspect);
+        BuiltinInterfacesGen.BuiltinSpec builtin;
+        if (decl instanceof ClassOrInterfaceDeclaration ifaceDecl) {
+          builtin = extractBuiltinSpecInterface(
+              file, cu, ifaceDecl, interfaceExtendsAspect(ifaceDecl));
+        } else if (decl instanceof RecordDeclaration recDecl) {
+          builtin = extractBuiltinSpecRecord(file, cu, recDecl);
+        } else {
+          throw new IllegalStateException(
+              "JavaAspectExtractor: unexpected decl type " + decl.getClass());
+        }
         if (builtin != null) builtins.add(builtin);
       }
     }
@@ -53,7 +63,7 @@ public final class JavaAspectExtractor {
   }
 
   private static BuiltinInterfacesGen.@org.jspecify.annotations.Nullable BuiltinSpec
-      extractBuiltinSpec(
+      extractBuiltinSpecInterface(
           Path sourceFile,
           CompilationUnit cu,
           ClassOrInterfaceDeclaration ifaceDecl,
@@ -109,18 +119,66 @@ public final class JavaAspectExtractor {
           true));
     }
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, typeId, uniqueId, isAspect, trivialIdentity, methods);
+        simpleName, pkg, typeId, uniqueId, isAspect, false, trivialIdentity, methods,
+        new TList<BuiltinInterfacesGen.DataField>());
   }
 
-  private static @org.jspecify.annotations.Nullable ClassOrInterfaceDeclaration
-      findBuiltinInterface(CompilationUnit cu) {
+  private static BuiltinInterfacesGen.@org.jspecify.annotations.Nullable BuiltinSpec
+      extractBuiltinSpecRecord(Path sourceFile, CompilationUnit cu, RecordDeclaration recDecl) {
+    var simpleName = recDecl.getNameAsString();
+    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
+    var typeIdAnn = recDecl.getAnnotationByName("BuiltinTypeId")
+        .orElseThrow(() -> new IllegalStateException(
+            "@Builtin record " + simpleName + " missing required @BuiltinTypeId"));
+    var typeId = readSingleLongAttr(typeIdAnn);
+    var builtinAnn = getBuiltinAnnotation(recDecl);
+    var attrs = readAttrs(builtinAnn);
+    var uniqueIdStr = attrs.get("uniqueId");
+    if (uniqueIdStr == null) {
+      throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
+    }
+    var uniqueId = Long.parseLong(uniqueIdStr);
+    Long trivialIdentity = null;
+    var tiaOpt = recDecl.getAnnotationByName("BuiltinTrivialIdentityAspect");
+    if (tiaOpt.isPresent()) {
+      trivialIdentity = readSingleLongAttr(tiaOpt.get());
+    }
+    var importMap = buildImportMap(cu);
+    var dataFields = new TList<BuiltinInterfacesGen.DataField>();
+    var methods = new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Method>();
+    var recordComponentNames = new java.util.HashSet<String>();
+    for (var comp : recDecl.getParameters()) {
+      var compName = comp.getNameAsString();
+      recordComponentNames.add(compName);
+      dataFields.add(new BuiltinInterfacesGen.DataField(
+          compilerxyz.codegen.util.NameDerivation.snakeCase(compName),
+          compName,
+          typeNameOf(comp.getType(), importMap, pkg)));
+    }
+    for (var m : recDecl.getMethods()) {
+      if (m.isStatic()) continue;
+      if (!m.getParameters().isEmpty()) continue;
+      if (recordComponentNames.contains(m.getNameAsString())) continue;
+      var sourceName = compilerxyz.codegen.util.NameDerivation.snakeCase(m.getNameAsString());
+      methods.add(new compilerxyz.codegen.util.BuiltinMethodEmit.Method(
+          sourceName,
+          m.getNameAsString(),
+          new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Param>(),
+          typeNameOf(m.getType(), importMap, pkg),
+          true));
+    }
+    return new BuiltinInterfacesGen.BuiltinSpec(
+        simpleName, pkg, typeId, uniqueId, false, true, trivialIdentity, methods, dataFields);
+  }
+
+  private static @org.jspecify.annotations.Nullable TypeDeclaration<?>
+      findBuiltinType(CompilationUnit cu) {
     for (var t : cu.getTypes()) {
-      if (t instanceof ClassOrInterfaceDeclaration c
-          && c.isInterface()
-          && (c.getAnnotationByName("Builtin").isPresent()
-              || c.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent())) {
-        return c;
-      }
+      var hasBuiltin = t.getAnnotationByName("Builtin").isPresent()
+          || t.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent();
+      if (!hasBuiltin) continue;
+      if (t instanceof ClassOrInterfaceDeclaration c && c.isInterface()) return c;
+      if (t instanceof RecordDeclaration r) return r;
     }
     return null;
   }
@@ -184,7 +242,7 @@ public final class JavaAspectExtractor {
   private static final ClassName TYPE_INT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
 
-  private static AnnotationExpr getBuiltinAnnotation(ClassOrInterfaceDeclaration decl) {
+  private static AnnotationExpr getBuiltinAnnotation(TypeDeclaration<?> decl) {
     return decl.getAnnotationByName("Builtin")
         .or(() -> decl.getAnnotationByName("compilerxyz.annotations.Builtin"))
         .orElseThrow(() -> new IllegalStateException(

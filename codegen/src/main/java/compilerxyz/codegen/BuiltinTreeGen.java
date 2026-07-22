@@ -118,8 +118,6 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.aspect", "Aspect");
   private static final ClassName CODE_DYN_HANDLE_TYPE =
       ClassName.get("compilerxyz.eval.value.code", "CodeDynHandleType");
-  private static final ClassName TYPE_CODE_VALUE_EXTERN_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.code_value_extern", "TypeCodeValueExternDynamic");
   private static final ClassName TYPE_LIST_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic");
   private static final ClassName TYPE_LIST_CONSTRUCTOR_CONST =
@@ -209,11 +207,20 @@ public final class BuiltinTreeGen {
             .addParameter(ParameterSpec.builder(QEXPR_ID, "loc").build())
             .addParameter(ParameterSpec.builder(IMPORT_STATE_ID, "importState").build());
 
+    for (var linkName : linkClassNames) {
+      m.addStatement("$T.link()", ClassName.get(GEN_PACKAGE, linkName));
+    }
     var st = new EmitState();
     var vars = emitNode(root, st);
     m.addCode(st.body.build());
     m.addStatement("return $T.ok($N)", ERESULT, vars[0]);
     return m.build();
+  }
+
+  private static TList<String> linkClassNames = new TList<>();
+
+  public static void setLinkClassNames(TList<String> names) {
+    linkClassNames = names;
   }
 
   /** Emit inline statements for a node; return [bindingVarName, typeVarName]. */

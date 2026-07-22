@@ -7,6 +7,7 @@ import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.BuiltinMethodEmit;
 import compilerxyz.util.TList;
@@ -32,8 +33,15 @@ public final class BuiltinInterfacesGen {
       long typeId,
       long uniqueId,
       boolean isAspect,
+      boolean isRecord,
       @org.jspecify.annotations.Nullable Long trivialIdentity,
-      TList<BuiltinMethodEmit.Method> methods) {}
+      TList<BuiltinMethodEmit.Method> methods,
+      TList<DataField> dataFields) {}
+
+  public record DataField(
+      String langName,
+      String jvmFieldName,
+      TypeName fieldJavaType) {}
 
   private static final String GEN_PACKAGE = "compilerxyz.gen";
 
@@ -147,6 +155,8 @@ public final class BuiltinInterfacesGen {
     holder.addMethod(buildBuild(spec, self, interfaceRef));
     cls.addType(holder.build());
 
+    cls.addMethod(buildLink(spec, interfaceRef));
+
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
   }
@@ -163,6 +173,7 @@ public final class BuiltinInterfacesGen {
     b.addStatement("var jvmClass = $T.fromClass($T.class)", JAVA_INTERNAL_NAME, interfaceRef);
     b.addStatement("var jvmClassDesc = $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, interfaceRef);
     b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
+    b.addStatement("var dataFields = new $T<$T>()", TLIST, OBJECT_DATA_FIELD);
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
     b.addStatement("var trivialIdentityAspects = new $T<$T>()", TLIST, UNIQUE);
     b.addStatement("var typeId = new $T($LL)", TYPE_ID_BUILTIN, spec.typeId);
@@ -176,8 +187,23 @@ public final class BuiltinInterfacesGen {
           OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC, self);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "new $T<$T>(), methods, $T.DYNAMIC, $T.some(jvmClass))",
-          TYPE_OBJECT_DYNAMIC, interfaceRef, TLIST, OBJECT_DATA_FIELD, OBJECT_DROP_KIND, OPT);
+              + "dataFields, methods, $T.DYNAMIC, $T.some(jvmClass))",
+          TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
+    } else if (spec.isRecord) {
+      if (spec.trivialIdentity != null) {
+        b.addStatement(
+            "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.trivialIdentity);
+      }
+      b.addStatement(
+          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
+              + "$T.<$T>none())",
+          TYPE_OBJECT_META, typeDesc,
+          TLIST, TYPE_OBJECT_CAST_FROM_RULE,
+          OPT, OBJECT_ASPECT_SOURCE);
+      b.addStatement(
+          "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
+              + "dataFields, methods, $T.DYNAMIC_LIGHT, $T.<$T>none())",
+          TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT, JAVA_INTERNAL_NAME);
     } else {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
@@ -195,24 +221,57 @@ public final class BuiltinInterfacesGen {
           spec.trivialIdentity != null ? spec.trivialIdentity : spec.uniqueId);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "new $T<$T>(), methods, $T.DYNAMIC_LIGHT, $T.some(jvmClass))",
-          TYPE_OBJECT_DYNAMIC, interfaceRef, TLIST, OBJECT_DATA_FIELD, OBJECT_DROP_KIND, OPT);
-    }
-
-    if (scannedLeafDescriptors != null) {
-      // Substitute the just-built `instance` for any method-param reference to
-      // this interface's own Java class — Gen<X>.dynamicType() would return
-      // null during Holder.INSTANCE initialization.
-      var descriptors = new TMap<ClassName, CodeBlock>();
-      for (var e : scannedLeafDescriptors.entrySet()) descriptors.put(e.getKey(), e.getValue());
-      descriptors.put(interfaceRef, CodeBlock.of("instance"));
-      for (var m : spec.methods) {
-        BuiltinMethodEmit.emitObjectMethod(
-            b, interfaceRef, "instance", "methods", m, descriptors);
-      }
+              + "dataFields, methods, $T.DYNAMIC_LIGHT, $T.some(jvmClass))",
+          TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
     }
 
     b.addStatement("return instance");
+    return b.build();
+  }
+
+  private static MethodSpec buildLink(BuiltinSpec spec, ClassName interfaceRef) {
+    var b = MethodSpec.methodBuilder("link")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+    b.addStatement("var instance = Holder.INSTANCE");
+    b.addStatement("var methods = instance.methods()");
+    b.addStatement("var dataFields = instance.dataFields()");
+    b.beginControlFlow("if (!methods.isEmpty() || !dataFields.isEmpty())");
+    b.addStatement("return");
+    b.endControlFlow();
+    if (scannedLeafDescriptors != null) {
+      for (var m : spec.methods) {
+        BuiltinMethodEmit.emitObjectMethod(
+            b, interfaceRef, "instance", "methods", m, scannedLeafDescriptors);
+      }
+      for (var f : spec.dataFields) {
+        var descExpr = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, scannedLeafDescriptors);
+        if (descExpr == null) continue;
+        var rawClass = BuiltinMethodEmit.rawClass(f.fieldJavaType);
+        if (rawClass == null) continue;
+        if (spec.isRecord) {
+          b.addStatement(
+              "dataFields.add(new $T($S, new $T($S, $T.fromParts($T.fromClass($T.class), $T.of())), $L))",
+              OBJECT_DATA_FIELD,
+              f.langName,
+              ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField", "Access", "MethodCall"),
+              f.jvmFieldName,
+              ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor"),
+              JAVA_DATA_DESCRIPTOR,
+              rawClass,
+              TLIST,
+              descExpr);
+        } else {
+          b.addStatement(
+              "dataFields.add($T.ofField($S, $S, $T.fromClass($T.class), $L))",
+              OBJECT_DATA_FIELD,
+              f.langName,
+              f.jvmFieldName,
+              JAVA_DATA_DESCRIPTOR,
+              rawClass,
+              descExpr);
+        }
+      }
+    }
     return b.build();
   }
 

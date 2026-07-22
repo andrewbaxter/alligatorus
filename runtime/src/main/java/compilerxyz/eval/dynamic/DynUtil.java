@@ -19,7 +19,6 @@ import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.binding.BindingSourceObjectWrapper;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;

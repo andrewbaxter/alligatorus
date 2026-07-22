@@ -52,8 +52,13 @@ public final class GenMain {
     var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.run(outRoot, formatter, builtinUniqueIds, scan.builtins());
     var hostNames = new java.util.HashSet<String>();
-    for (var s : scan.builtins()) hostNames.add(s.pkg() + "." + s.simpleName());
+    var links = new TList<String>();
+    for (var s : scan.builtins()) {
+      hostNames.add(s.pkg() + "." + s.simpleName());
+      links.add("Gen" + s.simpleName());
+    }
     BuiltinTreeGen.setBuiltinInterfaceHostNames(hostNames);
+    BuiltinTreeGen.setLinkClassNames(links);
     var pathEntries =
         compilerxyz.codegen.experimental.BuiltinPathScanner.scanRoot(runtimeSourceRoot);
     BuiltinTreeGen.setScannedPathEntries(pathEntries);

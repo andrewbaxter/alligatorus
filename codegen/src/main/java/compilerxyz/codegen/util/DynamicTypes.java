@@ -78,10 +78,6 @@ public final class DynamicTypes {
         "TypeUniqueConst",
         ClassName.get("compilerxyz.eval", "Unique"));
     nullary(
-        "compilerxyz.eval.value.code_value_extern",
-        "TypeCodeValueExternDynamic",
-        ClassName.get("compilerxyz.eval", "CodeValue"));
-    nullary(
         "compilerxyz.eval.value.constkey",
         "TypeConstkeyDynamic",
         ClassName.get("compilerxyz.eval", "ConstKey"));
@@ -163,7 +159,8 @@ public final class DynamicTypes {
         "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
         "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
         "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
-        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectSet"}) {
+        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectSet",
+        "AspectInt"}) {
       delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);
     }
 

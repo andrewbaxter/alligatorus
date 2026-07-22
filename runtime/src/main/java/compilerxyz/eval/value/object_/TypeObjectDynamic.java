@@ -322,8 +322,14 @@ public record TypeObjectDynamic(
       if (f.langName().equals(keyStr)) {
         var loadSeq = new JavaBytecodeSequence();
         loadSeq.add(dyn);
-        loadSeq.add(
-            JavaBytecodeUtils.accessField(loc, jvmClass, f.jvmFieldName(), f.jvmFieldDesc()));
+        switch (f.access()) {
+          case ObjectDataField.Access.FieldGet fg ->
+              loadSeq.add(
+                  JavaBytecodeUtils.accessField(loc, jvmClass, fg.jvmFieldName(), fg.jvmFieldDesc()));
+          case ObjectDataField.Access.MethodCall mc ->
+              loadSeq.add(
+                  JavaBytecodeUtils.callMethod(loc, jvmClass, mc.jvmMethodName(), mc.jvmMethodDesc()));
+        }
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, loadSeq)),

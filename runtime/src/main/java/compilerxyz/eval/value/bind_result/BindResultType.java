@@ -38,13 +38,13 @@ public final class BindResultType {
       var jvmClass = JavaInternalName.fromClass(AspectBind.BindResult.class);
       var dataFields = new TList<ObjectDataField>();
       dataFields.add(
-          new ObjectDataField(
+          ObjectDataField.ofField(
               "code",
               "code",
               JavaDataDescriptor.fromClass(compilerxyz.eval.Code.class),
               compilerxyz.eval.Code.dynamicType()));
       dataFields.add(
-          new ObjectDataField(
+          ObjectDataField.ofField(
               "binding",
               "binding",
               JavaDataDescriptor.fromClass(compilerxyz.gen.Binding.class),

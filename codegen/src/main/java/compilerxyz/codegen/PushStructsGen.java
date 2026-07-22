@@ -648,7 +648,7 @@ public final class PushStructsGen {
       var f = spec.fields().get(i);
       if (i > 0) dataFieldsList.add(", ");
       dataFieldsList.add(
-          "new $T($S, $S, $T.fromClass($T.class), $L)",
+          "$T.ofField($S, $S, $T.fromClass($T.class), $L)",
           OBJECT_DATA_FIELD,
           pushMethodName(f.name()),
           f.javaFieldName(),

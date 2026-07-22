@@ -15,7 +15,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.binding.BindingSourceObjectWrapper;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
