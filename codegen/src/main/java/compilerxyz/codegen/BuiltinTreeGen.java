@@ -49,7 +49,7 @@ public final class BuiltinTreeGen {
   private static final ClassName BINDING_UNIQUE_DUAL_MODE =
       ClassName.get("compilerxyz.eval.value.unique", "BindingUniqueDualMode");
   private static final ClassName TYPE_UNIQUE_RT =
-      ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
+      ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic");
   private static final ClassName ASPECT_BIND =
       ClassName.get("compilerxyz.gen", "GenAspectBind");
   private static final ClassName ASPECT_INITIAL_BIND =
@@ -414,6 +414,15 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_operator_add_id",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectOperatorAdd")),
         TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_stack_value_dynamic_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStackValueDynamic")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_initial_bind_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
+        TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);
   }
@@ -448,7 +457,8 @@ public final class BuiltinTreeGen {
                   "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
                   "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
                   "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",
-                  "binding", "target", "code_dyn", "value", "type"));
+                  "aspect_drop_dynamic_light_id", "aspect_stack_value_dynamic_id",
+                  "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type"));
 
   private record TreeNode(
       java.util.LinkedHashMap<String, TreeNode> children,

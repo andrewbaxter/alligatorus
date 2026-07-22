@@ -919,7 +919,7 @@ public final class PushStructsGen {
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
   private static final ClassName TYPE_UNIQUE_RT =
-      ClassName.get("compilerxyz.eval.value.unique", "TypeUnique");
+      ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic");
   private static final ClassName UNIQUE_RT = ClassName.get("compilerxyz.eval", "Unique");
   private static final ClassName TYPE_EXPR =
       ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");

@@ -202,7 +202,7 @@ public final class BuiltinPathScanner {
       "java.lang.String",
           ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
       "compilerxyz.eval.Unique",
-          ClassName.get("compilerxyz.eval.value.unique", "TypeUnique"),
+          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic"),
       "compilerxyz.eval.expr.StagedExprCell",
           ClassName.get("compilerxyz.eval.value.expr", "TypeExpr"),
       "compilerxyz.gen.AspectBind.BindResult",

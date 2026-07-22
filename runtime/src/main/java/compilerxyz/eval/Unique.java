@@ -6,6 +6,6 @@ public sealed interface Unique {
   record Source(CompileId compileId, long id) implements Unique {}
 
   static Type dynamicType() {
-    return new compilerxyz.eval.value.unique.TypeUnique();
+    return new compilerxyz.eval.value.unique.TypeUniqueDynamic();
   }
 }

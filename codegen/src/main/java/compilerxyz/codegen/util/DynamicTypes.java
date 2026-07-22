@@ -71,7 +71,7 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
     nullary(
         "compilerxyz.eval.value.unique",
-        "TypeUnique",
+        "TypeUniqueDynamic",
         ClassName.get("compilerxyz.eval", "Unique"));
     nullary(
         "compilerxyz.eval.value.unique",

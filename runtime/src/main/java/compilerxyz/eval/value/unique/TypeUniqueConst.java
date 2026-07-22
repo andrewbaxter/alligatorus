@@ -65,7 +65,7 @@ public record TypeUniqueConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY)
+    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -116,7 +116,7 @@ public record TypeUniqueConst()
                       new compilerxyz.eval.value.bool_.TypeBoolConst(),
                       bs.value().equals(rs.value())))));
     }
-    return new TypeUnique().aspectOperatorEqEq(xx, loc, base, reference);
+    return new TypeUniqueDynamic().aspectOperatorEqEq(xx, loc, base, reference);
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {
@@ -130,7 +130,7 @@ public record TypeUniqueConst()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override

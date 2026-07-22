@@ -14,6 +14,91 @@ import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
 
 public final class T0160EvenOddTest {
+  private static SourceExpr optAspectSome(TestMb mb, SourceExpr value) {
+    return mb.call(
+        mb.field(mb.call(mb.typesOption(), mb.typesAspect()), mb.str("some")),
+        value);
+  }
+
+  private static SourceExpr optAspectNone(TestMb mb) {
+    return mb.call(
+        mb.field(mb.call(mb.typesOption(), mb.typesAspect()), mb.str("none")),
+        mb.literalNull());
+  }
+
+  private static SourceExpr argKey(TestMb mb) {
+    return mb.field(mb.scopeUse("arg"), mb.str("key"));
+  }
+
+  private static SourceExpr argXx(TestMb mb) {
+    return mb.field(mb.scopeUse("arg"), mb.str("xx"));
+  }
+
+  private static SourceExpr identRef(TestMb mb) {
+    return mb.lower(mb.scopeUse("ident"));
+  }
+
+  private static SourceExpr intAspectDelegate(TestMb mb) {
+    return mb.call(
+        mb.field(mb.typesInt(), mb.str("aspect")),
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("xx", argXx(mb)),
+                new TestMb.RecordPair("key", argKey(mb)))));
+  }
+
+  private static SourceExpr buildAspectImpl(TestMb mb) {
+    var branches = new TList<TestMb.Branch>();
+    branches.add(
+        new TestMb.Branch(
+            mb.operatorEq(argKey(mb), identRef(mb)),
+            optAspectSome(mb, mb.scopeUse("outer"))));
+    TList<SourceExpr> whitelist =
+        TList.of(
+            mb.evalAspectSetId(),
+            mb.evalOperatorAddId(),
+            mb.evalAspectBindId(),
+            mb.evalAspectBindDynamicId(),
+            mb.evalAspectConsumeDynamicId(),
+            mb.evalAspectDropDynamicLightId(),
+            mb.evalAspectStackValueDynamicId(),
+            mb.evalAspectInitialBindId(),
+            mb.evalAspectFieldId());
+    for (var id : whitelist) {
+      branches.add(
+          new TestMb.Branch(mb.operatorEq(argKey(mb), id), intAspectDelegate(mb)));
+    }
+    return mb.ifOf(branches, optAspectNone(mb));
+  }
+
+  private static SourceExpr buildCanCastFromImpl(TestMb mb) {
+    var srcAspect =
+        mb.call(
+            mb.field(
+                mb.field(mb.scopeUse("arg"), mb.str("source_type")),
+                mb.str("aspect")),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair("xx", argXx(mb)),
+                    new TestMb.RecordPair("key", identRef(mb)))));
+    var isSome = mb.field(srcAspect, mb.str("is_some"));
+    var delegateInt =
+        mb.call(
+            mb.field(mb.typesInt(), mb.str("can_cast_from")),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair("xx", argXx(mb)),
+                    new TestMb.RecordPair(
+                        "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                    new TestMb.RecordPair(
+                        "source_type",
+                        mb.field(mb.scopeUse("arg"), mb.str("source_type"))))));
+    return mb.ifOf(
+        TList.of(
+            new TestMb.Branch(isSome, mb.as_(mb.bool(true), mb.typesBool()))),
+        delegateInt);
+  }
+
   private static SourceExpr ifaceMethods(TestMb mb, TList<TestMb.RecordPair> methods) {
     var staged = new TList<TestMb.RecordPair>(methods.size());
     for (var m : methods) {
@@ -44,6 +129,7 @@ public final class T0160EvenOddTest {
                         mb.str(name))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesInt()),
+                mb.bind("ident", mb.call(mb.evalFreshUnique(), mb.tupleOf())),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -55,9 +141,7 @@ public final class T0160EvenOddTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "can_cast_from",
-                                            mb.seqOf(
-                                                mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
+                                            "can_cast_from", buildCanCastFromImpl(mb)),
                                         new TestMb.RecordPair(
                                             "cast_from",
                                             mb.call(
@@ -104,32 +188,12 @@ public final class T0160EvenOddTest {
                                             "desc",
                                             mb.seqOf(mb.return_(mb.str(name)))),
                                         new TestMb.RecordPair(
-                                            "aspect",
-                                            mb.call(
-                                                mb.field(mb.typesInt(), mb.str("aspect")),
-                                                mb.recordOf(
-                                                    TList.of(
-                                                        new TestMb.RecordPair(
-                                                            "xx",
-                                                            mb.field(
-                                                                mb.scopeUse("arg"),
-                                                                mb.str("xx"))),
-                                                        new TestMb.RecordPair(
-                                                            "key",
-                                                            mb.field(
-                                                                mb.scopeUse("arg"),
-                                                                mb.str("key"))))))),
+                                            "aspect", buildAspectImpl(mb)),
                                         new TestMb.RecordPair(
-                                            "can_cast_to",
-                                            mb.seqOf(
-                                                mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
+                                            "can_cast_to", mb.bool(false)),
                                         new TestMb.RecordPair(
                                             "cast_to",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("ok")),
-                                                mb.field(mb.scopeUse("arg"), mb.str("cv")))))))))),
+                                            mb.panic(mb.str(name + ".cast_to unreachable"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
         mb.num(parityInt));

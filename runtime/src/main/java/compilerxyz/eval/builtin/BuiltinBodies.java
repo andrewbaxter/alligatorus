@@ -12,6 +12,7 @@ import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.LogEntry;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.gen.AspectBind;
@@ -105,5 +106,10 @@ public final class BuiltinBodies {
   @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)
   public static AspectBind.BindResult bindResult(ExprContext xx, Code code, Binding binding) {
     return new AspectBind.BindResult(code, binding);
+  }
+
+  @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
+  public static Unique freshUnique(ExprContext xx) {
+    return compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx);
   }
 }

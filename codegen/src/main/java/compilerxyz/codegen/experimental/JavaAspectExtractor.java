@@ -177,7 +177,7 @@ public final class JavaAspectExtractor {
       "java.lang.String",
           ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
       "compilerxyz.eval.Unique",
-          ClassName.get("compilerxyz.eval.value.unique", "TypeUnique"));
+          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic"));
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");

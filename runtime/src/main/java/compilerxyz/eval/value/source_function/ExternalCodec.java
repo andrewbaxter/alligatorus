@@ -131,7 +131,7 @@ public final class ExternalCodec {
           out.add(
               new EvalContext.ExternalEntry(
                   uq.key(),
-                  new compilerxyz.eval.value.unique.TypeUnique(),
+                  new compilerxyz.eval.value.unique.TypeUniqueDynamic(),
                   new External(Unique.class, uq.unique())));
         }
       }

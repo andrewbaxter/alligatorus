@@ -28,7 +28,7 @@ import compilerxyz.eval.value.source_union_new.TypeTypeSourceUnionNewConst;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
-import compilerxyz.eval.value.unique.TypeUnique;
+import compilerxyz.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
@@ -129,7 +129,7 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
   UNIQUE("unique") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeUnique.DELEGATE;
+      return TypeUniqueDynamic.DELEGATE;
     }
   },
   SOURCE_FUNCTION_CONST("source_function_const") {

@@ -59,10 +59,17 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.gen.AspectStackValueDynamic;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.AspectLift;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
 
 @BuiltinTypeId(7015L)
 @BuiltinTrivialIdentityAspect(6003L)
-public record TypeUnique()
+public record TypeUniqueDynamic()
     implements
         Type,
         AspectArtifact,
@@ -71,10 +78,13 @@ public record TypeUnique()
         AspectDropDynamicLight,
         AspectInitialBind,
         AspectOperatorEq,
+        AspectStackValueDynamic,
+        AspectLift,
+        AspectBindDynamic,
         ExporterAny {
 
   @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_UNIQUE_TYPE_ID; }
+  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_UNIQUE_DYNAMIC_TYPE_ID; }
 
 
   @Override
@@ -87,7 +97,7 @@ public record TypeUnique()
     return "unique";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUnique.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_TYPE_ID, "unique");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_DYNAMIC_TYPE_ID, "unique");
 
                 public Type valueType() {
     return META;
@@ -95,13 +105,16 @@ public record TypeUnique()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY)
+    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(GenAspectOperatorEq.AspectId)) {
+        || key.equals(GenAspectOperatorEq.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(GenAspectLift.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -124,11 +137,11 @@ public record TypeUnique()
           if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
               && v.data() instanceof Unique u) {
             data = encodeUnique(u);
-          } else if (self instanceof TypeUnique) {
+          } else if (self instanceof TypeUniqueDynamic) {
             data = new JsonValueNull();
           } else {
             return EResult.err(
-                loc, "TypeUnique::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
+                loc, "TypeUniqueDynamic::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
           }
           return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
@@ -137,20 +150,20 @@ public record TypeUnique()
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeUnique());
+            return EResult.ok(new TypeUniqueDynamic());
           }
           if (data instanceof JsonValueObject obj) {
             var decoded = decodeUnique(loc, obj);
             if (decoded.hasErrors()) {
-              return EResult.err(loc, "TypeUnique::exporterRootDelegateSelfFromArtifactData: malformed");
+              return EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: malformed");
             }
             return EResult.ok(
                 new compilerxyz.eval.value.object_.ValueObjectConst(
-                    new TypeUnique(),
+                    new TypeUniqueDynamic(),
                     decoded.requireValue(
-                        "TypeUnique::exporterRootDelegateSelfFromArtifactData decoded")));
+                        "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded")));
           }
-          return EResult.err(loc, "TypeUnique::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+          return EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
         }
       };
 
@@ -208,31 +221,35 @@ public record TypeUnique()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
-    }
-    return EResult.err(loc, "TypeUnique::bind: CodeValue has no compile-time value");
+    return compilerxyz.eval.dynamic.DynUtil.bindViaTarget(xx, loc, cv);
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      var srcType = some.value().valueType();
-      if (!(srcType instanceof TypeUnique)) {
-        var asp = GenAspectConsumeDynamic.getMaybe(xx, srcType);
-        if (asp instanceof Opt.Some<AspectConsumeDynamic> aspSome) {
-          return aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
-        }
-      }
-    }
-    return EResult.err(loc, "TypeUnique::toDynamic: CodeValue has no dynamic code");
+    return compilerxyz.eval.dynamic.DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, new TypeUnique());
+    return new BindingDynamicBinding(dynamicKey, new TypeUniqueDynamic());
+  }
+
+  @Override
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
+    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this);
+  }
+
+  @Override
+  public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Value> aspectLiftLift(
+      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
+    var u = compilerxyz.util.MustCast.mustCast(Unique.class, externalHostValue);
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeUniqueConst(), u));
   }
 
   @Override
@@ -247,16 +264,24 @@ public record TypeUnique()
                   new compilerxyz.eval.value.bool_.TypeBoolConst(),
                   bs.value().equals(rs.value())))));
     }
-    var baseDyn = aspectConsumeDynamicToDynamic(xx, loc, base);
-    if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: base lowering failed");
-    var refDyn = aspectConsumeDynamicToDynamic(xx, loc, reference);
-    if (refDyn.hasErrors()) return EResult.err(loc, "TypeUnique::eq: reference lowering failed");
+    if (!(base.value() instanceof Opt.Some<Value> baseSome)
+        || !(reference.value() instanceof Opt.Some<Value> refSome)) {
+      return EResult.err(loc, "TypeUniqueDynamic::eq: operand has no value");
+    }
+    var baseAspRes = GenAspectConsumeDynamic.get(xx, loc, baseSome.value().valueType());
+    if (baseAspRes.hasErrors()) return baseAspRes.reerr();
+    var baseDyn = baseAspRes.requireValue("TypeUniqueDynamic::eq base aspect").aspectConsumeDynamicToDynamic(xx, loc, base);
+    if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: base lowering failed");
+    var refAspRes = GenAspectConsumeDynamic.get(xx, loc, refSome.value().valueType());
+    if (refAspRes.hasErrors()) return refAspRes.reerr();
+    var refDyn = refAspRes.requireValue("TypeUniqueDynamic::eq ref aspect").aspectConsumeDynamicToDynamic(xx, loc, reference);
+    if (refDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: reference lowering failed");
     var call =
         emitUniqueEqCall(
             loc,
             xx.vx,
-            baseDyn.requireValue("TypeUnique::eq base dynamic"),
-            refDyn.requireValue("TypeUnique::eq reference dynamic"));
+            baseDyn.requireValue("TypeUniqueDynamic::eq base dynamic"),
+            refDyn.requireValue("TypeUniqueDynamic::eq reference dynamic"));
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
@@ -290,7 +315,7 @@ public record TypeUnique()
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override
@@ -298,12 +323,12 @@ public record TypeUnique()
     if (cv.code().dynamic() != null) return EResult.ok(cv);
     if (!(cv.value() instanceof Opt.Some<Value> some)) return EResult.ok(cv);
     var srcType = some.value().valueType();
-    if (srcType instanceof TypeUnique) return EResult.ok(cv);
+    if (srcType instanceof TypeUniqueDynamic) return EResult.ok(cv);
     var asp = GenAspectConsumeDynamic.getMaybe(xx, srcType);
     if (!(asp instanceof Opt.Some<AspectConsumeDynamic> aspSome)) return EResult.ok(cv);
     var dynRes = aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUnique::typeCastFrom")), cv.outcome()));
+    return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
   }
 
   @Override
@@ -313,7 +338,7 @@ public record TypeUnique()
 
   @Override
   public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(new TypeUnique());
+    return EResult.ok(new TypeUniqueDynamic());
   }
 
   @Override
