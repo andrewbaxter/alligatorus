@@ -50,6 +50,8 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
 
     record OperatorAdd(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
 
+    record OperatorMod(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+
     record OperatorEq(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
 
     record OperatorLt(ArtifactExpr base, ArtifactExpr reference) implements Variant {}

@@ -27,6 +27,7 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInt;
 import compilerxyz.gen.AspectOperatorAdd;
+import compilerxyz.gen.AspectOperatorMod;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
@@ -49,6 +50,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorMod;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
@@ -64,6 +66,7 @@ public record TypeIntConst()
         AspectField,
         AspectInt,
         AspectOperatorAdd,
+        AspectOperatorMod,
         AspectOperatorEq,
         AspectOperatorLt,
         ExporterAny {
@@ -97,6 +100,7 @@ public record TypeIntConst()
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectOperatorAdd.AspectId)
+        || key.equals(GenAspectOperatorMod.AspectId)
         || key.equals(GenAspectOperatorEq.AspectId)
         || key.equals(GenAspectOperatorLt.AspectId)) {
       return Opt.some(this);
@@ -182,6 +186,15 @@ public record TypeIntConst()
         xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), a + b),
         "add");
+  }
+
+  @Override
+  public EResult<CodeValue> aspectOperatorModMod(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return binOpInt(
+        xx, loc, base, reference,
+        (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), a % b),
+        "mod");
   }
 
   @Override

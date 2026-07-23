@@ -13,6 +13,7 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectIterable;
 import compilerxyz.gen.AspectOperatorAdd;
+import compilerxyz.gen.AspectOperatorMod;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -49,6 +50,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorMod;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
@@ -199,6 +201,19 @@ public final class ConstEval {
         var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, bv.value().valueType()));
         if (aopt.isEmpty()) yield EResult.errs(erb.errors());
         var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
+        if (out.isEmpty()) yield EResult.errs(erb.errors());
+        yield EResult.ok(out.get());
+      }
+      case Expr.OperatorMod e -> {
+        var erb = new Erb(loc);
+        var bopt = erb.mustEr(constEval(xx, e.base()));
+        var ropt = erb.mustEr(constEval(xx, e.reference()));
+        if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
+        var base = bopt.get();
+        var bv = (Opt.Some<Value>) base.value();
+        var aopt = erb.mustEr(GenAspectOperatorMod.get(xx, loc, bv.value().valueType()));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        var out = erb.mustEr(aopt.get().aspectOperatorModMod(xx, loc, base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
@@ -1066,6 +1081,10 @@ public final class ConstEval {
         findMatchedLowersInner(o.base(), sd, ld, out);
         findMatchedLowersInner(o.reference(), sd, ld, out);
       }
+      case Expr.OperatorMod o -> {
+        findMatchedLowersInner(o.base(), sd, ld, out);
+        findMatchedLowersInner(o.reference(), sd, ld, out);
+      }
       case Expr.Foreach fe -> {
         findMatchedLowersInner(fe.base(), sd, ld, out);
         findMatchedLowersInner(fe.elementKey(), sd, ld, out);
@@ -1162,6 +1181,10 @@ public final class ConstEval {
         findMatchedGraftsInner(o.reference(), sd, out);
       }
       case Expr.OperatorAdd o -> {
+        findMatchedGraftsInner(o.base(), sd, out);
+        findMatchedGraftsInner(o.reference(), sd, out);
+      }
+      case Expr.OperatorMod o -> {
         findMatchedGraftsInner(o.base(), sd, out);
         findMatchedGraftsInner(o.reference(), sd, out);
       }

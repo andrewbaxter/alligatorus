@@ -344,6 +344,12 @@ public final class DynRuntime {
               new Expr.OperatorAdd(
                   cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
                   cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
+      case Expr.OperatorMod op ->
+          new Expr(
+              loc,
+              new Expr.OperatorMod(
+                  cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
+                  cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
       case Expr.Foreach fe ->
           new Expr(
               loc,

@@ -100,6 +100,10 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.OperatorAdd(base, reference));
   }
 
+  public SourceExpr operatorMod(SourceExpr base, SourceExpr reference) {
+    return new SourceExpr(id(), new SourceExpr.OperatorMod(base, reference));
+  }
+
   public SourceExpr operatorEq(SourceExpr base, SourceExpr reference) {
     return new SourceExpr(id(), new SourceExpr.OperatorEq(base, reference));
   }

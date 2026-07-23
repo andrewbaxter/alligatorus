@@ -207,7 +207,8 @@ public final class TypeSourceObjectDynamic
           case TYPE -> key.equals(compilerxyz.gen.GenAspectType.AspectId);
           // TSOD does not implement AspectDropDynamic or AspectFunction — advertising
           // them would fail at cast time. VALUE/TARGET/CODE_DYN unused.
-          case ASPECT_BIND, ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, ASPECT_OPERATOR_ADD, ASPECT_SET,
+          case ASPECT_BIND, ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, ASPECT_OPERATOR_ADD,
+              ASPECT_OPERATOR_MOD, ASPECT_SET,
               VALUE, TARGET, CODE_DYN -> false;
         };
         if (exposes) return Opt.some(this);

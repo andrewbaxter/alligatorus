@@ -38,6 +38,7 @@ import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectInt;
 import compilerxyz.gen.AspectIntDynamic;
 import compilerxyz.gen.AspectOperatorAdd;
+import compilerxyz.gen.AspectOperatorMod;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.AspectOperatorLt;
 import compilerxyz.gen.AspectSet;
@@ -80,6 +81,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectIntDynamic;
 import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorMod;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
@@ -103,6 +105,7 @@ public record TypeIntDynamic()
         AspectLift,
         AspectIntDynamic,
         AspectOperatorAdd,
+        AspectOperatorMod,
         AspectOperatorEq,
         AspectOperatorLt,
         AspectSet,
@@ -151,6 +154,7 @@ public record TypeIntDynamic()
         || key.equals(GenAspectOperatorLt.AspectId)
         || key.equals(GenAspectOperatorEq.AspectId)
         || key.equals(GenAspectOperatorAdd.AspectId)
+        || key.equals(GenAspectOperatorMod.AspectId)
         || key.equals(GenAspectSet.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectElementUseDynamicBind.AspectId)
@@ -237,6 +241,19 @@ public record TypeIntDynamic()
     if (seqRes.hasErrors()) return seqRes.reerr();
     var seq = seqRes.requireValue("binOpSeq");
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LADD));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(new CodeDynamic(loc, seq)),
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+  }
+
+  @Override
+  public EResult<CodeValue> aspectOperatorModMod(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    var seqRes = binOpSeq(xx, loc, base, reference);
+    if (seqRes.hasErrors()) return seqRes.reerr();
+    var seq = seqRes.requireValue("binOpSeq");
+    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LREM));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),

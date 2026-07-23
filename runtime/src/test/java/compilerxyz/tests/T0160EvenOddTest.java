@@ -155,6 +155,7 @@ public final class T0160EvenOddTest {
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")),
                     mb.recordOf(
                         TList.of(new TestMb.RecordPair("parity", mb.typesInt())))),
+                mb.bind("even_type_new", mb.field(mb.scopeUse("u"), mb.str("new"))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -193,7 +194,13 @@ public final class T0160EvenOddTest {
                                                     mb.tupleOf(
                                                         mb.field(
                                                             mb.scopeUse("arg"), mb.str("cv")),
-                                                        mb.scopeUse("outer"))))),
+                                                        mb.call(
+                                                            mb.lower(mb.scopeUse("even_type_new")),
+                                                            mb.recordOf(
+                                                                TList.of(
+                                                                    new TestMb.RecordPair(
+                                                                        "parity",
+                                                                        mb.num(0.0))))))))),
                                         new TestMb.RecordPair(
                                             "desc", mb.seqOf(mb.return_(mb.str("evenodd")))),
                                         new TestMb.RecordPair(
@@ -359,7 +366,7 @@ public final class T0160EvenOddTest {
                                                     mb.str("ok")),
                                                 mb.scopeUse("outer"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))));
+                mb.return_(mb.scopeUse("even_type_new")));
   }
 
   private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {

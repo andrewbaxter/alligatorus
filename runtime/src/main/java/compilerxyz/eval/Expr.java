@@ -71,6 +71,9 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     public record OperatorAdd(Expr base, Expr reference) implements Variant {
     }
 
+    public record OperatorMod(Expr base, Expr reference) implements Variant {
+    }
+
     public record OperatorEq(Expr base, Expr reference) implements Variant {
     }
 

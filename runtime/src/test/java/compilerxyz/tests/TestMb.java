@@ -58,6 +58,10 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "operator_add");
   }
 
+  public SourceExpr evalOperatorMod() {
+    return builtin("eval", "operator_mod");
+  }
+
   public SourceExpr mustReinterpret() {
     return builtin("must_reinterpret");
   }
@@ -100,6 +104,10 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalOperatorAddId() {
     return builtin("eval", "aspect_operator_add_id");
+  }
+
+  public SourceExpr evalOperatorModId() {
+    return builtin("eval", "aspect_operator_mod_id");
   }
 
   public SourceExpr evalAspectDropDynamicLightId() {

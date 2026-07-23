@@ -92,6 +92,10 @@ public final class SourceModuleToModule {
               new Expr.OperatorAdd(
                   sourceExprToExpr(sourceId, op.base()),
                   sourceExprToExpr(sourceId, op.reference()));
+          case SourceExpr.OperatorMod op ->
+              new Expr.OperatorMod(
+                  sourceExprToExpr(sourceId, op.base()),
+                  sourceExprToExpr(sourceId, op.reference()));
           case SourceExpr.Foreach f ->
               new Expr.Foreach(
                   sourceExprToExpr(sourceId, f.base()),

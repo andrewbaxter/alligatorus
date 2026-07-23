@@ -44,6 +44,8 @@ public record SourceExpr(ExprId id, Variant variant) implements SafeJsonSerializ
 
   public record OperatorAdd(SourceExpr base, SourceExpr reference) implements Variant {}
 
+  public record OperatorMod(SourceExpr base, SourceExpr reference) implements Variant {}
+
   public record OperatorEq(SourceExpr base, SourceExpr reference) implements Variant {}
 
   public record OperatorLt(SourceExpr base, SourceExpr reference) implements Variant {}

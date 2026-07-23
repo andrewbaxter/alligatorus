@@ -159,7 +159,7 @@ public final class DynamicTypes {
         "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
         "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
         "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
-        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectSet",
+        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectOperatorMod", "AspectSet",
         "AspectInt"}) {
       delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);
     }
