@@ -13,6 +13,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -20,7 +21,7 @@ public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic t
     implements Binding {
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
-    Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
+    Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
     return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
   }
 

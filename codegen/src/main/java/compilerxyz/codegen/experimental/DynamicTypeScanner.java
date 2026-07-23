@@ -65,6 +65,16 @@ public final class DynamicTypeScanner {
       var cn = ClassName.get("compilerxyz.gen", name);
       out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "Gen" + name)));
     }
+    // @Builtin types whose hand-rolled dynamicType() has been deleted — route through
+    // the generated companion.
+    var builtinDelegated = new String[][] {
+        {"compilerxyz.eval", "Code"},
+        {"compilerxyz.eval.aspect", "Aspect"},
+    };
+    for (var pair : builtinDelegated) {
+      var cn = ClassName.get(pair[0], pair[1]);
+      out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "Gen" + pair[1])));
+    }
     var typeCn = ClassName.get("compilerxyz.eval", "Type");
     out.put(typeCn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenType")));
     return out;

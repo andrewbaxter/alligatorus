@@ -1,5 +1,6 @@
 package compilerxyz.eval.value.source_union;
 
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ArtifactIdSource;
@@ -38,6 +39,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectUnion;
 
+@Builtin(uniqueId = 6021L)
 @BuiltinTypeId(7052L)
 public final class TypeSourceUnionDynamic
     implements
@@ -139,7 +141,7 @@ public final class TypeSourceUnionDynamic
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(identity)
-        || key.equals(GenTrivialIdentityAspects.SOURCE_UNION_REF_TYPE_IDENTITY)
+        || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -201,18 +203,18 @@ public final class TypeSourceUnionDynamic
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    return compilerxyz.eval.EResult.ok(cv);
   }
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
-    return false;
+    return sourceType.typeAspect(xx, identity).optIsSome();
   }
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    return destType.typeAspect(xx, identity).optIsSome();
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    return compilerxyz.eval.EResult.ok(cv);
   }
 }

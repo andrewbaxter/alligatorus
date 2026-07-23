@@ -58,6 +58,14 @@ public final class DynamicTypes {
     LEAVES.put(value, new LeafEntry(LeafKind.DELEGATED, value, factory));
   }
 
+  private static void delegated(
+      String valuePkg, String valueCls, String factoryPkg, String factoryCls,
+      TypeName valueClass) {
+    var key = ClassName.get(valuePkg, valueCls);
+    var factory = ClassName.get(factoryPkg, factoryCls);
+    LEAVES.put(key, new LeafEntry(LeafKind.DELEGATED, valueClass, factory));
+  }
+
   private static void composite(String pkg, String cls, int arity, TypeName valueClass) {
     var cn = ClassName.get(pkg, cls);
     COMPOSITES.put(cn, new CompositeEntry(arity, valueClass));
@@ -104,21 +112,14 @@ public final class DynamicTypes {
     factory("compilerxyz.eval", "ExprContext");
     factory("compilerxyz.eval", "QExprId");
     factory("compilerxyz.eval", "CodeValue");
-    factory("compilerxyz.eval", "Code");
+    delegated("compilerxyz.eval", "Code", "compilerxyz.gen", "GenCode");
     factory("compilerxyz.eval", "ConstKey");
     factory("compilerxyz.eval", "Expr");
-    factory("compilerxyz.eval.aspect", "Aspect");
+    delegated("compilerxyz.eval.aspect", "Aspect", "compilerxyz.gen", "GenAspect");
     factory("compilerxyz.eval.push", "StagedExpr");
-    factory("compilerxyz.eval.value.code", "CodeDynHandleType", ClassName.OBJECT);
-    factory(
-        "compilerxyz.eval.value.bind_result",
-        "BindResultType",
-        ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"));
-    factory("compilerxyz.eval.value.source_object", "SourceObjectRefType");
-    factory("compilerxyz.eval.value.source_object_new", "SourceObjectNewRefType");
-    factory("compilerxyz.eval.value.source_union", "SourceUnionRefType");
-    factory("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
-    factory("compilerxyz.eval.value.source_function", "SourceFunctionType");
+    delegated(
+        "compilerxyz.eval.value", "ValueDynamicSource",
+        "compilerxyz.gen", "GenValueDynamicSource");
     factory("compilerxyz.eval.value.source_interface", "InterfaceData");
     factory("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceDynamic");
     factory("compilerxyz.eval.dynamic", "JavaDataDescriptor");
@@ -138,20 +139,20 @@ public final class DynamicTypes {
     factory("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
     delegated(
         "compilerxyz.eval.value.source_function", "TypeSourceFunctionConst",
-        "compilerxyz.eval.value.source_function", "SourceFunctionType");
+        "compilerxyz.gen", "GenTypeSourceFunctionConst");
     delegated(
         "compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic",
-        "compilerxyz.eval.value.source_object", "SourceObjectRefType");
+        "compilerxyz.gen", "GenTypeSourceObjectDynamic");
     delegated(
         "compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic",
-        "compilerxyz.eval.value.source_union", "SourceUnionRefType");
+        "compilerxyz.gen", "GenTypeSourceUnionDynamic");
     factory("compilerxyz.gen", "Value");
     LEAVES.put(
         ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
         new LeafEntry(
             LeafKind.DELEGATED,
             ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
-            ClassName.get("compilerxyz.eval.value.bind_result", "BindResultType")));
+            ClassName.get("compilerxyz.gen", "GenAspectBindBindResult")));
     factory("compilerxyz.gen", "Binding");
     factory("compilerxyz.gen", "Target");
     // Aspects: dynamicType() lives on the GenAspectXxx companion class.

@@ -16,6 +16,7 @@ import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
@@ -33,7 +34,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
         Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey)),
         EvalOutcome.ofValue(
             new Record(
-                Opt.some(new RecordBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
+                Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(dynamicKey))),
                 resultFields)));
   }
 

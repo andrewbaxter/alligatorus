@@ -70,6 +70,10 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "value");
   }
 
+  public SourceExpr evalValueSource() {
+    return builtin("eval", "value_source");
+  }
+
   public SourceExpr evalType() {
     return builtin("eval", "type");
   }
@@ -80,6 +84,14 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalAspectBind() {
     return builtin("eval", "aspect_bind");
+  }
+
+  public SourceExpr evalAspectInitialBind() {
+    return builtin("eval", "aspect_initial_bind");
+  }
+
+  public SourceExpr evalAspectLift() {
+    return builtin("eval", "aspect_lift");
   }
 
   public SourceExpr evalAspectBindId() {
@@ -182,10 +194,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "bind_result");
   }
 
-  public SourceExpr typesCodedyn() {
-    return builtin("types", "codedyn");
-  }
-
   public SourceExpr typesConstkey() {
     return builtin("types", "constkey");
   }
@@ -278,4 +286,25 @@ public final class TestMb extends ModuleBuilder {
   public record Branch(SourceExpr condition, SourceExpr body) {}
 
   public record Catch(String name, SourceExpr exceptionType, SourceExpr body) {}
+
+  /**
+   * Build a source expression that delegates a method call to an aspect on {@code underlying}.
+   * Emits: {@code aspect_lookup(underlying, aspectRef, arg.xx).value.<method>({argKeys: arg.argKeys...})}.
+   */
+  public SourceExpr delegateAspect(
+      SourceExpr underlying, SourceExpr aspectRef, String method, String... argKeys) {
+    var args = new TList<RecordPair>(argKeys.length);
+    for (var k : argKeys) {
+      args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
+    }
+    return call(
+        field(
+            field(
+                call(
+                    evalAspectLookup(),
+                    tupleOf(underlying, aspectRef, field(scopeUse("arg"), str("xx")))),
+                str("value")),
+            str(method)),
+        recordOf(args));
+  }
 }

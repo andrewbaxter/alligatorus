@@ -124,6 +124,36 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
                         TList.of(
+                            new TestMb.RecordPair(
+                                "iface_ref", mb.evalAspectInitialBind()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "initial_bind",
+                                            mb.panic(mb.str("unimpl initial_bind"))))))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalAspectLift()),
+                            new TestMb.RecordPair(
+                                "record",
+                                mb.call(
+                                    mb.field(
+                                        mb.call(
+                                            mb.typesMap(),
+                                            mb.tupleOf(
+                                                mb.typesConstkey(),
+                                                mb.typesExpr())),
+                                        mb.str("new")),
+                                    mb.recordOf(TList.of())))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.recordOf(
+                        TList.of(
                             new TestMb.RecordPair("iface_ref", mb.evalValue()),
                             new TestMb.RecordPair(
                                 "record",

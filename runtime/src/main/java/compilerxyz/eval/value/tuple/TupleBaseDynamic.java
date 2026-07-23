@@ -8,8 +8,9 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 
-public record TupleBaseDynamic(ValueDynamic.Source source) {
+public record TupleBaseDynamic(ValueDynamicSource source) {
 
   public EResult<TargetBindSub> tupleBaseBindSub(
       ExprContext xx, QExprId loc, Code carry, Type tupleType) {

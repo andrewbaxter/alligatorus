@@ -116,8 +116,6 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");
   private static final ClassName ASPECT_INTERFACE =
       ClassName.get("compilerxyz.eval.aspect", "Aspect");
-  private static final ClassName CODE_DYN_HANDLE_TYPE =
-      ClassName.get("compilerxyz.eval.value.code", "CodeDynHandleType");
   private static final ClassName TYPE_LIST_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic");
   private static final ClassName TYPE_LIST_CONSTRUCTOR_CONST =
@@ -388,6 +386,12 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light",
         CodeBlock.of("$T.dynamicType()",
             ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TOD_SELF_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_initial_bind",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "GenAspectInitialBind")), TOD_SELF_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_lift",
+        CodeBlock.of("$T.dynamicType()",
+            ClassName.get("compilerxyz.gen", "GenAspectLift")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic",
         CodeBlock.of("$T.dynamicType()",
             ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TOD_SELF_TYPE_EXPR);
@@ -461,6 +465,7 @@ public final class BuiltinTreeGen {
                   "aspect_function", "aspect_field", "aspect_drop_dynamic",
                   "aspect_drop_dynamic_light", "aspect_bind_dynamic",
                   "aspect_consume_dynamic", "bind_result", "aspect_bind",
+                  "aspect_initial_bind", "aspect_lift",
                   "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
                   "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
                   "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",

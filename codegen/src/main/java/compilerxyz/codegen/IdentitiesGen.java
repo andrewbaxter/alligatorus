@@ -21,12 +21,6 @@ public final class IdentitiesGen {
 
   public record IdentitySpec(String name, long builtinUniqueId) {}
 
-  private static TList<IdentitySpec> specs() {
-    // All 14 identities migrated to @BuiltinTrivialIdentityAspect annotations or deleted as dead.
-    // Dead: type_code_struct_identity (6009), type_code_enum_identity (6010) — zero refs.
-    return TList.of();
-  }
-
   public static void run(
       Path outRoot,
       Formatter formatter,
@@ -35,16 +29,11 @@ public final class IdentitiesGen {
       TList<IdentitySpec> extras)
       throws IOException {
     var specs = new TList<IdentitySpec>();
-    specs.addAll(specs());
     specs.addAll(extras);
     var seenNames = new TSet<String>();
     for (var spec : specs) {
       if (!seenNames.add(spec.name)) {
         throw new IllegalStateException("duplicate identity name: " + spec.name);
-      }
-      if (!builtinUniqueIds.add(spec.builtinUniqueId)) {
-        throw new IllegalStateException(
-            "duplicate builtin_unique_id " + spec.builtinUniqueId + " (in identities)");
       }
     }
 

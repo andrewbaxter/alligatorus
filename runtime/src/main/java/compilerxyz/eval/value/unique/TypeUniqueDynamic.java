@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.unique;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -67,8 +67,8 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 
+@Builtin(uniqueId = 6003L)
 @BuiltinTypeId(7015L)
-@BuiltinTrivialIdentityAspect(6003L)
 public record TypeUniqueDynamic()
     implements
         Type,

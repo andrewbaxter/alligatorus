@@ -18,6 +18,7 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
@@ -162,22 +163,22 @@ public final class DynUtil {
     }
 
     public static EResult<CodeValue> fieldUseDefaultDynamic(
-            ExprContext xx, QExprId loc, Type self, ValueDynamic.Source baseSource, String javaFieldName) {
-        var childSource = new ValueDynamic.Source.Field(baseSource, javaFieldName);
+            ExprContext xx, QExprId loc, Type self, ValueDynamicSource baseSource, String javaFieldName) {
+        var childSource = new ValueDynamicSource.Field(baseSource, javaFieldName);
         var code = compilerxyz.eval.Code.of(loc, renderSource(xx, loc, childSource));
         return EResult.ok(new CodeValue(code, EvalOutcome.ofValue(new ValueDynamic(childSource, self))));
     }
 
     public static EResult<CodeValue> elementUseDefaultDynamic(
-            ExprContext xx, QExprId loc, Type self, ValueDynamic.Source elementSource, Code carry) {
+            ExprContext xx, QExprId loc, Type self, ValueDynamicSource elementSource, Code carry) {
         return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueDynamic(elementSource, self))));
     }
 
     public static CodeDynamic renderSource(
-            ExprContext xx, QExprId loc, ValueDynamic.Source src) {
-        if (src instanceof ValueDynamic.Source.Expr) {
+            ExprContext xx, QExprId loc, ValueDynamicSource src) {
+        if (src instanceof ValueDynamicSource.Expr) {
             throw new IllegalStateException(
-                "ValueDynamic.Source.Expr has no reconstructable code");
+                "ValueDynamicSource.Expr has no reconstructable code");
         }
         return src.realize(xx, loc);
     }
@@ -245,7 +246,7 @@ public final class DynUtil {
      *                 child value.
      */
     public static EResult<Code> dropDestructiveComposite(
-            ExprContext xx, QExprId loc, ValueDynamic.Source source, TList<DropChild> children) {
+            ExprContext xx, QExprId loc, ValueDynamicSource source, TList<DropChild> children) {
         boolean stackRooted = isStackRooted(source);
         TList<CodeDynamic> childDrops = new TList<>();
         for (var child : children) {
@@ -300,11 +301,11 @@ public final class DynUtil {
         return EResult.ok(vd.source().drop(loc));
     }
 
-    public static boolean isStackRooted(ValueDynamic.Source source) {
+    public static boolean isStackRooted(ValueDynamicSource source) {
         return switch (source) {
-            case ValueDynamic.Source.Expr expr -> true;
-            case ValueDynamic.Source.Binding binding -> false;
-            case ValueDynamic.Source.Field field -> isStackRooted(field.base());
+            case ValueDynamicSource.Expr expr -> true;
+            case ValueDynamicSource.Binding binding -> false;
+            case ValueDynamicSource.Field field -> isStackRooted(field.base());
         };
     }
 
@@ -391,7 +392,7 @@ public final class DynUtil {
             return nullStackRes.reerr();
         }
         var nullStack = nullStackRes.requireValue("DynUtil::dynamicSet null stack aspect");
-        if (selfDyn.source() instanceof ValueDynamic.Source.Field fieldSrc) {
+        if (selfDyn.source() instanceof ValueDynamicSource.Field fieldSrc) {
             if (selfCode == null) {
                 return EResult.err(
                         loc,
@@ -417,7 +418,7 @@ public final class DynUtil {
             var setJs = new CodeDynamic(loc, setSeq);
             return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
         }
-        if (selfDyn.source() instanceof ValueDynamic.Source.Binding bindingSrc) {
+        if (selfDyn.source() instanceof ValueDynamicSource.Binding bindingSrc) {
             var seq = new JavaBytecodeSequence();
             if (bindingSrc.key() instanceof compilerxyz.eval.BindingId.Local local) {
                 // Local slot: pick the typed store opcode from the binding's type

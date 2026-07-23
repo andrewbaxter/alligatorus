@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.source_function;
 
 import compilerxyz.eval.EvalOutcome;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -52,6 +53,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
 
+@Builtin(uniqueId = 6022L)
 @BuiltinTypeId(7056L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
     implements Type,

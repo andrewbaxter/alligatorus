@@ -883,8 +883,6 @@ public final class PushStructsGen {
 
   private static final ClassName TYPE_SOURCE_FUNCTION_CONST =
       ClassName.get("compilerxyz.eval.value.source_function", "TypeSourceFunctionConst");
-  private static final ClassName SOURCE_FUNCTION_TYPE =
-      ClassName.get("compilerxyz.eval.value.source_function", "SourceFunctionType");
   private static final ClassName INTERFACE_REF =
       ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
   private static final ClassName SOURCE_INTERFACE_DYNAMIC =
@@ -896,22 +894,14 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic");
   private static final ClassName SOURCE_DATA_METHOD_DATA =
       ClassName.get("compilerxyz.eval.value.source_object", "SourceDataMethodData");
-  private static final ClassName SOURCE_OBJECT_REF_TYPE =
-      ClassName.get("compilerxyz.eval.value.source_object", "SourceObjectRefType");
   private static final ClassName TYPE_SOURCE_OBJECT_NEW_CONST =
       ClassName.get("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewDynamic");
-  private static final ClassName SOURCE_OBJECT_NEW_REF_TYPE =
-      ClassName.get("compilerxyz.eval.value.source_object_new", "SourceObjectNewRefType");
   private static final ClassName SOURCE_UNION_DATA =
       ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
   private static final ClassName SOURCE_UNION_REF =
       ClassName.get("compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic");
-  private static final ClassName SOURCE_UNION_REF_TYPE =
-      ClassName.get("compilerxyz.eval.value.source_union", "SourceUnionRefType");
   private static final ClassName SOURCE_UNION_NEW_REF =
       ClassName.get("compilerxyz.eval.value.source_union_new", "TypeSourceUnionNewDynamic");
-  private static final ClassName SOURCE_UNION_NEW_REF_TYPE =
-      ClassName.get("compilerxyz.eval.value.source_union_new", "SourceUnionNewRefType");
   private static final ClassName TYPE_STRING_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
   private static final ClassName VALUE_STRING_CONST =

@@ -2,7 +2,6 @@ package compilerxyz.eval;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
@@ -13,7 +12,6 @@ import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
-@BuiltinTrivialIdentityAspect(6006L)
 @BuiltinTypeId(7012L)
 public interface Type extends HasTypeId, Artifactable {
 

@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -66,8 +66,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
+@Builtin(uniqueId = 6004L)
 @BuiltinTypeId(7049L)
-@BuiltinTrivialIdentityAspect(6004L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
     implements
         Type,

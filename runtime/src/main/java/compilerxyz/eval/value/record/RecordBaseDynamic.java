@@ -12,10 +12,11 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;
 
-public record RecordBaseDynamic(ValueDynamic.Source source) {
+public record RecordBaseDynamic(ValueDynamicSource source) {
 
   public EResult<TargetBindSub> recordBaseBindSub(
       ExprContext xx, QExprId loc, Code carry, Type recordType) {

@@ -34,9 +34,23 @@ public final class BuiltinInterfacesGen {
       long uniqueId,
       boolean isAspect,
       boolean isRecord,
-      @org.jspecify.annotations.Nullable Long trivialIdentity,
       TList<BuiltinMethodEmit.Method> methods,
-      TList<DataField> dataFields) {}
+      TList<DataField> dataFields,
+      @org.jspecify.annotations.Nullable String outerSimpleName,
+      @org.jspecify.annotations.Nullable String nestedSimpleName) {
+    public BuiltinSpec(
+        String simpleName,
+        String pkg,
+        long typeId,
+        long uniqueId,
+        boolean isAspect,
+        boolean isRecord,
+        TList<BuiltinMethodEmit.Method> methods,
+        TList<DataField> dataFields) {
+      this(simpleName, pkg, typeId, uniqueId, isAspect, isRecord,
+          methods, dataFields, null, null);
+    }
+  }
 
   public record DataField(
       String langName,
@@ -109,7 +123,12 @@ public final class BuiltinInterfacesGen {
       throws IOException {
     var companionName = "Gen" + spec.simpleName;
     var self = ClassName.get(GEN_PACKAGE, companionName);
-    var interfaceRef = ClassName.get(spec.pkg, spec.simpleName);
+    ClassName interfaceRef;
+    if (spec.outerSimpleName != null && spec.nestedSimpleName != null) {
+      interfaceRef = ClassName.get(spec.pkg, spec.outerSimpleName, spec.nestedSimpleName);
+    } else {
+      interfaceRef = ClassName.get(spec.pkg, spec.simpleName);
+    }
 
     var cls = TypeSpec.classBuilder(companionName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
     cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
@@ -190,10 +209,8 @@ public final class BuiltinInterfacesGen {
               + "dataFields, methods, $T.DYNAMIC, $T.some(jvmClass))",
           TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
     } else if (spec.isRecord) {
-      if (spec.trivialIdentity != null) {
-        b.addStatement(
-            "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.trivialIdentity);
-      }
+      b.addStatement(
+          "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
       b.addStatement(
           "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>none())",
@@ -207,10 +224,6 @@ public final class BuiltinInterfacesGen {
     } else {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
-      if (spec.trivialIdentity != null) {
-        b.addStatement(
-            "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.trivialIdentity);
-      }
       b.addStatement(
           "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>some(new $T(new $T($LL))))",
@@ -218,7 +231,7 @@ public final class BuiltinInterfacesGen {
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,
           OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
           UNIQUE_BUILTIN,
-          spec.trivialIdentity != null ? spec.trivialIdentity : spec.uniqueId);
+          spec.uniqueId);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
               + "dataFields, methods, $T.DYNAMIC_LIGHT, $T.some(jvmClass))",

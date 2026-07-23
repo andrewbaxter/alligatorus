@@ -23,7 +23,6 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.argrecord;
     exports compilerxyz.eval.value.binding;
     exports compilerxyz.eval.value.bool_;
-    exports compilerxyz.eval.value.code;
     exports compilerxyz.eval.value.code_value_extern;
     exports compilerxyz.eval.value.constkey;
     exports compilerxyz.eval.value.expr;

@@ -1,8 +1,8 @@
 package compilerxyz.eval.value.expr;
 
 import compilerxyz.eval.EvalOutcome;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
@@ -54,8 +54,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
+@Builtin(uniqueId = 6013L)
 @BuiltinTypeId(7016L)
-@BuiltinTrivialIdentityAspect(6013L)
 @BuiltinPath("types.expr")
 public record TypeExpr()
     implements

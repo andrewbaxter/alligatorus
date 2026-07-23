@@ -137,7 +137,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
             .aspectConsumeDynamicToDynamic(xx, loc, converted);
     if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
     var underlyingJs = underlyingJsRes.requireValue("TypeSourceUnionNewDynamic::call toDynamic");
-    Type resultType = new TypeTypeSourceUnionConst(type_);
+    Type resultType = type_;
     var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
     var payloadDesc =
         compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, underlyingType);

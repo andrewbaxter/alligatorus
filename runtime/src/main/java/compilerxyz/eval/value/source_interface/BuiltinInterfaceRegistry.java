@@ -24,6 +24,9 @@ public final class BuiltinInterfaceRegistry {
       case ASPECT_CONSUME_DYNAMIC -> compilerxyz.gen.GenAspectConsumeDynamic.dynamicType();
       case ASPECT_BIND_DYNAMIC -> compilerxyz.gen.GenAspectBindDynamic.dynamicType();
       case ASPECT_BIND -> compilerxyz.gen.GenAspectBind.dynamicType();
+      case ASPECT_DROP_DYNAMIC_LIGHT -> compilerxyz.gen.GenAspectDropDynamicLight.dynamicType();
+      case ASPECT_INITIAL_BIND -> compilerxyz.gen.GenAspectInitialBind.dynamicType();
+      case ASPECT_LIFT -> compilerxyz.gen.GenAspectLift.dynamicType();
       case ASPECT_SET -> compilerxyz.gen.GenAspectSet.dynamicType();
       case ASPECT_OPERATOR_ADD -> compilerxyz.gen.GenAspectOperatorAdd.dynamicType();
       case ASPECT_OPERATOR_MOD -> compilerxyz.gen.GenAspectOperatorMod.dynamicType();
@@ -46,6 +49,9 @@ public final class BuiltinInterfaceRegistry {
     if (v == 1023L) return BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC;
     if (v == 1024L) return BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC;
     if (v == 1032L) return BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC;
+    if (v == 1035L) return BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT;
+    if (v == 1021L) return BuiltinInterfaceKind.ASPECT_INITIAL_BIND;
+    if (v == 1026L) return BuiltinInterfaceKind.ASPECT_LIFT;
     if (v == 1116L) return BuiltinInterfaceKind.ASPECT_FUNCTION;
     if (v == 2001L) return BuiltinInterfaceKind.VALUE;
     if (v == 2002L || v == 6006L) return BuiltinInterfaceKind.TYPE;

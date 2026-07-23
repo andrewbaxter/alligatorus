@@ -27,36 +27,43 @@ public final class BuiltinIdentityScanner {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("BuiltinTrivialIdentityAspect")) continue;
+        if (!src.contains("@Builtin(")) continue;
         var cu = StaticJavaParser.parse(file);
         for (var t : cu.getTypes()) {
-          collect(t, out);
+          collect(t, "", out);
         }
       }
     }
     return out;
   }
 
-  private static void collect(TypeDeclaration<?> t, TList<IdentitySpec> out) {
+  private static void collect(
+      TypeDeclaration<?> t, String enclosingChain, TList<IdentitySpec> out) {
+    var mySimple = t.getNameAsString();
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
-      if (n.equals("BuiltinTrivialIdentityAspect") || n.equals("compilerxyz.annotations.BuiltinTrivialIdentityAspect")) {
-        Long value = null;
+      if (n.equals("Builtin") || n.equals("compilerxyz.annotations.Builtin")) {
+        Long uniqueId = null;
         if (a instanceof NormalAnnotationExpr n2) {
           for (var p : n2.getPairs()) {
-            if (p.getNameAsString().equals("value")) value = parseLong(p.getValue().toString());
+            if (p.getNameAsString().equals("uniqueId")) uniqueId = parseLong(p.getValue().toString());
           }
         } else if (a instanceof SingleMemberAnnotationExpr s) {
-          value = parseLong(s.getMemberValue().toString());
+          uniqueId = parseLong(s.getMemberValue().toString());
         }
-        if (value == null) {
-          throw new IllegalStateException("@BuiltinTrivialIdentityAspect missing value on " + t.getNameAsString());
+        if (uniqueId == null) {
+          throw new IllegalStateException("@Builtin missing uniqueId on " + mySimple);
         }
-        out.add(new IdentitySpec(snakeCase(t.getNameAsString()), value));
+        var useChained = !enclosingChain.isEmpty();
+        var name = useChained ? enclosingChain + mySimple : mySimple;
+        out.add(new IdentitySpec(snakeCase(name), uniqueId));
       }
     }
+    var nextChain = enclosingChain.isEmpty() ? mySimple : enclosingChain + mySimple;
     for (var member : t.getMembers()) {
-      if (member instanceof TypeDeclaration<?> nested) collect(nested, out);
+      if (member instanceof TypeDeclaration<?> nested) {
+        collect(nested, nextChain, out);
+      }
     }
   }
 

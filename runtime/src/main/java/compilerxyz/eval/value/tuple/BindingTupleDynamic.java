@@ -12,6 +12,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -28,7 +29,7 @@ public record BindingTupleDynamic(BindingId dynamicKey, TList<Type> elements)
         Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey)),
         EvalOutcome.ofValue(
             new Tuple(
-                Opt.some(new TupleBaseDynamic(new ValueDynamic.Source.Binding(dynamicKey))),
+                Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(dynamicKey))),
                 resultElements)));
   }
 

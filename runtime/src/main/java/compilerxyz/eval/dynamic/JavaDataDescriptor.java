@@ -1,6 +1,6 @@
 package compilerxyz.eval.dynamic;
 
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.Type;
@@ -19,7 +19,7 @@ import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@BuiltinTrivialIdentityAspect(6014L)
+@Builtin(uniqueId = 6014L)
 @BuiltinTypeId(7120L)
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");

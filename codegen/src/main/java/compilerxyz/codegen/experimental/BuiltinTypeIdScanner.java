@@ -35,14 +35,14 @@ public final class BuiltinTypeIdScanner {
         if (!src.contains("BuiltinTypeId")) continue;
         var cu = StaticJavaParser.parse(file);
         for (var t : cu.getTypes()) {
-          collect(t, out);
+          collect(t, "", out);
         }
       }
     }
     return out;
   }
 
-  private static void collect(TypeDeclaration<?> t, TList<TypeIdSpec> out) {
+  private static void collect(TypeDeclaration<?> t, String enclosingChain, TList<TypeIdSpec> out) {
     AnnotationExpr ann = null;
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
@@ -51,12 +51,22 @@ public final class BuiltinTypeIdScanner {
         break;
       }
     }
+    var mySimple = t.getNameAsString();
+    var hasBuiltin = t.getAnnotationByName("Builtin").isPresent()
+        || t.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent();
     if (ann != null) {
-      out.add(new TypeIdSpec(snakeCase(t.getNameAsString()), parseIdValue(ann)));
+      // Nested @Builtin types get outer-chained names to avoid collisions with
+      // like-named top-level types (e.g. AspectBind.BindResult vs
+      // target.BindResult). Plain nested @BuiltinTypeId (no @Builtin) keeps the
+      // legacy short name.
+      var useChained = !enclosingChain.isEmpty() && hasBuiltin;
+      var name = useChained ? enclosingChain + mySimple : mySimple;
+      out.add(new TypeIdSpec(snakeCase(name), parseIdValue(ann)));
     }
+    var nextChain = enclosingChain.isEmpty() ? mySimple : enclosingChain + mySimple;
     for (var member : t.getMembers()) {
       if (member instanceof TypeDeclaration<?> nested) {
-        collect(nested, out);
+        collect(nested, nextChain, out);
       }
     }
   }

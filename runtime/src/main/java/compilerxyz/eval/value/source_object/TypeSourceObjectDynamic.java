@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.source_object;
 
 import compilerxyz.eval.EvalOutcome;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ArtifactIdSource;
@@ -57,6 +58,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
+@Builtin(uniqueId = 6020L)
 @BuiltinTypeId(7044L)
 public final class TypeSourceObjectDynamic
     implements
@@ -182,14 +184,7 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(identity)
-        || key.equals(GenAspectBind.AspectId)
-        || key.equals(GenAspectBindDynamic.AspectId)
-        || key.equals(GenAspectConsumeDynamic.AspectId)
-        || key.equals(GenAspectDropDynamicLight.AspectId)
-        || key.equals(GenAspectField.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(GenAspectLift.AspectId)) {
+    if (key.equals(identity)) {
       return Opt.some(this);
     }
 
@@ -200,15 +195,17 @@ public final class TypeSourceObjectDynamic
         // impl_interface but not implemented on this Type return None here — the source
         // code's user-defined implementation runs via a different dispatch path.
         boolean exposes = switch (kind) {
+          case ASPECT_BIND -> key.equals(GenAspectBind.AspectId);
           case ASPECT_BIND_DYNAMIC -> key.equals(GenAspectBindDynamic.AspectId);
           case ASPECT_CONSUME_DYNAMIC -> key.equals(GenAspectConsumeDynamic.AspectId);
+          case ASPECT_DROP_DYNAMIC_LIGHT -> key.equals(GenAspectDropDynamicLight.AspectId);
           case ASPECT_FIELD -> key.equals(compilerxyz.gen.GenAspectField.AspectId);
+          case ASPECT_INITIAL_BIND -> key.equals(GenAspectInitialBind.AspectId);
+          case ASPECT_LIFT -> key.equals(GenAspectLift.AspectId);
           case BINDING -> key.equals(GenAspectBindDynamic.AspectId);
           case TYPE -> key.equals(compilerxyz.gen.GenAspectType.AspectId);
-          // TSOD does not implement AspectDropDynamic or AspectFunction — advertising
-          // them would fail at cast time. VALUE/TARGET/CODE_DYN unused.
-          case ASPECT_BIND, ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION, ASPECT_OPERATOR_ADD,
-              ASPECT_OPERATOR_MOD, ASPECT_SET,
+          case ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION,
+              ASPECT_OPERATOR_ADD, ASPECT_OPERATOR_MOD, ASPECT_SET,
               VALUE, TARGET, CODE_DYN -> false;
         };
         if (exposes) return Opt.some(this);
@@ -426,13 +423,7 @@ public final class TypeSourceObjectDynamic
                   "TypeSourceObjectDynamic::typeCastTo: BuiltinInterfaceKind.CODE_DYN's "
                       + "invisible builtin data_instance_to_code is not yet ported");
             }
-            case VALUE -> {
-              return EResult.err(
-                  loc,
-                  "TypeSourceObjectDynamic::typeCastTo: BuiltinInterfaceKind.VALUE lowers through "
-                      + "DATA_INSTANCE_TO_VALUE_FN to TypeValueDynamic; TypeValueDynamic is not "
-                      + "yet ported on the JVM side (deferred)");
-            }
+            case VALUE -> resultType = compilerxyz.gen.GenValue.dynamicType();
             default -> {
 
             }
@@ -457,7 +448,7 @@ public final class TypeSourceObjectDynamic
       if (sourceCode == null) {
         return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
       }
-      return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.eval.aspect.Aspect.dynamicType()));
+      return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.gen.GenAspect.dynamicType()));
     }
     return EResult.err(loc, "Cannot convert " + typeDesc());
   }

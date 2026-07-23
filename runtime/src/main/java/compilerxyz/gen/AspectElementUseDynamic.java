@@ -9,11 +9,11 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.eval.value.ValueDynamic.Source;
+import compilerxyz.eval.value.ValueDynamicSource;
 
 @Builtin(uniqueId = 1039L)
 @BuiltinTypeId(7212L)
 public interface AspectElementUseDynamic extends Aspect {
   EResult<CodeValue> aspectElementUseDynamicElementUseDynamic(
-      ExprContext xx, QExprId loc, Source elementSource, Code carry);
+      ExprContext xx, QExprId loc, ValueDynamicSource elementSource, Code carry);
 }

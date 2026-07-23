@@ -46,6 +46,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -229,7 +230,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         || !(selfSome.value() instanceof ValueDynamic selfVd)) {
       return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
     }
-    var childSource = new ValueDynamic.Source.Field(selfVd.source(), keyStr.value());
+    var childSource = new ValueDynamicSource.Field(selfVd.source(), keyStr.value());
     var fieldUse = DynUtil.renderSource(xx, loc, childSource);
     return EResult.ok(
         new CodeValue(

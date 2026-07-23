@@ -17,6 +17,7 @@ import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
@@ -33,7 +34,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     } else {
       dyn = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey);
     }
-    Value value = new ValueDynamic(new ValueDynamic.Source.Binding(dynamicKey), type_);
+    Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
     return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));
   }
 

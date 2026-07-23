@@ -59,6 +59,7 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.safejson.JsonValue;
@@ -233,7 +234,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       QExprId loc,
       CodeValue selfCv,
       Record record,
-      ValueDynamic.Source baseSource,
+      ValueDynamicSource baseSource,
       Opt<ConstKey> accessKey) {
     var dynamicFieldTypes = new TOrderedMap<ConstKey, Type>();
     for (var entry : record.fields.entrySet()) {
@@ -258,7 +259,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       TOrderedMap<ConstKey, Type> dynamicFieldTypes,
       compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
       JavaInternalName klass,
-      ValueDynamic.Source baseSource) {
+      ValueDynamicSource baseSource) {
     var out = new JavaBytecodeSequence();
     out.add(baseSource.realize(xx, loc));
     var dropRes = emitChildDrops(xx, loc, klass, slotInfo, dynamicFieldTypes, Opt.none(), out);
@@ -274,7 +275,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       TOrderedMap<ConstKey, Type> dynamicFieldTypes,
       compilerxyz.eval.dynamic.CompositeSlotSort.Result<ConstKey> slotInfo,
       JavaInternalName klass,
-      ValueDynamic.Source baseSource,
+      ValueDynamicSource baseSource,
       ConstKey accessedKey) {
     var f = record.fields.getOrNull(accessedKey);
     if (f == null) {
@@ -507,9 +508,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
-      compilerxyz.eval.value.ValueDynamic.Source baseSource,
+      compilerxyz.eval.value.ValueDynamicSource baseSource,
       String javaFieldName) {
-    var childSource = new compilerxyz.eval.value.ValueDynamic.Source.Field(baseSource, javaFieldName);
+    var childSource = new compilerxyz.eval.value.ValueDynamicSource.Field(baseSource, javaFieldName);
     var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, childSource));
     var newFields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
@@ -924,7 +925,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), convertedFields))));
     }
 
-    ValueDynamic.Source sourcedSource;
+    ValueDynamicSource sourcedSource;
     if (srcValue instanceof Record srcRecSourced
         && srcRecSourced.base instanceof Opt.Some<RecordBaseDynamic> srcBaseSome) {
       sourcedSource = srcBaseSome.value().source();
@@ -947,11 +948,11 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
     CodeDynamic carryDyn = cv.code().dynamic();
     CodeDynamic sourceLoadCarry;
-    ValueDynamic.Source srcAccessSource;
+    ValueDynamicSource srcAccessSource;
     if (carryDyn != null) {
       var bindResult = xx.target.targetBind(xx, loc, new TargetBindSub(carryDyn, srcType));
       sourceLoadCarry = bindResult.code();
-      srcAccessSource = new ValueDynamic.Source.Binding(bindResult.id());
+      srcAccessSource = new ValueDynamicSource.Binding(bindResult.id());
     } else {
       sourceLoadCarry = null;
       srcAccessSource = sourcedSource;
@@ -1026,7 +1027,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       finalDyn = instantiate;
     }
     var newBase = Opt.some(
-        new RecordBaseDynamic(ValueDynamic.Source.Expr.stackFor(xx, this)));
+        new RecordBaseDynamic(ValueDynamicSource.Expr.stackFor(xx, this)));
     var newRecord = new Record(newBase, asDynamicFields(fields));
     return EResult.ok(
         new CodeValue(Code.of(loc, finalDyn), EvalOutcome.ofValue((Value) newRecord)));
@@ -1313,11 +1314,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       }
     };
   }
-  private static final Unique TYPE_IDENTITY = new Unique.Builtin(2002L);
-
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return destType.typeAspect(xx, TYPE_IDENTITY).optIsSome();
+    return destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {

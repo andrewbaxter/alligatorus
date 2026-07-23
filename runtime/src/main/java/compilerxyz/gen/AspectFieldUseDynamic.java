@@ -8,11 +8,11 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.eval.value.ValueDynamic.Source;
+import compilerxyz.eval.value.ValueDynamicSource;
 
 @Builtin(uniqueId = 1037L)
 @BuiltinTypeId(7216L)
 public interface AspectFieldUseDynamic extends Aspect {
   EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
-      ExprContext xx, QExprId loc, Source baseSource, String javaFieldName);
+      ExprContext xx, QExprId loc, ValueDynamicSource baseSource, String javaFieldName);
 }

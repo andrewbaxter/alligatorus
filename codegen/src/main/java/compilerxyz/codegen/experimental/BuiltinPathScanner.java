@@ -206,7 +206,7 @@ public final class BuiltinPathScanner {
       "compilerxyz.eval.expr.StagedExprCell",
           ClassName.get("compilerxyz.eval.value.expr", "TypeExpr"),
       "compilerxyz.gen.AspectBind.BindResult",
-          ClassName.get("compilerxyz.eval.value.bind_result", "BindResultType"));
+          ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"));
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");

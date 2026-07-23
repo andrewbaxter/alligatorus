@@ -34,6 +34,133 @@ public final class T0020DefineObjectTest {
                             mb.call(
                                 mb.field(mb.scopeUse("ndr"), mb.str("set_inner")),
                                 mb.typesString()),
+                            mb.call(
+                                mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref", mb.evalAspectConsumeDynamic()),
+                                        new TestMb.RecordPair(
+                                            "record",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "to_dynamic",
+                                                            mb.stage(
+                                                                mb.delegateAspect(
+                                                                    mb.typesString(),
+                                                                    mb.evalAspectConsumeDynamic(),
+                                                                    "to_dynamic",
+                                                                    "xx",
+                                                                    "loc",
+                                                                    "cv"))),
+                                                        new TestMb.RecordPair(
+                                                            "jvm_class",
+                                                            mb.stage(
+                                                                mb.delegateAspect(
+                                                                    mb.typesString(),
+                                                                    mb.evalAspectConsumeDynamic(),
+                                                                    "jvm_class",
+                                                                    "xx")))))))))),
+                            mb.call(
+                                mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref", mb.evalAspectBind()),
+                                        new TestMb.RecordPair(
+                                            "record",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "bind",
+                                                            mb.stage(
+                                                                mb.delegateAspect(
+                                                                    mb.typesString(),
+                                                                    mb.evalAspectBind(),
+                                                                    "bind",
+                                                                    "xx",
+                                                                    "loc",
+                                                                    "cv")))))))))),
+                            mb.call(
+                                mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref", mb.evalAspectBindDynamic()),
+                                        new TestMb.RecordPair(
+                                            "record",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "bind_dynamic",
+                                                            mb.stage(
+                                                                mb.delegateAspect(
+                                                                    mb.typesString(),
+                                                                    mb.evalAspectBindDynamic(),
+                                                                    "bind_dynamic",
+                                                                    "xx",
+                                                                    "loc",
+                                                                    "cv")))))))))),
+                            mb.call(
+                                mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "iface_ref", mb.evalAspectField()),
+                                        new TestMb.RecordPair(
+                                            "record",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesMap(),
+                                                        mb.tupleOf(
+                                                            mb.typesConstkey(),
+                                                            mb.typesExpr())),
+                                                    mb.str("new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "field",
+                                                            mb.stage(
+                                                                mb.delegateAspect(
+                                                                    mb.typesString(),
+                                                                    mb.evalAspectField(),
+                                                                    "field",
+                                                                    "xx",
+                                                                    "loc",
+                                                                    "self",
+                                                                    "key"))),
+                                                        new TestMb.RecordPair(
+                                                            "type_opt",
+                                                            mb.stage(mb.panic(mb.str("unimpl type_opt")))),
+                                                        new TestMb.RecordPair(
+                                                            "keys",
+                                                            mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),
                             mb.bind(
                                 "mnfr",
                                 mb.call(

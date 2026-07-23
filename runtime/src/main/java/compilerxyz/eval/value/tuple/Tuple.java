@@ -57,6 +57,7 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueObject;
@@ -212,7 +213,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       ExprContext xx,
       QExprId loc,
       Tuple tuple,
-      ValueDynamic.Source baseSource,
+      ValueDynamicSource baseSource,
       Opt<Integer> accessIndex) {
     var dynamicTypes = new TList<Type>();
     var dynamicIndexOfElement = new TList<Integer>(tuple.elements.size());
@@ -246,7 +247,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       TList<Integer> dynamicIndexOfElement,
       CompositeSlotSort.Result<Integer> slotInfo,
       JavaInternalName klass,
-      ValueDynamic.Source baseSource) {
+      ValueDynamicSource baseSource) {
     var out = new JavaBytecodeSequence();
     out.add(baseSource.realize(xx, loc));
     for (int i = tuple.elements.size() - 1; i >= 0; i--) {
@@ -271,7 +272,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       TList<Integer> dynamicIndexOfElement,
       CompositeSlotSort.Result<Integer> slotInfo,
       JavaInternalName klass,
-      ValueDynamic.Source baseSource,
+      ValueDynamicSource baseSource,
       int accessedIdx) {
     if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
       return EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
@@ -980,7 +981,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (elements.isEmpty()) {
       return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(new Tuple(Opt.none(), new TList<>())));
     }
-    var source = ValueDynamic.Source.Expr.stackFor(xx, this);
+    var source = ValueDynamicSource.Expr.stackFor(xx, this);
     return new CodeValue(
         Code.of(loc, value),
         EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));

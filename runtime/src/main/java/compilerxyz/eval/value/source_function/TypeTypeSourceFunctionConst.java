@@ -50,7 +50,7 @@ public final class TypeTypeSourceFunctionConst {
       AspectBind, AspectBindDynamic, AspectInitialBind, AspectDropDynamicLight {
     @Override
     public TypeId hasTypeIdTypeId() {
-      return GenTypeIds.SOURCE_FUNCTION_TYPE_TYPE_ID;
+      return GenTypeIds.TYPE_SOURCE_FUNCTION_CONST_TYPE_ID;
     }
 
     @Override

@@ -1,6 +1,6 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -19,7 +19,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@BuiltinTrivialIdentityAspect(6001L)
+@Builtin(uniqueId = 6001L)
 @BuiltinTypeId(7021L)
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;

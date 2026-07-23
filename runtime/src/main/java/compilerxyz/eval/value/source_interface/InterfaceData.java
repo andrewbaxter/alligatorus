@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.source_interface;
 
-import compilerxyz.annotations.BuiltinTrivialIdentityAspect;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ArtifactSupport;
@@ -26,7 +26,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@BuiltinTrivialIdentityAspect(6005L)
+@Builtin(uniqueId = 6005L)
 @BuiltinTypeId(7050L)
 public final class InterfaceData {
   public @Nullable DefSetId setId;
