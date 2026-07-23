@@ -143,10 +143,8 @@ public final class T0160EvenOddTest {
                 new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
   }
 
-  private static SourceExpr makeEvenOddType(TestMb mb, String name) {
-    return mb.call(
-        mb.lower(
-            mb.seqOf(
+  private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
+    return mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                 mb.bind(
                     "u",
@@ -190,8 +188,12 @@ public final class T0160EvenOddTest {
                                                 mb.field(
                                                     mb.call(mb.typesEresult(), mb.typesCve()),
                                                     mb.str("ok")),
-                                                mb.field(
-                                                    mb.scopeUse("arg"), mb.str("cv")))),
+                                                mb.call(
+                                                    mb.mustReinterpret(),
+                                                    mb.tupleOf(
+                                                        mb.field(
+                                                            mb.scopeUse("arg"), mb.str("cv")),
+                                                        mb.scopeUse("outer"))))),
                                         new TestMb.RecordPair(
                                             "desc", mb.seqOf(mb.return_(mb.str("evenodd")))),
                                         new TestMb.RecordPair(
@@ -357,8 +359,28 @@ public final class T0160EvenOddTest {
                                                     mb.str("ok")),
                                                 mb.scopeUse("outer"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
-        mb.recordOf(TList.of(new TestMb.RecordPair("parity", mb.num(0.0)))));
+                mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))));
+  }
+
+  private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {
+    return TList.of(
+        mb.bind(
+            "even_type",
+            mb.lower(
+                mb.seqOf(
+                    mb.bind("even_type_new", mb.lower(makeEvenOddTypeInner(mb, name))),
+                    mb.return_(
+                        mb.call(
+                            mb.scopeUse("even_type_new"),
+                            mb.recordOf(
+                                TList.of(new TestMb.RecordPair("parity", mb.num(0.0))))))))));
+  }
+
+  private static SourceExpr moduleSeq(TestMb mb, TList<SourceExpr> prefix, SourceExpr... rest) {
+    var all = new TList<SourceExpr>(prefix.size() + rest.length);
+    for (var e : prefix) all.add(e);
+    for (var e : rest) all.add(e);
+    return mb.seq(all);
   }
 
   private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
@@ -377,9 +399,9 @@ public final class T0160EvenOddTest {
     modules.put(
         "main",
         new SourceModule.V1(
-            mb.seqOf(
-                mb.bind(
-                    "even_type", mb.lower(makeEvenOddType(mb, "EvenOdd"))),
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
                 mb.call(mb.log(), mb.str("defined")))));
     var res = compileOk(modules);
     assertTrue(
@@ -393,9 +415,9 @@ public final class T0160EvenOddTest {
     modules.put(
         "main",
         new SourceModule.V1(
-            mb.seqOf(
-                mb.bind(
-                    "even_type", mb.lower(makeEvenOddType(mb, "EvenOdd"))),
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
                 mb.bind(
                     "a",
                     mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
@@ -415,9 +437,9 @@ public final class T0160EvenOddTest {
     modules.put(
         "main",
         new SourceModule.V1(
-            mb.seqOf(
-                mb.bind(
-                    "even_type", mb.lower(makeEvenOddType(mb, "EvenOdd"))),
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
                 mb.bind(
                     "a",
                     mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
@@ -435,9 +457,9 @@ public final class T0160EvenOddTest {
     modules.put(
         "main",
         new SourceModule.V1(
-            mb.seqOf(
-                mb.bind(
-                    "even_type", mb.lower(makeEvenOddType(mb, "EvenOdd"))),
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
                 mb.bind(
                     "a",
                     mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
