@@ -87,6 +87,11 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeSourceObjectConst o && dynamic.typeIsEqual(o.dynamic);
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return dynamic.typeCanCastFrom(xx, loc, sourceType);
   }

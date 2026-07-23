@@ -296,6 +296,11 @@ public record TypeIntConst()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeIntConst;
+  }
+
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }

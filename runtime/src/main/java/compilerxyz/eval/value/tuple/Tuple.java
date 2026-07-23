@@ -473,6 +473,31 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    if (!(other instanceof Tuple o)) return false;
+    if (elements.size() != o.elements.size()) return false;
+    for (int i = 0; i < elements.size(); i++) {
+      var aType = tupleElementType(elements.get(i));
+      var bType = tupleElementType(o.elements.get(i));
+      if (aType == null || bType == null) return false;
+      if (!aType.typeIsEqual(bType)) return false;
+    }
+    return true;
+  }
+
+  private static compilerxyz.eval.@org.jspecify.annotations.Nullable Type tupleElementType(TupleElement e) {
+    return switch (e) {
+      case TupleElement.Dynamic d -> d.type();
+      case TupleElement.EvalRes er -> {
+        if (er.result().hasErrors()) yield null;
+        var cv = er.result().valueOrNull();
+        if (cv == null || !(cv.value() instanceof Opt.Some<Value> vs)) yield null;
+        yield vs.value().valueType();
+      }
+    };
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Tuple::typeCastFrom: CodeValue has no value");

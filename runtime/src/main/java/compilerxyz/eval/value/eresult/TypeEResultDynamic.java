@@ -184,27 +184,23 @@ public record TypeEResultDynamic(Type elementType)
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+  public boolean typeIsEqual(Type other) {
+    return other instanceof TypeEResultDynamic o && elementType.typeIsEqual(o.elementType);
   }
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
-    return false;
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+    return EResult.ok(cv);
+  }
+  @Override
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    return typeIsEqual(sourceType);
   }
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    if (!destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY).optIsSome()) {
-      return false;
-    }
-    if (!(destType instanceof TypeEResultDynamic destE)) return false;
-    return elementType.typeCanCastTo(xx, loc, destE.elementType)
-        || destE.elementType.typeCanCastFrom(xx, loc, elementType);
+    return false;
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY).optIsSome()) {
-      return EResult.ok(cv);
-    }
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

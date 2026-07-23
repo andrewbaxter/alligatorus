@@ -227,7 +227,7 @@ public final class T0160EvenOddTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "type", mb.scopeUse("outer")))))))),
+                                            "type", mb.lower(mb.field(mb.scopeUse("u"), mb.str("type")))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -238,6 +238,11 @@ public final class T0160EvenOddTest {
                                 ifaceMethods(
                                     mb,
                                     TList.of(
+                                        new TestMb.RecordPair(
+                                            "is_equal",
+                                            mb.seqOf(
+                                                mb.return_(
+                                                    mb.operatorEq(mb.num(0.0), mb.num(1.0))))),
                                         new TestMb.RecordPair(
                                             "can_cast_from",
                                             mb.seqOf(
@@ -302,7 +307,7 @@ public final class T0160EvenOddTest {
                                                                 mb.call(
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
-                                                            mb.scopeUse("outer"))),
+                                                            mb.lower(mb.field(mb.scopeUse("u"), mb.str("type"))))),
                                                     new TestMb.Branch(
                                                         mb.operatorEq(
                                                             mb.field(mb.scopeUse("arg"), mb.str("key")),
@@ -312,7 +317,7 @@ public final class T0160EvenOddTest {
                                                                 mb.call(
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
-                                                            mb.scopeUse("outer"))),
+                                                            mb.lower(mb.field(mb.scopeUse("u"), mb.str("type"))))),
                                                     new TestMb.Branch(
                                                         mb.operatorEq(
                                                             mb.field(mb.scopeUse("arg"), mb.str("key")),
@@ -322,7 +327,7 @@ public final class T0160EvenOddTest {
                                                                 mb.call(
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
-                                                            mb.scopeUse("outer"))),
+                                                            mb.lower(mb.field(mb.scopeUse("u"), mb.str("type"))))),
                                                     new TestMb.Branch(
                                                         mb.operatorEq(
                                                             mb.field(mb.scopeUse("arg"), mb.str("key")),
@@ -332,7 +337,7 @@ public final class T0160EvenOddTest {
                                                                 mb.call(
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
-                                                            mb.scopeUse("outer")))),
+                                                            mb.lower(mb.field(mb.scopeUse("u"), mb.str("type")))))),
                                                 mb.call(
                                                     mb.field(
                                                         mb.call(mb.typesOption(), mb.typesAspect()),
@@ -440,9 +445,9 @@ public final class T0160EvenOddTest {
                                                             "value",
                                                             mb.call(
                                                                 mb.evalStack(),
-                                                                mb.scopeUse("outer"))))))),
+                                                                mb.lower(mb.field(mb.scopeUse("u"), mb.str("type"))))))))),
                                         new TestMb.RecordPair(
-                                            "fork", mb.scopeUse("outer")),
+                                            "fork", mb.lower(mb.field(mb.scopeUse("u"), mb.str("type")))),
                                         new TestMb.RecordPair(
                                             "merge",
                                             mb.call(
@@ -450,7 +455,7 @@ public final class T0160EvenOddTest {
                                                     mb.call(
                                                         mb.typesEresult(), mb.evalBinding()),
                                                     mb.str("ok")),
-                                                mb.scopeUse("outer"))))))))),
+                                                mb.lower(mb.field(mb.scopeUse("u"), mb.str("type"))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.scopeUse("even_type_new")));
   }

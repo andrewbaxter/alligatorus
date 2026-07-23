@@ -80,6 +80,8 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.annotations.Builtin;
 
 @BuiltinTypeId(7030L)
 public record TypeMapDynamic(Type keyType, Type valueType)
@@ -344,10 +346,16 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
+  public boolean typeIsEqual(Type other) {
+    return other instanceof TypeMapDynamic o
+        && keyType.typeIsEqual(o.keyType)
+        && valueType.typeIsEqual(o.valueType);
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    if (sourceType instanceof TypeMapDynamic sourceMap) {
-      return typesConvertible(xx, loc, sourceMap.keyType, keyType)
-          && typesConvertible(xx, loc, sourceMap.valueType, valueType);
+    if (typeIsEqual(sourceType)) {
+      return true;
     }
     if (sourceType instanceof Record
         && GenAspectConsumeDynamic.getMaybe(xx, sourceType) instanceof Opt.Some<?>) {
@@ -362,27 +370,8 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.err(loc, "TypeMapDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    if (sourceType instanceof TypeMapDynamic sourceMap) {
-      if (!typesConvertible(xx, loc, sourceMap.keyType, keyType)) {
-        return EResult.err(
-            loc,
-            "Incompatible map key types: "
-                + sourceMap.keyType.typeDesc()
-                + " cannot convert to "
-                + keyType.typeDesc());
-      }
-      if (!typesConvertible(xx, loc, sourceMap.valueType, valueType)) {
-        return EResult.err(
-            loc,
-            "Incompatible map value types: "
-                + sourceMap.valueType.typeDesc()
-                + " cannot convert to "
-                + valueType.typeDesc());
-      }
-      return EResult.ok(
-          new CodeValue(
-              cv.code(),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+    if (typeIsEqual(sourceType)) {
+      return EResult.ok(cv);
     }
     if (!(some.value() instanceof Record record)) {
       return EResult.err(
@@ -459,11 +448,6 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
             EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
-  }
-
-  private static boolean typesConvertible(
-      ExprContext xx, QExprId loc, Type sourceType, Type destType) {
-    return sourceType.typeCanCastTo(xx, loc, destType) || destType.typeCanCastFrom(xx, loc, sourceType);
   }
 
   @Override
@@ -574,11 +558,11 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -202,6 +202,10 @@ public final class TypeSourceUnionDynamic
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeSourceUnionDynamic o && identity.equals(o.identity);
+  }
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.EResult.ok(cv);
   }

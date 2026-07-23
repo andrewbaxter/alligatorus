@@ -109,21 +109,18 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
+  public boolean typeIsEqual(Type other) {
+    return other instanceof TypeOptionDynamic o && elementType.typeIsEqual(o.elementType);
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+    return typeIsEqual(sourceType);
   }
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "TypeOptionDynamic::typeCastFrom: CodeValue has no compile-time value");
-    }
-    var sourceType = some.value().valueType();
-    if (!(sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>)) {
-      return EResult.err(loc, "Cannot convert to option");
-    }
-    return EResult.ok(
-        new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+    return EResult.ok(cv);
   }
 
   @Override

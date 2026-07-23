@@ -222,6 +222,11 @@ public record TypeFunctionDynamic(
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeFunctionDynamic o && arg.typeIsEqual(o.arg) && ret.typeIsEqual(o.ret) && klass.equals(o.klass) && methodName.equals(o.methodName) && needsExprContext == o.needsExprContext;
+  }
+
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }

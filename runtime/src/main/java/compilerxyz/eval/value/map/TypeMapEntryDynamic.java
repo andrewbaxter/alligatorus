@@ -220,6 +220,11 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeMapEntryDynamic o && keyType.typeIsEqual(o.keyType) && valueType.typeIsEqual(o.valueType);
+  }
+
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }

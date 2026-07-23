@@ -161,6 +161,11 @@ public record TypeFunctionMustReinterpretConst()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeFunctionMustReinterpretConst;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");

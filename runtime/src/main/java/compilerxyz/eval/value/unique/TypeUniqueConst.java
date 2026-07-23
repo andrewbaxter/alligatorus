@@ -134,6 +134,11 @@ public record TypeUniqueConst()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeUniqueConst;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     return EResult.ok(cv);
   }

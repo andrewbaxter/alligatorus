@@ -174,7 +174,14 @@ public final class T0030DefineInterfaceTest {
                                                                     "key"))),
                                                         new TestMb.RecordPair(
                                                             "type_opt",
-                                                            mb.stage(mb.panic(mb.str("unimpl type_opt")))),
+                                                            mb.stage(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.call(
+                                                                            mb.typesOption(),
+                                                                            mb.evalType()),
+                                                                        mb.str("none")),
+                                                                    mb.literalNull()))),
                                                         new TestMb.RecordPair(
                                                             "keys",
                                                             mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),
@@ -382,7 +389,14 @@ public final class T0030DefineInterfaceTest {
                                                                     "key"))),
                                                         new TestMb.RecordPair(
                                                             "type_opt",
-                                                            mb.stage(mb.panic(mb.str("unimpl type_opt")))),
+                                                            mb.stage(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.call(
+                                                                            mb.typesOption(),
+                                                                            mb.evalType()),
+                                                                        mb.str("none")),
+                                                                    mb.literalNull()))),
                                                         new TestMb.RecordPair(
                                                             "keys",
                                                             mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),

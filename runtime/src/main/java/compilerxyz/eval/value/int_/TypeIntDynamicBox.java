@@ -160,6 +160,11 @@ public record TypeIntDynamicBox()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeIntDynamicBox;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeIntDynamicBox::typeCastFrom: CodeValue has no value");

@@ -319,6 +319,11 @@ public record TypeUniqueDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeUniqueDynamic;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.code().dynamic() != null) return EResult.ok(cv);
     if (!(cv.value() instanceof Opt.Some<Value> some)) return EResult.ok(cv);

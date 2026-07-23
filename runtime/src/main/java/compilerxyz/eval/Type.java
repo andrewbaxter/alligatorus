@@ -32,6 +32,8 @@ public interface Type extends HasTypeId, Artifactable {
     return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
   }
 
+  boolean typeIsEqual(Type other);
+
   boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
   EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);

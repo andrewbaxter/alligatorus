@@ -125,6 +125,11 @@ public record TypeIntToStringDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeIntToStringDynamic;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");

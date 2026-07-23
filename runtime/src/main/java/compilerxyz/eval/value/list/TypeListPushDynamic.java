@@ -141,6 +141,11 @@ public record TypeListPushDynamic(Type elementType)
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeListPushDynamic o && elementType.typeIsEqual(o.elementType);
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");

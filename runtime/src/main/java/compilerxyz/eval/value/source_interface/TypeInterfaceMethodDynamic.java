@@ -167,6 +167,11 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeInterfaceMethodDynamic o && iface.identity.equals(o.iface.identity) && method.name.equals(o.method.name);
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");

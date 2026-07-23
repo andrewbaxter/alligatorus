@@ -88,6 +88,11 @@ public record TypeTypeIdDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeTypeIdDynamic;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     return EResult.ok(cv);
   }

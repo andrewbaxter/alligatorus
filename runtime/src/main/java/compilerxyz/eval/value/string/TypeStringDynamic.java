@@ -256,6 +256,11 @@ public record TypeStringDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeStringDynamic;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, "TypeStringDynamic::typeCastFrom: CodeValue has no value");

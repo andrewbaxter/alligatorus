@@ -196,9 +196,20 @@ public final class T0120ImplTypeTest {
                                         mb.str("none")),
                                     mb.literalNull())),
                             new TestMb.RecordPair(
-                                "can_cast_to", mb.panic(mb.str("unimpl can_cast_to"))),
+                                "is_equal",
+                                mb.seqOf(
+                                    mb.return_(mb.operatorEq(mb.num(0.0), mb.num(1.0))))),
                             new TestMb.RecordPair(
-                                "cast_to", mb.panic(mb.str("unimpl cast_to"))))))))),
+                                "can_cast_to",
+                                mb.seqOf(
+                                    mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
+                            new TestMb.RecordPair(
+                                "cast_to",
+                                mb.call(
+                                    mb.field(
+                                        mb.call(mb.typesEresult(), mb.typesCve()),
+                                        mb.str("ok")),
+                                    mb.field(mb.scopeUse("arg"), mb.str("cv")))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
         mb.literalNull());

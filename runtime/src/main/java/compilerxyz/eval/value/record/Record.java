@@ -880,6 +880,20 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    if (!(other instanceof Record o)) return false;
+    if (fields.size() != o.fields.size()) return false;
+    for (var entry : fields.entrySet()) {
+      var otherField = o.fields.getOrNull(entry.getKey());
+      if (otherField == null) return false;
+      var thisType = recordFieldType(entry.getValue());
+      var otherType = recordFieldType(otherField);
+      if (!thisType.typeIsEqual(otherType)) return false;
+    }
+    return true;
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       throw new IllegalStateException("Record::typeCastFrom: CodeValue has no value");

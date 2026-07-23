@@ -231,6 +231,11 @@ public record TypeObjectConst(
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    return other instanceof TypeObjectConst o && meta.typeId().equals(o.meta.typeId());
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, typeDesc() + "::typeCastFrom: CodeValue has no value");

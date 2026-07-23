@@ -107,6 +107,11 @@ public final class TypeTypeSourceFunctionConst {
     }
 
     @Override
+    public boolean typeIsEqual(Type other) {
+      return other instanceof Impl;
+    }
+
+    @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
       return false;
     }

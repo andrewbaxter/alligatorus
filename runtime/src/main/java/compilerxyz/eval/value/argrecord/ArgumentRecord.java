@@ -78,6 +78,18 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    if (!(other instanceof ArgumentRecord o)) return false;
+    if (fields.size() != o.fields.size()) return false;
+    for (var entry : fields.entrySet()) {
+      var otherField = o.fields.getOrNull(entry.getKey());
+      if (otherField == null) return false;
+      if (!entry.getValue().type().typeIsEqual(otherField.type())) return false;
+    }
+    return true;
+  }
+
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }

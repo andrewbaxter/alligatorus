@@ -132,8 +132,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "initial_bind",
-                                            mb.panic(mb.str("unimpl initial_bind"))))))))),
+                                            "initial_bind", mb.scopeUse("outer")))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -280,6 +279,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                             mb.call(mb.typesOption(), mb.typesAspect()),
                                             mb.str("none")),
                                         mb.literalNull()))),
+                            new TestMb.RecordPair(
+                                "is_equal",
+                                mb.seqOf(mb.return_(mb.operatorEq(mb.num(0.0), mb.num(1.0))))),
                             new TestMb.RecordPair(
                                 "can_cast_to",
                                 mb.seqOf(mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),

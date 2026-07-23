@@ -52,6 +52,16 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.Type other) {
+    if (!(other instanceof ArgumentTuple o)) return false;
+    if (elementTypes.size() != o.elementTypes.size()) return false;
+    for (int i = 0; i < elementTypes.size(); i++) {
+      if (!elementTypes.get(i).typeIsEqual(o.elementTypes.get(i))) return false;
+    }
+    return true;
+  }
+
+  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }

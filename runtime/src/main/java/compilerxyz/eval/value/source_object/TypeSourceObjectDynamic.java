@@ -454,6 +454,11 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
+  public boolean typeIsEqual(Type other) {
+    return other instanceof TypeSourceObjectDynamic o && identity.equals(o.identity);
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return sourceType.typeAspect(xx, identity).optIsSome();
   }
