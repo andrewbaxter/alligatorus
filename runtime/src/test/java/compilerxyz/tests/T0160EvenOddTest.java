@@ -154,7 +154,9 @@ public final class T0160EvenOddTest {
                         mb.field(mb.scopeUse("d"), mb.str("object")),
                         mb.str(name))),
                 mb.call(
-                    mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
+                    mb.field(mb.scopeUse("u"), mb.str("set_inner")),
+                    mb.recordOf(
+                        TList.of(new TestMb.RecordPair("parity", mb.typesInt())))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -356,7 +358,7 @@ public final class T0160EvenOddTest {
                                                 mb.scopeUse("outer"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
-        mb.literalNull());
+        mb.recordOf(TList.of(new TestMb.RecordPair("parity", mb.num(0.0)))));
   }
 
   private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {

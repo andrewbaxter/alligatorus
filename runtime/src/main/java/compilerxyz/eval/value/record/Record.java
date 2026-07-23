@@ -27,6 +27,7 @@ import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
+import compilerxyz.eval.SourceId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTypeIds;
@@ -58,6 +59,7 @@ import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
@@ -375,12 +377,33 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   public TOrderedMap<ConstKey, Type> aspectRecordFieldTypes() {
     var out = new TOrderedMap<ConstKey, Type>();
     for (var entry : fields.entrySet()) {
-      if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
-        throw new IllegalStateException(
-            "Record::recordFieldTypes: field '" + entry.getKey().toCanonical()
-                + "' is not Dynamic-only");
+      switch (entry.getValue()) {
+        case RecordField.Dynamic d -> out.put(entry.getKey(), d.type());
+        case RecordField.EvalRes er -> {
+          var res = er.result();
+          if (res.hasErrors()) {
+            throw new IllegalStateException(
+                "Record::recordFieldTypes: field '" + entry.getKey().toCanonical()
+                    + "' EvalRes has errors");
+          }
+          var cv = res.requireValue("Record::recordFieldTypes field");
+          if (!(cv.value() instanceof Opt.Some<Value> vs)) {
+            throw new IllegalStateException(
+                "Record::recordFieldTypes: field '" + entry.getKey().toCanonical()
+                    + "' EvalRes has no compile-time value");
+          }
+          var v = vs.value();
+          if (v instanceof Type asType) {
+            out.put(entry.getKey(), asType);
+          } else if (v instanceof ValueObjectConst voc && voc.data() instanceof Type asDataType) {
+            out.put(entry.getKey(), asDataType);
+          } else {
+            throw new IllegalStateException(
+                "Record::recordFieldTypes: field '" + entry.getKey().toCanonical()
+                    + "' value is not a Type: " + v.getClass());
+          }
+        }
       }
-      out.put(entry.getKey(), d.type());
     }
     return out;
   }
@@ -1163,11 +1186,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
     var typeFields = new TOrderedMap<ConstKey, Type>();
     for (var entry : fields.entrySet()) {
-      if (!(entry.getValue() instanceof RecordField.Dynamic d)) {
-        throw new IllegalStateException(
-            "Record::initialBind: field " + entry.getKey() + " is not Dynamic-only");
-      }
-      typeFields.put(entry.getKey(), d.type());
+      typeFields.put(entry.getKey(), recordFieldType(entry.getValue()));
     }
     return new BindingRecordDynamic(dynamicKey, typeFields);
   }
@@ -1281,19 +1300,112 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         if (!inner.hasErrors()
             && inner.requireValue("Record::recordFieldType inner").value()
                 instanceof Opt.Some<Value> some) {
-          yield some.value().valueType();
+          var v = some.value();
+          if (v instanceof Type asType) {
+            yield asType;
+          }
+          if (v instanceof ValueObjectConst voc && voc.data() instanceof Type asDataType) {
+            yield asDataType;
+          }
+          yield v.valueType();
         }
         yield new Tuple(Opt.none(), new TList<>());
       }
     };
   }
+  private static final Unique TYPE_IDENTITY = new Unique.Builtin(2002L);
+
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    return destType.typeAspect(xx, TYPE_IDENTITY).optIsSome();
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    if (destType.typeAspect(xx, compilerxyz.gen.GenAspectStackValueDynamic.AspectId).optIsSome()) {
+      if (!(cv.value() instanceof Opt.Some<Value> valueSome)) {
+        return EResult.err(loc, "Record::typeCastTo: CodeValue has no value");
+      }
+      if (!(valueSome.value() instanceof Record record)) {
+        return EResult.err(
+            loc, "Record::typeCastTo: expected Record value, got " + valueSome.value().getClass());
+      }
+      var elems = new TList<CodeDynamic>();
+      for (var entry : record.fields.entrySet()) {
+        var key = entry.getKey();
+        if (!(key instanceof ConstKey.Str keyStr)) {
+          return EResult.err(loc, "Record::typeCastTo: non-string key " + key);
+        }
+        if (!(entry.getValue() instanceof RecordField.EvalRes er)) {
+          return EResult.err(
+              loc, "Record::typeCastTo: field '" + key.toCanonical() + "' is dynamic-only");
+        }
+        var elemRes = er.result();
+        if (elemRes.hasErrors()) return elemRes.reerr();
+        var elemCv = elemRes.requireValue("Record::typeCastTo field");
+        if (!(elemCv.value() instanceof Opt.Some<Value> elemValueSome)) {
+          return EResult.err(
+              loc, "Record::typeCastTo: field '" + key.toCanonical() + "' has no value");
+        }
+        var elemType = elemValueSome.value().valueType();
+        var toDynOpt = GenAspectConsumeDynamic.getMaybe(xx, elemType);
+        if (!(toDynOpt instanceof Opt.Some<AspectConsumeDynamic> toDynSome)) {
+          return EResult.err(
+              loc,
+              "Record::typeCastTo: field '"
+                  + key.toCanonical()
+                  + "' type ("
+                  + elemType.typeDesc()
+                  + ") missing AspectConsumeDynamic");
+        }
+        var lowered = toDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, elemCv);
+        if (lowered.hasErrors()) return lowered.reerr();
+        var typeAsValue = ValueObjectConst.ofType(elemType);
+        var typeAsCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(typeAsValue));
+        var typeMetaType = typeAsValue.valueType();
+        var typeToDynOpt = GenAspectConsumeDynamic.getMaybe(xx, typeMetaType);
+        if (!(typeToDynOpt instanceof Opt.Some<AspectConsumeDynamic> typeToDynSome)) {
+          return EResult.err(
+              loc,
+              "Record::typeCastTo: field '"
+                  + key.toCanonical()
+                  + "' type-meta missing AspectConsumeDynamic");
+        }
+        var typeLoad = typeToDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, typeAsCv);
+        if (typeLoad.hasErrors()) return typeLoad.reerr();
+        elems.add(JavaBytecodeUtils.literalString(loc, keyStr.value()));
+        elems.add(typeLoad.requireValue("Record::typeCastTo type load"));
+        elems.add(lowered.requireValue("Record::typeCastTo field lowered"));
+      }
+      var callSeq = new JavaBytecodeSequence();
+      callSeq.add(JavaBytecodeUtils.buildObjectArray(loc, elems));
+      callSeq.add(
+          JavaBytecodeUtils.callStaticMethodReflect(loc, Record.class, "newDynamic"));
+      var stackValue = ValueDynamic.stack(xx, destType);
+      var withCarry =
+          DynUtil.wrapWithCarry(loc, cv.code(), new CodeDynamic(loc, callSeq));
+      return EResult.ok(
+          new CodeValue(Code.of(loc, withCarry), EvalOutcome.ofValue(stackValue)));
+    }
+    return EResult.ok(cv);
+  }
+
+  public static Record newDynamic(Object[] triples) {
+    var syntheticLoc = new QExprId(new SourceId(-1L), -1L);
+    var fields = new TOrderedMap<ConstKey, RecordField>();
+    for (int i = 0; i < triples.length; i += 3) {
+      var key = new ConstKey.Str((String) triples[i]);
+      var type = (Type) triples[i + 1];
+      var raw = triples[i + 2];
+      Value val;
+      if (raw instanceof Value v) {
+        val = v;
+      } else {
+        val = new ValueObjectConst(type, raw);
+      }
+      var cv = new CodeValue(Code.none(syntheticLoc), EvalOutcome.ofValue(val));
+      fields.put(key, new RecordField.EvalRes(EResult.ok(cv)));
+    }
+    return new Record(Opt.none(), fields);
   }
 
   @Override
