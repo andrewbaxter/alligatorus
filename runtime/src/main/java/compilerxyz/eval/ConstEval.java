@@ -318,6 +318,7 @@ public final class ConstEval {
     } else {
       valCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(emptyTupleValue()));
     }
+    valCv = xx.target.targetReturn(xx, loc, valCv);
     if (!(valCv.outcome() instanceof EvalOutcome.HasValue someVal)) {
       return EResult.ok(new CodeValue(valCv.code(), EvalOutcome.CONTROL_ENDED));
     }

@@ -309,11 +309,12 @@ public class JavaBytecodeSequence implements JavaBytecode {
                     });
         }
         var bindingLastUses = new TMap<JavaBytecodeBindingKey, TList<Integer>>();
+        var labelLiveness = new TMap<Label, PMap<JavaBytecodeBindingKey, Integer>>();
         {
             var totalUses = new TMap<JavaBytecodeBindingKey, Integer>();
             @SuppressWarnings("unchecked") final PMap<JavaBytecodeBindingKey, Integer>[] currentBindingLastUses =
                     new PMap[]{HashTreePMap.<JavaBytecodeBindingKey, Integer>empty()};
-            var branchBindingLastUses = new TMap<Label, PMap<JavaBytecodeBindingKey, Integer>>();
+            var branchBindingLastUses = labelLiveness;
             for (int i = flattened.size() - 1; i >= 0; i--) {
                 JavaBytecode e = flattened.get(i);
                 int finalIndex = i;
@@ -423,28 +424,70 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                         n.node,
                                                         new AsmFramingVisitor() {
                                                             void setFrameInitialVars(Label l) {
+                                                                // The frame is snapshotted along the linear
+                                                                // walk, but frees happen at last-use
+                                                                // instructions — a jump that branches AROUND a
+                                                                // key's last use would carry it as live even
+                                                                // though it is dead on the target path.
+                                                                // Intersect the snapshot with the pre-pass
+                                                                // liveness at the target label.
+                                                                var live = labelLiveness.getOrNull(l);
+                                                                var snapFwd = currentIndexes[0];
+                                                                var snapRev = currentRevIndexes[0];
+                                                                if (live != null && snapRev != null) {
+                                                                    for (int i = 0; i < snapRev.size(); ++i) {
+                                                                        var k = snapRev.get(i);
+                                                                        if (k != null && live.get(k) == null) {
+                                                                            snapRev = snapRev.with(i, null);
+                                                                            if (snapFwd.get(k) != null) {
+                                                                                snapFwd = snapFwd.minus(k);
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
                                                                 var old = branchIndexes.get(l);
                                                                 if (old == null) {
                                                                     branchIndexes.put(
-                                                                        l,
-                                                                        new Pair<>(
-                                                                            currentIndexes[0],
-                                                                            currentRevIndexes[0]));
+                                                                        l, new Pair<>(snapFwd, snapRev));
                                                                     return;
                                                                 }
-                                                                if (old.second().size()
-                                                                        != currentRevIndexes[0].size()) {
-                                                                    throw new AssertionError();
+                                                                // Frame sizes at a merge may differ only by
+                                                                // DEAD trailing slots: a branch that allocated
+                                                                // temporaries into a full frame grew the
+                                                                // vector, and frees null entries but never
+                                                                // shrink it. A LIVE slot in the excess region
+                                                                // means a binding's liveness crosses the merge
+                                                                // inconsistently — that is a real bug.
+                                                                var oldRev = old.second();
+                                                                var curRev = snapRev;
+                                                                int common =
+                                                                        Math.min(oldRev.size(), curRev.size());
+                                                                var longer =
+                                                                        oldRev.size() >= curRev.size()
+                                                                                ? oldRev
+                                                                                : curRev;
+                                                                for (int i = common; i < longer.size(); ++i) {
+                                                                    if (longer.get(i) != null) {
+                                                                        throw new AssertionError(
+                                                                            "live slot in merge excess: pos="
+                                                                                + i
+                                                                                + " key="
+                                                                                + longer.get(i)
+                                                                                + " old="
+                                                                                + oldRev
+                                                                                + " cur="
+                                                                                + curRev);
+                                                                    }
                                                                 }
                                                                 var mergedFwd = old.first();
-                                                                var mergedRev = old.second();
-                                                                for (int i = 0;
-                                                                        i < old.second().size();
-                                                                        ++i) {
-                                                                    var oldKey = old.second().get(i);
-                                                                    var newKey =
-                                                                            currentRevIndexes[0]
-                                                                                    .get(i);
+                                                                var mergedRev = oldRev;
+                                                                while (mergedRev.size() > common) {
+                                                                    mergedRev =
+                                                                            mergedRev.minus(mergedRev.size() - 1);
+                                                                }
+                                                                for (int i = 0; i < common; ++i) {
+                                                                    var oldKey = oldRev.get(i);
+                                                                    var newKey = curRev.get(i);
                                                                     if (oldKey != newKey) {
                                                                         mergedRev =
                                                                                 mergedRev.with(i, null);
@@ -651,6 +694,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
       PMap<JavaBytecodeBindingKey, Integer> m) {
     return m == null ? HashTreePMap.empty() : m;
   }
+
 
     public JavaBytecodeSequence add(CodeDynamic element) {
         if (element == null) return this;

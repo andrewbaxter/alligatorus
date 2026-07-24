@@ -125,7 +125,7 @@ public final class CompositeClassEmitter {
 
     for (int i = 0; i < sortedTypes.size(); i++) {
       cw.visitField(
-              Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
+              Opcodes.ACC_PUBLIC,
               slotFieldName(i),
               slotDescs.get(i).value(),
               null,

@@ -46,6 +46,8 @@ public interface Target {
 
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
+    CodeValue targetReturn(ExprContext xx, QExprId loc, CodeValue cv);
+
     EResult<CodeValue> targetStage(
             ExprContext xx, QExprId loc, Expr tree, TList<CodeValue> lowerValues, TList<CodeValue> graftValues);
 

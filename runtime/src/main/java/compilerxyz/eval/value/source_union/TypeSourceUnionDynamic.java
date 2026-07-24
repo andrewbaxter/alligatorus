@@ -22,6 +22,7 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
@@ -37,6 +38,7 @@ import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectUnion;
 
 @Builtin(uniqueId = 6021L)
@@ -49,6 +51,7 @@ public final class TypeSourceUnionDynamic
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectInitialBind,
+        AspectStackValueDynamic,
         AspectUnion,
         ExporterAny {
 
@@ -147,6 +150,7 @@ public final class TypeSourceUnionDynamic
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
@@ -156,6 +160,12 @@ public final class TypeSourceUnionDynamic
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.bindViaTarget(xx, loc, cv);
+  }
+
+  @Override
+  public CodeValue aspectStackValueDynamicToValue(
+      ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this);
   }
 
   @Override

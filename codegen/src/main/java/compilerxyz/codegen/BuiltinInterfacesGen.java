@@ -211,6 +211,7 @@ public final class BuiltinInterfacesGen {
     } else if (spec.isRecord) {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
+      emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
           "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>none())",
@@ -224,6 +225,7 @@ public final class BuiltinInterfacesGen {
     } else {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
+      emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
           "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>some(new $T(new $T($LL))))",
@@ -240,6 +242,18 @@ public final class BuiltinInterfacesGen {
 
     b.addStatement("return instance");
     return b.build();
+  }
+
+  private static void emitTypeHostRestamp(MethodSpec.Builder b, ClassName interfaceRef) {
+    var genTrivial = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
+    b.beginControlFlow(
+        "if ($T.class.isAssignableFrom($T.class))", TYPE, interfaceRef);
+    b.addStatement("trivialIdentityAspects.add($T.TYPE_IDENTITY)", genTrivial);
+    b.addStatement(
+        "castRules.add(new $T.RestampToIdentity($T.TYPE_IDENTITY))",
+        TYPE_OBJECT_CAST_RULE,
+        genTrivial);
+    b.endControlFlow();
   }
 
   private static MethodSpec buildLink(BuiltinSpec spec, ClassName interfaceRef) {

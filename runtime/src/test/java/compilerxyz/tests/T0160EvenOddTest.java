@@ -427,6 +427,184 @@ public final class T0160EvenOddTest {
                         mb.str("operator_add: reference has no compile-time value"))))));
   }
 
+  private static SourceExpr evenOddSetApply(TestMb mb, SourceExpr parity) {
+    return mb.seqOf(
+        mb.bind(
+            "self_val_",
+            mb.field(
+                mb.call(
+                    mb.field(
+                        mb.field(mb.scopeUse("arg"), mb.str("self")), mb.str("value")),
+                    mb.recordOf(TList.of())),
+                mb.str("value"))),
+        mb.bind(
+            "src_",
+            mb.call(
+                mb.field(
+                    mb.call(
+                        mb.mustReinterpret(),
+                        mb.tupleOf(
+                            mb.scopeUse("self_val_"), mb.lower(mb.scopeUse("vb_type")))),
+                    mb.str("get_source")),
+                mb.literalNull())),
+        mb.return_(
+            mb.matchOf(
+                mb.scopeUse("src_"),
+                mb.str("sv"),
+                TList.of(
+                    new TestMb.Branch(
+                        mb.str("binding"),
+                        mb.seqOf(
+                            mb.set(
+                                mb.field(
+                                    mb.field(mb.scopeUse("sv"), mb.str("state")),
+                                    mb.str("parity")),
+                                parity),
+                            mb.return_(
+                                mb.call(
+                                    mb.field(
+                                        mb.field(
+                                            mb.call(
+                                                mb.evalAspectLookup(),
+                                                mb.tupleOf(
+                                                    mb.typesInt(),
+                                                    mb.evalAspectSet(),
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("xx")))),
+                                            mb.str("value")),
+                                        mb.str("set")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx",
+                                                mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "loc",
+                                                mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                            new TestMb.RecordPair(
+                                                "self",
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.field(
+                                                            mb.scopeUse("sv"), mb.str("int")),
+                                                        mb.str("use")),
+                                                    mb.recordOf(
+                                                        TList.of(
+                                                            new TestMb.RecordPair(
+                                                                "xx",
+                                                                mb.field(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.str("xx"))),
+                                                            new TestMb.RecordPair(
+                                                                "loc",
+                                                                mb.field(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.str("loc"))),
+                                                            new TestMb.RecordPair(
+                                                                "code",
+                                                                mb.field(
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("self")),
+                                                                    mb.str("code"))))))),
+                                            new TestMb.RecordPair(
+                                                "value",
+                                                mb.field(mb.scopeUse("arg"), mb.str("value")))))))))),
+                mb.call(
+                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
+                    mb.tupleOf(
+                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                        mb.str("set: cannot set a non-binding evenodd value"))))));
+  }
+
+  private static SourceExpr evenOddSetBody(TestMb mb) {
+    var constIntParity =
+        mb.operatorMod(
+            mb.call(
+                mb.field(
+                    mb.field(mb.scopeUse("rhs_int_aspect_opt_"), mb.str("value")),
+                    mb.str("get")),
+                mb.recordOf(
+                    TList.of(new TestMb.RecordPair("value", mb.scopeUse("rhs_val_"))))),
+            mb.num(2.0));
+    var evenOddParity =
+        mb.call(
+            mb.field(mb.scopeUse("rhs_evenodd_type_"), mb.str("get_parity")),
+            mb.literalNull());
+    return mb.seqOf(
+        mb.bind(
+            "rhs_opt_",
+            mb.call(
+                mb.field(
+                    mb.field(mb.scopeUse("arg"), mb.str("value")), mb.str("value")),
+                mb.recordOf(TList.of()))),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("rhs_opt_"), mb.str("is_some")),
+                        mb.seqOf(
+                            mb.bind("rhs_val_", mb.field(mb.scopeUse("rhs_opt_"), mb.str("value"))),
+                            mb.bind(
+                                "rhs_type_obj_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("rhs_val_"), mb.str("type")),
+                                    mb.recordOf(TList.of()))),
+                            mb.bind(
+                                "rhs_int_aspect_opt_",
+                                mb.call(
+                                    mb.evalAspectLookup(),
+                                    mb.tupleOf(
+                                        mb.scopeUse("rhs_type_obj_"),
+                                        mb.evalAspectInt(),
+                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.bind(
+                                "rhs_int_dynamic_opt_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("rhs_type_obj_"), mb.str("aspect")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "key", mb.evalTypeIntDynamicIdentity()))))),
+                            mb.return_(
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("rhs_int_aspect_opt_"),
+                                                mb.str("is_some")),
+                                            evenOddSetApply(mb, constIntParity)),
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("rhs_int_dynamic_opt_"),
+                                                mb.str("is_some")),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(mb.typesEresult(), mb.typesCve()),
+                                                    mb.str("err")),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                                                    mb.str(
+                                                        "set: value is a dynamic int; parity"
+                                                            + " unknown"))))),
+                                    mb.seqOf(
+                                        mb.bind(
+                                            "rhs_evenodd_type_",
+                                            mb.call(
+                                                mb.mustReinterpret(),
+                                                mb.tupleOf(
+                                                    mb.scopeUse("rhs_type_obj_"),
+                                                    mb.lower(mb.scopeUse("u_type"))))),
+                                        mb.return_(evenOddSetApply(mb, evenOddParity)))))))),
+                mb.call(
+                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
+                    mb.tupleOf(
+                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                        mb.str("set: value has no compile-time value"))))));
+  }
+
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
     return mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
@@ -529,6 +707,23 @@ public final class T0160EvenOddTest {
                                 "type", mb.field(mb.scopeUse("u"), mb.str("type"))),
                             new TestMb.RecordPair(
                                 "source", mb.field(mb.scopeUse("vs"), mb.str("type")))))),
+                mb.bind(
+                    "vb_gs_method",
+                    mb.call(mb.field(mb.scopeUse("vb"), mb.str("func")), mb.str("get_source"))),
+                mb.call(
+                    mb.field(mb.scopeUse("vb_gs_method"), mb.str("impl")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("arg", mb.typesNull()),
+                            new TestMb.RecordPair(
+                                "ret", mb.field(mb.scopeUse("vs"), mb.str("type"))),
+                            new TestMb.RecordPair(
+                                "impl_body",
+                                mb.stage(
+                                    mb.seqOf(
+                                        mb.return_(
+                                            mb.field(
+                                                mb.scopeUse("inner"), mb.str("source"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("vb"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -667,6 +862,7 @@ public final class T0160EvenOddTest {
                 mb.bind("even_value_new", mb.field(mb.scopeUse("vb"), mb.str("new"))),
                 mb.bind("even_type_new", mb.field(mb.scopeUse("u"), mb.str("new"))),
                 mb.bind("u_type", mb.field(mb.scopeUse("u"), mb.str("type"))),
+                mb.bind("vb_type", mb.field(mb.scopeUse("vb"), mb.str("type"))),
                 mb.call(
                     mb.field(mb.scopeUse("bb"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -967,14 +1163,7 @@ public final class T0160EvenOddTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "set",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("ok")),
-                                                mb.field(
-                                                    mb.scopeUse("arg"),
-                                                    mb.str("self")))))))))),
+                                            "set", evenOddSetBody(mb)))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1107,7 +1296,7 @@ public final class T0160EvenOddTest {
                     mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
                 mb.set(
                     mb.scopeUse("a"),
-                    mb.as_(mb.as_(mb.num(4.0), mb.typesInt()), mb.scopeUse("even_type"))),
+                    mb.as_(mb.num(4.0), mb.scopeUse("even_type"))),
                 mb.call(mb.log(), mb.str("set-done")))));
     compileOk(modules);
   }
@@ -1184,6 +1373,45 @@ public final class T0160EvenOddTest {
     var res = compileOk(modules);
     assertTrue(
         res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test00900SetConstInt() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.set(mb.scopeUse("a"), mb.num(4.0)),
+                mb.call(mb.log(), mb.str("set-const")))));
+    var res = compileOk(modules);
+    assertTrue(
+        res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test01000SetDynamicIntErrors() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.set(mb.scopeUse("a"), mb.as_(mb.num(4.0), mb.typesInt())),
+                mb.call(mb.log(), mb.str("unreachable")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(
+        res.toString().contains("set: value is a dynamic int"),
+        () -> "expected dynamic-int set error, got " + res);
   }
 
   @Test

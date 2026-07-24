@@ -123,6 +123,18 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   @Override
+  public CodeValue targetReturn(ExprContext xx, QExprId loc, CodeValue cv) {
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      return cv;
+    }
+    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, some.value().valueType());
+    if (!(consumeOpt instanceof Opt.Some<AspectConsumeDynamic> consumeSome)) {
+      return cv;
+    }
+    return consumeSome.value().aspectConsumeDynamicReturn(xx, loc, cv);
+  }
+
+  @Override
   public BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub) {
     var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
     var local = new BindingId.Local(key);

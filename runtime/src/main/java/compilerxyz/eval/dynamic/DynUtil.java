@@ -390,6 +390,20 @@ public final class DynUtil {
             var setJs = new CodeDynamic(loc, seq);
             return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
         }
+        if (selfDyn.source() instanceof ValueDynamicSource.Field fieldSrc) {
+            if (isStackRooted(fieldSrc)) {
+                return EResult.err(loc, "Cannot modify a temporary value");
+            }
+            var seq = new JavaBytecodeSequence();
+            seq.add(fieldSrc.base().realize(xx, loc));
+            seq.add(valueCode);
+            seq.add(
+                JavaBytecodeUtils.setField(
+                    loc, fieldSrc.klass(), fieldSrc.slotName(), fieldSrc.slotDesc()));
+            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+            var setJs = new CodeDynamic(loc, seq);
+            return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
+        }
         return EResult.err(loc, "Cannot modify a temporary value");
     }
 

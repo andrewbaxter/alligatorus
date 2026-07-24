@@ -33,6 +33,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectDynamicBoxed;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectLift;
@@ -55,6 +56,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
@@ -77,6 +79,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectDynamicBoxed;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectInt;
@@ -103,6 +106,7 @@ public record TypeIntDynamic()
         AspectDropDynamicLight,
         AspectDynamicBoxed,
         AspectField,
+        AspectFieldUseDynamic,
         AspectInitialBind,
         AspectElementUseDynamicBind,
         AspectLift,
@@ -154,6 +158,7 @@ public record TypeIntDynamic()
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectOperatorLt.AspectId)
         || key.equals(GenAspectOperatorEq.AspectId)
@@ -191,6 +196,15 @@ public record TypeIntDynamic()
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx, QExprId loc, ValueDynamicSource source) {
+    return EResult.ok(
+        new CodeValue(
+            Code.of(loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(new ValueDynamic(source, this))));
   }
 
   @Override
