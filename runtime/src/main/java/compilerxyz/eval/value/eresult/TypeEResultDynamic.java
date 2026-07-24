@@ -146,6 +146,28 @@ public record TypeEResultDynamic(Type elementType)
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
     if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
     var ck = ckOpt.get();
+    if (ck instanceof ConstKey.Str hs && hs.value().equals("has_errors")) {
+      var selfDyn = self.code().dynamic();
+      if (selfDyn == null) {
+        return EResult.err(
+            loc, "TypeEResultDynamic::aspectFieldField(has_errors): self has no runtime code");
+      }
+      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      seq.add(selfDyn);
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.fromClass(EResult.class),
+              "hasErrors",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.DESC_BOOL)));
+      return EResult.ok(
+          new CodeValue(
+              Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
+              EvalOutcome.ofValue(
+                  compilerxyz.eval.value.ValueDynamic.stack(
+                      xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+    }
     if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
       var selfDyn = self.code().dynamic();
       if (selfDyn == null) {

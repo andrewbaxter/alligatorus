@@ -234,15 +234,28 @@ public final class T0160EvenOddTest {
                         mb.seqOf(
                             mb.bind("val_", mb.field(mb.scopeUse("val_opt_"), mb.str("value"))),
                             mb.bind(
+                                "val_type_obj_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("val_"), mb.str("type")),
+                                    mb.recordOf(TList.of()))),
+                            mb.bind(
                                 "int_aspect_opt_",
                                 mb.call(
                                     mb.evalAspectLookup(),
                                     mb.tupleOf(
-                                        mb.call(
-                                            mb.field(mb.scopeUse("val_"), mb.str("type")),
-                                            mb.recordOf(TList.of())),
+                                        mb.scopeUse("val_type_obj_"),
                                         mb.evalAspectInt(),
                                         mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.bind(
+                                "int_dynamic_opt_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("val_type_obj_"), mb.str("aspect")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "key", mb.evalTypeIntDynamicIdentity()))))),
                             mb.return_(
                                 mb.ifOf(
                                     TList.of(
@@ -276,7 +289,20 @@ public final class T0160EvenOddTest {
                                                                             mb.scopeUse("arg"),
                                                                             mb.str("cv")))))),
                                                         mb.str("value"))),
-                                                mb.return_(wrapped)))),
+                                                mb.return_(wrapped))),
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("int_dynamic_opt_"),
+                                                mb.str("is_some")),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(mb.typesEresult(), mb.typesCve()),
+                                                    mb.str("err")),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                                                    mb.str(
+                                                        "cast: cannot cast a dynamic int to"
+                                                            + " evenodd; parity unknown"))))),
                                     castFromPassthrough(mb)))))),
                 castFromPassthrough(mb))));
   }
@@ -508,8 +534,7 @@ public final class T0160EvenOddTest {
                                                                         mb.str("self")),
                                                                     mb.str("code"))))))),
                                             new TestMb.RecordPair(
-                                                "value",
-                                                mb.field(mb.scopeUse("arg"), mb.str("value")))))))))),
+                                                "value", mb.scopeUse("conv_cv_"))))))))),
                 mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
@@ -518,91 +543,47 @@ public final class T0160EvenOddTest {
   }
 
   private static SourceExpr evenOddSetBody(TestMb mb) {
-    var constIntParity =
-        mb.operatorMod(
-            mb.call(
-                mb.field(
-                    mb.field(mb.scopeUse("rhs_int_aspect_opt_"), mb.str("value")),
-                    mb.str("get")),
-                mb.recordOf(
-                    TList.of(new TestMb.RecordPair("value", mb.scopeUse("rhs_val_"))))),
-            mb.num(2.0));
-    var evenOddParity =
-        mb.call(
-            mb.field(mb.scopeUse("rhs_evenodd_type_"), mb.str("get_parity")),
-            mb.literalNull());
     return mb.seqOf(
         mb.bind(
-            "rhs_opt_",
+            "conv_er_",
             mb.call(
-                mb.field(
-                    mb.field(mb.scopeUse("arg"), mb.str("value")), mb.str("value")),
-                mb.recordOf(TList.of()))),
+                mb.field(mb.scopeUse("outer"), mb.str("cast_from")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "cv", mb.field(mb.scopeUse("arg"), mb.str("value"))))))),
         mb.return_(
             mb.ifOf(
                 TList.of(
                     new TestMb.Branch(
-                        mb.field(mb.scopeUse("rhs_opt_"), mb.str("is_some")),
-                        mb.seqOf(
-                            mb.bind("rhs_val_", mb.field(mb.scopeUse("rhs_opt_"), mb.str("value"))),
-                            mb.bind(
-                                "rhs_type_obj_",
+                        mb.field(mb.scopeUse("conv_er_"), mb.str("has_errors")),
+                        mb.scopeUse("conv_er_"))),
+                mb.seqOf(
+                    mb.bind("conv_cv_", mb.field(mb.scopeUse("conv_er_"), mb.str("value"))),
+                    mb.bind(
+                        "rhs_parity_",
+                        mb.call(
+                            mb.field(
                                 mb.call(
-                                    mb.field(mb.scopeUse("rhs_val_"), mb.str("type")),
-                                    mb.recordOf(TList.of()))),
-                            mb.bind(
-                                "rhs_int_aspect_opt_",
-                                mb.call(
-                                    mb.evalAspectLookup(),
+                                    mb.mustReinterpret(),
                                     mb.tupleOf(
-                                        mb.scopeUse("rhs_type_obj_"),
-                                        mb.evalAspectInt(),
-                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
-                            mb.bind(
-                                "rhs_int_dynamic_opt_",
-                                mb.call(
-                                    mb.field(mb.scopeUse("rhs_type_obj_"), mb.str("aspect")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "key", mb.evalTypeIntDynamicIdentity()))))),
-                            mb.return_(
-                                mb.ifOf(
-                                    TList.of(
-                                        new TestMb.Branch(
+                                        mb.call(
                                             mb.field(
-                                                mb.scopeUse("rhs_int_aspect_opt_"),
-                                                mb.str("is_some")),
-                                            evenOddSetApply(mb, constIntParity)),
-                                        new TestMb.Branch(
-                                            mb.field(
-                                                mb.scopeUse("rhs_int_dynamic_opt_"),
-                                                mb.str("is_some")),
-                                            mb.call(
                                                 mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("err")),
-                                                mb.tupleOf(
-                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                                                    mb.str(
-                                                        "set: value is a dynamic int; parity"
-                                                            + " unknown"))))),
-                                    mb.seqOf(
-                                        mb.bind(
-                                            "rhs_evenodd_type_",
-                                            mb.call(
-                                                mb.mustReinterpret(),
-                                                mb.tupleOf(
-                                                    mb.scopeUse("rhs_type_obj_"),
-                                                    mb.lower(mb.scopeUse("u_type"))))),
-                                        mb.return_(evenOddSetApply(mb, evenOddParity)))))))),
-                mb.call(
-                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
-                    mb.tupleOf(
-                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("set: value has no compile-time value"))))));
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.scopeUse("conv_cv_"),
+                                                            mb.str("value")),
+                                                        mb.recordOf(TList.of())),
+                                                    mb.str("value")),
+                                                mb.str("type")),
+                                            mb.recordOf(TList.of())),
+                                        mb.lower(mb.scopeUse("u_type")))),
+                                mb.str("get_parity")),
+                            mb.literalNull())),
+                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_")))))));
   }
 
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
@@ -959,15 +940,93 @@ public final class T0160EvenOddTest {
                                                                                                 mb.str(
                                                                                                     "state"))))))))))))))))),
                                         new TestMb.RecordPair(
-                                            "fork", mb.scopeUse("outer")),
+                                            "fork",
+                                            mb.seqOf(
+                                                mb.return_(
+                                                    mb.call(
+                                                        mb.lower(mb.scopeUse("even_binding_new")),
+                                                        mb.recordOf(
+                                                            TList.of(
+                                                                new TestMb.RecordPair(
+                                                                    "int",
+                                                                    mb.field(
+                                                                        mb.scopeUse("inner"),
+                                                                        mb.str("int"))),
+                                                                new TestMb.RecordPair(
+                                                                    "state",
+                                                                    mb.recordOf(
+                                                                        TList.of(
+                                                                            new TestMb.RecordPair(
+                                                                                "parity",
+                                                                                mb.field(
+                                                                                    mb.field(
+                                                                                        mb.scopeUse(
+                                                                                            "inner"),
+                                                                                        mb.str(
+                                                                                            "state")),
+                                                                                    mb.str(
+                                                                                        "parity")))))))))))),
                                         new TestMb.RecordPair(
                                             "merge",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.typesEresult(), mb.evalBinding()),
-                                                    mb.str("ok")),
-                                                mb.scopeUse("outer"))))))))),
+                                            mb.labeled(
+                                                "merge_res",
+                                                mb.seqOf(
+                                                    mb.bind(
+                                                        "initial_",
+                                                        mb.field(
+                                                            mb.field(
+                                                                mb.scopeUse("inner"),
+                                                                mb.str("state")),
+                                                            mb.str("parity"))),
+                                                    mb.foreach(
+                                                        mb.field(
+                                                            mb.scopeUse("arg"), mb.str("others")),
+                                                        mb.str("b"),
+                                                        mb.ifOf(
+                                                            TList.of(
+                                                                new TestMb.Branch(
+                                                                    mb.operatorEq(
+                                                                        mb.call(
+                                                                            mb.field(
+                                                                                mb.call(
+                                                                                    mb.mustReinterpret(),
+                                                                                    mb.tupleOf(
+                                                                                        mb.scopeUse(
+                                                                                            "b"),
+                                                                                        mb.lower(
+                                                                                            mb.scopeUse(
+                                                                                                "bb_type")))),
+                                                                                mb.str(
+                                                                                    "get_parity")),
+                                                                            mb.literalNull()),
+                                                                        mb.scopeUse("initial_")),
+                                                                    mb.as_(
+                                                                        mb.literalNull(),
+                                                                        mb.typesNull()))),
+                                                            mb.return_(
+                                                                "merge_res",
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.call(
+                                                                            mb.typesEresult(),
+                                                                            mb.evalBinding()),
+                                                                        mb.str("err")),
+                                                                    mb.tupleOf(
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("loc")),
+                                                                        mb.str(
+                                                                            "evenodd merge:"
+                                                                                + " branch parities"
+                                                                                + " differ")))))),
+                                                    mb.return_(
+                                                        mb.call(
+                                                            mb.field(
+                                                                mb.call(
+                                                                    mb.typesEresult(),
+                                                                    mb.evalBinding()),
+                                                                mb.str("ok")),
+                                                            mb.scopeUse("outer")))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -992,9 +1051,7 @@ public final class T0160EvenOddTest {
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "is_equal",
-                                            mb.seqOf(
-                                                mb.return_(
-                                                    mb.operatorEq(mb.num(0.0), mb.num(1.0))))),
+                                            mb.panic(mb.str("EvenOdd is_equal: not implemented"))),
                                         new TestMb.RecordPair(
                                             "can_cast_from",
                                             mb.seqOf(
@@ -1075,15 +1132,11 @@ public final class T0160EvenOddTest {
                                                     mb.literalNull()))),
                                         new TestMb.RecordPair(
                                             "can_cast_to",
-                                            mb.seqOf(
-                                                mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
+                                            mb.seqOf(mb.return_(mb.bool(false)))),
                                         new TestMb.RecordPair(
                                             "cast_to",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("ok")),
-                                                mb.field(mb.scopeUse("arg"), mb.str("cv")))))))))),
+                                            mb.panic(
+                                                mb.str("EvenOdd cast_to: not implemented"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1272,9 +1325,7 @@ public final class T0160EvenOddTest {
             moduleSeq(
                 mb,
                 bindEvenOddType(mb, "EvenOdd"),
-                mb.bind(
-                    "a",
-                    mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
                 mb.call(mb.log(), mb.str("bound")))));
     var res = compileOk(modules);
     assertTrue(
@@ -1291,9 +1342,7 @@ public final class T0160EvenOddTest {
             moduleSeq(
                 mb,
                 bindEvenOddType(mb, "EvenOdd"),
-                mb.bind(
-                    "a",
-                    mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
                 mb.set(
                     mb.scopeUse("a"),
                     mb.as_(mb.num(4.0), mb.scopeUse("even_type"))),
@@ -1311,9 +1360,7 @@ public final class T0160EvenOddTest {
             moduleSeq(
                 mb,
                 bindEvenOddType(mb, "EvenOdd"),
-                mb.bind(
-                    "a",
-                    mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
                 mb.bind("b", mb.scopeUse("a")),
                 mb.call(mb.log(), mb.str("used")))));
     var res = compileOk(modules);
@@ -1410,8 +1457,560 @@ public final class T0160EvenOddTest {
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
     assertTrue(
-        res.toString().contains("set: value is a dynamic int"),
-        () -> "expected dynamic-int set error, got " + res);
+        res.toString().contains("cast: cannot cast a dynamic int"),
+        () -> "expected dynamic-int cast error from set, got " + res);
+  }
+
+  private static SourceExpr evenCast(TestMb mb, double v) {
+    return mb.as_(mb.num(v), mb.scopeUse("even_type"));
+  }
+
+  private static SourceExpr dynTrue(TestMb mb) {
+    return mb.operatorEq(
+        mb.as_(mb.num(1.0), mb.typesInt()), mb.as_(mb.num(1.0), mb.typesInt()));
+  }
+
+  private static void assertParityMergeError(TMap<String, SourceModule> modules) {
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected merge error, got " + res);
+    assertTrue(
+        res.toString().contains("evenodd merge: branch parities differ"),
+        () -> "expected parity merge error, got " + res);
+  }
+
+  private static SourceExpr bindStrNum(TestMb mb) {
+    return mb.bind(
+        "strnum",
+        mb.lower(
+            mb.seqOf(
+                mb.bind("d2", mb.call(mb.define(), mb.tupleOf())),
+                mb.bind(
+                    "builder",
+                    mb.call(mb.field(mb.scopeUse("d2"), mb.str("union")), mb.tupleOf())),
+                mb.bind(
+                    "new_str",
+                    mb.call(
+                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                        mb.recordOf(
+                            TList.of(
+                                new TestMb.RecordPair("tag", mb.str("strtag")),
+                                new TestMb.RecordPair("type_ref", mb.typesString()))))),
+                mb.bind(
+                    "new_num",
+                    mb.call(
+                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                        mb.recordOf(
+                            TList.of(
+                                new TestMb.RecordPair("tag", mb.str("numtag")),
+                                new TestMb.RecordPair("type_ref", mb.typesInt()))))),
+                mb.call(mb.field(mb.scopeUse("d2"), mb.str("finish")), mb.tupleOf()),
+                mb.return_(
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair(
+                                "type", mb.field(mb.scopeUse("builder"), mb.str("type"))),
+                            new TestMb.RecordPair("str", mb.scopeUse("new_str")),
+                            new TestMb.RecordPair("num", mb.scopeUse("new_num"))))))));
+  }
+
+  private TMap<String, SourceModule> ifElseModule(TestMb mb, SourceExpr thenSet, SourceExpr elseSet) {
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.ifOf(
+                    TList.of(new TestMb.Branch(dynTrue(mb), thenSet)),
+                    elseSet),
+                mb.call(mb.log(), mb.str("done")))));
+    return modules;
+  }
+
+  @Test
+  public void test01100IfElseSetConstCompatible() {
+    var mb = new TestMb();
+    compileOk(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), mb.num(4.0)),
+            mb.set(mb.scopeUse("a"), mb.num(6.0))));
+  }
+
+  @Test
+  public void test01150IfElseSetConstIncompatible() {
+    var mb = new TestMb();
+    assertParityMergeError(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), mb.num(4.0)),
+            mb.set(mb.scopeUse("a"), mb.num(3.0))));
+  }
+
+  @Test
+  public void test01200IfElseSetEvenOddCompatible() {
+    var mb = new TestMb();
+    compileOk(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), evenCast(mb, 4.0)),
+            mb.set(mb.scopeUse("a"), evenCast(mb, 6.0))));
+  }
+
+  @Test
+  public void test01250IfElseSetEvenOddIncompatible() {
+    var mb = new TestMb();
+    assertParityMergeError(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), evenCast(mb, 4.0)),
+            mb.set(mb.scopeUse("a"), evenCast(mb, 3.0))));
+  }
+
+  @Test
+  public void test01300IfElseAddConstCompatible() {
+    var mb = new TestMb();
+    compileOk(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), mb.operatorAdd(mb.scopeUse("a"), mb.num(2.0))),
+            mb.set(mb.scopeUse("a"), mb.operatorAdd(mb.scopeUse("a"), mb.num(4.0)))));
+  }
+
+  @Test
+  public void test01350IfElseAddConstIncompatible() {
+    var mb = new TestMb();
+    assertParityMergeError(
+        ifElseModule(
+            mb,
+            mb.set(mb.scopeUse("a"), mb.operatorAdd(mb.scopeUse("a"), mb.num(2.0))),
+            mb.set(mb.scopeUse("a"), mb.operatorAdd(mb.scopeUse("a"), mb.num(3.0)))));
+  }
+
+  @Test
+  public void test01400IfElseAddEvenOddCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind("b", evenCast(mb, 4.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb),
+                            mb.set(
+                                mb.scopeUse("a"),
+                                mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))))),
+                    mb.set(
+                        mb.scopeUse("a"),
+                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b")))),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01450IfElseAddEvenOddIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind("b", evenCast(mb, 4.0)),
+                mb.bind("c", evenCast(mb, 3.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb),
+                            mb.set(
+                                mb.scopeUse("a"),
+                                mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))))),
+                    mb.set(
+                        mb.scopeUse("a"),
+                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("c")))),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test01500IfNoElseSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01550IfNoElseSetIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(3.0)))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test01600ForeachSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "my_list",
+                    mb.call(
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                        mb.tupleOf(mb.num(1.), mb.num(2.)))),
+                mb.foreach(
+                    mb.scopeUse("my_list"),
+                    mb.str("e"),
+                    mb.set(mb.scopeUse("a"), mb.num(4.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01650ForeachSetIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "my_list",
+                    mb.call(
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                        mb.tupleOf(mb.num(1.), mb.num(2.)))),
+                mb.foreach(
+                    mb.scopeUse("my_list"),
+                    mb.str("e"),
+                    mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test01700TryCatchSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.tryCatchFinally(
+                    mb.set(mb.scopeUse("a"), mb.num(4.0)),
+                    new TestMb.Catch(
+                        "e",
+                        mb.typesString(),
+                        mb.set(mb.scopeUse("a"), mb.num(6.0))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01750TryCatchSetIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.tryCatchFinally(
+                    mb.set(mb.scopeUse("a"), mb.num(4.0)),
+                    new TestMb.Catch(
+                        "e",
+                        mb.typesString(),
+                        mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test01800MatchSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                bindStrNum(mb),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "x",
+                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                mb.matchOf(
+                    mb.scopeUse("x"),
+                    mb.str("y"),
+                    TList.of(
+                        new TestMb.Branch(
+                            mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0))),
+                        new TestMb.Branch(
+                            mb.str("numtag"), mb.set(mb.scopeUse("a"), mb.num(6.0)))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01850MatchSetIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                bindStrNum(mb),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "x",
+                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                mb.matchOf(
+                    mb.scopeUse("x"),
+                    mb.str("y"),
+                    TList.of(
+                        new TestMb.Branch(
+                            mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0))),
+                        new TestMb.Branch(
+                            mb.str("numtag"), mb.set(mb.scopeUse("a"), mb.num(3.0)))),
+                    null),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test00450CastDynamicIntErrors() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind(
+                    "a",
+                    mb.as_(mb.as_(mb.num(2.0), mb.typesInt()), mb.scopeUse("even_type"))),
+                mb.call(mb.log(), mb.str("unreachable")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(
+        res.toString().contains("cast: cannot cast a dynamic int"),
+        () -> "expected dynamic-int cast error, got " + res);
+  }
+
+  @Test
+  public void test01900MatchFallbackSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                bindStrNum(mb),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "x",
+                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                mb.matchOf(
+                    mb.scopeUse("x"),
+                    mb.str("y"),
+                    TList.of(
+                        new TestMb.Branch(
+                            mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                    mb.set(mb.scopeUse("a"), mb.num(6.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test01950MatchFallbackSetIncompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                bindStrNum(mb),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "x",
+                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                mb.matchOf(
+                    mb.scopeUse("x"),
+                    mb.str("y"),
+                    TList.of(
+                        new TestMb.Branch(
+                            mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                    mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test02000NestedBranchSetCompatible() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "my_list",
+                    mb.call(
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                        mb.tupleOf(mb.num(1.), mb.num(2.)))),
+                mb.foreach(
+                    mb.scopeUse("my_list"),
+                    mb.str("e"),
+                    mb.ifOf(
+                        TList.of(
+                            new TestMb.Branch(
+                                dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                        mb.set(mb.scopeUse("a"), mb.num(6.0)))),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
+  }
+
+  @Test
+  public void test02050NestedBranchSetIncompatibleInner() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.bind(
+                    "my_list",
+                    mb.call(
+                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                        mb.tupleOf(mb.num(1.), mb.num(2.)))),
+                mb.foreach(
+                    mb.scopeUse("my_list"),
+                    mb.str("e"),
+                    mb.ifOf(
+                        TList.of(
+                            new TestMb.Branch(
+                                dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                        mb.set(mb.scopeUse("a"), mb.num(3.0)))),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test02100NestedBranchSetIncompatibleOuter() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb),
+                            mb.ifOf(
+                                TList.of(
+                                    new TestMb.Branch(
+                                        dynTrue(mb),
+                                        mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                                mb.set(mb.scopeUse("a"), mb.num(6.0))))),
+                    mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    assertParityMergeError(modules);
+  }
+
+  @Test
+  public void test02150NestedBranchSetCompatibleDeep() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", evenCast(mb, 2.0)),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb),
+                            mb.ifOf(
+                                TList.of(
+                                    new TestMb.Branch(
+                                        dynTrue(mb),
+                                        mb.set(mb.scopeUse("a"), mb.num(4.0)))),
+                                mb.set(mb.scopeUse("a"), mb.num(6.0))))),
+                    mb.set(mb.scopeUse("a"), mb.num(8.0))),
+                mb.call(mb.log(), mb.str("done")))));
+    compileOk(modules);
   }
 
   @Test

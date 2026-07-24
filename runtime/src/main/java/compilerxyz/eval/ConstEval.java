@@ -325,10 +325,8 @@ public final class ConstEval {
     if (target.firstReturnValue == null) {
       target.firstReturnValue = someVal.value();
     }
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-    if (valCv.code() instanceof Code.Target t && t.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic valCd) {
-      seq.add(valCd);
-    }
+    var dropSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    boolean anyDrop = false;
     for (int i = xx.scope.depth() - 1; i >= target.scopeDepthAtPush; i--) {
       var dropRes = xx.scope.entries.get(i).bindingDrop(xx, loc);
       if (dropRes.hasErrors()) {
@@ -337,8 +335,36 @@ public final class ConstEval {
       }
       var d = dropRes.requireValue("constEvalReturn drop");
       if (d instanceof Code.Target dt && dt.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic dcd) {
-        seq.add(dcd);
+        dropSeq.add(dcd);
+        anyDrop = true;
       }
+    }
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    if (valCv.code() instanceof Code.Target t && t.impl() instanceof compilerxyz.eval.dynamic.CodeDynamic valCd) {
+      seq.add(valCd);
+      if (anyDrop) {
+        // Drops run with the return value already on the stack (e.g. a
+        // foreach's BindingIteratorStack POP would remove the value, not the
+        // iterator). Park the value in a slot around the drops.
+        var valueType =
+            someVal.value() instanceof compilerxyz.eval.value.ValueDynamic vd
+                ? vd.type_()
+                : someVal.value().valueType();
+        var tmpKey = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+        seq.add(
+            new compilerxyz.eval.dynamic.CodeDynamic(
+                loc,
+                new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(
+                    compilerxyz.eval.dynamic.JvmSort.storeOpcode(xx, valueType), tmpKey)));
+        seq.add(new compilerxyz.eval.dynamic.CodeDynamic(loc, dropSeq));
+        seq.add(
+            new compilerxyz.eval.dynamic.CodeDynamic(
+                loc,
+                new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(
+                    compilerxyz.eval.dynamic.JvmSort.loadOpcode(xx, valueType), tmpKey)));
+      }
+    } else if (anyDrop) {
+      seq.add(new compilerxyz.eval.dynamic.CodeDynamic(loc, dropSeq));
     }
     seq.add(new compilerxyz.eval.dynamic.CodeDynamic(loc,
         new compilerxyz.eval.dynamic.JavaBytecodeJump(target.endKey)));
