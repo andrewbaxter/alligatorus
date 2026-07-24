@@ -37,6 +37,9 @@ public final class EResult<T> {
 
   public T requireValue(String context) {
     if (value == null) {
+      if (errors != null && !errors.isEmpty()) {
+        throw new IllegalStateException(context + " returned errors: " + errors);
+      }
       throw new IllegalStateException(
           context + " returned neither value nor errors");
     }

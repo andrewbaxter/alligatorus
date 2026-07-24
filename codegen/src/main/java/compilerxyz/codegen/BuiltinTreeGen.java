@@ -434,6 +434,11 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_initial_bind_id",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
         TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.type_int_dynamic_identity",
+        CodeBlock.of(
+            "$T.TYPE_INT_DYNAMIC_IDENTITY",
+            ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+        TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);
   }

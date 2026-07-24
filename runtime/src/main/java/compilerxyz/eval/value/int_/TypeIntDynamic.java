@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.int_;
 
 import compilerxyz.eval.EvalOutcome;
+import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.BuiltinTypeId;
 
@@ -80,6 +81,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectIntDynamic;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenAspectOperatorAdd;
 import compilerxyz.gen.GenAspectOperatorMod;
 import compilerxyz.gen.GenAspectOperatorEq;
@@ -88,6 +90,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
+@Builtin(uniqueId = 6023L)
 @BuiltinTypeId(7002L)
 @BuiltinPath("types.int")
 public record TypeIntDynamic()
@@ -143,7 +146,8 @@ public record TypeIntDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenAspectIntDynamic.AspectId)
+    if (key.equals(GenTrivialIdentityAspects.TYPE_INT_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectIntDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectDynamicBoxed.AspectId)

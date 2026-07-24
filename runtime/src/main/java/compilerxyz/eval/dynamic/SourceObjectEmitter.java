@@ -229,7 +229,12 @@ public final class SourceObjectEmitter {
             ? null
             : implementsInternalNames.toArray(new String[0]);
 
-    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+      @Override
+      protected String getCommonSuperClass(String type1, String type2) {
+        return JvmConstants.INTNAME_OBJECT.value();
+      }
+    };
     cw.visit(
         Opcodes.V11,
         Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,

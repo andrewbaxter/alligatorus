@@ -169,6 +169,264 @@ public final class T0160EvenOddTest {
                                                 "state", mb.scopeUse("inner"))))))))))));
   }
 
+  private static SourceExpr castFromPassthrough(TestMb mb) {
+    return mb.call(
+        mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
+        mb.field(mb.scopeUse("arg"), mb.str("cv")));
+  }
+
+  private static SourceExpr evenOddCastFromBody(TestMb mb) {
+    var wrapped =
+        mb.call(
+            mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
+            mb.call(
+                mb.evalCodevalue(),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair(
+                            "code",
+                            mb.field(mb.scopeUse("cast_cv_"), mb.str("code"))),
+                        new TestMb.RecordPair(
+                            "value",
+                            mb.call(
+                                mb.lower(mb.scopeUse("even_value_new")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "type",
+                                            mb.call(
+                                                mb.lower(mb.scopeUse("even_type_new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "parity",
+                                                            mb.operatorMod(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.field(
+                                                                            mb.scopeUse(
+                                                                                "int_aspect_opt_"),
+                                                                            mb.str("value")),
+                                                                        mb.str("get")),
+                                                                    mb.recordOf(
+                                                                        TList.of(
+                                                                            new TestMb.RecordPair(
+                                                                                "value",
+                                                                                mb.scopeUse(
+                                                                                    "val_"))))),
+                                                                mb.num(2.0))))))),
+                                        new TestMb.RecordPair(
+                                            "source",
+                                            mb.call(
+                                                mb.lower(mb.scopeUse("vs_expr")),
+                                                mb.literalNull()))))))))));
+    return mb.seqOf(
+        mb.bind(
+            "val_opt_",
+            mb.call(
+                mb.field(mb.field(mb.scopeUse("arg"), mb.str("cv")), mb.str("value")),
+                mb.recordOf(TList.of()))),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("val_opt_"), mb.str("is_some")),
+                        mb.seqOf(
+                            mb.bind("val_", mb.field(mb.scopeUse("val_opt_"), mb.str("value"))),
+                            mb.bind(
+                                "int_aspect_opt_",
+                                mb.call(
+                                    mb.evalAspectLookup(),
+                                    mb.tupleOf(
+                                        mb.call(
+                                            mb.field(mb.scopeUse("val_"), mb.str("type")),
+                                            mb.recordOf(TList.of())),
+                                        mb.evalAspectInt(),
+                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.return_(
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("int_aspect_opt_"),
+                                                mb.str("is_some")),
+                                            mb.seqOf(
+                                                mb.bind(
+                                                    "cast_cv_",
+                                                    mb.field(
+                                                        mb.call(
+                                                            mb.field(
+                                                                mb.typesInt(),
+                                                                mb.str("cast_from")),
+                                                            mb.recordOf(
+                                                                TList.of(
+                                                                    new TestMb.RecordPair(
+                                                                        "xx",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("xx"))),
+                                                                    new TestMb.RecordPair(
+                                                                        "loc",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("loc"))),
+                                                                    new TestMb.RecordPair(
+                                                                        "cv",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("cv")))))),
+                                                        mb.str("value"))),
+                                                mb.return_(wrapped)))),
+                                    castFromPassthrough(mb)))))),
+                castFromPassthrough(mb))));
+  }
+
+  private static SourceExpr evenOddAddWrapped(TestMb mb, SourceExpr parity) {
+    return mb.call(
+        mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
+        mb.call(
+            mb.evalCodevalue(),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair(
+                        "code", mb.field(mb.scopeUse("sum_cv_"), mb.str("code"))),
+                    new TestMb.RecordPair(
+                        "value",
+                        mb.call(
+                            mb.lower(mb.scopeUse("even_value_new")),
+                            mb.recordOf(
+                                TList.of(
+                                    new TestMb.RecordPair(
+                                        "type",
+                                        mb.call(
+                                            mb.lower(mb.scopeUse("even_type_new")),
+                                            mb.recordOf(
+                                                TList.of(
+                                                    new TestMb.RecordPair("parity", parity))))),
+                                    new TestMb.RecordPair(
+                                        "source",
+                                        mb.call(
+                                            mb.lower(mb.scopeUse("vs_expr")),
+                                            mb.literalNull()))))))))));
+  }
+
+  private static SourceExpr evenOddAddBody(TestMb mb) {
+    var constIntParity =
+        mb.operatorMod(
+            mb.operatorAdd(
+                mb.field(mb.scopeUse("inner"), mb.str("parity")),
+                mb.call(
+                    mb.field(
+                        mb.field(mb.scopeUse("ref_int_aspect_opt_"), mb.str("value")),
+                        mb.str("get")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("value", mb.scopeUse("ref_val_")))))),
+            mb.num(2.0));
+    var evenOddParity =
+        mb.operatorMod(
+            mb.operatorAdd(
+                mb.field(mb.scopeUse("inner"), mb.str("parity")),
+                mb.call(
+                    mb.field(mb.scopeUse("ref_evenodd_type_"), mb.str("get_parity")),
+                    mb.literalNull())),
+            mb.num(2.0));
+    return mb.seqOf(
+        mb.bind(
+            "sum_er_",
+            mb.call(
+                mb.field(
+                    mb.field(
+                        mb.call(
+                            mb.evalAspectLookup(),
+                            mb.tupleOf(
+                                mb.typesInt(),
+                                mb.evalOperatorAdd(),
+                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                        mb.str("value")),
+                    mb.str("add")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "base", mb.field(mb.scopeUse("arg"), mb.str("base"))),
+                        new TestMb.RecordPair(
+                            "reference", mb.field(mb.scopeUse("arg"), mb.str("reference"))))))),
+        mb.bind("sum_cv_", mb.field(mb.scopeUse("sum_er_"), mb.str("value"))),
+        mb.bind(
+            "ref_opt_",
+            mb.call(
+                mb.field(
+                    mb.field(mb.scopeUse("arg"), mb.str("reference")), mb.str("value")),
+                mb.recordOf(TList.of()))),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("ref_opt_"), mb.str("is_some")),
+                        mb.seqOf(
+                            mb.bind("ref_val_", mb.field(mb.scopeUse("ref_opt_"), mb.str("value"))),
+                            mb.bind(
+                                "ref_type_obj_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("ref_val_"), mb.str("type")),
+                                    mb.recordOf(TList.of()))),
+                            mb.bind(
+                                "ref_int_aspect_opt_",
+                                mb.call(
+                                    mb.evalAspectLookup(),
+                                    mb.tupleOf(
+                                        mb.scopeUse("ref_type_obj_"),
+                                        mb.evalAspectInt(),
+                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.bind(
+                                "ref_int_dynamic_opt_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("ref_type_obj_"), mb.str("aspect")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "key", mb.evalTypeIntDynamicIdentity()))))),
+                            mb.return_(
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("ref_int_aspect_opt_"),
+                                                mb.str("is_some")),
+                                            evenOddAddWrapped(mb, constIntParity)),
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("ref_int_dynamic_opt_"),
+                                                mb.str("is_some")),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(mb.typesEresult(), mb.typesCve()),
+                                                    mb.str("err")),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                                                    mb.str(
+                                                        "operator_add: reference is a dynamic"
+                                                            + " int; parity unknown"))))),
+                                    mb.seqOf(
+                                        mb.bind(
+                                            "ref_evenodd_type_",
+                                            mb.call(
+                                                mb.mustReinterpret(),
+                                                mb.tupleOf(
+                                                    mb.scopeUse("ref_type_obj_"),
+                                                    mb.lower(mb.scopeUse("u_type"))))),
+                                        mb.return_(evenOddAddWrapped(mb, evenOddParity)))))))),
+                mb.call(
+                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
+                    mb.tupleOf(
+                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                        mb.str("operator_add: reference has no compile-time value"))))));
+  }
+
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
     return mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
@@ -213,6 +471,22 @@ public final class T0160EvenOddTest {
                     mb.field(mb.scopeUse("u"), mb.str("set_inner")),
                     mb.recordOf(
                         TList.of(new TestMb.RecordPair("parity", mb.typesInt())))),
+                mb.bind(
+                    "u_gp_method",
+                    mb.call(mb.field(mb.scopeUse("u"), mb.str("func")), mb.str("get_parity"))),
+                mb.call(
+                    mb.field(mb.scopeUse("u_gp_method"), mb.str("impl")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("arg", mb.typesNull()),
+                            new TestMb.RecordPair("ret", mb.typesInt()),
+                            new TestMb.RecordPair(
+                                "impl_body",
+                                mb.stage(
+                                    mb.seqOf(
+                                        mb.return_(
+                                            mb.field(
+                                                mb.scopeUse("inner"), mb.str("parity"))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -392,6 +666,7 @@ public final class T0160EvenOddTest {
                 mb.bind("bb_type", mb.field(mb.scopeUse("bb"), mb.str("type"))),
                 mb.bind("even_value_new", mb.field(mb.scopeUse("vb"), mb.str("new"))),
                 mb.bind("even_type_new", mb.field(mb.scopeUse("u"), mb.str("new"))),
+                mb.bind("u_type", mb.field(mb.scopeUse("u"), mb.str("type"))),
                 mb.call(
                     mb.field(mb.scopeUse("bb"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -404,6 +679,33 @@ public final class T0160EvenOddTest {
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "use",
+                                            mb.seqOf(
+                                                mb.bind(
+                                                    "int_use_cv_",
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.field(
+                                                                mb.scopeUse("inner"),
+                                                                mb.str("int")),
+                                                            mb.str("use")),
+                                                        mb.recordOf(
+                                                            TList.of(
+                                                                new TestMb.RecordPair(
+                                                                    "xx",
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("xx"))),
+                                                                new TestMb.RecordPair(
+                                                                    "loc",
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("loc"))),
+                                                                new TestMb.RecordPair(
+                                                                    "code",
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("code"))))))),
+                                                mb.return_(
                                             mb.call(
                                                 mb.evalCodevalue(),
                                                 mb.recordOf(
@@ -411,7 +713,7 @@ public final class T0160EvenOddTest {
                                                         new TestMb.RecordPair(
                                                             "code",
                                                             mb.field(
-                                                                mb.scopeUse("arg"),
+                                                                mb.scopeUse("int_use_cv_"),
                                                                 mb.str("code"))),
                                                         new TestMb.RecordPair(
                                                             "value",
@@ -459,7 +761,7 @@ public final class T0160EvenOddTest {
                                                                                                 mb.scopeUse(
                                                                                                     "inner"),
                                                                                                 mb.str(
-                                                                                                    "state"))))))))))))))),
+                                                                                                    "state"))))))))))))))))),
                                         new TestMb.RecordPair(
                                             "fork", mb.scopeUse("outer")),
                                         new TestMb.RecordPair(
@@ -503,49 +805,7 @@ public final class T0160EvenOddTest {
                                                 mb.return_(
                                                     mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
                                         new TestMb.RecordPair(
-                                            "cast_from",
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("ok")),
-                                                mb.call(
-                                                    mb.evalCodevalue(),
-                                                    mb.recordOf(
-                                                        TList.of(
-                                                            new TestMb.RecordPair(
-                                                                "code",
-                                                                mb.field(
-                                                                    mb.field(
-                                                                        mb.scopeUse("arg"),
-                                                                        mb.str("cv")),
-                                                                    mb.str("code"))),
-                                                            new TestMb.RecordPair(
-                                                                "value",
-                                                                mb.call(
-                                                                    mb.lower(
-                                                                        mb.scopeUse(
-                                                                            "even_value_new")),
-                                                                    mb.recordOf(
-                                                                        TList.of(
-                                                                            new TestMb.RecordPair(
-                                                                                "type",
-                                                                                mb.call(
-                                                                                    mb.lower(
-                                                                                        mb.scopeUse(
-                                                                                            "even_type_new")),
-                                                                                    mb.recordOf(
-                                                                                        TList.of(
-                                                                                            new TestMb.RecordPair(
-                                                                                                "parity",
-                                                                                                mb.num(
-                                                                                                    0.0)))))),
-                                                                            new TestMb.RecordPair(
-                                                                                "source",
-                                                                                mb.call(
-                                                                                    mb.lower(
-                                                                                        mb.scopeUse(
-                                                                                            "vs_expr")),
-                                                                                    mb.literalNull()))))))))))),
+                                            "cast_from", evenOddCastFromBody(mb)),
                                         new TestMb.RecordPair(
                                             "desc", mb.seqOf(mb.return_(mb.str("evenodd")))),
                                         new TestMb.RecordPair(
@@ -596,6 +856,16 @@ public final class T0160EvenOddTest {
                                                         mb.operatorEq(
                                                             mb.field(mb.scopeUse("arg"), mb.str("key")),
                                                             mb.evalAspectSetId()),
+                                                        mb.call(
+                                                            mb.field(
+                                                                mb.call(
+                                                                    mb.typesOption(), mb.typesAspect()),
+                                                                mb.str("some")),
+                                                            mb.scopeUse("outer"))),
+                                                    new TestMb.Branch(
+                                                        mb.operatorEq(
+                                                            mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                            mb.evalOperatorAddId()),
                                                         mb.call(
                                                             mb.field(
                                                                 mb.call(
@@ -705,6 +975,18 @@ public final class T0160EvenOddTest {
                                                 mb.field(
                                                     mb.scopeUse("arg"),
                                                     mb.str("self")))))))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("iface_ref", mb.evalOperatorAdd()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "add", evenOddAddBody(mb)))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -848,5 +1130,83 @@ public final class T0160EvenOddTest {
     var res = compileOk(modules);
     assertTrue(
         res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test00500CastConstInt() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.call(mb.log(), mb.str("cast-const")))));
+    var res = compileOk(modules);
+    assertTrue(
+        res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test00600AddConstInt() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.bind("b", mb.operatorAdd(mb.scopeUse("a"), mb.num(3.0))),
+                mb.call(mb.log(), mb.str("add-const")))));
+    var res = compileOk(modules);
+    assertTrue(
+        res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test00700AddEvenOdd() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.bind("b", mb.as_(mb.num(4.0), mb.scopeUse("even_type"))),
+                mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))),
+                mb.call(mb.log(), mb.str("add-evenodd")))));
+    var res = compileOk(modules);
+    assertTrue(
+        res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
+  }
+
+  @Test
+  public void test00800AddDynamicIntErrors() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd"),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.bind(
+                    "c",
+                    mb.operatorAdd(
+                        mb.scopeUse("a"), mb.as_(mb.num(3.0), mb.typesInt()))),
+                mb.call(mb.log(), mb.str("unreachable")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(
+        res.toString().contains("operator_add: reference is a dynamic int"),
+        () -> "expected dynamic-int parity error, got " + res);
   }
 }

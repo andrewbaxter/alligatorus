@@ -94,6 +94,14 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_lift");
   }
 
+  public SourceExpr evalAspectInt() {
+    return builtin("eval", "aspect_int");
+  }
+
+  public SourceExpr evalTypeIntDynamicIdentity() {
+    return builtin("eval", "type_int_dynamic_identity");
+  }
+
   public SourceExpr evalAspectBindId() {
     return builtin("eval", "aspect_bind_id");
   }

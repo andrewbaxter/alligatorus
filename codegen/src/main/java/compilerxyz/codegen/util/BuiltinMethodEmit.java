@@ -147,7 +147,7 @@ public final class BuiltinMethodEmit {
         ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName"), hostClass);
     var methodVar = "method_" + suffix;
     b.addStatement(
-        "var $L = new $T($N, $L, $L, $L, $S, $L, true, false)",
+        "var $L = new $T($N, $L, $L, $L, $S, $L, $T.class.isInterface(), false)",
         methodVar,
         TYPE_METHOD_DYNAMIC,
         receiverVar,
@@ -155,7 +155,8 @@ public final class BuiltinMethodEmit {
         retTypeName,
         jvmClassExpr,
         method.hostMethodName,
-        descName);
+        descName,
+        hostClass);
     b.addStatement(
         "$L.add(new $T($S, $L))", methodsVar, OBJECT_METHOD, method.sourceName, methodVar);
     return true;
