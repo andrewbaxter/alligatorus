@@ -502,6 +502,39 @@ public final class SourceObjectEmitter {
     };
   }
 
+  public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {
+    var staticFieldValues = new TOrderedMap<String, Object>();
+    var seen = new TOrderedSet<String>();
+    for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
+      var impl = data.interfaceImpls.get(implIdx);
+      for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
+        var m = impl.methodImpls.get(mIdx);
+        var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
+        for (int i = 0; i < m.capturedExternals.size(); i++) {
+          var entry = m.capturedExternals.get(i);
+          var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
+          if (seen.add(name)) {
+            staticFieldValues.put(name, entry.external().externalHostValue());
+          }
+        }
+      }
+    }
+    for (long methodIdx = 0; methodIdx < data.methods.size(); methodIdx++) {
+      var method = data.methods.get((int) methodIdx);
+      var prefix = methodFieldPrefix(methodIdx);
+      for (int i = 0; i < method.capturedExternals.size(); i++) {
+        var entry = method.capturedExternals.get(i);
+        var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
+        if (seen.add(name)) {
+          staticFieldValues.put(name, entry.external().externalHostValue());
+        }
+      }
+    }
+    staticFieldValues.put(SOURCE_OBJECT_DATA_FIELD, data);
+    staticFieldValues.put(TYPE_ID_FIELD, data.hasTypeIdTypeId());
+    return staticFieldValues;
+  }
+
   private static void collectMethodFields(
       CodeDynamic bodyCode,
       TList<EvalContext.ExternalEntry> capturedExternals,

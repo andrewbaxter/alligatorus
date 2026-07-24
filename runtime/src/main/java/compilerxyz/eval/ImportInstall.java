@@ -89,6 +89,12 @@ public final class ImportInstall {
 
       if (obj.compiledBinaryName != null && obj.compiledBytecode != null) {
         loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
+        if (obj.compiledStaticFieldValues != null) {
+          var fields = new TOrderedMap<String, Object>();
+          fields.putAll(obj.compiledStaticFieldValues);
+          fields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+          loader.registerExternals(obj.compiledBinaryName, fields);
+        }
       }
       var objFinishResult = obj.finish(xx, loc, objIdx, loader);
       if (objFinishResult.hasErrors()) {

@@ -333,6 +333,17 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       ifaceImpls.add(
                           new ArtifactDataDefSetInterfaceImpl(kind, userIface, methodImpls));
                     }
+                    if (dt.compiledBinaryName == null || dt.compiledBytecode == null) {
+                      errors.add(
+                          new compilerxyz.eval.ExprErr(
+                              loc,
+                              compilerxyz.util.TList.of(
+                                  new compilerxyz.eval.ExprSubErr.Opaque(
+                                      "TypeTypeSourceObjectConst::exporterExport: object '"
+                                          + (dt.name == null ? "(unnamed)" : dt.name)
+                                          + "' has not been compiled — its definition set must be"
+                                          + " finished and installed before export"))));
+                    }
                     var body =
                         new ArtifactDataDefSetObject(
                             defSetArt,
@@ -516,6 +527,8 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         }
                         dt.interfaceImpls.add(implData);
                       }
+                      dt.compiledStaticFieldValues =
+                          compilerxyz.eval.dynamic.SourceObjectEmitter.rebuildStaticFieldValues(dt);
                     };
                 return new Result.Ok<>(
                     new ArtifactSupport.ImportIndependentResult(imported, deps, fin));
