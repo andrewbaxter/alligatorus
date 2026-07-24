@@ -184,7 +184,16 @@ public final class T0030DefineInterfaceTest {
                                                                     mb.literalNull()))),
                                                         new TestMb.RecordPair(
                                                             "keys",
-                                                            mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),
+                                                            mb.stage(
+                                                                mb.seqOf(
+                                                                    mb.return_(
+                                                                        mb.call(
+                                                                            mb.field(
+                                                                                mb.call(
+                                                                                    mb.typesList(),
+                                                                                    mb.typesConstkey()),
+                                                                                mb.str("new")),
+                                                                            mb.tupleOf())))))))))))),
                             mb.call(
                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                 mb.recordOf(
@@ -399,7 +408,16 @@ public final class T0030DefineInterfaceTest {
                                                                     mb.literalNull()))),
                                                         new TestMb.RecordPair(
                                                             "keys",
-                                                            mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),
+                                                            mb.stage(
+                                                                mb.seqOf(
+                                                                    mb.return_(
+                                                                        mb.call(
+                                                                            mb.field(
+                                                                                mb.call(
+                                                                                    mb.typesList(),
+                                                                                    mb.typesConstkey()),
+                                                                                mb.str("new")),
+                                                                            mb.tupleOf())))))))))))),
                             mb.call(
                                 mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
                                 mb.recordOf(

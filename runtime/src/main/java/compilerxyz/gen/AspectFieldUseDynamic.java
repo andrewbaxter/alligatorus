@@ -14,5 +14,5 @@ import compilerxyz.eval.value.ValueDynamicSource;
 @BuiltinTypeId(7216L)
 public interface AspectFieldUseDynamic extends Aspect {
   EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
-      ExprContext xx, QExprId loc, ValueDynamicSource baseSource, String javaFieldName);
+      ExprContext xx, QExprId loc, ValueDynamicSource source);
 }

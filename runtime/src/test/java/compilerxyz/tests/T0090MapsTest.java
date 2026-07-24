@@ -30,8 +30,12 @@ public final class T0090MapsTest {
                                 mb.tupleOf(mb.typesString(), mb.typesInt())),
                             mb.str("new")),
                         mb.tupleOf())),
-                mb.set(mb.field(mb.scopeUse("my_map"), mb.str("a")), mb.num(10.)),
-                mb.set(mb.field(mb.scopeUse("my_map"), mb.str("b")), mb.num(20.)),
+                mb.call(
+                    mb.field(mb.scopeUse("my_map"), mb.str("put")),
+                    mb.tupleOf(mb.str("a"), mb.num(10.))),
+                mb.call(
+                    mb.field(mb.scopeUse("my_map"), mb.str("put")),
+                    mb.tupleOf(mb.str("b"), mb.num(20.))),
                 mb.foreach(
                     mb.scopeUse("my_map"),
                     mb.str("entry"),
@@ -74,8 +78,12 @@ public final class T0090MapsTest {
                                 mb.tupleOf(mb.typesString(), mb.typesString())),
                             mb.str("new")),
                         mb.tupleOf())),
-                mb.set(mb.field(mb.scopeUse("my_map"), mb.str("x")), mb.str("hello")),
-                mb.set(mb.field(mb.scopeUse("my_map"), mb.str("y")), mb.str("world")),
+                mb.call(
+                    mb.field(mb.scopeUse("my_map"), mb.str("put")),
+                    mb.tupleOf(mb.str("x"), mb.str("hello"))),
+                mb.call(
+                    mb.field(mb.scopeUse("my_map"), mb.str("put")),
+                    mb.tupleOf(mb.str("y"), mb.str("world"))),
                 mb.foreach(
                     mb.scopeUse("my_map"),
                     mb.str("entry"),

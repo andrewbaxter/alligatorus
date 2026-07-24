@@ -186,6 +186,13 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         return type;
       }
     }
+
+    record PutFn(Type type) implements FieldSpec {
+      @Override
+      public Type fieldType() {
+        return type;
+      }
+    }
   }
 
   private TMap<ConstKey, FieldSpec> fieldSpecs() {
@@ -195,7 +202,10 @@ public record TypeMapDynamic(Type keyType, Type valueType)
             new FieldSpec.Factory(new TypeMapNewDynamic(keyType, valueType))),
         new Pair<>(
             new ConstKey.Str("get"),
-            new FieldSpec.GetFn(new TypeMapGetFnDynamic(keyType, valueType))));
+            new FieldSpec.GetFn(new TypeMapGetFnDynamic(keyType, valueType))),
+        new Pair<>(
+            new ConstKey.Str("put"),
+            new FieldSpec.PutFn(new TypeMapPutFnDynamic(keyType, valueType))));
   }
 
   @Override
@@ -223,6 +233,16 @@ public record TypeMapDynamic(Type keyType, Type valueType)
                   Code.of(loc, selfDyn),
                   EvalOutcome.ofValue(ValueDynamic.stack(xx, g.type()))));
         }
+        case FieldSpec.PutFn p -> {
+          var selfDyn = self.code().dynamic();
+          if (selfDyn == null) {
+            yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
+          }
+          yield EResult.ok(
+              new CodeValue(
+                  Code.of(loc, selfDyn),
+                  EvalOutcome.ofValue(ValueDynamic.stack(xx, p.type()))));
+        }
       };
     }
     if (!(ck instanceof ConstKey.Str keyStr)) {
@@ -232,12 +252,10 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         || !(selfSome.value() instanceof ValueDynamic selfVd)) {
       return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
     }
-    var childSource = new ValueDynamicSource.Field(selfVd.source(), keyStr.value());
-    var fieldUse = DynUtil.renderSource(xx, loc, childSource);
-    return EResult.ok(
-        new CodeValue(
-            Code.of(loc, fieldUse),
-            EvalOutcome.ofValue(new ValueDynamic(childSource, valueType))));
+    return EResult.err(
+        loc,
+        "TypeMapDynamic::field: map key access via source-tracked value no longer supported;"
+            + " use map.get(key) explicitly");
   }
 
   @Override

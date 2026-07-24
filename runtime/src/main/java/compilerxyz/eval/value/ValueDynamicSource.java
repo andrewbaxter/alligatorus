@@ -12,9 +12,10 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
-import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
 
@@ -71,10 +72,18 @@ public sealed interface ValueDynamicSource
     }
   }
 
-  record Field(ValueDynamicSource base, String key) implements ValueDynamicSource {
+  record Field(
+      ValueDynamicSource base,
+      JavaInternalName klass,
+      String slotName,
+      JavaDataDescriptor slotDesc)
+      implements ValueDynamicSource {
     @Override
     public CodeDynamic realize(ExprContext xx, QExprId loc) {
-      return DynUtil.buildFieldGetSequence(loc, base.realize(xx, loc), key);
+      var seq = new JavaBytecodeSequence();
+      seq.add(base.realize(xx, loc));
+      seq.add(JavaBytecodeUtils.accessField(loc, klass, slotName, slotDesc));
+      return new CodeDynamic(loc, seq);
     }
 
     @Override
@@ -82,4 +91,5 @@ public sealed interface ValueDynamicSource
       return base.drop(loc);
     }
   }
+
 }

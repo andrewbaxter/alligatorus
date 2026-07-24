@@ -22,16 +22,27 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenTypeIds;
+import compilerxyz.eval.BindingId;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
@@ -40,8 +51,11 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,
+        AspectBind,
+        AspectBindDynamic,
         AspectConsumeDynamic,
         AspectField,
+        AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
 
@@ -70,12 +84,31 @@ public record TypeEResultDynamic(Type elementType)
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public EResult<AspectBind.BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.bindViaTarget(xx, loc, cv);
+  }
+
+  @Override
+  public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
+  }
+
+  @Override
+  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override

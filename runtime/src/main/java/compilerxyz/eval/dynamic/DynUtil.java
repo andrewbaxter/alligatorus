@@ -86,21 +86,6 @@ public final class DynUtil {
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
-    public static CodeDynamic buildFieldGetSequence(QExprId loc, CodeDynamic baseCode, String fieldKey) {
-        var seq = new JavaBytecodeSequence();
-        seq.add(baseCode);
-        seq.add(JavaBytecodeUtils.literalString(loc, fieldKey));
-        seq.add(
-                JavaBytecodeUtils.callInterfaceMethod(
-                        loc,
-                        JvmConstants.INTNAME_MAP,
-                        "get",
-                        JavaMethodDescriptor.fromParts(
-                                JvmConstants.DESC_OBJECT,
-                                TList.of(JvmConstants.DESC_OBJECT))));
-        return new CodeDynamic(loc, seq);
-    }
-
     /**
      * Shared JVM foreach-loop skeleton. Callers provide the type-specific
      * pieces (iterator setup, element decode, element slot, store opcode, body)
@@ -160,13 +145,6 @@ public final class DynUtil {
         return new CodeValue(
             compilerxyz.eval.Code.of(loc, new CodeDynamic(loc, seq)),
             EvalOutcome.NO_VALUE);
-    }
-
-    public static EResult<CodeValue> fieldUseDefaultDynamic(
-            ExprContext xx, QExprId loc, Type self, ValueDynamicSource baseSource, String javaFieldName) {
-        var childSource = new ValueDynamicSource.Field(baseSource, javaFieldName);
-        var code = compilerxyz.eval.Code.of(loc, renderSource(xx, loc, childSource));
-        return EResult.ok(new CodeValue(code, EvalOutcome.ofValue(new ValueDynamic(childSource, self))));
     }
 
     public static EResult<CodeValue> elementUseDefaultDynamic(
@@ -392,32 +370,6 @@ public final class DynUtil {
             return nullStackRes.reerr();
         }
         var nullStack = nullStackRes.requireValue("DynUtil::dynamicSet null stack aspect");
-        if (selfDyn.source() instanceof ValueDynamicSource.Field fieldSrc) {
-            if (selfCode == null) {
-                return EResult.err(
-                        loc,
-                        "TODO assertion set left hand doesn't evaluate to dynamic code (empty)");
-            }
-            CodeDynamic baseCode = renderSource(xx, loc, fieldSrc.base());
-            var setSeq = new JavaBytecodeSequence();
-            setSeq.add(baseCode);
-            setSeq.add(JavaBytecodeUtils.literalString(loc, fieldSrc.key()));
-            setSeq.add(valueCode);
-            setSeq.add(
-                    JavaBytecodeUtils.callInterfaceMethod(
-                            loc,
-                            JavaInternalName.fromClass(Map.class),
-                            "put",
-                            JavaMethodDescriptor.fromParts(
-                                    JvmConstants.DESC_OBJECT,
-                                    TList.of(
-                                            JvmConstants.DESC_OBJECT,
-                                            JvmConstants.DESC_OBJECT))));
-            setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-            setSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-            var setJs = new CodeDynamic(loc, setSeq);
-            return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
-        }
         if (selfDyn.source() instanceof ValueDynamicSource.Binding bindingSrc) {
             var seq = new JavaBytecodeSequence();
             if (bindingSrc.key() instanceof compilerxyz.eval.BindingId.Local local) {

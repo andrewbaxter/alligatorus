@@ -289,6 +289,18 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     var accessedType = recordFieldType(f);
     int accessedSlot = slotInfo.slotOfKey().get(accessedKey);
     boolean stackRooted = DynUtil.isStackRooted(baseSource);
+    if (!stackRooted) {
+      var useDynOpt = GenAspectFieldUseDynamic.getMaybe(xx, accessedType);
+      if (useDynOpt instanceof Opt.Some<AspectFieldUseDynamic> useDynSome) {
+        var childSource =
+            new ValueDynamicSource.Field(
+                baseSource,
+                klass,
+                CompositeClassEmitter.slotFieldName(accessedSlot),
+                CompositeClassEmitter.slotDescriptor(xx, accessedType));
+        return useDynSome.value().aspectFieldUseDynamicFieldUseDynamic(xx, loc, childSource);
+      }
+    }
     var out = new JavaBytecodeSequence();
     out.add(baseSource.realize(xx, loc));
     if (stackRooted) {
@@ -508,10 +520,8 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
-      compilerxyz.eval.value.ValueDynamicSource baseSource,
-      String javaFieldName) {
-    var childSource = new compilerxyz.eval.value.ValueDynamicSource.Field(baseSource, javaFieldName);
-    var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, childSource));
+      compilerxyz.eval.value.ValueDynamicSource source) {
+    var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, source));
     var newFields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
       var t =
@@ -524,7 +534,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           };
       newFields.put(entry.getKey(), new RecordField.Dynamic(t));
     }
-    Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(childSource)), newFields);
+    Value innerRecord = new Record(Opt.some(new RecordBaseDynamic(source)), newFields);
     return EResult.ok(new CodeValue(fieldCode, EvalOutcome.ofValue(innerRecord)));
   }
 

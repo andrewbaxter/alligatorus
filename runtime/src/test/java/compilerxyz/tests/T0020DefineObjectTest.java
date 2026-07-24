@@ -167,7 +167,16 @@ public final class T0020DefineObjectTest {
                                                                     mb.literalNull()))),
                                                         new TestMb.RecordPair(
                                                             "keys",
-                                                            mb.stage(mb.panic(mb.str("unimpl keys"))))))))))),
+                                                            mb.stage(
+                                                                mb.seqOf(
+                                                                    mb.return_(
+                                                                        mb.call(
+                                                                            mb.field(
+                                                                                mb.call(
+                                                                                    mb.typesList(),
+                                                                                    mb.typesConstkey()),
+                                                                                mb.str("new")),
+                                                                            mb.tupleOf())))))))))))),
                             mb.bind(
                                 "mnfr",
                                 mb.call(
