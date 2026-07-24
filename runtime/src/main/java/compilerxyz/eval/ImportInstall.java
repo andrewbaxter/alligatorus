@@ -19,21 +19,14 @@ public final class ImportInstall {
           depResult.requireValue("ImportInstall::installDefSetToDynamic dependency loader");
       depLoaders.add(depLoader);
     }
-    var existing = DefinitionSetClassLoader.SHARED_CACHE.getIfPresent(set.defSetId);
-    if (!xx.vx.ix.installedDefSets.add(set.defSetId)) {
-      if (existing == null) {
-        throw new AssertionError(
-            "definition set " + set.defSetId + " marked installed but loader was GC'd");
-      }
-      return EResult.ok(existing);
+    if (xx.vx.ix.classLoader == null) {
+      xx.vx.ix.classLoader =
+          new DefinitionSetClassLoader(
+              DefinitionSetClassLoader.class.getClassLoader(), depLoaders);
     }
-    var loader =
-        existing != null
-            ? existing
-            : new DefinitionSetClassLoader(
-                DefinitionSetClassLoader.class.getClassLoader(), depLoaders);
-    if (existing == null) {
-      DefinitionSetClassLoader.SHARED_CACHE.put(set.defSetId, loader);
+    var loader = xx.vx.ix.classLoader;
+    if (!xx.vx.ix.installedDefSets.add(set.defSetId)) {
+      return EResult.ok(loader);
     }
     var installResult = installCompiledArtifacts(xx, loc, set, loader);
     if (installResult.hasErrors()) {

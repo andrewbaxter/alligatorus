@@ -1,13 +1,11 @@
 package compilerxyz.eval.dynamic;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.TypeId;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -49,16 +47,6 @@ public final class CompositeClassEmitter {
     }
   }
 
-  private static final Cache<StructuralKey, Class<?>> CACHE =
-      Caffeine.newBuilder().weakValues().build();
-
-  private static final Cache<String, Class<?>> CACHE_BY_NAME =
-      Caffeine.newBuilder().weakValues().build();
-
-  public static @Nullable Class<?> findLoadedByName(String binaryName) {
-    return CACHE_BY_NAME.getIfPresent(binaryName);
-  }
-
   public static final String BINARY_NAME_PREFIX = "compilerxyz.eval.gen.Composite$";
 
   public static String slotFieldName(int slotIndex) {
@@ -89,26 +77,31 @@ public final class CompositeClassEmitter {
 
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
     var key = new StructuralKey(sortedTypes);
-    var existing = CACHE.getIfPresent(key);
+    var cache = xx.vx.ix.compositeCache;
+    var existing = cache.get(key);
     if (existing != null) {
       return existing;
     }
 
+    if (xx.vx.ix.classLoader == null) {
+      xx.vx.ix.classLoader =
+          new DefinitionSetClassLoader(
+              DefinitionSetClassLoader.class.getClassLoader(),
+              new compilerxyz.util.TList<>());
+    }
+    var loader = xx.vx.ix.classLoader;
     var binaryName = binaryNameFor(key);
     var bytecode = emitBytecode(xx, binaryName, sortedTypes);
-    var loader =
-        new CompositeClassLoader(CompositeClassEmitter.class.getClassLoader(), binaryName, bytecode);
+    loader.registerClass(binaryName, bytecode);
     Class<?> defined;
     try {
-      defined = loader.loadClass(binaryName);
+      defined = Class.forName(binaryName, true, loader);
     } catch (ClassNotFoundException e) {
       throw new AssertionError(
-          "CompositeClassEmitter: freshly-defined class not loadable: " + binaryName, e);
+          "CompositeClassEmitter: freshly-registered class not loadable: " + binaryName, e);
     }
-
-    var winner = CACHE.get(key, k -> defined);
-    CACHE_BY_NAME.put(winner.getName(), winner);
-    return winner;
+    cache.put(key, defined);
+    return defined;
   }
 
   public static String internalNameFor(ExprContext xx, TList<Type> sortedTypes) {
@@ -193,22 +186,4 @@ public final class CompositeClassEmitter {
     };
   }
 
-  private static final class CompositeClassLoader extends ClassLoader {
-    private final String binaryName;
-    private final byte[] bytecode;
-
-    CompositeClassLoader(ClassLoader parent, String binaryName, byte[] bytecode) {
-      super(parent);
-      this.binaryName = binaryName;
-      this.bytecode = bytecode;
-    }
-
-    @Override
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
-      if (name.equals(binaryName)) {
-        return defineClass(name, bytecode, 0, bytecode.length);
-      }
-      throw new ClassNotFoundException(name);
-    }
-  }
 }

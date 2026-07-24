@@ -9,6 +9,8 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TSet;
+import java.util.HashMap;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 public final class CompileImportContext {
@@ -22,6 +24,10 @@ public final class CompileImportContext {
   public final TSet<DefSetId> installedDefSets = new TSet<>();
 
   public final SourceId sourceId;
+
+  public @Nullable DefinitionSetClassLoader classLoader = null;
+
+  public final Map<Object, Class<?>> compositeCache = new HashMap<>();
 
   public CompileImportContext(
       GlobalContext gx,

@@ -290,9 +290,12 @@ public final class Eval {
               binaryName,
               rootSome.value(),
               vx.externals);
-      var loader =
-          new DefinitionSetClassLoader(
-              DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);
+      if (xx.vx.ix.classLoader == null) {
+        xx.vx.ix.classLoader =
+            new DefinitionSetClassLoader(
+                DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);
+      }
+      var loader = xx.vx.ix.classLoader;
       loader.registerClass(emitted.binaryName(), emitted.bytecode());
 
       var rootStaticFields = new TOrderedMap<String, Object>();

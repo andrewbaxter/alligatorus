@@ -31,6 +31,8 @@ import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
@@ -73,6 +75,7 @@ public record TypeObjectDynamic(
         AspectDropDynamicLight,
         AspectBind,
         AspectBindDynamic,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic {
@@ -175,6 +178,7 @@ public record TypeObjectDynamic(
     if (key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
@@ -402,6 +406,11 @@ public record TypeObjectDynamic(
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
 

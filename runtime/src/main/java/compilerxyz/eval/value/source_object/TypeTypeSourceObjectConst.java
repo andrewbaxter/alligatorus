@@ -542,68 +542,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    if (!(cv.value() instanceof Opt.Some<Value> some)
-        || !(some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst instance)
-        || !(instance.data() instanceof Value)) {
-      return EResult.err(
-          loc,
-          "TypeTypeSourceObjectConst::toDynamic: expected source-object ValueObjectConst, got "
-              + (cv.value() instanceof Opt.Some<Value> s
-                  ? s.value().getClass().getName()
-                  : "no value"));
-    }
-    Type underlyingType = type_.underlyingType;
-    if (underlyingType == null) {
-      return EResult.err(
-          loc, "TypeTypeSourceObjectConst::toDynamic: object underlying type not finalised");
-    }
-    var erb = new Erb(loc);
-    var rawUnderlyingCv =
-        new CodeValue(Code.none(loc), EvalOutcome.ofValue((Value) instance.data()));
-    var convertedOpt =
-        erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, rawUnderlyingCv));
-    if (convertedOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var converted = convertedOpt.get();
-    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-    if (consumeRes.hasErrors()) return consumeRes.reerr();
-    var underlyingConsume =
-        consumeRes.requireValue("TypeTypeSourceObjectConst::toDynamic consume");
-    var underlyingJsRes = underlyingConsume.aspectConsumeDynamicToDynamic(xx, loc, converted);
-    if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-    var underlyingJs = underlyingJsRes.requireValue("TypeTypeSourceObjectConst::toDynamic toDynamic");
-
-    var set = type_.set;
-    if (set == null) {
-      return EResult.err(
-          loc, "TypeTypeSourceObjectConst::toDynamic: object has no definition set reference");
-    }
-    xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-    var objectIndex = set.objects.indexOf(type_);
-    if (objectIndex < 0) {
-      return EResult.err(
-          loc,
-          "TypeTypeSourceObjectConst::toDynamic: object '"
-              + (type_.name == null ? "(unnamed)" : type_.name)
-              + "' not registered in its owning def-set");
-    }
-    var objInternalName =
-        SourceObjectEmitter.internalNameFor(
-            set.defSetId, objectIndex);
-    var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
-    var underlyingDesc = underlyingConsume.aspectConsumeDynamicJvmClass(xx);
-    var ctorDesc =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            TList.of(underlyingDesc));
-    var result =
-        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
-    if (erb.errors().isEmpty()) {
-      return EResult.ok(result);
-    }
-    return EResult.mixed(result, erb.errors());
+    return type_.aspectConsumeDynamicToDynamic(xx, loc, cv);
   }
 
   @Override
@@ -639,58 +578,11 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public Type aspectTypeType(Value value) {
-    if (!(value instanceof compilerxyz.eval.value.object_.ValueObjectConst inst)
-        || !(inst.type() instanceof TypeTypeSourceObjectConst)) {
-      throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: expected source-object ValueObjectConst, got "
-              + (value == null ? "null" : value.getClass().getName()));
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst voc
+        && voc.data() instanceof Type t) {
+      return t;
     }
-    var set = type_.set;
-    if (set == null) {
-      throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: object '"
-              + (type_.name == null ? "(unnamed)" : type_.name)
-              + "' has no definition set reference");
-    }
-    var binaryName = type_.compiledBinaryName;
-    if (binaryName == null) {
-      throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: object '"
-              + (type_.name == null ? "(unnamed)" : type_.name)
-              + "' has not been compiled (compiledBinaryName == null)");
-    }
-    var loader =
-        DefinitionSetClassLoader.SHARED_CACHE.getIfPresent(set.defSetId);
-    if (loader == null) {
-      throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: def-set "
-              + set.defSetId
-              + " has no installed class loader (call ImportInstall.installDefSetToDynamic first)");
-    }
-    Class<?> cls;
-    try {
-      cls = Class.forName(binaryName, true, loader);
-    } catch (ClassNotFoundException e) {
-      throw new AssertionError(
-          "TypeTypeSourceObjectConst::type_: generated class " + binaryName + " failed to load", e);
-    }
-    Object instance;
-    try {
-      instance = cls.getDeclaredConstructor(Object.class).newInstance(inst.data());
-    } catch (ReflectiveOperationException e) {
-      throw new AssertionError(
-          "TypeTypeSourceObjectConst::type_: generated class "
-              + binaryName
-              + " failed to instantiate",
-          e);
-    }
-    if (!(instance instanceof Type t)) {
-      throw new IllegalStateException(
-          "TypeTypeSourceObjectConst::type_: generated class "
-              + binaryName
-              + " does not implement Type — object must declare a Type builtin-interface impl");
-    }
-    return t;
+    return type_;
   }
 
   @Override

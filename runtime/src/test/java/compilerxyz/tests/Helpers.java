@@ -31,7 +31,6 @@ public final class Helpers {
     var artifacts = new TestArtifacts();
     var gx = GlobalContext.newContext(new TestSources(sources), artifacts);
 
-    DefinitionSetClassLoader.SHARED_CACHE.invalidateAll();
     return new GxAndArtifacts(gx, artifacts);
   }
 

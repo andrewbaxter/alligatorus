@@ -166,8 +166,18 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+    if (setId == null || set == null) {
+      return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+          compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    }
+    var objectIndex = set.objects.indexOf(this);
+    if (objectIndex < 0) {
+      return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+          compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    }
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(setId, objectIndex)));
   }
 
   @Override
@@ -185,6 +195,9 @@ public final class TypeSourceObjectDynamic
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(identity)) {
+      return Opt.some(this);
+    }
+    if (key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
 
@@ -228,7 +241,27 @@ public final class TypeSourceObjectDynamic
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(loc, "TypeSourceObjectDynamic::toDynamic: CodeValue has no dynamic code");
+    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+      return EResult.err(loc, "TypeSourceObjectDynamic::toDynamic: no compile-time value");
+    }
+    if (!(some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst voc)) {
+      return EResult.err(
+          loc,
+          "TypeSourceObjectDynamic::toDynamic: expected ValueObjectConst, got "
+              + some.value().getClass().getName());
+    }
+    Object hostValue = voc.data();
+    if (set != null) {
+      xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
+    }
+    var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var id = new BindingId.Local(key);
+    xx.vx.externals.add(
+        new compilerxyz.eval.EvalContext.ExternalEntry(
+            key, this, new compilerxyz.eval.External(hostValue.getClass(), hostValue)));
+    return EResult.ok(
+        compilerxyz.eval.dynamic.BindingCode.bindingUse(
+            new compilerxyz.eval.dynamic.CodeLoc.Some(loc), xx.vx, id));
   }
 
   @Override

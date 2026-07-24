@@ -1,18 +1,12 @@
 package compilerxyz.eval;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import compilerxyz.eval.dynamic.CompositeClassEmitter;
 
 public final class DefinitionSetClassLoader extends ClassLoader {
-
-  public static final Cache<DefSetId, DefinitionSetClassLoader> SHARED_CACHE =
-      Caffeine.newBuilder().weakValues().build();
 
   private final TList<DefinitionSetClassLoader> dependencyLoaders;
   private final TMap<String, byte[]> pendingBytecode = new TMap<>();
@@ -39,11 +33,6 @@ public final class DefinitionSetClassLoader extends ClassLoader {
       var defined = defineClass(name, bytes, 0, bytes.length);
       injectExternals(defined, name);
       return defined;
-    }
-
-    if (name.startsWith(CompositeClassEmitter.BINARY_NAME_PREFIX)) {
-      var resolved = CompositeClassEmitter.findLoadedByName(name);
-      if (resolved != null) return resolved;
     }
     for (var dep : dependencyLoaders) {
       try {

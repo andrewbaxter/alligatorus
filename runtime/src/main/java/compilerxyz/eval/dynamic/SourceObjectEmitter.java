@@ -468,7 +468,7 @@ public final class SourceObjectEmitter {
       seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
     }
     target.emit(seq, ctx, bodyCode);
-    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ARETURN));
+    seq.add(JavaBytecodeUtils.inst(loc, returnOpcodeFor(retDesc.value().charAt(0))));
     JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
   }
 

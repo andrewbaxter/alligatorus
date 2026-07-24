@@ -146,8 +146,62 @@ public final class ValueSourceObjectConst {
           var underlying =
               underVal.requireValue(
                   "ValueSourceObjectConst::exporterFromArtifactData underlying value");
+          var installRes =
+              compilerxyz.eval.ImportInstall.installDefSetToDynamic(xx, loc, dt.set);
+          if (installRes.hasErrors()) {
+            installRes.drainInto(errors);
+            return EResult.errs(errors);
+          }
+          var loader = xx.vx.ix.classLoader;
+          if (loader == null) {
+            return EResult.err(
+                loc,
+                "ValueSourceObjectConst::exporterFromArtifactData: classLoader missing after install");
+          }
+          var binaryName = dt.compiledBinaryName;
+          if (binaryName == null) {
+            return EResult.err(
+                loc,
+                "ValueSourceObjectConst::exporterFromArtifactData: source object '"
+                    + (dt.name == null ? "(unnamed)" : dt.name)
+                    + "' has not been compiled");
+          }
+          Class<?> cls;
+          try {
+            cls = Class.forName(binaryName, true, loader);
+          } catch (ClassNotFoundException e) {
+            return EResult.err(
+                loc,
+                "ValueSourceObjectConst::exporterFromArtifactData: class " + binaryName + " not loadable");
+          }
+          java.lang.reflect.Constructor<?> ctor = null;
+          for (var c : cls.getDeclaredConstructors()) {
+            if (c.getParameterCount() == 1) {
+              ctor = c;
+              break;
+            }
+          }
+          if (ctor == null) {
+            return EResult.err(
+                loc,
+                "ValueSourceObjectConst::finalizer: " + binaryName + " has no single-arg constructor");
+          }
+          Object underlyingHost;
+          if (underlying instanceof compilerxyz.eval.value.object_.ValueObjectConst uvoc) {
+            underlyingHost = uvoc.data();
+          } else {
+            underlyingHost = underlying;
+          }
+          Object instance;
+          try {
+            instance = ctor.newInstance(underlyingHost);
+          } catch (ReflectiveOperationException | IllegalArgumentException e) {
+            return EResult.err(
+                loc,
+                "ValueSourceObjectConst::finalizer: cannot instantiate " + binaryName + ": " + e.getMessage());
+          }
           ExporterAny out = new compilerxyz.eval.value.object_.ValueObjectConst(
-              new TypeTypeSourceObjectConst(dt), underlying);
+              new TypeTypeSourceObjectConst(dt), instance);
           if (errors.isEmpty()) return EResult.ok(out);
           return EResult.mixed(out, errors);
         }
