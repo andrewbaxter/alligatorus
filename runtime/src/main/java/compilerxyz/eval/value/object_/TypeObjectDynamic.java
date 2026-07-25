@@ -7,6 +7,14 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -46,6 +54,7 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectAspect;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -72,6 +81,7 @@ public record TypeObjectDynamic(
         Type,
         compilerxyz.gen.AspectFieldUseDynamic,
         compilerxyz.eval.TypeAspect,
+        AspectArtifact,
         AspectAspect,
         AspectField,
         AspectConsumeDynamic,
@@ -82,7 +92,8 @@ public record TypeObjectDynamic(
         AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
-        AspectStackValueDynamic {
+        AspectStackValueDynamic,
+        ExporterAny {
 
   public String typeDesc() {
     return meta.typeDesc();
@@ -170,11 +181,69 @@ public record TypeObjectDynamic(
   }
 
   @Override
+  public ArtifactExporter aspectArtifactExporter() {
+    return ExporterRoot.OBJECT_DYNAMIC;
+  }
+
+  @Override
+  public EResult<Type> exporterAnyAsType() {
+    return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Value> exporterAnyAsValue() {
+    return EResult.ok(ValueObjectConst.ofType(this));
+  }
+
+  public static final ExporterRootDelegate DELEGATE =
+      new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+            ExprContext xx,
+            QExprId loc,
+            ExporterAny self,
+            java.util.function.Function<compilerxyz.safejson.JsonValue, ArtifactBody> makeBody) {
+          if (!(self instanceof TypeObjectDynamic obj)) {
+            return EResult.err(
+                loc,
+                "TypeObjectDynamic::exporterRootDelegateSelfExport: expected TypeObjectDynamic,"
+                    + " got "
+                    + self.getClass());
+          }
+          return EResult.ok(
+              new Artifact.Body(
+                  makeBody.apply(
+                      new compilerxyz.safejson.JsonValueString(obj.hostClass.getName()))));
+        }
+
+        @Override
+        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+            ExprContext xx,
+            QExprId loc,
+            Opt<ArtifactIdSource> id,
+            compilerxyz.safejson.JsonValue data) {
+          if (!(data instanceof compilerxyz.safejson.JsonValueString s)) {
+            return EResult.err(
+                loc, "TypeObjectDynamic::import: expected host class name string, got " + data);
+          }
+          var found = compilerxyz.gen.GenDynamicTypes.byClassName(s.value());
+          if (!(found instanceof Opt.Some<Type> some)) {
+            return EResult.err(
+                loc,
+                "TypeObjectDynamic::import: no registered dynamic type for host class "
+                    + s.value());
+          }
+          return EResult.ok(compilerxyz.util.MustCast.mustCast(ExporterAny.class, some.value()));
+        }
+      };
+
+  @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
       return Opt.some(this);
     }
-    if (key.equals(GenAspectConsumeDynamic.AspectId)
+    if (key.equals(GenAspectArtifact.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectElementUseDynamicBind.AspectId)

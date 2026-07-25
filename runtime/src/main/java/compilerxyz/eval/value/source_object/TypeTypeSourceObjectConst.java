@@ -490,7 +490,8 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           var ifaceVal =
                               ifaceAny.requireValue(
                                   "TypeTypeSourceObjectConst::finalizer user iface artifact");
-                          if (!(ifaceVal instanceof TypeSourceInterfaceDynamic ic)) {
+                          if (!(ifaceVal
+                              instanceof TypeSourceInterfaceDynamic.ImportedInterfaceConst ic)) {
                             throw new IllegalStateException(
                                 "TypeTypeSourceObjectConst finalizer: user iface artifact resolved to "
                                     + ifaceVal.getClass());
@@ -528,12 +529,12 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   public record ImportedSourceObjectConst(TypeSourceObjectDynamic type_) implements ExporterAny {
     @Override
     public EResult<Type> exporterAnyAsType() {
-      return EResult.ok(new TypeTypeSourceObjectConst(type_));
+      return EResult.ok(type_);
     }
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeTypeSourceObjectConst(type_)));
+      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(type_));
     }
   }
 

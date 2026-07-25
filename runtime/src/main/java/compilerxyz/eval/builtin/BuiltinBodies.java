@@ -7,6 +7,7 @@ import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.CompileId;
 import compilerxyz.eval.ConstEval;
 import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EvalContext;
@@ -27,6 +28,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TMap;
+import compilerxyz.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
 
@@ -77,9 +79,13 @@ public final class BuiltinBodies {
   }
 
   @BuiltinPath(value = "eval.scope", scopeId = 5006L)
-  public static Scope scope(ExprContext xx, TMap<ConstKey, Binding> entries) {
+  public static Scope scope(ExprContext xx, TOrderedMap<ConstKey, Binding> entries) {
     var scope = new Scope();
-    scope.pushAll(entries);
+    var named = new TMap<ConstKey, Binding>();
+    for (var entry : entries.entrySet()) {
+      named.put(entry.getKey(), entry.getValue());
+    }
+    scope.pushAll(named);
     return scope;
   }
 
@@ -121,6 +127,15 @@ public final class BuiltinBodies {
   @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
   public static Code codeNone(ExprContext xx, QExprId loc) {
     return Code.none(loc);
+  }
+
+  @BuiltinPath(value = "eval.extract_constkey", scopeId = 5019L)
+  public static ConstKey extractConstkey(ExprContext xx, QExprId loc, Value value) {
+    var res = Eval.extractConstKey(xx, loc, value);
+    if (res instanceof compilerxyz.util.Result.Err<ConstKey, String> err) {
+      throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
+    }
+    return ((compilerxyz.util.Result.Ok<ConstKey, String>) res).value();
   }
 
   @BuiltinPath(value = "eval.stack", scopeId = 5013L)

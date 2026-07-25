@@ -45,6 +45,7 @@ public record TypeConstkeyDynamic()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectInitialBind,
+        compilerxyz.gen.AspectStackValueDynamic,
         ExporterAny {
 
 
@@ -70,10 +71,16 @@ public record TypeConstkeyDynamic()
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)) {
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -112,11 +119,20 @@ public record TypeConstkeyDynamic()
       return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");
     }
     var s = stringConstSome.value().aspectStringConstGet(some.value());
-    var canonical = new ConstKey.Str(s).toCanonical();
-    var literal = JavaBytecodeUtils.literalString(loc, canonical);
+    var strInternal =
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(ConstKey.Str.class);
+    var ctorDesc =
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
+            compilerxyz.util.TList.of(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(String.class)));
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(JavaBytecodeUtils.newInstance(loc, strInternal));
+    seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+    seq.add(JavaBytecodeUtils.literalString(loc, s));
+    seq.add(JavaBytecodeUtils.invokeSpecial(loc, strInternal, "<init>", ctorDesc));
     return EResult.ok(
         new CodeValue(
-            Code.of(loc, literal),
+            Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
             EvalOutcome.ofValue(ValueDynamic.stack(new TypeConstkeyDynamic(), 1))));
   }
 

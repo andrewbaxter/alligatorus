@@ -196,6 +196,8 @@ public final class BuiltinPathScanner {
       "compilerxyz.util.TList",
           ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic"),
       "compilerxyz.util.TMap",
+          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"),
+      "compilerxyz.util.TOrderedMap",
           ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
 
   private static final java.util.Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = java.util.Map.of(

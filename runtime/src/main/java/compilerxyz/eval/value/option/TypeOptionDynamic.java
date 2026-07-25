@@ -9,9 +9,12 @@ import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.safejson.JsonValues;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -57,7 +60,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @Builtin(uniqueId = 6008L)
-public record TypeOptionDynamic(Type elementType)
+public final class TypeOptionDynamic
     implements
         
         compilerxyz.gen.AspectSet,
@@ -71,6 +74,19 @@ public record TypeOptionDynamic(Type elementType)
         AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
+
+  public final Type elementType;
+  public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new ArtifactSupport.ArtifactIdHolder();
+
+  public TypeOptionDynamic(Type elementType) {
+    this.elementType = elementType;
+  }
+
+  public Type elementType() {
+    return elementType;
+  }
+
 
 
   @Override
@@ -159,6 +175,13 @@ public record TypeOptionDynamic(Type elementType)
     return ExporterRoot.OPTION_DYNAMIC;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(
+        new ArtifactBody(
+            new compilerxyz.safejson.JsonValueNull(),
+            new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -167,19 +190,95 @@ public record TypeOptionDynamic(Type elementType)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeOptionDynamic::exporterRootDelegateSelfExport: recursive export_artifact (eval/artifact.rs) port"
-                  + " deferred");
+          if (!(self instanceof TypeOptionDynamic option)) {
+            return EResult.err(
+                loc,
+                "TypeOptionDynamic::exporterRootDelegateSelfExport: expected TypeOptionDynamic,"
+                    + " got "
+                    + self.getClass());
+          }
+          var cell = option.artifactIdCell;
+          var errors = new TList<ExprErr>();
+          var artifact =
+              ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  cell,
+                  () -> {
+                    var elementArtRes = option.elementType().exportArtifact(xx, loc);
+                    elementArtRes.drainInto(errors);
+                    var elementArt =
+                        elementArtRes.valueOrNull() != null
+                            ? elementArtRes.requireValue(
+                                "TypeOptionDynamic::exporterExport element")
+                            : nullArtifact();
+                    var body = new ArtifactOptionType(elementArt);
+                    return makeBody.apply(JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeOptionDynamic::exporterRootDelegateSelfFromArtifactData: recursive import_type_artifact"
-                  + " (eval/artifact.rs) port deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactOptionType body;
+                try {
+                  body = JsonValues.fromValue(ArtifactOptionType.class, raw);
+                } catch (RuntimeException e) {
+                  return new compilerxyz.util.Result.Err<>(
+                      "TypeOptionDynamic data: failed to parse ArtifactOptionType: "
+                          + e.getMessage());
+                }
+                return new compilerxyz.util.Result.Ok<>(body);
+              },
+              (body) -> {
+                var holder = new ExporterAny[] {null};
+                ExporterAny stub =
+                    new ExporterAny() {
+                      @Override
+                      public EResult<Type> exporterAnyAsType() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeOptionDynamic import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsType();
+                      }
+
+                      @Override
+                      public EResult<Value> exporterAnyAsValue() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeOptionDynamic import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsValue();
+                      }
+                    };
+                var deps = new TList<Artifact>();
+                deps.add(body.elementType());
+                ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var elementRes =
+                          ArtifactSupport.independentFinalizeImportTypeArtifact(
+                              xx2, loc2, body.elementType());
+                      var elementT =
+                          elementRes.requireValue("TypeOptionDynamic::finalizer element type");
+                      var out = new TypeOptionDynamic(elementT);
+                      out.artifactIdCell.set(idValue);
+                      holder[0] = out;
+                    };
+                return new compilerxyz.util.Result.Ok<>(
+                    new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+              });
         }
       };
 
@@ -232,6 +331,15 @@ public record TypeOptionDynamic(Type elementType)
               "value",
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)));
+      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+      if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
+      var elemDesc =
+          elemConsumeRes
+              .requireValue("TypeOptionDynamic::field value AspectConsumeDynamic")
+              .aspectConsumeDynamicJvmClass(xx);
+      if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
+        seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+      }
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),

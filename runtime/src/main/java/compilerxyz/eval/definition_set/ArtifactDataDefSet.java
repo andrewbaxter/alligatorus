@@ -10,4 +10,5 @@ public record ArtifactDataDefSet(
     TList<Artifact> dependencies,
     TList<Artifact> functions,
     TList<Artifact> interfaces,
-    TList<Artifact> objects) implements SafeJsonSerializable {}
+    TList<Artifact> objects,
+    TList<Artifact> unions) implements SafeJsonSerializable {}

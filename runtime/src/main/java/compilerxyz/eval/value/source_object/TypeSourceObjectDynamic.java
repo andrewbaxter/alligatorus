@@ -162,6 +162,12 @@ public final class TypeSourceObjectDynamic
     return "object(" + (name != null ? name : "?") + ")";
   }
 
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
+      ExprContext xx, QExprId loc) {
+    return new TypeTypeSourceObjectConst(this).exportArtifact(xx, loc);
+  }
+
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceObjectDynamic.class, "source_object_dynamic");
 
                 public Type valueType() {

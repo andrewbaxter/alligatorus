@@ -47,6 +47,7 @@ public final class GenMain {
     var scannedLeaves =
         compilerxyz.codegen.experimental.DynamicTypeScanner.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.setScannedLeafDescriptors(scannedLeaves);
+    DynamicTypesGen.run(outRoot, formatter, scannedLeaves);
 
     var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.run(outRoot, formatter, aspectIds, scan.builtins());

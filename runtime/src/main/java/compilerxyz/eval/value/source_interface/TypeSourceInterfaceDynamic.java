@@ -255,6 +255,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             iface.isAspect,
                             iface.builtinKind,
                             iface.compiledBinaryName,
+                            iface.compiledBytecode,
                             methodsOut);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
@@ -290,6 +291,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                 var iface =
                     new InterfaceData(body.defSetId(), body.identity(), body.builtinKind());
                 iface.compiledBinaryName = body.compiledBinaryName();
+                iface.compiledBytecode = body.compiledBytecode();
                 iface.description = body.description();
                 iface.isAspect = body.isAspect();
                 iface.artifactIdCell.set(idValue);

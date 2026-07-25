@@ -17,6 +17,7 @@ import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.safejson.JsonValues;
@@ -198,6 +199,15 @@ public final class DefinitionSet implements ExporterAny {
                             artRes.requireValue("DefinitionSet::exporterExport interface"));
                       }
                     }
+                    var unions = new TList<Artifact>(set.unions.size());
+                    for (var u : set.unions) {
+                      var uConst = new TypeTypeSourceUnionConst(u);
+                      var artRes = uConst.exportArtifact(xx, loc);
+                      artRes.drainInto(errors);
+                      if (artRes.valueOrNull() != null) {
+                        unions.add(artRes.requireValue("DefinitionSet::exporterExport union"));
+                      }
+                    }
                     var dependencies = new TList<Artifact>(set.dependencies.size());
                     for (var entry : set.dependencies.entrySet()) {
                       var depRes =
@@ -215,7 +225,8 @@ public final class DefinitionSet implements ExporterAny {
                             TList.from(dependencies),
                             TList.from(functions),
                             TList.from(interfaces),
-                            TList.from(objects));
+                            TList.from(objects),
+                            TList.from(unions));
                     return makeBody.apply(JsonValues.toValue(body));
                   });
           if (!errors.isEmpty()) {
@@ -253,6 +264,7 @@ public final class DefinitionSet implements ExporterAny {
                 deps.addAll(body.objects());
                 deps.addAll(body.functions());
                 deps.addAll(body.interfaces());
+                deps.addAll(body.unions());
                 deps.addAll(body.dependencies());
                 ArtifactSupport.ImportIndependentResult.Finalizer fin =
                     (xx2, loc2) -> {
@@ -295,11 +307,33 @@ public final class DefinitionSet implements ExporterAny {
                         var any =
                             ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
                         var v = any.requireValue("DefinitionSet::finalizer interface artifact");
-                        if (!(v instanceof TypeSourceInterfaceDynamic iConst)) {
+                        InterfaceData iData;
+                        if (v instanceof TypeSourceInterfaceDynamic iConst) {
+                          iData = iConst.data();
+                        } else if (v
+                            instanceof TypeSourceInterfaceDynamic.ImportedInterfaceConst impIc) {
+                          iData = impIc.data();
+                        } else {
                           throw new IllegalStateException(
                               "def-set interface artifact had wrong type: " + v.getClass());
                         }
-                        set.interfaces.add(iConst.data());
+                        set.interfaces.add(iData);
+                      }
+                      for (var uArt : body.unions()) {
+                        var any =
+                            ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, uArt);
+                        var v = any.requireValue("DefinitionSet::finalizer union artifact");
+                        TypeSourceUnionDynamic uData;
+                        if (v instanceof TypeTypeSourceUnionConst uConst) {
+                          uData = uConst.type_();
+                        } else if (v
+                            instanceof TypeTypeSourceUnionConst.ImportedSourceUnionConst impU) {
+                          uData = impU.type_();
+                        } else {
+                          throw new IllegalStateException(
+                              "def-set union artifact had wrong type: " + v.getClass());
+                        }
+                        set.unions.add(uData);
                       }
                       for (var dep : body.dependencies()) {
                         var any =

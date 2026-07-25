@@ -34,6 +34,12 @@ public final class DefinitionSetClassLoader extends ClassLoader {
       injectExternals(defined, name);
       return defined;
     }
+    if (name.startsWith(compilerxyz.eval.dynamic.CompositeClassEmitter.BINARY_NAME_PREFIX)) {
+      var slotDescs = compilerxyz.eval.dynamic.CompositeClassEmitter.decodeBinaryName(name);
+      var composite =
+          compilerxyz.eval.dynamic.CompositeClassEmitter.emitBytecode(name, slotDescs);
+      return defineClass(name, composite, 0, composite.length);
+    }
     for (var dep : dependencyLoaders) {
       try {
         return dep.loadClass(name);

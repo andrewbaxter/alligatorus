@@ -15,6 +15,7 @@ import compilerxyz.eval.value.null_.TypeNullConst;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.int_.TypeIntDynamic;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
 import compilerxyz.eval.value.record.Record;
@@ -88,6 +89,12 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
     @Override
     ExporterRootDelegate delegate() {
       return TypeIntDynamic.DELEGATE;
+    }
+  },
+  OBJECT_DYNAMIC("object_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeObjectDynamic.DELEGATE;
     }
   },
   OPTION_DYNAMIC("option_dynamic") {

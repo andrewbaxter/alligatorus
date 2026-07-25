@@ -643,6 +643,22 @@ public final class SourceObjectEmitter {
 
   private record HostMethodSpec(String hostName, JavaMethodDescriptor hostDescriptor) {}
 
+  private static TList<String> parameterDescriptors(String descriptor) {
+    var out = new TList<String>();
+    var i = 1;
+    while (i < descriptor.length() && descriptor.charAt(i) != ')') {
+      var start = i;
+      while (descriptor.charAt(i) == '[') i++;
+      if (descriptor.charAt(i) == 'L') {
+        i = descriptor.indexOf(';', i) + 1;
+      } else {
+        i++;
+      }
+      out.add(descriptor.substring(start, i));
+    }
+    return out;
+  }
+
   private static int parameterSlotCount(String descriptor) {
     var n = 0;
     var i = 1;
@@ -717,6 +733,8 @@ public final class SourceObjectEmitter {
     int hostSlot = 1;
     var argParamTypes = m.compiledArgParamTypes;
     if (argParamTypes != null) {
+      var hostParams = parameterDescriptors(hostDescStr);
+      int argIdx = 0;
       for (var argType : argParamTypes) {
         seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, hostSlot));
         var argConsumeOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType);
@@ -726,7 +744,14 @@ public final class SourceObjectEmitter {
                   + " does not implement AspectConsumeDynamic");
         }
         var argDesc = argConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+        var hostParam = hostParams.get(argIdx);
+        if (!hostParam.equals(argDesc.value())
+            && (argDesc.value().startsWith("L") || argDesc.value().startsWith("["))
+            && !argDesc.value().equals("Ljava/lang/Object;")) {
+          seq.add(JavaBytecodeUtils.cast(loc, argDesc));
+        }
         hostSlot += slotWidth(argDesc);
+        argIdx++;
       }
     }
 

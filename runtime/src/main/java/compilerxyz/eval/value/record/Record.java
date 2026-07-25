@@ -87,7 +87,7 @@ import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectType;
 
 @BuiltinIdentity(uniqueId = 6134L)
-public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
+public final class Record
     implements
         Type,
         Value,
@@ -101,6 +101,25 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         AspectRecord,
         AspectType,
         ExporterAny {
+
+  public final Opt<RecordBaseDynamic> base;
+  public final TOrderedMap<ConstKey, RecordField> fields;
+  public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new ArtifactSupport.ArtifactIdHolder();
+
+  public Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields) {
+    this.base = base;
+    this.fields = fields;
+  }
+
+  public Opt<RecordBaseDynamic> base() {
+    return base;
+  }
+
+  public TOrderedMap<ConstKey, RecordField> fields() {
+    return fields;
+  }
+
 
   @Override
   public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -572,7 +591,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                 loc,
                 "Record::exporterRootDelegateSelfExport: expected Record, got " + self.getClass());
           }
-          var cell = new ArtifactSupport.ArtifactIdHolder();
+          var cell = record.artifactIdCell;
           var errors = new TList<ExprErr>();
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
@@ -687,7 +706,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                         var t = tRes.requireValue("Record::finalizer field type");
                         fields.put(entry.getKey(), new RecordField.Dynamic(t));
                       }
-                      holder[0] = new Record(Opt.none(), fields);
+                      var out = new Record(Opt.none(), fields);
+                      out.artifactIdCell.set(idValue);
+                      holder[0] = out;
                     };
                 return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
               });

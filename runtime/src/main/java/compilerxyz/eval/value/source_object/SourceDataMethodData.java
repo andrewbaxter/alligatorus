@@ -189,6 +189,14 @@ public final class SourceDataMethodData {
       xx.vx.definitionSets.putIfAbsent(entry.getKey(), entry.getValue());
     }
 
+    var owningSet = outerType.set;
+    for (var entry : innerVx.definitionSets.entrySet()) {
+      if (entry.getKey().equals(owningSet.defSetId)) {
+        continue;
+      }
+      owningSet.dependencies.putIfAbsent(entry.getKey(), entry.getValue());
+    }
+
     var captured = innerVx.externals;
     capturedExternals.addAll(captured);
 

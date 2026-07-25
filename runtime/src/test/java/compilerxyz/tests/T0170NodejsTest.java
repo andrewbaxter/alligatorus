@@ -870,9 +870,19 @@ public final class T0170NodejsTest {
                                     mb.lower(
                                         mb.field(mb.scopeUse("code"), mb.str("lit_str"))),
                                     mb.call(
-                                        mb.mustReinterpret(),
-                                        mb.tupleOf(
-                                            mb.scopeUse("arg_value"), mb.typesString()))))),
+                                        mb.builtin("eval", "constkey_to_str"),
+                                        mb.call(
+                                            mb.builtin("eval", "extract_constkey"),
+                                            mb.recordOf(
+                                                TList.of(
+                                                    rp(
+                                                        "loc",
+                                                        mb.field(
+                                                            mb.scopeUse("arg"),
+                                                            mb.str("loc"))),
+                                                    rp(
+                                                        "value",
+                                                        mb.scopeUse("arg_value"))))))))),
                         mb.bind(
                             "call_code",
                             mb.call(
@@ -957,16 +967,23 @@ public final class T0170NodejsTest {
                             mb.call(
                                 mb.builtin("eval", "constkey_to_str"),
                                 mb.call(
-                                    mb.mustReinterpret(),
-                                    mb.tupleOf(
-                                        mb.field(
-                                            mb.call(
+                                    mb.builtin("eval", "extract_constkey"),
+                                    mb.recordOf(
+                                        TList.of(
+                                            rp(
+                                                "loc",
+                                                mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                            rp(
+                                                "value",
                                                 mb.field(
-                                                    mb.field(mb.scopeUse("arg"), mb.str("key")),
-                                                    mb.str("value")),
-                                                mb.tupleOf()),
-                                            mb.str("value")),
-                                        mb.typesConstkey())))),
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.field(
+                                                                mb.scopeUse("arg"),
+                                                                mb.str("key")),
+                                                            mb.str("value")),
+                                                        mb.tupleOf()),
+                                                    mb.str("value")))))))),
                         mb.bind(
                             "base_code",
                             nvalueToCode(mb, mb.field(mb.scopeUse("arg"), mb.str("self")))),
@@ -1415,11 +1432,6 @@ public final class T0170NodejsTest {
   }
 
   @Test
-  @org.junit.jupiter.api.Disabled(
-      "blocked on the recursive artifact export port (eval/artifact.rs): the nodejs module now"
-          + " compiles and finishes end-to-end; exporting its def set needs AspectArtifact on"
-          + " type/union_dyn/code_value and the TypeMapDynamic/TypeOptionDynamic recursive"
-          + " export stubs")
   public void test00010NodejsHelloworld() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();

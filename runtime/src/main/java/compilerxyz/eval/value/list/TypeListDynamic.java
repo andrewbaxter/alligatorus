@@ -69,7 +69,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringDynamic;
 
 @BuiltinIdentity(uniqueId = 6117L)
-public record TypeListDynamic(Type elementType)
+public final class TypeListDynamic
     implements
         Type,
         compilerxyz.gen.AspectFieldUseDynamic,
@@ -84,6 +84,19 @@ public record TypeListDynamic(Type elementType)
         AspectIterable,
         AspectStackValueDynamic,
         ExporterAny {
+
+  public final Type elementType;
+  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
+
+  public TypeListDynamic(Type elementType) {
+    this.elementType = elementType;
+  }
+
+  public Type elementType() {
+    return elementType;
+  }
+
 
 
   @Override
@@ -147,6 +160,13 @@ public record TypeListDynamic(Type elementType)
     return ExporterRoot.LIST_DYNAMIC;
   }
 
+  private static Artifact nullArtifact() {
+    return new Artifact.Body(
+        new ArtifactBody(
+            new compilerxyz.safejson.JsonValueNull(),
+            new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+  }
+
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {
         @Override
@@ -155,19 +175,96 @@ public record TypeListDynamic(Type elementType)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          return EResult.err(
-              loc,
-              "TypeListDynamic::exporterRootDelegateSelfExport: recursive export_artifact (eval/artifact.rs) port"
-                  + " deferred");
+          if (!(self instanceof TypeListDynamic list)) {
+            return EResult.err(
+                loc,
+                "TypeListDynamic::exporterRootDelegateSelfExport: expected TypeListDynamic, got "
+                    + self.getClass());
+          }
+          var cell = list.artifactIdCell;
+          var errors = new TList<compilerxyz.eval.ExprErr>();
+          var artifact =
+              compilerxyz.artifact.ArtifactSupport.implExportIndependentArtifact(
+                  xx.vx.ix.gx.artifacts,
+                  cell,
+                  () -> {
+                    var elementArtRes = list.elementType().exportArtifact(xx, loc);
+                    elementArtRes.drainInto(errors);
+                    var elementArt =
+                        elementArtRes.valueOrNull() != null
+                            ? elementArtRes.requireValue(
+                                "TypeListDynamic::exporterExport element")
+                            : nullArtifact();
+                    var body = new ArtifactListType(elementArt);
+                    return makeBody.apply(compilerxyz.safejson.JsonValues.toValue(body));
+                  });
+          if (errors.isEmpty()) return EResult.ok(artifact);
+          return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          return EResult.err(
+          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+            return EResult.err(loc, "TypeListDynamic requires an artifact id to deserialize");
+          }
+          var idValue = idSome.value();
+          return compilerxyz.artifact.ArtifactSupport.implImportIndependentArtifact(
+              xx,
               loc,
-              "TypeListDynamic::exporterRootDelegateSelfFromArtifactData: recursive import_type_artifact"
-                  + " (eval/artifact.rs) port deferred");
+              idValue,
+              data,
+              (raw) -> {
+                ArtifactListType body;
+                try {
+                  body = compilerxyz.safejson.JsonValues.fromValue(ArtifactListType.class, raw);
+                } catch (RuntimeException e) {
+                  return new compilerxyz.util.Result.Err<>(
+                      "TypeListDynamic data: failed to parse ArtifactListType: "
+                          + e.getMessage());
+                }
+                return new compilerxyz.util.Result.Ok<>(body);
+              },
+              (body) -> {
+                var holder = new ExporterAny[] {null};
+                ExporterAny stub =
+                    new ExporterAny() {
+                      @Override
+                      public EResult<Type> exporterAnyAsType() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeListDynamic import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsType();
+                      }
+
+                      @Override
+                      public EResult<Value> exporterAnyAsValue() {
+                        if (holder[0] == null) {
+                          throw new IllegalStateException(
+                              "TypeListDynamic import stub accessed pre-finalize");
+                        }
+                        return holder[0].exporterAnyAsValue();
+                      }
+                    };
+                var deps = new TList<Artifact>();
+                deps.add(body.elementType());
+                compilerxyz.artifact.ArtifactSupport.ImportIndependentResult.Finalizer fin =
+                    (xx2, loc2) -> {
+                      var elementRes =
+                          compilerxyz.artifact.ArtifactSupport
+                              .independentFinalizeImportTypeArtifact(
+                                  xx2, loc2, body.elementType());
+                      var elementT =
+                          elementRes.requireValue("TypeListDynamic::finalizer element type");
+                      var out = new TypeListDynamic(elementT);
+                      out.artifactIdCell.set(idValue);
+                      holder[0] = out;
+                    };
+                return new compilerxyz.util.Result.Ok<>(
+                    new compilerxyz.artifact.ArtifactSupport.ImportIndependentResult(
+                        stub, deps, fin));
+              });
         }
       };
 

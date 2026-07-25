@@ -85,7 +85,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
 @BuiltinIdentity(uniqueId = 6147L)
-public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
+public final class Tuple
     implements
         Type,
         Value,
@@ -98,6 +98,25 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         AspectStackValueDynamic,
         AspectTuple,
         ExporterAny {
+
+  public final Opt<TupleBaseDynamic> base;
+  public final TList<TupleElement> elements;
+  public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
+      new ArtifactSupport.ArtifactIdHolder();
+
+  public Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements) {
+    this.base = base;
+    this.elements = elements;
+  }
+
+  public Opt<TupleBaseDynamic> base() {
+    return base;
+  }
+
+  public TList<TupleElement> elements() {
+    return elements;
+  }
+
 
   @Override
   public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -606,7 +625,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
             return EResult.err(
                 loc, "Tuple::exporterRootDelegateSelfExport: expected Tuple self, got " + self.getClass());
           }
-          var cell = new ArtifactSupport.ArtifactIdHolder();
+          var cell = tuple.artifactIdCell;
           TList<ExprErr> errors = new TList<>();
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
@@ -683,12 +702,13 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
             return EResult.err(loc, "Tuple requires an artifact id to deserialize");
           }
+          var idValue = idSome.value();
           var holder = new Tuple[] {null};
           var elementArtifactsHolder = new TList<TList<Artifact>>();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
-              idSome.value(),
+              idValue,
               data,
               (raw) -> {
                 if (!(raw instanceof JsonValueObject obj)) {
@@ -740,7 +760,9 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                             new TupleElement.Dynamic(
                                 t.requireValue("Tuple::finalizer element type")));
                       }
-                      holder[0] = new Tuple(Opt.none(), slots);
+                      var out = new Tuple(Opt.none(), slots);
+                      out.artifactIdCell.set(idValue);
+                      holder[0] = out;
                     };
                 return new Result.Ok<>(
                     new ArtifactSupport.ImportIndependentResult(

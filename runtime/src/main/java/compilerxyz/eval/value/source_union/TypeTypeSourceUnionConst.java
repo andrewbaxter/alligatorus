@@ -164,7 +164,14 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                     }
                     var body =
                         new ArtifactDataSourceUnion(
-                            defSetArt, set.defSetId, tu.identity, variantsOut);
+                            defSetArt,
+                            set.defSetId,
+                            tu.identity,
+                            variantsOut,
+                            tu.compiledBaseBinaryName,
+                            tu.compiledVariantBinaryNames,
+                            tu.compiledBaseBytecode,
+                            tu.compiledVariantBytecode);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
@@ -198,6 +205,10 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
               (body) -> {
                 var tu = new TypeSourceUnionDynamic(body.identity());
                 tu.artifactIdCell.set(idValue);
+                tu.compiledBaseBinaryName = body.compiledBaseBinaryName();
+                tu.compiledVariantBinaryNames = body.compiledVariantBinaryNames();
+                tu.compiledBaseBytecode = body.compiledBaseBytecode();
+                tu.compiledVariantBytecode = body.compiledVariantBytecode();
                 for (var v : body.variants()) {
                   tu.variants.add(
                       new SourceUnionVariant(v.tag(), v.jsTag(), compilerxyz.gen.GenType.dynamicType()));
@@ -243,12 +254,12 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
   public record ImportedSourceUnionConst(TypeSourceUnionDynamic type_) implements ExporterAny {
     @Override
     public EResult<Type> exporterAnyAsType() {
-      return EResult.ok(new TypeTypeSourceUnionConst(type_));
+      return EResult.ok(type_);
     }
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeTypeSourceUnionConst(type_)));
+      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(type_));
     }
   }
 

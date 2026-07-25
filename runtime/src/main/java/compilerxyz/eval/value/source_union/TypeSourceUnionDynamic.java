@@ -115,6 +115,11 @@ public final class TypeSourceUnionDynamic
     return "union_dyn";
   }
 
+  @Override
+  public EResult<compilerxyz.artifact.Artifact> exportArtifact(ExprContext xx, QExprId loc) {
+    return new TypeTypeSourceUnionConst(this).exportArtifact(xx, loc);
+  }
+
   private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, "source_union_dynamic");
 
                 public Type valueType() {

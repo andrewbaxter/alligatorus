@@ -120,17 +120,7 @@ public final class DynRuntime {
     var rawMap = mustCast(Map.class, arg);
     var out = new java.util.LinkedHashMap<compilerxyz.eval.ConstKey, Expr>();
     for (var entry : ((Map<?, ?>) rawMap).entrySet()) {
-      compilerxyz.eval.ConstKey ckey;
-      var k = entry.getKey();
-      if (k instanceof compilerxyz.eval.ConstKey ck) {
-        ckey = ck;
-      } else if (k instanceof String s) {
-        ckey = parseConstKeyCanonical(s);
-      } else {
-        throw new IllegalStateException(
-            "DynRuntime.recordToConstKeyExprMap: unsupported key type "
-                + (k == null ? "null" : k.getClass()));
-      }
+      var ckey = mustCast(compilerxyz.eval.ConstKey.class, entry.getKey());
       var v = entry.getValue();
       Expr expr;
       if (v instanceof Expr e) {
@@ -145,23 +135,6 @@ public final class DynRuntime {
       out.put(ckey, expr);
     }
     return out;
-  }
-
-  private static compilerxyz.eval.ConstKey parseConstKeyCanonical(String s) {
-    if (s.length() >= 2 && s.charAt(0) == '"' && s.charAt(s.length() - 1) == '"') {
-      var inner = s.substring(1, s.length() - 1);
-      var sb = new StringBuilder(inner.length());
-      for (int i = 0; i < inner.length(); i++) {
-        var c = inner.charAt(i);
-        if (c == '\\' && i + 1 < inner.length()) {
-          sb.append(inner.charAt(++i));
-        } else {
-          sb.append(c);
-        }
-      }
-      return new compilerxyz.eval.ConstKey.Str(sb.toString());
-    }
-    return new compilerxyz.eval.ConstKey.Uint(Long.parseUnsignedLong(s));
   }
 
   public static Unique freshUnique(ExprContext xx) {

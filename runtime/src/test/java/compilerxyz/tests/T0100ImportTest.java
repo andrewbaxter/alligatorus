@@ -330,7 +330,8 @@ public final class T0100ImportTest {
             jsonField("dependencies", jsonArr()),
             jsonField("functions", jsonArr()),
             jsonField("interfaces", jsonArr()),
-            jsonField("objects", jsonArr(artifactRef(0)))),
+            jsonField("objects", jsonArr(artifactRef(0))),
+            jsonField("unions", jsonArr())),
         defSetArt.data());
   }
 
