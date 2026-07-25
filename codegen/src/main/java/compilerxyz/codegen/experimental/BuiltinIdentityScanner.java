@@ -19,7 +19,7 @@ public final class BuiltinIdentityScanner {
         .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
   }
 
-  public record IdentitySpec(String name, long value) {}
+  public record IdentitySpec(String name, long value, boolean standalone) {}
 
   public static TList<IdentitySpec> scanRoot(Path runtimeSourceRoot) throws IOException {
     var out = new TList<IdentitySpec>();
@@ -27,7 +27,7 @@ public final class BuiltinIdentityScanner {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("@Builtin(")) continue;
+        if (!src.contains("@Builtin(") && !src.contains("@BuiltinIdentity(")) continue;
         var cu = StaticJavaParser.parse(file);
         for (var t : cu.getTypes()) {
           collect(t, "", out);
@@ -42,7 +42,10 @@ public final class BuiltinIdentityScanner {
     var mySimple = t.getNameAsString();
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
-      if (n.equals("Builtin") || n.equals("compilerxyz.annotations.Builtin")) {
+      var isBuiltin = n.equals("Builtin") || n.equals("compilerxyz.annotations.Builtin");
+      var isIdentityOnly =
+          n.equals("BuiltinIdentity") || n.equals("compilerxyz.annotations.BuiltinIdentity");
+      if (isBuiltin || isIdentityOnly) {
         Long uniqueId = null;
         if (a instanceof NormalAnnotationExpr n2) {
           for (var p : n2.getPairs()) {
@@ -56,7 +59,7 @@ public final class BuiltinIdentityScanner {
         }
         var useChained = !enclosingChain.isEmpty();
         var name = useChained ? enclosingChain + mySimple : mySimple;
-        out.add(new IdentitySpec(snakeCase(name), uniqueId));
+        out.add(new IdentitySpec(snakeCase(name), uniqueId, isIdentityOnly));
       }
     }
     var nextChain = enclosingChain.isEmpty() ? mySimple : enclosingChain + mySimple;

@@ -16,7 +16,7 @@ import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import java.lang.String;
 
-@BuiltinPushStruct(uniqueId = 3009L)
+@BuiltinPushStruct
 public final class DefinitionSetBuilder {
     public final DefinitionSet inner;
 

@@ -3,40 +3,42 @@ package compilerxyz.eval.dynamic;
 import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
-import compilerxyz.gen.GenAspectConsumeDynamic;
 
 public final class CompositeClassEmitter {
   private CompositeClassEmitter() {}
 
   public static final class StructuralKey {
-    private final TypeId[] typeIds;
+    private final String[] descriptors;
     private final int hash;
 
-    public StructuralKey(TList<Type> sortedTypes) {
-      this.typeIds = new TypeId[sortedTypes.size()];
+    public StructuralKey(TList<JavaDataDescriptor> slotDescs) {
+      this.descriptors = new String[slotDescs.size()];
       int h = 1;
-      for (int i = 0; i < sortedTypes.size(); i++) {
-        this.typeIds[i] = sortedTypes.get(i).hasTypeIdTypeId();
-        h = 31 * h + this.typeIds[i].hashCode();
+      for (int i = 0; i < slotDescs.size(); i++) {
+        this.descriptors[i] = slotDescs.get(i).value();
+        h = 31 * h + this.descriptors[i].hashCode();
       }
       this.hash = h;
     }
 
     public int arity() {
-      return typeIds.length;
+      return descriptors.length;
+    }
+
+    String descriptor(int slotIndex) {
+      return descriptors[slotIndex];
     }
 
     @Override
     public boolean equals(Object o) {
       if (!(o instanceof StructuralKey other)) return false;
-      if (other.typeIds.length != typeIds.length) return false;
-      for (int i = 0; i < typeIds.length; i++) {
-        if (!other.typeIds[i].equals(typeIds[i])) return false;
+      if (other.descriptors.length != descriptors.length) return false;
+      for (int i = 0; i < descriptors.length; i++) {
+        if (!other.descriptors[i].equals(descriptors[i])) return false;
       }
       return true;
     }
@@ -54,7 +56,23 @@ public final class CompositeClassEmitter {
   }
 
   public static String binaryNameFor(StructuralKey key) {
-    return BINARY_NAME_PREFIX + key.arity() + "$" + Integer.toHexString(key.hashCode());
+    var sb = new StringBuilder(BINARY_NAME_PREFIX);
+    sb.append(key.arity());
+    for (int i = 0; i < key.arity(); i++) {
+      sb.append("#x");
+      var d = key.descriptor(i);
+      for (int j = 0; j < d.length(); j++) {
+        char c = d.charAt(j);
+        switch (c) {
+          case '#' -> sb.append("##");
+          case '/' -> sb.append("#s");
+          case ';' -> sb.append("#e");
+          case '[' -> sb.append("#a");
+          default -> sb.append(c);
+        }
+      }
+    }
+    return sb.toString();
   }
 
   public static JavaMethodDescriptor constructorDesc(ExprContext xx, TList<Type> sortedTypes) {
@@ -76,7 +94,9 @@ public final class CompositeClassEmitter {
   }
 
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
-    var key = new StructuralKey(sortedTypes);
+    var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
+    for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));
+    var key = new StructuralKey(slotDescs);
     var cache = xx.vx.ix.compositeCache;
     var existing = cache.get(key);
     if (existing != null) {
@@ -91,7 +111,7 @@ public final class CompositeClassEmitter {
     }
     var loader = xx.vx.ix.classLoader;
     var binaryName = binaryNameFor(key);
-    var bytecode = emitBytecode(xx, binaryName, sortedTypes);
+    var bytecode = emitBytecode(binaryName, slotDescs);
     loader.registerClass(binaryName, bytecode);
     Class<?> defined;
     try {
@@ -108,7 +128,7 @@ public final class CompositeClassEmitter {
     return getOrEmit(xx, sortedTypes).getName().replace('.', '/');
   }
 
-  static byte[] emitBytecode(ExprContext xx, String binaryName, TList<Type> sortedTypes) {
+  static byte[] emitBytecode(String binaryName, TList<JavaDataDescriptor> slotDescs) {
     var internalName = binaryName.replace('.', '/');
     var ownName = JavaInternalName.of(internalName);
     var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
@@ -120,10 +140,7 @@ public final class CompositeClassEmitter {
         JvmConstants.INTNAME_OBJECT.value(),
         null);
 
-    var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
-    for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));
-
-    for (int i = 0; i < sortedTypes.size(); i++) {
+    for (int i = 0; i < slotDescs.size(); i++) {
       cw.visitField(
               Opcodes.ACC_PUBLIC,
               slotFieldName(i),
@@ -150,7 +167,7 @@ public final class CompositeClassEmitter {
             loc, JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS));
 
     int localSlot = 1;
-    for (int i = 0; i < sortedTypes.size(); i++) {
+    for (int i = 0; i < slotDescs.size(); i++) {
       var desc = slotDescs.get(i);
       int loadOp = loadOpcodeFor(desc);
       seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));

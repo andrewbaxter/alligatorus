@@ -2,7 +2,6 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -14,7 +13,6 @@ import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 2005L, scopeId = 3005)
 @BuiltinPath("eval.binding")
-@BuiltinTypeId(7025L)
 public interface Binding extends AspectElementUseDynamicBind {
     CodeValue bindingUse(ExprContext xx, QExprId loc, Code code);
 

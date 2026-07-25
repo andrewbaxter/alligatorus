@@ -1,8 +1,11 @@
 package compilerxyz.eval.value.source_function;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -45,7 +48,6 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ImportInstall;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -54,7 +56,6 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
 
 @Builtin(uniqueId = 6022L)
-@BuiltinTypeId(7056L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
     implements Type,
         AspectArtifact,
@@ -76,16 +77,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    var setId = data.setId;
-    if (setId == null) {
-      throw new IllegalStateException(
-          "TypeSourceFunctionConst::typeId: function '" + data.name + "' has no setId");
-    }
-    return new TypeId.DefsetMember(setId, data.funcIdx);
-  }
-
 
   @Override
   public String typeDesc() {
@@ -94,7 +85,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return "definition_set_function";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceFunctionConst.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_FUNCTION_CONST_TYPE_ID, "source_function_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceFunctionConst.class, "source_function_const");
 
                 public Type valueType() {
     return META;
@@ -102,6 +93,9 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
@@ -435,15 +429,17 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeSourceFunctionConst(data)));
     }
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceFunctionConst o && data == o.data;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY, TypeSourceFunctionConst.class) instanceof Opt.Some<TypeSourceFunctionConst> oSome
+        && data == oSome.value().data;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

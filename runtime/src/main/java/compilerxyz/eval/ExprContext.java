@@ -1,7 +1,6 @@
 package compilerxyz.eval;
 
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -14,13 +13,11 @@ import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
 @Builtin(uniqueId = 6001L)
-@BuiltinTypeId(7021L)
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
   public final ImportStateId importState;
@@ -75,7 +72,7 @@ public final class ExprContext {
           new TypeObjectCastFromRule.RestampFromIdentity(
               GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY));
       return new TypeObjectDynamic(
-          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.EXPR_CONTEXT_TYPE_ID, "ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
+          new compilerxyz.eval.value.object_.TypeObjectMeta("ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(ExprContext.class),
           ExprContext.class,

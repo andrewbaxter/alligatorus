@@ -19,13 +19,12 @@ public final class IdentitiesGen {
   private static final ClassName UNIQUE_BUILTIN =
       ClassName.get("compilerxyz.eval", "Unique", "Builtin");
 
-  public record IdentitySpec(String name, long builtinUniqueId) {}
+  public record IdentitySpec(String name, long builtinUniqueId, boolean standalone) {}
 
   public static void run(
       Path outRoot,
       Formatter formatter,
-      TSet<Long> builtinUniqueIds,
-      TSet<Long> scopeIds,
+      TSet<Long> aspectIds,
       TList<IdentitySpec> extras)
       throws IOException {
     var specs = new TList<IdentitySpec>();
@@ -34,6 +33,10 @@ public final class IdentitiesGen {
     for (var spec : specs) {
       if (!seenNames.add(spec.name)) {
         throw new IllegalStateException("duplicate identity name: " + spec.name);
+      }
+      if (spec.standalone && !aspectIds.add(spec.builtinUniqueId)) {
+        throw new IllegalStateException(
+            "duplicate aspect id " + spec.builtinUniqueId + " (in identities)");
       }
     }
 

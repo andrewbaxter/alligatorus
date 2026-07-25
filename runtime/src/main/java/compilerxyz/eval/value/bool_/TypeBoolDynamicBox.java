@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.bool_;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -37,8 +39,6 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectBoolConst;
@@ -50,7 +50,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7006L)
+@BuiltinIdentity(uniqueId = 6104L)
 public record TypeBoolDynamicBox()
     implements
         Type,
@@ -61,9 +61,6 @@ public record TypeBoolDynamicBox()
         AspectDynamicUnboxed,
         AspectInitialBind,
         AspectStackValueDynamic {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_BOOL_DYNAMIC_BOX_TYPE_ID; }
 
 
   @Override
@@ -82,7 +79,7 @@ public record TypeBoolDynamicBox()
     return new TypeBoolDynamic();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamicBox.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_DYNAMIC_BOX_TYPE_ID, "bool_dynamic_box");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamicBox.class, "bool_dynamic_box");
 
                 public Type valueType() {
     return META;
@@ -90,6 +87,9 @@ public record TypeBoolDynamicBox()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_BOX_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectDynamicUnboxed.AspectId)
@@ -131,6 +131,11 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_BOX_IDENTITY).optIsSome();
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return GenAspectBoolConst.getMaybe(xx, sourceType).optIsSome()
         || GenAspectBoolDynamic.getMaybe(xx, sourceType).optIsSome();
@@ -139,11 +144,6 @@ public record TypeBoolDynamicBox()
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return GenAspectBoolDynamic.getMaybe(xx, destType).optIsSome();
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeBoolDynamicBox;
   }
 
   @Override

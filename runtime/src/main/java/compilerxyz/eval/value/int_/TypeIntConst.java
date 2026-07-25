@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.int_;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -41,8 +43,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -55,7 +55,7 @@ import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.gen.GenAspectOperatorLt;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinTypeId(7001L)
+@BuiltinIdentity(uniqueId = 6113L)
 public record TypeIntConst()
     implements
         Type,
@@ -71,9 +71,6 @@ public record TypeIntConst()
         AspectOperatorLt,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_INT_CONST_TYPE_ID; }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -85,7 +82,7 @@ public record TypeIntConst()
     return "int";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntConst.class, compilerxyz.gen.GenTypeIds.TYPE_INT_CONST_TYPE_ID, "int_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntConst.class, "int_const");
 
                 public Type valueType() {
     return META;
@@ -93,6 +90,9 @@ public record TypeIntConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_INT_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectInt.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -296,14 +296,14 @@ public record TypeIntConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeIntConst;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_INT_CONST_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

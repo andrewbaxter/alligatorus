@@ -1,8 +1,10 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -25,14 +27,12 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@BuiltinTypeId(7036L)
 @BuiltinPath("types.option")
+@BuiltinIdentity(uniqueId = 6131L)
 public record TypeOptionConstructorConst()
     implements
         Type,
@@ -40,16 +40,13 @@ public record TypeOptionConstructorConst()
         AspectInitialBind,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_OPTION_CONSTRUCTOR_CONST_TYPE_ID; }
-
 
   @Override
   public String typeDesc() {
     return "option constructor";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionConstructorConst.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_CONSTRUCTOR_CONST_TYPE_ID, "option_constructor_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionConstructorConst.class, "option_constructor_const");
 
                 public Type valueType() {
     return META;
@@ -57,6 +54,9 @@ public record TypeOptionConstructorConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_CONSTRUCTOR_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
@@ -104,15 +104,16 @@ public record TypeOptionConstructorConst()
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeOptionConstructorConst;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OPTION_CONSTRUCTOR_CONST_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

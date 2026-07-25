@@ -1,8 +1,8 @@
 package compilerxyz.eval.value.null_;
 
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -43,8 +43,6 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -55,8 +53,8 @@ import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7010L)
 @BuiltinPath("types.null")
+@BuiltinIdentity(uniqueId = 6128L)
 public record TypeNullDynamic()
     implements
         Type,
@@ -70,9 +68,6 @@ public record TypeNullDynamic()
         AspectStackValueDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NULL_DYNAMIC_TYPE_ID; }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -84,7 +79,7 @@ public record TypeNullDynamic()
     return "dynamic null";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_NULL_DYNAMIC_TYPE_ID, "null_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullDynamic.class, "null_dynamic");
 
                 public Type valueType() {
     return META;
@@ -92,6 +87,9 @@ public record TypeNullDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_NULL_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -155,6 +153,11 @@ public record TypeNullDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_NULL_DYNAMIC_IDENTITY).optIsSome();
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return GenAspectNull.getMaybe(xx, sourceType).optIsSome();
   }
@@ -163,11 +166,6 @@ public record TypeNullDynamic()
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return GenAspectNull.getMaybe(xx, destType).optIsSome()
         || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeNullDynamic;
   }
 
   @Override

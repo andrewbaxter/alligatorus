@@ -7,7 +7,7 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
 import java.lang.IllegalStateException;
 
-@BuiltinPushStruct(uniqueId = 3004L)
+@BuiltinPushStruct
 public final class SourceObjectMethodResult {
     public final SourceDataMethodData method;
 

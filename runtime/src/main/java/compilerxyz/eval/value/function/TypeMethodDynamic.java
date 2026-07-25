@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.function;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -29,8 +33,6 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -38,7 +40,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7041L)
+@BuiltinIdentity(uniqueId = 6112L)
 public record TypeMethodDynamic(
     Type receiver,
     Type arg,
@@ -57,9 +59,6 @@ public record TypeMethodDynamic(
         AspectInitialBind,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, TList.of(receiver.hasTypeIdTypeId(), arg.hasTypeIdTypeId(), ret.hasTypeIdTypeId())); }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -72,7 +71,7 @@ public record TypeMethodDynamic(
     return "dynamic method";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMethodDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_METHOD_DYNAMIC_TYPE_ID, "method_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMethodDynamic.class, "method_dynamic");
 
                 public Type valueType() {
     return META;
@@ -80,6 +79,9 @@ public record TypeMethodDynamic(
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -180,14 +182,15 @@ public record TypeMethodDynamic(
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeMethodDynamic o && receiver.typeIsEqual(o.receiver) && arg.typeIsEqual(o.arg) && ret.typeIsEqual(o.ret) && klass.equals(o.klass) && methodName.equals(o.methodName) && isInterface == o.isInterface && needsExprContext == o.needsExprContext;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class) instanceof Opt.Some<TypeMethodDynamic> oSome
+        && receiver.typeIsEqual(xx, oSome.value().receiver) && arg.typeIsEqual(xx, oSome.value().arg) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

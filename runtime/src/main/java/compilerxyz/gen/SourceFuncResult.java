@@ -8,7 +8,7 @@ import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import java.lang.IllegalStateException;
 import java.lang.String;
 
-@BuiltinPushStruct(uniqueId = 3003L)
+@BuiltinPushStruct
 public final class SourceFuncResult {
     public final TypeSourceFunctionConst func;
 

@@ -1,7 +1,6 @@
 package compilerxyz.eval;
 
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -14,12 +13,10 @@ import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.object_.TypeObjectMeta;
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 6018L)
-@BuiltinTypeId(7022L)
 public record QExprId(SourceId source, long expr) {
 
   public static Type dynamicType() {
@@ -36,7 +33,7 @@ public record QExprId(SourceId source, long expr) {
       var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(GenTrivialIdentityAspects.Q_EXPR_ID_IDENTITY);
       return new TypeObjectDynamic(
-          new TypeObjectMeta(GenTypeIds.Q_EXPR_ID_TYPE_ID, "QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
+          new TypeObjectMeta("QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
           jvmClass,
           JavaDataDescriptor.fromClass(QExprId.class),
           QExprId.class,

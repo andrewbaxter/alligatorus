@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.list;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -30,14 +34,12 @@ import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
-@BuiltinTypeId(7028L)
+@BuiltinIdentity(uniqueId = 6119L)
 public record TypeListNewDynamic(Type elementType)
     implements
         Type,
@@ -45,16 +47,13 @@ public record TypeListNewDynamic(Type elementType)
         AspectInitialBind,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
-
 
   @Override
   public String typeDesc() {
     return "list(" + elementType.typeDesc() + ").new";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_NEW_DYNAMIC_TYPE_ID, "list_new_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListNewDynamic.class, "list_new_dynamic");
 
                 public Type valueType() {
     return META;
@@ -62,6 +61,9 @@ public record TypeListNewDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_NEW_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
@@ -149,15 +151,17 @@ public record TypeListNewDynamic(Type elementType)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeListNewDynamic o && elementType.typeIsEqual(o.elementType);
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_NEW_DYNAMIC_IDENTITY, TypeListNewDynamic.class) instanceof Opt.Some<TypeListNewDynamic> oSome
+        && elementType.typeIsEqual(xx, oSome.value().elementType);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

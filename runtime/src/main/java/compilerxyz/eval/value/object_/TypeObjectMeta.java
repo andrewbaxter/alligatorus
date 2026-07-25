@@ -1,6 +1,5 @@
 package compilerxyz.eval.value.object_;
 
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -9,10 +8,9 @@ import compilerxyz.util.TList;
  * Shared descriptor metadata between {@link TypeObjectDynamic} and
  * {@link TypeObjectConst}. Paired instances must carry the same
  * {@code TypeObjectMeta} so a dynamic can synthesize its matching const
- * (and vice versa) without either sibling storing its own typeId.
+ * (and vice versa).
  */
 public record TypeObjectMeta(
-    TypeId typeId,
     String typeDesc,
     TList<Unique> trivialIdentityAspects,
     TList<TypeObjectCastRule> castRules,

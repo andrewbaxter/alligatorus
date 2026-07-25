@@ -1,8 +1,10 @@
 package compilerxyz.eval.value.eresult;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
 import compilerxyz.eval.EvalOutcome;
+import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
@@ -14,7 +16,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -29,7 +30,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.Binding;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -47,7 +47,6 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 @Builtin(uniqueId = 6017L)
-@BuiltinTypeId(7101L)
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,
@@ -60,12 +59,6 @@ public record TypeEResultDynamic(Type elementType)
         ExporterAny {
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_E_RESULT_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId()));
-  }
-
-  @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class));
   }
@@ -75,7 +68,7 @@ public record TypeEResultDynamic(Type elementType)
     return "eresult(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_E_RESULT_DYNAMIC_TYPE_ID, "eresult_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, "eresult_dynamic");
 
                 public Type valueType() {
     return META;
@@ -239,16 +232,18 @@ public record TypeEResultDynamic(Type elementType)
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
   @Override
-  public boolean typeIsEqual(Type other) {
-    return other instanceof TypeEResultDynamic o && elementType.typeIsEqual(o.elementType);
-  }
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     return EResult.ok(cv);
   }
   @Override
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_E_RESULT_DYNAMIC_IDENTITY, TypeEResultDynamic.class) instanceof Opt.Some<TypeEResultDynamic> oSome
+        && elementType.typeIsEqual(xx, oSome.value().elementType);
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return typeIsEqual(sourceType);
+    return typeIsEqual(xx, sourceType);
   }
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {

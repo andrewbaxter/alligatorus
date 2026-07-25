@@ -2,7 +2,6 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -25,7 +24,6 @@ import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 2006L, scopeId = 3006)
 @BuiltinPath("eval.target")
-@BuiltinTypeId(7024L)
 public interface Target {
     BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);
 

@@ -2,7 +2,6 @@ package compilerxyz.eval;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
 import compilerxyz.artifact.ExporterAny;
@@ -12,8 +11,7 @@ import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
-@BuiltinTypeId(7012L)
-public interface Type extends HasTypeId, Artifactable {
+public interface Type extends Artifactable {
 
   /**
    * Default: a Type exports itself as an artifact by asking its own AspectArtifact for its
@@ -32,7 +30,7 @@ public interface Type extends HasTypeId, Artifactable {
     return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
   }
 
-  boolean typeIsEqual(Type other);
+  boolean typeIsEqual(ExprContext xx, Type other);
 
   boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 

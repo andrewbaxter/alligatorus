@@ -16,7 +16,7 @@ import java.lang.Object;
 import java.lang.String;
 import java.util.Map;
 
-@BuiltinPushStruct(uniqueId = 3006L)
+@BuiltinPushStruct
 public final class SourceObjectBuilder {
     public final TypeSourceObjectDynamic type_;
 

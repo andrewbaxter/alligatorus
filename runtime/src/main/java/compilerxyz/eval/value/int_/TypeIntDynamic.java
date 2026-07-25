@@ -3,7 +3,6 @@ package compilerxyz.eval.value.int_;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -69,8 +68,6 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -94,7 +91,6 @@ import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @Builtin(uniqueId = 6023L)
-@BuiltinTypeId(7002L)
 @BuiltinPath("types.int")
 public record TypeIntDynamic()
     implements
@@ -119,9 +115,6 @@ public record TypeIntDynamic()
         AspectStackValueDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_INT_DYNAMIC_TYPE_ID; }
-
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
@@ -142,7 +135,7 @@ public record TypeIntDynamic()
     return new TypeIntDynamicBox();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INT_DYNAMIC_TYPE_ID, "int_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamic.class, "int_dynamic");
 
                 public Type valueType() {
     return META;
@@ -375,6 +368,11 @@ public record TypeIntDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_INT_DYNAMIC_IDENTITY).optIsSome();
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return GenAspectInt.getMaybe(xx, sourceType).optIsSome()
         || GenAspectIntDynamic.getMaybe(xx, sourceType).optIsSome();
@@ -383,11 +381,6 @@ public record TypeIntDynamic()
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return GenAspectIntDynamic.getMaybe(xx, destType).optIsSome();
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeIntDynamic;
   }
 
   @Override

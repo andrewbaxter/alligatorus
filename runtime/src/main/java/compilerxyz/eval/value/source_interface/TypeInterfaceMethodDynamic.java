@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.source_interface;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -11,7 +15,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -28,31 +31,15 @@ import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7119L)
+@BuiltinIdentity(uniqueId = 6136L)
 public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodData method)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    var argType = method.argType;
-    var retType = method.retType;
-    if (argType == null || retType == null) {
-      throw new IllegalStateException(
-          "TypeInterfaceMethodDynamic.typeId: method '"
-              + method.name
-              + "' missing arg/ret type");
-    }
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_INTERFACE_METHOD_DYNAMIC_TYPE_ID,
-        TList.of(argType.hasTypeIdTypeId(), retType.hasTypeIdTypeId()));
-  }
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -72,7 +59,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     return "interface method " + method.name;
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeInterfaceMethodDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INTERFACE_METHOD_DYNAMIC_TYPE_ID, "interface_method_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeInterfaceMethodDynamic.class, "interface_method_dynamic");
 
                 public Type valueType() {
     return META;
@@ -80,6 +67,9 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)) {
@@ -167,14 +157,15 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeInterfaceMethodDynamic o && iface.identity.equals(o.iface.identity) && method.name.equals(o.method.name);
-  }
-
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+  }
+
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_DYNAMIC_IDENTITY, TypeInterfaceMethodDynamic.class) instanceof Opt.Some<TypeInterfaceMethodDynamic> oSome
+        && iface.identity.equals(oSome.value().iface.identity) && method.name.equals(oSome.value().method.name);
   }
 
   @Override

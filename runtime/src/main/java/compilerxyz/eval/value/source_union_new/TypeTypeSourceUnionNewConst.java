@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.source_union_new;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -39,7 +43,7 @@ import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinTypeId(7054L)
+@BuiltinIdentity(uniqueId = 6143L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 
@@ -52,7 +56,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
     return "definition_set_union_new_const";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID, "type_source_union_new_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, "type_source_union_new_const");
 
                 public Type valueType() {
     return META;
@@ -60,6 +64,9 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectFunction.AspectId)) {
@@ -227,15 +234,17 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeTypeSourceUnionNewConst o && type_.typeIsEqual(o.type_) && variantIndex == o.variantIndex;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY, TypeTypeSourceUnionNewConst.class) instanceof Opt.Some<TypeTypeSourceUnionNewConst> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_) && variantIndex == oSome.value().variantIndex;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;
@@ -247,9 +256,5 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-  }
-  @Override
-  public compilerxyz.eval.TypeId hasTypeIdTypeId() {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeId not provided");
   }
 }

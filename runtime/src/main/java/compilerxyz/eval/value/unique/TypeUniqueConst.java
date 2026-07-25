@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.unique;
 
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
@@ -13,7 +13,6 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.binding.BindingValue;
@@ -28,7 +27,6 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectOperatorEq;
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.GenAspectBind;
@@ -36,7 +34,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectOperatorEq;
 
-@BuiltinTypeId(7123L)
+@BuiltinIdentity(uniqueId = 6148L)
 public record TypeUniqueConst()
     implements
         Type,
@@ -47,9 +45,6 @@ public record TypeUniqueConst()
         ExporterAny {
 
   @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_UNIQUE_CONST_TYPE_ID; }
-
-  @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromClass(Unique.class);
   }
@@ -57,7 +52,7 @@ public record TypeUniqueConst()
   @Override
   public String typeDesc() { return "unique_const"; }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueConst.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_CONST_TYPE_ID, "unique_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueConst.class, "unique_const");
 
                 public Type valueType() {
     return META;
@@ -65,6 +60,9 @@ public record TypeUniqueConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -129,13 +127,13 @@ public record TypeUniqueConst()
   }
 
   @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeUniqueConst;
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override

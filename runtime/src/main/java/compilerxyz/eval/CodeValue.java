@@ -2,12 +2,10 @@ package compilerxyz.eval;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.util.Opt;
 import compilerxyz.gen.Value;
 
 @Builtin(uniqueId = 1041L)
-@BuiltinTypeId(7020L)
 @BuiltinPath("types.cve")
 public record CodeValue(Code code, EvalOutcome outcome) {
 

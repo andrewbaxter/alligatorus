@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -14,7 +18,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -55,7 +58,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @SuppressWarnings("rawtypes")
-@BuiltinTypeId(7121L)
+@BuiltinIdentity(uniqueId = 6130L)
 public record TypeObjectDynamic(
     TypeObjectMeta meta,
     JavaInternalName jvmClass,
@@ -98,6 +101,13 @@ public record TypeObjectDynamic(
 
   public Opt<ObjectAspectSource> aspectSource() {
     return meta.aspectSource();
+  }
+
+  @Override
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY, TypeObjectDynamic.class) instanceof Opt.Some<TypeObjectDynamic> oSome
+        && hostClass == oSome.value().hostClass
+        && meta.typeDesc().equals(oSome.value().meta.typeDesc());
   }
 
   @Override
@@ -154,27 +164,15 @@ public record TypeObjectDynamic(
     return data;
   }
 
-  @Override
-  public boolean equals(Object other) {
-    return other instanceof TypeObjectDynamic o && meta.typeId().equals(o.meta.typeId());
-  }
-
-  @Override
-  public int hashCode() {
-    return meta.typeId().hashCode();
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return meta.typeId();
-  }
-
                 public Type valueType() {
     return this;
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
@@ -236,11 +234,6 @@ public record TypeObjectDynamic(
       if (rule.matches(xx, sourceType)) return true;
     }
     return false;
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeObjectDynamic o && meta.typeId().equals(o.meta.typeId());
   }
 
   @Override
@@ -421,7 +414,7 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-    var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<Type>none());
+    var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<Type>none(), Opt.<compilerxyz.artifact.ExporterRoot>none());
     return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue));
   }
 
@@ -449,14 +442,12 @@ public record TypeObjectDynamic(
           compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromClass(InterfaceData.class),
               TList.of())));
-      var meta = new TypeObjectMeta(
-          compilerxyz.gen.GenTypeIds.TYPE_OBJECT_DYNAMIC_TYPE_ID,
-          "type_object_dynamic",
+      var meta = new TypeObjectMeta("type_object_dynamic",
           trivialIdentityAspects,
           castRules,
           new TList<TypeObjectCastFromRule>(),
           Opt.<ObjectAspectSource>none());
-      return new TypeObjectConst(meta, Type.class, Opt.<Type>none());
+      return new TypeObjectConst(meta, Type.class, Opt.<Type>none(), Opt.<compilerxyz.artifact.ExporterRoot>none());
     }
   }
 

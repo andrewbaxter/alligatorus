@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
@@ -15,7 +14,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 1015L)
-@BuiltinTypeId(7214L)
 @BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {
   EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);

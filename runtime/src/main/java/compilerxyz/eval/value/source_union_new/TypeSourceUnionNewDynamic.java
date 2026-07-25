@@ -1,15 +1,13 @@
 package compilerxyz.eval.value.source_union_new;
 
-import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.artifact.Artifact;
-import compilerxyz.artifact.ArtifactBody;
-import compilerxyz.artifact.ArtifactExporter;
-import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.eval.EvalOutcome;
+
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.artifact.ExporterRoot;
-import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -22,50 +20,26 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
-import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
-import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinTypeId(7055L)
+@BuiltinIdentity(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectBind, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
     return compilerxyz.gen.GenType.dynamicType();
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_TYPE_SOURCE_UNION_NEW_CONST_TYPE_ID,
-        TList.of(
-            new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity)),
-            new TypeId.Builtin(variantIndex)));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
   }
 
 
@@ -77,7 +51,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     return "union_new(" + type_.variants.get(variantIndex).tag.toCanonical() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionNewDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_NEW_DYNAMIC_TYPE_ID, "source_union_new_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionNewDynamic.class, "source_union_new_dynamic");
 
                 public Type valueType() {
     return META;
@@ -85,6 +59,9 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectBind.AspectId) || key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
@@ -191,15 +168,17 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       return EResult.ok(this);
     }
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceUnionNewDynamic o && type_.typeIsEqual(o.type_) && variantIndex == o.variantIndex;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY, TypeSourceUnionNewDynamic.class) instanceof Opt.Some<TypeSourceUnionNewDynamic> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_) && variantIndex == oSome.value().variantIndex;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

@@ -100,10 +100,6 @@ public final class JavaAspectExtractor {
           boolean isAspect) {
     var simpleName = ifaceDecl.getNameAsString();
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var typeIdAnn = ifaceDecl.getAnnotationByName("BuiltinTypeId")
-        .orElseThrow(() -> new IllegalStateException(
-            "@Builtin interface " + simpleName + " missing required @BuiltinTypeId"));
-    var typeId = readSingleLongAttr(typeIdAnn);
     var builtinAnn = getBuiltinAnnotation(ifaceDecl);
     var attrs = readAttrs(builtinAnn);
     var uniqueIdStr = attrs.get("uniqueId");
@@ -144,7 +140,7 @@ public final class JavaAspectExtractor {
           true));
     }
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, typeId, uniqueId, isAspect, false, methods,
+        simpleName, pkg, uniqueId, isAspect, false, methods,
         new TList<BuiltinInterfacesGen.DataField>());
   }
 
@@ -152,10 +148,6 @@ public final class JavaAspectExtractor {
       extractBuiltinSpecClass(Path sourceFile, CompilationUnit cu, ClassOrInterfaceDeclaration clsDecl) {
     var simpleName = clsDecl.getNameAsString();
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var typeIdAnn = clsDecl.getAnnotationByName("BuiltinTypeId")
-        .orElseThrow(() -> new IllegalStateException(
-            "@Builtin class " + simpleName + " missing required @BuiltinTypeId"));
-    var typeId = readSingleLongAttr(typeIdAnn);
     var builtinAnn = getBuiltinAnnotation(clsDecl);
     var attrs = readAttrs(builtinAnn);
     var uniqueIdStr = attrs.get("uniqueId");
@@ -164,7 +156,7 @@ public final class JavaAspectExtractor {
     }
     var uniqueId = Long.parseLong(uniqueIdStr);
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, typeId, uniqueId, false, false,
+        simpleName, pkg, uniqueId, false, false,
         new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Method>(),
         new TList<BuiltinInterfacesGen.DataField>());
   }
@@ -178,10 +170,6 @@ public final class JavaAspectExtractor {
     var nestedName = recDecl.getNameAsString();
     var simpleName = outerSimpleName == null ? nestedName : outerSimpleName + nestedName;
     var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var typeIdAnn = recDecl.getAnnotationByName("BuiltinTypeId")
-        .orElseThrow(() -> new IllegalStateException(
-            "@Builtin record " + simpleName + " missing required @BuiltinTypeId"));
-    var typeId = readSingleLongAttr(typeIdAnn);
     var builtinAnn = getBuiltinAnnotation(recDecl);
     var attrs = readAttrs(builtinAnn);
     var uniqueIdStr = attrs.get("uniqueId");
@@ -214,7 +202,7 @@ public final class JavaAspectExtractor {
           true));
     }
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, typeId, uniqueId, false, true, methods, dataFields,
+        simpleName, pkg, uniqueId, false, true, methods, dataFields,
         outerSimpleName, outerSimpleName == null ? null : nestedName);
   }
 

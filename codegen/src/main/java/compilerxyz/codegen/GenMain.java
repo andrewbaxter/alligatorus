@@ -41,8 +41,7 @@ public final class GenMain {
     var formatter = Formatter.createFormatter(
         JavaFormatterOptions.builder().style(JavaFormatterOptions.Style.PALANTIR).build());
 
-    var builtinUniqueIds = new TSet<Long>();
-    var builtinTypeIds = new TSet<Long>();
+    var aspectIds = new TSet<Long>();
     var scopeIds = new TSet<Long>();
 
     var scannedLeaves =
@@ -50,7 +49,7 @@ public final class GenMain {
     BuiltinInterfacesGen.setScannedLeafDescriptors(scannedLeaves);
 
     var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
-    BuiltinInterfacesGen.run(outRoot, formatter, builtinUniqueIds, scan.builtins());
+    BuiltinInterfacesGen.run(outRoot, formatter, aspectIds, scan.builtins());
     var hostNames = new java.util.HashSet<String>();
     var links = new TList<String>();
     for (var s : scan.builtins()) {
@@ -66,16 +65,9 @@ public final class GenMain {
         compilerxyz.codegen.experimental.BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
     var identityExtras = new TList<IdentitiesGen.IdentitySpec>();
     for (var s : scannedIdentities) {
-      identityExtras.add(new IdentitiesGen.IdentitySpec(s.name(), s.value()));
+      identityExtras.add(new IdentitiesGen.IdentitySpec(s.name(), s.value(), s.standalone()));
     }
-    IdentitiesGen.run(outRoot, formatter, builtinUniqueIds, scopeIds, identityExtras);
-    var scannedTypeIds =
-        compilerxyz.codegen.experimental.BuiltinTypeIdScanner.scanRoot(runtimeSourceRoot);
-    var typeIdExtras = new TList<TypeIdsGen.TypeIdSpec>();
-    for (var s : scannedTypeIds) {
-      typeIdExtras.add(new TypeIdsGen.TypeIdSpec(s.name(), s.id()));
-    }
-    TypeIdsGen.run(outRoot, formatter, builtinTypeIds, scopeIds, typeIdExtras);
+    IdentitiesGen.run(outRoot, formatter, aspectIds, identityExtras);
 
     var scannedPushStructs =
         compilerxyz.codegen.experimental.BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);
@@ -83,10 +75,8 @@ public final class GenMain {
         outRoot,
         formatter,
         PushStructsGen.specs(new TList<>()),
-        scannedPushStructs,
-        builtinUniqueIds,
-        scopeIds);
-    BuiltinTreeGen.run(outRoot, formatter, builtinUniqueIds, scopeIds);
+        scannedPushStructs);
+    BuiltinTreeGen.run(outRoot, formatter, scopeIds);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
   }
 

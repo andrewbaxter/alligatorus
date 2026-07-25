@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -36,15 +40,13 @@ import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.Map;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@BuiltinTypeId(7033L)
+@BuiltinIdentity(uniqueId = 6123L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
     implements
         Type,
@@ -54,9 +56,6 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         AspectInitialBind,
         AspectElementUseDynamicBind,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_ENTRY_DYNAMIC_TYPE_ID, TList.of(keyType.hasTypeIdTypeId(), valueType.hasTypeIdTypeId())); }
 
 
   private static final JavaInternalName MAP_ENTRY_INAME =
@@ -113,7 +112,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return "map-entry(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapEntryDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_ENTRY_DYNAMIC_TYPE_ID, "map_entry_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapEntryDynamic.class, "map_entry_dynamic");
 
                 public Type valueType() {
     return META;
@@ -121,6 +120,9 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_ENTRY_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
@@ -220,14 +222,15 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeMapEntryDynamic o && keyType.typeIsEqual(o.keyType) && valueType.typeIsEqual(o.valueType);
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_ENTRY_DYNAMIC_IDENTITY, TypeMapEntryDynamic.class) instanceof Opt.Some<TypeMapEntryDynamic> oSome
+        && keyType.typeIsEqual(xx, oSome.value().keyType) && valueType.typeIsEqual(xx, oSome.value().valueType);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

@@ -102,10 +102,6 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.map", "TypeMapConstructorConst");
     nullary("compilerxyz.eval.value.option", "TypeOptionConstructorConst");
     nullary("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
-    nullary(
-        "compilerxyz.eval.value.typeid",
-        "TypeTypeIdDynamic",
-        ClassName.get("compilerxyz.eval", "TypeId"));
 
     // Static-factory descriptors — interfaces where value class == descriptor class.
     factory("compilerxyz.eval", "Type");

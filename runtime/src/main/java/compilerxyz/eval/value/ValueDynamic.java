@@ -1,12 +1,10 @@
 package compilerxyz.eval.value;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.Value;
 
-@BuiltinTypeId(7104L)
 public record ValueDynamic(ValueDynamicSource source, Type type_) implements Value {
   public Type valueType() {
     return type_;

@@ -60,16 +60,13 @@ public final class BuiltinTreeGen {
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
   private static final ClassName TYPE_OBJECT_CONST_CLS =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectConst");
-  private static final ClassName GEN_TYPE_IDS_CLS =
-      ClassName.get("compilerxyz.gen", "GenTypeIds");
   private static final CodeBlock TOD_SELF_TYPE_EXPR =
       CodeBlock.of("$T.constType()", TYPE_OBJECT_DYNAMIC);
   private static final CodeBlock TYPE_WRAPPER_EXPR =
       CodeBlock.of(
-          "$T.metaOf($T.class, $T.TYPE_TYPE_ID, $S)",
+          "$T.metaOf($T.class, $S)",
           TYPE_OBJECT_CONST_CLS,
           ClassName.get("compilerxyz.eval", "Type"),
-          GEN_TYPE_IDS_CLS,
           "type");
   private static final ClassName TYPE_UNIQUE_CONST =
       ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueConst");
@@ -164,7 +161,7 @@ public final class BuiltinTreeGen {
   }
 
   public static void run(
-      Path outRoot, Formatter formatter, TSet<Long> builtinUniqueIds, TSet<Long> scopeIds)
+      Path outRoot, Formatter formatter, TSet<Long> scopeIds)
       throws IOException {
     var spec = canonicalSpec();
     validate(spec, scopeIds);

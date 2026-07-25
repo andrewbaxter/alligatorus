@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
@@ -11,7 +10,6 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
 @Builtin(uniqueId = 1018L)
-@BuiltinTypeId(7226L)
 @BuiltinPath("eval.operator_add")
 public interface AspectOperatorAdd extends Aspect {
   EResult<CodeValue> aspectOperatorAddAdd(

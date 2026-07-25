@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.source_object;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -17,8 +21,6 @@ import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
-import compilerxyz.eval.Erb;
-import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
@@ -42,20 +44,16 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
-import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.ArtifactExternal;
-import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.source_function.ExternalCodec;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -65,7 +63,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@BuiltinTypeId(7045L)
+@BuiltinIdentity(uniqueId = 6138L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     implements
         Type,
@@ -77,18 +75,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         AspectInitialBind,
         AspectType,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
-  }
 
 
   @Override
@@ -103,7 +89,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return "object(" + (type_.name != null ? type_.name : "?") + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_CONST_TYPE_ID, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
 
                 public Type valueType() {
     return META;
@@ -111,6 +97,9 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(type_.identity)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -617,14 +606,15 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeTypeSourceObjectConst o && type_.typeIsEqual(o.type_);
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeTypeSourceObjectConst.class) instanceof Opt.Some<TypeTypeSourceObjectConst> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

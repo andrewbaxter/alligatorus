@@ -1,5 +1,10 @@
 package compilerxyz.eval.value.object_;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -11,7 +16,6 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -23,6 +27,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
@@ -59,10 +64,12 @@ import compilerxyz.gen.GenAspectType;
  * aspect on {@code deferDynamic}.
  */
 @SuppressWarnings("rawtypes")
+@BuiltinIdentity(uniqueId = 6129L)
 public record TypeObjectConst(
     TypeObjectMeta meta,
     Class externalHostClass,
-    Opt<Type> deferDynamic)
+    Opt<Type> deferDynamic,
+    Opt<ExporterRoot> exporter)
     implements
         Type,
         compilerxyz.eval.TypeAspect,
@@ -79,34 +86,26 @@ public record TypeObjectConst(
         compilerxyz.gen.AspectLift,
         AspectType {
 
-  private static final java.util.concurrent.ConcurrentHashMap<TypeId, compilerxyz.artifact.ExporterRoot> META_EXPORTERS = new java.util.concurrent.ConcurrentHashMap<>();
-
-  public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix, compilerxyz.artifact.ExporterRoot exporter) {
-    var toc = metaOf(hostClass, hostBaseTypeId, descSuffix);
-    META_EXPORTERS.put(toc.meta().typeId(), exporter);
-    return toc;
+  public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix, ExporterRoot exporter) {
+    var toc = metaOf(hostClass, descSuffix);
+    return new TypeObjectConst(
+        toc.meta(),
+        toc.externalHostClass(),
+        toc.deferDynamic(),
+        Opt.some(exporter));
   }
 
-  public static TypeObjectConst metaOf(Class<?> hostClass, TypeId hostBaseTypeId, String descSuffix) {
+  public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix) {
     var trivialIdentityAspects = new TList<Unique>();
     trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
     castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
-    var meta = new TypeObjectMeta(hostBaseTypeId, "type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
+    var meta = new TypeObjectMeta("type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
     return new TypeObjectConst(
         meta,
         hostClass,
-        Opt.<Type>none());
-  }
-
-  @Override
-  public boolean equals(Object other) {
-    return other instanceof TypeObjectConst o && meta.typeId().equals(o.meta.typeId());
-  }
-
-  @Override
-  public int hashCode() {
-    return meta.typeId().hashCode();
+        Opt.<Type>none(),
+        Opt.<ExporterRoot>none());
   }
 
   public String typeDesc() {
@@ -130,8 +129,10 @@ public record TypeObjectConst(
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return meta.typeId();
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY, TypeObjectConst.class) instanceof Opt.Some<TypeObjectConst> oSome
+        && externalHostClass == oSome.value().externalHostClass
+        && meta.typeDesc().equals(oSome.value().meta.typeDesc());
   }
 
                 public Type valueType() {
@@ -151,6 +152,9 @@ public record TypeObjectConst(
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectBind.AspectId)
         || key.equals(compilerxyz.gen.GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
@@ -231,11 +235,6 @@ public record TypeObjectConst(
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeObjectConst o && meta.typeId().equals(o.meta.typeId());
-  }
-
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     if (!(cv.value() instanceof Opt.Some<Value> some)) {
       return EResult.err(loc, typeDesc() + "::typeCastFrom: CodeValue has no value");
@@ -307,8 +306,7 @@ public record TypeObjectConst(
 
   @Override
   public compilerxyz.artifact.ArtifactExporter aspectArtifactExporter() {
-    var metaExporter = META_EXPORTERS.get(meta.typeId());
-    return metaExporter != null ? metaExporter : this;
+    return exporter instanceof Opt.Some<ExporterRoot> some ? some.value() : this;
   }
 
   @Override

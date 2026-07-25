@@ -1,7 +1,6 @@
 package compilerxyz.eval.dynamic;
 
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -13,14 +12,11 @@ import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.object_.TypeObjectMeta;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @Builtin(uniqueId = 6014L)
-@BuiltinTypeId(7120L)
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
     public static final JavaDataDescriptor DESC_INT = new JavaDataDescriptor("I");
@@ -108,7 +104,7 @@ public class JavaDataDescriptor {
                 new TypeObjectCastFromRule.RestampFromIdentity(
                     GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY));
             return new TypeObjectDynamic(
-                new TypeObjectMeta(GenTypeIds.JAVA_DATA_DESCRIPTOR_TYPE_ID, "JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
+                new TypeObjectMeta("JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
                 jvmClass,
                 JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
                 JavaDataDescriptor.class,

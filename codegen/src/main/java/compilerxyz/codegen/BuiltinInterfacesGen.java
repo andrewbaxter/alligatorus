@@ -30,7 +30,6 @@ public final class BuiltinInterfacesGen {
   public record BuiltinSpec(
       String simpleName,
       String pkg,
-      long typeId,
       long uniqueId,
       boolean isAspect,
       boolean isRecord,
@@ -41,13 +40,12 @@ public final class BuiltinInterfacesGen {
     public BuiltinSpec(
         String simpleName,
         String pkg,
-        long typeId,
         long uniqueId,
         boolean isAspect,
         boolean isRecord,
         TList<BuiltinMethodEmit.Method> methods,
         TList<DataField> dataFields) {
-      this(simpleName, pkg, typeId, uniqueId, isAspect, isRecord,
+      this(simpleName, pkg, uniqueId, isAspect, isRecord,
           methods, dataFields, null, null);
     }
   }
@@ -62,7 +60,6 @@ public final class BuiltinInterfacesGen {
   private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName UNIQUE = ClassName.get("compilerxyz.eval", "Unique");
   private static final ClassName UNIQUE_BUILTIN = ClassName.get("compilerxyz.eval", "Unique", "Builtin");
-  private static final ClassName TYPE_ID_BUILTIN = ClassName.get("compilerxyz.eval", "TypeId", "Builtin");
   private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
@@ -103,7 +100,7 @@ public final class BuiltinInterfacesGen {
   public static void run(
       Path outRoot,
       Formatter formatter,
-      TSet<Long> builtinUniqueIds,
+      TSet<Long> aspectIds,
       TList<BuiltinSpec> specs)
       throws IOException {
     var seenNames = new TSet<String>();
@@ -111,9 +108,9 @@ public final class BuiltinInterfacesGen {
       if (!seenNames.add(spec.simpleName)) {
         throw new IllegalStateException("duplicate builtin interface name: " + spec.simpleName);
       }
-      if (spec.isAspect && !builtinUniqueIds.add(spec.uniqueId)) {
+      if (!aspectIds.add(spec.uniqueId)) {
         throw new IllegalStateException(
-            "duplicate builtin_unique_id " + spec.uniqueId + " (in aspects)");
+            "duplicate aspect id " + spec.uniqueId + " (in builtins)");
       }
       writeCompanion(outRoot, formatter, spec);
     }
@@ -195,11 +192,9 @@ public final class BuiltinInterfacesGen {
     b.addStatement("var dataFields = new $T<$T>()", TLIST, OBJECT_DATA_FIELD);
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
     b.addStatement("var trivialIdentityAspects = new $T<$T>()", TLIST, UNIQUE);
-    b.addStatement("var typeId = new $T($LL)", TYPE_ID_BUILTIN, spec.typeId);
-
     if (spec.isAspect) {
       b.addStatement(
-          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>some(new $T($T.AspectId)))",
           TYPE_OBJECT_META, typeDesc,
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,
@@ -213,7 +208,7 @@ public final class BuiltinInterfacesGen {
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
       emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
-          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>none())",
           TYPE_OBJECT_META, typeDesc,
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,
@@ -227,7 +222,7 @@ public final class BuiltinInterfacesGen {
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
       emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
-          "var meta = new $T(typeId, $S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
               + "$T.<$T>some(new $T(new $T($LL))))",
           TYPE_OBJECT_META, typeDesc,
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,

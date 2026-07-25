@@ -6,7 +6,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import java.lang.IllegalStateException;
 
-@BuiltinPushStruct(uniqueId = 3008L)
+@BuiltinPushStruct
 public final class SourceInterfaceMethodResult {
     public final InterfaceMethodData method;
 

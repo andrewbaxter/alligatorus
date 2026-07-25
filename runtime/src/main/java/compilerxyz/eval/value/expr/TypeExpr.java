@@ -3,7 +3,6 @@ package compilerxyz.eval.value.expr;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -44,8 +43,6 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -55,7 +52,6 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
 @Builtin(uniqueId = 6013L)
-@BuiltinTypeId(7016L)
 @BuiltinPath("types.expr")
 public record TypeExpr()
     implements
@@ -70,9 +66,6 @@ public record TypeExpr()
         AspectType,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_EXPR_TYPE_ID; }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -84,7 +77,7 @@ public record TypeExpr()
     return "expr";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExpr.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_TYPE_ID, "expr");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExpr.class, "expr");
 
                 public Type valueType() {
     return META;
@@ -140,13 +133,13 @@ public record TypeExpr()
       };
 
   @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return true;
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeExpr;
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    return true;
   }
 
   @Override

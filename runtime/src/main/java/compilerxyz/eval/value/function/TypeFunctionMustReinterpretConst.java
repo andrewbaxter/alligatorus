@@ -1,8 +1,10 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -12,7 +14,6 @@ import compilerxyz.eval.Erb;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
@@ -33,25 +34,16 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.gen.GenAspectType;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
-@BuiltinTypeId(7239L)
 @BuiltinPath("must_reinterpret")
+@BuiltinIdentity(uniqueId = 6111L)
 public record TypeFunctionMustReinterpretConst()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
   private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(
-          TypeFunctionMustReinterpretConst.class,
-          GenTypeIds.TYPE_FUNCTION_MUST_REINTERPRET_CONST_TYPE_ID,
-          "function_must_reinterpret_const");
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return GenTypeIds.TYPE_FUNCTION_MUST_REINTERPRET_CONST_TYPE_ID;
-  }
+      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionMustReinterpretConst.class, "function_must_reinterpret_const");
 
   @Override
   public String typeDesc() {
@@ -64,6 +56,9 @@ public record TypeFunctionMustReinterpretConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_MUST_REINTERPRET_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
@@ -161,14 +156,14 @@ public record TypeFunctionMustReinterpretConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeFunctionMustReinterpretConst;
-  }
-
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+  }
+
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_FUNCTION_MUST_REINTERPRET_CONST_IDENTITY).optIsSome();
   }
 
   @Override

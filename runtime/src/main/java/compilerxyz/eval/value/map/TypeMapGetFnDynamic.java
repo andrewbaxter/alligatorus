@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.map;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -23,20 +27,15 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.util.Opt;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.TList;
 import java.util.Map;
 
-@BuiltinTypeId(7034L)
+@BuiltinIdentity(uniqueId = 6124L)
 public record TypeMapGetFnDynamic(Type keyType, Type valueType)
     implements
         Type,
         AspectFunction,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, TList.of(keyType.hasTypeIdTypeId(), valueType.hasTypeIdTypeId())); }
 
 
   @Override
@@ -44,7 +43,7 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
     return "map get fn";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapGetFnDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_GET_FN_DYNAMIC_TYPE_ID, "map_get_fn_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapGetFnDynamic.class, "map_get_fn_dynamic");
 
                 public Type valueType() {
     return META;
@@ -52,6 +51,9 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_GET_FN_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId)) {
       return Opt.some(this);
     }
@@ -118,15 +120,17 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeMapGetFnDynamic o && keyType.typeIsEqual(o.keyType) && valueType.typeIsEqual(o.valueType);
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_GET_FN_DYNAMIC_IDENTITY, TypeMapGetFnDynamic.class) instanceof Opt.Some<TypeMapGetFnDynamic> oSome
+        && keyType.typeIsEqual(xx, oSome.value().keyType) && valueType.typeIsEqual(xx, oSome.value().valueType);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

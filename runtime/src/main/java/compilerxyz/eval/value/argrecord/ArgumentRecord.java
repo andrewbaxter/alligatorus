@@ -1,5 +1,10 @@
 package compilerxyz.eval.value.argrecord;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -20,6 +25,7 @@ import compilerxyz.util.TOrderedMap;
 import java.util.stream.Collectors;
 import compilerxyz.gen.GenAspectField;
 
+@BuiltinIdentity(uniqueId = 6100L)
 public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     implements Type, Value, AspectField, ExporterAny {
 
@@ -36,6 +42,9 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.ARGUMENT_RECORD_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
@@ -77,22 +86,24 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    if (!(other instanceof ArgumentRecord o)) return false;
-    if (fields.size() != o.fields.size()) return false;
-    for (var entry : fields.entrySet()) {
-      var otherField = o.fields.getOrNull(entry.getKey());
-      if (otherField == null) return false;
-      if (!entry.getValue().type().typeIsEqual(otherField.type())) return false;
-    }
-    return true;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    if (!(AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.ARGUMENT_RECORD_IDENTITY, ArgumentRecord.class) instanceof Opt.Some<ArgumentRecord> oSome)) return false;
+    var o = oSome.value();
+    if (fields.size() != o.fields.size()) return false;
+    for (var entry : fields.entrySet()) {
+      var otherField = o.fields.getOrNull(entry.getKey());
+      if (otherField == null) return false;
+      if (!entry.getValue().type().typeIsEqual(xx, otherField.type())) return false;
+    }
+    return true;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;
@@ -105,11 +116,6 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
-  @Override
-  public compilerxyz.eval.TypeId hasTypeIdTypeId() {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeId not provided");
-  }
-
   @Override
   public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
       compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {

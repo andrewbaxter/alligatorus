@@ -3,7 +3,6 @@ package compilerxyz.eval.value.constkey;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -30,8 +29,6 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
@@ -40,7 +37,6 @@ import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 @Builtin(uniqueId = 6015L)
-@BuiltinTypeId(7014L)
 @BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
     implements
@@ -50,9 +46,6 @@ public record TypeConstkeyDynamic()
         AspectDropDynamicLight,
         AspectInitialBind,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID; }
 
 
   @Override
@@ -65,7 +58,7 @@ public record TypeConstkeyDynamic()
     return "constkey";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeConstkeyDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_CONSTKEY_DYNAMIC_TYPE_ID, "constkey_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeConstkeyDynamic.class, "constkey_dynamic");
 
                 public Type valueType() {
     return META;
@@ -99,13 +92,13 @@ public record TypeConstkeyDynamic()
   }
 
   @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome();
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeConstkeyDynamic;
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome();
   }
 
   @Override

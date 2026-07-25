@@ -2,9 +2,7 @@ package compilerxyz.eval.value.source_object;
 
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
-import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -20,7 +18,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.gen.Target;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -44,22 +41,17 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.value_source_object.ValueSourceObjectConst;
-import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
-import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
-import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
 @Builtin(uniqueId = 6020L)
-@BuiltinTypeId(7044L)
 public final class TypeSourceObjectDynamic
     implements
         Type,
@@ -153,18 +145,6 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
-  }
-
-  @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     if (setId == null || set == null) {
       return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
@@ -186,7 +166,7 @@ public final class TypeSourceObjectDynamic
     return "object(" + (name != null ? name : "?") + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceObjectDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_DYNAMIC_TYPE_ID, "source_object_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceObjectDynamic.class, "source_object_dynamic");
 
                 public Type valueType() {
     return META;
@@ -487,8 +467,8 @@ public final class TypeSourceObjectDynamic
   }
 
   @Override
-  public boolean typeIsEqual(Type other) {
-    return other instanceof TypeSourceObjectDynamic o && identity.equals(o.identity);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return other.typeAspect(xx, identity).optIsSome();
   }
 
   @Override

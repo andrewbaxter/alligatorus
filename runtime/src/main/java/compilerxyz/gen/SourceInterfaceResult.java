@@ -10,7 +10,7 @@ import java.lang.Boolean;
 import java.lang.IllegalStateException;
 import java.lang.String;
 
-@BuiltinPushStruct(uniqueId = 3005L)
+@BuiltinPushStruct
 public final class SourceInterfaceResult {
     public final TypeSourceInterfaceDynamic type_;
 

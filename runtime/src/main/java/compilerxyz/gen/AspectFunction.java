@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
@@ -13,7 +12,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 1116L)
-@BuiltinTypeId(7217L)
 @BuiltinPath("eval.aspect_function")
 public interface AspectFunction extends Aspect {
   EResult<CodeValue> aspectFunctionCall(

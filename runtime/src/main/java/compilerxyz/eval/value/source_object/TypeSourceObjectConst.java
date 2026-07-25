@@ -1,12 +1,15 @@
 package compilerxyz.eval.value.source_object;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
@@ -19,7 +22,7 @@ import compilerxyz.util.Opt;
  * <p>Distinct from {@link TypeTypeSourceObjectConst} which is the meta-type of type-descriptor
  * values (i.e., the type of TypeSourceObjectDynamic-valued expressions themselves).
  */
-@BuiltinTypeId(7238L)
+@BuiltinIdentity(uniqueId = 6137L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     implements Type,
         compilerxyz.gen.AspectArtifact,
@@ -58,19 +61,15 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
 
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        compilerxyz.gen.GenTypeIds.TYPE_SOURCE_OBJECT_CONST_TYPE_ID,
-        compilerxyz.util.TList.of(dynamic.hasTypeIdTypeId()));
-  }
-
-  @Override
   public String typeDesc() {
     return dynamic.typeDesc();
   }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
@@ -87,8 +86,9 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceObjectConst o && dynamic.typeIsEqual(o.dynamic);
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeSourceObjectConst.class) instanceof Opt.Some<TypeSourceObjectConst> oSome
+        && dynamic.typeIsEqual(xx, oSome.value().dynamic);
   }
 
   @Override

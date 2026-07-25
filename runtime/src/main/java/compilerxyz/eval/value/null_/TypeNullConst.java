@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.null_;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -32,8 +34,6 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -41,13 +41,10 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinTypeId(7009L)
+@BuiltinIdentity(uniqueId = 6127L)
 public record TypeNullConst()
     implements
         Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectNull, ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_NULL_CONST_TYPE_ID; }
 
 
   @Override
@@ -60,7 +57,7 @@ public record TypeNullConst()
     return "null";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullConst.class, compilerxyz.gen.GenTypeIds.TYPE_NULL_CONST_TYPE_ID, "null_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullConst.class, "null_const");
 
                 public Type valueType() {
     return META;
@@ -68,6 +65,9 @@ public record TypeNullConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_NULL_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectNull.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -146,14 +146,14 @@ public record TypeNullConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeNullConst;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_NULL_CONST_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

@@ -95,7 +95,6 @@ public final class BuiltinPushStructScanner {
   private static PushStructsGen.PushStructSpec extractStruct(
       ClassOrInterfaceDeclaration cls, AnnotationExpr ann, TMap<String, String> imports, String pkg) {
     var name = cls.getNameAsString();
-    var uniqueId = readUniqueId(ann);
 
     var dataFields = new TList<NamedTypeRef>();
     var ctors = cls.getConstructors();
@@ -138,7 +137,7 @@ public final class BuiltinPushStructScanner {
       methods.add(new PushMethod(srcMethodName, args, retExpr, CodeBlock.of(""), "", retClass));
     }
 
-    return new PushStructsGen.PushStructSpec(name, uniqueId, dataFields, fields, methods);
+    return new PushStructsGen.PushStructSpec(name, dataFields, fields, methods);
   }
 
   private static boolean isExprContext(Type t, TMap<String, String> imports, String pkg) {
@@ -157,17 +156,6 @@ public final class BuiltinPushStructScanner {
   private static TypeRef returnTypeRef(Type t, TMap<String, String> imports, String pkg) {
     if (t instanceof VoidType) return TypeRef.opaque(TypeName.VOID);
     return typeRefOf(t, imports, pkg);
-  }
-
-  private static long readUniqueId(AnnotationExpr ann) {
-    if (ann instanceof NormalAnnotationExpr n) {
-      for (var p : n.getPairs()) {
-        if (p.getNameAsString().equals("uniqueId")) {
-          return literalLong(p);
-        }
-      }
-    }
-    throw new IllegalStateException("@BuiltinPushStruct missing uniqueId");
   }
 
   private static long literalLong(MemberValuePair p) {

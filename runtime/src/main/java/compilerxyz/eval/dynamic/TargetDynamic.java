@@ -760,7 +760,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields) {
     var entries = new compilerxyz.util.TOrderedMap<ConstKey, TargetBindSub>();
     for (var f : fields) entries.put(f.key(), f.sub());
-    var sortedSubs = sortBindSubs(entries, ConstKey.CANONICAL_ORDER);
+    var sortedSubs = sortBindSubs(xx, entries, ConstKey.CANONICAL_ORDER);
     var dynamicFields =
         new compilerxyz.util.TOrderedMap<ConstKey, compilerxyz.eval.value.record.RecordField>();
     for (var f : fields) {
@@ -778,7 +778,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots) {
     var entries = new compilerxyz.util.TOrderedMap<Integer, TargetBindSub>();
     for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub());
-    var sortedSubs = sortBindSubs(entries, Integer::compare);
+    var sortedSubs = sortBindSubs(xx, entries, Integer::compare);
     var dynamicElements =
         new TList<compilerxyz.eval.value.tuple.TupleElement>(slots.size());
     for (var slot : slots) {
@@ -804,11 +804,12 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   private static <K> TList<TargetBindSub> sortBindSubs(
+      ExprContext xx,
       compilerxyz.util.TOrderedMap<K, TargetBindSub> entries,
       java.util.Comparator<K> tiebreaker) {
     var typeEntries = new compilerxyz.util.TOrderedMap<K, compilerxyz.eval.Type>();
     for (var e : entries.entrySet()) typeEntries.put(e.getKey(), e.getValue().type());
-    var sort = CompositeSlotSort.sort(typeEntries, tiebreaker);
+    var sort = CompositeSlotSort.sort(xx, typeEntries, tiebreaker);
     var out = new TList<TargetBindSub>(entries.size());
     for (var e : entries.entrySet()) out.add(null);
     for (var e : entries.entrySet()) {

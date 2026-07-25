@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.list;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -42,22 +46,16 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.AspectStringDynamic;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.Iterator;
 import java.util.function.Function;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -69,10 +67,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringDynamic;
-import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.annotations.Builtin;
 
-@BuiltinTypeId(7027L)
+@BuiltinIdentity(uniqueId = 6117L)
 public record TypeListDynamic(Type elementType)
     implements
         Type,
@@ -88,9 +84,6 @@ public record TypeListDynamic(Type elementType)
         AspectStackValueDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
-
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -102,7 +95,7 @@ public record TypeListDynamic(Type elementType)
     return "list(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_DYNAMIC_TYPE_ID, "list_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListDynamic.class, "list_dynamic");
 
                 public Type valueType() {
     return META;
@@ -110,6 +103,9 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectDropDynamic.AspectId)) {
       return GenAspectDropDynamic.getMaybe(xx, elementType).optIsSome()
           ? Opt.some(this)
@@ -354,7 +350,7 @@ public record TypeListDynamic(Type elementType)
     var elementCv =
         new CodeValue(
             Code.of(loc, loadElement),
-            EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType)));
+            EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
     var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
@@ -382,12 +378,14 @@ public record TypeListDynamic(Type elementType)
   }
 
   @Override
-  public boolean typeIsEqual(Type other) {
-    return other instanceof TypeListDynamic o && elementType.typeIsEqual(o.elementType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_DYNAMIC_IDENTITY, TypeListDynamic.class) instanceof Opt.Some<TypeListDynamic> oSome
+        && elementType.typeIsEqual(xx, oSome.value().elementType);
   }
+
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return typeIsEqual(sourceType);
+    return typeIsEqual(xx, sourceType);
   }
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {

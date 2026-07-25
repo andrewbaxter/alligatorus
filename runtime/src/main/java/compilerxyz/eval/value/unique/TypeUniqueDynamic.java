@@ -2,7 +2,6 @@ package compilerxyz.eval.value.unique;
 
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -51,8 +50,6 @@ import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -68,7 +65,6 @@ import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 
 @Builtin(uniqueId = 6003L)
-@BuiltinTypeId(7015L)
 public record TypeUniqueDynamic()
     implements
         Type,
@@ -83,9 +79,6 @@ public record TypeUniqueDynamic()
         AspectBindDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_UNIQUE_DYNAMIC_TYPE_ID; }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -97,7 +90,7 @@ public record TypeUniqueDynamic()
     return "unique";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_UNIQUE_DYNAMIC_TYPE_ID, "unique");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueDynamic.class, "unique");
 
                 public Type valueType() {
     return META;
@@ -314,13 +307,13 @@ public record TypeUniqueDynamic()
   }
 
   @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeUniqueDynamic;
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
   }
 
   @Override

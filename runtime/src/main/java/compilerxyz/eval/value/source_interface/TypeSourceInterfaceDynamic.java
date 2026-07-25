@@ -2,7 +2,6 @@ package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -41,7 +40,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -54,9 +52,7 @@ import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -67,7 +63,6 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
 @Builtin(uniqueId = 6004L)
-@BuiltinTypeId(7049L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
     implements
         Type,
@@ -80,11 +75,6 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         AspectType,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.DefsetMember(data.set.defSetId, uniqueId(data.identity));
-  }
-
   public InterfaceData getInterfaceData() {
     return data;
   }
@@ -92,8 +82,6 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
   public static compilerxyz.eval.Type dynamicType() {
     return TypeSourceInterfaceDynamicMeta.INSTANCE;
   }
-
-  @BuiltinTypeId(7122L)
   static final class TypeSourceInterfaceDynamicMeta {
     static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
 
@@ -116,25 +104,19 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                   compilerxyz.util.TList.of())));
       var trivialIdentityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
       trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
-      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta(compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_META_TYPE_ID, "type_source_interface_dynamic_meta", trivialIdentityAspects, castRules, new compilerxyz.util.TList<
+      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta("type_source_interface_dynamic_meta", trivialIdentityAspects, castRules, new compilerxyz.util.TList<
               compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), compilerxyz.util.Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none());
       return new compilerxyz.eval.value.object_.TypeObjectConst(
           meta,
           TypeSourceInterfaceDynamic.class,
-          compilerxyz.util.Opt.<compilerxyz.eval.Type>none());
+          compilerxyz.util.Opt.<compilerxyz.eval.Type>none(),
+          compilerxyz.util.Opt.<compilerxyz.artifact.ExporterRoot>none());
     }
   }
 
   public static compilerxyz.eval.Type fromInterfaceData(
       compilerxyz.eval.ExprContext xx, InterfaceData data) {
     return new TypeSourceInterfaceDynamic(data);
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
   }
 
 
@@ -155,7 +137,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     return "interface";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceInterfaceDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_INTERFACE_DYNAMIC_TYPE_ID, "source_interface_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceInterfaceDynamic.class, "source_interface_dynamic");
 
                 public Type valueType() {
     return META;
@@ -496,14 +478,14 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceInterfaceDynamic o && data.identity.equals(o.data.identity);
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, data.identity).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

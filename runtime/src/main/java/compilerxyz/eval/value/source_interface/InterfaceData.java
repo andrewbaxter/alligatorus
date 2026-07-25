@@ -1,7 +1,6 @@
 package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.eval.DefSetId;
@@ -21,13 +20,11 @@ import compilerxyz.eval.value.object_.ObjectMethod;
 import compilerxyz.eval.value.object_.TypeObjectCastRule;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
 @Builtin(uniqueId = 6005L)
-@BuiltinTypeId(7050L)
 public final class InterfaceData {
   public @Nullable DefSetId setId;
 
@@ -126,7 +123,7 @@ public final class InterfaceData {
                           JavaDataDescriptor.fromClass(InterfaceData.class))),
                   true)));
       return new TypeObjectDynamic(
-          new compilerxyz.eval.value.object_.TypeObjectMeta(GenTypeIds.INTERFACE_DATA_TYPE_ID, "definition_set_interface_ref", trivialIdentityAspects, castRules, new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData())),
+          new compilerxyz.eval.value.object_.TypeObjectMeta("definition_set_interface_ref", trivialIdentityAspects, castRules, new TList<compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>some(new ObjectAspectSource.FromInterfaceData())),
           jvmClass,
           JavaDataDescriptor.fromClass(InterfaceData.class),
           InterfaceData.class,

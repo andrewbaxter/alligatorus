@@ -1,8 +1,10 @@
 package compilerxyz.eval.value.throw_;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -32,18 +34,13 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@BuiltinTypeId(7018L)
 @BuiltinPath("throw")
+@BuiltinIdentity(uniqueId = 6146L)
 public record TypeThrowDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_THROW_DYNAMIC_TYPE_ID; }
 
 
   @Override
@@ -51,7 +48,7 @@ public record TypeThrowDynamic()
     return "throw";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeThrowDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_THROW_DYNAMIC_TYPE_ID, "throw_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeThrowDynamic.class, "throw_dynamic");
 
                 public Type valueType() {
     return META;
@@ -59,6 +56,9 @@ public record TypeThrowDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_THROW_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
@@ -121,15 +121,16 @@ public record TypeThrowDynamic()
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeThrowDynamic;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_THROW_DYNAMIC_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

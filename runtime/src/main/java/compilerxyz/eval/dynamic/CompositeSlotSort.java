@@ -1,7 +1,7 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
@@ -12,14 +12,17 @@ public final class CompositeSlotSort {
 
   public record Result<K>(TList<Type> sortedTypes, TMap<K, Integer> slotOfKey) {}
 
-  public static <K> Result<K> sort(TOrderedMap<K, Type> entries, Comparator<K> tiebreaker) {
+  public static <K> Result<K> sort(
+      ExprContext xx, TOrderedMap<K, Type> entries, Comparator<K> tiebreaker) {
+    var descOfKey = new TMap<K, String>();
+    for (var e : entries.entrySet()) {
+      descOfKey.put(e.getKey(), CompositeClassEmitter.slotDescriptor(xx, e.getValue()).value());
+    }
     var keys = new TList<K>(entries.size());
     keys.addAll(entries.keySet());
     keys.sort(
         (a, b) -> {
-          int c =
-              TypeId.CANONICAL_ORDER.compare(
-                  entries.getOrNull(a).hasTypeIdTypeId(), entries.getOrNull(b).hasTypeIdTypeId());
+          int c = descOfKey.get(a).compareTo(descOfKey.get(b));
           if (c != 0) return c;
           return tiebreaker.compare(a, b);
         });

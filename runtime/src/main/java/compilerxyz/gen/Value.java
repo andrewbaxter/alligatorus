@@ -2,7 +2,6 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
 import compilerxyz.artifact.ArtifactSupport;
@@ -13,7 +12,6 @@ import compilerxyz.eval.Type;
 
 @Builtin(uniqueId = 2001L, scopeId = 3001)
 @BuiltinPath("eval.value")
-@BuiltinTypeId(7109L)
 public interface Value extends Artifactable {
     Type valueType();
 

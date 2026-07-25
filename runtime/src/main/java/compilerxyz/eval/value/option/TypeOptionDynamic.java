@@ -1,8 +1,9 @@
 package compilerxyz.eval.value.option;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -46,8 +47,6 @@ import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -58,7 +57,6 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @Builtin(uniqueId = 6008L)
-@BuiltinTypeId(7035L)
 public record TypeOptionDynamic(Type elementType)
     implements
         Type,
@@ -72,9 +70,6 @@ public record TypeOptionDynamic(Type elementType)
         AspectStackValueDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId())); }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -86,7 +81,7 @@ public record TypeOptionDynamic(Type elementType)
     return "option(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_OPTION_DYNAMIC_TYPE_ID, "option_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionDynamic.class, "option_dynamic");
 
                 public Type valueType() {
     return META;
@@ -114,13 +109,14 @@ public record TypeOptionDynamic(Type elementType)
   }
 
   @Override
-  public boolean typeIsEqual(Type other) {
-    return other instanceof TypeOptionDynamic o && elementType.typeIsEqual(o.elementType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY, TypeOptionDynamic.class) instanceof Opt.Some<TypeOptionDynamic> oSome
+        && elementType.typeIsEqual(xx, oSome.value().elementType);
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return typeIsEqual(sourceType);
+    return typeIsEqual(xx, sourceType);
   }
 
   @Override

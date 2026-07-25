@@ -1,9 +1,7 @@
 package compilerxyz.eval.value.source_union;
 
 import compilerxyz.annotations.Builtin;
-import compilerxyz.annotations.BuiltinTypeId;
 
-import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -31,7 +29,6 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -42,7 +39,6 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectUnion;
 
 @Builtin(uniqueId = 6021L)
-@BuiltinTypeId(7052L)
 public final class TypeSourceUnionDynamic
     implements
         Type,
@@ -113,18 +109,6 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.DefsetMember(set.defSetId, uniqueId(identity));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
-  }
-
-  @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
@@ -135,7 +119,7 @@ public final class TypeSourceUnionDynamic
     return "union_dyn";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_SOURCE_UNION_DYNAMIC_TYPE_ID, "source_union_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, "source_union_dynamic");
 
                 public Type valueType() {
     return META;
@@ -212,13 +196,14 @@ public final class TypeSourceUnionDynamic
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceUnionDynamic o && identity.equals(o.identity);
-  }
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.EResult.ok(cv);
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, identity).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return sourceType.typeAspect(xx, identity).optIsSome();

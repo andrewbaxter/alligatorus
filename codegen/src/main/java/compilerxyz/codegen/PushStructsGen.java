@@ -89,10 +89,6 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
   private static final ClassName TYPE_OBJECT_META =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
-  private static final ClassName TYPE_ID_COMPOSITE =
-      ClassName.get("compilerxyz.eval", "TypeId", "Composite");
-  private static final ClassName GEN_TYPE_IDS =
-      ClassName.get("compilerxyz.gen", "GenTypeIds");
   private static final ClassName OBJECT_DROP_KIND =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
   private static final ClassName TYPE_OBJECT_CAST_RULE =
@@ -103,8 +99,6 @@ public final class PushStructsGen {
       ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
   private static final ClassName OBJECT_METHOD =
       ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
-  private static final ClassName TYPE_ID = ClassName.get("compilerxyz.eval", "TypeId");
-
   private static final ClassName TUPLE = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
   private static final ClassName TUPLE_ELEMENT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.tuple", "TupleElement", "Dynamic");
@@ -116,7 +110,6 @@ public final class PushStructsGen {
 
   public record PushStructSpec(
       String name,
-      long builtinUniqueId,
       TList<NamedTypeRef> dataFields,
       TList<PushField> fields,
       TList<PushMethod> methods) {}
@@ -125,14 +118,12 @@ public final class PushStructsGen {
       Path outRoot,
       Formatter formatter,
       TList<PushStructSpec> specs,
-      TList<PushStructSpec> extraSpecs,
-      TSet<Long> builtinUniqueIds,
-      TSet<Long> scopeIds)
+      TList<PushStructSpec> extraSpecs)
       throws IOException {
     var all = new TList<PushStructSpec>();
     all.addAll(specs);
     all.addAll(extraSpecs);
-    validate(all, builtinUniqueIds);
+    validate(all);
     for (var spec : all) {
       if (HANDWRITTEN_STRUCTS.contains(spec.name())) continue;
       writeDataClass(outRoot, formatter, spec);
@@ -140,15 +131,11 @@ public final class PushStructsGen {
     writeGenObjectTypes(outRoot, formatter, all);
   }
 
-  private static void validate(TList<PushStructSpec> specs, TSet<Long> builtinUniqueIds) {
+  private static void validate(TList<PushStructSpec> specs) {
     var names = new TSet<String>();
     for (var spec : specs) {
       if (!names.add(spec.name())) {
         throw new IllegalStateException("duplicate push struct name: " + spec.name());
-      }
-      if (!builtinUniqueIds.add(spec.builtinUniqueId())) {
-        throw new IllegalStateException(
-            "duplicate builtin_unique_id " + spec.builtinUniqueId() + " (in push_structs)");
       }
       var memberNames = new TSet<String>();
       for (var f : spec.fields()) {
@@ -689,9 +676,8 @@ public final class PushStructsGen {
     if (isSelfReferential) {
       builder.addStatement("var __methods = new $T<$T>()", TLIST, OBJECT_METHOD);
     }
-    builder.addStatement("var __typeId = new $T.Builtin($LL)", TYPE_ID, spec.builtinUniqueId());
     builder.addStatement(
-        "var __meta = new $T(__typeId, $S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
+        "var __meta = new $T($S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
         TYPE_OBJECT_META,
         spec.name(),
         TLIST,

@@ -1,15 +1,13 @@
 package compilerxyz.eval.value.source_object_new;
 
-import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.artifact.Artifact;
-import compilerxyz.artifact.ArtifactBody;
-import compilerxyz.artifact.ArtifactExporter;
-import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.eval.EvalOutcome;
+
 import compilerxyz.artifact.ExporterAny;
-import compilerxyz.artifact.ExporterRoot;
-import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -23,47 +21,25 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
-import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinTypeId(7048L)
+@BuiltinIdentity(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
     return compilerxyz.gen.GenType.dynamicType();
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
-        TList.of(new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity))));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
   }
 
 
@@ -80,6 +56,9 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectFunction.AspectId)) {
@@ -191,15 +170,17 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       return EResult.ok(this);
     }
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeSourceObjectNewDynamic o && type_.typeIsEqual(o.type_);
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_IDENTITY, TypeSourceObjectNewDynamic.class) instanceof Opt.Some<TypeSourceObjectNewDynamic> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

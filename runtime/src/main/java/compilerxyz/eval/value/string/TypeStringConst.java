@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.string;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -36,8 +38,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -46,7 +46,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStringConst;
 
-@BuiltinTypeId(7007L)
+@BuiltinIdentity(uniqueId = 6144L)
 public record TypeStringConst()
     implements
         Type,
@@ -57,9 +57,6 @@ public record TypeStringConst()
         AspectField,
         AspectStringConst,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_STRING_CONST_TYPE_ID; }
 
 
   @Override
@@ -72,7 +69,7 @@ public record TypeStringConst()
     return "string";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringConst.class, compilerxyz.gen.GenTypeIds.TYPE_STRING_CONST_TYPE_ID, "string_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringConst.class, "string_const");
 
                 public Type valueType() {
     return META;
@@ -80,6 +77,9 @@ public record TypeStringConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectStringConst.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -199,14 +199,14 @@ public record TypeStringConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeStringConst;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_STRING_CONST_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

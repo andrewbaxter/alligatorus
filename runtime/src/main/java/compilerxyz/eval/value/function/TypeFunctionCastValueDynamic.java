@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -19,12 +21,10 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.util.Opt;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectInitialBind;
 
-@BuiltinTypeId(7040L)
 @BuiltinPath("eval.cast_value")
+@BuiltinIdentity(uniqueId = 6109L)
 public record TypeFunctionCastValueDynamic()
     implements
         Type,
@@ -32,16 +32,13 @@ public record TypeFunctionCastValueDynamic()
         AspectInitialBind,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID; }
-
 
   @Override
   public String typeDesc() {
     return "fn-cast-value";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionCastValueDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_TYPE_ID, "function_cast_value_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionCastValueDynamic.class, "function_cast_value_dynamic");
 
                 public Type valueType() {
     return META;
@@ -49,6 +46,9 @@ public record TypeFunctionCastValueDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
@@ -82,15 +82,16 @@ public record TypeFunctionCastValueDynamic()
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeFunctionCastValueDynamic;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_FUNCTION_CAST_VALUE_DYNAMIC_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

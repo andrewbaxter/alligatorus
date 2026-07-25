@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.map;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -36,17 +40,13 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -57,7 +57,6 @@ import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
@@ -68,8 +67,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -80,10 +77,8 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
-import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.annotations.Builtin;
 
-@BuiltinTypeId(7030L)
+@BuiltinIdentity(uniqueId = 6122L)
 public record TypeMapDynamic(Type keyType, Type valueType)
     implements
         Type,
@@ -99,9 +94,6 @@ public record TypeMapDynamic(Type keyType, Type valueType)
         AspectStackValueDynamic,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() { return new TypeId.Composite(GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, TList.of(keyType.hasTypeIdTypeId(), valueType.hasTypeIdTypeId())); }
-
 
   @Override
   public String typeDesc() {
@@ -113,7 +105,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_MAP_DYNAMIC_TYPE_ID, "map_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapDynamic.class, "map_dynamic");
 
                 public Type valueType() {
     return META;
@@ -121,6 +113,9 @@ public record TypeMapDynamic(Type keyType, Type valueType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectDropDynamic.AspectId)) {
       return GenAspectDropDynamic.getMaybe(xx, keyType).optIsSome()
               || GenAspectDropDynamic.getMaybe(xx, valueType).optIsSome()
@@ -364,15 +359,15 @@ public record TypeMapDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public boolean typeIsEqual(Type other) {
-    return other instanceof TypeMapDynamic o
-        && keyType.typeIsEqual(o.keyType)
-        && valueType.typeIsEqual(o.valueType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_DYNAMIC_IDENTITY, TypeMapDynamic.class) instanceof Opt.Some<TypeMapDynamic> oSome
+        && keyType.typeIsEqual(xx, oSome.value().keyType)
+        && valueType.typeIsEqual(xx, oSome.value().valueType);
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    if (typeIsEqual(sourceType)) {
+    if (typeIsEqual(xx, sourceType)) {
       return true;
     }
     if (sourceType instanceof Record
@@ -388,7 +383,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       return EResult.err(loc, "TypeMapDynamic::typeCastFrom: CodeValue has no value");
     }
     var sourceType = some.value().valueType();
-    if (typeIsEqual(sourceType)) {
+    if (typeIsEqual(xx, sourceType)) {
       return EResult.ok(cv);
     }
     if (!(some.value() instanceof Record record)) {

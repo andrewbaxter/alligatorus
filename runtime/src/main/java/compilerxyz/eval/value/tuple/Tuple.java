@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -23,8 +27,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -82,7 +84,7 @@ import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
-@BuiltinTypeId(7043L)
+@BuiltinIdentity(uniqueId = 6147L)
 public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     implements
         Type,
@@ -226,7 +228,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         dynamicIndexOfElement.add(-1);
       }
     }
-    var slotInfo = sortTupleSlots(dynamicTypes);
+    var slotInfo = sortTupleSlots(xx, dynamicTypes);
     var sortedTypes = slotInfo.sortedTypes();
     var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
     return switch (accessIndex) {
@@ -353,18 +355,18 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   private static CompositeSlotSort.Result<Integer> sortTupleSlots(
-      TList<Type> types) {
+      ExprContext xx, TList<Type> types) {
     var entries = new TOrderedMap<Integer, Type>();
     for (int i = 0; i < types.size(); i++) entries.put(i, types.get(i));
-    return CompositeSlotSort.sort(entries, Integer::compare);
+    return CompositeSlotSort.sort(xx, entries, Integer::compare);
   }
 
-  private static TList<Type> sortTupleTypes(TList<Type> types) {
-    return sortTupleSlots(types).sortedTypes();
+  private static TList<Type> sortTupleTypes(ExprContext xx, TList<Type> types) {
+    return sortTupleSlots(xx, types).sortedTypes();
   }
 
-  private static TList<Integer> slotOfIndex(TList<Type> types) {
-    var slotOf = sortTupleSlots(types).slotOfKey();
+  private static TList<Integer> slotOfIndex(ExprContext xx, TList<Type> types) {
+    var slotOf = sortTupleSlots(xx, types).slotOfKey();
     var out = new TList<Integer>(types.size());
     for (int i = 0; i < types.size(); i++) out.add(slotOf.get(i));
     return out;
@@ -413,6 +415,9 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TUPLE_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectTuple.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -464,25 +469,26 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    if (!(AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TUPLE_IDENTITY, Tuple.class) instanceof Opt.Some<Tuple> oSome)) return false;
+    var o = oSome.value();
+    if (elements.size() != o.elements.size()) return false;
+    for (int i = 0; i < elements.size(); i++) {
+      var aType = tupleElementType(elements.get(i));
+      var bType = tupleElementType(o.elements.get(i));
+      if (aType == null || bType == null) return false;
+      if (!aType.typeIsEqual(xx, bType)) return false;
+    }
+    return true;
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     var sourceTuple = GenAspectTuple.getMaybe(xx, sourceType);
     if (!sourceTuple.optIsSome()) {
       return false;
     }
     return ((Opt.Some<AspectTuple>) sourceTuple).value().aspectTupleElementTypes().size() == elements.size();
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    if (!(other instanceof Tuple o)) return false;
-    if (elements.size() != o.elements.size()) return false;
-    for (int i = 0; i < elements.size(); i++) {
-      var aType = tupleElementType(elements.get(i));
-      var bType = tupleElementType(o.elements.get(i));
-      if (aType == null || bType == null) return false;
-      if (!aType.typeIsEqual(bType)) return false;
-    }
-    return true;
   }
 
   private static compilerxyz.eval.@org.jspecify.annotations.Nullable Type tupleElementType(TupleElement e) {
@@ -827,7 +833,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
           if (elemCv.value() instanceof Opt.Some<Value> elemSome) {
             var elemType = elemSome.value().valueType();
             var boxedType = DynUtil.substituteBoxed(xx, elemType);
-            if (!boxedType.equals(elemType)) {
+            if (!boxedType.typeIsEqual(xx, elemType)) {
               var boxedRes = boxedType.typeCastFrom(xx, loc, elemCv);
               if (boxedRes.hasErrors()) {
                 if (errors == null) errors = new TList<>();
@@ -980,8 +986,8 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (errors != null && !errors.isEmpty()) {
       return EResult.errs(errors);
     }
-    var slotOf = slotOfIndex(types);
-    var sortedTypes = sortTupleTypes(types);
+    var slotOf = slotOfIndex(xx, types);
+    var sortedTypes = sortTupleTypes(xx, types);
     @SuppressWarnings("unchecked")
     CodeDynamic[] sortedCodesArr = new CodeDynamic[types.size()];
     for (int i = 0; i < types.size(); i++) {
@@ -1043,7 +1049,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       if (externalHostValue == null && elementLifts.isEmpty()) {
         return EResult.ok(new Tuple(Opt.none(), new TList<>()));
       }
-      var expectedClass = CompositeClassEmitter.getOrEmit(xx, sortTupleTypes(elementTypes));
+      var expectedClass = CompositeClassEmitter.getOrEmit(xx, sortTupleTypes(xx, elementTypes));
       if (externalHostValue == null || externalHostValue.getClass() != expectedClass) {
         return EResult.err(
             loc,
@@ -1055,7 +1061,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       var fields = cachedFields;
       if (fields == null) {
         fields = new java.lang.reflect.Field[elementLifts.size()];
-        var slotOf = slotOfIndex(elementTypes);
+        var slotOf = slotOfIndex(xx, elementTypes);
         for (int i = 0; i < fields.length; i++) {
           int slot = slotOf.get(i);
           try {
@@ -1156,27 +1162,6 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       }
     };
     return Opt.some(t);
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    var ids = new TList<TypeId>(elements.size());
-    for (var e : elements) {
-      Type t = switch (e) {
-        case TupleElement.Dynamic d -> d.type();
-        case TupleElement.EvalRes r -> {
-          var er = r.result();
-          if (!er.hasErrors()
-              && er.requireValue("Tuple::typeId slot").value() instanceof Opt.Some<Value> some) {
-            yield some.value().valueType();
-          }
-          yield (Type) new Tuple(Opt.none(), new TList<>());
-        }
-      };
-      ids.add(t.hasTypeIdTypeId());
-    }
-    ids.sort(TypeId.CANONICAL_ORDER);
-    return new TypeId.Composite(GenTypeIds.TUPLE_TYPE_ID, ids);
   }
 
   @Override

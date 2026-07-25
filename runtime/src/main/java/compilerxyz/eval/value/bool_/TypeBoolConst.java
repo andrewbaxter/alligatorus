@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.bool_;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -33,8 +35,6 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBoolConst;
@@ -42,7 +42,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinTypeId(7004L)
+@BuiltinIdentity(uniqueId = 6102L)
 public record TypeBoolConst()
     implements
         Type,
@@ -52,9 +52,6 @@ public record TypeBoolConst()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_BOOL_CONST_TYPE_ID; }
 
 
   @Override
@@ -67,7 +64,7 @@ public record TypeBoolConst()
     return "bool";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolConst.class, compilerxyz.gen.GenTypeIds.TYPE_BOOL_CONST_TYPE_ID, "bool_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolConst.class, "bool_const");
 
                 public Type valueType() {
     return META;
@@ -75,6 +72,9 @@ public record TypeBoolConst()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectBoolConst.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -175,14 +175,14 @@ public record TypeBoolConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeBoolConst;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BOOL_CONST_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

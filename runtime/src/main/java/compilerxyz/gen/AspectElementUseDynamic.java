@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Code;
@@ -12,7 +11,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.value.ValueDynamicSource;
 
 @Builtin(uniqueId = 1039L)
-@BuiltinTypeId(7212L)
 public interface AspectElementUseDynamic extends Aspect {
   EResult<CodeValue> aspectElementUseDynamicElementUseDynamic(
       ExprContext xx, QExprId loc, ValueDynamicSource elementSource, Code carry);

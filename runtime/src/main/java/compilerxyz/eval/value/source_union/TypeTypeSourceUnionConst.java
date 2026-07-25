@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.source_union;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -42,9 +46,7 @@ import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.TypeId;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -55,7 +57,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
 
-@BuiltinTypeId(7051L)
+@BuiltinIdentity(uniqueId = 6141L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     implements
         Type,
@@ -69,18 +71,6 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
         AspectUnion,
         ExporterAny {
 
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
-  }
-
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -92,7 +82,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     return "union";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_UNION_CONST_TYPE_ID, "type_source_union_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionConst.class, "type_source_union_const");
 
                 public Type valueType() {
     return META;
@@ -100,6 +90,9 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(type_.identity)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -315,14 +308,15 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeTypeSourceUnionConst o && type_.typeIsEqual(o.type_);
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY, TypeTypeSourceUnionConst.class) instanceof Opt.Some<TypeTypeSourceUnionConst> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

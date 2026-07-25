@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.eval.aspect.AspectLookup;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -19,6 +23,8 @@ import compilerxyz.eval.dynamic.CompositeSlotSort;
 import compilerxyz.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
@@ -29,8 +35,6 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -82,7 +86,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectType;
 
-@BuiltinTypeId(7042L)
+@BuiltinIdentity(uniqueId = 6134L)
 public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordField> fields)
     implements
         Type,
@@ -242,7 +246,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         dynamicFieldTypes.put(entry.getKey(), d.type());
       }
     }
-    var slotInfo = computeSlotInfoFromTypes(dynamicFieldTypes);
+    var slotInfo = computeSlotInfoFromTypes(xx, dynamicFieldTypes);
     var klass =
         JavaInternalName.of(
             CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
@@ -441,7 +445,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    var slotInfo = computeSlotInfo(fields);
+    var slotInfo = computeSlotInfo(xx, fields);
     var klass = CompositeClassEmitter.getOrEmit(xx, slotInfo.sortedTypes());
     return JavaDataDescriptor.fromInternalName(JavaInternalName.of(klass.getName().replace('.', '/')));
   }
@@ -475,6 +479,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.RECORD_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -500,7 +507,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         }
         entryLifts.add(new RecordLift.Entry(k, entryLiftSome.value(), d.type()));
       }
-      return Opt.some(new RecordLift(entryLifts));
+      return Opt.some(new RecordLift(xx, entryLifts));
     }
     return Opt.none();
   }
@@ -872,6 +879,21 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    if (!(AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.RECORD_IDENTITY, Record.class) instanceof Opt.Some<Record> oSome)) return false;
+    var o = oSome.value();
+    if (fields.size() != o.fields.size()) return false;
+    for (var entry : fields.entrySet()) {
+      var otherField = o.fields.getOrNull(entry.getKey());
+      if (otherField == null) return false;
+      var thisType = recordFieldType(entry.getValue());
+      var otherType = recordFieldType(otherField);
+      if (!thisType.typeIsEqual(xx, otherType)) return false;
+    }
+    return true;
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     var srcAsp = GenAspectRecord.getMaybe(xx, sourceType);
     if (!(srcAsp instanceof Opt.Some<AspectRecord> srcSome)) {
@@ -885,20 +907,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       if (srcTypes.getOrNull(k) == null) {
         return false;
       }
-    }
-    return true;
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    if (!(other instanceof Record o)) return false;
-    if (fields.size() != o.fields.size()) return false;
-    for (var entry : fields.entrySet()) {
-      var otherField = o.fields.getOrNull(entry.getKey());
-      if (otherField == null) return false;
-      var thisType = recordFieldType(entry.getValue());
-      var otherType = recordFieldType(otherField);
-      if (!thisType.typeIsEqual(otherType)) return false;
     }
     return true;
   }
@@ -961,10 +969,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
 
     var srcFieldTypes = srcAsp.aspectRecordFieldTypes();
-    var srcSlotInfo = computeSlotInfoFromTypes(srcFieldTypes);
-    var destSlotInfo = computeSlotInfoFromTypes(recordFieldTypesRaw(fields));
+    var srcSlotInfo = computeSlotInfoFromTypes(xx, srcFieldTypes);
+    var destSlotInfo = computeSlotInfoFromTypes(xx, recordFieldTypesRaw(fields));
 
-    if (sameTypeIdList(srcSlotInfo.sortedTypes(), destSlotInfo.sortedTypes())) {
+    if (sameTypeList(xx, srcSlotInfo.sortedTypes(), destSlotInfo.sortedTypes())) {
       var sourcedResult =
           new Record(Opt.some(new RecordBaseDynamic(sourcedSource)), asDynamicFields(fields));
       return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue((Value) sourcedResult)));
@@ -977,6 +985,15 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var bindResult = xx.target.targetBind(xx, loc, new TargetBindSub(carryDyn, srcType));
       sourceLoadCarry = bindResult.code();
       srcAccessSource = new ValueDynamicSource.Binding(bindResult.id());
+    } else if (sourcedSource instanceof ValueDynamicSource.Expr) {
+      // The source composite sits on the operand stack; each per-field access below
+      // realizes the source once, so it must live in a reloadable slot.
+      var srcKey = new JavaBytecodeBindingKey();
+      sourceLoadCarry =
+          new CodeDynamic(
+              loc,
+              new JavaBytecodeStoreLoad(Opcodes.ASTORE, srcKey));
+      srcAccessSource = new ValueDynamicSource.Binding(new BindingId.Local(srcKey));
     } else {
       sourceLoadCarry = null;
       srcAccessSource = sourcedSource;
@@ -986,16 +1003,10 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             CompositeClassEmitter.internalNameFor(xx, srcSlotInfo.sortedTypes()));
 
     var destSortedKeys = new TList<ConstKey>(fields.size());
-    destSortedKeys.addAll(fields.keySet());
-    destSortedKeys.sort(
-        (a, b) -> {
-          int c =
-              TypeId.CANONICAL_ORDER.compare(
-                  recordFieldType(fields.getOrNull(a)).hasTypeIdTypeId(),
-                  recordFieldType(fields.getOrNull(b)).hasTypeIdTypeId());
-          if (c != 0) return c;
-          return ConstKey.CANONICAL_ORDER.compare(a, b);
-        });
+    for (var k : fields.keySet()) destSortedKeys.add(k);
+    for (var k : fields.keySet()) {
+      destSortedKeys.set(destSlotInfo.slotOfKey().get(k), k);
+    }
 
     var erb = new Erb(loc);
     var destFieldCodes = new TList<CodeDynamic>(destSortedKeys.size());
@@ -1081,13 +1092,21 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   }
 
   private static CompositeSlotSort.Result<ConstKey> computeSlotInfo(
-      TOrderedMap<ConstKey, RecordField> fields) {
-    return computeSlotInfoFromTypes(recordFieldTypesRaw(fields));
+      ExprContext xx, TOrderedMap<ConstKey, RecordField> fields) {
+    return computeSlotInfoFromTypes(xx, recordFieldTypesRaw(fields));
   }
 
   private static CompositeSlotSort.Result<ConstKey> computeSlotInfoFromTypes(
-      TOrderedMap<ConstKey, Type> fieldTypes) {
-    return CompositeSlotSort.sort(fieldTypes, ConstKey.CANONICAL_ORDER);
+      ExprContext xx, TOrderedMap<ConstKey, Type> fieldTypes) {
+    return CompositeSlotSort.sort(xx, fieldTypes, ConstKey.CANONICAL_ORDER);
+  }
+
+  private static boolean sameTypeList(ExprContext xx, TList<Type> a, TList<Type> b) {
+    if (a.size() != b.size()) return false;
+    for (int i = 0; i < a.size(); i++) {
+      if (!a.get(i).typeIsEqual(xx, b.get(i))) return false;
+    }
+    return true;
   }
 
   private static TOrderedMap<ConstKey, Type> recordFieldTypesRaw(
@@ -1097,14 +1116,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       out.put(e.getKey(), recordFieldType(e.getValue()));
     }
     return out;
-  }
-
-  private static boolean sameTypeIdList(TList<Type> a, TList<Type> b) {
-    if (a.size() != b.size()) return false;
-    for (int i = 0; i < a.size(); i++) {
-      if (!a.get(i).hasTypeIdTypeId().equals(b.get(i).hasTypeIdTypeId())) return false;
-    }
-    return true;
   }
 
   @Override
@@ -1121,21 +1132,9 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
           "Record::toDynamic: expected Record value, got " + valueSome.value().getClass());
     }
     TList<ExprErr> errors = null;
-    var sortedTypes = new TList<Type>(record.fields.size());
-    var entryCodes = new TList<CodeDynamic>(record.fields.size());
-    var sortedEntries =
-        new TList<java.util.Map.Entry<ConstKey, RecordField>>(record.fields.size());
-    sortedEntries.addAll(record.fields.entrySet());
-    sortedEntries.sort(
-        (a, b) -> {
-          int c =
-              TypeId.CANONICAL_ORDER.compare(
-                  recordFieldType(a.getValue()).hasTypeIdTypeId(),
-                  recordFieldType(b.getValue()).hasTypeIdTypeId());
-          if (c != 0) return c;
-          return ConstKey.CANONICAL_ORDER.compare(a.getKey(), b.getKey());
-        });
-    for (var entry : sortedEntries) {
+    record LoweredField(ConstKey key, String desc, Type type, CodeDynamic code) {}
+    var loweredFields = new TList<LoweredField>(record.fields.size());
+    for (var entry : record.fields.entrySet()) {
       var key = entry.getKey();
       var field = entry.getValue();
       switch (field) {
@@ -1185,13 +1184,29 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
             continue;
           }
           var loweredCode = lowered.requireValue("Record::toDynamic field lowered");
-          sortedTypes.add(elemType);
-          entryCodes.add(loweredCode);
+          loweredFields.add(
+              new LoweredField(
+                  key,
+                  toDynSome.value().aspectConsumeDynamicJvmClass(xx).value(),
+                  elemType,
+                  loweredCode));
         }
       }
     }
     if (errors != null && !errors.isEmpty()) {
       return EResult.errs(errors);
+    }
+    loweredFields.sort(
+        (a, b) -> {
+          int c = a.desc().compareTo(b.desc());
+          if (c != 0) return c;
+          return ConstKey.CANONICAL_ORDER.compare(a.key(), b.key());
+        });
+    var sortedTypes = new TList<Type>(loweredFields.size());
+    var entryCodes = new TList<CodeDynamic>(loweredFields.size());
+    for (var f : loweredFields) {
+      sortedTypes.add(f.type());
+      entryCodes.add(f.code());
     }
     var klass =
         JavaInternalName.of(
@@ -1232,12 +1247,15 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     private final TList<Entry> entryLifts;
     private volatile java.lang.reflect.Field @org.jspecify.annotations.Nullable [] cachedFields;
 
-    public RecordLift(TList<Entry> entryLifts) {
+    public RecordLift(ExprContext xx, TList<Entry> entryLifts) {
       var sorted = new TList<Entry>(entryLifts.size());
       sorted.addAll(entryLifts);
       sorted.sort(
           (a, b) -> {
-            int c = TypeId.CANONICAL_ORDER.compare(a.type().hasTypeIdTypeId(), b.type().hasTypeIdTypeId());
+            int c =
+                CompositeClassEmitter.slotDescriptor(xx, a.type())
+                    .value()
+                    .compareTo(CompositeClassEmitter.slotDescriptor(xx, b.type()).value());
             if (c != 0) return c;
             return ConstKey.CANONICAL_ORDER.compare(a.key(), b.key());
           });
@@ -1305,16 +1323,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       }
       return EResult.ok(new Record(Opt.none(), out));
     }
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    var ids = new TList<TypeId>(fields.size());
-    for (var entry : fields.entrySet()) {
-      ids.add(recordFieldType(entry.getValue()).hasTypeIdTypeId());
-    }
-    ids.sort(TypeId.CANONICAL_ORDER);
-    return new TypeId.Composite(GenTypeIds.RECORD_TYPE_ID, ids);
   }
 
   private static Type recordFieldType(RecordField f) {

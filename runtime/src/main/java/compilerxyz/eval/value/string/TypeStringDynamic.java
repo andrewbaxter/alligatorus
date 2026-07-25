@@ -1,8 +1,10 @@
 package compilerxyz.eval.value.string;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -54,8 +56,6 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -70,8 +70,8 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenAspectStringDynamic;
 
-@BuiltinTypeId(7008L)
 @BuiltinPath("types.string")
+@BuiltinIdentity(uniqueId = 6145L)
 public record TypeStringDynamic()
     implements
         Type,
@@ -87,9 +87,6 @@ public record TypeStringDynamic()
         AspectStackValueDynamic,
         AspectStringDynamic,
         ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_STRING_DYNAMIC_TYPE_ID; }
 
 
   private static final compilerxyz.eval.dynamic.JavaInternalName JAVA_STRING =
@@ -136,7 +133,7 @@ public record TypeStringDynamic()
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(String.class));
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_STRING_DYNAMIC_TYPE_ID, "string_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringDynamic.class, "string_dynamic");
 
                 public Type valueType() {
     return META;
@@ -144,6 +141,9 @@ public record TypeStringDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectStringDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -245,6 +245,11 @@ public record TypeStringDynamic()
   }
 
   @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_STRING_DYNAMIC_IDENTITY).optIsSome();
+  }
+
+  @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome()
         || GenAspectStringDynamic.getMaybe(xx, sourceType).optIsSome();
@@ -253,11 +258,6 @@ public record TypeStringDynamic()
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return GenAspectStringDynamic.getMaybe(xx, destType).optIsSome();
-  }
-
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeStringDynamic;
   }
 
   @Override

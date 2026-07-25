@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.int_;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -10,7 +12,6 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -28,14 +29,13 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7115L)
+@BuiltinIdentity(uniqueId = 6115L)
 public record TypeIntToStringDynamic()
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -53,16 +53,11 @@ public record TypeIntToStringDynamic()
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return GenTypeIds.TYPE_INT_TO_STRING_DYNAMIC_TYPE_ID;
-  }
-
-  @Override
   public String typeDesc() {
     return "int.to_string";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntToStringDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_INT_TO_STRING_DYNAMIC_TYPE_ID, "int_to_string_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntToStringDynamic.class, "int_to_string_dynamic");
 
                 public Type valueType() {
     return META;
@@ -70,6 +65,9 @@ public record TypeIntToStringDynamic()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_INT_TO_STRING_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)) {
@@ -125,14 +123,14 @@ public record TypeIntToStringDynamic()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeIntToStringDynamic;
-  }
-
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+  }
+
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_INT_TO_STRING_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override

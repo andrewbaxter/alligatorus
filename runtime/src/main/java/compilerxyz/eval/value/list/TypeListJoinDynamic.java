@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.list;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -11,7 +15,6 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -29,14 +32,13 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.string.TypeStringDynamic;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinTypeId(7114L)
+@BuiltinIdentity(uniqueId = 6118L)
 public record TypeListJoinDynamic(Type elementType)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -54,17 +56,11 @@ public record TypeListJoinDynamic(Type elementType)
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_LIST_JOIN_DYNAMIC_TYPE_ID, TList.of(elementType.hasTypeIdTypeId()));
-  }
-
-  @Override
   public String typeDesc() {
     return "list(" + elementType.typeDesc() + ").join";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListJoinDynamic.class, compilerxyz.gen.GenTypeIds.TYPE_LIST_JOIN_DYNAMIC_TYPE_ID, "list_join_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListJoinDynamic.class, "list_join_dynamic");
 
                 public Type valueType() {
     return META;
@@ -72,6 +68,9 @@ public record TypeListJoinDynamic(Type elementType)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_JOIN_DYNAMIC_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)) {
@@ -141,14 +140,15 @@ public record TypeListJoinDynamic(Type elementType)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeListJoinDynamic o && elementType.typeIsEqual(o.elementType);
-  }
-
-  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+  }
+
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_JOIN_DYNAMIC_IDENTITY, TypeListJoinDynamic.class) instanceof Opt.Some<TypeListJoinDynamic> oSome
+        && elementType.typeIsEqual(xx, oSome.value().elementType);
   }
 
   @Override

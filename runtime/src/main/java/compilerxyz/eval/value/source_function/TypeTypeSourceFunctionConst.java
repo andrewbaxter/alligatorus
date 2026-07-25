@@ -1,5 +1,8 @@
 package compilerxyz.eval.value.source_function;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -7,7 +10,6 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
@@ -30,11 +32,11 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import org.jspecify.annotations.Nullable;
 
+@BuiltinIdentity(uniqueId = 6135L)
 public final class TypeTypeSourceFunctionConst {
   private TypeTypeSourceFunctionConst() {}
 
@@ -48,10 +50,6 @@ public final class TypeTypeSourceFunctionConst {
 
   private static final class Impl implements Type, AspectLift, AspectConsumeDynamic,
       AspectBind, AspectBindDynamic, AspectInitialBind, AspectDropDynamicLight {
-    @Override
-    public TypeId hasTypeIdTypeId() {
-      return GenTypeIds.TYPE_SOURCE_FUNCTION_CONST_TYPE_ID;
-    }
 
     @Override
     public String typeDesc() {
@@ -64,6 +62,9 @@ public final class TypeTypeSourceFunctionConst {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+      if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)) {
+        return Opt.some(this);
+      }
       if (key.equals(GenAspectLift.AspectId)
           || key.equals(GenAspectConsumeDynamic.AspectId)
           || key.equals(GenAspectBind.AspectId)
@@ -107,8 +108,10 @@ public final class TypeTypeSourceFunctionConst {
     }
 
     @Override
-    public boolean typeIsEqual(Type other) {
-      return other instanceof Impl;
+    public boolean typeIsEqual(ExprContext xx, Type other) {
+      return other
+          .typeAspect(xx, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)
+          .optIsSome();
     }
 
     @Override

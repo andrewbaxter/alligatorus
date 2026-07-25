@@ -1,7 +1,9 @@
 package compilerxyz.eval.value.expr;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -17,18 +19,13 @@ import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.util.Opt;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 
-@BuiltinTypeId(7017L)
+@BuiltinIdentity(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
-
-  @Override
-  public TypeId hasTypeIdTypeId() { return GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID; }
 
 
   @Override
@@ -41,7 +38,7 @@ public record TypeExprStagedPlaceholder()
     return "stage result";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExprStagedPlaceholder.class, compilerxyz.gen.GenTypeIds.TYPE_EXPR_STAGED_PLACEHOLDER_TYPE_ID, "expr_staged_placeholder");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExprStagedPlaceholder.class, "expr_staged_placeholder");
 
                 public Type valueType() {
     return META;
@@ -49,6 +46,9 @@ public record TypeExprStagedPlaceholder()
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_STAGED_PLACEHOLDER_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId) || key.equals(GenAspectLift.AspectId)) {
       return Opt.some(this);
@@ -102,14 +102,14 @@ public record TypeExprStagedPlaceholder()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeExprStagedPlaceholder;
-  }
-
-  @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_STAGED_PLACEHOLDER_IDENTITY).optIsSome();
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

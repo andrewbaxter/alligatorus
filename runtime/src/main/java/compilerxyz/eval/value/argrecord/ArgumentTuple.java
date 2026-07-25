@@ -1,24 +1,26 @@
 package compilerxyz.eval.value.argrecord;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.TypeId;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.stream.Collectors;
 
-@BuiltinTypeId(7100L)
+@BuiltinIdentity(uniqueId = 6101L)
 public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
-    implements Type, Value, ExporterAny {
+    implements Type, Value, Aspect, ExporterAny {
 
   @Override
   public String typeDesc() {
@@ -32,14 +34,10 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.ARGUMENT_TUPLE_IDENTITY)) {
+      return Opt.some(this);
+    }
     return Opt.none();
-  }
-
-  @Override
-  public TypeId hasTypeIdTypeId() {
-    var ids = new TList<TypeId>(elementTypes.size());
-    for (var t : elementTypes) ids.add(t.hasTypeIdTypeId());
-    return new TypeId.Composite(GenTypeIds.ARGUMENT_TUPLE_TYPE_ID, ids);
   }
 
   @Override
@@ -51,20 +49,22 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    if (!(other instanceof ArgumentTuple o)) return false;
-    if (elementTypes.size() != o.elementTypes.size()) return false;
-    for (int i = 0; i < elementTypes.size(); i++) {
-      if (!elementTypes.get(i).typeIsEqual(o.elementTypes.get(i))) return false;
-    }
-    return true;
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    if (!(AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.ARGUMENT_TUPLE_IDENTITY, ArgumentTuple.class) instanceof Opt.Some<ArgumentTuple> oSome)) return false;
+    var o = oSome.value();
+    if (elementTypes.size() != o.elementTypes.size()) return false;
+    for (int i = 0; i < elementTypes.size(); i++) {
+      if (!elementTypes.get(i).typeIsEqual(xx, o.elementTypes.get(i))) return false;
+    }
+    return true;
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

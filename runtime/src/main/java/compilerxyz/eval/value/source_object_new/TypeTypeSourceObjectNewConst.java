@@ -1,7 +1,11 @@
 package compilerxyz.eval.value.source_object_new;
 
-import compilerxyz.annotations.BuiltinTypeId;
+import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenTrivialIdentityAspects;
+
+
+import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -33,20 +37,17 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.AspectPostDeserialize;
 import org.jspecify.annotations.Nullable;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
-import compilerxyz.eval.TypeId;
-import compilerxyz.gen.GenTypeIds;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinTypeId(7047L)
+@BuiltinIdentity(uniqueId = 6140L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     implements
         Type,
@@ -62,27 +63,12 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public TypeId hasTypeIdTypeId() {
-    return new TypeId.Composite(
-        GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID,
-        compilerxyz.util.TList.of(
-            new TypeId.DefsetMember(type_.set.defSetId, uniqueId(type_.identity))));
-  }
-
-  private static long uniqueId(Unique u) {
-    return switch (u) {
-      case Unique.Builtin b -> b.id();
-      case Unique.Source s -> s.id();
-    };
-  }
-
-  @Override
   public String typeDesc() {
     if (type_.description != null) return type_.description;
     return "definition_set_object_new_const";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, compilerxyz.gen.GenTypeIds.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_TYPE_ID, "type_source_object_new_const");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectNewConst.class, "type_source_object_new_const");
 
                 public Type valueType() {
     return META;
@@ -90,6 +76,9 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY)) {
+      return Opt.some(this);
+    }
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -262,15 +251,17 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
   }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.Type other) {
-    return other instanceof TypeTypeSourceObjectNewConst o && type_.typeIsEqual(o.type_);
-  }
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+  @Override
+  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY, TypeTypeSourceObjectNewConst.class) instanceof Opt.Some<TypeTypeSourceObjectNewConst> oSome
+        && type_.typeIsEqual(xx, oSome.value().type_);
+  }
+
   @Override
   public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
     return false;

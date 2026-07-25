@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinTypeId;
 
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.CodeValue;
@@ -10,7 +9,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 
 @Builtin(uniqueId = 1025L)
-@BuiltinTypeId(7232L)
 public interface AspectStackValueDynamic extends Aspect {
   CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic self_);
 }
