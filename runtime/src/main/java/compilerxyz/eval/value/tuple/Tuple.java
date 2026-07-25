@@ -204,7 +204,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
+                EvalOutcome.ofValue(ValueDynamic.stack(accessedType, 1))));
       }
       return EResult.err(loc, "Tuple element " + aiSome.value() + " not found");
     }
@@ -287,32 +287,25 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     }
     var accessedType = dynamicTypes.get(dynIdx);
     int accessedSlot = slotInfo.slotOfKey().get(dynIdx);
-    boolean stackRooted = DynUtil.isStackRooted(baseSource);
-    var out = new JavaBytecodeSequence();
-    out.add(baseSource.realize(xx, loc));
-    if (stackRooted) {
-      for (int i = tuple.elements.size() - 1; i >= 0; i--) {
-        if (i == accessedIdx) continue;
-        int di = dynamicIndexOfElement.get(i);
-        if (di < 0) continue;
-        var t = dynamicTypes.get(di);
-        int slotIdx = slotInfo.slotOfKey().get(di);
-        var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
-        if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
-        var siblingDrop = siblingDropRes.valueOrNull();
-        if (siblingDrop != null) out.add(siblingDrop);
-      }
+    var useDynOpt = compilerxyz.gen.GenAspectElementUseDynamic.getMaybe(xx, accessedType);
+    if (!(useDynOpt
+        instanceof Opt.Some<compilerxyz.gen.AspectElementUseDynamic> useDynSome)) {
+      return EResult.err(
+          loc,
+          "Tuple element "
+              + accessedIdx
+              + " type ("
+              + accessedType.typeDesc()
+              + ") does not implement AspectElementUseDynamic");
     }
-    out.add(
-        JavaBytecodeUtils.accessField(
-            loc,
+    var childSource =
+        new ValueDynamicSource.Field(
+            baseSource,
             klass,
             CompositeClassEmitter.slotFieldName(accessedSlot),
-            CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-    return EResult.ok(
-        new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, out)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
+            CompositeClassEmitter.slotDescriptor(xx, accessedType));
+    return useDynSome.value()
+        .aspectElementUseDynamicElementUseDynamic(xx, loc, childSource, Code.none(loc));
   }
 
   /**
@@ -336,7 +329,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       var childCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, childType)));
+              EvalOutcome.ofValue(ValueDynamic.stack(childType, 1)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Tuple::tupleChildDropCode drop").dynamic();
@@ -465,7 +458,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
                 loc,
                 JavaBytecodeUtils.literalNull(loc)),
             EvalOutcome.ofValue(
-                compilerxyz.eval.value.ValueDynamic.stack(xx, destType))));
+                compilerxyz.eval.value.ValueDynamic.stack(destType, 1))));
   }
 
   @Override
@@ -512,7 +505,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
       return EResult.ok(
           new CodeValue(
               cv.code(),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
     }
     if (!(some.value() instanceof Tuple tuple)) {
       throw new IllegalStateException(
@@ -1012,7 +1005,7 @@ public record Tuple(Opt<TupleBaseDynamic> base, TList<TupleElement> elements)
     if (elements.isEmpty()) {
       return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(new Tuple(Opt.none(), new TList<>())));
     }
-    var source = ValueDynamicSource.Expr.stackFor(xx, this);
+    var source = new ValueDynamicSource.Expr(1);
     return new CodeValue(
         Code.of(loc, value),
         EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));

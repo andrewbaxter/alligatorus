@@ -72,6 +72,7 @@ import compilerxyz.gen.GenAspectStringDynamic;
 public record TypeListDynamic(Type elementType)
     implements
         Type,
+        compilerxyz.gen.AspectFieldUseDynamic,
         AspectArtifact,
         AspectBind,
         AspectBindDynamic,
@@ -88,6 +89,19 @@ public record TypeListDynamic(Type elementType)
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.value.ValueDynamicSource source) {
+    return compilerxyz.eval.EResult.ok(
+        new compilerxyz.eval.CodeValue(
+            compilerxyz.eval.Code.of(
+                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
+            compilerxyz.eval.EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(source, this))));
   }
 
   @Override
@@ -110,6 +124,9 @@ public record TypeListDynamic(Type elementType)
       return GenAspectDropDynamic.getMaybe(xx, elementType).optIsSome()
           ? Opt.some(this)
           : Opt.none();
+    }
+    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+      return Opt.some(this);
     }
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
@@ -205,7 +222,7 @@ public record TypeListDynamic(Type elementType)
           EResult.ok(
               new CodeValue(
                   self.code(),
-                  EvalOutcome.ofValue(ValueDynamic.stack(xx, m.type()))));
+                  EvalOutcome.ofValue(ValueDynamic.stack(m.type(), 1))));
     };
   }
 
@@ -314,7 +331,7 @@ public record TypeListDynamic(Type elementType)
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -350,7 +367,7 @@ public record TypeListDynamic(Type elementType)
     var elementCv =
         new CodeValue(
             Code.of(loc, loadElement),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
+            EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1)));
     var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
     var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");

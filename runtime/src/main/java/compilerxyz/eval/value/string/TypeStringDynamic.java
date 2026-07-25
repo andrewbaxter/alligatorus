@@ -84,6 +84,7 @@ public record TypeStringDynamic()
         AspectInitialBind,
         AspectLift,
         AspectSet,
+        compilerxyz.gen.AspectFieldUseDynamic,
         AspectStackValueDynamic,
         AspectStringDynamic,
         ExporterAny {
@@ -154,6 +155,7 @@ public record TypeStringDynamic()
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectSet.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
@@ -198,12 +200,21 @@ public record TypeStringDynamic()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
   public EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue base, CodeValue value) {
     return DynUtil.dynamicSet(xx, loc, base, value);
+  }
+
+  @Override
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx, QExprId loc, compilerxyz.eval.value.ValueDynamicSource source) {
+    return EResult.ok(
+        new CodeValue(
+            Code.of(loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(new compilerxyz.eval.value.ValueDynamic(source, this))));
   }
 
   @Override
@@ -218,10 +229,17 @@ public record TypeStringDynamic()
     if (!(aspectFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
       return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic string");
     }
+    if (!(self_.value() instanceof Opt.Some<Value> strMethodSome)
+        || !(strMethodSome.value() instanceof compilerxyz.eval.value.ValueDynamic strMethodVd)) {
+      return EResult.err(
+          loc, "TypeStringDynamic::field: method receiver has no dynamic source");
+    }
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeSome.value()))));
+            EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(
+                    strMethodVd.source(), fieldTypeSome.value()))));
   }
 
   @Override
@@ -281,12 +299,12 @@ public record TypeStringDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(result),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   @Override
@@ -294,7 +312,7 @@ public record TypeStringDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

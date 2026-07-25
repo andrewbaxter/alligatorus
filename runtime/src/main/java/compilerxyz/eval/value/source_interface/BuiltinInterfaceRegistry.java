@@ -20,6 +20,8 @@ public final class BuiltinInterfaceRegistry {
       case TYPE -> compilerxyz.gen.GenType.dynamicType();
       case ASPECT_FUNCTION -> compilerxyz.gen.GenAspectFunction.dynamicType();
       case ASPECT_FIELD -> compilerxyz.gen.GenAspectField.dynamicType();
+      case ASPECT_FIELD_USE_DYNAMIC -> compilerxyz.gen.GenAspectFieldUseDynamic.dynamicType();
+      case ASPECT_ELEMENT_USE_DYNAMIC -> compilerxyz.gen.GenAspectElementUseDynamic.dynamicType();
       case ASPECT_DROP_DYNAMIC -> compilerxyz.gen.GenAspectDropDynamic.dynamicType();
       case ASPECT_CONSUME_DYNAMIC -> compilerxyz.gen.GenAspectConsumeDynamic.dynamicType();
       case ASPECT_BIND_DYNAMIC -> compilerxyz.gen.GenAspectBindDynamic.dynamicType();
@@ -42,6 +44,8 @@ public final class BuiltinInterfaceRegistry {
     if (!(id instanceof compilerxyz.eval.Unique.Builtin b)) return null;
     long v = b.id();
     if (v == 1015L) return BuiltinInterfaceKind.ASPECT_FIELD;
+    if (v == 1037L) return BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC;
+    if (v == 1039L) return BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC;
     if (v == 1017L) return BuiltinInterfaceKind.ASPECT_SET;
     if (v == 1018L) return BuiltinInterfaceKind.ASPECT_OPERATOR_ADD;
     if (v == 1042L) return BuiltinInterfaceKind.ASPECT_OPERATOR_MOD;

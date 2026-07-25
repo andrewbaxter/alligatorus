@@ -116,6 +116,13 @@ public record TypeFunctionAspectDynamic()
           loc,
           "aspect_lookup: aspect_type must implement TypeAspect, got " + aspectTypeVal.getClass());
     }
+    if (aspectTypeVal
+            instanceof compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic si
+        && !si.data().isAspect) {
+      return EResult.err(
+          loc,
+          "aspect_lookup: interface is not an aspect (set_is_aspect was not called)");
+    }
     var auq = aspTa.id();
 
     var anyDyn = compilerxyz.gen.GenType.dynamicType();
@@ -154,7 +161,7 @@ public record TypeFunctionAspectDynamic()
         new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
             EvalOutcome.ofValue(
-                compilerxyz.eval.value.ValueDynamic.stack(xx, new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, aspTa))))));
+                compilerxyz.eval.value.ValueDynamic.stack(new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, aspTa)), 1))));
   }
 
   @Override

@@ -59,7 +59,9 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 @Builtin(uniqueId = 6008L)
 public record TypeOptionDynamic(Type elementType)
     implements
-        Type,
+        
+        compilerxyz.gen.AspectSet,
+        compilerxyz.gen.AspectFieldUseDynamic,Type,
         AspectArtifact,
         AspectBind,
         AspectBindDynamic,
@@ -100,12 +102,40 @@ public record TypeOptionDynamic(Type elementType)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
+    if (key.equals(compilerxyz.gen.GenAspectSet.AspectId)) {
+      return Opt.some(this);
+    }
+    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+      return Opt.some(this);
+    }
     return Opt.none();
   }
 
   @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.value.ValueDynamicSource source) {
+    return compilerxyz.eval.EResult.ok(
+        new compilerxyz.eval.CodeValue(
+            compilerxyz.eval.Code.of(
+                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
+            compilerxyz.eval.EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(source, this))));
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectSetSet(
+      compilerxyz.eval.ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.CodeValue base,
+      compilerxyz.eval.CodeValue value) {
+    return compilerxyz.eval.dynamic.DynUtil.dynamicSet(xx, loc, base, value);
+  }
+
+  @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -205,7 +235,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType))));
+              EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
     }
     if (ck instanceof ConstKey.Str s2 && s2.value().equals("is_some")) {
       var selfDyn = self.code().dynamic();
@@ -220,7 +250,7 @@ public record TypeOptionDynamic(Type elementType)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+              EvalOutcome.ofValue(ValueDynamic.stack(new compilerxyz.eval.value.bool_.TypeBoolDynamic(), 1))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {

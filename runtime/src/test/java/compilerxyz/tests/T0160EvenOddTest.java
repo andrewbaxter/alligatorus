@@ -225,7 +225,7 @@ public final class T0160EvenOddTest {
             "val_opt_",
             mb.call(
                 mb.field(mb.field(mb.scopeUse("arg"), mb.str("cv")), mb.str("value")),
-                mb.recordOf(TList.of()))),
+                mb.tupleOf())),
         mb.return_(
             mb.ifOf(
                 TList.of(
@@ -237,7 +237,7 @@ public final class T0160EvenOddTest {
                                 "val_type_obj_",
                                 mb.call(
                                     mb.field(mb.scopeUse("val_"), mb.str("type")),
-                                    mb.recordOf(TList.of()))),
+                                    mb.tupleOf())),
                             mb.bind(
                                 "int_aspect_opt_",
                                 mb.call(
@@ -385,7 +385,7 @@ public final class T0160EvenOddTest {
             mb.call(
                 mb.field(
                     mb.field(mb.scopeUse("arg"), mb.str("reference")), mb.str("value")),
-                mb.recordOf(TList.of()))),
+                mb.tupleOf())),
         mb.return_(
             mb.ifOf(
                 TList.of(
@@ -397,7 +397,7 @@ public final class T0160EvenOddTest {
                                 "ref_type_obj_",
                                 mb.call(
                                     mb.field(mb.scopeUse("ref_val_"), mb.str("type")),
-                                    mb.recordOf(TList.of()))),
+                                    mb.tupleOf())),
                             mb.bind(
                                 "ref_int_aspect_opt_",
                                 mb.call(
@@ -461,7 +461,7 @@ public final class T0160EvenOddTest {
                 mb.call(
                     mb.field(
                         mb.field(mb.scopeUse("arg"), mb.str("self")), mb.str("value")),
-                    mb.recordOf(TList.of())),
+                    mb.tupleOf()),
                 mb.str("value"))),
         mb.bind(
             "src_",
@@ -576,10 +576,10 @@ public final class T0160EvenOddTest {
                                                         mb.field(
                                                             mb.scopeUse("conv_cv_"),
                                                             mb.str("value")),
-                                                        mb.recordOf(TList.of())),
+                                                        mb.tupleOf()),
                                                     mb.str("value")),
                                                 mb.str("type")),
-                                            mb.recordOf(TList.of())),
+                                            mb.tupleOf()),
                                         mb.lower(mb.scopeUse("u_type")))),
                                 mb.str("get_parity")),
                             mb.literalNull())),

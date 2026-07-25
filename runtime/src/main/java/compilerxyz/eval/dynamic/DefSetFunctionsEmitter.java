@@ -59,7 +59,12 @@ public final class DefSetFunctionsEmitter {
     var binaryName = functionsBinaryName(defSet);
     var internalName = functionsInternalName(defSet);
 
-    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+      @Override
+      protected String getCommonSuperClass(String type1, String type2) {
+        return JvmConstants.INTNAME_OBJECT.value();
+      }
+    };
     cw.visit(
         Opcodes.V11,
         Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,

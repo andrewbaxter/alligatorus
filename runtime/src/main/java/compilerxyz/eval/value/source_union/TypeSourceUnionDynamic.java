@@ -42,6 +42,7 @@ import compilerxyz.gen.GenAspectUnion;
 public final class TypeSourceUnionDynamic
     implements
         Type,
+        compilerxyz.gen.AspectFieldUseDynamic,
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
@@ -61,6 +62,8 @@ public final class TypeSourceUnionDynamic
 
   public @Nullable String compiledBaseBinaryName;
   public @Nullable TList<String> compiledVariantBinaryNames;
+  public byte @Nullable [] compiledBaseBytecode;
+  public @Nullable TList<byte[]> compiledVariantBytecode;
 
   public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
     this.set = set;
@@ -88,11 +91,7 @@ public final class TypeSourceUnionDynamic
     }
   }
 
-  public EResult<Void> finish(
-      ExprContext xx,
-      QExprId loc,
-      long unionIndex,
-      compilerxyz.eval.DefinitionSetClassLoader loader) {
+  public EResult<Void> finish(ExprContext xx, QExprId loc, long unionIndex) {
     if (compiledBaseBinaryName != null) {
       return EResult.ok(null);
     }
@@ -100,11 +99,8 @@ public final class TypeSourceUnionDynamic
         compilerxyz.eval.dynamic.SourceUnionEmitter.emit(xx, set.defSetId, unionIndex, this);
     compiledBaseBinaryName = emitted.baseBinaryName();
     compiledVariantBinaryNames = emitted.variantBinaryNames();
-    loader.registerClass(emitted.baseBinaryName(), emitted.baseBytecode());
-    for (int i = 0; i < emitted.variantBinaryNames().size(); i++) {
-      loader.registerClass(
-          emitted.variantBinaryNames().get(i), emitted.variantBytecode().get(i));
-    }
+    compiledBaseBytecode = emitted.baseBytecode();
+    compiledVariantBytecode = emitted.variantBytecode();
     return EResult.ok(null);
   }
 
@@ -135,6 +131,7 @@ public final class TypeSourceUnionDynamic
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
@@ -147,9 +144,21 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
+  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx,
+      QExprId loc,
+      compilerxyz.eval.value.ValueDynamicSource source) {
+    return compilerxyz.eval.EResult.ok(
+        new CodeValue(
+            compilerxyz.eval.Code.of(loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
+            compilerxyz.eval.EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(source, this))));
+  }
+
+  @Override
   public CodeValue aspectStackValueDynamicToValue(
       ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override

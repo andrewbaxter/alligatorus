@@ -89,7 +89,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
                   JavaDataDescriptor.fromInternalName(
                       JavaInternalName.fromClass(EResult.class)),
                   TList.of(JvmConstants.DESC_OBJECT))));
-      return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType));
+      return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType, 1));
     }
     var argTupleType =
         new Tuple(
@@ -124,7 +124,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
                         JavaInternalName.fromClass(QExprId.class)),
                     JavaDataDescriptor.fromInternalName(
                         JavaInternalName.fromClass(String.class))))));
-    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType, 1));
   }
 
   @Override

@@ -229,7 +229,7 @@ public record TypeUniqueDynamic()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -278,7 +278,7 @@ public record TypeUniqueDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
   }
 
   private static CodeDynamic emitUniqueEqCall(

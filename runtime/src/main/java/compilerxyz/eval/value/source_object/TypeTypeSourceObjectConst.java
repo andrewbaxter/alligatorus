@@ -559,7 +559,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     var selfDynamic =
         new CodeValue(
             Code.of(loc, selfCode),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType)));
+            EvalOutcome.ofValue(ValueDynamic.stack(dynType, 1)));
     return dynType.aspectFieldField(xx, loc, selfDynamic, key);
   }
 

@@ -53,6 +53,59 @@ public final class DefinitionSet implements ExporterAny {
     this.unions = new TList<>();
   }
 
+  public EResult<Void> finish(ExprContext xx, QExprId loc) {
+    if (finished) {
+      return EResult.ok(null);
+    }
+    for (var func : functions) {
+      var r = func.finish(xx, loc);
+      if (r.hasErrors()) return r.reerr();
+    }
+    for (long objIdx = 0; objIdx < objects.size(); objIdx++) {
+      var obj = objects.get((int) objIdx);
+      var underlyingType = obj.underlyingType;
+      if (underlyingType == null) {
+        return EResult.err(
+            loc, "Object '" + obj.name + "' underlying type not finalised before finish");
+      }
+      if (obj.setId == null) {
+        throw new AssertionError(
+            "DefinitionSet.finish: source object '" + obj.name + "' has null setId");
+      }
+      var objInternalName =
+          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId, objIdx);
+      for (var method : obj.methods) {
+        var nameStr = obj.name != null ? obj.name : "(unnamed)";
+        var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
+        if (r.hasErrors()) return r.reerr();
+      }
+      for (var impl : obj.interfaceImpls) {
+        for (var m : impl.methodImpls) {
+          var r = m.finish(xx, loc, impl.interface_, obj, underlyingType);
+          if (r.hasErrors()) return r.reerr();
+        }
+      }
+      var r = obj.finish(xx, loc, objIdx);
+      if (r.hasErrors()) return r.reerr();
+    }
+    for (long unionIdx = 0; unionIdx < unions.size(); unionIdx++) {
+      var r = unions.get((int) unionIdx).finish(xx, loc, unionIdx);
+      if (r.hasErrors()) return r.reerr();
+    }
+    finishFunctions();
+    for (long i = 0; i < interfaces.size(); i++) {
+      var iface = interfaces.get((int) i);
+      var r = iface.finish(loc, i);
+      if (r.hasErrors()) return r.reerr();
+    }
+    finished = true;
+    for (var dep : dependencies.values()) {
+      var r = dep.finish(xx, loc);
+      if (r.hasErrors()) return r.reerr();
+    }
+    return EResult.ok(null);
+  }
+
   public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions() {
     var specs = new TList<DefSetFunctionsEmitter.FunctionSpec>();
     var contributors = new TList<SourceFunctionData>();

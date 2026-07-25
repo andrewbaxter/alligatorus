@@ -28,9 +28,9 @@ public interface AspectConsumeDynamic extends Aspect {
     return switch (vd.source()) {
       case ValueDynamicSource.Expr ignored -> cv;
       case ValueDynamicSource.Binding ignored ->
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type_())));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(vd.type_(), 1)));
       case ValueDynamicSource.Field ignored ->
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type_())));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(vd.type_(), 1)));
     };
   }
 }

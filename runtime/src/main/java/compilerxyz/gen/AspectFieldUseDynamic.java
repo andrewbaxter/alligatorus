@@ -2,6 +2,7 @@ package compilerxyz.gen;
 
 
 import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
@@ -10,6 +11,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.value.ValueDynamicSource;
 
 @Builtin(uniqueId = 1037L)
+@BuiltinPath("eval.aspect_field_use_dynamic")
 public interface AspectFieldUseDynamic extends Aspect {
   EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx, QExprId loc, ValueDynamicSource source);

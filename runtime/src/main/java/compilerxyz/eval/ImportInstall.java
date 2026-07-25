@@ -44,13 +44,6 @@ public final class ImportInstall {
           "DefinitionSet not finished — call d.finish() in source before using this definition set");
     }
 
-    for (var func : set.functions) {
-      var finishResult = func.finish(xx, loc);
-      if (finishResult.hasErrors()) {
-        return finishResult.reerr();
-      }
-    }
-
     for (var iface : set.interfaces) {
       if (iface.compiledBytecode != null && iface.compiledBinaryName != null) {
         loader.registerClass(iface.compiledBinaryName, iface.compiledBytecode);
@@ -68,25 +61,6 @@ public final class ImportInstall {
         throw new AssertionError(
             "ImportInstall: source object '" + obj.name + "' has null setId");
       }
-      var objInternalName =
-          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId, objIdx);
-      for (var method : obj.methods) {
-        var nameStr = obj.name != null ? obj.name : "(unnamed)";
-        var finishResult =
-            method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
-        if (finishResult.hasErrors()) {
-          return finishResult.reerr();
-        }
-      }
-      for (var impl : obj.interfaceImpls) {
-        for (var m : impl.methodImpls) {
-          var finishResult = m.finish(xx, loc, impl.interface_, obj, underlyingType);
-          if (finishResult.hasErrors()) {
-            return finishResult.reerr();
-          }
-        }
-      }
-
       if (obj.compiledBinaryName != null && obj.compiledBytecode != null) {
         loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
         if (obj.compiledStaticFieldValues != null) {
@@ -96,17 +70,19 @@ public final class ImportInstall {
           loader.registerExternals(obj.compiledBinaryName, fields);
         }
       }
-      var objFinishResult = obj.finish(xx, loc, objIdx, loader);
-      if (objFinishResult.hasErrors()) {
-        return objFinishResult.reerr();
-      }
     }
 
     for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
       var union = set.unions.get((int) unionIdx);
-      var unionFinish = union.finish(xx, loc, unionIdx, loader);
-      if (unionFinish.hasErrors()) {
-        return unionFinish.reerr();
+      if (union.compiledBaseBinaryName != null && union.compiledBaseBytecode != null) {
+        loader.registerClass(union.compiledBaseBinaryName, union.compiledBaseBytecode);
+        var variantNames = union.compiledVariantBinaryNames;
+        var variantBytes = union.compiledVariantBytecode;
+        if (variantNames != null && variantBytes != null) {
+          for (int i = 0; i < variantNames.size(); i++) {
+            loader.registerClass(variantNames.get(i), variantBytes.get(i));
+          }
+        }
       }
     }
 
@@ -142,9 +118,8 @@ public final class ImportInstall {
       }
       if (binaryName != null) {
         loader.registerClass(binaryName, bytecode);
-        if (!mergedStaticFields.isEmpty()) {
-          loader.registerExternals(binaryName, mergedStaticFields);
-        }
+        mergedStaticFields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+        loader.registerExternals(binaryName, mergedStaticFields);
         try {
           Class.forName(binaryName, true, loader);
         } catch (ClassNotFoundException e) {

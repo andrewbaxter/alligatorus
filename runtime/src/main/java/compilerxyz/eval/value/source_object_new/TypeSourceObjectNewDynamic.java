@@ -129,7 +129,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
             TList.of(underlyingDesc));
     var newInstance =
         compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
-    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newInstance, resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newInstance, resultType, 1));
   }
 
   @Override

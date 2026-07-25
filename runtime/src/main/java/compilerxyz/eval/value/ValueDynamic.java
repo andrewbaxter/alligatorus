@@ -15,7 +15,7 @@ public record ValueDynamic(ValueDynamicSource source, Type type_) implements Val
    * type's JVM representation (2 slots for D/J primitives, 1 otherwise). Used
    * at every site that produces a value directly onto the JVM stack.
    */
-  public static ValueDynamic stack(ExprContext xx, Type type_) {
-    return new ValueDynamic(ValueDynamicSource.Expr.stackFor(xx, type_), type_);
+  public static ValueDynamic stack(Type type_, int stackSize) {
+    return new ValueDynamic(new ValueDynamicSource.Expr(stackSize), type_);
   }
 }

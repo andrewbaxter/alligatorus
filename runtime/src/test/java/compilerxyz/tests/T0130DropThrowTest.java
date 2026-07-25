@@ -137,6 +137,26 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
                         TList.of(
+                            new TestMb.RecordPair(
+                                "iface_ref", mb.evalAspectFieldUseDynamic()),
+                            new TestMb.RecordPair(
+                                "record",
+                                ifaceMethods(
+                                    mb,
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "field_use_dynamic",
+                                            mb.delegateAspect(
+                                                mb.typesString(),
+                                                mb.evalAspectFieldUseDynamic(),
+                                                "field_use_dynamic",
+                                                "xx",
+                                                "loc",
+                                                "source")))))))),
+                mb.call(
+                    mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                    mb.recordOf(
+                        TList.of(
                             new TestMb.RecordPair("iface_ref", mb.evalAspectLift()),
                             new TestMb.RecordPair(
                                 "record",
@@ -268,6 +288,16 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                             mb.operatorEq(
                                                 mb.field(mb.scopeUse("arg"), mb.str("key")),
                                                 mb.evalAspectBindDynamicId()),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.typesOption(), mb.typesAspect()),
+                                                    mb.str("some")),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.Branch(
+                                            mb.operatorEq(
+                                                mb.field(mb.scopeUse("arg"), mb.str("key")),
+                                                mb.evalAspectFieldUseDynamicId()),
                                             mb.call(
                                                 mb.field(
                                                     mb.call(

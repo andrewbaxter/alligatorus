@@ -127,7 +127,7 @@ public record TypeBoolDynamicBox()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -168,7 +168,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   @Override
@@ -176,7 +176,7 @@ public record TypeBoolDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   private static CodeDynamic valueOfBoolean(QExprId loc) {

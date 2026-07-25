@@ -70,6 +70,7 @@ public final class DynamicTypeScanner {
     var builtinDelegated = new String[][] {
         {"compilerxyz.eval", "Code"},
         {"compilerxyz.eval.aspect", "Aspect"},
+        {"compilerxyz.eval.value", "ValueDynamicSource"},
     };
     for (var pair : builtinDelegated) {
       var cn = ClassName.get(pair[0], pair[1]);

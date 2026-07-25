@@ -65,6 +65,7 @@ import compilerxyz.gen.GenAspectType;
 @Builtin(uniqueId = 6004L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
     implements
+        compilerxyz.eval.TypeAspect,
         Type,
         AspectArtifact,
         AspectBind,
@@ -74,6 +75,12 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         AspectInitialBind,
         AspectType,
         ExporterAny {
+
+  @Override
+  public compilerxyz.eval.Unique id() {
+    return data.identity;
+  }
+
 
   public InterfaceData getInterfaceData() {
     return data;
@@ -373,10 +380,16 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
           loc, "Interface method '" + keyName + "' is missing arg or return type");
     }
     var fieldType = new TypeInterfaceMethodDynamic(data, match);
+    if (!(self.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.gen.Value> ifmSome)
+        || !(ifmSome.value() instanceof compilerxyz.eval.value.ValueDynamic ifmVd)) {
+      return EResult.err(
+          loc, "TypeSourceInterfaceDynamic::field: method receiver has no dynamic source");
+    }
     return EResult.ok(
         new CodeValue(
             self.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldType))));
+            EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(ifmVd.source(), fieldType))));
   }
 
   @Override
@@ -423,7 +436,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
     if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().dynamic();
@@ -444,7 +457,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+              EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
     return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
   }

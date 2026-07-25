@@ -35,4 +35,16 @@ public sealed interface Code permits Code.None, Code.Target {
   static Code of(QExprId loc, CodeDynamic dynamic) {
     return new Target(dynamic);
   }
+
+  static Code target(TargetCode impl) {
+    return new Target(impl);
+  }
+
+  static TargetCode targetImpl(Code code) {
+    if (!(code instanceof Target t)) {
+      throw new IllegalStateException(
+          "Code::targetImpl: code is " + code.getClass().getSimpleName() + ", not Target");
+    }
+    return t.impl();
+  }
 }

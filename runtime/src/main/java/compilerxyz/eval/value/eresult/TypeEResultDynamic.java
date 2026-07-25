@@ -106,7 +106,7 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   private sealed interface FieldSpec {
@@ -158,8 +158,7 @@ public record TypeEResultDynamic(Type elementType)
           new CodeValue(
               Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
               EvalOutcome.ofValue(
-                  compilerxyz.eval.value.ValueDynamic.stack(
-                      xx, new compilerxyz.eval.value.bool_.TypeBoolDynamic()))));
+                  compilerxyz.eval.value.ValueDynamic.stack(new compilerxyz.eval.value.bool_.TypeBoolDynamic(), 1))));
     }
     if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
       var selfDyn = self.code().dynamic();
@@ -189,7 +188,7 @@ public record TypeEResultDynamic(Type elementType)
       }
       return EResult.ok(new CodeValue(
           Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-          EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, elementType))));
+          EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(elementType, 1))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {

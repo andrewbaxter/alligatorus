@@ -127,7 +127,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     seq.add(underlyingJs);
     seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
     var newObject = new CodeDynamic(loc, seq);
-    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newObject, resultType));
+    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newObject, resultType, 1));
   }
 
   @Override

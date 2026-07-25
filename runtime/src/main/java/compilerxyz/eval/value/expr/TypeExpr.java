@@ -59,6 +59,7 @@ public record TypeExpr()
         Value,
         AspectArtifact,
         AspectBind,
+        compilerxyz.gen.AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectInitialBind,
@@ -88,6 +89,7 @@ public record TypeExpr()
     if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
@@ -205,9 +207,15 @@ public record TypeExpr()
   }
 
   @Override
+  public compilerxyz.eval.EResult<compilerxyz.util.Opt<compilerxyz.eval.dynamic.target.TargetBindSub>>
+      aspectBindDynamicBindDynamic(
+          ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+    return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
+  }
+
+  @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    throw new UnsupportedOperationException(
-        "TypeExpr::initialBind: needs BindingDynamicBinding port (deferred)");
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override

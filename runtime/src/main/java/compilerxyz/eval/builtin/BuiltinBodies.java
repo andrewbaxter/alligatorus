@@ -1,5 +1,6 @@
 package compilerxyz.eval.builtin;
 
+import com.google.gson.stream.JsonWriter;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -8,9 +9,12 @@ import compilerxyz.eval.ConstEval;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
+import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.LogEntry;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.Scope;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.expr.StagedExprCell;
@@ -23,6 +27,8 @@ import compilerxyz.gen.Value;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TMap;
+import java.io.IOException;
+import java.io.StringWriter;
 
 public final class BuiltinBodies {
   private BuiltinBodies() {}
@@ -46,14 +52,23 @@ public final class BuiltinBodies {
 
   @BuiltinPath(value = "eval.str_to_json", scopeId = 5003L)
   public static String strToJson(ExprContext xx, String s) {
-    throw new UnsupportedOperationException(
-        "builtin scope id 5003 (str_to_json): port of builtin_tree.rs body pending — serde_json::to_string equivalent on JVM (com.fasterxml.jackson or similar) not yet selected for the runtime");
+    try {
+      var stringWriter = new StringWriter();
+      var writer = new JsonWriter(stringWriter);
+      writer.value(s);
+      writer.close();
+      return stringWriter.toString();
+    } catch (IOException e) {
+      throw new AssertionError("In-memory IO failed", e);
+    }
   }
 
   @BuiltinPath(value = "eval.constkey_to_str", scopeId = 5004L)
   public static String constkeyToStr(ExprContext xx, ConstKey key) {
-    throw new UnsupportedOperationException(
-        "builtin scope id 5004 (constkey_to_str): port of builtin_tree.rs body pending — ConstKey.toStr() bridge from dynamic invocation not yet wired");
+    return switch (key) {
+      case ConstKey.Str s -> s.value();
+      case ConstKey.Uint u -> Long.toUnsignedString(u.value());
+    };
   }
 
   @BuiltinPath(value = "eval.codevalue", scopeId = 5005L)
@@ -61,10 +76,11 @@ public final class BuiltinBodies {
     return new CodeValue(code, EvalOutcome.ofValue(value));
   }
 
-  @BuiltinPath(value = "eval.gen_binding_name", scopeId = 5006L)
-  public static String genBindingName(ExprContext xx, ExprContext _xx) {
-    throw new UnsupportedOperationException(
-        "builtin scope id 5006 (gen_binding_name): port of builtin_tree.rs body pending — requires next_local_id allocation from xx.vx — pending Push decode parity");
+  @BuiltinPath(value = "eval.scope", scopeId = 5006L)
+  public static Scope scope(ExprContext xx, TMap<ConstKey, Binding> entries) {
+    var scope = new Scope();
+    scope.pushAll(entries);
+    return scope;
   }
 
   @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
@@ -91,16 +107,25 @@ public final class BuiltinBodies {
     return resCv;
   }
 
-  @BuiltinPath(value = "eval.new_expr_context", scopeId = 5009L)
-  public static ExprContext newExprContext(
-      ExprContext xx, Target target_arg, TMap<ConstKey, Binding> scope_arg) {
-    throw new UnsupportedOperationException(
-        "builtin scope id 5009 (new_expr_context): port of builtin_tree.rs body pending — requires RcBindingWrap + Scope construction — pending Push decode parity");
+  @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
+  public static EvalContext evalContext(ExprContext xx) {
+    return new EvalContext(xx.vx.ix);
+  }
+
+  @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
+  public static ExprContext exprContext(
+      ExprContext xx, Scope scope, Target target, EvalContext vx, Type exception_type) {
+    return new ExprContext(scope, target, vx, vx.ix.importState, exception_type);
+  }
+
+  @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
+  public static Code codeNone(ExprContext xx, QExprId loc) {
+    return Code.none(loc);
   }
 
   @BuiltinPath(value = "eval.stack", scopeId = 5013L)
   public static Value stack(ExprContext xx, Type type) {
-    return ValueDynamic.stack(xx, type);
+    return ValueDynamic.stack(type, 1);
   }
 
   @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

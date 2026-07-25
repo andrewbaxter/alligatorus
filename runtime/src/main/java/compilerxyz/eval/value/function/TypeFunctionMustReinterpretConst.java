@@ -132,7 +132,7 @@ public record TypeFunctionMustReinterpretConst()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, out),
-            EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, targetType))));
+            EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(targetType, 1))));
   }
 
   @Override

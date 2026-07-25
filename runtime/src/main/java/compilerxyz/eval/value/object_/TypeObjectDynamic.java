@@ -70,6 +70,7 @@ public record TypeObjectDynamic(
     Opt<JavaInternalName> interfaceRepresented)
     implements
         Type,
+        compilerxyz.gen.AspectFieldUseDynamic,
         compilerxyz.eval.TypeAspect,
         AspectAspect,
         AspectField,
@@ -179,7 +180,8 @@ public record TypeObjectDynamic(
         || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
-        || key.equals(GenAspectStackValueDynamic.AspectId)) {
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
       return Opt.some(this);
     }
     if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(GenAspectField.AspectId)) {
@@ -200,6 +202,19 @@ public record TypeObjectDynamic(
       if (key.equals(idAspect)) return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx,
+      compilerxyz.eval.QExprId loc,
+      compilerxyz.eval.value.ValueDynamicSource source) {
+    return compilerxyz.eval.EResult.ok(
+        new compilerxyz.eval.CodeValue(
+            compilerxyz.eval.Code.of(
+                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
+            compilerxyz.eval.EvalOutcome.ofValue(
+                new compilerxyz.eval.value.ValueDynamic(source, this))));
   }
 
   @Override
@@ -288,7 +303,7 @@ public record TypeObjectDynamic(
                   JavaDataDescriptor.fromClass(InterfaceData.class), TList.of())));
       var call = new CodeDynamic(loc, seq);
       return EResult.ok(
-          new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+          new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
     for (var idAspect : trivialIdentityAspects()) {
       if (destType.typeAspect(xx, idAspect).optIsSome()) {
@@ -335,13 +350,13 @@ public record TypeObjectDynamic(
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, loadSeq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, f.fieldType()))));
+                EvalOutcome.ofValue(ValueDynamic.stack(f.fieldType(), 1))));
       }
     }
     for (var m : methods) {
       if (m.langName().equals(keyStr)) {
         return EResult.ok(
-            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, m.funcType()))));
+            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(m.funcType(), 1))));
       }
     }
     return EResult.err(loc, typeDesc() + ": unknown field '" + keyStr);
@@ -409,7 +424,7 @@ public record TypeObjectDynamic(
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override

@@ -160,16 +160,21 @@ public record TypeFunctionDynamic(
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
-    if (convertedRes.hasErrors()) return convertedRes.reerr();
-    var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
     var argList = new compilerxyz.util.TList<CodeDynamic>();
-    var argsDynRes =
-        compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
-    if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+    compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
+    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, arg)) {
+      argsDynRes = compilerxyz.eval.EResult.ok(new compilerxyz.util.TList<>());
+    } else {
+      var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
+      if (convertedRes.hasErrors()) return convertedRes.reerr();
+      var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
+      argsDynRes =
+          compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
+      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+    }
     for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
       argList.add(c);
     }

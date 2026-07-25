@@ -42,6 +42,7 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.eval.dynamic.DynUtil;
 import org.jspecify.annotations.Nullable;
+import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -49,6 +50,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
 
 @Builtin(uniqueId = 6020L)
@@ -63,6 +65,8 @@ public final class TypeSourceObjectDynamic
         compilerxyz.gen.AspectType,
         AspectInitialBind,
         AspectLift,
+        AspectStackValueDynamic,
+        compilerxyz.gen.AspectFieldUseDynamic,
         ExporterAny {
 
   public @Nullable DefSetId setId;
@@ -107,10 +111,7 @@ public final class TypeSourceObjectDynamic
   }
 
   public EResult<Void> finish(
-      compilerxyz.eval.ExprContext xx,
-      QExprId loc,
-      long objectIndex,
-      DefinitionSetClassLoader loader) {
+      compilerxyz.eval.ExprContext xx, QExprId loc, long objectIndex) {
     if (compiledBinaryName != null) {
       return EResult.ok(null);
     }
@@ -125,11 +126,6 @@ public final class TypeSourceObjectDynamic
     compiledBinaryName = emitted.binaryName();
     compiledBytecode = emitted.bytecode();
     compiledStaticFieldValues = emitted.staticFieldValues();
-    loader.registerClass(emitted.binaryName(), emitted.bytecode());
-    var fields = new TOrderedMap<String, Object>();
-    fields.putAll(emitted.staticFieldValues());
-    fields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
-    loader.registerExternals(emitted.binaryName(), fields);
     return EResult.ok(null);
   }
 
@@ -180,6 +176,12 @@ public final class TypeSourceObjectDynamic
     if (key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
+    if (key.equals(GenAspectStackValueDynamic.AspectId)) {
+      return Opt.some(this);
+    }
+    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+      return Opt.some(this);
+    }
 
     for (var impl : interfaceImpls) {
       var kind = impl.interface_.builtinKind;
@@ -193,6 +195,9 @@ public final class TypeSourceObjectDynamic
           case ASPECT_CONSUME_DYNAMIC -> key.equals(GenAspectConsumeDynamic.AspectId);
           case ASPECT_DROP_DYNAMIC_LIGHT -> key.equals(GenAspectDropDynamicLight.AspectId);
           case ASPECT_FIELD -> key.equals(compilerxyz.gen.GenAspectField.AspectId);
+          case ASPECT_FIELD_USE_DYNAMIC ->
+              key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId);
+          case ASPECT_ELEMENT_USE_DYNAMIC -> false;
           case ASPECT_INITIAL_BIND -> key.equals(GenAspectInitialBind.AspectId);
           case ASPECT_LIFT -> key.equals(GenAspectLift.AspectId);
           case BINDING -> key.equals(GenAspectBindDynamic.AspectId);
@@ -205,6 +210,20 @@ public final class TypeSourceObjectDynamic
       }
     }
     return Opt.none();
+  }
+
+  @Override
+  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx, QExprId loc, compilerxyz.eval.value.ValueDynamicSource source) {
+    return compilerxyz.eval.EResult.ok(
+        new CodeValue(
+            Code.of(loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(new ValueDynamic(source, this))));
+  }
+
+  @Override
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -351,7 +370,15 @@ public final class TypeSourceObjectDynamic
             descObjObj,
             false,
             false);
-    return EResult.ok(new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldType))));
+    if (!(self.value() instanceof Opt.Some<Value> selfMethodSome)
+        || !(selfMethodSome.value() instanceof ValueDynamic selfMethodVd)) {
+      return EResult.err(
+          loc, "TypeSourceObjectDynamic::field: method receiver has no dynamic source");
+    }
+    return EResult.ok(
+        new CodeValue(
+            self.code(),
+            EvalOutcome.ofValue(new ValueDynamic(selfMethodVd.source(), fieldType))));
   }
 
   @Override
@@ -403,7 +430,7 @@ public final class TypeSourceObjectDynamic
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, identity).optIsSome()) {
       return EResult.ok(
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       boolean hasTypeImpl = false;
@@ -421,6 +448,37 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.gen.GenType.dynamicType()));
       }
     }
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
+      for (var impl : interfaceImpls) {
+        if (impl.interface_.builtinKind == BuiltinInterfaceKind.CODE_DYN) {
+          var codeSource = cv.code().dynamic();
+          if (codeSource == null) {
+            return EResult.err(
+                loc, "cast " + typeDesc() + " -> code: source has no runtime code");
+          }
+          var wrapSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+          wrapSeq.add(codeSource);
+          wrapSeq.add(
+              compilerxyz.eval.dynamic.JavaBytecodeUtils.callStaticInterfaceMethod(
+                  new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(Code.class),
+                  "target",
+                  compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                      compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Code.class),
+                      TList.of(
+                          compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
+                              compilerxyz.eval.TargetCode.class)))));
+          return EResult.ok(
+              new CodeValue(
+                  Code.of(
+                      loc,
+                      new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), wrapSeq)),
+                  EvalOutcome.ofValue(
+                      ValueDynamic.stack(compilerxyz.gen.GenCode.dynamicType(), 1))));
+        }
+      }
+      return EResult.err(loc, "cast " + typeDesc() + " -> code: object does not implement code_dyn");
+    }
     for (var impl : interfaceImpls) {
       if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
         var builtinKind = impl.interface_.builtinKind;
@@ -430,12 +488,7 @@ public final class TypeSourceObjectDynamic
             case TYPE -> resultType = compilerxyz.gen.GenType.dynamicType();
             case TARGET -> resultType = compilerxyz.gen.GenTarget.dynamicType();
             case BINDING -> resultType = compilerxyz.gen.GenBinding.dynamicType();
-            case CODE_DYN -> {
-              return EResult.err(
-                  loc,
-                  "TypeSourceObjectDynamic::typeCastTo: BuiltinInterfaceKind.CODE_DYN's "
-                      + "invisible builtin data_instance_to_code is not yet ported");
-            }
+
             case VALUE -> resultType = compilerxyz.gen.GenValue.dynamicType();
             default -> {
 
@@ -453,7 +506,7 @@ public final class TypeSourceObjectDynamic
         return EResult.ok(
             new CodeValue(
                 cv.code(),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
+                EvalOutcome.ofValue(ValueDynamic.stack(new TypeSourceInterfaceDynamic(impl.interface_), 1))));
       }
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
@@ -463,7 +516,8 @@ public final class TypeSourceObjectDynamic
       }
       return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, compilerxyz.gen.GenAspect.dynamicType()));
     }
-    return EResult.err(loc, "Cannot convert " + typeDesc());
+    return EResult.err(
+        loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
   }
 
   @Override
@@ -473,12 +527,22 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, identity).optIsSome();
+    if (sourceType.typeAspect(xx, identity).optIsSome()) {
+      return true;
+    }
+    if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
+      for (var impl : interfaceImpls) {
+        if (impl.interface_.builtinKind == BuiltinInterfaceKind.CODE_DYN) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private CodeValue emitBuiltinCast(
       ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
-    return new CodeValue(Code.of(loc, sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
+    return new CodeValue(Code.of(loc, sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(resultType, 1)));
   }
 
   @Override
@@ -510,6 +574,43 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    var codeSource = cv.code().dynamic();
+    if (codeSource == null) {
+      return EResult.err(loc, "cast code -> " + typeDesc() + ": source has no runtime code");
+    }
+    if (setId == null) {
+      throw new AssertionError(
+          "TypeSourceObjectDynamic::typeCastFrom: setId is null on '"
+              + (name == null ? "(unnamed)" : name)
+              + "'");
+    }
+    var objectIndex = set.objects.indexOf(this);
+    if (objectIndex < 0) {
+      throw new AssertionError("TypeSourceObjectDynamic::typeCastFrom: this not in its owning set");
+    }
+    var objectInternalName =
+        compilerxyz.eval.dynamic.JavaInternalName.of(
+            SourceObjectEmitter.internalNameFor(setId, objectIndex));
+    var unwrapSeq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    unwrapSeq.add(codeSource);
+    unwrapSeq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.callStaticInterfaceMethod(
+            new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
+            compilerxyz.eval.dynamic.JavaInternalName.fromClass(Code.class),
+            "targetImpl",
+            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(
+                    compilerxyz.eval.TargetCode.class),
+                TList.of(
+                    compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(Code.class)))));
+    unwrapSeq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.wrapObj(
+            new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
+            new org.objectweb.asm.tree.TypeInsnNode(
+                org.objectweb.asm.Opcodes.CHECKCAST, objectInternalName.value)));
+    return EResult.ok(
+        new CodeValue(
+            Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), unwrapSeq)),
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 }

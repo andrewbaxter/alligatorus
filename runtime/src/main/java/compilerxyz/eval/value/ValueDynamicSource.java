@@ -58,16 +58,6 @@ public sealed interface ValueDynamicSource
       return Code.of(loc, JavaBytecodeUtils.inst(loc, popOp));
     }
 
-    public static Expr stackFor(ExprContext xx, Type t) {
-      var acdOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, t);
-      if (!(acdOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some)) {
-        throw new IllegalStateException(
-            "stackFor: type has no AspectConsumeDynamic: " + t);
-      }
-      var d = some.value().aspectConsumeDynamicJvmClass(xx).value();
-      var c = d.charAt(0);
-      return new Expr(c == 'D' || c == 'J' ? 2 : 1);
-    }
   }
 
   record Field(

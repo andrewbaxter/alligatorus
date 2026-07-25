@@ -225,7 +225,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
         return EResult.ok(
             new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
+                EvalOutcome.ofValue(ValueDynamic.stack(accessedType, 1))));
       }
       return EResult.err(
           loc, "Field '" + aksReq.value().toCanonical() + "' not found on record value");
@@ -292,35 +292,23 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     }
     var accessedType = recordFieldType(f);
     int accessedSlot = slotInfo.slotOfKey().get(accessedKey);
-    boolean stackRooted = DynUtil.isStackRooted(baseSource);
-    if (!stackRooted) {
-      var useDynOpt = GenAspectFieldUseDynamic.getMaybe(xx, accessedType);
-      if (useDynOpt instanceof Opt.Some<AspectFieldUseDynamic> useDynSome) {
-        var childSource =
-            new ValueDynamicSource.Field(
-                baseSource,
-                klass,
-                CompositeClassEmitter.slotFieldName(accessedSlot),
-                CompositeClassEmitter.slotDescriptor(xx, accessedType));
-        return useDynSome.value().aspectFieldUseDynamicFieldUseDynamic(xx, loc, childSource);
-      }
+    var useDynOpt = GenAspectFieldUseDynamic.getMaybe(xx, accessedType);
+    if (!(useDynOpt instanceof Opt.Some<AspectFieldUseDynamic> useDynSome)) {
+      return EResult.err(
+          loc,
+          "Record field '"
+              + accessedKey.toCanonical()
+              + "' type ("
+              + accessedType.typeDesc()
+              + ") does not implement AspectFieldUseDynamic");
     }
-    var out = new JavaBytecodeSequence();
-    out.add(baseSource.realize(xx, loc));
-    if (stackRooted) {
-      var sibRes = emitChildDrops(xx, loc, klass, slotInfo, dynamicFieldTypes, Opt.some(accessedKey), out);
-      if (sibRes.hasErrors()) return sibRes.reerr();
-    }
-    out.add(
-        JavaBytecodeUtils.accessField(
-            loc,
+    var childSource =
+        new ValueDynamicSource.Field(
+            baseSource,
             klass,
             CompositeClassEmitter.slotFieldName(accessedSlot),
-            CompositeClassEmitter.slotDescriptor(xx, accessedType)));
-    return EResult.ok(
-        new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, out)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
+            CompositeClassEmitter.slotDescriptor(xx, accessedType));
+    return useDynSome.value().aspectFieldUseDynamicFieldUseDynamic(xx, loc, childSource);
   }
 
   private EResult<Void> emitChildDrops(
@@ -371,7 +359,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var childCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, childType)));
+              EvalOutcome.ofValue(ValueDynamic.stack(childType, 1)));
       var res = fullSome.value().aspectDropDynamicDrop(xx, loc, childCv);
       if (res.hasErrors()) return res.reerr();
       var d = res.requireValue("Record::childFullDropCode drop").dynamic();
@@ -1027,7 +1015,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       var srcFieldCv =
           new CodeValue(
               Code.of(loc, loadDyn),
-              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, srcFieldType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(srcFieldType, 1)));
       var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destType, srcFieldCv));
       if (convOpt.isEmpty()) {
         return EResult.errs(erb.errors());
@@ -1062,7 +1050,7 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       finalDyn = instantiate;
     }
     var newBase = Opt.some(
-        new RecordBaseDynamic(ValueDynamicSource.Expr.stackFor(xx, this)));
+        new RecordBaseDynamic(new ValueDynamicSource.Expr(1)));
     var newRecord = new Record(newBase, asDynamicFields(fields));
     return EResult.ok(
         new CodeValue(Code.of(loc, finalDyn), EvalOutcome.ofValue((Value) newRecord)));
@@ -1121,9 +1109,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var carry = cv.code();
-    if (base instanceof Opt.Some<RecordBaseDynamic> some) {
-      return some.value().recordBaseToDynamic(loc, carry);
-    }
     if (!(cv.value() instanceof Opt.Some<Value> valueSome)) {
       throw new IllegalStateException("Record::toDynamic: CodeValue has no value");
     }
@@ -1131,26 +1116,26 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
       throw new IllegalStateException(
           "Record::toDynamic: expected Record value, got " + valueSome.value().getClass());
     }
+    if (record.base instanceof Opt.Some<RecordBaseDynamic> some) {
+      return some.value().recordBaseToDynamic(loc, carry);
+    }
     TList<ExprErr> errors = null;
     record LoweredField(ConstKey key, String desc, Type type, CodeDynamic code) {}
     var loweredFields = new TList<LoweredField>(record.fields.size());
     for (var entry : record.fields.entrySet()) {
       var key = entry.getKey();
       var field = entry.getValue();
-      switch (field) {
-        case RecordField.Dynamic d -> {
-          if (errors == null) errors = new TList<>();
-          errors.add(
-              new ExprErr(
-                  loc,
-                  TList.of(
-                      new ExprSubErr.Opaque(
-                          "Record entry '"
-                              + key.toCanonical()
-                              + "' is dynamic-only, cannot consume directly to dynamic"))));
-        }
-        case RecordField.EvalRes er -> {
-          var elemRes = er.result();
+      var elemRes =
+          switch (field) {
+            case RecordField.Dynamic d ->
+                EResult.<CodeValue>err(
+                    loc,
+                    "Record entry '"
+                        + key.toCanonical()
+                        + "' is dynamic-only, cannot consume directly to dynamic");
+            case RecordField.EvalRes er -> er.result();
+          };
+      {
           if (elemRes.hasErrors()) {
             if (errors == null) errors = new TList<>();
             elemRes.drainInto(errors);
@@ -1191,7 +1176,6 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
                   elemType,
                   loweredCode));
         }
-      }
     }
     if (errors != null && !errors.isEmpty()) {
       return EResult.errs(errors);
@@ -1378,40 +1362,43 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
               loc, "Record::typeCastTo: field '" + key.toCanonical() + "' has no value");
         }
         var elemType = elemValueSome.value().valueType();
-        var toDynOpt = GenAspectConsumeDynamic.getMaybe(xx, elemType);
-        if (!(toDynOpt instanceof Opt.Some<AspectConsumeDynamic> toDynSome)) {
-          return EResult.err(
-              loc,
-              "Record::typeCastTo: field '"
-                  + key.toCanonical()
-                  + "' type ("
-                  + elemType.typeDesc()
-                  + ") missing AspectConsumeDynamic");
+        CodeDynamic loweredCode;
+        if (elemValueSome.value() instanceof Record nestedRecord) {
+          var nestedRes = nestedRecord.typeCastTo(xx, loc, elemCv, destType);
+          if (nestedRes.hasErrors()) return nestedRes.reerr();
+          var nestedCv = nestedRes.requireValue("Record::typeCastTo nested record");
+          var nestedDyn = nestedCv.code().dynamic();
+          if (nestedDyn == null) {
+            return EResult.err(
+                loc,
+                "Record::typeCastTo: nested record field '"
+                    + key.toCanonical()
+                    + "' cast produced no dynamic code");
+          }
+          loweredCode = nestedDyn;
+        } else {
+          var toDynOpt = GenAspectConsumeDynamic.getMaybe(xx, elemType);
+          if (!(toDynOpt instanceof Opt.Some<AspectConsumeDynamic> toDynSome)) {
+            return EResult.err(
+                loc,
+                "Record::typeCastTo: field '"
+                    + key.toCanonical()
+                    + "' type ("
+                    + elemType.typeDesc()
+                    + ") missing AspectConsumeDynamic");
+          }
+          var lowered = toDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, elemCv);
+          if (lowered.hasErrors()) return lowered.reerr();
+          loweredCode = lowered.requireValue("Record::typeCastTo field lowered");
         }
-        var lowered = toDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, elemCv);
-        if (lowered.hasErrors()) return lowered.reerr();
-        var typeAsValue = ValueObjectConst.ofType(elemType);
-        var typeAsCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(typeAsValue));
-        var typeMetaType = typeAsValue.valueType();
-        var typeToDynOpt = GenAspectConsumeDynamic.getMaybe(xx, typeMetaType);
-        if (!(typeToDynOpt instanceof Opt.Some<AspectConsumeDynamic> typeToDynSome)) {
-          return EResult.err(
-              loc,
-              "Record::typeCastTo: field '"
-                  + key.toCanonical()
-                  + "' type-meta missing AspectConsumeDynamic");
-        }
-        var typeLoad = typeToDynSome.value().aspectConsumeDynamicToDynamic(xx, loc, typeAsCv);
-        if (typeLoad.hasErrors()) return typeLoad.reerr();
         elems.add(JavaBytecodeUtils.literalString(loc, keyStr.value()));
-        elems.add(typeLoad.requireValue("Record::typeCastTo type load"));
-        elems.add(lowered.requireValue("Record::typeCastTo field lowered"));
+        elems.add(loweredCode);
       }
       var callSeq = new JavaBytecodeSequence();
       callSeq.add(JavaBytecodeUtils.buildObjectArray(loc, elems));
       callSeq.add(
           JavaBytecodeUtils.callStaticMethodReflect(loc, Record.class, "newDynamic"));
-      var stackValue = ValueDynamic.stack(xx, destType);
+      var stackValue = ValueDynamic.stack(destType, 1);
       var withCarry =
           DynUtil.wrapWithCarry(loc, cv.code(), new CodeDynamic(loc, callSeq));
       return EResult.ok(
@@ -1420,21 +1407,17 @@ public record Record(Opt<RecordBaseDynamic> base, TOrderedMap<ConstKey, RecordFi
     return EResult.ok(cv);
   }
 
-  public static Record newDynamic(Object[] triples) {
-    var syntheticLoc = new QExprId(new SourceId(-1L), -1L);
+  public static Record newDynamic(Object[] pairs) {
     var fields = new TOrderedMap<ConstKey, RecordField>();
-    for (int i = 0; i < triples.length; i += 3) {
-      var key = new ConstKey.Str((String) triples[i]);
-      var type = (Type) triples[i + 1];
-      var raw = triples[i + 2];
-      Value val;
-      if (raw instanceof Value v) {
-        val = v;
-      } else {
-        val = new ValueObjectConst(type, raw);
+    for (int i = 0; i < pairs.length; i += 2) {
+      var key = new ConstKey.Str((String) pairs[i]);
+      var raw = pairs[i + 1];
+      if (!(raw instanceof Type t)) {
+        throw new IllegalStateException(
+            "Record::newDynamic: field '" + pairs[i] + "' value is not a Type: "
+                + raw.getClass());
       }
-      var cv = new CodeValue(Code.none(syntheticLoc), EvalOutcome.ofValue(val));
-      fields.put(key, new RecordField.EvalRes(EResult.ok(cv)));
+      fields.put(key, new RecordField.Dynamic(t));
     }
     return new Record(Opt.none(), fields);
   }

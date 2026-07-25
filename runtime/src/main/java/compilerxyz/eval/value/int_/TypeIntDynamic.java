@@ -214,7 +214,7 @@ public record TypeIntDynamic()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 2);
   }
 
   @Override
@@ -232,7 +232,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             self_.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeSome.value()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(fieldTypeSome.value(), 2))));
   }
 
   @Override
@@ -255,7 +255,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 2))));
   }
 
   @Override
@@ -268,7 +268,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 2))));
   }
 
   @Override
@@ -282,7 +282,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 2))));
   }
 
   @Override
@@ -296,7 +296,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 2))));
   }
 
   @Override
@@ -401,12 +401,12 @@ public record TypeIntDynamic()
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+              EvalOutcome.ofValue(ValueDynamic.stack(this, 2))));
     }
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 2))));
   }
 
   @Override
@@ -414,7 +414,7 @@ public record TypeIntDynamic()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 2))));
   }
 
   public static final ExporterRootDelegate DELEGATE =

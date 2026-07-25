@@ -223,20 +223,28 @@ public record TypeMapDynamic(Type keyType, Type valueType)
           if (selfDyn == null) {
             yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
           }
+          if (!(self.value() instanceof Opt.Some<Value> fnSelfSomeg)
+              || !(fnSelfSomeg.value() instanceof ValueDynamic fnSelfVdg)) {
+            yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
+          }
           yield EResult.ok(
               new CodeValue(
                   Code.of(loc, selfDyn),
-                  EvalOutcome.ofValue(ValueDynamic.stack(xx, g.type()))));
+                  EvalOutcome.ofValue(new ValueDynamic(fnSelfVdg.source(), g.type()))));
         }
         case FieldSpec.PutFn p -> {
           var selfDyn = self.code().dynamic();
           if (selfDyn == null) {
             yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
           }
+          if (!(self.value() instanceof Opt.Some<Value> fnSelfSomep)
+              || !(fnSelfSomep.value() instanceof ValueDynamic fnSelfVdp)) {
+            yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
+          }
           yield EResult.ok(
               new CodeValue(
                   Code.of(loc, selfDyn),
-                  EvalOutcome.ofValue(ValueDynamic.stack(xx, p.type()))));
+                  EvalOutcome.ofValue(new ValueDynamic(fnSelfVdp.source(), p.type()))));
         }
       };
     }
@@ -355,7 +363,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -460,7 +468,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   @Override
@@ -507,7 +515,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var keyCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
-              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, keyType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(keyType, 1)));
       var keyDropRes = keyDropSome.value().aspectDropDynamicDrop(xx, loc, keyCv);
       if (keyDropRes.hasErrors()) return keyDropRes.reerr();
       var keyDropDyn = keyDropRes.requireValue("map key drop").dynamic();
@@ -529,7 +537,7 @@ public record TypeMapDynamic(Type keyType, Type valueType)
       var valCv =
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, loadValSeq)),
-              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(xx, valueType)));
+              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(valueType, 1)));
       var valDropRes = valDropSome.value().aspectDropDynamicDrop(xx, loc, valCv);
       if (valDropRes.hasErrors()) return valDropRes.reerr();
       var valDropDyn = valDropRes.requireValue("map value drop").dynamic();

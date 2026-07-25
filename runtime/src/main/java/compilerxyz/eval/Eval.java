@@ -321,6 +321,10 @@ public final class Eval {
                   new ExprErr(rootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
         }
 
+        if (cause instanceof compilerxyz.eval.dynamic.DynCompileErrors compileErrs) {
+          return new CompileImport.EvalOutcome.Err(compileErrs.errors);
+        }
+
         if (cause instanceof DynException dynEx) {
           var rendered = renderThrownValue(dynEx.payload);
           return new CompileImport.EvalOutcome.Err(

@@ -1,6 +1,19 @@
 package compilerxyz.eval;
 
+import compilerxyz.annotations.Builtin;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.value.object_.ObjectAspectSource;
+import compilerxyz.eval.value.object_.ObjectDataField;
+import compilerxyz.eval.value.object_.ObjectDropKind;
+import compilerxyz.eval.value.object_.ObjectMethod;
+import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
+import compilerxyz.eval.value.object_.TypeObjectCastRule;
+import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.object_.TypeObjectMeta;
 import compilerxyz.gen.Binding;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
@@ -11,7 +24,42 @@ import org.jspecify.annotations.Nullable;
  * to exist is stack cleanup on scope exit) push a synthetic unnamed Binding
  * alongside a {@code null} name.
  */
+@Builtin(uniqueId = 6024L)
 public final class Scope {
+
+  public static Type dynamicType() {
+    return ScopeDynamicType.INSTANCE;
+  }
+
+  static final class ScopeDynamicType {
+    static final TypeObjectDynamic INSTANCE = build();
+
+    private ScopeDynamicType() {}
+
+    private static TypeObjectDynamic build() {
+      var jvmClass = JavaInternalName.fromClass(Scope.class);
+      var trivialIdentityAspects = new TList<Unique>();
+      trivialIdentityAspects.add(GenTrivialIdentityAspects.SCOPE_IDENTITY);
+      var castFromRules = new TList<TypeObjectCastFromRule>();
+      castFromRules.add(
+          new TypeObjectCastFromRule.RestampFromIdentity(
+              GenTrivialIdentityAspects.SCOPE_IDENTITY));
+      return new TypeObjectDynamic(
+          new TypeObjectMeta(
+              "Scope",
+              trivialIdentityAspects,
+              new TList<TypeObjectCastRule>(),
+              castFromRules,
+              Opt.<ObjectAspectSource>none()),
+          jvmClass,
+          JavaDataDescriptor.fromClass(Scope.class),
+          Scope.class,
+          new TList<ObjectDataField>(),
+          new TList<ObjectMethod>(),
+          ObjectDropKind.DYNAMIC_LIGHT,
+          Opt.<JavaInternalName>none());
+    }
+  }
   public final TList<Binding> entries = new TList<>();
   public final TList<@Nullable ConstKey> names = new TList<>();
 

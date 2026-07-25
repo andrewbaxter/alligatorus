@@ -106,6 +106,8 @@ public final class DynamicTypes {
     // Static-factory descriptors — interfaces where value class == descriptor class.
     factory("compilerxyz.eval", "Type");
     factory("compilerxyz.eval", "ExprContext");
+    factory("compilerxyz.eval", "Scope");
+    factory("compilerxyz.eval", "EvalContext");
     factory("compilerxyz.eval", "QExprId");
     factory("compilerxyz.eval", "CodeValue");
     delegated("compilerxyz.eval", "Code", "compilerxyz.gen", "GenCode");
@@ -156,6 +158,7 @@ public final class DynamicTypes {
         "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
         "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
         "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
+        "AspectFieldUseDynamic", "AspectElementUseDynamic",
         "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectOperatorMod", "AspectSet",
         "AspectInt"}) {
       delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);

@@ -705,7 +705,7 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
                     JavaDataDescriptor.fromClass(Object[].class)))));
     var stageCall = new CodeDynamic(loc, stageSeq);
     var resultValue =
-        ValueDynamic.stack(xx, new TypeExprStagedPlaceholder());
+        ValueDynamic.stack(new TypeExprStagedPlaceholder(), 1);
     return EResult.ok(new CodeValue(Code.of(loc, stageCall), EvalOutcome.ofValue(resultValue)));
   }
 

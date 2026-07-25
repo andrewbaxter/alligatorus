@@ -41,7 +41,7 @@ public final class SourceInterfaceResult {
         return new SourceInterfaceMethodResult(method);
     }
 
-    public void set_is_aspect(ExprContext xx, Boolean isAspect) {
+    public void set_is_aspect(ExprContext xx, boolean isAspect) {
         this.type_.getInterfaceData().isAspect = isAspect;
     }
 }

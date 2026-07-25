@@ -458,7 +458,7 @@ public record TypeObjectConst(
             ? some.value()
             : this;
     return EResult.ok(
-        new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(ValueDynamic.stack(xx, target))));
+        new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(ValueDynamic.stack(target, 1))));
   }
 
   @Override

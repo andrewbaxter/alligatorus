@@ -117,7 +117,7 @@ public record TypeConstkeyDynamic()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, literal),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeConstkeyDynamic()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(new TypeConstkeyDynamic(), 1))));
   }
 
   @Override

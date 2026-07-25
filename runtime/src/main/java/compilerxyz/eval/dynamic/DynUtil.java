@@ -238,7 +238,7 @@ public final class DynUtil {
             var childCv =
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
-                            EvalOutcome.ofValue(ValueDynamic.stack(xx, child.childType())));
+                            EvalOutcome.ofValue(ValueDynamic.stack(child.childType(), 1)));
             var childDropRes = childDropSome.value().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
@@ -311,9 +311,9 @@ public final class DynUtil {
         };
     }
 
-    public static CodeValue dynamicStackToValue(ExprContext xx, QExprId loc, CodeDynamic value, Type type_) {
-        var dynValue =
-                ValueDynamic.stack(xx, type_);
+    public static CodeValue dynamicStackToValue(
+            ExprContext xx, QExprId loc, CodeDynamic value, Type type_, int stackSize) {
+        var dynValue = ValueDynamic.stack(type_, stackSize);
         return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(dynValue));
     }
 
@@ -413,6 +413,35 @@ public final class DynUtil {
      * lowers the whole value via {@code argType}'s AspectConsumeDynamic and returns a
      * singleton list. Used at call sites whose JVM descriptor takes destructured positional args.
      */
+    public static EResult<CodeValue> elementUseDefault(
+            ExprContext xx,
+            QExprId loc,
+            compilerxyz.eval.value.ValueDynamicSource source,
+            Code carry,
+            Type type_) {
+        var seq = new JavaBytecodeSequence();
+        var carryDyn = carry.dynamic();
+        if (carryDyn != null) seq.add(carryDyn);
+        seq.add(renderSource(xx, loc, source));
+        return EResult.ok(
+                new CodeValue(
+                        Code.of(loc, new CodeDynamic(loc, seq)),
+                        EvalOutcome.ofValue(
+                                new compilerxyz.eval.value.ValueDynamic(source, type_))));
+    }
+
+    public static boolean zeroArgSignature(ExprContext xx, Type argType) {
+        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+        if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+            return tupleSome.value().aspectTupleElementTypes().isEmpty();
+        }
+        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
+        if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
+            return recordSome.value().aspectRecordFieldTypes().isEmpty();
+        }
+        return false;
+    }
+
     public static EResult<TList<CodeDynamic>> destructurePositional(
             ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
         var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);

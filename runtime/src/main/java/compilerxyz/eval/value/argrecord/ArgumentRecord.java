@@ -17,7 +17,10 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.value.record.Record;
+import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.gen.AspectField;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -110,11 +113,44 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   }
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+    if (!(AspectLookup.getMaybe(xx, destType, GenTrivialIdentityAspects.RECORD_IDENTITY, Record.class)
+        instanceof Opt.Some<Record> destSome)) {
+      return false;
+    }
+    var dest = destSome.value();
+    if (dest.fields().size() != fields.size()) return false;
+    for (var k : dest.fields().keySet()) {
+      if (fields.getOrNull(k) == null) return false;
+    }
+    return true;
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    var destOpt =
+        AspectLookup.getMaybe(xx, destType, GenTrivialIdentityAspects.RECORD_IDENTITY, Record.class);
+    if (!(destOpt instanceof Opt.Some<Record> destSome)) {
+      throw new IllegalStateException(
+          "ArgumentRecord::typeCastTo: dest is not a record type (typeCanCastTo returned true)");
+    }
+    var dest = destSome.value();
+    var destFieldTypes = dest.aspectRecordFieldTypes();
+    var erb = new Erb(loc);
+    var convertedFields = new TOrderedMap<ConstKey, RecordField>();
+    for (var destEntry : destFieldTypes.entrySet()) {
+      var key = destEntry.getKey();
+      var srcEntry = fields.getOrNull(key);
+      if (srcEntry == null) {
+        return EResult.err(
+            loc, "ArgumentRecord::typeCastTo: missing field '" + key.toCanonical() + "'");
+      }
+      var srcCv = srcEntry.binding().bindingUse(xx, loc, Code.none(loc));
+      var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destEntry.getValue(), srcCv));
+      if (convOpt.isEmpty()) return EResult.errs(erb.errors());
+      convertedFields.put(key, new RecordField.EvalRes(EResult.ok(convOpt.get())));
+    }
+    return EResult.ok(
+        new CodeValue(
+            cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), convertedFields))));
   }
   @Override
   public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(

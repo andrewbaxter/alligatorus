@@ -260,7 +260,9 @@ public final class CodecsGen {
         info.kind = TypeKind.RECORD;
         for (var param : rd.getParameters()) {
           var nullable = param.getAnnotations().stream()
-              .anyMatch(a -> a.getNameAsString().equals("Nullable"));
+                  .anyMatch(a -> a.getNameAsString().equals("Nullable"))
+              || param.getType().getAnnotations().stream()
+                  .anyMatch(a -> a.getNameAsString().equals("Nullable"));
           var pt = parseType(param.getType(), nullable);
           info.components.add(new Component(param.getNameAsString(), pt));
         }

@@ -61,13 +61,11 @@ public final class DefinitionSetBuilder {
 
     public void finish(ExprContext xx) {
         var _loc = new QExprId(new SourceId(-1L), -1L);
-        for (long _i = 0; _i < this.inner.interfaces.size(); _i++) {
-            var _iface = this.inner.interfaces.get((int) _i);
-            var _r = _iface.finish(_loc, _i);
-            if (_r.hasErrors()) {
-                throw new IllegalStateException("DefinitionSetBuilder.finish: " + _r.errorsOrNull());
-            }
+        var _r = this.inner.finish(xx, _loc);
+        if (_r.hasErrors()) {
+            var _errs = _r.errorsOrNull();
+            throw new compilerxyz.eval.dynamic.DynCompileErrors(
+                _errs != null ? _errs : new compilerxyz.util.TList<>());
         }
-        this.inner.finished = true;
     }
 }

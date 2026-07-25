@@ -177,7 +177,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, spec.type()))));
+            EvalOutcome.ofValue(ValueDynamic.stack(spec.type(), 1))));
   }
 
   @Override

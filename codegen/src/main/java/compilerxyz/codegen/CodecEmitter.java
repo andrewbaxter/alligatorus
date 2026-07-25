@@ -40,6 +40,7 @@ final class CodecEmitter {
   private static final ClassName BASE64 = ClassName.get("java.util", "Base64");
   private static final ClassName TSET = ClassName.get("compilerxyz.util", "TSet");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
+  private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
   private static final ClassName CODEC_REGISTRY =
@@ -181,6 +182,27 @@ final class CodecEmitter {
       } else {
         b.add(encodeStmts(elem, CodeBlock.of("__e")));
       }
+      b.endControlFlow();
+      b.addStatement("writer.endArray()");
+      return b.build();
+    }
+    if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.util.TOrderedMap")) {
+      var keyT = type.typeArgs.size() > 0 ? type.typeArgs.get(0) : null;
+      var valT = type.typeArgs.size() > 1 ? type.typeArgs.get(1) : null;
+      b.addStatement("writer.beginArray()");
+      b.beginControlFlow("for (var __me : $L.entrySet())", valueExpr);
+      b.addStatement("writer.beginArray()");
+      if (keyT == null) {
+        b.addStatement("writer.nullValue()");
+      } else {
+        b.add(encodeStmts(keyT, CodeBlock.of("__me.getKey()")));
+      }
+      if (valT == null) {
+        b.addStatement("writer.nullValue()");
+      } else {
+        b.add(encodeStmts(valT, CodeBlock.of("__me.getValue()")));
+      }
+      b.addStatement("writer.endArray()");
       b.endControlFlow();
       b.addStatement("writer.endArray()");
       return b.build();
@@ -392,6 +414,38 @@ final class CodecEmitter {
       b.endControlFlow();
       b.addStatement("$L.endArray()", readerExpr);
       b.addStatement("$L = __l", targetVar);
+      b.endControlFlow();
+      return b.build();
+    }
+    if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.util.TOrderedMap")) {
+      var keyT = type.typeArgs.size() > 0 ? type.typeArgs.get(0) : null;
+      var valT = type.typeArgs.size() > 1 ? type.typeArgs.get(1) : null;
+      var keyType = keyT == null ? "Object" : javaTypeOf(keyT);
+      var valType = valT == null ? "Object" : javaTypeOf(valT);
+      b.beginControlFlow("");
+      b.addStatement("$T<$L, $L> __m = new $T<>()", TORDERED_MAP, keyType, valType, TORDERED_MAP);
+      b.addStatement("$L.beginArray()", readerExpr);
+      b.addStatement("int __mi = 0");
+      b.beginControlFlow("while ($L.hasNext())", readerExpr);
+      b.addStatement("$L.beginArray()", readerExpr);
+      b.addStatement("$L __mk = $L", keyType, defaultForNamed(keyT));
+      if (keyT != null) {
+        b.add(decodeStmts(keyT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mk"));
+      } else {
+        b.addStatement("$L.skipValue()", readerExpr);
+      }
+      b.addStatement("$L __mv = $L", valType, defaultForNamed(valT));
+      if (valT != null) {
+        b.add(decodeStmts(valT, readerExpr, CodeBlock.of("$L.index(__mi)", pathExpr), "__mv"));
+      } else {
+        b.addStatement("$L.skipValue()", readerExpr);
+      }
+      b.addStatement("$L.endArray()", readerExpr);
+      b.addStatement("__m.put(__mk, __mv)");
+      b.addStatement("__mi++");
+      b.endControlFlow();
+      b.addStatement("$L.endArray()", readerExpr);
+      b.addStatement("$L = __m", targetVar);
       b.endControlFlow();
       return b.build();
     }

@@ -59,6 +59,12 @@ public record TypeMethodDynamic(
         AspectInitialBind,
         ExporterAny {
 
+  @Override
+  public String toString() {
+    return "TypeMethodDynamic[" + klass.value + "." + methodName + descriptor.value() + "]";
+  }
+
+
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -98,11 +104,16 @@ public record TypeMethodDynamic(
     if (receiverDyn == null) {
       return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
     }
-    var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
-    if (convertedRes.hasErrors()) return convertedRes.reerr();
-    var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
-    var argsDynRes = compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
-    if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+    compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
+    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, arg)) {
+      argsDynRes = compilerxyz.eval.EResult.ok(new compilerxyz.util.TList<>());
+    } else {
+      var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
+      if (convertedRes.hasErrors()) return convertedRes.reerr();
+      var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
+      argsDynRes = compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
+      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
+    }
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 

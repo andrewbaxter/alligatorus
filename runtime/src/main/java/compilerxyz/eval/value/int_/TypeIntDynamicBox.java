@@ -140,7 +140,7 @@ public record TypeIntDynamicBox()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
@@ -186,7 +186,7 @@ public record TypeIntDynamicBox()
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   @Override
@@ -194,7 +194,7 @@ public record TypeIntDynamicBox()
     return EResult.ok(
         new CodeValue(
             cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
   }
 
   @Override
@@ -210,7 +210,7 @@ public record TypeIntDynamicBox()
     var unboxedSelf =
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(xx, unboxed)));
+            EvalOutcome.ofValue(ValueDynamic.stack(unboxed, 1)));
     return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
   }
 

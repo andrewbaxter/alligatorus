@@ -428,6 +428,12 @@ public final class BuiltinTreeGen {
     addSpecial(pathToLeaf, "eval.aspect_stack_value_dynamic_id",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStackValueDynamic")),
         TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_field_use_dynamic_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFieldUseDynamic")),
+        TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.aspect_element_use_dynamic_id",
+        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectElementUseDynamic")),
+        TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_initial_bind_id",
         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
         TUC_TYPE_EXPR);
@@ -472,6 +478,8 @@ public final class BuiltinTreeGen {
                   "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
                   "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",
                   "aspect_drop_dynamic_light_id", "aspect_stack_value_dynamic_id",
+                  "aspect_field_use_dynamic", "aspect_element_use_dynamic",
+                  "aspect_field_use_dynamic_id", "aspect_element_use_dynamic_id",
                   "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type"));
 
   private record TreeNode(
