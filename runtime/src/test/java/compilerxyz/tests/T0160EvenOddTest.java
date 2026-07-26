@@ -1242,7 +1242,17 @@ public final class T0160EvenOddTest {
                                                             "value",
                                                             mb.call(
                                                                 mb.evalStack(),
-                                                                mb.scopeUse("outer"))))))),
+                                                                mb.recordOf(
+                                                                    TList.of(
+                                                                        new TestMb.RecordPair(
+                                                                            "type",
+                                                                            mb.scopeUse(
+                                                                                "outer")),
+                                                                        new TestMb.RecordPair(
+                                                                            "width",
+                                                                            mb.as_(
+                                                                                mb.num(1.),
+                                                                                mb.typesInt())))))))))),
                                         new TestMb.RecordPair(
                                             "fork", mb.scopeUse("outer")),
                                         new TestMb.RecordPair(

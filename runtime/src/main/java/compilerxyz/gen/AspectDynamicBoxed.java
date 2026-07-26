@@ -5,7 +5,7 @@ import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1033L)
+@Builtin(uniqueId = 1033L, identityId = 4033L)
 public interface AspectDynamicBoxed extends Aspect {
   Type aspectDynamicBoxedBoxedForm();
 }

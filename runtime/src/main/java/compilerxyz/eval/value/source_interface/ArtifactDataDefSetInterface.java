@@ -13,6 +13,7 @@ public record ArtifactDataDefSetInterface(
     Unique identity,
     @Nullable String description,
     boolean isAspect,
+    @Nullable Unique aspectId,
     @Nullable BuiltinInterfaceKind builtinKind,
     String compiledBinaryName,
     byte @Nullable [] compiledBytecode,

@@ -14,7 +14,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 
-@Builtin(uniqueId = 1024L)
+@Builtin(uniqueId = 1024L, identityId = 4024L)
 public interface AspectConsumeDynamic extends Aspect {
   EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv);
 

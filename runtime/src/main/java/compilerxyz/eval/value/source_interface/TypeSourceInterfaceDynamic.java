@@ -78,7 +78,12 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public compilerxyz.eval.Unique id() {
-    return data.identity;
+    var aspectId = data.aspectId;
+    if (aspectId == null) {
+      throw new IllegalStateException(
+          "TypeSourceInterfaceDynamic::id: interface is not an aspect (no aspect id)");
+    }
+    return aspectId;
   }
 
 
@@ -253,6 +258,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             iface.identity,
                             iface.description,
                             iface.isAspect,
+                            iface.aspectId,
                             iface.builtinKind,
                             iface.compiledBinaryName,
                             iface.compiledBytecode,
@@ -294,6 +300,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                 iface.compiledBytecode = body.compiledBytecode();
                 iface.description = body.description();
                 iface.isAspect = body.isAspect();
+                iface.aspectId = body.aspectId();
                 iface.artifactIdCell.set(idValue);
                 for (var m : body.methods()) {
                   var md = new InterfaceMethodData(m.name());

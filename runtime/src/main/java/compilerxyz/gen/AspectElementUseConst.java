@@ -8,7 +8,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1038L)
+@Builtin(uniqueId = 1038L, identityId = 4038L)
 public interface AspectElementUseConst extends Aspect {
   EResult<CodeValue> aspectElementUseConstElementUseConst(
       ExprContext xx, QExprId loc, CodeValue cv);

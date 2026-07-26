@@ -5,13 +5,10 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
-import java.util.concurrent.atomic.AtomicLong;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
 public final class EvalRootEmitter {
-  private static final AtomicLong ROOT_COUNTER = new AtomicLong();
-
   public static final String EXPR_CONTEXT_FIELD = "__exprContext";
 
   public static final JavaDataDescriptor DESC_EXPR_CONTEXT =
@@ -20,8 +17,8 @@ public final class EvalRootEmitter {
   private static final JavaMethodDescriptor MDESC_RUN =
       JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of());
 
-  public static String allocateBinaryName() {
-    var index = ROOT_COUNTER.getAndIncrement();
+  public static String allocateBinaryName(ExprContext xx) {
+    var index = xx.vx.ix.evalRootCounter.next();
     return "compilerxyz.eval.gen.EvalRoot$" + index;
   }
 

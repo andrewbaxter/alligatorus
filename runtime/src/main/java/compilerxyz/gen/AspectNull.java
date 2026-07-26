@@ -4,5 +4,5 @@ package compilerxyz.gen;
 import compilerxyz.annotations.Builtin;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1001L)
+@Builtin(uniqueId = 1001L, identityId = 4001L)
 public interface AspectNull extends Aspect {}

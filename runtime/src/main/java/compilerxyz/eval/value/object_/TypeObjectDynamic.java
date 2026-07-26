@@ -148,7 +148,9 @@ public record TypeObjectDynamic(
     var kind =
         compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry.kindForAspectId(
             staticSrc.id());
-    var data = new InterfaceData(null, staticSrc.id(), kind);
+    var data = new InterfaceData(null, staticSrc.identity(), kind);
+    data.aspectId = staticSrc.id();
+    data.isAspect = !staticSrc.identity().equals(staticSrc.id());
     data.description = typeDesc();
     data.compiledBinaryName = ir.value().value().replace('/', '.');
     for (var m : methods) {

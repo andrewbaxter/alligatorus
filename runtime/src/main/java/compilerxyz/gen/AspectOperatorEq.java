@@ -8,7 +8,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1019L)
+@Builtin(uniqueId = 1019L, identityId = 4019L)
 public interface AspectOperatorEq extends Aspect {
   EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference);

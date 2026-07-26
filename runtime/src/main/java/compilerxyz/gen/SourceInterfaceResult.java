@@ -42,6 +42,10 @@ public final class SourceInterfaceResult {
     }
 
     public void set_is_aspect(ExprContext xx, boolean isAspect) {
-        this.type_.getInterfaceData().isAspect = isAspect;
+        var data = this.type_.getInterfaceData();
+        data.isAspect = isAspect;
+        if (isAspect && data.aspectId == null) {
+            data.aspectId = compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx);
+        }
     }
 }

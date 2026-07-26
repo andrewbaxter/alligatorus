@@ -8,17 +8,24 @@ import java.lang.reflect.Modifier;
 
 public final class DefinitionSetClassLoader extends ClassLoader {
 
+  private final compilerxyz.langhelp.GlobalContext gx;
   private final TList<DefinitionSetClassLoader> dependencyLoaders;
   private final TMap<String, byte[]> pendingBytecode = new TMap<>();
   private final TMap<String, TOrderedMap<String, Object>> pendingExternals = new TMap<>();
 
   public DefinitionSetClassLoader(
-      ClassLoader parent, TList<DefinitionSetClassLoader> dependencyLoaders) {
+      compilerxyz.langhelp.GlobalContext gx,
+      ClassLoader parent,
+      TList<DefinitionSetClassLoader> dependencyLoaders) {
     super(parent);
+    this.gx = gx;
     this.dependencyLoaders = dependencyLoaders;
   }
 
   public void registerClass(String binaryName, byte[] bytecode) {
+    if (gx.captureBytecode) {
+      gx.capturedBytecode.put(binaryName, bytecode);
+    }
     pendingBytecode.put(binaryName, bytecode);
   }
 

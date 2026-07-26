@@ -18,6 +18,7 @@ public final class CompileImportContext {
 
   public final TList<CompileId> compilePath;
   public final Counter defSetCounter = new Counter();
+  public final Counter evalRootCounter = new Counter();
   public final TMap<ArtifactIdSource, ExporterAny> deserializedArtifacts = new TMap<>();
   public final GlobalContext gx;
   public final ImportStateId importState;

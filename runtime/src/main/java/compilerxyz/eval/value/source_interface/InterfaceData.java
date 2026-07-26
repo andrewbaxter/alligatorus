@@ -34,6 +34,7 @@ public final class InterfaceData {
   public final @Nullable BuiltinInterfaceKind builtinKind;
   public @Nullable String description;
   public boolean isAspect;
+  public @Nullable Unique aspectId;
   public final TList<InterfaceMethodData> methods;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 

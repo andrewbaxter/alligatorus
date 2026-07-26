@@ -31,6 +31,7 @@ public final class BuiltinInterfacesGen {
       String simpleName,
       String pkg,
       long uniqueId,
+      long identityId,
       boolean isAspect,
       boolean isRecord,
       TList<BuiltinMethodEmit.Method> methods,
@@ -41,11 +42,12 @@ public final class BuiltinInterfacesGen {
         String simpleName,
         String pkg,
         long uniqueId,
+        long identityId,
         boolean isAspect,
         boolean isRecord,
         TList<BuiltinMethodEmit.Method> methods,
         TList<DataField> dataFields) {
-      this(simpleName, pkg, uniqueId, isAspect, isRecord,
+      this(simpleName, pkg, uniqueId, identityId, isAspect, isRecord,
           methods, dataFields, null, null);
     }
   }
@@ -104,6 +106,7 @@ public final class BuiltinInterfacesGen {
       TList<BuiltinSpec> specs)
       throws IOException {
     var seenNames = new TSet<String>();
+    var identityIds = new TSet<Long>();
     for (var spec : specs) {
       if (!seenNames.add(spec.simpleName)) {
         throw new IllegalStateException("duplicate builtin interface name: " + spec.simpleName);
@@ -111,6 +114,10 @@ public final class BuiltinInterfacesGen {
       if (!aspectIds.add(spec.uniqueId)) {
         throw new IllegalStateException(
             "duplicate aspect id " + spec.uniqueId + " (in builtins)");
+      }
+      if (spec.identityId != 0L && !identityIds.add(spec.identityId)) {
+        throw new IllegalStateException(
+            "duplicate aspect identity id " + spec.identityId + " (in builtins)");
       }
       writeCompanion(outRoot, formatter, spec);
     }
@@ -134,6 +141,10 @@ public final class BuiltinInterfacesGen {
       cls.addField(
           FieldSpec.builder(UNIQUE, "AspectId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
               .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.uniqueId)
+              .build());
+      cls.addField(
+          FieldSpec.builder(UNIQUE, "IdentityId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+              .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.identityId)
               .build());
       cls.addMethod(
           MethodSpec.methodBuilder("getMaybe")
@@ -193,12 +204,13 @@ public final class BuiltinInterfacesGen {
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
     b.addStatement("var trivialIdentityAspects = new $T<$T>()", TLIST, UNIQUE);
     if (spec.isAspect) {
+      b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
       b.addStatement(
           "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
-              + "$T.<$T>some(new $T($T.AspectId)))",
+              + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)))",
           TYPE_OBJECT_META, typeDesc,
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,
-          OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC, self);
+          OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC, self, self);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
               + "dataFields, methods, $T.DYNAMIC, $T.some(jvmClass))",
@@ -223,10 +235,12 @@ public final class BuiltinInterfacesGen {
       emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
           "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
-              + "$T.<$T>some(new $T(new $T($LL))))",
+              + "$T.<$T>some(new $T(new $T($LL), new $T($LL))))",
           TYPE_OBJECT_META, typeDesc,
           TLIST, TYPE_OBJECT_CAST_FROM_RULE,
           OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
+          UNIQUE_BUILTIN,
+          spec.uniqueId,
           UNIQUE_BUILTIN,
           spec.uniqueId);
       b.addStatement(

@@ -169,6 +169,7 @@ public final class CompositeClassEmitter {
     if (xx.vx.ix.classLoader == null) {
       xx.vx.ix.classLoader =
           new DefinitionSetClassLoader(
+              xx.vx.ix.gx,
               DefinitionSetClassLoader.class.getClassLoader(),
               new compilerxyz.util.TList<>());
     }

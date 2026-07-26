@@ -113,6 +113,10 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
       if (key.equals(impl.interface_.identity)) {
         return Opt.some(this);
       }
+      var implAspectId = impl.interface_.aspectId;
+      if (impl.interface_.isAspect && implAspectId != null && key.equals(implAspectId)) {
+        return Opt.some(this);
+      }
     }
     if (key.equals(GenAspectType.AspectId)) {
       for (var impl : type_.interfaceImpls) {

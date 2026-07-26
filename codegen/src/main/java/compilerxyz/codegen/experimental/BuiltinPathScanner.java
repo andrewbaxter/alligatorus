@@ -51,6 +51,8 @@ public final class BuiltinPathScanner {
       String path,
       long scopeId,
       String methodName,
+      String ownerInternalName,
+      boolean needsExprContext,
       TList<NamedTypeRef> args,
       TypeRef retType)
       implements Entry {}
@@ -89,33 +91,32 @@ public final class BuiltinPathScanner {
       out.add(new TypeLeaf(path, cn));
     }
     // Methods (only allow static)
-    if (t instanceof ClassOrInterfaceDeclaration c) {
-      for (var m : c.getMethods()) {
+    if (t instanceof ClassOrInterfaceDeclaration
+        || t instanceof com.github.javaparser.ast.body.RecordDeclaration) {
+      for (var m : t.getMethods()) {
         var mpath = pathFromAnnotation(m);
         if (mpath == null) continue;
         var scopeId = scopeIdFromAnnotation(m);
         var args = new TList<NamedTypeRef>();
         var params = m.getParameters();
-        if (params.isEmpty()) {
-          throw new IllegalStateException(
-              "@BuiltinPath on method " + m.getNameAsString() + " requires first arg ExprContext xx");
+        var needsExprContext = false;
+        var firstArgIndex = 0;
+        if (!params.isEmpty()
+            && typeNameOf(params.get(0).getType(), imports, sourcePkg) instanceof ClassName ficn
+            && ficn.canonicalName().equals("compilerxyz.eval.ExprContext")) {
+          needsExprContext = true;
+          firstArgIndex = 1;
         }
-        var first = params.get(0);
-        var firstTy = typeNameOf(first.getType(), imports, sourcePkg);
-        if (!(firstTy instanceof ClassName ficn)
-            || !ficn.canonicalName().equals("compilerxyz.eval.ExprContext")) {
-          throw new IllegalStateException(
-              "@BuiltinPath on method "
-                  + m.getNameAsString()
-                  + " requires first arg ExprContext xx, got "
-                  + firstTy);
-        }
-        for (int i = 1; i < params.size(); i++) {
+        for (int i = firstArgIndex; i < params.size(); i++) {
           var p = params.get(i);
           args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg)));
         }
+        var ownerSimple = enclosing.isEmpty() ? simple : enclosing.replace('.', '$') + "$" + simple;
+        var ownerInternalName = pkg.replace('.', '/') + "/" + ownerSimple;
         var retType = typeRefOf(m.getType(), imports, sourcePkg);
-        out.add(new FunctionLeaf(mpath, scopeId, m.getNameAsString(), args, retType));
+        out.add(
+            new FunctionLeaf(
+                mpath, scopeId, m.getNameAsString(), ownerInternalName, needsExprContext, args, retType));
       }
     }
     for (var member : t.getMembers()) {

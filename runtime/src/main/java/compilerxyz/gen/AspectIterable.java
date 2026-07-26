@@ -10,7 +10,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1027L)
+@Builtin(uniqueId = 1027L, identityId = 4027L)
 public interface AspectIterable extends Aspect {
   Type aspectIterableElementType();
 

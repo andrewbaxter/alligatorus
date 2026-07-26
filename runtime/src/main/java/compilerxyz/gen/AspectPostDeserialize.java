@@ -8,7 +8,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1031L)
+@Builtin(uniqueId = 1031L, identityId = 4031L)
 public interface AspectPostDeserialize extends Aspect {
   EResult<CodeValue> aspectPostDeserializePostDeserialize(
       ExprContext xx, QExprId loc, CodeValue cv);

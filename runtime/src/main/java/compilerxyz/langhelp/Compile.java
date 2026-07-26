@@ -12,6 +12,7 @@ import compilerxyz.eval.SourceId;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
+import compilerxyz.util.TOrderedMap;
 
 public final class Compile {
   private Compile() {}
@@ -53,7 +54,7 @@ public final class Compile {
     if (!allErrors.isEmpty()) {
       return Result.err(allErrors);
     }
-    return Result.ok(new CompileResult(res.logs()));
+    return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode));
   }
 
   private static void collectErrors(CompileRes r, TList<ExprErr> out) {
@@ -62,5 +63,5 @@ public final class Compile {
     }
   }
 
-  public record CompileResult(TList<LogEntry> logs) {}
+  public record CompileResult(TList<LogEntry> logs, TOrderedMap<String, byte[]> bytecode) {}
 }

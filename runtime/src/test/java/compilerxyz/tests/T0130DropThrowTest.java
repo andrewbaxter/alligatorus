@@ -248,7 +248,16 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     "value",
                                                     mb.call(
                                                         mb.evalStack(),
-                                                        mb.scopeUse("outer")))))))),
+                                                        mb.recordOf(
+                                                            TList.of(
+                                                                new TestMb.RecordPair(
+                                                                    "type",
+                                                                    mb.scopeUse("outer")),
+                                                                new TestMb.RecordPair(
+                                                                    "width",
+                                                                    mb.as_(
+                                                                        mb.num(1.),
+                                                                        mb.typesInt()))))))))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.return_(mb.str(name)))),
                             new TestMb.RecordPair(
                                 "aspect",
@@ -360,7 +369,17 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                             "value",
                                                             mb.call(
                                                                 mb.evalStack(),
-                                                                mb.scopeUse("outer"))))))),
+                                                                mb.recordOf(
+                                                                    TList.of(
+                                                                        new TestMb.RecordPair(
+                                                                            "type",
+                                                                            mb.scopeUse(
+                                                                                "outer")),
+                                                                        new TestMb.RecordPair(
+                                                                            "width",
+                                                                            mb.as_(
+                                                                                mb.num(1.),
+                                                                                mb.typesInt())))))))))),
                                         new TestMb.RecordPair(
                                             "fork", mb.scopeUse("outer")),
                                         new TestMb.RecordPair(

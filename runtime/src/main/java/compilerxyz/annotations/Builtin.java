@@ -18,4 +18,11 @@ public @interface Builtin {
   long uniqueId();
 
   int scopeId() default 0;
+
+  /**
+   * Identity id for aspect interfaces: answers "is this type this interface" (used by casts),
+   * distinct from {@code uniqueId} which answers "does this type have this aspect" (used by
+   * capability lookups). Required (non-zero) for aspects; unused for traits.
+   */
+  long identityId() default 0;
 }

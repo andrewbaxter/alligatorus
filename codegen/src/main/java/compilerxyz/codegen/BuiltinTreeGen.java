@@ -147,15 +147,20 @@ public final class BuiltinTreeGen {
     }
 
     public static LeafSpec functionByName(
-        String methodName, TList<NamedTypeRef> args, CodeBlock retDynamicType) {
+        String methodName,
+        String ownerInternalName,
+        boolean needsExprContext,
+        TList<NamedTypeRef> args,
+        CodeBlock retDynamicType) {
       var innerExpr = CodeBlock.of(
-          "new $T($L, $L, $T.of($S), $S, true)",
+          "new $T($L, $L, $T.of($S), $S, $L)",
           TYPE_FUNCTION_DYNAMIC,
           paramsExpr(args),
           retDynamicType,
           JAVA_INTERNAL_NAME,
-          "compilerxyz/eval/builtin/BuiltinBodies",
-          methodName);
+          ownerInternalName,
+          methodName,
+          needsExprContext);
       return new LeafSpec(innerExpr, TYPE_WRAPPER_EXPR);
     }
   }
@@ -353,7 +358,12 @@ public final class BuiltinTreeGen {
           yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), wrapper);
         }
         case BuiltinPathScanner.FunctionLeaf fl ->
-            LeafSpec.functionByName(fl.methodName(), fl.args(), fl.retType().dynamicType());
+            LeafSpec.functionByName(
+                fl.methodName(),
+                fl.ownerInternalName(),
+                fl.needsExprContext(),
+                fl.args(),
+                fl.retType().dynamicType());
       };
       if (pathToLeaf.put(entry.path(), spec) != null) {
         throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.path());

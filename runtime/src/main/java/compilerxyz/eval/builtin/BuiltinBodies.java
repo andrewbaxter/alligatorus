@@ -138,11 +138,6 @@ public final class BuiltinBodies {
     return ((compilerxyz.util.Result.Ok<ConstKey, String>) res).value();
   }
 
-  @BuiltinPath(value = "eval.stack", scopeId = 5013L)
-  public static Value stack(ExprContext xx, Type type) {
-    return ValueDynamic.stack(type, 1);
-  }
-
   @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)
   public static AspectBind.BindResult bindResult(ExprContext xx, Code code, Binding binding) {
     return new AspectBind.BindResult(code, binding);

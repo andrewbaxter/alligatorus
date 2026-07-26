@@ -9,7 +9,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1018L)
+@Builtin(uniqueId = 1018L, identityId = 4018L)
 @BuiltinPath("eval.operator_add")
 public interface AspectOperatorAdd extends Aspect {
   EResult<CodeValue> aspectOperatorAddAdd(

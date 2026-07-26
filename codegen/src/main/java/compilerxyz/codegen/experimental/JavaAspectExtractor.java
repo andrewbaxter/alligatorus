@@ -107,6 +107,12 @@ public final class JavaAspectExtractor {
       throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
     }
     var uniqueId = Long.parseLong(uniqueIdStr);
+    var identityIdStr = attrs.get("identityId");
+    var identityId = identityIdStr == null ? 0L : Long.parseLong(identityIdStr);
+    if (isAspect && identityId == 0L) {
+      throw new IllegalStateException(
+          "@Builtin on aspect " + simpleName + " missing required identityId");
+    }
     var importMap = buildImportMap(cu);
     // Nested records declared inside an aspect interface become
     // compilerxyz.gen.AspectXxx.NestedName in generated code; wire their short
@@ -140,7 +146,7 @@ public final class JavaAspectExtractor {
           true));
     }
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, uniqueId, isAspect, false, methods,
+        simpleName, pkg, uniqueId, identityId, isAspect, false, methods,
         new TList<BuiltinInterfacesGen.DataField>());
   }
 
@@ -156,7 +162,7 @@ public final class JavaAspectExtractor {
     }
     var uniqueId = Long.parseLong(uniqueIdStr);
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, uniqueId, false, false,
+        simpleName, pkg, uniqueId, 0L, false, false,
         new TList<compilerxyz.codegen.util.BuiltinMethodEmit.Method>(),
         new TList<BuiltinInterfacesGen.DataField>());
   }
@@ -202,7 +208,7 @@ public final class JavaAspectExtractor {
           true));
     }
     return new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, uniqueId, false, true, methods, dataFields,
+        simpleName, pkg, uniqueId, 0L, false, true, methods, dataFields,
         outerSimpleName, outerSimpleName == null ? null : nestedName);
   }
 

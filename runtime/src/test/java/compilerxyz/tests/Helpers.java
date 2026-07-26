@@ -116,6 +116,44 @@ public final class Helpers {
     return new JsonValueNull();
   }
 
+  public static compilerxyz.langhelp.Compile.CompileResult compileCaptured(
+      TMap<String, SourceModule> modules) {
+    var gx = newGx(modules);
+    gx.captureBytecode = true;
+    var res =
+        compilerxyz.langhelp.Compile.compile(
+            gx, new compilerxyz.syntax.SourceSpecAbsolute.Virtual("main"));
+    if (!(res
+        instanceof
+        compilerxyz.util.Result.Ok<
+                compilerxyz.langhelp.Compile.CompileResult,
+                compilerxyz.util.TList<compilerxyz.eval.ExprErr>>
+            ok)) {
+      throw new AssertionError("compile failed: " + res);
+    }
+    return ok.value();
+  }
+
+  public static String disassembled(
+      compilerxyz.langhelp.Compile.CompileResult result, String binaryName) {
+    var bytes = result.bytecode().getOrNull(binaryName);
+    if (bytes == null) {
+      throw new AssertionError(
+          "no captured bytecode for " + binaryName + "; captured: " + result.bytecode().keySet());
+    }
+    return disassemble(bytes);
+  }
+
+  public static String disassemble(byte[] bytecode) {
+    var reader = new org.objectweb.asm.ClassReader(bytecode);
+    var writer = new java.io.StringWriter();
+    reader.accept(
+        new org.objectweb.asm.util.TraceClassVisitor(
+            null, new org.objectweb.asm.util.Textifier(), new java.io.PrintWriter(writer)),
+        org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES);
+    return writer.toString();
+  }
+
   public static GlobalContext newGx(TMap<String, SourceModule> modules) {
     return newGxWithArtifacts(modules).gx();
   }

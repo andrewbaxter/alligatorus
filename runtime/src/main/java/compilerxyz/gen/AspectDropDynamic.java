@@ -10,7 +10,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1032L)
+@Builtin(uniqueId = 1032L, identityId = 4032L)
 @BuiltinPath("eval.aspect_drop_dynamic")
 public interface AspectDropDynamic extends Aspect {
   EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv);

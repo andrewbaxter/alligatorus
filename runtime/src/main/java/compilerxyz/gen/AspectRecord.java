@@ -12,7 +12,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Value;
 import compilerxyz.util.TOrderedMap;
 
-@Builtin(uniqueId = 1002L)
+@Builtin(uniqueId = 1002L, identityId = 4002L)
 public interface AspectRecord extends Aspect {
   TOrderedMap<ConstKey, Type> aspectRecordFieldTypes();
 

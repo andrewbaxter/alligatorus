@@ -22,7 +22,7 @@ public final class ImportInstall {
     if (xx.vx.ix.classLoader == null) {
       xx.vx.ix.classLoader =
           new DefinitionSetClassLoader(
-              DefinitionSetClassLoader.class.getClassLoader(), depLoaders);
+              xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders);
     }
     var loader = xx.vx.ix.classLoader;
     if (!xx.vx.ix.installedDefSets.add(set.defSetId)) {

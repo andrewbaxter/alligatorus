@@ -10,7 +10,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1022L)
+@Builtin(uniqueId = 1022L, identityId = 4022L)
 @BuiltinPath("eval.aspect_bind")
 public interface AspectBind extends Aspect {
   @Builtin(uniqueId = 1044L)

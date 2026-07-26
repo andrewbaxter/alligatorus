@@ -11,7 +11,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Value;
 import compilerxyz.util.TList;
 
-@Builtin(uniqueId = 1013L)
+@Builtin(uniqueId = 1013L, identityId = 4013L)
 public interface AspectTuple extends Aspect {
   TList<Type> aspectTupleElementTypes();
 

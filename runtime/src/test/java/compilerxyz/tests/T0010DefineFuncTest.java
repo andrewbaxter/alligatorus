@@ -143,4 +143,101 @@ public final class T0010DefineFuncTest {
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO WORLD", ok.logs().get(0).message());
   }
+
+  @Test
+  public void test00720DefineFuncCallBytecode() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind(
+                    "inc",
+                    mb.lower(
+                        mb.seqOf(
+                            mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                            mb.bind(
+                                "nfr",
+                                mb.call(
+                                    mb.field(mb.scopeUse("d"), mb.str("func")),
+                                    mb.str("inc"))),
+                            mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
+                            mb.call(
+                                mb.field(mb.scopeUse("nfr"), mb.str("impl")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesInt()),
+                                        new TestMb.RecordPair("ret", mb.typesInt()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(
+                                                mb.operatorAdd(
+                                                    mb.scopeUse("arg"),
+                                                    mb.as_(
+                                                        mb.num(1.), mb.typesInt()))))))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
+                            mb.return_(mb.scopeUse("f"))))),
+                mb.bind(
+                    "y",
+                    mb.call(
+                        mb.scopeUse("inc"), mb.as_(mb.num(2.), mb.typesInt()))),
+                mb.call(
+                    mb.log(),
+                    mb.call(
+                        mb.field(mb.scopeUse("y"), mb.str("to_string")), mb.tupleOf())))));
+    var ok = Helpers.compileCaptured(modules);
+    assertEquals(1, ok.logs().size());
+    assertEquals("3", ok.logs().get(0).message());
+    assertEquals(
+        """
+        // class version 55.0 (55)
+        // access flags 0x31
+        public final class compilerxyz/eval/gen/Functions$0_0_0 {
+
+
+          // access flags 0x9
+          public static Lcompilerxyz/eval/ExprContext; __exprContext
+
+          // access flags 0x9
+          public static _0(J)J
+            LLOAD 0
+            LDC 1
+            LADD
+            LRETURN
+            MAXSTACK = 4
+            MAXLOCALS = 2
+        }
+        """,
+        Helpers.disassembled(ok, "compilerxyz.eval.gen.Functions$0_0_0"));
+    assertEquals(
+        """
+        // class version 55.0 (55)
+        // access flags 0x31
+        public final class compilerxyz/eval/gen/EvalRoot$1 {
+
+
+          // access flags 0x9
+          public static Lcompilerxyz/eval/ExprContext; __exprContext
+
+          // access flags 0x9
+          public static run()Ljava/lang/Object;
+            LDC 2
+            INVOKESTATIC compilerxyz/eval/gen/Functions$0_0_0._0 (J)J
+            LSTORE 0
+            GETSTATIC compilerxyz/eval/gen/EvalRoot$1.__exprContext : Lcompilerxyz/eval/ExprContext;
+            LLOAD 0
+            INVOKESTATIC compilerxyz/eval/value/int_/IntFormat.format (J)Ljava/lang/String;
+            INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
+            POP
+            NEW compilerxyz/eval/gen/Composite$0
+            DUP
+            INVOKESPECIAL compilerxyz/eval/gen/Composite$0.<init> ()V
+            ARETURN
+            MAXSTACK = 3
+            MAXLOCALS = 2
+        }
+        """,
+        Helpers.disassembled(ok, "compilerxyz.eval.gen.EvalRoot$1"));
+  }
 }

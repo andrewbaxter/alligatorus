@@ -6,7 +6,7 @@ import compilerxyz.eval.BindingId;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Binding;
 
-@Builtin(uniqueId = 1040L)
+@Builtin(uniqueId = 1040L, identityId = 4040L)
 public interface AspectElementUseDynamicBind extends Aspect {
   Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey);
 }

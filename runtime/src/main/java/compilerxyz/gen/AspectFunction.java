@@ -11,7 +11,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
 
-@Builtin(uniqueId = 1116L)
+@Builtin(uniqueId = 1116L, identityId = 4116L)
 @BuiltinPath("eval.aspect_function")
 public interface AspectFunction extends Aspect {
   EResult<CodeValue> aspectFunctionCall(

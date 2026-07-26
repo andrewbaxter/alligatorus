@@ -177,7 +177,7 @@ public final class Eval {
     for (var entry : scopeEntries.entrySet()) {
       rootScope.pushNamed(entry.getKey(), entry.getValue());
     }
-    var binaryName = EvalRootEmitter.allocateBinaryName();
+    var binaryName = EvalRootEmitter.allocateBinaryName(xx);
     vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);
     if (cvRes.hasErrors()) {
@@ -293,7 +293,7 @@ public final class Eval {
       if (xx.vx.ix.classLoader == null) {
         xx.vx.ix.classLoader =
             new DefinitionSetClassLoader(
-                DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);
+                xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);
       }
       var loader = xx.vx.ix.classLoader;
       loader.registerClass(emitted.binaryName(), emitted.bytecode());
