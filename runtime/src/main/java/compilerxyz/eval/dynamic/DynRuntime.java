@@ -298,30 +298,18 @@ public final class DynRuntime {
         }
         yield new Expr(loc, new Expr.If(newConds, newElse));
       }
-      case Expr.OperatorLt op ->
+      case Expr.OperatorBinary op ->
           new Expr(
               loc,
-              new Expr.OperatorLt(
+              new Expr.OperatorBinary(
+                  op.op(),
                   cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
                   cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
-      case Expr.OperatorEq op ->
+      case Expr.OperatorUnary op ->
           new Expr(
               loc,
-              new Expr.OperatorEq(
-                  cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
-                  cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
-      case Expr.OperatorAdd op ->
-          new Expr(
-              loc,
-              new Expr.OperatorAdd(
-                  cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
-                  cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
-      case Expr.OperatorMod op ->
-          new Expr(
-              loc,
-              new Expr.OperatorMod(
-                  cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
-                  cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
+              new Expr.OperatorUnary(
+                  op.op(), cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts)));
       case Expr.Foreach fe ->
           new Expr(
               loc,

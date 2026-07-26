@@ -190,7 +190,7 @@ public final class ExprArtifacts {
                     elementKey.requireValue("ExprArtifacts::exprFromArtifact Match elementKey"),
                     fallback)));
       }
-      case ArtifactExpr.Variant.OperatorAdd oa -> {
+      case ArtifactExpr.Variant.OperatorBinary oa -> {
         var base = exprFromArtifact(xx, oa.base());
         if (base.hasErrors()) return base.reerr();
         var reference = exprFromArtifact(xx, oa.reference());
@@ -198,49 +198,21 @@ public final class ExprArtifacts {
         return EResult.ok(
             new Expr(
                 loc,
-                new Expr.OperatorAdd(
-                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorAdd base"),
+                new Expr.OperatorBinary(
+                    oa.op(),
+                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorBinary base"),
                     reference.requireValue(
-                        "ExprArtifacts::exprFromArtifact OperatorAdd reference"))));
+                        "ExprArtifacts::exprFromArtifact OperatorBinary reference"))));
       }
-      case ArtifactExpr.Variant.OperatorMod oa -> {
-        var base = exprFromArtifact(xx, oa.base());
+      case ArtifactExpr.Variant.OperatorUnary ou -> {
+        var base = exprFromArtifact(xx, ou.base());
         if (base.hasErrors()) return base.reerr();
-        var reference = exprFromArtifact(xx, oa.reference());
-        if (reference.hasErrors()) return reference.reerr();
         return EResult.ok(
             new Expr(
                 loc,
-                new Expr.OperatorMod(
-                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorMod base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprFromArtifact OperatorMod reference"))));
-      }
-      case ArtifactExpr.Variant.OperatorEq oe -> {
-        var base = exprFromArtifact(xx, oe.base());
-        if (base.hasErrors()) return base.reerr();
-        var reference = exprFromArtifact(xx, oe.reference());
-        if (reference.hasErrors()) return reference.reerr();
-        return EResult.ok(
-            new Expr(
-                loc,
-                new Expr.OperatorEq(
-                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorEq base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprFromArtifact OperatorEq reference"))));
-      }
-      case ArtifactExpr.Variant.OperatorLt ol -> {
-        var base = exprFromArtifact(xx, ol.base());
-        if (base.hasErrors()) return base.reerr();
-        var reference = exprFromArtifact(xx, ol.reference());
-        if (reference.hasErrors()) return reference.reerr();
-        return EResult.ok(
-            new Expr(
-                loc,
-                new Expr.OperatorLt(
-                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorLt base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprFromArtifact OperatorLt reference"))));
+                new Expr.OperatorUnary(
+                    ou.op(),
+                    base.requireValue("ExprArtifacts::exprFromArtifact OperatorUnary base"))));
       }
       case ArtifactExpr.Variant.Record r -> {
         var entries = new TList<Expr.RecordEntry>(r.entries().size());
@@ -539,7 +511,7 @@ public final class ExprArtifacts {
                     elementKey.requireValue("ExprArtifacts::exprToArtifact Match elementKey"),
                     fallback)));
       }
-      case Expr.OperatorAdd oa -> {
+      case Expr.OperatorBinary oa -> {
         var base = exprToArtifact(xx, oa.base());
         if (base.hasErrors()) return base.reerr();
         var reference = exprToArtifact(xx, oa.reference());
@@ -547,49 +519,21 @@ public final class ExprArtifacts {
         return EResult.ok(
             new ArtifactExpr(
                 loc,
-                new ArtifactExpr.Variant.OperatorAdd(
-                    base.requireValue("ExprArtifacts::exprToArtifact OperatorAdd base"),
+                new ArtifactExpr.Variant.OperatorBinary(
+                    oa.op(),
+                    base.requireValue("ExprArtifacts::exprToArtifact OperatorBinary base"),
                     reference.requireValue(
-                        "ExprArtifacts::exprToArtifact OperatorAdd reference"))));
+                        "ExprArtifacts::exprToArtifact OperatorBinary reference"))));
       }
-      case Expr.OperatorMod oa -> {
-        var base = exprToArtifact(xx, oa.base());
+      case Expr.OperatorUnary ou -> {
+        var base = exprToArtifact(xx, ou.base());
         if (base.hasErrors()) return base.reerr();
-        var reference = exprToArtifact(xx, oa.reference());
-        if (reference.hasErrors()) return reference.reerr();
         return EResult.ok(
             new ArtifactExpr(
                 loc,
-                new ArtifactExpr.Variant.OperatorMod(
-                    base.requireValue("ExprArtifacts::exprToArtifact OperatorMod base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprToArtifact OperatorMod reference"))));
-      }
-      case Expr.OperatorEq oe -> {
-        var base = exprToArtifact(xx, oe.base());
-        if (base.hasErrors()) return base.reerr();
-        var reference = exprToArtifact(xx, oe.reference());
-        if (reference.hasErrors()) return reference.reerr();
-        return EResult.ok(
-            new ArtifactExpr(
-                loc,
-                new ArtifactExpr.Variant.OperatorEq(
-                    base.requireValue("ExprArtifacts::exprToArtifact OperatorEq base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprToArtifact OperatorEq reference"))));
-      }
-      case Expr.OperatorLt ol -> {
-        var base = exprToArtifact(xx, ol.base());
-        if (base.hasErrors()) return base.reerr();
-        var reference = exprToArtifact(xx, ol.reference());
-        if (reference.hasErrors()) return reference.reerr();
-        return EResult.ok(
-            new ArtifactExpr(
-                loc,
-                new ArtifactExpr.Variant.OperatorLt(
-                    base.requireValue("ExprArtifacts::exprToArtifact OperatorLt base"),
-                    reference.requireValue(
-                        "ExprArtifacts::exprToArtifact OperatorLt reference"))));
+                new ArtifactExpr.Variant.OperatorUnary(
+                    ou.op(),
+                    base.requireValue("ExprArtifacts::exprToArtifact OperatorUnary base"))));
       }
       case Expr.Record r -> {
         var entries = new TList<ArtifactExpr.RecordEntryA>(r.entries().size());

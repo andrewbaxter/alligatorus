@@ -75,7 +75,11 @@ public final class DynamicTypes {
     // Nullary Type descriptors — value classes are unboxed / distinct where appropriate.
     nullary("compilerxyz.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
     nullary("compilerxyz.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
-    nullary("compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.LONG);
+    nullary("compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.INT);
+    nullary("compilerxyz.eval.value.short_", "TypeShortDynamic", TypeName.SHORT);
+    nullary("compilerxyz.eval.value.long_", "TypeLongDynamic", TypeName.LONG);
+    nullary("compilerxyz.eval.value.float_", "TypeFloatDynamic", TypeName.FLOAT);
+    nullary("compilerxyz.eval.value.double_", "TypeDoubleDynamic", TypeName.DOUBLE);
     nullary("compilerxyz.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
     nullary("compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
     nullary(

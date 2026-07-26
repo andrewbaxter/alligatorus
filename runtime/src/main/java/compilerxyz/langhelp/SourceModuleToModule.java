@@ -5,7 +5,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.null_.TypeNullConst;
-import compilerxyz.eval.value.int_.TypeIntConst;
+import compilerxyz.eval.value.double_.TypeDoubleConst;
 import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceLiteral;
@@ -80,22 +80,13 @@ public final class SourceModuleToModule {
             }
             yield new Expr.If(branches, mapOpt(sourceId, i.fallback()));
           }
-          case SourceExpr.OperatorLt op ->
-              new Expr.OperatorLt(
+          case SourceExpr.OperatorBinary op ->
+              new Expr.OperatorBinary(
+                  op.op(),
                   sourceExprToExpr(sourceId, op.base()),
                   sourceExprToExpr(sourceId, op.reference()));
-          case SourceExpr.OperatorEq op ->
-              new Expr.OperatorEq(
-                  sourceExprToExpr(sourceId, op.base()),
-                  sourceExprToExpr(sourceId, op.reference()));
-          case SourceExpr.OperatorAdd op ->
-              new Expr.OperatorAdd(
-                  sourceExprToExpr(sourceId, op.base()),
-                  sourceExprToExpr(sourceId, op.reference()));
-          case SourceExpr.OperatorMod op ->
-              new Expr.OperatorMod(
-                  sourceExprToExpr(sourceId, op.base()),
-                  sourceExprToExpr(sourceId, op.reference()));
+          case SourceExpr.OperatorUnary op ->
+              new Expr.OperatorUnary(op.op(), sourceExprToExpr(sourceId, op.base()));
           case SourceExpr.Foreach f ->
               new Expr.Foreach(
                   sourceExprToExpr(sourceId, f.base()),
@@ -147,7 +138,7 @@ public final class SourceModuleToModule {
       case SourceLiteral.Str s -> Expr.LitValue.shared(
           new ValueObjectConst(new TypeStringConst(), s.value()));
       case SourceLiteral.Number n -> Expr.LitValue.shared(
-          new ValueObjectConst(new TypeIntConst(), (long) n.value()));
+          new ValueObjectConst(new TypeDoubleConst(), n.value()));
     };
   }
 

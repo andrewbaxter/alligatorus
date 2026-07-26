@@ -1,6 +1,8 @@
 package compilerxyz.eval;
 
 import compilerxyz.eval.value.expr.TypeExpr;
+import compilerxyz.syntax.BinaryOperator;
+import compilerxyz.syntax.UnaryOperator;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
@@ -65,16 +67,10 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     public record MatchBranch(Expr condition, Expr body) {
     }
 
-    public record OperatorAdd(Expr base, Expr reference) implements Variant {
+    public record OperatorBinary(BinaryOperator op, Expr base, Expr reference) implements Variant {
     }
 
-    public record OperatorMod(Expr base, Expr reference) implements Variant {
-    }
-
-    public record OperatorEq(Expr base, Expr reference) implements Variant {
-    }
-
-    public record OperatorLt(Expr base, Expr reference) implements Variant {
+    public record OperatorUnary(UnaryOperator op, Expr base) implements Variant {
     }
 
     public record Record(TList<RecordEntry> entries) implements Variant {

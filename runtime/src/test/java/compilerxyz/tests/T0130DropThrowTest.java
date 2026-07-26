@@ -257,7 +257,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                                     "width",
                                                                     mb.as_(
                                                                         mb.num(1.),
-                                                                        mb.typesInt()))))))))))),
+                                                                        mb.typesLong()))))))))))),
                             new TestMb.RecordPair("desc", mb.seqOf(mb.return_(mb.str(name)))),
                             new TestMb.RecordPair(
                                 "aspect",
@@ -379,7 +379,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                                             "width",
                                                                             mb.as_(
                                                                                 mb.num(1.),
-                                                                                mb.typesInt())))))))))),
+                                                                                mb.typesLong())))))))))),
                                         new TestMb.RecordPair(
                                             "fork", mb.scopeUse("outer")),
                                         new TestMb.RecordPair(

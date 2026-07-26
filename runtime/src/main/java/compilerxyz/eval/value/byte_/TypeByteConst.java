@@ -1,10 +1,7 @@
 package compilerxyz.eval.value.byte_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-
 import compilerxyz.annotations.BuiltinIdentity;
-import compilerxyz.eval.EvalOutcome;
-
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -12,36 +9,80 @@ import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
-import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.NumericKind;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.AspectArtifact;
-import compilerxyz.gen.AspectBind;
-import compilerxyz.gen.AspectByte;
-import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.value.numeric.Numerics;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
+import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectNumericConst;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.gen.AspectInt;
+import compilerxyz.gen.GenAspectInt;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
-import compilerxyz.gen.GenAspectByte;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectNumericConst;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.AspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.AspectOperatorSub;
+import compilerxyz.gen.GenAspectOperatorSub;
+import compilerxyz.gen.AspectOperatorMul;
+import compilerxyz.gen.GenAspectOperatorMul;
+import compilerxyz.gen.AspectOperatorDiv;
+import compilerxyz.gen.GenAspectOperatorDiv;
+import compilerxyz.gen.AspectOperatorMod;
+import compilerxyz.gen.GenAspectOperatorMod;
+import compilerxyz.gen.AspectOperatorAnd;
+import compilerxyz.gen.GenAspectOperatorAnd;
+import compilerxyz.gen.AspectOperatorOr;
+import compilerxyz.gen.GenAspectOperatorOr;
+import compilerxyz.gen.AspectOperatorXor;
+import compilerxyz.gen.GenAspectOperatorXor;
+import compilerxyz.gen.AspectOperatorShl;
+import compilerxyz.gen.GenAspectOperatorShl;
+import compilerxyz.gen.AspectOperatorShr;
+import compilerxyz.gen.GenAspectOperatorShr;
+import compilerxyz.gen.AspectOperatorUshr;
+import compilerxyz.gen.GenAspectOperatorUshr;
+import compilerxyz.gen.AspectOperatorEq;
+import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.gen.AspectOperatorNe;
+import compilerxyz.gen.GenAspectOperatorNe;
+import compilerxyz.gen.AspectOperatorLt;
+import compilerxyz.gen.GenAspectOperatorLt;
+import compilerxyz.gen.AspectOperatorLe;
+import compilerxyz.gen.GenAspectOperatorLe;
+import compilerxyz.gen.AspectOperatorGt;
+import compilerxyz.gen.GenAspectOperatorGt;
+import compilerxyz.gen.AspectOperatorGe;
+import compilerxyz.gen.GenAspectOperatorGe;
+import compilerxyz.gen.AspectOperatorNeg;
+import compilerxyz.gen.GenAspectOperatorNeg;
+import compilerxyz.gen.AspectOperatorBitNot;
+import compilerxyz.gen.GenAspectOperatorBitNot;
 
 @BuiltinIdentity(uniqueId = 6149L)
 public record TypeByteConst()
@@ -49,14 +90,36 @@ public record TypeByteConst()
         Type,
         AspectArtifact,
         AspectBind,
-        AspectByte,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
+        AspectField,
+        AspectNumericConst,
+        AspectInt,
+        AspectOperatorAdd,
+        AspectOperatorSub,
+        AspectOperatorMul,
+        AspectOperatorDiv,
+        AspectOperatorMod,
+        AspectOperatorAnd,
+        AspectOperatorOr,
+        AspectOperatorXor,
+        AspectOperatorShl,
+        AspectOperatorShr,
+        AspectOperatorUshr,
+        AspectOperatorEq,
+        AspectOperatorNe,
+        AspectOperatorLt,
+        AspectOperatorLe,
+        AspectOperatorGt,
+        AspectOperatorGe,
+        AspectOperatorNeg,
+        AspectOperatorBitNot,
         ExporterAny {
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -64,9 +127,31 @@ public record TypeByteConst()
     return "byte";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeByteConst.class, "byte_const");
+  @Override
+  public NumericKind aspectNumericConstKind() {
+    return NumericKind.BYTE;
+  }
 
-                public Type valueType() {
+  @Override
+  public Number aspectNumericConstGet(Value value) {
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Number dv) return dv;
+    throw new IllegalArgumentException(
+        "TypeByteConst::get: expected byte ValueObjectConst, got " + value.getClass());
+  }
+
+  @Override
+  public long aspectIntGet(Value value) {
+    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+        && v.data() instanceof Number dv) return dv.longValue();
+    throw new IllegalArgumentException(
+        "TypeByteConst::get: expected byte ValueObjectConst, got " + value.getClass());
+  }
+
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
+      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeByteConst.class, "byte_const");
+
+  public Type valueType() {
     return META;
   }
 
@@ -75,11 +160,33 @@ public record TypeByteConst()
     if (key.equals(GenTrivialIdentityAspects.TYPE_BYTE_CONST_IDENTITY)) {
       return Opt.some(this);
     }
-    if (key.equals(GenAspectByte.AspectId)
+    if (key.equals(GenAspectNumericConst.AspectId)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
-        || key.equals(GenAspectDropDynamicLight.AspectId)) {
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectInt.AspectId)
+        || key.equals(GenAspectOperatorAdd.AspectId)
+        || key.equals(GenAspectOperatorSub.AspectId)
+        || key.equals(GenAspectOperatorMul.AspectId)
+        || key.equals(GenAspectOperatorDiv.AspectId)
+        || key.equals(GenAspectOperatorMod.AspectId)
+        || key.equals(GenAspectOperatorAnd.AspectId)
+        || key.equals(GenAspectOperatorOr.AspectId)
+        || key.equals(GenAspectOperatorXor.AspectId)
+        || key.equals(GenAspectOperatorShl.AspectId)
+        || key.equals(GenAspectOperatorShr.AspectId)
+        || key.equals(GenAspectOperatorUshr.AspectId)
+        || key.equals(GenAspectOperatorEq.AspectId)
+        || key.equals(GenAspectOperatorNe.AspectId)
+        || key.equals(GenAspectOperatorLt.AspectId)
+        || key.equals(GenAspectOperatorLe.AspectId)
+        || key.equals(GenAspectOperatorGt.AspectId)
+        || key.equals(GenAspectOperatorGe.AspectId)
+        || key.equals(GenAspectOperatorNeg.AspectId)
+        || key.equals(GenAspectOperatorBitNot.AspectId)
+    ) {
       return Opt.some(this);
     }
     if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -103,8 +210,8 @@ public record TypeByteConst()
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
           if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-              && v.data() instanceof Byte dv) {
-            data = new JsonValueNumber(dv.longValue());
+              && v.data() instanceof Number dv) {
+            data = new JsonValueNumber(dv.doubleValue());
           } else if (self instanceof TypeByteConst) {
             data = new JsonValueNull();
           } else {
@@ -137,23 +244,119 @@ public record TypeByteConst()
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-        && v.data() instanceof Byte dv) {
-      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
-      seq.add(JavaBytecodeUtils.literalIntShortByte(loc, dv.intValue()));
-      seq.add(TypeByteDynamic.boxByte(loc));
-      return EResult.ok(new CodeDynamic(loc, seq));
-    }
-    return EResult.err(loc, "TypeByteConst::toDynamic: expected byte ValueObjectConst");
+    return Numerics.constConsume(xx, loc, cv, NumericKind.BYTE);
   }
 
   @Override
-  public byte aspectByteGet(Value value) {
-    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
-        && v.data() instanceof Byte dv) return dv;
-    throw new IllegalArgumentException(
-        "TypeByteConst::get: expected byte ValueObjectConst, got " + value.getClass());
+  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
+    var dyn = new TypeByteDynamic();
+    var convertedRes = Numerics.castTo(xx, loc, self_, NumericKind.BYTE, dyn);
+    if (convertedRes.hasErrors()) return convertedRes.reerr();
+    return dyn.aspectFieldField(xx, loc, convertedRes.requireValue("TypeByteConst::field cast"), key);
+  }
+
+  @Override
+  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
+    return new TypeByteDynamic().aspectFieldKeys(xx);
+  }
+
+  @Override
+  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
+    return new TypeByteDynamic().aspectFieldTypeOpt(xx, key);
+  }
+
+  @Override
+  public EResult<CodeValue> aspectOperatorAddAdd(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.ADD);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorSubSub(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.SUB);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorMulMul(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.MUL);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorDivDiv(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.DIV);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorModMod(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.MOD);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorAndAnd(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.AND);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorOrOr(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.OR);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorXorXor(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.XOR);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorShlShl(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.SHL);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorShrShr(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.SHR);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorUshrUshr(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.USHR);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorEqEq(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.EQ);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorNeNe(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.NE);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorLtLt(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.LT);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorLeLe(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.LE);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorGtGt(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.GT);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorGeGe(
+      ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    return Numerics.binary(xx, loc, base, reference, Numerics.Op.GE);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorNegNeg(ExprContext xx, QExprId loc, CodeValue base) {
+    return Numerics.unary(xx, loc, base, Numerics.Unary.NEG);
+  }
+  @Override
+  public EResult<CodeValue> aspectOperatorBitNotBitNot(ExprContext xx, QExprId loc, CodeValue base) {
+    return Numerics.unary(xx, loc, base, Numerics.Unary.BITNOT);
   }
 
   @Override
@@ -167,32 +370,37 @@ public record TypeByteConst()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
-  }
-  @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BYTE_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
+
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
-    return false;
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+    throw new UnsupportedOperationException(
+        getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
+
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+    return Numerics.isNumeric(xx, destType);
+  }
+
+  @Override
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    if (Numerics.kindOf(xx, destType) instanceof Opt.Some<NumericKind> k) {
+      return Numerics.castTo(xx, loc, cv, k.value(), destType);
+    }
+    return EResult.err(loc, "TypeByteConst::typeCastTo: destination is not numeric");
   }
 }

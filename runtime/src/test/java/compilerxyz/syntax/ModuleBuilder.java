@@ -119,20 +119,88 @@ public class ModuleBuilder {
             base, elementKey, cases, fallback == null ? Opt.none() : Opt.some(fallback)));
   }
 
+  public SourceExpr operatorBinary(BinaryOperator op, SourceExpr base, SourceExpr reference) {
+    return new SourceExpr(id(), new SourceExpr.OperatorBinary(op, base, reference));
+  }
+
+  public SourceExpr operatorUnary(UnaryOperator op, SourceExpr base) {
+    return new SourceExpr(id(), new SourceExpr.OperatorUnary(op, base));
+  }
+
   public SourceExpr operatorAdd(SourceExpr base, SourceExpr reference) {
-    return new SourceExpr(id(), new SourceExpr.OperatorAdd(base, reference));
+    return operatorBinary(BinaryOperator.ADD, base, reference);
+  }
+
+  public SourceExpr operatorSub(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.SUB, base, reference);
+  }
+
+  public SourceExpr operatorMul(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.MUL, base, reference);
+  }
+
+  public SourceExpr operatorDiv(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.DIV, base, reference);
   }
 
   public SourceExpr operatorMod(SourceExpr base, SourceExpr reference) {
-    return new SourceExpr(id(), new SourceExpr.OperatorMod(base, reference));
+    return operatorBinary(BinaryOperator.MOD, base, reference);
+  }
+
+  public SourceExpr operatorAnd(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.AND, base, reference);
+  }
+
+  public SourceExpr operatorOr(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.OR, base, reference);
+  }
+
+  public SourceExpr operatorXor(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.XOR, base, reference);
+  }
+
+  public SourceExpr operatorShl(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.SHL, base, reference);
+  }
+
+  public SourceExpr operatorShr(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.SHR, base, reference);
+  }
+
+  public SourceExpr operatorUshr(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.USHR, base, reference);
   }
 
   public SourceExpr operatorEq(SourceExpr base, SourceExpr reference) {
-    return new SourceExpr(id(), new SourceExpr.OperatorEq(base, reference));
+    return operatorBinary(BinaryOperator.EQ, base, reference);
+  }
+
+  public SourceExpr operatorNe(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.NE, base, reference);
   }
 
   public SourceExpr operatorLt(SourceExpr base, SourceExpr reference) {
-    return new SourceExpr(id(), new SourceExpr.OperatorLt(base, reference));
+    return operatorBinary(BinaryOperator.LT, base, reference);
+  }
+
+  public SourceExpr operatorLe(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.LE, base, reference);
+  }
+
+  public SourceExpr operatorGt(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.GT, base, reference);
+  }
+
+  public SourceExpr operatorGe(SourceExpr base, SourceExpr reference) {
+    return operatorBinary(BinaryOperator.GE, base, reference);
+  }
+
+  public SourceExpr operatorNeg(SourceExpr base) {
+    return operatorUnary(UnaryOperator.NEG, base);
+  }
+
+  public SourceExpr operatorBitNot(SourceExpr base) {
+    return operatorUnary(UnaryOperator.BITNOT, base);
   }
 
   public SourceExpr record(TList<SourceExpr.RecordEntry> entries) {

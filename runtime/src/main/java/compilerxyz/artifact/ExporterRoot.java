@@ -17,6 +17,14 @@ import compilerxyz.eval.value.byte_.TypeByteConst;
 import compilerxyz.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.int_.TypeIntDynamic;
+import compilerxyz.eval.value.short_.TypeShortConst;
+import compilerxyz.eval.value.short_.TypeShortDynamic;
+import compilerxyz.eval.value.long_.TypeLongConst;
+import compilerxyz.eval.value.long_.TypeLongDynamic;
+import compilerxyz.eval.value.float_.TypeFloatConst;
+import compilerxyz.eval.value.float_.TypeFloatDynamic;
+import compilerxyz.eval.value.double_.TypeDoubleConst;
+import compilerxyz.eval.value.double_.TypeDoubleDynamic;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
@@ -103,6 +111,54 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
     @Override
     ExporterRootDelegate delegate() {
       return TypeIntDynamic.DELEGATE;
+    }
+  },
+  SHORT_CONST("short_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeShortConst.DELEGATE;
+    }
+  },
+  SHORT_DYNAMIC("short_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeShortDynamic.DELEGATE;
+    }
+  },
+  LONG_CONST("long_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeLongConst.DELEGATE;
+    }
+  },
+  LONG_DYNAMIC("long_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeLongDynamic.DELEGATE;
+    }
+  },
+  FLOAT_CONST("float_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeFloatConst.DELEGATE;
+    }
+  },
+  FLOAT_DYNAMIC("float_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeFloatDynamic.DELEGATE;
+    }
+  },
+  DOUBLE_CONST("double_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeDoubleConst.DELEGATE;
+    }
+  },
+  DOUBLE_DYNAMIC("double_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeDoubleDynamic.DELEGATE;
     }
   },
   OBJECT_DYNAMIC("object_dynamic") {

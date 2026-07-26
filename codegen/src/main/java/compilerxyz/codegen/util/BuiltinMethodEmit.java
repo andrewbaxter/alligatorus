@@ -64,6 +64,8 @@ public final class BuiltinMethodEmit {
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
   private static final ClassName TYPE_INT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
+  private static final ClassName TYPE_LONG_DYNAMIC =
+      ClassName.get("compilerxyz.eval.value.long_", "TypeLongDynamic");
   private static final ClassName TYPE_NULL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
@@ -168,7 +170,7 @@ public final class BuiltinMethodEmit {
   public static @Nullable CodeBlock resolveDescriptor(
       TypeName tn, TMap<ClassName, CodeBlock> leafDescriptors) {
     if (tn.equals(TypeName.BOOLEAN)) return CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC);
-    if (tn.equals(TypeName.LONG)) return CodeBlock.of("new $T()", TYPE_INT_DYNAMIC);
+    if (tn.equals(TypeName.LONG)) return CodeBlock.of("new $T()", TYPE_LONG_DYNAMIC);
     if (tn.equals(TypeName.VOID)) return CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC);
     if (tn instanceof ClassName cn) {
       if (cn.equals(ClassName.get(String.class))) {

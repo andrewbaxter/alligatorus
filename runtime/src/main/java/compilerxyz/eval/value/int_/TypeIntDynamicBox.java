@@ -1,10 +1,8 @@
 package compilerxyz.eval.value.int_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-
 import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.eval.EvalOutcome;
-
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -12,6 +10,7 @@ import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.NumericKind;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -21,13 +20,12 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.target.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.numeric.Numerics;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -36,28 +34,22 @@ import compilerxyz.gen.AspectDynamicUnboxed;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectElementUseDynamicBind;
-import compilerxyz.gen.AspectInt;
-import compilerxyz.gen.AspectIntDynamic;
-import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
+import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectDynamicUnboxed;
-import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
-import compilerxyz.gen.GenAspectInt;
-import compilerxyz.gen.GenAspectIntDynamic;
-import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinIdentity(uniqueId = 6114L)
+@BuiltinIdentity(uniqueId = 6165L)
 public record TypeIntDynamicBox()
     implements
         Type,
@@ -72,16 +64,15 @@ public record TypeIntDynamicBox()
         AspectSet,
         AspectStackValueDynamic {
 
-
   @Override
   public String typeDesc() {
     return "dynamic int";
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Long.class));
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Integer.class));
   }
 
   @Override
@@ -89,9 +80,10 @@ public record TypeIntDynamicBox()
     return new TypeIntDynamic();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamicBox.class, "int_dynamic_box");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
+      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamicBox.class, "int_dynamic_box");
 
-                public Type valueType() {
+  public Type valueType() {
     return META;
   }
 
@@ -139,7 +131,7 @@ public record TypeIntDynamicBox()
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
@@ -149,40 +141,29 @@ public record TypeIntDynamicBox()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_INT_DYNAMIC_BOX_IDENTITY).optIsSome();
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return GenAspectInt.getMaybe(xx, sourceType).optIsSome()
-        || GenAspectIntDynamic.getMaybe(xx, sourceType).optIsSome();
+    return Numerics.isNumeric(xx, sourceType);
   }
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return GenAspectIntDynamic.getMaybe(xx, destType).optIsSome();
+    return Numerics.isNumeric(xx, destType);
   }
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
-      return EResult.err(loc, "TypeIntDynamicBox::typeCastFrom: CodeValue has no value");
-    }
-    var sourceType = some.value().valueType();
-    var numConstOpt = GenAspectInt.getMaybe(xx, sourceType);
+    var unboxedCast = Numerics.castTo(xx, loc, cv, NumericKind.INT, new TypeIntDynamic());
+    if (unboxedCast.hasErrors()) return unboxedCast.reerr();
+    var castCv = unboxedCast.requireValue("TypeIntDynamicBox::typeCastFrom cast");
     var seq = new JavaBytecodeSequence();
-    var existingDyn = cv.code().dynamic();
-    if (existingDyn != null) {
-      seq.add(existingDyn);
-    }
-    if (numConstOpt instanceof Opt.Some<AspectInt> numConstSome) {
-      long numVal = numConstSome.value().aspectIntGet(some.value());
-      seq.add(JavaBytecodeUtils.literalLong(loc, numVal));
-      seq.add(valueOfLong(loc));
-    } else if (sourceType instanceof TypeIntDynamic) {
-      seq.add(valueOfLong(loc));
-    }
+    var dyn = castCv.code().dynamic();
+    if (dyn != null) seq.add(dyn);
+    seq.add(Numerics.box(loc, NumericKind.INT));
     return EResult.ok(
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -191,10 +172,21 @@ public record TypeIntDynamicBox()
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    return EResult.ok(
+    var selfDyn = cv.code().dynamic();
+    if (selfDyn == null) {
+      return EResult.err(loc, "TypeIntDynamicBox::typeCastTo: receiver has no runtime code");
+    }
+    var seq = new JavaBytecodeSequence();
+    seq.add(selfDyn);
+    seq.add(Numerics.unbox(loc, NumericKind.INT));
+    var unboxed =
         new CodeValue(
-            cv.code(),
-            EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+            Code.of(new CodeDynamic(loc, seq)),
+            EvalOutcome.ofValue(ValueDynamic.stack(new TypeIntDynamic(), 1)));
+    if (Numerics.kindOf(xx, destType) instanceof Opt.Some<NumericKind> kk) {
+      return Numerics.castTo(xx, loc, unboxed, kk.value(), destType);
+    }
+    return EResult.err(loc, "TypeIntDynamicBox::typeCastTo: destination is not numeric");
   }
 
   @Override
@@ -206,7 +198,7 @@ public record TypeIntDynamicBox()
     }
     var seq = new JavaBytecodeSequence();
     seq.add(selfDyn);
-    seq.add(longValueUnbox(loc));
+    seq.add(Numerics.unbox(loc, NumericKind.INT));
     var unboxedSelf =
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
@@ -224,36 +216,14 @@ public record TypeIntDynamicBox()
     return new TypeIntDynamic().aspectFieldTypeOpt(xx, key);
   }
 
-  private static CodeDynamic longValueUnbox(QExprId loc) {
-    return JavaBytecodeUtils.callMethod(
-        loc,
-        JavaInternalName.fromClass(Long.class),
-        "longValue",
-        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_LONG, TList.of()));
-  }
-
-  private static CodeDynamic valueOfLong(QExprId loc) {
-    return JavaBytecodeUtils.callStaticMethod(
-        loc,
-        JavaInternalName.fromClass(Long.class),
-        "valueOf",
-        JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Long.class)),
-            TList.of(JavaDataDescriptor.DESC_LONG)));
+  @Override
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx, QExprId loc, CodeValue cv) {
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
-
-
-  @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
-  }
-
 }

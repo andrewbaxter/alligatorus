@@ -147,14 +147,9 @@ public final class CompileImport {
         }
         yield m;
       }
-      case Expr.OperatorLt op ->
+      case Expr.OperatorBinary op ->
           Math.max(maxLowerExcess(op.base(), sd, ld), maxLowerExcess(op.reference(), sd, ld));
-      case Expr.OperatorEq op ->
-          Math.max(maxLowerExcess(op.base(), sd, ld), maxLowerExcess(op.reference(), sd, ld));
-      case Expr.OperatorAdd op ->
-          Math.max(maxLowerExcess(op.base(), sd, ld), maxLowerExcess(op.reference(), sd, ld));
-      case Expr.OperatorMod op ->
-          Math.max(maxLowerExcess(op.base(), sd, ld), maxLowerExcess(op.reference(), sd, ld));
+      case Expr.OperatorUnary op -> maxLowerExcess(op.base(), sd, ld);
       case Expr.Foreach f -> {
         var m = maxLowerExcess(f.base(), sd, ld);
         m = Math.max(m, maxLowerExcess(f.elementKey(), sd, ld));

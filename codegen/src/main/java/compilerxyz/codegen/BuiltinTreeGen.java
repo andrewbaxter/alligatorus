@@ -434,6 +434,11 @@ public final class BuiltinTreeGen {
             "$T.TYPE_INT_DYNAMIC_IDENTITY",
             ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
         TUC_TYPE_EXPR);
+    addSpecial(pathToLeaf, "eval.type_long_dynamic_identity",
+        CodeBlock.of(
+            "$T.TYPE_LONG_DYNAMIC_IDENTITY",
+            ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+        TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);
   }

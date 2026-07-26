@@ -81,11 +81,12 @@ public final class SourceSpecs {
     var out = new byte[elements.size()];
     for (var i = 0; i < elements.size(); i++) {
       var element = elements.get(i);
-      if (!(GenAspectByte.getMaybe(xx, element.valueType())
-          instanceof Opt.Some<compilerxyz.gen.AspectByte> byteSome)) {
+      if (!(compilerxyz.gen.GenAspectNumericConst.getMaybe(xx, element.valueType())
+          instanceof Opt.Some<compilerxyz.gen.AspectNumericConst> byteSome)
+          || byteSome.value().aspectNumericConstKind() != compilerxyz.eval.NumericKind.BYTE) {
         return EResult.err(loc, context + ": list element is not a byte");
       }
-      out[i] = byteSome.value().aspectByteGet(element);
+      out[i] = byteSome.value().aspectNumericConstGet(element).byteValue();
     }
     return EResult.ok(out);
   }

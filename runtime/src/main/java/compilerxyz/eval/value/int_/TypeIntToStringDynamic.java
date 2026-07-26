@@ -1,8 +1,6 @@
 package compilerxyz.eval.value.int_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-
-
 import compilerxyz.annotations.BuiltinIdentity;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -28,6 +26,7 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.numeric.NumericFormat;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
@@ -35,18 +34,17 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinIdentity(uniqueId = 6115L)
+@BuiltinIdentity(uniqueId = 6166L)
 public record TypeIntToStringDynamic()
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
-  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(
-      ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
     var dyn = cv.code().dynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeIntToStringDynamic::toDynamic: CodeValue has no dynamic code");
@@ -57,9 +55,10 @@ public record TypeIntToStringDynamic()
     return "int.to_string";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntToStringDynamic.class, "int_to_string_dynamic");
+  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
+      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntToStringDynamic.class, "int_to_string_dynamic");
 
-                public Type valueType() {
+  public Type valueType() {
     return META;
   }
 
@@ -83,15 +82,14 @@ public record TypeIntToStringDynamic()
     if (selfDyn == null) {
       return EResult.err(loc, "TypeIntToStringDynamic::call: self has no dynamic code");
     }
-
     var retType = new TypeStringDynamic();
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var helperName = JavaInternalName.fromClass(IntFormat.class);
+    var helperName = JavaInternalName.fromClass(NumericFormat.class);
     var stringDesc = JavaDataDescriptor.fromClass(String.class);
     var formatDesc =
-        JavaMethodDescriptor.fromParts(stringDesc, TList.of(JavaDataDescriptor.DESC_LONG));
+        JavaMethodDescriptor.fromParts(stringDesc, TList.of(JavaDataDescriptor.DESC_INT));
 
     var seq = new JavaBytecodeSequence();
     seq.add(selfDyn);
@@ -129,7 +127,7 @@ public record TypeIntToStringDynamic()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_INT_TO_STRING_DYNAMIC_IDENTITY).optIsSome();
   }
 

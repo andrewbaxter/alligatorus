@@ -51,9 +51,26 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorSub;
+import compilerxyz.gen.GenAspectOperatorMul;
+import compilerxyz.gen.GenAspectOperatorDiv;
 import compilerxyz.gen.GenAspectOperatorMod;
+import compilerxyz.gen.GenAspectOperatorAnd;
+import compilerxyz.gen.GenAspectOperatorOr;
+import compilerxyz.gen.GenAspectOperatorXor;
+import compilerxyz.gen.GenAspectOperatorShl;
+import compilerxyz.gen.GenAspectOperatorShr;
+import compilerxyz.gen.GenAspectOperatorUshr;
 import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.gen.GenAspectOperatorNe;
 import compilerxyz.gen.GenAspectOperatorLt;
+import compilerxyz.gen.GenAspectOperatorLe;
+import compilerxyz.gen.GenAspectOperatorGt;
+import compilerxyz.gen.GenAspectOperatorGe;
+import compilerxyz.gen.GenAspectOperatorNeg;
+import compilerxyz.gen.GenAspectOperatorBitNot;
+import compilerxyz.syntax.BinaryOperator;
+import compilerxyz.syntax.UnaryOperator;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectType;
@@ -166,55 +183,25 @@ public final class ConstEval {
         yield EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), elements))));
       }
       case Expr.Record r -> constEvalRecord(xx, loc, r);
-      case Expr.OperatorLt e -> {
+      case Expr.OperatorBinary e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustEr(constEval(xx, e.base()));
         var ropt = erb.mustEr(constEval(xx, e.reference()));
         if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(GenAspectOperatorLt.get(xx, loc, bv.value().valueType()));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().aspectOperatorLtLt(xx, loc, base, ropt.get()));
+        var out =
+            erb.mustEr(constEvalBinaryOp(xx, loc, e.op(), bv.value().valueType(), base, ropt.get()));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
-      case Expr.OperatorEq e -> {
+      case Expr.OperatorUnary e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustEr(constEval(xx, e.base()));
-        var ropt = erb.mustEr(constEval(xx, e.reference()));
-        if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
+        if (bopt.isEmpty()) yield EResult.errs(erb.errors());
         var base = bopt.get();
         var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(GenAspectOperatorEq.get(xx, loc, bv.value().valueType()));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().aspectOperatorEqEq(xx, loc, base, ropt.get()));
-        if (out.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(out.get());
-      }
-      case Expr.OperatorAdd e -> {
-        var erb = new Erb(loc);
-        var bopt = erb.mustEr(constEval(xx, e.base()));
-        var ropt = erb.mustEr(constEval(xx, e.reference()));
-        if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
-        var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, bv.value().valueType()));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().aspectOperatorAddAdd(xx, loc, base, ropt.get()));
-        if (out.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(out.get());
-      }
-      case Expr.OperatorMod e -> {
-        var erb = new Erb(loc);
-        var bopt = erb.mustEr(constEval(xx, e.base()));
-        var ropt = erb.mustEr(constEval(xx, e.reference()));
-        if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
-        var bv = (Opt.Some<Value>) base.value();
-        var aopt = erb.mustEr(GenAspectOperatorMod.get(xx, loc, bv.value().valueType()));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(aopt.get().aspectOperatorModMod(xx, loc, base, ropt.get()));
+        var out = erb.mustEr(constEvalUnaryOp(xx, loc, e.op(), bv.value().valueType(), base));
         if (out.isEmpty()) yield EResult.errs(erb.errors());
         yield EResult.ok(out.get());
       }
@@ -506,6 +493,116 @@ public final class ConstEval {
     }
     return EResult.mixed(cv, erb.errors());
   }
+
+  private static EResult<CodeValue> constEvalBinaryOp(
+      ExprContext xx, QExprId loc, BinaryOperator op, Type baseType, CodeValue base, CodeValue reference) {
+    var erb = new Erb(loc);
+    return switch (op) {
+      case ADD -> {
+        var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorAddAdd(xx, loc, base, reference);
+      }
+      case SUB -> {
+        var aopt = erb.mustEr(GenAspectOperatorSub.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorSubSub(xx, loc, base, reference);
+      }
+      case MUL -> {
+        var aopt = erb.mustEr(GenAspectOperatorMul.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorMulMul(xx, loc, base, reference);
+      }
+      case DIV -> {
+        var aopt = erb.mustEr(GenAspectOperatorDiv.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorDivDiv(xx, loc, base, reference);
+      }
+      case MOD -> {
+        var aopt = erb.mustEr(GenAspectOperatorMod.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorModMod(xx, loc, base, reference);
+      }
+      case AND -> {
+        var aopt = erb.mustEr(GenAspectOperatorAnd.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorAndAnd(xx, loc, base, reference);
+      }
+      case OR -> {
+        var aopt = erb.mustEr(GenAspectOperatorOr.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorOrOr(xx, loc, base, reference);
+      }
+      case XOR -> {
+        var aopt = erb.mustEr(GenAspectOperatorXor.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorXorXor(xx, loc, base, reference);
+      }
+      case SHL -> {
+        var aopt = erb.mustEr(GenAspectOperatorShl.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorShlShl(xx, loc, base, reference);
+      }
+      case SHR -> {
+        var aopt = erb.mustEr(GenAspectOperatorShr.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorShrShr(xx, loc, base, reference);
+      }
+      case USHR -> {
+        var aopt = erb.mustEr(GenAspectOperatorUshr.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorUshrUshr(xx, loc, base, reference);
+      }
+      case EQ -> {
+        var aopt = erb.mustEr(GenAspectOperatorEq.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorEqEq(xx, loc, base, reference);
+      }
+      case NE -> {
+        var aopt = erb.mustEr(GenAspectOperatorNe.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorNeNe(xx, loc, base, reference);
+      }
+      case LT -> {
+        var aopt = erb.mustEr(GenAspectOperatorLt.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorLtLt(xx, loc, base, reference);
+      }
+      case LE -> {
+        var aopt = erb.mustEr(GenAspectOperatorLe.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorLeLe(xx, loc, base, reference);
+      }
+      case GT -> {
+        var aopt = erb.mustEr(GenAspectOperatorGt.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorGtGt(xx, loc, base, reference);
+      }
+      case GE -> {
+        var aopt = erb.mustEr(GenAspectOperatorGe.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorGeGe(xx, loc, base, reference);
+      }
+    };
+  }
+
+  private static EResult<CodeValue> constEvalUnaryOp(
+      ExprContext xx, QExprId loc, UnaryOperator op, Type baseType, CodeValue base) {
+    var erb = new Erb(loc);
+    return switch (op) {
+      case NEG -> {
+        var aopt = erb.mustEr(GenAspectOperatorNeg.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorNegNeg(xx, loc, base);
+      }
+      case BITNOT -> {
+        var aopt = erb.mustEr(GenAspectOperatorBitNot.get(xx, loc, baseType));
+        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
+        yield aopt.get().aspectOperatorBitNotBitNot(xx, loc, base);
+      }
+    };
+  }
+
 
   private static EResult<CodeValue> constEvalRecord(ExprContext xx, QExprId loc, Expr.Record r) {
     var entries = new TOrderedMap<ConstKey, EResult<CodeValue>>();
@@ -999,22 +1096,11 @@ public final class ConstEval {
           findMatchedLowersInner(el.value(), sd, ld, out);
         }
       }
-      case Expr.OperatorLt o -> {
+      case Expr.OperatorBinary o -> {
         findMatchedLowersInner(o.base(), sd, ld, out);
         findMatchedLowersInner(o.reference(), sd, ld, out);
       }
-      case Expr.OperatorEq o -> {
-        findMatchedLowersInner(o.base(), sd, ld, out);
-        findMatchedLowersInner(o.reference(), sd, ld, out);
-      }
-      case Expr.OperatorAdd o -> {
-        findMatchedLowersInner(o.base(), sd, ld, out);
-        findMatchedLowersInner(o.reference(), sd, ld, out);
-      }
-      case Expr.OperatorMod o -> {
-        findMatchedLowersInner(o.base(), sd, ld, out);
-        findMatchedLowersInner(o.reference(), sd, ld, out);
-      }
+      case Expr.OperatorUnary o -> findMatchedLowersInner(o.base(), sd, ld, out);
       case Expr.Foreach fe -> {
         findMatchedLowersInner(fe.base(), sd, ld, out);
         findMatchedLowersInner(fe.elementKey(), sd, ld, out);
@@ -1101,22 +1187,11 @@ public final class ConstEval {
           findMatchedGraftsInner(el.value(), sd, out);
         }
       }
-      case Expr.OperatorLt o -> {
+      case Expr.OperatorBinary o -> {
         findMatchedGraftsInner(o.base(), sd, out);
         findMatchedGraftsInner(o.reference(), sd, out);
       }
-      case Expr.OperatorEq o -> {
-        findMatchedGraftsInner(o.base(), sd, out);
-        findMatchedGraftsInner(o.reference(), sd, out);
-      }
-      case Expr.OperatorAdd o -> {
-        findMatchedGraftsInner(o.base(), sd, out);
-        findMatchedGraftsInner(o.reference(), sd, out);
-      }
-      case Expr.OperatorMod o -> {
-        findMatchedGraftsInner(o.base(), sd, out);
-        findMatchedGraftsInner(o.reference(), sd, out);
-      }
+      case Expr.OperatorUnary o -> findMatchedGraftsInner(o.base(), sd, out);
       case Expr.Foreach fe -> {
         findMatchedGraftsInner(fe.base(), sd, out);
         findMatchedGraftsInner(fe.elementKey(), sd, out);

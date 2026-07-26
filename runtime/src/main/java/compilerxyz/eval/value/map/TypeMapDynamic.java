@@ -43,7 +43,7 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.int_.TypeIntConst;
+import compilerxyz.eval.value.long_.TypeLongConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -416,7 +416,7 @@ public final class TypeMapDynamic
         case ConstKey.Uint u ->
             keyCv =
                 new CodeValue(Code.none(loc), EvalOutcome.ofValue(
-                    new ValueObjectConst(new TypeIntConst(), (long) u.value())));
+                    new ValueObjectConst(new TypeLongConst(), (long) u.value())));
       }
       var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
       if (keyConvOpt.isEmpty()) return EResult.errs(erb.errors());

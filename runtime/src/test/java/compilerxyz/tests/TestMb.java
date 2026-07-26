@@ -118,6 +118,10 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "type_int_dynamic_identity");
   }
 
+  public SourceExpr evalTypeLongDynamicIdentity() {
+    return builtin("eval", "type_long_dynamic_identity");
+  }
+
   public SourceExpr evalAspectBindId() {
     return builtin("eval", "aspect_bind_id");
   }
@@ -252,6 +256,26 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr typesInt() {
     return builtin("types", "int");
+  }
+
+  public SourceExpr typesByte() {
+    return builtin("types", "byte");
+  }
+
+  public SourceExpr typesShort() {
+    return builtin("types", "short");
+  }
+
+  public SourceExpr typesLong() {
+    return builtin("types", "long");
+  }
+
+  public SourceExpr typesFloat() {
+    return builtin("types", "float");
+  }
+
+  public SourceExpr typesDouble() {
+    return builtin("types", "double");
   }
 
   public SourceExpr typesOption() {

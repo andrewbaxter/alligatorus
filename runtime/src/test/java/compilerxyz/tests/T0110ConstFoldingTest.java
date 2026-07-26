@@ -94,18 +94,18 @@ public final class T0110ConstFoldingTest {
           // access flags 0x9
           public static run()Ljava/lang/Object;
             LDC 3
-            LSTORE 0
+            ISTORE 0
             GETSTATIC compilerxyz/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/eval/ExprContext;
-            LLOAD 0
-            INVOKESTATIC compilerxyz/eval/value/int_/IntFormat.format (J)Ljava/lang/String;
+            ILOAD 0
+            INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.format (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
             POP
             NEW compilerxyz/eval/gen/Composite$0
             DUP
             INVOKESPECIAL compilerxyz/eval/gen/Composite$0.<init> ()V
             ARETURN
-            MAXSTACK = 3
-            MAXLOCALS = 2
+            MAXSTACK = 2
+            MAXLOCALS = 1
         }
         """,
         Helpers.disassembled(ok, "compilerxyz.eval.gen.EvalRoot$0"));

@@ -144,6 +144,14 @@ public class JavaBytecodeUtils {
     return literalDouble(lc(loc), value);
   }
 
+  public static CodeDynamic literalFloat(CodeLoc loc, float value) {
+    return wrapObj(loc, new LdcInsnNode(value));
+  }
+
+  public static CodeDynamic literalFloat(QExprId loc, float value) {
+    return literalFloat(lc(loc), value);
+  }
+
   public static CodeDynamic literalNull(CodeLoc loc) {
     return inst(loc, ACONST_NULL);
   }

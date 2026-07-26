@@ -36,6 +36,11 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.map;
     exports compilerxyz.eval.value.null_;
     exports compilerxyz.eval.value.int_;
+    exports compilerxyz.eval.value.short_;
+    exports compilerxyz.eval.value.long_;
+    exports compilerxyz.eval.value.float_;
+    exports compilerxyz.eval.value.double_;
+    exports compilerxyz.eval.value.numeric;
     exports compilerxyz.eval.value.object_;
     exports compilerxyz.eval.value.option;
     exports compilerxyz.eval.value.panic;

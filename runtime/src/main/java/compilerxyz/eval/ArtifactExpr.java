@@ -2,6 +2,8 @@ package compilerxyz.eval;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.safejson.SafeJsonSerializable;
+import compilerxyz.syntax.BinaryOperator;
+import compilerxyz.syntax.UnaryOperator;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -46,13 +48,10 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
         Opt<ArtifactExpr> fallback)
         implements Variant {}
 
-    record OperatorAdd(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+    record OperatorBinary(BinaryOperator op, ArtifactExpr base, ArtifactExpr reference)
+        implements Variant {}
 
-    record OperatorMod(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
-
-    record OperatorEq(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
-
-    record OperatorLt(ArtifactExpr base, ArtifactExpr reference) implements Variant {}
+    record OperatorUnary(UnaryOperator op, ArtifactExpr base) implements Variant {}
 
     record Record(TList<RecordEntryA> entries) implements Variant {}
 
