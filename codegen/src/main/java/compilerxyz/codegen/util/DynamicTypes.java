@@ -80,6 +80,10 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.long_", "TypeLongDynamic", TypeName.LONG);
     nullary("compilerxyz.eval.value.float_", "TypeFloatDynamic", TypeName.FLOAT);
     nullary("compilerxyz.eval.value.double_", "TypeDoubleDynamic", TypeName.DOUBLE);
+    nullary("compilerxyz.eval.value.ubyte_", "TypeUbyteDynamic", TypeName.BYTE);
+    nullary("compilerxyz.eval.value.ushort_", "TypeUshortDynamic", TypeName.SHORT);
+    nullary("compilerxyz.eval.value.uint_", "TypeUintDynamic", TypeName.INT);
+    nullary("compilerxyz.eval.value.ulong_", "TypeUlongDynamic", TypeName.LONG);
     nullary("compilerxyz.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
     nullary("compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
     nullary(

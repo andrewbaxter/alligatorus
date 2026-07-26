@@ -40,6 +40,10 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.long_;
     exports compilerxyz.eval.value.float_;
     exports compilerxyz.eval.value.double_;
+    exports compilerxyz.eval.value.ubyte_;
+    exports compilerxyz.eval.value.ushort_;
+    exports compilerxyz.eval.value.uint_;
+    exports compilerxyz.eval.value.ulong_;
     exports compilerxyz.eval.value.numeric;
     exports compilerxyz.eval.value.object_;
     exports compilerxyz.eval.value.option;

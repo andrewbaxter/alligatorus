@@ -12,6 +12,9 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeInstructionObj;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
@@ -21,6 +24,7 @@ import compilerxyz.gen.GenAspectNumericConst;
 import compilerxyz.gen.GenAspectNumericDynamic;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
@@ -29,7 +33,9 @@ import org.objectweb.asm.tree.LabelNode;
  * Central operator/cast machinery shared by every numeric type family. A type's operator aspects
  * are thin delegations to {@link #binary} / {@link #unary}; its cast entry points delegate to {@link
  * #castTo}. All widening, Java binary/unary numeric promotion, const folding and JVM bytecode
- * emission lives here so it is written exactly once.
+ * emission lives here so it is written exactly once. Unsigned kinds share the signed JVM primitive;
+ * only division/remainder, ordered comparison, right-shift, formatting and widening differ and use
+ * the JDK's unsigned helpers.
  */
 public final class Numerics {
   private Numerics() {}
@@ -55,6 +61,10 @@ public final class Numerics {
 
     boolean comparison() {
       return this == EQ || this == NE || this == LT || this == LE || this == GT || this == GE;
+    }
+
+    boolean ordered() {
+      return this == LT || this == LE || this == GT || this == GE;
     }
 
     boolean bitwise() {
@@ -87,6 +97,10 @@ public final class Numerics {
       case LONG -> new compilerxyz.eval.value.long_.TypeLongConst();
       case FLOAT -> new compilerxyz.eval.value.float_.TypeFloatConst();
       case DOUBLE -> new compilerxyz.eval.value.double_.TypeDoubleConst();
+      case UBYTE -> new compilerxyz.eval.value.ubyte_.TypeUbyteConst();
+      case USHORT -> new compilerxyz.eval.value.ushort_.TypeUshortConst();
+      case UINT -> new compilerxyz.eval.value.uint_.TypeUintConst();
+      case ULONG -> new compilerxyz.eval.value.ulong_.TypeUlongConst();
     };
   }
 
@@ -98,17 +112,21 @@ public final class Numerics {
       case LONG -> new compilerxyz.eval.value.long_.TypeLongDynamic();
       case FLOAT -> new compilerxyz.eval.value.float_.TypeFloatDynamic();
       case DOUBLE -> new compilerxyz.eval.value.double_.TypeDoubleDynamic();
+      case UBYTE -> new compilerxyz.eval.value.ubyte_.TypeUbyteDynamic();
+      case USHORT -> new compilerxyz.eval.value.ushort_.TypeUshortDynamic();
+      case UINT -> new compilerxyz.eval.value.uint_.TypeUintDynamic();
+      case ULONG -> new compilerxyz.eval.value.ulong_.TypeUlongDynamic();
     };
   }
 
-  /** Box a Java numeric into a compile-time constant Value of the given kind. */
+  /** Box a Java numeric into a compile-time constant Value of the given kind (signed bit pattern). */
   public static Value constValue(NumericKind k, Number n) {
     Object boxed =
         switch (k) {
-          case BYTE -> (byte) n.intValue();
-          case SHORT -> (short) n.intValue();
-          case INT -> n.intValue();
-          case LONG -> n.longValue();
+          case BYTE, UBYTE -> (byte) n.longValue();
+          case SHORT, USHORT -> (short) n.longValue();
+          case INT, UINT -> (int) n.longValue();
+          case LONG, ULONG -> n.longValue();
           case FLOAT -> n.floatValue();
           case DOUBLE -> n.doubleValue();
         };
@@ -205,11 +223,17 @@ public final class Numerics {
         return EResult.err(loc, "Numerics::" + op.symbol() + ": shift requires an integral value");
       }
       if (!r.kind().integral()) {
-        return EResult.err(
-            loc, "Numerics::" + op.symbol() + ": shift amount must be integral");
+        return EResult.err(loc, "Numerics::" + op.symbol() + ": shift amount must be integral");
       }
       compute = NumericKind.unaryPromote(b.kind());
     } else {
+      if (b.kind().unsigned() != r.kind().unsigned()) {
+        return EResult.err(
+            loc,
+            "Numerics::"
+                + op.symbol()
+                + ": cannot mix signed and unsigned operands; cast explicitly");
+      }
       compute = NumericKind.promote(b.kind(), r.kind());
       if (op.bitwise() && !compute.integral()) {
         return EResult.err(
@@ -242,35 +266,54 @@ public final class Numerics {
             case LONG -> compareLong(op, a.longValue(), c.longValue());
             case FLOAT -> compareFloat(op, a.floatValue(), c.floatValue());
             case DOUBLE -> compareDouble(op, a.doubleValue(), c.doubleValue());
+            case UBYTE, USHORT, UINT ->
+                compareUInt(op, uintVal(b.kind(), a), uintVal(r.kind(), c));
+            case ULONG -> compareULong(op, ulongVal(b.kind(), a), ulongVal(r.kind(), c));
           };
       result = new ValueObjectConst(new TypeBoolConst(), bool);
     } else {
-      switch (compute) {
-        case INT, BYTE, SHORT -> {
-          var v = foldIntOp(op, a.intValue(), c.intValue());
-          if (v.optIsNone()) return divZero(loc, op);
-          result = new ValueObjectConst(constType(NumericKind.INT), ((Opt.Some<Integer>) v).value());
-        }
-        case LONG -> {
-          var v = foldLongOp(op, a.longValue(), c.longValue());
-          if (v.optIsNone()) return divZero(loc, op);
-          result = new ValueObjectConst(constType(NumericKind.LONG), ((Opt.Some<Long>) v).value());
-        }
-        case FLOAT -> result =
-            new ValueObjectConst(
-                constType(NumericKind.FLOAT), foldFloatOp(op, a.floatValue(), c.floatValue()));
-        case DOUBLE -> result =
-            new ValueObjectConst(
-                constType(NumericKind.DOUBLE), foldDoubleOp(op, a.doubleValue(), c.doubleValue()));
-        default -> throw new IllegalStateException("unreachable");
-      }
+      var foldedRes = foldArith(loc, compute, op, b.kind(), r.kind(), a, c);
+      if (foldedRes.hasErrors()) return foldedRes.reerr();
+      result = foldedRes.requireValue("Numerics::foldArith");
     }
     return EResult.ok(
         new CodeValue(
             Code.concat(loc, base.code(), reference.code()), EvalOutcome.ofValue(result)));
   }
 
-  private static EResult<CodeValue> divZero(QExprId loc, Op op) {
+  private static EResult<Value> foldArith(
+      QExprId loc, NumericKind compute, Op op, NumericKind bk, NumericKind rk, Number a, Number c) {
+    return switch (compute) {
+      case INT, BYTE, SHORT -> {
+        var v = foldIntOp(op, a.intValue(), c.intValue());
+        yield v.optIsNone()
+            ? divZero(loc, op)
+            : EResult.ok(constValue(NumericKind.INT, ((Opt.Some<Integer>) v).value()));
+      }
+      case LONG -> {
+        var v = foldLongOp(op, a.longValue(), c.longValue());
+        yield v.optIsNone()
+            ? divZero(loc, op)
+            : EResult.ok(constValue(NumericKind.LONG, ((Opt.Some<Long>) v).value()));
+      }
+      case FLOAT -> EResult.ok(constValue(NumericKind.FLOAT, foldFloatOp(op, a.floatValue(), c.floatValue())));
+      case DOUBLE -> EResult.ok(constValue(NumericKind.DOUBLE, foldDoubleOp(op, a.doubleValue(), c.doubleValue())));
+      case UBYTE, USHORT, UINT -> {
+        var v = foldUIntOp(op, uintVal(bk, a), uintVal(rk, c));
+        yield v.optIsNone()
+            ? divZero(loc, op)
+            : EResult.ok(constValue(NumericKind.UINT, ((Opt.Some<Integer>) v).value()));
+      }
+      case ULONG -> {
+        var v = foldULongOp(op, ulongVal(bk, a), ulongVal(rk, c));
+        yield v.optIsNone()
+            ? divZero(loc, op)
+            : EResult.ok(constValue(NumericKind.ULONG, ((Opt.Some<Long>) v).value()));
+      }
+    };
+  }
+
+  private static EResult<Value> divZero(QExprId loc, Op op) {
     return EResult.err(loc, "Numerics::" + op.symbol() + ": division by zero");
   }
 
@@ -296,6 +339,9 @@ public final class Numerics {
     if (op.comparison()) {
       seq.add(compareBytecode(loc, compute, op));
       resultValue = ValueDynamic.stack(new TypeBoolDynamic(), 1);
+    } else if (compute.unsigned() && (op == Op.DIV || op == Op.MOD)) {
+      seq.add(unsignedDivRem(loc, compute, op));
+      resultValue = ValueDynamic.stack(dynamicType(compute), compute.slots());
     } else {
       seq.add(JavaBytecodeUtils.inst(loc, arithOpcode(compute, op)));
       resultValue = ValueDynamic.stack(dynamicType(compute), compute.slots());
@@ -333,6 +379,14 @@ public final class Numerics {
                 constType(NumericKind.LONG), op == Unary.NEG ? -n.longValue() : ~n.longValue());
             case FLOAT -> new ValueObjectConst(constType(NumericKind.FLOAT), -n.floatValue());
             case DOUBLE -> new ValueObjectConst(constType(NumericKind.DOUBLE), -n.doubleValue());
+            case UBYTE, USHORT, UINT -> {
+              int uv = uintVal(b.kind(), n);
+              yield new ValueObjectConst(constType(NumericKind.UINT), op == Unary.NEG ? -uv : ~uv);
+            }
+            case ULONG -> {
+              long uv = ulongVal(b.kind(), n);
+              yield new ValueObjectConst(constType(NumericKind.ULONG), op == Unary.NEG ? -uv : ~uv);
+            }
           };
       return EResult.ok(new CodeValue(base.code(), EvalOutcome.ofValue(result)));
     }
@@ -343,17 +397,12 @@ public final class Numerics {
     seq.add(new CodeDynamic(loc, baseSeq.requireValue("Numerics::unary pushConverted")));
     if (op == Unary.NEG) {
       seq.add(JavaBytecodeUtils.inst(loc, negOpcode(compute)));
+    } else if (compute.wide()) {
+      seq.add(JavaBytecodeUtils.literalLong(loc, -1L));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LXOR));
     } else {
-      switch (compute) {
-        case LONG -> {
-          seq.add(JavaBytecodeUtils.literalLong(loc, -1L));
-          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LXOR));
-        }
-        default -> {
-          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_M1));
-          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
-        }
-      }
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_M1));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
     }
     return EResult.ok(
         new CodeValue(
@@ -384,32 +433,32 @@ public final class Numerics {
 
   private static Class<?> wrapperClass(NumericKind kind) {
     return switch (kind) {
-      case BYTE -> Byte.class;
-      case SHORT -> Short.class;
-      case INT -> Integer.class;
-      case LONG -> Long.class;
+      case BYTE, UBYTE -> Byte.class;
+      case SHORT, USHORT -> Short.class;
+      case INT, UINT -> Integer.class;
+      case LONG, ULONG -> Long.class;
       case FLOAT -> Float.class;
       case DOUBLE -> Double.class;
     };
   }
 
-  private static compilerxyz.eval.dynamic.JavaDataDescriptor primDesc(NumericKind kind) {
+  private static JavaDataDescriptor primDesc(NumericKind kind) {
     return switch (kind) {
-      case BYTE -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BYTE;
-      case SHORT -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_SHORT;
-      case INT -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_INT;
-      case LONG -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_LONG;
-      case FLOAT -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_FLOAT;
-      case DOUBLE -> compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_DOUBLE;
+      case BYTE, UBYTE -> JavaDataDescriptor.DESC_BYTE;
+      case SHORT, USHORT -> JavaDataDescriptor.DESC_SHORT;
+      case INT, UINT -> JavaDataDescriptor.DESC_INT;
+      case LONG, ULONG -> JavaDataDescriptor.DESC_LONG;
+      case FLOAT -> JavaDataDescriptor.DESC_FLOAT;
+      case DOUBLE -> JavaDataDescriptor.DESC_DOUBLE;
     };
   }
 
   private static String unboxMethod(NumericKind kind) {
     return switch (kind) {
-      case BYTE -> "byteValue";
-      case SHORT -> "shortValue";
-      case INT -> "intValue";
-      case LONG -> "longValue";
+      case BYTE, UBYTE -> "byteValue";
+      case SHORT, USHORT -> "shortValue";
+      case INT, UINT -> "intValue";
+      case LONG, ULONG -> "longValue";
       case FLOAT -> "floatValue";
       case DOUBLE -> "doubleValue";
     };
@@ -417,25 +466,20 @@ public final class Numerics {
 
   /** Box the on-stack primitive of {@code kind} into its wrapper (Wrapper.valueOf). */
   public static CodeDynamic box(QExprId loc, NumericKind kind) {
-    var wrapper = compilerxyz.eval.dynamic.JavaInternalName.fromClass(wrapperClass(kind));
+    var wrapper = JavaInternalName.fromClass(wrapperClass(kind));
     return JavaBytecodeUtils.callStaticMethod(
         loc,
         wrapper,
         "valueOf",
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(wrapper),
-            compilerxyz.util.TList.of(primDesc(kind))));
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.fromInternalName(wrapper), TList.of(primDesc(kind))));
   }
 
   /** Unbox the on-stack wrapper of {@code kind} to its primitive (wrapper.xValue()). */
   public static CodeDynamic unbox(QExprId loc, NumericKind kind) {
-    var wrapper = compilerxyz.eval.dynamic.JavaInternalName.fromClass(wrapperClass(kind));
+    var wrapper = JavaInternalName.fromClass(wrapperClass(kind));
     return JavaBytecodeUtils.callMethod(
-        loc,
-        wrapper,
-        unboxMethod(kind),
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            primDesc(kind), compilerxyz.util.TList.of()));
+        loc, wrapper, unboxMethod(kind), JavaMethodDescriptor.fromParts(primDesc(kind), TList.of()));
   }
 
   /** Cast an arbitrary numeric CodeValue to {@code to}, producing a dynamic value of {@code dest}. */
@@ -459,7 +503,7 @@ public final class Numerics {
       var consumed = consume(xx, loc, cv);
       if (consumed.hasErrors()) return consumed.reerr();
       seq.add(consumed.requireValue("Numerics::cast consume"));
-      convertCast(seq, loc, src.kind(), to);
+      convert(seq, loc, src.kind(), to);
     }
     return EResult.ok(
         new CodeValue(
@@ -478,12 +522,12 @@ public final class Numerics {
       var n = constNumber(xx, op.value());
       addCarried(seq, cv);
       seq.add(pushNatural(loc, op.kind(), n));
-      convertCategory(seq, loc, category(op.kind()), category(target));
+      convert(seq, loc, op.kind(), target);
     } else {
       var consumed = consume(xx, loc, cv);
       if (consumed.hasErrors()) return consumed.reerr();
       seq.add(consumed.requireValue("Numerics::pushConverted consume"));
-      convertCategory(seq, loc, category(op.kind()), category(target));
+      convert(seq, loc, op.kind(), target);
     }
     return EResult.ok(seq);
   }
@@ -519,11 +563,12 @@ public final class Numerics {
     return EResult.err(loc, "Numerics::consume: dynamic operand is not consumable");
   }
 
-  /** Push a constant in its own kind's natural JVM stack representation. */
+  /** Push a constant in its own kind's natural JVM stack representation (signed bit pattern). */
   private static CodeDynamic pushNatural(QExprId loc, NumericKind kind, Number n) {
     return switch (kind) {
-      case BYTE, SHORT, INT -> JavaBytecodeUtils.literalIntShortByte(loc, n.intValue());
-      case LONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
+      case BYTE, SHORT, INT, UBYTE, USHORT, UINT ->
+          JavaBytecodeUtils.literalIntShortByte(loc, (int) n.longValue());
+      case LONG, ULONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
       case FLOAT -> JavaBytecodeUtils.literalFloat(loc, n.floatValue());
       case DOUBLE -> JavaBytecodeUtils.literalDouble(loc, n.doubleValue());
     };
@@ -532,71 +577,106 @@ public final class Numerics {
   /** Push a constant narrowed/widened into the target kind's representation. */
   private static CodeDynamic pushConst(QExprId loc, NumericKind to, Number n) {
     return switch (to) {
-      case BYTE -> JavaBytecodeUtils.literalIntShortByte(loc, (byte) n.intValue());
-      case SHORT -> JavaBytecodeUtils.literalIntShortByte(loc, (short) n.intValue());
-      case INT -> JavaBytecodeUtils.literalIntShortByte(loc, n.intValue());
-      case LONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
+      case BYTE, UBYTE -> JavaBytecodeUtils.literalIntShortByte(loc, (byte) n.longValue());
+      case SHORT, USHORT -> JavaBytecodeUtils.literalIntShortByte(loc, (short) n.longValue());
+      case INT, UINT -> JavaBytecodeUtils.literalIntShortByte(loc, (int) n.longValue());
+      case LONG, ULONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
       case FLOAT -> JavaBytecodeUtils.literalFloat(loc, n.floatValue());
       case DOUBLE -> JavaBytecodeUtils.literalDouble(loc, n.doubleValue());
     };
   }
 
-  private enum Cat {
-    I,
-    L,
-    F,
-    D
+  // ------------------------------------------------------------------
+  // conversion bytecode (signed / unsigned aware)
+  // ------------------------------------------------------------------
+
+  private static void convert(JavaBytecodeSequence seq, QExprId loc, NumericKind from, NumericKind to) {
+    if (from == to) return;
+    boolean fromInt = from.integral();
+    boolean toInt = to.integral();
+    if (fromInt && toInt) {
+      int fw = from.intWidth();
+      int tw = to.intWidth();
+      if (fw == tw) return; // same width: reinterpret bits (byte<->ubyte, int<->uint, ...)
+      if (fw < tw) {
+        if (from.unsigned()) zeroExtend(seq, loc, from, tw);
+        else if (tw == 64) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2L)); // sign-extend
+        // widening a signed byte/short to int/uint is a no-op (already sign-extended int)
+      } else {
+        if (fw == 64) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.L2I));
+        if (tw == 8) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2B));
+        else if (tw == 16) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2S));
+      }
+      return;
+    }
+    if (fromInt) {
+      intToFloat(seq, loc, from, to);
+      return;
+    }
+    if (toInt) {
+      floatToInt(seq, loc, from, to);
+      return;
+    }
+    // float <-> double
+    seq.add(
+        JavaBytecodeUtils.inst(loc, from == NumericKind.FLOAT ? Opcodes.F2D : Opcodes.D2F));
   }
 
-  private static Cat category(NumericKind kind) {
-    return switch (kind) {
-      case BYTE, SHORT, INT -> Cat.I;
-      case LONG -> Cat.L;
-      case FLOAT -> Cat.F;
-      case DOUBLE -> Cat.D;
-    };
-  }
-
-  /** Cast conversion including narrowing to byte/short (I2B / I2S after the category conversion). */
-  private static void convertCast(JavaBytecodeSequence seq, QExprId loc, NumericKind from, NumericKind to) {
-    convertCategory(seq, loc, category(from), category(to));
-    if (to == NumericKind.BYTE) {
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2B));
-    } else if (to == NumericKind.SHORT) {
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2S));
+  /** Zero-extend an unsigned integral of width < target width, using the JDK's unsigned helpers. */
+  private static void zeroExtend(JavaBytecodeSequence seq, QExprId loc, NumericKind from, int tw) {
+    switch (from) {
+      case UBYTE -> {
+        if (tw <= 32) seq.add(staticCall(loc, Byte.class, "toUnsignedInt", "I", "B"));
+        else seq.add(staticCall(loc, Byte.class, "toUnsignedLong", "J", "B"));
+      }
+      case USHORT -> {
+        if (tw <= 32) seq.add(staticCall(loc, Short.class, "toUnsignedInt", "I", "S"));
+        else seq.add(staticCall(loc, Short.class, "toUnsignedLong", "J", "S"));
+      }
+      case UINT -> seq.add(staticCall(loc, Integer.class, "toUnsignedLong", "J", "I"));
+      default -> throw new IllegalStateException("zeroExtend from non-unsigned kind " + from);
     }
   }
 
-  private static void convertCategory(JavaBytecodeSequence seq, QExprId loc, Cat from, Cat to) {
-    if (from == to) return;
-    int opcode =
-        switch (from) {
-          case I -> switch (to) {
-            case L -> Opcodes.I2L;
-            case F -> Opcodes.I2F;
-            case D -> Opcodes.I2D;
-            case I -> -1;
-          };
-          case L -> switch (to) {
-            case I -> Opcodes.L2I;
-            case F -> Opcodes.L2F;
-            case D -> Opcodes.L2D;
-            case L -> -1;
-          };
-          case F -> switch (to) {
-            case I -> Opcodes.F2I;
-            case L -> Opcodes.F2L;
-            case D -> Opcodes.F2D;
-            case F -> -1;
-          };
-          case D -> switch (to) {
-            case I -> Opcodes.D2I;
-            case L -> Opcodes.D2L;
-            case F -> Opcodes.D2F;
-            case D -> -1;
-          };
-        };
-    seq.add(JavaBytecodeUtils.inst(loc, opcode));
+  private static void intToFloat(JavaBytecodeSequence seq, QExprId loc, NumericKind from, NumericKind to) {
+    boolean toDouble = to == NumericKind.DOUBLE;
+    if (from.unsigned()) {
+      switch (from) {
+        case UBYTE -> {
+          seq.add(staticCall(loc, Byte.class, "toUnsignedInt", "I", "B"));
+          seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+        }
+        case USHORT -> {
+          seq.add(staticCall(loc, Short.class, "toUnsignedInt", "I", "S"));
+          seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+        }
+        case UINT -> {
+          seq.add(staticCall(loc, Integer.class, "toUnsignedLong", "J", "I"));
+          seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.L2D : Opcodes.L2F));
+        }
+        case ULONG -> seq.add(
+            staticCall(
+                loc, Unsigned.class, toDouble ? "toDouble" : "toFloat", toDouble ? "D" : "F", "J"));
+        default -> throw new IllegalStateException("intToFloat from " + from);
+      }
+      return;
+    }
+    if (from.intWidth() == 64) {
+      seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.L2D : Opcodes.L2F));
+    } else {
+      seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+    }
+  }
+
+  private static void floatToInt(JavaBytecodeSequence seq, QExprId loc, NumericKind from, NumericKind to) {
+    boolean toLong = to.intWidth() == 64;
+    if (from == NumericKind.FLOAT) {
+      seq.add(JavaBytecodeUtils.inst(loc, toLong ? Opcodes.F2L : Opcodes.F2I));
+    } else {
+      seq.add(JavaBytecodeUtils.inst(loc, toLong ? Opcodes.D2L : Opcodes.D2I));
+    }
+    if (to.intWidth() == 8) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2B));
+    else if (to.intWidth() == 16) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2S));
   }
 
   // ------------------------------------------------------------------
@@ -633,6 +713,29 @@ public final class Numerics {
         case USHR -> Opcodes.LUSHR;
         default -> throw new IllegalStateException("not a long arithmetic op: " + op);
       };
+      // unsigned: same bit-level ops as signed; right-shift is logical; div/rem handled elsewhere.
+      case UINT -> switch (op) {
+        case ADD -> Opcodes.IADD;
+        case SUB -> Opcodes.ISUB;
+        case MUL -> Opcodes.IMUL;
+        case AND -> Opcodes.IAND;
+        case OR -> Opcodes.IOR;
+        case XOR -> Opcodes.IXOR;
+        case SHL -> Opcodes.ISHL;
+        case SHR, USHR -> Opcodes.IUSHR;
+        default -> throw new IllegalStateException("not an unsigned-int arithmetic op: " + op);
+      };
+      case ULONG -> switch (op) {
+        case ADD -> Opcodes.LADD;
+        case SUB -> Opcodes.LSUB;
+        case MUL -> Opcodes.LMUL;
+        case AND -> Opcodes.LAND;
+        case OR -> Opcodes.LOR;
+        case XOR -> Opcodes.LXOR;
+        case SHL -> Opcodes.LSHL;
+        case SHR, USHR -> Opcodes.LUSHR;
+        default -> throw new IllegalStateException("not an unsigned-long arithmetic op: " + op);
+      };
       case FLOAT -> switch (op) {
         case ADD -> Opcodes.FADD;
         case SUB -> Opcodes.FSUB;
@@ -649,13 +752,23 @@ public final class Numerics {
         case MOD -> Opcodes.DREM;
         default -> throw new IllegalStateException("not a double arithmetic op: " + op);
       };
+      case UBYTE, USHORT -> throw new IllegalStateException("compute kind not promoted: " + compute);
     };
+  }
+
+  private static CodeDynamic unsignedDivRem(QExprId loc, NumericKind compute, Op op) {
+    if (compute == NumericKind.UINT) {
+      return staticCall(
+          loc, Integer.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "I", "I", "I");
+    }
+    return staticCall(
+        loc, Long.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "J", "J", "J");
   }
 
   private static int negOpcode(NumericKind compute) {
     return switch (compute) {
-      case INT, BYTE, SHORT -> Opcodes.INEG;
-      case LONG -> Opcodes.LNEG;
+      case INT, BYTE, SHORT, UINT, UBYTE, USHORT -> Opcodes.INEG;
+      case LONG, ULONG -> Opcodes.LNEG;
       case FLOAT -> Opcodes.FNEG;
       case DOUBLE -> Opcodes.DNEG;
     };
@@ -670,8 +783,24 @@ public final class Numerics {
     int branch;
     switch (compute) {
       case INT, BYTE, SHORT -> branch = intCmpBranch(op);
+      case UINT -> {
+        if (op.ordered()) {
+          seq.add(staticCall(loc, Integer.class, "compareUnsigned", "I", "I", "I"));
+          branch = zeroCmpBranch(op);
+        } else {
+          branch = intCmpBranch(op);
+        }
+      }
       case LONG -> {
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
+        branch = zeroCmpBranch(op);
+      }
+      case ULONG -> {
+        if (op.ordered()) {
+          seq.add(staticCall(loc, Long.class, "compareUnsigned", "I", "J", "J"));
+        } else {
+          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
+        }
         branch = zeroCmpBranch(op);
       }
       case FLOAT -> {
@@ -682,6 +811,7 @@ public final class Numerics {
         seq.add(JavaBytecodeUtils.inst(loc, floatCmpOpcode(op, true)));
         branch = zeroCmpBranch(op);
       }
+      case UBYTE, USHORT -> throw new IllegalStateException("compare kind not promoted: " + compute);
       default -> throw new IllegalStateException("unreachable");
     }
     var trueLabel = new LabelNode();
@@ -728,9 +858,41 @@ public final class Numerics {
     return g ? Opcodes.FCMPG : Opcodes.FCMPL;
   }
 
+  private static CodeDynamic staticCall(
+      QExprId loc, Class<?> owner, String method, String retDesc, String... argDescs) {
+    var params = new TList<JavaDataDescriptor>();
+    for (var a : argDescs) params.add(JavaDataDescriptor.create(a));
+    return JavaBytecodeUtils.callStaticMethod(
+        loc,
+        JavaInternalName.fromClass(owner),
+        method,
+        JavaMethodDescriptor.fromParts(JavaDataDescriptor.create(retDesc), params));
+  }
+
   // ------------------------------------------------------------------
   // constant folding helpers
   // ------------------------------------------------------------------
+
+  /** Zero-extended unsigned value of an unsigned operand, as an int (for uint-domain compute). */
+  private static int uintVal(NumericKind kind, Number n) {
+    return switch (kind) {
+      case UBYTE -> Byte.toUnsignedInt(n.byteValue());
+      case USHORT -> Short.toUnsignedInt(n.shortValue());
+      case UINT -> n.intValue();
+      default -> throw new IllegalStateException("uintVal on " + kind);
+    };
+  }
+
+  /** Zero-extended unsigned value of an unsigned operand, as a long (for ulong-domain compute). */
+  private static long ulongVal(NumericKind kind, Number n) {
+    return switch (kind) {
+      case UBYTE -> Byte.toUnsignedLong(n.byteValue());
+      case USHORT -> Short.toUnsignedLong(n.shortValue());
+      case UINT -> Integer.toUnsignedLong(n.intValue());
+      case ULONG -> n.longValue();
+      default -> throw new IllegalStateException("ulongVal on " + kind);
+    };
+  }
 
   private static Opt<Integer> foldIntOp(Op op, int a, int b) {
     return switch (op) {
@@ -763,6 +925,38 @@ public final class Numerics {
       case SHR -> Opt.some(a >> b);
       case USHR -> Opt.some(a >>> b);
       default -> throw new IllegalStateException("not a long fold op: " + op);
+    };
+  }
+
+  private static Opt<Integer> foldUIntOp(Op op, int a, int b) {
+    return switch (op) {
+      case ADD -> Opt.some(a + b);
+      case SUB -> Opt.some(a - b);
+      case MUL -> Opt.some(a * b);
+      case DIV -> b == 0 ? Opt.none() : Opt.some(Integer.divideUnsigned(a, b));
+      case MOD -> b == 0 ? Opt.none() : Opt.some(Integer.remainderUnsigned(a, b));
+      case AND -> Opt.some(a & b);
+      case OR -> Opt.some(a | b);
+      case XOR -> Opt.some(a ^ b);
+      case SHL -> Opt.some(a << b);
+      case SHR, USHR -> Opt.some(a >>> b);
+      default -> throw new IllegalStateException("not an unsigned-int fold op: " + op);
+    };
+  }
+
+  private static Opt<Long> foldULongOp(Op op, long a, long b) {
+    return switch (op) {
+      case ADD -> Opt.some(a + b);
+      case SUB -> Opt.some(a - b);
+      case MUL -> Opt.some(a * b);
+      case DIV -> b == 0 ? Opt.none() : Opt.some(Long.divideUnsigned(a, b));
+      case MOD -> b == 0 ? Opt.none() : Opt.some(Long.remainderUnsigned(a, b));
+      case AND -> Opt.some(a & b);
+      case OR -> Opt.some(a | b);
+      case XOR -> Opt.some(a ^ b);
+      case SHL -> Opt.some(a << b);
+      case SHR, USHR -> Opt.some(a >>> b);
+      default -> throw new IllegalStateException("not an unsigned-long fold op: " + op);
     };
   }
 
@@ -808,6 +1002,30 @@ public final class Numerics {
       case LE -> a <= b;
       case GT -> a > b;
       case GE -> a >= b;
+      default -> throw new IllegalStateException("not a comparison op: " + op);
+    };
+  }
+
+  private static boolean compareUInt(Op op, int a, int b) {
+    return switch (op) {
+      case EQ -> a == b;
+      case NE -> a != b;
+      case LT -> Integer.compareUnsigned(a, b) < 0;
+      case LE -> Integer.compareUnsigned(a, b) <= 0;
+      case GT -> Integer.compareUnsigned(a, b) > 0;
+      case GE -> Integer.compareUnsigned(a, b) >= 0;
+      default -> throw new IllegalStateException("not a comparison op: " + op);
+    };
+  }
+
+  private static boolean compareULong(Op op, long a, long b) {
+    return switch (op) {
+      case EQ -> a == b;
+      case NE -> a != b;
+      case LT -> Long.compareUnsigned(a, b) < 0;
+      case LE -> Long.compareUnsigned(a, b) <= 0;
+      case GT -> Long.compareUnsigned(a, b) > 0;
+      case GE -> Long.compareUnsigned(a, b) >= 0;
       default -> throw new IllegalStateException("not a comparison op: " + op);
     };
   }

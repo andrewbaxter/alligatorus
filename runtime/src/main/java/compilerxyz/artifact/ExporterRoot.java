@@ -25,6 +25,14 @@ import compilerxyz.eval.value.float_.TypeFloatConst;
 import compilerxyz.eval.value.float_.TypeFloatDynamic;
 import compilerxyz.eval.value.double_.TypeDoubleConst;
 import compilerxyz.eval.value.double_.TypeDoubleDynamic;
+import compilerxyz.eval.value.ubyte_.TypeUbyteConst;
+import compilerxyz.eval.value.ubyte_.TypeUbyteDynamic;
+import compilerxyz.eval.value.ushort_.TypeUshortConst;
+import compilerxyz.eval.value.ushort_.TypeUshortDynamic;
+import compilerxyz.eval.value.uint_.TypeUintConst;
+import compilerxyz.eval.value.uint_.TypeUintDynamic;
+import compilerxyz.eval.value.ulong_.TypeUlongConst;
+import compilerxyz.eval.value.ulong_.TypeUlongDynamic;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.option.TypeOptionDynamic;
 import compilerxyz.eval.value.option.TypeOptionVariantConstructorDynamic;
@@ -159,6 +167,54 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
     @Override
     ExporterRootDelegate delegate() {
       return TypeDoubleDynamic.DELEGATE;
+    }
+  },
+  UBYTE_CONST("ubyte_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUbyteConst.DELEGATE;
+    }
+  },
+  UBYTE_DYNAMIC("ubyte_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUbyteDynamic.DELEGATE;
+    }
+  },
+  USHORT_CONST("ushort_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUshortConst.DELEGATE;
+    }
+  },
+  USHORT_DYNAMIC("ushort_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUshortDynamic.DELEGATE;
+    }
+  },
+  UINT_CONST("uint_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUintConst.DELEGATE;
+    }
+  },
+  UINT_DYNAMIC("uint_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUintDynamic.DELEGATE;
+    }
+  },
+  ULONG_CONST("ulong_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUlongConst.DELEGATE;
+    }
+  },
+  ULONG_DYNAMIC("ulong_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeUlongDynamic.DELEGATE;
     }
   },
   OBJECT_DYNAMIC("object_dynamic") {

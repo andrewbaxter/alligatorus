@@ -278,6 +278,22 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "double");
   }
 
+  public SourceExpr typesUbyte() {
+    return builtin("types", "ubyte");
+  }
+
+  public SourceExpr typesUshort() {
+    return builtin("types", "ushort");
+  }
+
+  public SourceExpr typesUint() {
+    return builtin("types", "uint");
+  }
+
+  public SourceExpr typesUlong() {
+    return builtin("types", "ulong");
+  }
+
   public SourceExpr typesOption() {
     return builtin("types", "option");
   }

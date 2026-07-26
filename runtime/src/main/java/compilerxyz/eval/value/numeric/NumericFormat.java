@@ -26,4 +26,20 @@ public final class NumericFormat {
   public static String format(double v) {
     return Double.toString(v);
   }
+
+  public static String formatUnsigned(byte v) {
+    return Integer.toString(Byte.toUnsignedInt(v));
+  }
+
+  public static String formatUnsigned(short v) {
+    return Integer.toString(Short.toUnsignedInt(v));
+  }
+
+  public static String formatUnsigned(int v) {
+    return Integer.toUnsignedString(v);
+  }
+
+  public static String formatUnsigned(long v) {
+    return Long.toUnsignedString(v);
+  }
 }
