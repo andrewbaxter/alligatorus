@@ -35,6 +35,8 @@ public final class BuiltinMethodEmit {
   private static final ClassName CONST_KEY = ClassName.get("compilerxyz.eval", "ConstKey");
   private static final ClassName CONST_KEY_STR = ClassName.get("compilerxyz.eval", "ConstKey", "Str");
   private static final ClassName RECORD_CLASS = ClassName.get("compilerxyz.eval.value.record", "Record");
+  private static final ClassName FUNCTION_PARAM =
+      ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
   private static final ClassName RECORD_FIELD = ClassName.get("compilerxyz.eval.value.record", "RecordField");
   private static final ClassName RECORD_FIELD_DYNAMIC = ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
@@ -117,16 +119,16 @@ public final class BuiltinMethodEmit {
 
     var suffix = method.hostMethodName;
 
-    var argRecordVar = "argRecord_" + suffix + "Fields";
-    var argRecordName = "argRecord_" + suffix;
-    b.addStatement("var $L = new $T<$T, $T>()", argRecordVar, TORDERED_MAP, CONST_KEY, RECORD_FIELD);
+    var argRecordName = "params_" + suffix;
+    var paramsExpr = CodeBlock.builder();
+    paramsExpr.add("$T.<$T>of(", TLIST, FUNCTION_PARAM);
     for (int i = 0; i < method.params.size(); i++) {
       var p = method.params.get(i);
-      b.addStatement(
-          "$L.put(new $T($S), new $T($L))",
-          argRecordVar, CONST_KEY_STR, p.name, RECORD_FIELD_DYNAMIC, paramDescs.get(i));
+      if (i > 0) paramsExpr.add(", ");
+      paramsExpr.add("new $T($S, $L)", FUNCTION_PARAM, p.name, paramDescs.get(i));
     }
-    b.addStatement("var $L = new $T($T.none(), $L)", argRecordName, RECORD_CLASS, OPT, argRecordVar);
+    paramsExpr.add(")");
+    b.addStatement("var $L = $L", argRecordName, paramsExpr.build());
 
     var retTypeName = "retType_" + suffix;
     b.addStatement("var $L = $L", retTypeName, retDesc);

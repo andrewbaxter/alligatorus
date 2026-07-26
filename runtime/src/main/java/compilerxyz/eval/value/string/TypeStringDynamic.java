@@ -105,7 +105,7 @@ public record TypeStringDynamic()
               new ConstKey.Str("toLowerCase"),
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
-                  EMPTY_TUPLE,
+                  TList.<compilerxyz.eval.value.function.FunctionParam>of(),
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toLowerCase",
@@ -116,7 +116,7 @@ public record TypeStringDynamic()
               new ConstKey.Str("toUpperCase"),
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
-                  EMPTY_TUPLE,
+                  TList.<compilerxyz.eval.value.function.FunctionParam>of(),
                   new TypeStringDynamic(),
                   JAVA_STRING,
                   "toUpperCase",

@@ -151,7 +151,7 @@ public final class BuiltinTreeGen {
       var innerExpr = CodeBlock.of(
           "new $T($L, $L, $T.of($S), $S, true)",
           TYPE_FUNCTION_DYNAMIC,
-          argDynamicTypeExpr(args),
+          paramsExpr(args),
           retDynamicType,
           JAVA_INTERNAL_NAME,
           "compilerxyz/eval/builtin/BuiltinBodies",
@@ -311,36 +311,18 @@ public final class BuiltinTreeGen {
   }
 
 
-  private static CodeBlock argDynamicTypeExpr(TList<NamedTypeRef> args) {
-    if (args.size() == 1) {
-      return args.get(0).type().dynamicType();
-    }
-    var opt = ClassName.get("compilerxyz.util", "Opt");
-    if (args.isEmpty()) {
-      var tuple = ClassName.get("compilerxyz.eval.value.tuple", "Tuple");
-      var tupleElement = ClassName.get("compilerxyz.eval.value.tuple", "TupleElement");
-      return CodeBlock.of(
-          "new $T($T.none(), $T.<$T>of())", tuple, opt, TLIST, tupleElement);
-    }
-    var record = ClassName.get("compilerxyz.eval.value.record", "Record");
-    var recordFieldDynamic =
-        ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
-    var pair = ClassName.get("compilerxyz.util", "Pair");
-    var entries = CodeBlock.builder();
-    entries.add("$T.ofEntries(", TORDERED_MAP);
+  private static CodeBlock paramsExpr(TList<NamedTypeRef> args) {
+    var functionParam =
+        ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
+    var b = CodeBlock.builder();
+    b.add("$T.<$T>of(", TLIST, functionParam);
     for (var i = 0; i < args.size(); i++) {
       var a = args.get(i);
-      if (i > 0) entries.add(", ");
-      entries.add(
-          "new $T<>(new $T($S), new $T($L))",
-          pair,
-          CONST_KEY_STR,
-          a.name(),
-          recordFieldDynamic,
-          a.type().dynamicType());
+      if (i > 0) b.add(", ");
+      b.add("new $T($S, $L)", functionParam, a.name(), a.type().dynamicType());
     }
-    entries.add(")");
-    return CodeBlock.of("new $T($T.none(), $L)", record, opt, entries.build());
+    b.add(")");
+    return b.build();
   }
 
   private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();

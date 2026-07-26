@@ -438,10 +438,6 @@ public final class DynUtil {
         if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
             return tupleSome.value().aspectTupleElementTypes().isEmpty();
         }
-        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
-        if (recordOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome) {
-            return recordSome.value().aspectRecordFieldTypes().isEmpty();
-        }
         return false;
     }
 

@@ -361,7 +361,7 @@ public final class TypeSourceObjectDynamic
     var fieldType =
         new compilerxyz.eval.value.function.TypeMethodDynamic(
             this,
-            argType,
+            TList.of(new compilerxyz.eval.value.function.FunctionParam("arg", argType)),
             retType,
             objectInternalName,
             fieldName,

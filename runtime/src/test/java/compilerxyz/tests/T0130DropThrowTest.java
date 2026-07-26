@@ -447,18 +447,10 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.tupleOf(
                                                         mb.typesNull(),
                                                         mb.evalAspectConsumeDynamic(),
-                                                        mb.field(
-                                                            mb.scopeUse("arg"),
-                                                            mb.str("xx")))),
+                                                        mb.scopeUse("arg"))),
                                                 mb.str("value")),
                                             mb.str("jvm_class")),
-                                        mb.recordOf(
-                                            TList.of(
-                                                new TestMb.RecordPair(
-                                                    "xx",
-                                                    mb.field(
-                                                        mb.scopeUse("arg"),
-                                                        mb.str("xx"))))))))))))),
+                                        mb.scopeUse("arg"))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.field(mb.scopeUse("u"), mb.str("new"))))),
         mb.literalNull());

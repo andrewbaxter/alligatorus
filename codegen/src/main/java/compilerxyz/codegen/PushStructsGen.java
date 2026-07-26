@@ -751,7 +751,7 @@ public final class PushStructsGen {
 
   private static CodeBlock methodFunctionType(
       PushStructSpec spec, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {
-    var argDynType = argDynamicTypeExpr(m.args());
+    var argDynType = paramsExpr(m.args());
     var retDynType = unitOrDynamic(m.ret());
     if (INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
       var receiverInternalName = receiverClass.canonicalName().replace('.', '/');
@@ -817,38 +817,18 @@ public final class PushStructsGen {
         argListExpr.build());
   }
 
-  private static CodeBlock argDynamicTypeExpr(TList<NamedTypeRef> args) {
-    if (args.size() == 1) {
-      return args.get(0).type().dynamicType();
-    }
-    if (args.isEmpty()) {
-      return CodeBlock.of(
-          "new $T($T.none(), $T.<$T>of())",
-          TUPLE,
-          OPT,
-          TLIST,
-          ClassName.get("compilerxyz.eval.value.tuple", "TupleElement"));
-    }
-    var record = ClassName.get("compilerxyz.eval.value.record", "Record");
-    var recordFieldDynamic =
-        ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
-    var torderedMap = ClassName.get("compilerxyz.util", "TOrderedMap");
-    var pair = ClassName.get("compilerxyz.util", "Pair");
-    var entries = CodeBlock.builder();
-    entries.add("$T.ofEntries(", torderedMap);
+  private static CodeBlock paramsExpr(TList<NamedTypeRef> args) {
+    var functionParam =
+        ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
+    var b = CodeBlock.builder();
+    b.add("$T.<$T>of(", TLIST, functionParam);
     for (var i = 0; i < args.size(); i++) {
       var a = args.get(i);
-      if (i > 0) entries.add(", ");
-      entries.add(
-          "new $T<>(new $T($S), new $T($L))",
-          pair,
-          CONST_KEY_STR,
-          a.name(),
-          recordFieldDynamic,
-          a.type().dynamicType());
+      if (i > 0) b.add(", ");
+      b.add("new $T($S, $L)", functionParam, a.name(), a.type().dynamicType());
     }
-    entries.add(")");
-    return CodeBlock.of("new $T($T.none(), $L)", record, OPT, entries.build());
+    b.add(")");
+    return b.build();
   }
 
   private static CodeBlock unitOrDynamic(String ret) {

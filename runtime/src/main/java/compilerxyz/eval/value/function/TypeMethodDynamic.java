@@ -43,7 +43,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 @BuiltinIdentity(uniqueId = 6112L)
 public record TypeMethodDynamic(
     Type receiver,
-    Type arg,
+    TList<FunctionParam> params,
     Type ret,
     JavaInternalName klass,
     String methodName,
@@ -62,6 +62,10 @@ public record TypeMethodDynamic(
   @Override
   public String toString() {
     return "TypeMethodDynamic[" + klass.value + "." + methodName + descriptor.value() + "]";
+  }
+
+  public Type arg() {
+    return FunctionParam.argType(params);
   }
 
 
@@ -104,14 +108,16 @@ public record TypeMethodDynamic(
     if (receiverDyn == null) {
       return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
     }
+    var argType = arg();
     compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
-    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, arg)) {
+    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, argType)) {
       argsDynRes = compilerxyz.eval.EResult.ok(new compilerxyz.util.TList<>());
     } else {
-      var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
+      var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
       if (convertedRes.hasErrors()) return convertedRes.reerr();
       var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
-      argsDynRes = compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
+      argsDynRes =
+          compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, argType, converted);
       if (argsDynRes.hasErrors()) return argsDynRes.reerr();
     }
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
@@ -199,7 +205,7 @@ public record TypeMethodDynamic(
   @Override
   public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
     return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class) instanceof Opt.Some<TypeMethodDynamic> oSome
-        && receiver.typeIsEqual(xx, oSome.value().receiver) && arg.typeIsEqual(xx, oSome.value().arg) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
+        && receiver.typeIsEqual(xx, oSome.value().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oSome.value().params) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
   }
 
   @Override

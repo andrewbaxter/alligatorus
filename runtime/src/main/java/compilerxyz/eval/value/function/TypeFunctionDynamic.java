@@ -48,7 +48,7 @@ import compilerxyz.gen.GenAspectTuple;
 
 @BuiltinIdentity(uniqueId = 6110L)
 public record TypeFunctionDynamic(
-    Type arg,
+    TList<FunctionParam> params,
     Type ret,
     JavaInternalName klass,
     String methodName,
@@ -63,7 +63,16 @@ public record TypeFunctionDynamic(
         ExporterAny {
 
 
+  public Type arg() {
+    return FunctionParam.argType(params);
+  }
+
   public EResult<JavaMethodDescriptor> descriptor(ExprContext xx, QExprId loc) {
+    return descriptorFor(xx, loc, arg(), ret, needsExprContext);
+  }
+
+  public static EResult<JavaMethodDescriptor> descriptorFor(
+      ExprContext xx, QExprId loc, Type arg, Type ret, boolean needsExprContext) {
     var argDescs = new TList<JavaDataDescriptor>();
     if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
     var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, arg);
@@ -94,6 +103,30 @@ public record TypeFunctionDynamic(
             retDescRes.requireValue("TypeFunctionDynamic::descriptor ret"), argDescs));
   }
 
+  public static EResult<CodeDynamic> emitStaticInvocation(
+      ExprContext xx,
+      QExprId loc,
+      JavaInternalName klass,
+      String methodName,
+      JavaMethodDescriptor desc,
+      boolean needsExprContext,
+      TList<CodeDynamic> args) {
+    var seq = new JavaBytecodeSequence();
+    if (needsExprContext) {
+      seq.add(
+          JavaBytecodeUtils.accessStaticField(
+              loc,
+              JavaInternalName.of(xx.vx.evalRootInternalName),
+              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
+              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
+    }
+    for (var argCode : args) {
+      seq.add(argCode);
+    }
+    seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, desc));
+    return EResult.ok(new CodeDynamic(loc, seq));
+  }
+
   private static EResult<JavaDataDescriptor> jvmDescOf(ExprContext xx, QExprId loc, Type t) {
     var consumeRes = GenAspectConsumeDynamic.get(xx, loc, t);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
@@ -109,22 +142,14 @@ public record TypeFunctionDynamic(
       compilerxyz.util.TList<CodeDynamic> args) {
     var descRes = descriptor(xx, loc);
     if (descRes.hasErrors()) return descRes.reerr();
-    var seq = new JavaBytecodeSequence();
-    if (needsExprContext) {
-      seq.add(
-          JavaBytecodeUtils.accessStaticField(
-              loc,
-              JavaInternalName.of(xx.vx.evalRootInternalName),
-              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
-    }
-    for (var argCode : args) {
-      seq.add(argCode);
-    }
-    seq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc, klass, methodName, descRes.requireValue("TypeFunctionDynamic::emit desc")));
-    return EResult.ok(new CodeDynamic(loc, seq));
+    return emitStaticInvocation(
+        xx,
+        loc,
+        klass,
+        methodName,
+        descRes.requireValue("TypeFunctionDynamic::emit desc"),
+        needsExprContext,
+        args);
   }
 
   @Override
@@ -163,16 +188,17 @@ public record TypeFunctionDynamic(
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
+    var argType = arg();
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
-    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, arg)) {
+    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, argType)) {
       argsDynRes = compilerxyz.eval.EResult.ok(new compilerxyz.util.TList<>());
     } else {
-      var convertedRes = Eval.typecheckConvert(xx, loc, arg, argument);
+      var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
       if (convertedRes.hasErrors()) return convertedRes.reerr();
       var converted = convertedRes.requireValue("TypeFunctionDynamic::call converted arg");
       argsDynRes =
-          compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, arg, converted);
+          compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, argType, converted);
       if (argsDynRes.hasErrors()) return argsDynRes.reerr();
     }
     for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
@@ -235,7 +261,17 @@ public record TypeFunctionDynamic(
   @Override
   public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
     return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_FUNCTION_DYNAMIC_IDENTITY, TypeFunctionDynamic.class) instanceof Opt.Some<TypeFunctionDynamic> oSome
-        && arg.typeIsEqual(xx, oSome.value().arg) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && needsExprContext == oSome.value().needsExprContext;
+        && paramsEqual(xx, params, oSome.value().params) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && needsExprContext == oSome.value().needsExprContext;
+  }
+
+  static boolean paramsEqual(
+      compilerxyz.eval.ExprContext xx, TList<FunctionParam> a, TList<FunctionParam> b) {
+    if (a.size() != b.size()) return false;
+    for (int i = 0; i < a.size(); i++) {
+      if (!a.get(i).name().equals(b.get(i).name())) return false;
+      if (!a.get(i).type().typeIsEqual(xx, b.get(i).type())) return false;
+    }
+    return true;
   }
 
   @Override

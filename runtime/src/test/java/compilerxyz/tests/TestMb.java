@@ -317,18 +317,28 @@ public final class TestMb extends ModuleBuilder {
    */
   public SourceExpr delegateAspect(
       SourceExpr underlying, SourceExpr aspectRef, String method, String... argKeys) {
-    var args = new TList<RecordPair>(argKeys.length);
-    for (var k : argKeys) {
-      args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
+    SourceExpr lookupXx;
+    SourceExpr callArg;
+    if (argKeys.length == 0) {
+      lookupXx = field(scopeUse("arg"), str("xx"));
+      callArg = tupleOf();
+    } else if (argKeys.length == 1) {
+      lookupXx = scopeUse("arg");
+      callArg = scopeUse("arg");
+    } else {
+      lookupXx = field(scopeUse("arg"), str("xx"));
+      var args = new TList<RecordPair>(argKeys.length);
+      for (var k : argKeys) {
+        args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
+      }
+      callArg = recordOf(args);
     }
     return call(
         field(
             field(
-                call(
-                    evalAspectLookup(),
-                    tupleOf(underlying, aspectRef, field(scopeUse("arg"), str("xx")))),
+                call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)),
                 str("value")),
             str(method)),
-        recordOf(args));
+        callArg);
   }
 }

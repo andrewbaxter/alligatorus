@@ -70,15 +70,10 @@ public final class T0160EvenOddTest {
             mb.field(
                 mb.call(
                     mb.evalAspectLookup(),
-                    mb.tupleOf(
-                        underlying,
-                        aspectRef,
-                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                    mb.tupleOf(underlying, aspectRef, mb.scopeUse("arg"))),
                 mb.str("value")),
             mb.str(methodName)),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))))));
+        mb.scopeUse("arg"));
   }
 
   private static SourceExpr evenOddDropBody(TestMb mb) {
@@ -208,12 +203,7 @@ public final class T0160EvenOddTest {
                                                                                 "int_aspect_opt_"),
                                                                             mb.str("value")),
                                                                         mb.str("get")),
-                                                                    mb.recordOf(
-                                                                        TList.of(
-                                                                            new TestMb.RecordPair(
-                                                                                "value",
-                                                                                mb.scopeUse(
-                                                                                    "val_"))))),
+                                                                    mb.scopeUse("val_")),
                                                                 mb.num(2.0))))))),
                                         new TestMb.RecordPair(
                                             "source",
@@ -345,9 +335,7 @@ public final class T0160EvenOddTest {
                     mb.field(
                         mb.field(mb.scopeUse("ref_int_aspect_opt_"), mb.str("value")),
                         mb.str("get")),
-                    mb.recordOf(
-                        TList.of(
-                            new TestMb.RecordPair("value", mb.scopeUse("ref_val_")))))),
+                    mb.scopeUse("ref_val_"))),
             mb.num(2.0));
     var evenOddParity =
         mb.operatorMod(

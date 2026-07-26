@@ -363,8 +363,17 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var fnType = new TypeFunctionDynamic(argType, retType, klass, methodName, false);
-    var invocationRes = fnType.emitInvocation(xx, loc, argCodes);
+    var descRes = TypeFunctionDynamic.descriptorFor(xx, loc, argType, retType, false);
+    if (descRes.hasErrors()) return descRes.reerr();
+    var invocationRes =
+        TypeFunctionDynamic.emitStaticInvocation(
+            xx,
+            loc,
+            klass,
+            methodName,
+            descRes.requireValue("TypeSourceFunctionConst::call descriptor"),
+            false,
+            argCodes);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
     return EResult.ok(
         retStackRes
