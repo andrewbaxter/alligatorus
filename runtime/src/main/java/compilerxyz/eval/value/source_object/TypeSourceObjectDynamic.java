@@ -179,36 +179,28 @@ public final class TypeSourceObjectDynamic
     if (key.equals(identity)) {
       return Opt.some(this);
     }
-    if (key.equals(GenAspectField.AspectId)) {
-      return Opt.some(this);
-    }
-    if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-      return Opt.some(this);
-    }
-    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+    if (key.equals(GenAspectField.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)
+        || key.equals(GenAspectBind.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectConsumeDynamic.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)) {
       return Opt.some(this);
     }
 
     for (var impl : interfaceImpls) {
       var kind = impl.interface_.builtinKind;
       if (kind != null) {
-        // Only advertise aspects that TSOD actually implements. Aspects declared by
-        // impl_interface but not implemented on this Type return None here — the source
-        // code's user-defined implementation runs via a different dispatch path.
         boolean exposes = switch (kind) {
-          case ASPECT_BIND -> key.equals(GenAspectBind.AspectId);
-          case ASPECT_BIND_DYNAMIC -> key.equals(GenAspectBindDynamic.AspectId);
-          case ASPECT_CONSUME_DYNAMIC -> key.equals(GenAspectConsumeDynamic.AspectId);
-          case ASPECT_DROP_DYNAMIC_LIGHT -> key.equals(GenAspectDropDynamicLight.AspectId);
           case ASPECT_FIELD -> key.equals(compilerxyz.gen.GenAspectField.AspectId);
-          case ASPECT_FIELD_USE_DYNAMIC ->
-              key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId);
-          case ASPECT_ELEMENT_USE_DYNAMIC -> false;
-          case ASPECT_INITIAL_BIND -> key.equals(GenAspectInitialBind.AspectId);
           case ASPECT_LIFT -> key.equals(GenAspectLift.AspectId);
-          case BINDING -> key.equals(GenAspectBindDynamic.AspectId);
           case TYPE -> key.equals(compilerxyz.gen.GenAspectType.AspectId);
-          case ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION,
+          case ASPECT_BIND, ASPECT_BIND_DYNAMIC, ASPECT_CONSUME_DYNAMIC,
+              ASPECT_DROP_DYNAMIC_LIGHT, ASPECT_FIELD_USE_DYNAMIC,
+              ASPECT_ELEMENT_USE_DYNAMIC, ASPECT_INITIAL_BIND, BINDING,
+              ASPECT_DROP_DYNAMIC, ASPECT_FUNCTION,
               ASPECT_OPERATOR_ADD, ASPECT_OPERATOR_MOD, ASPECT_SET,
               VALUE, TARGET, CODE_DYN -> false;
         };
@@ -422,6 +414,13 @@ public final class TypeSourceObjectDynamic
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       for (var impl : interfaceImpls) {
         if (impl.interface_.builtinKind == BuiltinInterfaceKind.TYPE) {
+          return true;
+        }
+      }
+    }
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
+      for (var impl : interfaceImpls) {
+        if (impl.interface_.builtinKind == BuiltinInterfaceKind.CODE_DYN) {
           return true;
         }
       }

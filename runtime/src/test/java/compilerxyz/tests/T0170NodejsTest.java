@@ -107,80 +107,10 @@ public final class T0170NodejsTest {
                 TList.of(
                     rp("iface_ref", mb.evalCodeDyn()),
                     rp("record", ifaceMethods(mb, TList.of()))))),
-        mb.call(
-            mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
-            mb.recordOf(
-                TList.of(
-                    rp("iface_ref", mb.evalAspectConsumeDynamic()),
-                    rp(
-                        "record",
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                rp(
-                                    "to_dynamic",
-                                    mb.delegateAspect(
-                                        mb.lower(mb.scopeUse("code_tu")),
-                                        mb.evalAspectConsumeDynamic(),
-                                        "to_dynamic",
-                                        "xx",
-                                        "loc",
-                                        "cv")),
-                                rp(
-                                    "jvm_class",
-                                    mb.delegateAspect(
-                                        mb.lower(mb.scopeUse("code_tu")),
-                                        mb.evalAspectConsumeDynamic(),
-                                        "jvm_class",
-                                        "xx")))))))),
-        mb.call(
-            mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
-            mb.recordOf(
-                TList.of(
-                    rp("iface_ref", mb.evalAspectInitialBind()),
-                    rp(
-                        "record",
-                        ifaceMethods(
-                            mb,
-                            TList.of(rp("initial_bind", mb.scopeUse("outer")))))))),
-        mb.call(
-            mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
-            mb.recordOf(
-                TList.of(
-                    rp("iface_ref", mb.evalAspectBind()),
-                    rp(
-                        "record",
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                rp(
-                                    "bind",
-                                    mb.delegateAspect(
-                                        mb.lower(mb.scopeUse("code_tu")),
-                                        mb.evalAspectBind(),
-                                        "bind",
-                                        "xx",
-                                        "loc",
-                                        "cv")))))))),
-        mb.call(
-            mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
-            mb.recordOf(
-                TList.of(
-                    rp("iface_ref", mb.evalAspectBindDynamic()),
-                    rp(
-                        "record",
-                        ifaceMethods(
-                            mb,
-                            TList.of(
-                                rp(
-                                    "bind_dynamic",
-                                    mb.delegateAspect(
-                                        mb.lower(mb.scopeUse("code_tu")),
-                                        mb.evalAspectBindDynamic(),
-                                        "bind_dynamic",
-                                        "xx",
-                                        "loc",
-                                        "cv")))))))),
+        
+        
+        
+        
         mb.bind(
             "code_get_builder",
             mb.call(mb.field(mb.scopeUse("code_data"), mb.str("func")), mb.str("get"))),
@@ -584,11 +514,7 @@ public final class T0170NodejsTest {
   private static TList<SourceExpr> implAsSelfType(
       TestMb mb, String targetVar, String desc, SourceExpr dispatch) {
     return TList.of(
-        implInterface(
-            mb,
-            targetVar,
-            mb.evalAspectInitialBind(),
-            TList.of(rp("initial_bind", mb.scopeUse("outer")))),
+        
         implInterface(
             mb, targetVar, mb.evalValue(), TList.of(rp("type", mb.scopeUse("outer")))),
         implInterface(
@@ -625,50 +551,6 @@ public final class T0170NodejsTest {
 
   private static SourceExpr targetPanic(TestMb mb, String method) {
     return mb.panic(mb.str("ntarget." + method + " not implemented"));
-  }
-
-  private static SourceExpr implBind(TestMb mb, String targetVar, SourceExpr underlying) {
-    return implInterface(
-        mb,
-        targetVar,
-        mb.evalAspectBind(),
-        TList.of(
-            rp(
-                "bind",
-                mb.delegateAspect(
-                    underlying, mb.evalAspectBind(), "bind", "xx", "loc", "cv"))));
-  }
-
-  private static SourceExpr implBindDynamic(TestMb mb, String targetVar, SourceExpr underlying) {
-    return implInterface(
-        mb,
-        targetVar,
-        mb.evalAspectBindDynamic(),
-        TList.of(
-            rp(
-                "bind_dynamic",
-                mb.delegateAspect(
-                    underlying,
-                    mb.evalAspectBindDynamic(),
-                    "bind_dynamic",
-                    "xx",
-                    "loc",
-                    "cv"))));
-  }
-
-  private static SourceExpr implConsume(TestMb mb, String targetVar, SourceExpr underlying) {
-    return implInterface(
-        mb,
-        targetVar,
-        mb.evalAspectConsumeDynamic(),
-        TList.of(
-            rp(
-                "to_dynamic",
-                mb.delegateAspect(
-                    underlying, mb.evalAspectConsumeDynamic(), "to_dynamic", "xx", "loc", "cv")),
-            rp(
-                "jvm_class",
-                mb.delegateAspect(underlying, mb.evalAspectConsumeDynamic(), "jvm_class", "xx"))));
   }
 
   private static SourceExpr buildNodejs(TestMb mb) {
@@ -709,36 +591,10 @@ public final class T0170NodejsTest {
                 TList.of(
                     rp("base", mb.scopeUse("nvalue_base_t")),
                     rp("type", mb.evalType())))));
-    exprs.add(
-        implConsume(
-            mb,
-            "nvalue",
-            mb.recordOf(
-                TList.of(
-                    rp("base", mb.lower(mb.scopeUse("nvalue_base_t"))),
-                    rp("type", mb.evalType())))));
-    exprs.add(
-        implBind(
-            mb,
-            "nvalue",
-            mb.recordOf(
-                TList.of(
-                    rp("base", mb.lower(mb.scopeUse("nvalue_base_t"))),
-                    rp("type", mb.evalType())))));
-    exprs.add(
-        implBindDynamic(
-            mb,
-            "nvalue",
-            mb.recordOf(
-                TList.of(
-                    rp("base", mb.lower(mb.scopeUse("nvalue_base_t"))),
-                    rp("type", mb.evalType())))));
-    exprs.add(
-        implInterface(
-            mb,
-            "nvalue",
-            mb.evalAspectInitialBind(),
-            TList.of(rp("initial_bind", mb.scopeUse("outer")))));
+    
+    
+    
+    
     exprs.add(
         implInterface(
             mb,
@@ -772,9 +628,9 @@ public final class T0170NodejsTest {
             mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs string"))));
     exprs.add(
         mb.call(mb.field(mb.scopeUse("ntype_str"), mb.str("set_inner")), mb.typesNull()));
-    exprs.add(implConsume(mb, "ntype_str", mb.typesNull()));
-    exprs.add(implBind(mb, "ntype_str", mb.typesNull()));
-    exprs.add(implBindDynamic(mb, "ntype_str", mb.typesNull()));
+    
+    
+    
     exprs.addAll(implAsSelfType(mb, "ntype_str", "nodejs string", optionAspectNone(mb)));
     exprs.add(
         implInterface(
@@ -792,24 +648,9 @@ public final class T0170NodejsTest {
             mb.field(mb.scopeUse("ntype_func"), mb.str("set_inner")),
             mb.recordOf(
                 TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))));
-    exprs.add(
-        implConsume(
-            mb,
-            "ntype_func",
-            mb.recordOf(
-                TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))));
-    exprs.add(
-        implBind(
-            mb,
-            "ntype_func",
-            mb.recordOf(
-                TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))));
-    exprs.add(
-        implBindDynamic(
-            mb,
-            "ntype_func",
-            mb.recordOf(
-                TList.of(rp("arg", mb.evalType()), rp("ret", mb.evalType())))));
+    
+    
+    
     exprs.addAll(
         implAsSelfType(
             mb, "ntype_func", "nodejs function",
@@ -934,21 +775,9 @@ public final class T0170NodejsTest {
         mb.call(
             mb.field(mb.scopeUse("ntype_object"), mb.str("set_inner")),
             mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))));
-    exprs.add(
-        implConsume(
-            mb,
-            "ntype_object",
-            mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))));
-    exprs.add(
-        implBind(
-            mb,
-            "ntype_object",
-            mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))));
-    exprs.add(
-        implBindDynamic(
-            mb,
-            "ntype_object",
-            mb.call(mb.typesMap(), mb.tupleOf(mb.typesString(), mb.evalType()))));
+    
+    
+    
     exprs.addAll(
         implAsSelfType(
             mb, "ntype_object", "nodejs object",
@@ -1067,30 +896,10 @@ public final class T0170NodejsTest {
             mb.field(mb.scopeUse("nbinding"), mb.str("set_inner")),
             mb.recordOf(
                 TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))));
-    exprs.add(
-        implConsume(
-            mb,
-            "nbinding",
-            mb.recordOf(
-                TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))));
-    exprs.add(
-        implBind(
-            mb,
-            "nbinding",
-            mb.recordOf(
-                TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))));
-    exprs.add(
-        implBindDynamic(
-            mb,
-            "nbinding",
-            mb.recordOf(
-                TList.of(rp("name", mb.typesString()), rp("type", mb.evalType())))));
-    exprs.add(
-        implInterface(
-            mb,
-            "nbinding",
-            mb.evalAspectInitialBind(),
-            TList.of(rp("initial_bind", mb.scopeUse("outer")))));
+    
+    
+    
+    
     exprs.add(
         implInterface(
             mb,
@@ -1175,21 +984,10 @@ public final class T0170NodejsTest {
                 rp("if", targetPanic(mb, "if")),
                 rp("try_catch_finally", targetPanic(mb, "try_catch_finally")),
                 rp("match", targetPanic(mb, "match")))));
-    exprs.add(
-        implInterface(
-            mb,
-            "ntarget",
-            mb.evalAspectInitialBind(),
-            TList.of(rp("initial_bind", mb.scopeUse("outer")))));
-    exprs.add(
-        implConsume(
-            mb, "ntarget", mb.recordOf(TList.of(rp("count", mb.typesInt())))));
-    exprs.add(
-        implBind(
-            mb, "ntarget", mb.recordOf(TList.of(rp("count", mb.typesInt())))));
-    exprs.add(
-        implBindDynamic(
-            mb, "ntarget", mb.recordOf(TList.of(rp("count", mb.typesInt())))));
+    
+    
+    
+    
     exprs.add(
         mb.bind(
             "napp",
@@ -1198,21 +996,9 @@ public final class T0170NodejsTest {
         mb.call(
             mb.field(mb.scopeUse("napp"), mb.str("set_inner")),
             mb.recordOf(TList.of(rp("root", mb.scopeUse("root_t"))))));
-    exprs.add(
-        implConsume(
-            mb,
-            "napp",
-            mb.recordOf(TList.of(rp("root", mb.lower(mb.scopeUse("root_t")))))));
-    exprs.add(
-        implBind(
-            mb,
-            "napp",
-            mb.recordOf(TList.of(rp("root", mb.lower(mb.scopeUse("root_t")))))));
-    exprs.add(
-        implBindDynamic(
-            mb,
-            "napp",
-            mb.recordOf(TList.of(rp("root", mb.lower(mb.scopeUse("root_t")))))));
+    
+    
+    
     exprs.add(
         mb.bind(
             "napp_root",

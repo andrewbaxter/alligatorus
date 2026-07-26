@@ -235,10 +235,13 @@ public final class DynUtil {
             var seq = new JavaBytecodeSequence();
             seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
             seq.add(child.access());
+            var childDesc = CompositeClassEmitter.slotDescriptor(xx, child.childType()).value();
+            var childWidth = childDesc.equals("J") || childDesc.equals("D") ? 2 : 1;
             var childCv =
                     new CodeValue(
                             Code.of(loc, new CodeDynamic(loc, seq)),
-                            EvalOutcome.ofValue(ValueDynamic.stack(child.childType(), 1)));
+                            EvalOutcome.ofValue(
+                                    ValueDynamic.stack(child.childType(), childWidth)));
             var childDropRes = childDropSome.value().aspectDropDynamicDrop(xx, loc, childCv);
             if (childDropRes.hasErrors()) {
                 return childDropRes.reerr();
