@@ -214,7 +214,6 @@ public final class DynRuntime {
       }
       case Expr.Literal lit -> expr;
       case Expr.ScopeUse u -> expr;
-      case Expr.Import imp -> expr;
       case Expr.Labeled lb ->
           new Expr(
               loc,

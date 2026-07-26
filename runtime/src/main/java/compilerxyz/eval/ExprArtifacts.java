@@ -108,15 +108,6 @@ public final class ExprArtifacts {
         }
         return EResult.ok(new Expr(loc, new Expr.If(conds, else_)));
       }
-      case ArtifactExpr.Variant.Import im -> {
-        var spec = exprFromArtifact(xx, im.spec());
-        if (spec.hasErrors()) return spec.reerr();
-        return EResult.ok(
-            new Expr(
-                loc,
-                new Expr.Import(
-                    spec.requireValue("ExprArtifacts::exprFromArtifact Import spec"))));
-      }
       case ArtifactExpr.Variant.Labeled lb -> {
         var inner = exprFromArtifact(xx, lb.inner());
         if (inner.hasErrors()) return inner.reerr();
@@ -457,15 +448,6 @@ public final class ExprArtifacts {
           else_ = Opt.none();
         }
         return EResult.ok(new ArtifactExpr(loc, new ArtifactExpr.Variant.If(conds, else_)));
-      }
-      case Expr.Import im -> {
-        var spec = exprToArtifact(xx, im.spec());
-        if (spec.hasErrors()) return spec.reerr();
-        return EResult.ok(
-            new ArtifactExpr(
-                loc,
-                new ArtifactExpr.Variant.Import(
-                    spec.requireValue("ExprArtifacts::exprToArtifact Import spec"))));
       }
       case Expr.Labeled lb -> {
         var inner = exprToArtifact(xx, lb.inner());

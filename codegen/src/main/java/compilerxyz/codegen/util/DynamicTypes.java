@@ -76,6 +76,7 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
     nullary("compilerxyz.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
     nullary("compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.LONG);
+    nullary("compilerxyz.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
     nullary("compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
     nullary(
         "compilerxyz.eval.value.unique",
@@ -102,6 +103,12 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.map", "TypeMapConstructorConst");
     nullary("compilerxyz.eval.value.option", "TypeOptionConstructorConst");
     nullary("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
+    nullary("compilerxyz.eval.value.zbase32", "TypeZbase32Decode");
+    nullary("compilerxyz.eval.value.source", "TypeImport");
+    nullary("compilerxyz.eval.value.source", "TypeSourceVirtual");
+    nullary("compilerxyz.eval.value.source", "TypeSourceLocal");
+    nullary("compilerxyz.eval.value.source", "TypeSourceRemote");
+    nullary("compilerxyz.eval.value.source", "TypeSourceSha256");
 
     // Static-factory descriptors — interfaces where value class == descriptor class.
     factory("compilerxyz.eval", "Type");

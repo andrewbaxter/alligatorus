@@ -33,8 +33,6 @@ public record ArtifactExpr(ArtifactQExprId loc, Variant variant) implements Safe
 
     record If(TList<CondBranch> conditions, Opt<ArtifactExpr> else_) implements Variant {}
 
-    record Import(ArtifactExpr spec) implements Variant {}
-
     record Labeled(String label, ArtifactExpr inner) implements Variant {}
 
     record Literal(Artifact value) implements Variant {}

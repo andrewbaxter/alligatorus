@@ -33,6 +33,7 @@ import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.langhelp.GlobalContext;
+import compilerxyz.langhelp.Compiles;
 import compilerxyz.langhelp.SourceModuleToModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Opt;
@@ -219,7 +220,6 @@ public final class ConstEval {
       }
       case Expr.Foreach e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalForeach(xx, loc, e));
       case Expr.Match e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalMatch(xx, loc, e));
-      case Expr.Import e -> constEvalImport(xx, loc, e);
       case Expr.If e -> wrapControlFrame(xx, loc, Opt.none(), () -> constEvalIf(xx, loc, e));
       case Expr.As e -> {
         var erb = new Erb(loc);
@@ -725,105 +725,6 @@ public final class ConstEval {
     return EResult.ok(out.get());
   }
 
-  private static EResult<CodeValue> constEvalImport(ExprContext xx, QExprId loc, Expr.Import e) {
-    var erb = new Erb(loc);
-    var specOpt = erb.mustEr(constEval(xx, e.spec()));
-    if (specOpt.isEmpty()) return EResult.errs(erb.errors());
-    var specCv = specOpt.get();
-    if (!(specCv.value() instanceof Opt.Some<Value> sv)) {
-      erb.errPush("Import spec has no compile-time value");
-      return EResult.errs(erb.errors());
-    }
-    var specKeyOpt = erb.mustRes(Eval.extractConstKey(xx, loc, sv.value()));
-    if (specKeyOpt.isEmpty()) return EResult.errs(erb.errors());
-    String specName;
-    if (specKeyOpt.get() instanceof ConstKey.Str s) {
-      specName = s.value();
-    } else {
-      erb.errPush("Import spec must be a string");
-      return EResult.errs(erb.errors());
-    }
-    var sourceSpec = new SourceSpecAbsolute.Virtual(specName);
-    var sourceLookup = xx.vx.ix.gx.sources.sourcesGet(sourceSpec);
-    SourceId sourceId;
-    switch (sourceLookup) {
-      case Result.Ok<Sources.SourceLookup, String> ok -> sourceId = ok.value().id();
-      case Result.Err<Sources.SourceLookup, String> err -> {
-        erb.errPush(err.error());
-        return EResult.errs(erb.errors());
-      }
-    }
-    var compileId = new CompileId(xx.importState, sourceId);
-    if (xx.vx.ix.compilePath.contains(compileId)) {
-      erb.errPush("Import cycle detected");
-      return EResult.errs(erb.errors());
-    }
-    var newCompilePath = new TList<CompileId>(xx.vx.ix.compilePath.size());
-    newCompilePath.addAll(xx.vx.ix.compilePath);
-    var sourceLookupOk = (Result.Ok<Sources.SourceLookup, String>) sourceLookup;
-    var sourceModule = sourceLookupOk.value().module();
-    GlobalContext gx = xx.vx.ix.gx;
-    GlobalContext.CompileResultEntry entry;
-    boolean owner;
-    gx.compileResultsLock.lock();
-    try {
-      var existing = gx.compileResults.get(compileId);
-      if (existing != null) {
-        entry = existing;
-        owner = false;
-      } else {
-        entry = new GlobalContext.CompileResultEntry();
-        entry.lock.writeLock().lock();
-        gx.compileResults.put(compileId, entry);
-        owner = true;
-      }
-    } finally {
-      gx.compileResultsLock.unlock();
-    }
-    CompileRes compileRes;
-    if (owner) {
-      try {
-        var module = SourceModuleToModule.sourceModuleToModule(sourceId, sourceModule);
-        compileRes = CompileImport.compileImportId(gx, xx.importState, module, newCompilePath);
-        entry.value = compileRes;
-      } finally {
-        entry.lock.writeLock().unlock();
-      }
-    } else {
-      entry.lock.readLock().lock();
-      try {
-        compileRes = entry.value;
-        if (compileRes == null) {
-          erb.errPush("Import: re-entrant compile slot has no result");
-          return EResult.errs(erb.errors());
-        }
-      } finally {
-        entry.lock.readLock().unlock();
-      }
-    }
-    Artifact artifact;
-    if (compileRes.result() instanceof CompileResResult.Ok okRes) {
-      artifact = okRes.artifact();
-    } else {
-      var errRes = (CompileResResult.Err) compileRes.result();
-      for (var ee : errRes.errors()) {
-        erb.errors().add(ee);
-      }
-      erb.errPush("Import failed");
-      return EResult.errs(erb.errors());
-    }
-    var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
-    if (exporterRes.isEmpty()) return EResult.errs(erb.errors());
-    var valueRes = erb.mustEr(exporterRes.get().exporterAnyAsValue());
-    if (valueRes.isEmpty()) return EResult.errs(erb.errors());
-    var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(valueRes.get()));
-    var valueType = valueRes.get().valueType();
-    var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
-    if (pdRes.isEmpty()) return EResult.errs(erb.errors());
-    var finalRes = erb.mustEr(pdRes.get().aspectPostDeserializePostDeserialize(xx, loc, cv));
-    if (finalRes.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(finalRes.get());
-  }
 
   private static EResult<CodeValue> constEvalIf(ExprContext xx, QExprId loc, Expr.If e) {
     var erb = new Erb(loc);
@@ -1050,7 +951,6 @@ public final class ConstEval {
       case Expr.Graft.Evaluated ignored -> {}
       case Expr.Literal ignored -> {}
       case Expr.ScopeUse ignored -> {}
-      case Expr.Import ignored -> {}
       case Expr.Labeled lb -> findMatchedLowersInner(lb.inner(), sd, ld, out);
       case Expr.Return rt -> {
         if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedLowersInner(someV.value(), sd, ld, out);
@@ -1153,7 +1053,6 @@ public final class ConstEval {
       case Expr.Lower lo -> findMatchedGraftsInner(lo.expr(), sd, out);
       case Expr.Literal ignored -> {}
       case Expr.ScopeUse ignored -> {}
-      case Expr.Import ignored -> {}
       case Expr.Labeled lb -> findMatchedGraftsInner(lb.inner(), sd, out);
       case Expr.Return rt -> {
         if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedGraftsInner(someV.value(), sd, out);

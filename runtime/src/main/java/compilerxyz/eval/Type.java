@@ -7,6 +7,7 @@ import compilerxyz.artifact.Artifactable;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectDynamicConst;
 import compilerxyz.util.Opt;
 
 @Builtin(uniqueId = 2002L, scopeId = 3002)
@@ -21,6 +22,9 @@ public interface Type extends Artifactable {
    */
   @Override
   default EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc) {
+    if (this instanceof AspectDynamicConst dc && !(this instanceof AspectArtifact)) {
+      return dc.aspectDynamicConstConstForm().exportArtifact(xx, loc);
+    }
     if (!(this instanceof AspectArtifact aa)) {
       return EResult.err(loc, typeDesc() + " does not implement AspectArtifact");
     }

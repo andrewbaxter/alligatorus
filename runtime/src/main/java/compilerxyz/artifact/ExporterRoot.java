@@ -9,10 +9,12 @@ import compilerxyz.gen.Value;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.eval.value.expr.TypeExpr;
-import compilerxyz.eval.value.list.TypeListDynamic;
-import compilerxyz.eval.value.map.TypeMapDynamic;
+import compilerxyz.eval.value.list.TypeListConst;
+import compilerxyz.eval.value.map.TypeMapConst;
 import compilerxyz.eval.value.null_.TypeNullConst;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
+import compilerxyz.eval.value.byte_.TypeByteConst;
+import compilerxyz.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.eval.value.int_.TypeIntConst;
 import compilerxyz.eval.value.int_.TypeIntDynamic;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
@@ -55,16 +57,16 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
       return TypeExpr.DELEGATE;
     }
   },
-  LIST_DYNAMIC("list_dynamic") {
+  LIST_CONST("list_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeListDynamic.DELEGATE;
+      return TypeListConst.DELEGATE;
     }
   },
-  MAP_DYNAMIC("map_dynamic") {
+  MAP_CONST("map_const") {
     @Override
     ExporterRootDelegate delegate() {
-      return TypeMapDynamic.DELEGATE;
+      return TypeMapConst.DELEGATE;
     }
   },
   NULL_CONST("null_const") {
@@ -77,6 +79,18 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
     @Override
     ExporterRootDelegate delegate() {
       return TypeNullDynamic.DELEGATE;
+    }
+  },
+  BYTE_CONST("byte_const") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeByteConst.DELEGATE;
+    }
+  },
+  BYTE_DYNAMIC("byte_dynamic") {
+    @Override
+    ExporterRootDelegate delegate() {
+      return TypeByteDynamic.DELEGATE;
     }
   },
   INT_CONST("int_const") {

@@ -205,6 +205,10 @@ public final class Record
           accessedCv = fieldCv;
           continue;
         }
+        if (!(fieldSome.value() instanceof ValueDynamic)) {
+          accessedCv = fieldCv;
+          continue;
+        }
         accessedPushDyn = fieldDyn;
         accessedType = fieldType;
         continue;
@@ -237,6 +241,9 @@ public final class Record
       if (accessedCv != null) {
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
+        if (seq.children.isEmpty()) {
+          return EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
+        }
         return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
       }
       if (accessedPushDyn != null) {

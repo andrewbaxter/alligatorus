@@ -4,9 +4,11 @@ import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.Artifacts;
 import compilerxyz.eval.CompileId;
+import compilerxyz.eval.CompileRes;
 import compilerxyz.eval.ImportStateId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.artifact.ArtifactBodyExporter;
+import compilerxyz.langhelp.Compiles;
 import compilerxyz.langhelp.GlobalContext;
 import compilerxyz.langhelp.Sources;
 import compilerxyz.safejson.JsonValue;
@@ -159,14 +161,17 @@ public final class Helpers {
   }
 
   public static GxAndArtifacts newGxWithArtifacts(TMap<String, SourceModule> modules) {
-    var sources = new TMap<String, Sources.SourceLookup>();
+    var sources = new TMap<String, Sources.SourceResolved.Module>();
     long i = 0;
     for (var entry : modules.entrySet()) {
-      sources.put(entry.getKey(), new Sources.SourceLookup(new SourceId(i), entry.getValue()));
+      sources.put(
+          entry.getKey(),
+          new Sources.SourceResolved.Module(
+              new SourceId(i), entry.getValue(), compilerxyz.util.Opt.none()));
       i++;
     }
     var artifacts = new TestArtifacts();
-    var gx = GlobalContext.newContext(new TestSources(sources), artifacts);
+    var gx = GlobalContext.newContext(new TestSources(sources), artifacts, new TestCompiles());
 
     return new GxAndArtifacts(gx, artifacts);
   }
@@ -197,21 +202,79 @@ public final class Helpers {
     }
   }
 
-  public static final class TestSources implements Sources {
-    private final TMap<String, SourceLookup> modules;
+  public static final class TestCompiles implements Compiles {
+    private final TMap<CompileId, Entry> entries = new TMap<>();
+    private final java.util.concurrent.locks.ReentrantLock mapLock =
+        new java.util.concurrent.locks.ReentrantLock();
 
-    public TestSources(TMap<String, SourceLookup> modules) {
+    private static final class Entry {
+      final java.util.concurrent.locks.ReentrantLock lock =
+          new java.util.concurrent.locks.ReentrantLock();
+      CompileRes value;
+    }
+
+    @Override
+    public void compilesPrepare(CompileId root) {}
+
+    @Override
+    public CompileRes compilesGetOrCompute(
+        CompileId id, java.util.function.Supplier<Compiles.CompileProduct> compute) {
+      Entry e;
+      mapLock.lock();
+      try {
+        e = entries.getOrNull(id);
+        if (e == null) {
+          e = new Entry();
+          entries.put(id, e);
+        }
+      } finally {
+        mapLock.unlock();
+      }
+      e.lock.lock();
+      try {
+        if (e.value != null) return e.value;
+        var product = compute.get();
+        e.value = product.res();
+        return e.value;
+      } finally {
+        e.lock.unlock();
+      }
+    }
+
+    @Override
+    public TList<CompileRes> compilesResults() {
+      mapLock.lock();
+      try {
+        var out = new TList<CompileRes>();
+        for (var e : entries.values()) {
+          if (e.value != null) out.add(e.value);
+        }
+        return out;
+      } finally {
+        mapLock.unlock();
+      }
+    }
+  }
+
+  public static final class TestSources implements Sources {
+    private final TMap<String, SourceResolved.Module> modules;
+
+    public TestSources(TMap<String, SourceResolved.Module> modules) {
       this.modules = modules;
     }
 
     @Override
-    public Result<SourceLookup, String> sourcesGet(SourceSpecAbsolute spec) {
+    public Result<SourceResolved, String> sourcesGet(SourceSpecAbsolute spec) {
       return switch (spec) {
         case SourceSpecAbsolute.Virtual v -> {
-          var found = modules.getOrNull(v.path());
-          if (found == null) yield Result.err("Module not found: " + v.path());
+          var found = modules.getOrNull(v.name());
+          if (found == null) yield Result.err("Module not found: " + v.name());
           yield Result.ok(found);
         }
+        case SourceSpecAbsolute.Local l ->
+            Result.err("test sources do not support local imports: " + l.path());
+        case SourceSpecAbsolute.Remote r ->
+            Result.err("test sources do not support remote imports: " + r.baseUrl());
       };
     }
   }

@@ -48,9 +48,6 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     public record If(TList<ConditionBranch> conditions, Opt<Expr> else_) implements Variant {
     }
 
-    public record Import(Expr spec) implements Variant {
-    }
-
     public record Labeled(String label, Expr inner) implements Variant {
     }
 

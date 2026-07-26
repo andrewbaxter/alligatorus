@@ -8,6 +8,9 @@ module compilerxyz.runtime {
     requires transitive org.objectweb.asm.util;
     requires transitive com.github.benmanes.caffeine;
     requires transitive org.pcollections;
+    requires java.sql;
+    requires java.net.http;
+    requires org.xerial.sqlitejdbc;
 
     exports compilerxyz.artifact;
     exports compilerxyz.eval;
@@ -23,6 +26,8 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.argrecord;
     exports compilerxyz.eval.value.binding;
     exports compilerxyz.eval.value.bool_;
+    exports compilerxyz.eval.value.byte_;
+    exports compilerxyz.eval.value.zbase32;
     exports compilerxyz.eval.value.code_value_extern;
     exports compilerxyz.eval.value.constkey;
     exports compilerxyz.eval.value.expr;
@@ -35,6 +40,7 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.value.option;
     exports compilerxyz.eval.value.panic;
     exports compilerxyz.eval.value.record;
+    exports compilerxyz.eval.value.source;
     exports compilerxyz.eval.value.source_function;
     exports compilerxyz.eval.value.source_interface;
     exports compilerxyz.eval.value.source_object;
@@ -49,6 +55,7 @@ module compilerxyz.runtime {
     exports compilerxyz.gen;
     exports compilerxyz.gen.codec;
     exports compilerxyz.langhelp;
+    exports compilerxyz.langhelp.cache;
     exports compilerxyz.safejson;
     exports compilerxyz.syntax;
 }

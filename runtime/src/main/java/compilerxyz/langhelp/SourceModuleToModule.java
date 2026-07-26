@@ -118,8 +118,6 @@ public final class SourceModuleToModule {
           case SourceExpr.As a ->
               new Expr.As(
                   sourceExprToExpr(sourceId, a.base()), sourceExprToExpr(sourceId, a.target()));
-          case SourceExpr.Import imp ->
-              new Expr.Import(sourceExprToExpr(sourceId, imp.spec()));
           case SourceExpr.Labeled lb ->
               new Expr.Labeled(lb.label(), sourceExprToExpr(sourceId, lb.inner()));
           case SourceExpr.Return r ->

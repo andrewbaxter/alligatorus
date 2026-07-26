@@ -25,8 +25,6 @@ public record SourceExpr(ExprId id, Variant variant) implements SafeJsonSerializ
 
   public record IfBranch(SourceExpr condition, SourceExpr body) {}
 
-  public record Import(SourceExpr spec) implements Variant {}
-
   public record Labeled(String label, SourceExpr inner) implements Variant {}
 
   public record Literal(SourceLiteral value) implements Variant {}

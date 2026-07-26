@@ -4,6 +4,7 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.langhelp.GlobalContext;
+import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.artifact.Artifact;
@@ -16,11 +17,14 @@ import static compilerxyz.util.MustCast.mustCast;
 public final class CompileImport {
   private CompileImport() {}
 
-  public static CompileRes compileImportId(
+  public record CompileImportResult(CompileRes res, TList<CompileId> localDeps) {}
+
+  public static CompileImportResult compileImportId(
       GlobalContext gx,
       ImportStateId importState,
       Expr.Module source,
-      TList<CompileId> compilePath) {
+      TList<CompileId> compilePath,
+      SourceSpecAbsolute currentSpec) {
     Expr rootExpr =
         switch (source) {
           case Expr.Module.V1 v1 -> v1.expr();
@@ -30,7 +34,7 @@ public final class CompileImport {
     var extendedPath = new TList<CompileId>(compilePath.size() + 1);
     extendedPath.addAll(compilePath);
     extendedPath.add(new CompileId(importState, sourceId));
-    var cix = new CompileImportContext(gx, importState, sourceId, extendedPath);
+    var cix = new CompileImportContext(gx, importState, sourceId, extendedPath, currentSpec);
 
     var excess = maxLowerExcess(rootExpr, 0, 0);
     for (var i = 0; i < excess; i++) {
@@ -43,19 +47,23 @@ public final class CompileImport {
       var evalResult = eval(cix, importState, rootExpr);
       switch (evalResult) {
         case EvalOutcome.Err err -> {
-          return new CompileRes(allLogs, new CompileResResult.Err(err.errors()));
+          return new CompileImportResult(
+              new CompileRes(allLogs, new CompileResResult.Err(err.errors())),
+              cix.localDependencies);
         }
         case EvalOutcome.Ok ok -> {
           allLogs.addAll(ok.logs());
           if (!isStage) {
             if (compilePath.isEmpty() && ok.producedDynamicRoot()) {
-              return new CompileRes(
-                  allLogs,
-                  new CompileResResult.Ok(
-                      new Artifact.Body(
-                          new ArtifactBody(
-                              new JsonValueNull(),
-                              new ArtifactBodyExporter.Root()))));
+              return new CompileImportResult(
+                  new CompileRes(
+                      allLogs,
+                      new CompileResResult.Ok(
+                          new Artifact.Body(
+                              new ArtifactBody(
+                                  new JsonValueNull(),
+                                  new ArtifactBodyExporter.Root())))),
+                  cix.localDependencies);
             }
             var vx = new EvalContext(cix);
             var rootScope = new Scope();
@@ -67,10 +75,13 @@ public final class CompileImport {
             if (artifactRes.hasErrors()) {
               var artifactErrors = new TList<ExprErr>();
               artifactRes.drainInto(artifactErrors);
-              return new CompileRes(allLogs, new CompileResResult.Err(artifactErrors));
+              return new CompileImportResult(
+                  new CompileRes(allLogs, new CompileResResult.Err(artifactErrors)),
+                  cix.localDependencies);
             }
             var artifact = artifactRes.requireValue("CompileImport::compile artifact export");
-            return new CompileRes(allLogs, new CompileResResult.Ok(artifact));
+            return new CompileImportResult(
+                new CompileRes(allLogs, new CompileResResult.Ok(artifact)), cix.localDependencies);
           }
           rootExpr = mustCast(Expr.class, ok.value());
         }
@@ -98,7 +109,6 @@ public final class CompileImport {
           };
       case Expr.Literal lit -> 0;
       case Expr.ScopeUse u -> 0;
-      case Expr.Import imp -> 0;
       case Expr.Labeled lb -> maxLowerExcess(lb.inner(), sd, ld);
       case Expr.Return rt ->
           rt.value() instanceof Opt.Some<Expr> someV ? maxLowerExcess(someV.value(), sd, ld) : 0;

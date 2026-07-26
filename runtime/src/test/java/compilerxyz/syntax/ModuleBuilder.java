@@ -58,7 +58,30 @@ public class ModuleBuilder {
   }
 
   public SourceExpr importExpr(SourceExpr spec) {
-    return new SourceExpr(id(), new SourceExpr.Import(spec));
+    var entry =
+        new SourceExpr.RecordEntry(str("v"), call(builtin("source", "virtual"), spec));
+    var rec = record(TList.of(entry));
+    return field(call(builtin("import"), rec), str("v"));
+  }
+
+  public SourceExpr sourceVirtual(SourceExpr name) {
+    return call(builtin("source", "virtual"), name);
+  }
+
+  public SourceExpr sourceLocal(SourceExpr path) {
+    return call(builtin("source", "local"), path);
+  }
+
+  public SourceExpr sourceRemote(SourceExpr url, SourceExpr hash) {
+    return call(builtin("source", "remote"), tuple(TList.of(url, hash)));
+  }
+
+  public SourceExpr sourceSha256(SourceExpr bytes) {
+    return call(builtin("source", "sha256"), bytes);
+  }
+
+  public SourceExpr importRecord(TList<SourceExpr.RecordEntry> entries) {
+    return call(builtin("import"), record(entries));
   }
 
   public SourceExpr labeled(String label, SourceExpr inner) {
