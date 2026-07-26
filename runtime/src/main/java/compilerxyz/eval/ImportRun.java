@@ -105,7 +105,7 @@ public final class ImportRun {
     if (!erb.errors().isEmpty()) return EResult.errs(erb.errors());
 
     Value resultRecord = new Record(Opt.<RecordBaseDynamic>none(), fields);
-    return EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(resultRecord)));
+    return EResult.ok(new CodeValue(argument.code(), EvalOutcome.ofValue(resultRecord)));
   }
 
   private static TList<EResult<SpecOutcome>> compileAll(

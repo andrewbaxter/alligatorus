@@ -667,6 +667,34 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
   }
 
   @Test
+  public void test01380ThrowInCatchStillRunsFinally() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    // inner: try { throw "boom" } catch(e) { log("caught"); throw "rethrown" } finally { log("always") }
+    var inner =
+        mb.tryCatchFinally(
+            mb.throw_(mb.str("boom")),
+            new TestMb.Catch(
+                "e",
+                mb.builtin("types", "string"),
+                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown")))),
+            mb.call(mb.log(), mb.str("always")));
+    // The outer catch observes that the exception raised inside the inner catch propagated.
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.tryExpr(
+                inner,
+                new SourceExpr.TryCatch(
+                    mb.str("e2"),
+                    mb.builtin("types", "string"),
+                    mb.call(mb.log(), mb.str("outer"))),
+                null)));
+    var res = compileOk(modules);
+    assertEquals(TList.of("caught", "always", "outer"), messages(res));
+  }
+
+  @Test
   public void test01400EndOfScopeDropRuntime() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();

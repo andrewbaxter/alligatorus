@@ -81,12 +81,22 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
       if (retStackRes.hasErrors()) return retStackRes.reerr();
 
       var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
-      var newMap =
+      var instantiateMap =
           JavaBytecodeUtils.instantiate(
               loc,
               torderedMapIntname,
               JavaMethodDescriptor.fromConstructorParts(TList.of()),
               new CodeDynamic(loc, new JavaBytecodeSequence()));
+      var selfDyn = self.code().dynamic();
+      CodeDynamic newMap;
+      if (selfDyn == null) {
+        newMap = instantiateMap;
+      } else {
+        var seq = new JavaBytecodeSequence();
+        seq.add(selfDyn);
+        seq.add(instantiateMap);
+        newMap = new CodeDynamic(loc, seq);
+      }
       return EResult.ok(
           retStackRes.requireValue("AspectStackValueDynamic.get").aspectStackValueDynamicToValue(xx, loc, newMap));
     }

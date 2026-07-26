@@ -44,6 +44,7 @@ public record TypeConstkeyDynamic()
         AspectBind,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         compilerxyz.gen.AspectStackValueDynamic,
         ExporterAny {
@@ -72,6 +73,7 @@ public record TypeConstkeyDynamic()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(compilerxyz.gen.GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
@@ -164,5 +166,10 @@ public record TypeConstkeyDynamic()
       return EResult.ok(cv);
     }
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

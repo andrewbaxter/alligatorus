@@ -72,6 +72,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectType,
         ExporterAny {
@@ -165,6 +166,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
@@ -513,4 +515,9 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     return false;
   }
 
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  }
 }

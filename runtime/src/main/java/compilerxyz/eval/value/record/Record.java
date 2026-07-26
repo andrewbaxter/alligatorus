@@ -97,6 +97,7 @@ public final class Record
         AspectDropDynamic,
         AspectField,
         AspectFieldUseDynamic,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectRecord,
         AspectType,
@@ -503,6 +504,7 @@ public final class Record
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectRecord.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
@@ -1454,5 +1456,10 @@ public final class Record
   public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
       compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
     return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

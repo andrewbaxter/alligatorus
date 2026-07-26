@@ -54,6 +54,7 @@ public record TypeEResultDynamic(Type elementType)
         AspectBindDynamic,
         AspectConsumeDynamic,
         AspectField,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
@@ -82,6 +83,7 @@ public record TypeEResultDynamic(Type elementType)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
@@ -251,5 +253,10 @@ public record TypeEResultDynamic(Type elementType)
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

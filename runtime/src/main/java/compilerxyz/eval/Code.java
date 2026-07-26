@@ -40,6 +40,21 @@ public sealed interface Code permits Code.None, Code.Target {
     return new Target(impl);
   }
 
+  /**
+   * Sequences two pieces of code, preserving the side effects carried by each. Used where a value
+   * is produced from operands that may each carry code of their own.
+   */
+  static Code concat(QExprId loc, Code first, Code second) {
+    var firstDyn = first.dynamic();
+    var secondDyn = second.dynamic();
+    if (firstDyn == null) return secondDyn == null ? first : second;
+    if (secondDyn == null) return first;
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(firstDyn);
+    seq.add(secondDyn);
+    return of(loc, new CodeDynamic(loc, seq));
+  }
+
   static TargetCode targetImpl(Code code) {
     if (!(code instanceof Target t)) {
       throw new IllegalStateException(

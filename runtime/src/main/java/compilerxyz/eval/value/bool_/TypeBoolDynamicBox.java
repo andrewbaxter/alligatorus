@@ -59,6 +59,7 @@ public record TypeBoolDynamicBox()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectDynamicUnboxed,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic {
 
@@ -96,7 +97,8 @@ public record TypeBoolDynamicBox()
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)) {
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)) {
       return Opt.some(this);
     }
     if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -197,4 +199,9 @@ public record TypeBoolDynamicBox()
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  }
 }

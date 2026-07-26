@@ -71,6 +71,7 @@ public final class TypeOptionDynamic
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
@@ -115,6 +116,7 @@ public final class TypeOptionDynamic
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
@@ -436,5 +438,10 @@ public final class TypeOptionDynamic
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

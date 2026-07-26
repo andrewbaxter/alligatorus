@@ -60,7 +60,7 @@ public record TypeSourceVirtual() implements Type, AspectFunction, AspectInitial
     if (nameRes.hasErrors()) return nameRes.reerr();
     return EResult.ok(
         new CodeValue(
-            Code.none(loc),
+            Code.concat(loc, self.code(), argument.code()),
             EvalOutcome.ofValue(
                 SourceSpecs.spec(new SourceSpecValue.Virtual(nameRes.requireValue("source.virtual name"))))));
   }

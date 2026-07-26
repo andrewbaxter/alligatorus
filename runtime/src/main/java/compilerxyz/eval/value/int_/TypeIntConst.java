@@ -49,6 +49,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInt;
+import compilerxyz.gen.GenAspectIntDynamic;
 import compilerxyz.gen.GenAspectOperatorAdd;
 import compilerxyz.gen.GenAspectOperatorMod;
 import compilerxyz.gen.GenAspectOperatorEq;
@@ -153,7 +154,7 @@ public record TypeIntConst()
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(Code.none(loc), new BindingValue(some.value())));
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
     }
     return EResult.err(loc, "TypeIntConst::bind: CodeValue has no compile-time value");
   }
@@ -179,9 +180,31 @@ public record TypeIntConst()
         "TypeIntConst::get: expected int ValueObjectConst, got " + value.getClass());
   }
 
+  /**
+   * A dynamic reference operand makes the whole operation dynamic: the constant base is lifted to
+   * a dynamic int (carrying any code it holds) and the dynamic int aspect takes over.
+   */
+  private boolean referenceIsDynamic(ExprContext xx, CodeValue reference) {
+    if (!(reference.value() instanceof Opt.Some<Value> some)) return false;
+    var referenceType = some.value().valueType();
+    return GenAspectInt.getMaybe(xx, referenceType).optIsNone()
+        && GenAspectIntDynamic.getMaybe(xx, referenceType).optIsSome();
+  }
+
+  private EResult<CodeValue> dynamicBase(ExprContext xx, QExprId loc, CodeValue base) {
+    return new TypeIntDynamic().typeCastFrom(xx, loc, base);
+  }
+
   @Override
   public EResult<CodeValue> aspectOperatorAddAdd(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    if (referenceIsDynamic(xx, reference)) {
+      var baseRes = dynamicBase(xx, loc, base);
+      if (baseRes.hasErrors()) return baseRes.reerr();
+      return new TypeIntDynamic()
+          .aspectOperatorAddAdd(
+              xx, loc, baseRes.requireValue("TypeIntConst::add dynamic base"), reference);
+    }
     return binOpInt(
         xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), a + b),
@@ -191,6 +214,13 @@ public record TypeIntConst()
   @Override
   public EResult<CodeValue> aspectOperatorModMod(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    if (referenceIsDynamic(xx, reference)) {
+      var baseRes = dynamicBase(xx, loc, base);
+      if (baseRes.hasErrors()) return baseRes.reerr();
+      return new TypeIntDynamic()
+          .aspectOperatorModMod(
+              xx, loc, baseRes.requireValue("TypeIntConst::mod dynamic base"), reference);
+    }
     return binOpInt(
         xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(new TypeIntConst(), a % b),
@@ -200,6 +230,13 @@ public record TypeIntConst()
   @Override
   public EResult<CodeValue> aspectOperatorEqEq(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    if (referenceIsDynamic(xx, reference)) {
+      var baseRes = dynamicBase(xx, loc, base);
+      if (baseRes.hasErrors()) return baseRes.reerr();
+      return new TypeIntDynamic()
+          .aspectOperatorEqEq(
+              xx, loc, baseRes.requireValue("TypeIntConst::eq dynamic base"), reference);
+    }
     return binOpInt(xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
             new compilerxyz.eval.value.bool_.TypeBoolConst(), a == b),
@@ -209,6 +246,13 @@ public record TypeIntConst()
   @Override
   public EResult<CodeValue> aspectOperatorLtLt(
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
+    if (referenceIsDynamic(xx, reference)) {
+      var baseRes = dynamicBase(xx, loc, base);
+      if (baseRes.hasErrors()) return baseRes.reerr();
+      return new TypeIntDynamic()
+          .aspectOperatorLtLt(
+              xx, loc, baseRes.requireValue("TypeIntConst::lt dynamic base"), reference);
+    }
     return binOpInt(xx, loc, base, reference,
         (a, b) -> new compilerxyz.eval.value.object_.ValueObjectConst(
             new compilerxyz.eval.value.bool_.TypeBoolConst(), a < b),
@@ -223,7 +267,7 @@ public record TypeIntConst()
     if (refN.hasErrors()) return EResult.err(loc, opErrMsg(op, "reference", refN));
     return EResult.ok(
         new CodeValue(
-            base.code(),
+            Code.concat(loc, base.code(), ref.code()),
             EvalOutcome.ofValue(
                 f.apply(
                     baseN.requireValue("extractLong(base)"),

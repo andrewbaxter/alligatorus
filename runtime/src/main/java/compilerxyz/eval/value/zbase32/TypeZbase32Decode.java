@@ -96,7 +96,7 @@ public record TypeZbase32Decode()
       var listType = new TypeListConst(new TypeByteDynamicBox());
       return EResult.ok(
           new CodeValue(
-              Code.none(loc),
+              Code.concat(loc, self.code(), argument.code()),
               EvalOutcome.ofValue(new ValueObjectConst(listType, elements))));
     }
     if (GenAspectStringDynamic.getMaybe(xx, argType).optIsSome()) {

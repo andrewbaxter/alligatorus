@@ -70,6 +70,7 @@ public final class TypeListDynamic
         AspectDropDynamic,
         AspectDropDynamicLight,
         AspectField,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectIterable,
         AspectStackValueDynamic,
@@ -138,6 +139,7 @@ public final class TypeListDynamic
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectIterable.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
@@ -197,7 +199,7 @@ public final class TypeListDynamic
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+              new CodeValue(self.code(), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
       case FieldSpec.Method m ->
           EResult.ok(
               new CodeValue(
@@ -395,5 +397,10 @@ public final class TypeListDynamic
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

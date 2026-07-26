@@ -59,6 +59,7 @@ public record TypeFunctionDynamic(
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectFunction,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         ExporterAny {
 
@@ -177,7 +178,8 @@ public record TypeFunctionDynamic(
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectBind.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)) {
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -285,5 +287,10 @@ public record TypeFunctionDynamic(
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.function.BindingFunctionDynamic(dynamicKey, this);
   }
 }

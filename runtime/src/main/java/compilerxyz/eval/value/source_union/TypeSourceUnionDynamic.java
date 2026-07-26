@@ -47,6 +47,7 @@ public final class TypeSourceUnionDynamic
         AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         AspectUnion,
@@ -135,6 +136,7 @@ public final class TypeSourceUnionDynamic
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectUnion.AspectId)) {
@@ -229,5 +231,10 @@ public final class TypeSourceUnionDynamic
   @Override
   public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
     return compilerxyz.eval.EResult.ok(cv);
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

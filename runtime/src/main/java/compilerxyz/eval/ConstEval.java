@@ -746,19 +746,27 @@ public final class ConstEval {
       }
     }
     if (allConst) {
+      // Conditions are folded away, but the code they carry still has to run, in order, up to
+      // and including the condition that selected the taken branch.
+      var carried = Code.none(loc);
       for (var ie : conditionsEvaluated) {
+        carried = Code.concat(loc, carried, ie.cond.code());
         if (ie.val) {
           var bodyOpt = erb.mustErMaybeUnreachable(constEval(xx, ie.body));
           if (bodyOpt.isEmpty()) return EResult.errs(erb.errors());
-          return EResult.ok(bodyOpt.get());
+          var body = bodyOpt.get();
+          return EResult.ok(
+              new CodeValue(Code.concat(loc, carried, body.code()), body.outcome()));
         }
       }
       if (e.else_() instanceof Opt.Some<Expr> els) {
         var elseOpt = erb.mustErMaybeUnreachable(constEval(xx, els.value()));
         if (elseOpt.isEmpty()) return EResult.errs(erb.errors());
-        return EResult.ok(elseOpt.get());
+        var elseCv = elseOpt.get();
+        return EResult.ok(
+            new CodeValue(Code.concat(loc, carried, elseCv.code()), elseCv.outcome()));
       }
-      return EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))));
+      return EResult.ok(new CodeValue(carried, EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))));
     } else {
       var branches = new TList<IfBranch>(conditionsEvaluated.size());
       for (var ie : conditionsEvaluated) {
@@ -875,16 +883,11 @@ public final class ConstEval {
         erb.errPush("Try finally body must produce CodeDynamic (got Code.none)");
         return EResult.errs(erb.errors());
       }
-      Code finallyDropCode = Code.none(loc);
-      if (finCv.value() instanceof Opt.Some<Value> finV) {
-        var finType = finV.value().valueType();
-        var dropMaybe = GenAspectDropDynamic.getMaybe(xx, finType);
-        if (dropMaybe instanceof Opt.Some<AspectDropDynamic> dropSome) {
-          var dropOpt = erb.mustEr(dropSome.value().aspectDropDynamicDrop(xx, loc, finCv));
-          if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
-          finallyDropCode = dropOpt.get();
-        }
-      }
+      // A finally block has no result: whatever value it produced is dropped, so every exit path
+      // leaves the stack exactly as it found it.
+      var finallyDropOpt = erb.mustEr(xx.target.targetDrop(xx, loc, finCv));
+      if (finallyDropOpt.isEmpty()) return EResult.errs(erb.errors());
+      Code finallyDropCode = finallyDropOpt.get();
       CodeDynamic combinedFinally;
       if (!finallyDropCode.isNone()) {
         var combinedOpt =

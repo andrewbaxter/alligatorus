@@ -116,6 +116,8 @@ public record TypeListNewDynamic(Type elementType)
     var addDesc =
         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
     var seq = new JavaBytecodeSequence();
+    var selfDyn = self.code().dynamic();
+    if (selfDyn != null) seq.add(selfDyn);
     seq.add(
         JavaBytecodeUtils.instantiate(
             loc,

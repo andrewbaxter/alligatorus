@@ -74,6 +74,7 @@ public record TypeBoolDynamic()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectDynamicBoxed,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic,
@@ -114,6 +115,7 @@ public record TypeBoolDynamic()
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
@@ -261,4 +263,9 @@ public record TypeBoolDynamic()
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  }
 }

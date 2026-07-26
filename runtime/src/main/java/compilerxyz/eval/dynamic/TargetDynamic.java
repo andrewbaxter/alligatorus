@@ -192,6 +192,25 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
   }
 
+  /** Discards a value of the given descriptor from the operand stack. */
+  private static CodeDynamic popValue(QExprId loc, JavaDataDescriptor desc) {
+    return switch (desc.value().charAt(0)) {
+      case 'J', 'D' -> JavaBytecodeUtils.inst(loc, Opcodes.POP2);
+      default -> JavaBytecodeUtils.inst(loc, Opcodes.POP);
+    };
+  }
+
+  /** Zero/null of the given descriptor, used to definitely-assign a join local on every path. */
+  private static CodeDynamic defaultValue(QExprId loc, JavaDataDescriptor desc) {
+    return switch (desc.value().charAt(0)) {
+      case 'J' -> JavaBytecodeUtils.inst(loc, Opcodes.LCONST_0);
+      case 'D' -> JavaBytecodeUtils.inst(loc, Opcodes.DCONST_0);
+      case 'F' -> JavaBytecodeUtils.inst(loc, Opcodes.FCONST_0);
+      case 'I', 'S', 'B', 'Z', 'C' -> JavaBytecodeUtils.inst(loc, Opcodes.ICONST_0);
+      default -> JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL);
+    };
+  }
+
   @Override
   public EResult<CodeDynamic> targetTryCatchFinally(
       ExprContext xx,
@@ -204,9 +223,42 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     var bodyEnd = new Label();
     var handler = new Label();
     var end = new Label();
-    var finallyHandler = finally_ instanceof Opt.Some<?> ? new Label() : null;
+    boolean hasFinally = finally_ instanceof Opt.Some<?>;
+    var finallyHandler = hasFinally ? new Label() : null;
+    var finallyStart = hasFinally ? new Label() : null;
+    var afterFinally = hasFinally ? new Label() : null;
+    boolean guardCatchBody = hasFinally && catch_ instanceof Opt.Some<?>;
+    var catchStart = guardCatchBody ? new Label() : null;
+    var catchEnd = guardCatchBody ? new Label() : null;
 
     var seq = new JavaBytecodeSequence();
+
+    boolean bodyHasValue = body.value() instanceof Opt.Some<Value>;
+    boolean catchHasValue =
+        catch_ instanceof Opt.Some<TryCatchClause> catchValueSome
+            && catchValueSome.value().body().value() instanceof Opt.Some<Value>;
+
+    // With a finally block every exit path joins at one place, so each path must arrive with the
+    // same operand stack shape: a single result value when the try produces one. Paths that have
+    // no result of their own (an empty body branch, or the rethrow path) push a placeholder.
+    boolean hasResult = hasFinally && (bodyHasValue || catchHasValue);
+    JavaDataDescriptor resultDesc = null;
+    if (hasResult) {
+      Value resultSample;
+      if (body.value() instanceof Opt.Some<Value> bodyValueSome) {
+        resultSample = bodyValueSome.value();
+      } else {
+        var catchClauseSome = (Opt.Some<TryCatchClause>) catch_;
+        resultSample = ((Opt.Some<Value>) catchClauseSome.value().body().value()).value();
+      }
+      var consumeRes =
+          compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, resultSample.valueType());
+      if (consumeRes.hasErrors()) return consumeRes.reerr();
+      resultDesc =
+          consumeRes
+              .requireValue("try result AspectConsumeDynamic")
+              .aspectConsumeDynamicJvmClass(xx);
+    }
 
     JavaBytecodeBindingKey finallyExcKey = null;
     if (finallyHandler != null) {
@@ -238,10 +290,16 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           new CodeDynamic(
               new CodeLoc.Some(loc),
               new JavaBytecodeInstructionTryCatch(bodyStart, bodyEnd, finallyHandler, null)));
+      if (catchStart != null) {
+        // An exception raised inside the catch clause must run the finally too.
+        seq.add(
+            new CodeDynamic(
+                new CodeLoc.Some(loc),
+                new JavaBytecodeInstructionTryCatch(catchStart, catchEnd, finallyHandler, null)));
+      }
     }
 
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyStart)));
-    boolean bodyHasValue = body.value() instanceof Opt.Some<Value>;
     if (bodyHasValue) {
       var bodyDynOpt = cvToDynamic(erb, xx, loc, body);
       if (bodyDynOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -251,10 +309,16 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       if (bodyDyn != null) seq.add(bodyDyn);
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(bodyEnd)));
-    if (bodyHasValue) {
-      if (finally_ instanceof Opt.Some<CodeDynamic> someFinallyBody) {
-        seq.add(someFinallyBody.value());
-      }
+    if (hasFinally) {
+      if (hasResult && !bodyHasValue) seq.add(defaultValue(loc, resultDesc));
+      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
+      seq.add(
+          JavaBytecodeUtils.wrapObj(
+              loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(finallyStart))));
+    } else if (bodyHasValue) {
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
     }
 
@@ -272,7 +336,9 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
           new CodeDynamic(
               new CodeLoc.Some(loc),
               new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
-      boolean catchHasValue = clause.body().value() instanceof Opt.Some<Value>;
+      if (catchStart != null) {
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(catchStart)));
+      }
       if (catchHasValue) {
         var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body());
         if (catchDynOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -281,24 +347,55 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
         var catchDyn = clause.body().code().dynamic();
         if (catchDyn != null) seq.add(catchDyn);
       }
-      if (catchHasValue) {
-        if (finally_ instanceof Opt.Some<CodeDynamic> someFinallyCatch) {
-          seq.add(someFinallyCatch.value());
-        }
+      if (catchEnd != null) {
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(catchEnd)));
+      }
+      if (hasFinally) {
+        if (hasResult && !catchHasValue) seq.add(defaultValue(loc, resultDesc));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+        seq.add(
+            new CodeDynamic(
+                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
+        seq.add(
+            JavaBytecodeUtils.wrapObj(
+                loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(finallyStart))));
+      } else if (catchHasValue) {
         seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, new LabelNode(end))));
       }
     }
 
     if (finallyHandler != null && finally_ instanceof Opt.Some<CodeDynamic> someFinallyHandler) {
+      // Exception path: stash the in-flight exception, then fall into the shared finally block.
       seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyHandler)));
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, finallyExcKey)));
+      if (hasResult) {
+        // This path rethrows, so the placeholder is discarded; it only keeps the stack shape at
+        // the join identical across every predecessor.
+        seq.add(defaultValue(loc, resultDesc));
+      }
+      // The finally code is emitted exactly once; every exit path jumps here with the same stack.
+      seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(finallyStart)));
       seq.add(someFinallyHandler.value());
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, finallyExcKey)));
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+      if (hasResult) {
+        // Some path completes normally: rethrow only when an exception is pending.
+        seq.add(
+            JavaBytecodeUtils.wrapObj(
+                loc, new JumpInsnNode(Opcodes.IFNULL, new LabelNode(afterFinally))));
+        seq.add(popValue(loc, resultDesc));
+        seq.add(
+            new CodeDynamic(
+                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, finallyExcKey)));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+        seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(afterFinally)));
+      } else {
+        // Neither the body nor the catch falls through, so the only way out is the rethrow.
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+      }
     }
 
     seq.add(JavaBytecodeUtils.wrapObj(loc, new LabelNode(end)));

@@ -94,6 +94,7 @@ public final class Tuple
         AspectConsumeDynamic,
         AspectDropDynamic,
         AspectField,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         AspectTuple,
@@ -186,6 +187,10 @@ public final class Tuple
           accessedCv = elemCv;
           continue;
         }
+        if (!(elemSome.value() instanceof ValueDynamic)) {
+          accessedCv = elemCv;
+          continue;
+        }
         accessedPushDyn = elemDyn;
         accessedType = elemType;
         continue;
@@ -216,6 +221,9 @@ public final class Tuple
       if (accessedCv != null) {
         var accessedDyn = accessedCv.code().dynamic();
         if (accessedDyn != null) seq.add(accessedDyn);
+        if (seq.children.isEmpty()) {
+          return EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
+        }
         return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
       }
       if (accessedPushDyn != null) {
@@ -437,6 +445,7 @@ public final class Tuple
         || key.equals(GenAspectDropDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
@@ -1183,5 +1192,10 @@ public final class Tuple
   public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
       compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
     return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

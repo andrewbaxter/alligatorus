@@ -63,6 +63,7 @@ public final class TypeSourceObjectDynamic
         AspectDropDynamicLight,
         AspectField,
         compilerxyz.gen.AspectType,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic,
@@ -186,7 +187,8 @@ public final class TypeSourceObjectDynamic
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)) {
+        || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)) {
       return Opt.some(this);
     }
 
@@ -617,5 +619,10 @@ public final class TypeSourceObjectDynamic
         new CodeValue(
             Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), unwrapSeq)),
             EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

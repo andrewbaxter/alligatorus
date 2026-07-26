@@ -72,6 +72,7 @@ public record TypeUniqueDynamic()
         AspectBind,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectOperatorEq,
         AspectStackValueDynamic,
@@ -104,6 +105,7 @@ public record TypeUniqueDynamic()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectOperatorEq.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectLift.AspectId)
@@ -355,5 +357,10 @@ public record TypeUniqueDynamic()
   @Override
   public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
     return false;
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

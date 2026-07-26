@@ -60,7 +60,7 @@ public record TypeSourceLocal() implements Type, AspectFunction, AspectInitialBi
     if (pathRes.hasErrors()) return pathRes.reerr();
     return EResult.ok(
         new CodeValue(
-            Code.none(loc),
+            Code.concat(loc, self.code(), argument.code()),
             EvalOutcome.ofValue(
                 SourceSpecs.spec(new SourceSpecValue.Local(pathRes.requireValue("source.local path"))))));
   }

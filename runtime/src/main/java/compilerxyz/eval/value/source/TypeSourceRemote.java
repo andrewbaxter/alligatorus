@@ -71,7 +71,7 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
             urlRes.requireValue("source.remote url"), hashRes.requireValue("source.remote hash"));
     return EResult.ok(
         new CodeValue(
-            Code.none(loc),
+            Code.concat(loc, self.code(), argument.code()),
             EvalOutcome.ofValue(SourceSpecs.spec(new SourceSpecValue.Remote(remote)))));
   }
 

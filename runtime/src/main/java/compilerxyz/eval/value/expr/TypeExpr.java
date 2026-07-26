@@ -62,6 +62,7 @@ public record TypeExpr()
         compilerxyz.gen.AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
+        compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectType,
@@ -93,6 +94,7 @@ public record TypeExpr()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
@@ -249,5 +251,10 @@ public record TypeExpr()
   public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
       compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
     return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
+  }
+
+  @Override
+  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
+    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
 }

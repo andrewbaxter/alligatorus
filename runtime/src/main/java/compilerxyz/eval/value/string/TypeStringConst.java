@@ -136,7 +136,7 @@ public record TypeStringConst()
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(Code.none(loc), new BindingValue(some.value())));
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
     }
     return EResult.err(loc, "TypeStringConst::bind: CodeValue has no compile-time value");
   }
