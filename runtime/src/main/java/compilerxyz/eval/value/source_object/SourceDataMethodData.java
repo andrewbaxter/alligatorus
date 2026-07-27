@@ -156,7 +156,15 @@ public final class SourceDataMethodData {
     if (implResult.hasErrors()) {
       return implResult.reerr();
     }
-    var implCv = implResult.requireValue("SourceDataMethodData::compile constEval");
+    var implEv = implResult.requireValue("SourceDataMethodData::compile constEval");
+    if (!implEv.exits().isEmpty()) {
+      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
+      for (var exit : implEv.exits()) {
+        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
+      }
+      return compilerxyz.eval.EResult.errs(exitErrs);
+    }
+    var implCv = implEv.cv();
     var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();

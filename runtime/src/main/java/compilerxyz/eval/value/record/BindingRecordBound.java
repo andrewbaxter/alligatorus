@@ -72,6 +72,32 @@ public record BindingRecordBound(
   }
 
   @Override
+  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
+    if (this == other) return true;
+    if (!(other instanceof BindingRecordBound o)) return false;
+    if (o.fields.size() != fields.size()) return false;
+    for (var entry : fields.entrySet()) {
+      var b = o.fields.get(entry.getKey());
+      if (b == null) return false;
+      switch (entry.getValue()) {
+        case RecordScopeField.Scope s -> {
+          if (!(b instanceof RecordScopeField.Scope os)
+              || !s.binding().bindingEquals(xx, loc, os.binding())) {
+            return false;
+          }
+        }
+        case RecordScopeField.Dynamic d -> {
+          if (!d.equals(b)) return false;
+        }
+        case RecordScopeField.Error e -> {
+          if (!e.equals(b)) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
       if (!(other instanceof BindingRecordBound o)) {

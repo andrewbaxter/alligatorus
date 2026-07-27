@@ -183,7 +183,15 @@ public final class Eval {
     if (cvRes.hasErrors()) {
       return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
     }
-    var cv = cvRes.requireValue("Eval::eval constEval");
+    var evalRes = cvRes.requireValue("Eval::eval constEval");
+    if (!evalRes.exits().isEmpty()) {
+      var exitErrs = new TList<ExprErr>();
+      for (var exit : evalRes.exits()) {
+        exitErrs.add(Erb.exitUnmatchedError(exit));
+      }
+      return new CompileImport.EvalOutcome.Err(exitErrs);
+    }
+    var cv = evalRes.cv();
     Opt<CodeDynamic> stage1Code;
     Opt<Value> fallbackValue;
     Type valueType;

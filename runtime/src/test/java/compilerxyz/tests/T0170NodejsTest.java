@@ -946,7 +946,10 @@ public final class T0170NodejsTest {
                                                             mb.scopeUse("inner"),
                                                             mb.str("type"))))))))))))),
                 rp("fork", mb.scopeUse("outer")),
-                rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))))));
+                rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))),
+                rp(
+                    "equals",
+                    mb.seqOf(mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))))));
     exprs.add(
         mb.bind(
             "ntarget",
@@ -978,6 +981,7 @@ public final class T0170NodejsTest {
                 rp("cast_exception", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("seq", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("try_finally", eresultOk(mb, mb.typesCode(), codeNone(mb))),
+                rp("try_drop_on_throw", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("drop", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("return", targetPanic(mb, "return")),
                 rp("stage", targetPanic(mb, "stage")),

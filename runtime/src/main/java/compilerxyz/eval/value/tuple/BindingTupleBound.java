@@ -64,6 +64,32 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
   }
 
   @Override
+  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
+    if (this == other) return true;
+    if (!(other instanceof BindingTupleBound o)) return false;
+    if (o.elements.size() != elements.size()) return false;
+    for (int i = 0; i < elements.size(); i++) {
+      var a = elements.get(i);
+      var b = o.elements.get(i);
+      switch (a) {
+        case TupleScopeField.Scope s -> {
+          if (!(b instanceof TupleScopeField.Scope os)
+              || !s.binding().bindingEquals(xx, loc, os.binding())) {
+            return false;
+          }
+        }
+        case TupleScopeField.Dynamic d -> {
+          if (!d.equals(b)) return false;
+        }
+        case TupleScopeField.Error er -> {
+          if (!er.equals(b)) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
       if (!(other instanceof BindingTupleBound o)) {

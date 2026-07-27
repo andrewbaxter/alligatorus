@@ -1028,7 +1028,13 @@ public final class T0160EvenOddTest {
                                                                     mb.typesEresult(),
                                                                     mb.evalBinding()),
                                                                 mb.str("ok")),
-                                                            mb.scopeUse("outer")))))))))))),
+                                                            mb.scopeUse("outer")))))),
+                                        new TestMb.RecordPair(
+                                            "equals",
+                                            mb.seqOf(
+                                                mb.return_(
+                                                    mb.operatorEq(
+                                                        mb.num(1.0), mb.num(1.0))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1276,7 +1282,13 @@ public final class T0160EvenOddTest {
                                                     mb.call(
                                                         mb.typesEresult(), mb.evalBinding()),
                                                     mb.str("ok")),
-                                                mb.scopeUse("outer"))))))))),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.RecordPair(
+                                            "equals",
+                                            mb.seqOf(
+                                                mb.return_(
+                                                    mb.operatorEq(
+                                                        mb.num(1.0), mb.num(1.0))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(mb.scopeUse("even_type_new")));
   }

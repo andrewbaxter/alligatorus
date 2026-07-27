@@ -5,7 +5,6 @@ import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
-import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
@@ -42,6 +41,8 @@ public interface Target {
 
     EResult<Code> targetTryFinally(QExprId loc, Code body, Code finally_);
 
+    EResult<Code> targetTryDropOnThrow(QExprId loc, Code body, Code drop);
+
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
     CodeValue targetReturn(ExprContext xx, QExprId loc, CodeValue cv);
@@ -49,7 +50,8 @@ public interface Target {
     EResult<CodeValue> targetStage(
             ExprContext xx, QExprId loc, Expr tree, TList<CodeValue> lowerValues, TList<CodeValue> graftValues);
 
-    EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<Expr> else_);
+    EResult<CodeValue> targetIf(
+            ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_);
 
     EResult<CodeDynamic> targetTryCatchFinally(
             ExprContext xx,
@@ -62,8 +64,7 @@ public interface Target {
             ExprContext xx,
             QExprId loc,
             CodeValue base,
-            ConstKey elementKey,
             TList<TargetCase> cases,
-            Opt<Expr> fallback);
+            Opt<CodeValue> fallback);
 
 }

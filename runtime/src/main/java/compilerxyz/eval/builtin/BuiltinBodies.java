@@ -109,8 +109,16 @@ public final class BuiltinBodies {
       throw new IllegalStateException(
           "builtin 5008 (const_eval): const_eval produced no value; errors: " + res.errorsOrNull());
     }
-    var resCv = res.requireValue("BuiltinTreeGen builtin 5008 const_eval result");
-    return resCv;
+    var resEv = res.requireValue("BuiltinTreeGen builtin 5008 const_eval result");
+    if (!resEv.exits().isEmpty()) {
+      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
+      for (var exit : resEv.exits()) {
+        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
+      }
+      throw new IllegalStateException(
+          "builtin 5008 (const_eval): control exits escaped const_eval: " + exitErrs);
+    }
+    return resEv.cv();
   }
 
   @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)

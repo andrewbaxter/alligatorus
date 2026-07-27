@@ -389,7 +389,13 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                     mb.call(
                                                         mb.typesEresult(), mb.evalBinding()),
                                                     mb.str("ok")),
-                                                mb.scopeUse("outer"))))))))),
+                                                mb.scopeUse("outer"))),
+                                        new TestMb.RecordPair(
+                                            "equals",
+                                            mb.seqOf(
+                                                mb.return_(
+                                                    mb.operatorEq(
+                                                        mb.num(1.0), mb.num(1.0))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(

@@ -415,6 +415,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     }
 
     @Override
+    public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
+      return this == other || this.equals(other);
+    }
+
+    @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
       for (var other : others) {
         if (other != this && !this.equals(other)) {

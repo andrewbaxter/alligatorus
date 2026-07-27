@@ -67,6 +67,25 @@ public final class T0150ReturnTest {
   }
 
   @Test
+  public void test01625ReturnToSiblingLabelErrors() {
+    // A label that exists elsewhere in the program but does not enclose the
+    // return must be an error, same as a label that exists nowhere.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.labeled("other", mb.call(mb.log(), mb.str("in-other"))),
+                mb.labeled("outer", mb.seqOf(mb.return_("other", null))),
+                mb.call(mb.log(), mb.str("after")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Err<?, ?>,
+        () -> "expected non-enclosing-label error: " + res);
+  }
+
+  @Test
   public void test01630ReturnFromForeachSkipsRest() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
@@ -287,6 +306,37 @@ public final class T0150ReturnTest {
     assertEquals("before", ok.logs().get(0).message());
     assertEquals("else", ok.logs().get(1).message());
     assertEquals("after", ok.logs().get(2).message());
+  }
+
+  @Test
+  public void test01677LabeledReturnFromTryBodyRunsFinally() {
+    // A labeled return exiting a try body must run the user finally block on
+    // its way out, exactly like a normal exit or an exception would.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.labeled(
+                    "outer",
+                    mb.tryCatchFinally(
+                        mb.seqOf(
+                            mb.call(mb.log(), mb.str("body")),
+                            mb.return_("outer", null)),
+                        null,
+                        mb.call(mb.log(), mb.str("finally")))),
+                mb.call(mb.log(), mb.str("after")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    var messages = new TList<String>(ok.logs().size());
+    for (var l : ok.logs()) messages.add(l.message());
+    assertEquals(
+        TList.of("body", "finally", "after"),
+        messages,
+        () -> "labeled return out of a try body must run the finally; got logs=" + messages);
   }
 
   @Test
