@@ -193,19 +193,23 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
   }
 
   @Override
-  public EResult<Code> targetTryDropOnThrow(QExprId loc, Code body, Code drop) {
+  public EResult<Code> targetTryDropOnThrow(
+      QExprId loc, Code body, TList<Code> drops, BindingId.Local stateSlot) {
     var bodyDyn = body.dynamic();
-    var dropDyn = drop.dynamic();
     if (bodyDyn == null) {
       // No dynamic code in the region: nothing can throw at runtime.
       return EResult.ok(Code.none(loc));
     }
-    if (dropDyn == null) {
+    boolean anyDrop = false;
+    for (var d : drops) {
+      if (d.dynamic() != null) anyDrop = true;
+    }
+    if (!anyDrop) {
       return EResult.ok(Code.of(loc, bodyDyn));
     }
     // Exception-only cleanup: the normal path falls through untouched; a throw
-    // runs the drop and rethrows. The normal-path end-of-scope drop is emitted
-    // separately by the caller.
+    // runs the drop for the state tagged on the executing path and rethrows.
+    // The normal-path end-of-scope drop is emitted separately by the caller.
     var bodyStart = new Label();
     var bodyEnd = new Label();
     var handler = new Label();
@@ -224,7 +228,30 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     seq.add(
         new CodeDynamic(
             new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
-    seq.add(dropDyn);
+    if (drops.size() == 1) {
+      var dropDyn = drops.get(0).dynamic();
+      if (dropDyn != null) seq.add(dropDyn);
+    } else {
+      var rethrowLabel = new LabelNode();
+      var caseLabels = new LabelNode[drops.size()];
+      for (int i = 0; i < drops.size(); i++) caseLabels[i] = new LabelNode();
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ILOAD, stateSlot.key())));
+      seq.add(
+          JavaBytecodeUtils.wrapObj(
+              loc,
+              new org.objectweb.asm.tree.TableSwitchInsnNode(
+                  0, drops.size() - 1, rethrowLabel, caseLabels)));
+      for (int i = 0; i < drops.size(); i++) {
+        seq.add(JavaBytecodeUtils.wrapObj(loc, caseLabels[i]));
+        var dropDyn = drops.get(i).dynamic();
+        if (dropDyn != null) seq.add(dropDyn);
+        seq.add(
+            JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, rethrowLabel)));
+      }
+      seq.add(JavaBytecodeUtils.wrapObj(loc, rethrowLabel));
+    }
     seq.add(
         new CodeDynamic(
             new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, excKey)));

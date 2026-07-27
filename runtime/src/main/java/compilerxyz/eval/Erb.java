@@ -94,8 +94,11 @@ public final class Erb {
     return !res.exits().isEmpty();
   }
 
-  /** Operand-position extraction: requires a fall-through value and no pending exits. */
-  public Optional<CodeValue> mustCv(EResult<EvalRes> r) {
+  /**
+   * Operand-position extraction: requires a fall-through value and no pending
+   * exits, and installs the result's default-exit scope tree into the context.
+   */
+  public Optional<CodeValue> mustCv(ExprContext xx, EResult<EvalRes> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
       return Optional.empty();
@@ -104,6 +107,7 @@ public final class Erb {
     if (exitsRejected(res)) {
       return Optional.empty();
     }
+    xx.scope.adopt(res.scope());
     if (!(res.cv().value() instanceof Opt.Some<Value>)) {
       errPush(
           "Expression does not fall through (contains an unreachable control jump like"
@@ -114,7 +118,7 @@ public final class Erb {
   }
 
   /** Like {@link #mustCv} but allows a control-ended value; still rejects pending exits. */
-  public Optional<CodeValue> mustCvMaybeUnreachable(EResult<EvalRes> r) {
+  public Optional<CodeValue> mustCvMaybeUnreachable(ExprContext xx, EResult<EvalRes> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
       return Optional.empty();
@@ -123,6 +127,7 @@ public final class Erb {
     if (exitsRejected(res)) {
       return Optional.empty();
     }
+    xx.scope.adopt(res.scope());
     return Optional.of(res.cv());
   }
 

@@ -1445,6 +1445,65 @@ public final class T0165MutableDropForkTest {
   }
 
   @Test
+  public void test00250ThrowAfterMutationSameStatement() {
+    // Mutation and throw inside one statement of the outer block: the drop at
+    // the throw point must already reflect the mutated state.
+    var mb = new TestMb();
+    var messages =
+        compileAndRun(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "MutCanary"),
+                mb.tryCatchFinally(
+                    mb.seqOf(
+                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.seqOf(
+                            mb.set(mb.scopeUse("a"), mb.num(3.0)),
+                            maybeThrow(mb, true, "boom_same"))),
+                    new TestMb.Catch(
+                        "e",
+                        mb.builtin("types", "string"),
+                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")))),
+                    null),
+                mb.call(mb.log(), mb.str("after"))));
+    assertEquals(
+        TList.of("drop_odd", "boom_same", "after"),
+        messages,
+        () -> "throw after a same-statement mutation must drop with the mutated state; got"
+            + " logs=" + messages);
+  }
+
+  @Test
+  public void test00260ThrowBeforeMutationSameStatement() {
+    // The runtime path throws before the mutation even though the mutation
+    // sits later in the same statement; the drop must use the initial state.
+    var mb = new TestMb();
+    var messages =
+        compileAndRun(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "MutCanary"),
+                mb.tryCatchFinally(
+                    mb.seqOf(
+                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.seqOf(
+                            maybeThrow(mb, true, "boom_first"),
+                            mb.set(mb.scopeUse("a"), mb.num(3.0)),
+                            maybeThrow(mb, false, "boom_last"))),
+                    new TestMb.Catch(
+                        "e",
+                        mb.builtin("types", "string"),
+                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")))),
+                    null),
+                mb.call(mb.log(), mb.str("after"))));
+    assertEquals(
+        TList.of("drop_even", "boom_first", "after"),
+        messages,
+        () -> "throw before a same-statement mutation must drop with the initial state; got"
+            + " logs=" + messages);
+  }
+
+  @Test
   public void test00300ThrowAfterMutationDropsWithMutatedMessage() {
     var mb = new TestMb();
     var messages = compileAndRun(program(mb, false, true));

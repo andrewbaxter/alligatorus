@@ -62,6 +62,12 @@ public final class Scope {
   }
   public final TList<Binding> entries = new TList<>();
   public final TList<@Nullable ConstKey> names = new TList<>();
+  /**
+   * Drop-state registries parallel to {@code entries}. Shared across forks and
+   * replaces — the registry is bound to the live variable's identity, not to
+   * any one fork of its compile-time state.
+   */
+  public final TList<Opt<DropStates>> dropStates = new TList<>();
 
   public int depth() {
     return entries.size();
@@ -70,11 +76,13 @@ public final class Scope {
   public void pushNamed(ConstKey name, Binding binding) {
     entries.add(binding);
     names.add(name);
+    dropStates.add(Opt.none());
   }
 
   public void push(Binding binding) {
     entries.add(binding);
     names.add(null);
+    dropStates.add(Opt.none());
   }
 
   public void pushAll(compilerxyz.util.TMap<ConstKey, Binding> named) {
@@ -87,6 +95,7 @@ public final class Scope {
     while (entries.size() > targetDepth) {
       entries.remove(entries.size() - 1);
       names.remove(names.size() - 1);
+      dropStates.remove(dropStates.size() - 1);
     }
   }
 
@@ -109,6 +118,7 @@ public final class Scope {
     for (int i = 0; i < entries.size(); i++) {
       out.entries.add(entries.get(i).bindingFork());
       out.names.add(names.get(i));
+      out.dropStates.add(dropStates.get(i));
     }
     return out;
   }
@@ -140,15 +150,28 @@ public final class Scope {
   }
 
   /**
+   * Install {@code other}'s contents as this scope's, unless it already is
+   * this scope. Used to adopt an expression result's default-exit scope tree
+   * before evaluating the next expression.
+   */
+  public void adopt(Scope other) {
+    if (other != this) {
+      replace(other);
+    }
+  }
+
+  /**
    * Replace this scope's contents with {@code other}'s. Used to install a
    * fork before running a branch, and to install the merge result after.
    */
   public void replace(Scope other) {
     entries.clear();
     names.clear();
+    dropStates.clear();
     for (int i = 0; i < other.entries.size(); i++) {
       entries.add(other.entries.get(i));
       names.add(other.names.get(i));
+      dropStates.add(other.dropStates.get(i));
     }
   }
 }

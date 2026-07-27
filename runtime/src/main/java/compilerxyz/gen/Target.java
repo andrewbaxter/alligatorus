@@ -41,7 +41,8 @@ public interface Target {
 
     EResult<Code> targetTryFinally(QExprId loc, Code body, Code finally_);
 
-    EResult<Code> targetTryDropOnThrow(QExprId loc, Code body, Code drop);
+    EResult<Code> targetTryDropOnThrow(
+            QExprId loc, Code body, TList<Code> drops, BindingId.Local stateSlot);
 
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
