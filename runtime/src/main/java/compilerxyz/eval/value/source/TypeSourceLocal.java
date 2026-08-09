@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
@@ -26,7 +26,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
 @BuiltinPath("source.local")
-@BuiltinIdentity(uniqueId = 6157L)
+@BuiltinLight(uniqueId = 6157L)
 public record TypeSourceLocal() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
@@ -34,12 +34,7 @@ public record TypeSourceLocal() implements Type, AspectFunction, AspectInitialBi
     return "source.local";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceLocal.class, "source_local");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -66,7 +61,7 @@ public record TypeSourceLocal() implements Type, AspectFunction, AspectInitialBi
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -82,7 +77,7 @@ public record TypeSourceLocal() implements Type, AspectFunction, AspectInitialBi
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

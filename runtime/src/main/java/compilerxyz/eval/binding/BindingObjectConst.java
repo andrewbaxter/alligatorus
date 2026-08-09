@@ -1,5 +1,9 @@
 package compilerxyz.eval.binding;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -14,7 +18,7 @@ import compilerxyz.util.TList;
 
 public record BindingObjectConst(Type type, Object data) implements Binding {
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(type, data)));
   }
 
@@ -23,10 +27,7 @@ public record BindingObjectConst(Type type, Object data) implements Binding {
     return this;
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    return this == other || this.equals(other);
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

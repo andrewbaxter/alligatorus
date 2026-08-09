@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.binding;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -22,7 +26,7 @@ import compilerxyz.util.Opt;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     CodeDynamic dyn;
     if (dynamicKey instanceof BindingId.Local local) {
       // Local slot: pick the typed load opcode from the binding's own type so a
@@ -43,10 +47,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     return this;
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    return this == other || this.equals(other);
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

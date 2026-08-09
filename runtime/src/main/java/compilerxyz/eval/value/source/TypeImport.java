@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
@@ -25,7 +25,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
 @BuiltinPath("import")
-@BuiltinIdentity(uniqueId = 6160L)
+@BuiltinLight(uniqueId = 6160L)
 public record TypeImport() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
@@ -33,12 +33,7 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
     return "import";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeImport.class, "import");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -57,7 +52,7 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -73,7 +68,7 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

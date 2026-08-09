@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.double_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -20,7 +20,7 @@ import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.numeric.Numerics;
@@ -49,7 +49,7 @@ import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinIdentity(uniqueId = 6177L)
+@BuiltinLight(uniqueId = 6177L)
 public record TypeDoubleDynamicBox()
     implements
         Type,
@@ -80,12 +80,7 @@ public record TypeDoubleDynamicBox()
     return new TypeDoubleDynamic();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeDoubleDynamicBox.class, "double_dynamic_box");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -226,4 +221,6 @@ public record TypeDoubleDynamicBox()
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
+
+
 }

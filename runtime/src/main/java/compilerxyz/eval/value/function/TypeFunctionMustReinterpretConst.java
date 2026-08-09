@@ -2,7 +2,7 @@ package compilerxyz.eval.value.function;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.ExporterAny;
@@ -38,21 +38,16 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
 @BuiltinPath("must_reinterpret")
-@BuiltinIdentity(uniqueId = 6111L)
+@BuiltinLight(uniqueId = 6111L)
 public record TypeFunctionMustReinterpretConst()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionMustReinterpretConst.class, "function_must_reinterpret_const");
 
   @Override
   public String typeDesc() {
     return "fn-must-reinterpret";
   }
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -136,7 +131,7 @@ public record TypeFunctionMustReinterpretConst()
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -152,7 +147,7 @@ public record TypeFunctionMustReinterpretConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

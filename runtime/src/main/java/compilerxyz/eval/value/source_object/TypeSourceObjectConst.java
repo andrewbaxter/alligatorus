@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -22,7 +22,7 @@ import compilerxyz.util.Opt;
  * <p>Distinct from {@link TypeTypeSourceObjectConst} which is the meta-type of type-descriptor
  * values (i.e., the type of TypeSourceObjectDynamic-valued expressions themselves).
  */
-@BuiltinIdentity(uniqueId = 6137L)
+@BuiltinLight(uniqueId = 6137L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     implements Type,
         compilerxyz.gen.AspectArtifact,
@@ -56,7 +56,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
 
   @Override
   public EResult<compilerxyz.gen.Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(dynamic));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectConst(dynamic), dynamic));
   }
 
 

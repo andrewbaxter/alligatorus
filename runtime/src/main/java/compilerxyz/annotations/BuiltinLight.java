@@ -1,5 +1,5 @@
 package compilerxyz.annotations;
 
-public @interface BuiltinIdentity {
+public @interface BuiltinLight {
   long uniqueId();
 }

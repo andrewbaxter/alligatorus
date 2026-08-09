@@ -3,76 +3,56 @@ package compilerxyz.codegen.util;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.util.TMap;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Runtime {@code Type}-descriptor lookup for codegen. The <em>descriptor
+ * expression</em> for any type discovered by {@link
+ * compilerxyz.codegen.experimental.DynamicTypeScanner} — every {@code @Builtin}
+ * type (routed to its generated {@code GenX.dynamicType()}) and any type that
+ * hand-declares a nullary {@code dynamicType()} — comes from that scan; this
+ * class is not a second registry of them.
+ *
+ * <p>What lives here is only what the scan can't derive: the primitive/leaf
+ * <em>value classes</em> (the JVM class a {@code TypeXxxDynamic} represents,
+ * e.g. {@code String} for {@code TypeStringDynamic}), built with {@code new
+ * TypeXxxDynamic()}, and the composite wrappers ({@code TList}/{@code
+ * Opt}/{@code EResult}/{@code TMap}).
+ */
 public final class DynamicTypes {
   private DynamicTypes() {}
 
-  private enum LeafKind {
-    NULLARY_NEW,
-    STATIC_FACTORY,
-    DELEGATED
-  }
-
-  private record LeafEntry(LeafKind kind, TypeName valueClass, ClassName factoryOwner) {
-    LeafEntry(LeafKind kind, TypeName valueClass) {
-      this(kind, valueClass, null);
-    }
-  }
-
   private record CompositeEntry(int arity, TypeName valueClass) {}
 
-  private static final Map<ClassName, LeafEntry> LEAVES = new HashMap<>();
+  /** Value types built with {@code new X()}, mapped to the JVM class they represent. */
+  private static final Map<ClassName, TypeName> NULLARY = new HashMap<>();
   private static final Map<ClassName, CompositeEntry> COMPOSITES = new HashMap<>();
 
+  /** Descriptor expressions discovered by the scan; injected before any lookup. */
+  private static Map<ClassName, CodeBlock> scannedLeaves = Map.of();
+
+  public static void setScannedLeaves(TMap<ClassName, CodeBlock> scanned) {
+    scannedLeaves = new HashMap<>();
+    for (var e : scanned.entrySet()) scannedLeaves.put(e.getKey(), e.getValue());
+  }
+
   private static void nullary(String pkg, String cls, TypeName valueClass) {
-    var cn = ClassName.get(pkg, cls);
-    LEAVES.put(cn, new LeafEntry(LeafKind.NULLARY_NEW, valueClass));
+    NULLARY.put(ClassName.get(pkg, cls), valueClass);
   }
 
   private static void nullary(String pkg, String cls) {
     var cn = ClassName.get(pkg, cls);
-    LEAVES.put(cn, new LeafEntry(LeafKind.NULLARY_NEW, cn));
-  }
-
-  private static void factory(String pkg, String cls, TypeName valueClass) {
-    var cn = ClassName.get(pkg, cls);
-    LEAVES.put(cn, new LeafEntry(LeafKind.STATIC_FACTORY, valueClass));
-  }
-
-  private static void factory(String pkg, String cls) {
-    var cn = ClassName.get(pkg, cls);
-    LEAVES.put(cn, new LeafEntry(LeafKind.STATIC_FACTORY, cn));
-  }
-
-  /**
-   * The value-class is {@code cls}, but the runtime {@code Type} descriptor comes from
-   * {@code factoryOwner.dynamicType()}. Use when the source-facing Type descriptor lives on a
-   * separate helper class from the value class.
-   */
-  private static void delegated(
-      String valuePkg, String valueCls, String factoryPkg, String factoryCls) {
-    var value = ClassName.get(valuePkg, valueCls);
-    var factory = ClassName.get(factoryPkg, factoryCls);
-    LEAVES.put(value, new LeafEntry(LeafKind.DELEGATED, value, factory));
-  }
-
-  private static void delegated(
-      String valuePkg, String valueCls, String factoryPkg, String factoryCls,
-      TypeName valueClass) {
-    var key = ClassName.get(valuePkg, valueCls);
-    var factory = ClassName.get(factoryPkg, factoryCls);
-    LEAVES.put(key, new LeafEntry(LeafKind.DELEGATED, valueClass, factory));
+    NULLARY.put(cn, cn);
   }
 
   private static void composite(String pkg, String cls, int arity, TypeName valueClass) {
-    var cn = ClassName.get(pkg, cls);
-    COMPOSITES.put(cn, new CompositeEntry(arity, valueClass));
+    COMPOSITES.put(ClassName.get(pkg, cls), new CompositeEntry(arity, valueClass));
   }
 
   static {
-    // Nullary Type descriptors — value classes are unboxed / distinct where appropriate.
+    // Nullary value types — value classes are unboxed / distinct where appropriate.
     nullary("compilerxyz.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
     nullary("compilerxyz.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
     nullary("compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.INT);
@@ -118,67 +98,6 @@ public final class DynamicTypes {
     nullary("compilerxyz.eval.value.source", "TypeSourceRemote");
     nullary("compilerxyz.eval.value.source", "TypeSourceSha256");
 
-    // Static-factory descriptors — interfaces where value class == descriptor class.
-    factory("compilerxyz.eval", "Type");
-    factory("compilerxyz.eval", "ExprContext");
-    factory("compilerxyz.eval", "Scope");
-    factory("compilerxyz.eval", "EvalContext");
-    factory("compilerxyz.eval", "QExprId");
-    factory("compilerxyz.eval", "CodeValue");
-    delegated("compilerxyz.eval", "Code", "compilerxyz.gen", "GenCode");
-    factory("compilerxyz.eval", "ConstKey");
-    factory("compilerxyz.eval", "Expr");
-    delegated("compilerxyz.eval.aspect", "Aspect", "compilerxyz.gen", "GenAspect");
-    factory("compilerxyz.eval.push", "StagedExpr");
-    delegated(
-        "compilerxyz.eval.value", "ValueDynamicSource",
-        "compilerxyz.gen", "GenValueDynamicSource");
-    factory("compilerxyz.eval.value.source_interface", "InterfaceData");
-    factory("compilerxyz.eval.value.source_interface", "TypeSourceInterfaceDynamic");
-    factory("compilerxyz.eval.dynamic", "JavaDataDescriptor");
-    factory("compilerxyz.eval.dynamic.target", "TargetBindSub");
-    factory("compilerxyz.eval.dynamic.target", "BindResult");
-    factory("compilerxyz.eval.dynamic.target", "RecordBindField");
-    factory("compilerxyz.eval.dynamic.target", "TupleBindSlot");
-    factory("compilerxyz.eval.dynamic.target", "IfBranch");
-    factory("compilerxyz.eval.dynamic.target", "TryCatchClause");
-    factory("compilerxyz.eval.dynamic.target", "TargetCase");
-    factory("compilerxyz.eval.dynamic", "CodeDynamic");
-    factory("compilerxyz.eval", "BindingId");
-    factory("compilerxyz.eval.value.source_object_new", "TypeSourceObjectNewDynamic");
-    factory("compilerxyz.eval.value.source_union_new", "TypeSourceUnionNewDynamic");
-    factory("compilerxyz.eval", "DefinitionSet");
-    factory("compilerxyz.eval.value.source_object", "SourceDataMethodData");
-    factory("compilerxyz.eval.value.source_interface", "InterfaceMethodData");
-    delegated(
-        "compilerxyz.eval.value.source_function", "TypeSourceFunctionConst",
-        "compilerxyz.gen", "GenTypeSourceFunctionConst");
-    delegated(
-        "compilerxyz.eval.value.source_object", "TypeSourceObjectDynamic",
-        "compilerxyz.gen", "GenTypeSourceObjectDynamic");
-    delegated(
-        "compilerxyz.eval.value.source_union", "TypeSourceUnionDynamic",
-        "compilerxyz.gen", "GenTypeSourceUnionDynamic");
-    factory("compilerxyz.gen", "Value");
-    LEAVES.put(
-        ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
-        new LeafEntry(
-            LeafKind.DELEGATED,
-            ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"),
-            ClassName.get("compilerxyz.gen", "GenAspectBindBindResult")));
-    factory("compilerxyz.gen", "Binding");
-    factory("compilerxyz.gen", "Target");
-    // Aspects: dynamicType() lives on the GenAspectXxx companion class.
-    for (var name : new String[] {
-        "AspectFunction", "AspectField", "AspectBind", "AspectBindDynamic",
-        "AspectConsumeDynamic", "AspectDropDynamic", "AspectDropDynamicLight",
-        "AspectInitialBind", "AspectStackValueDynamic", "AspectLift", "AspectType",
-        "AspectFieldUseDynamic", "AspectElementUseDynamic",
-        "AspectArtifact", "AspectAspect", "AspectOperatorAdd", "AspectOperatorMod", "AspectSet",
-        "AspectInt"}) {
-      delegated("compilerxyz.gen", name, "compilerxyz.gen", "Gen" + name);
-    }
-
     // Composite descriptors.
     composite(
         "compilerxyz.eval.value.list",
@@ -202,44 +121,24 @@ public final class DynamicTypes {
         ClassName.get("compilerxyz.util", "TMap"));
   }
 
-  private static final java.util.Set<ClassName> GEN_TRAITS =
-      java.util.Set.of(
-          ClassName.get("compilerxyz.gen", "Value"),
-          ClassName.get("compilerxyz.gen", "Binding"),
-          ClassName.get("compilerxyz.gen", "Target"),
-          ClassName.get("compilerxyz.gen", "CodeDyn"),
-          ClassName.get("compilerxyz.eval", "Type"));
-
   public static CodeBlock leaf(ClassName descriptor) {
-    var entry = leafEntry(descriptor);
-    return switch (entry.kind()) {
-      case NULLARY_NEW -> CodeBlock.of("new $T()", descriptor);
-      case STATIC_FACTORY -> {
-        if (GEN_TRAITS.contains(descriptor)) {
-          // Trait interfaces (Value/Binding/Target/Type/CodeDyn) no longer
-          // carry a handwritten dynamicType() — route through the codegen
-          // companion GenX.dynamicType() instead.
-          var gen = ClassName.get("compilerxyz.gen", "Gen" + descriptor.simpleName());
-          yield CodeBlock.of("$T.dynamicType()", gen);
-        }
-        yield CodeBlock.of("$T.dynamicType()", descriptor);
-      }
-      case DELEGATED -> CodeBlock.of("$T.dynamicType()", entry.factoryOwner());
-    };
+    if (NULLARY.containsKey(descriptor)) {
+      return CodeBlock.of("new $T()", descriptor);
+    }
+    var scanned = scannedLeaves.get(descriptor);
+    if (scanned != null) return scanned;
+    if (descriptor.packageName().equals("compilerxyz.gen")) {
+      // A gen-package companion is its own descriptor source.
+      return CodeBlock.of("$T.dynamicType()", descriptor);
+    }
+    throw new IllegalArgumentException(
+        "DynamicTypes has no descriptor for " + descriptor.canonicalName());
   }
 
   public static TypeName leafValueClass(ClassName descriptor) {
-    return leafEntry(descriptor).valueClass();
-  }
-
-  private static LeafEntry leafEntry(ClassName descriptor) {
-    var entry = LEAVES.get(descriptor);
-    if (entry != null) return entry;
-    if (descriptor.packageName().equals("compilerxyz.gen")) {
-      return new LeafEntry(LeafKind.STATIC_FACTORY, descriptor);
-    }
-    throw new IllegalArgumentException(
-        "DynamicTypes has no leaf entry for " + descriptor.canonicalName());
+    var value = NULLARY.get(descriptor);
+    // Every other type is its own value class (the JVM class is the type).
+    return value != null ? value : descriptor;
   }
 
   public static CodeBlock composite(ClassName wrapper, CodeBlock... params) {

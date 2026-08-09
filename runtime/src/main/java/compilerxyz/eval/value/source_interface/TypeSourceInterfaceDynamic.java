@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinLight;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -62,7 +62,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@Builtin(uniqueId = 6004L)
+@BuiltinLight(uniqueId = 6004L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
     implements
         compilerxyz.eval.TypeAspect,
@@ -92,46 +92,14 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     return data;
   }
 
-  public static compilerxyz.eval.Type dynamicType() {
-    return TypeSourceInterfaceDynamicMeta.INSTANCE;
-  }
-  static final class TypeSourceInterfaceDynamicMeta {
-    static final compilerxyz.eval.value.object_.TypeObjectConst INSTANCE = build();
-
-    private TypeSourceInterfaceDynamicMeta() {}
-
-    private static compilerxyz.eval.value.object_.TypeObjectConst build() {
-      var castRules =
-          new compilerxyz.util.TList<
-              compilerxyz.eval.value.object_.TypeObjectCastRule>();
-      castRules.add(
-          new compilerxyz.eval.value.object_.TypeObjectCastRule.RestampToIdentity(
-              compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
-      castRules.add(
-          new compilerxyz.eval.value.object_.TypeObjectCastRule.InvokeVirtualByDestIdentity(
-              compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
-              compilerxyz.eval.dynamic.JavaInternalName.fromClass(TypeSourceInterfaceDynamic.class),
-              "getInterfaceData",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(InterfaceData.class),
-                  compilerxyz.util.TList.of())));
-      var trivialIdentityAspects = new compilerxyz.util.TList<compilerxyz.eval.Unique>();
-      trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
-      var meta = new compilerxyz.eval.value.object_.TypeObjectMeta("type_source_interface_dynamic_meta", trivialIdentityAspects, castRules, new compilerxyz.util.TList<
-              compilerxyz.eval.value.object_.TypeObjectCastFromRule>(), compilerxyz.util.Opt.<compilerxyz.eval.value.object_.ObjectAspectSource>none());
-      return new compilerxyz.eval.value.object_.TypeObjectConst(
-          meta,
-          TypeSourceInterfaceDynamic.class,
-          compilerxyz.util.Opt.<compilerxyz.eval.Type>none(),
-          compilerxyz.util.Opt.<compilerxyz.artifact.ExporterRoot>none());
-    }
-  }
-
   public static compilerxyz.eval.Type fromInterfaceData(
       compilerxyz.eval.ExprContext xx, InterfaceData data) {
     return new TypeSourceInterfaceDynamic(data);
   }
 
+  public static compilerxyz.eval.Type dynamicType() {
+    return TypeTypeSourceInterfaceDynamic.GENERIC;
+  }
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
@@ -143,17 +111,12 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         compilerxyz.eval.dynamic.JavaInternalName.of(binaryName.replace('.', '/')));
   }
 
+
   @Override
   public String typeDesc() {
     var d = data.description;
     if (d != null) return d;
     return "interface";
-  }
-
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceInterfaceDynamic.class, "source_interface_dynamic");
-
-                public Type valueType() {
-    return META;
   }
 
   @Override
@@ -357,7 +320,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeSourceInterfaceDynamic(data)));
+      return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceInterfaceDynamic(compilerxyz.util.Opt.some(new TypeSourceInterfaceDynamic(data))), new TypeSourceInterfaceDynamic(data)));
     }
   }
 
@@ -480,7 +443,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public Type aspectTypeType(Value value) {
-    return InterfaceData.dynamicType();
+    return compilerxyz.gen.GenInterfaceData.dynamicType();
   }
 
   @Override
@@ -490,7 +453,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceInterfaceDynamic(compilerxyz.util.Opt.some(this)), this));
   }
 
   @Override

@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -40,7 +40,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinIdentity(uniqueId = 6112L)
+@BuiltinLight(uniqueId = 6112L)
 public record TypeMethodDynamic(
     Type receiver,
     TList<FunctionParam> params,
@@ -81,11 +81,7 @@ public record TypeMethodDynamic(
     return "dynamic method";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMethodDynamic.class, "method_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -159,7 +155,7 @@ public record TypeMethodDynamic(
 
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -187,7 +183,7 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

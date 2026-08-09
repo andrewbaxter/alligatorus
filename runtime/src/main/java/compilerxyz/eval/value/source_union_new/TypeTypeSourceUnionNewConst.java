@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -43,7 +43,7 @@ import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinIdentity(uniqueId = 6143L)
+@BuiltinLight(uniqueId = 6143L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectArtifact, AspectBind, AspectFunction, ExporterAny {
 
@@ -56,11 +56,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
     return "definition_set_union_new_const";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceUnionNewConst.class, "type_source_union_new_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -90,7 +86,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -232,7 +228,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

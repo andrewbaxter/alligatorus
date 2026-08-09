@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -25,7 +29,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
     implements Binding {
 
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     var resultFields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
       resultFields.put(entry.getKey(), new RecordField.Dynamic(entry.getValue()));
@@ -43,10 +47,7 @@ public record BindingRecordDynamic(BindingId dynamicKey, TOrderedMap<ConstKey, T
     return this;
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    return this == other || this.equals(other);
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

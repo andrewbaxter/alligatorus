@@ -1,11 +1,15 @@
 package compilerxyz.eval.value.source_function;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -37,7 +41,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.function.TypeFunctionDynamic;
 import compilerxyz.safejson.JsonValue;
@@ -55,7 +59,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
 
-@Builtin(uniqueId = 6022L)
+@BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
     implements Type,
         AspectArtifact,
@@ -85,11 +89,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return "definition_set_function";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceFunctionConst.class, "source_function_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -384,7 +384,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return data.exceptionType == null ? Opt.none() : Opt.some(data.exceptionType);
   }
 
@@ -400,12 +400,12 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   private record SourceFunctionConstBinding(Value value) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
       return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
@@ -414,10 +414,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return this;
     }
 
-    @Override
-    public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-      return this == other || this.equals(other);
-    }
+
 
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
@@ -440,7 +437,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeSourceFunctionConst(data)));
+      return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeSourceFunctionConst(data)));
     }
   }
 

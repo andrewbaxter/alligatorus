@@ -1,0 +1,37 @@
+There's an intersection of behaviors with scope forking/merging, labeled returns, and drop semantics.
+
+The fundamental consideration is that any expression can mutate scope entries, and each scope "state" may require/produce unique drop code at the end of the scope. Around branches scopes must agree. The way we do this currently is "forking" the scope before any branch, then "merging" where the branches come back together. Each expression has two possible return paths - the immediate value (or none if local control ends here) and a collection of child expressions that returned to a label.
+
+The scope should be part of the eval context, as a single flat pcollection/immutable datastructure sorted map (instead of a stack of maps tracked by the expression context). Each scope state (local to the eval context) has two unique ids - the "state" and a "dropState" that are basically counters. We also track stack depth. The map is keyed with a composite over (depth, depth start marker|label|trycatch|binding id), and range queries (using the depth start marker) can be used for popping. Whenever a type modifies a scope entry, it increments "state" and optionally "dropState" and modifies the data structure replacing the current scope in the eval context. TODO nope - mutable, explicit copy; TODO binding key indexed, not flat
+
+Here's how I think things should work:
+
+- The "scope" stack is expanded to be an enum, where each level is either
+	A. a binding map (pushed at every block, and other places that currently create scopes - this is what's currently stored)
+	B. a label (pushed at a labeled expression)
+	C. a try/catch expression (with jump key)
+
+- At each scope level, keep a lookup of "exit scope states". This is basically a mapping of scope state ids to 
+	1. a mapping of dest label to jump target (optional, for the scope-end drop code in an unlabeled context) and
+	2. the scope's finally jump target
+
+- In dynamic code, add a "exception jump target" field to function call and throw instructions (and anything else required?)
+
+- At each (labeled or non-final-statement) return, add the current scope state to the scope level lookup if it doesn't exist, with the dest label, and emit a jump
+
+- For each expression that can throw, the value should be duped/stored. Subsequent sibling expressions should be nested in a try/finally (push the try/catch to the scope stack?), where the finally block loads the stored value and executes drop on it. If no sibling can throw, during code rendering the dup/store/trycatch/drop should be elided.
+
+- At each expression that can throw (e.g. a dynamic function call, in the aspect call implementation), do `typeCastTo` on the exception and if the resulting code isn't None
+	1. create a finally block and store that jump target in the call,
+	2. look up or create a new scope finally dest for the parent scope/trycatch target in the scope stack,
+	3. in the finally block emit a store for the exception, cast the exception (if the cast code isn't empty), then re-throw using the parent throw dest
+
+- At a block end, add the final state to the exit state mapping, with the immediate parent label if there is one. Then (via the Target) for each exit scope state emit 
+	1. a finally block that drops that scope state and re-throws, 
+	2. for each dest label a finally block that ends with a jump to the next higher finally handler or label end, whichever's nearest. If it goes to the next higher finally handler, add an entry to the next higher exit scope state lookup and use the jump dest you created for the jump.
+
+- Drop must never throw. I think the function signature just won't have a defined exception, so any code that throws is a compile error.
+
+Other notes from discussion:
+
+- Any nested language is incompatible with mutable drops - a single lexical scope could be split in the middle due to mutation but only one try/catch can wrap it. This requires workarounds. In JS, you can create a single handler and communicate the drop state to it, and use a switch to execute the correct drop code (slightly more runtime instructions).

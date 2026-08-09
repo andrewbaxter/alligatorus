@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.uint_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -84,7 +84,7 @@ import compilerxyz.gen.GenAspectOperatorNeg;
 import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 
-@BuiltinIdentity(uniqueId = 6189L)
+@BuiltinLight(uniqueId = 6189L)
 public record TypeUintConst()
     implements
         Type,
@@ -148,12 +148,7 @@ public record TypeUintConst()
         "TypeUintConst::get: expected uint ValueObjectConst, got " + value.getClass());
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUintConst.class, "uint_const");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -366,7 +361,7 @@ public record TypeUintConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

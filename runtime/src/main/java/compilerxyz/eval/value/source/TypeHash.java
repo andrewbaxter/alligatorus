@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -21,7 +21,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
-@BuiltinIdentity(uniqueId = 6155L)
+@BuiltinLight(uniqueId = 6155L)
 public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, ExporterAny {
 
   @Override
@@ -29,12 +29,7 @@ public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, Ex
     return "hash";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeHash.class, "hash");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -67,7 +62,7 @@ public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, Ex
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

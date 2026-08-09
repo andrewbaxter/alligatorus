@@ -1,6 +1,6 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -17,7 +17,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.jspecify.annotations.Nullable;
 
-@Builtin(uniqueId = 6001L)
+@BuiltinFull(uniqueId = 6001L)
 public final class ExprContext {
   public final @Nullable Type currentExceptionType;
   public final ImportStateId importState;
@@ -42,32 +42,4 @@ public final class ExprContext {
     return new ExprContext(scope, target, vx, importState, newExceptionType);
   }
 
-  public static Type dynamicType() {
-    return ExprContextDynamicType.INSTANCE;
-  }
-
-  static final class ExprContextDynamicType {
-    static final TypeObjectDynamic INSTANCE = build();
-
-    private ExprContextDynamicType() {}
-
-    private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.fromClass(ExprContext.class);
-      var trivialIdentityAspects = new TList<Unique>();
-      trivialIdentityAspects.add(GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY);
-      var castFromRules = new TList<TypeObjectCastFromRule>();
-      castFromRules.add(
-          new TypeObjectCastFromRule.RestampFromIdentity(
-              GenTrivialIdentityAspects.EXPR_CONTEXT_IDENTITY));
-      return new TypeObjectDynamic(
-          new compilerxyz.eval.value.object_.TypeObjectMeta("ExprContext", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
-          jvmClass,
-          JavaDataDescriptor.fromClass(ExprContext.class),
-          ExprContext.class,
-          new TList<ObjectDataField>(),
-          new TList<ObjectMethod>(),
-          ObjectDropKind.DYNAMIC_LIGHT,
-          Opt.<JavaInternalName>none());
-    }
-  }
 }

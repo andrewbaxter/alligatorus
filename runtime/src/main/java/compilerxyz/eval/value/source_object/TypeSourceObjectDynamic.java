@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.source_object;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -31,7 +31,7 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
@@ -53,7 +53,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
 
-@Builtin(uniqueId = 6020L)
+@BuiltinFull(uniqueId = 6020L)
 public final class TypeSourceObjectDynamic
     implements
         Type,
@@ -157,6 +157,7 @@ public final class TypeSourceObjectDynamic
             compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(setId, objectIndex)));
   }
 
+
   @Override
   public String typeDesc() {
     if (description != null) return description;
@@ -169,11 +170,7 @@ public final class TypeSourceObjectDynamic
     return new TypeTypeSourceObjectConst(this).exportArtifact(xx, loc);
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceObjectDynamic.class, "source_object_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -559,7 +556,7 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectConst(this), this));
   }
 
   @Override

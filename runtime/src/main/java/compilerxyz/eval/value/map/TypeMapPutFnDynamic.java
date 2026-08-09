@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -36,7 +36,7 @@ import compilerxyz.util.TList;
 import java.util.Map;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinIdentity(uniqueId = 6126L)
+@BuiltinLight(uniqueId = 6126L)
 public record TypeMapPutFnDynamic(Type keyType, Type valueType)
     implements
         Type,
@@ -49,12 +49,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
     return "map put fn";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapPutFnDynamic.class, "map_put_fn_dynamic");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -158,7 +153,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -169,7 +164,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

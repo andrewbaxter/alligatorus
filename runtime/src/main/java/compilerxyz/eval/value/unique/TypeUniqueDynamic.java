@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.unique;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -62,9 +62,9 @@ import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.GenAspectBindDynamic;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 
-@Builtin(uniqueId = 6003L)
+@BuiltinFull(uniqueId = 6003L)
 public record TypeUniqueDynamic()
     implements
         Type,
@@ -91,11 +91,7 @@ public record TypeUniqueDynamic()
     return "unique";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueDynamic.class, "unique");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -343,7 +339,7 @@ public record TypeUniqueDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

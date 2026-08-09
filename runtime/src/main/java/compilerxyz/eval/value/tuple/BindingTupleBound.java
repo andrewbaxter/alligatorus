@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.tuple;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -20,7 +24,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
     implements Binding {
 
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     boolean hasDynamic =
         elements.stream().anyMatch(f -> f instanceof TupleScopeField.Dynamic);
     Code useCode;
@@ -41,7 +45,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
       TupleElement te =
           switch (e) {
             case TupleScopeField.Scope s -> new TupleElement.EvalRes(
-                EResult.ok(s.binding().bindingUse(xx, loc, Code.none(loc))));
+                EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
             case TupleScopeField.Dynamic d -> new TupleElement.Dynamic(d.type());
             case TupleScopeField.Error er -> new TupleElement.EvalRes(EResult.errs(er.errors()));
           };
@@ -63,31 +67,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
     return new BindingTupleBound(forked, jsKey);
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    if (this == other) return true;
-    if (!(other instanceof BindingTupleBound o)) return false;
-    if (o.elements.size() != elements.size()) return false;
-    for (int i = 0; i < elements.size(); i++) {
-      var a = elements.get(i);
-      var b = o.elements.get(i);
-      switch (a) {
-        case TupleScopeField.Scope s -> {
-          if (!(b instanceof TupleScopeField.Scope os)
-              || !s.binding().bindingEquals(xx, loc, os.binding())) {
-            return false;
-          }
-        }
-        case TupleScopeField.Dynamic d -> {
-          if (!d.equals(b)) return false;
-        }
-        case TupleScopeField.Error er -> {
-          if (!er.equals(b)) return false;
-        }
-      }
-    }
-    return true;
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

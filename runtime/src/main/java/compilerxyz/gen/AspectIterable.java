@@ -1,7 +1,7 @@
 package compilerxyz.gen;
 
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -10,7 +10,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1027L, identityId = 4027L)
+@BuiltinFull(uniqueId = 1027L, identityId = 4027L)
 public interface AspectIterable extends Aspect {
   Type aspectIterableElementType();
 

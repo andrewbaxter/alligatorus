@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source_function;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -15,7 +15,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.empty_.ValueEmpty;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -36,7 +36,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import org.jspecify.annotations.Nullable;
 
-@BuiltinIdentity(uniqueId = 6135L)
+@BuiltinLight(uniqueId = 6135L)
 public final class TypeTypeSourceFunctionConst {
   private TypeTypeSourceFunctionConst() {}
 
@@ -56,9 +56,6 @@ public final class TypeTypeSourceFunctionConst {
       return "definition_set_function";
     }
 
-                                public Type valueType() {
-      return this;
-    }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {

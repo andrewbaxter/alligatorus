@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -41,7 +41,7 @@ import java.util.function.Function;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinIdentity(uniqueId = 6132L)
+@BuiltinLight(uniqueId = 6132L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
     implements
         Type,
@@ -55,11 +55,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     return "option(" + elementType.typeDesc() + ")." + (isSome ? "some" : "none");
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionVariantConstructorDynamic.class, "option_variant_constructor_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -145,7 +141,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -156,7 +152,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

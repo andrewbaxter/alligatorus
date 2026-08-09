@@ -2,7 +2,7 @@ package compilerxyz.eval.value.string;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -44,7 +44,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
@@ -71,7 +71,7 @@ import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenAspectStringDynamic;
 
 @BuiltinPath("types.string")
-@BuiltinIdentity(uniqueId = 6145L)
+@BuiltinLight(uniqueId = 6145L)
 public record TypeStringDynamic()
     implements
         Type,
@@ -135,11 +135,7 @@ public record TypeStringDynamic()
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(String.class));
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeStringDynamic.class, "string_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -261,7 +257,7 @@ public record TypeStringDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -356,4 +352,6 @@ public record TypeStringDynamic()
   public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
     return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
+
+
 }

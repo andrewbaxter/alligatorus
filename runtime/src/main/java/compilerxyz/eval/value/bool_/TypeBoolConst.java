@@ -3,7 +3,7 @@ package compilerxyz.eval.value.bool_;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -42,7 +42,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinIdentity(uniqueId = 6102L)
+@BuiltinLight(uniqueId = 6102L)
 public record TypeBoolConst()
     implements
         Type,
@@ -64,11 +64,7 @@ public record TypeBoolConst()
     return "bool";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolConst.class, "bool_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -163,7 +159,7 @@ public record TypeBoolConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

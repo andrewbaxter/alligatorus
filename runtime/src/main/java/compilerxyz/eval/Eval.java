@@ -83,27 +83,36 @@ public final class Eval {
     }
     var callerExc = xx.currentExceptionType;
     var erb = new Erb(loc);
-    var catchBinding = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    var initialBindOpt = erb.mustEr(GenAspectInitialBind.get(xx, loc, calleeExcType));
-    if (initialBindOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
+    var chainDestRes = ScopeChains.excDest(xx, loc);
+    if (chainDestRes.hasErrors()) return chainDestRes.reerr();
+    var chainDest = chainDestRes.requireValue("maybeWrapCallException chain dest");
+    // Site cast node: the target converts the callee's exception to the
+    // caller's declared type before it enters the chain; none when the cast
+    // is free.
+    var siteKey = new JumpKey();
+    var siteBlockRes =
+        erb.mustEr(
+            xx.target.targetCastException(xx, loc, siteKey, calleeExcType, callerExc, chainDest));
+    if (siteBlockRes.isEmpty()) return EResult.errs(erb.errors());
+    JumpKey dest;
+    if (siteBlockRes.get() instanceof Opt.Some<Code> someBlock) {
+      var levels = xx.scope.levels;
+      if (levels.isEmpty()) {
+        return EResult.err(loc, "Call with exception cast outside any scope level");
+      }
+      levels.get(levels.size() - 1).scopeLevelEmission().blocks.add(someBlock.value());
+      dest = siteKey;
+    } else {
+      if (!(chainDest instanceof Opt.Some<JumpKey> someChain)) {
+        // Nothing intervenes: the exception propagates out of the method as
+        // is, no handler routing needed at this site.
+        return EResult.ok(callCv);
+      }
+      dest = someChain.value();
     }
-    var binding = initialBindOpt.get().aspectInitialBindInitialBind(catchBinding);
-    var boundCv = binding.bindingUse(xx, loc, Code.none(loc));
-    var castCvOpt = erb.mustEr(calleeExcType.typeCastTo(xx, loc, boundCv, callerExc));
-    if (castCvOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    var castCv = castCvOpt.get();
-    if (castCv.code().isNone()) {
-      return EResult.ok(callCv);
-    }
-    var wrappedCodeOpt =
-        erb.mustEr(xx.target.targetCastException(xx, loc, callCv.code(), catchBinding, castCv));
-    if (wrappedCodeOpt.isEmpty()) {
-      return EResult.errs(erb.errors());
-    }
-    return EResult.ok(new CodeValue(wrappedCodeOpt.get(), callCv.outcome()));
+    var wrappedOpt = erb.mustEr(xx.target.targetGuarded(loc, dest, callCv.code()));
+    if (wrappedOpt.isEmpty()) return EResult.errs(erb.errors());
+    return EResult.ok(new CodeValue(wrappedOpt.get(), callCv.outcome()));
   }
 
   public static EResult<CodeValue> typecheckConvert(
@@ -166,7 +175,7 @@ public final class Eval {
       CompileImportContext cix, ImportStateId importState, Expr expr) {
     var rootLoc = expr.loc();
     var vx = new EvalContext(cix);
-    var rootScope = new Scope();
+    var rootScope = new Scope(vx);
     var target = new TargetDynamic(vx.nextLocalId);
     var xx = new ExprContext(rootScope, target, vx, importState, new TypeStringConst());
     var scopeRes = initBuiltinScope(xx, rootLoc, importState);
@@ -184,13 +193,6 @@ public final class Eval {
       return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
     }
     var evalRes = cvRes.requireValue("Eval::eval constEval");
-    if (!evalRes.exits().isEmpty()) {
-      var exitErrs = new TList<ExprErr>();
-      for (var exit : evalRes.exits()) {
-        exitErrs.add(Erb.exitUnmatchedError(exit));
-      }
-      return new CompileImport.EvalOutcome.Err(exitErrs);
-    }
     var cv = evalRes.cv();
     Opt<CodeDynamic> stage1Code;
     Opt<Value> fallbackValue;

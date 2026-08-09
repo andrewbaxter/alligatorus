@@ -2,7 +2,7 @@ package compilerxyz.eval.value.bool_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -41,7 +41,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValue;
@@ -63,7 +63,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @BuiltinPath("types.bool")
-@BuiltinIdentity(uniqueId = 6103L)
+@BuiltinLight(uniqueId = 6103L)
 public record TypeBoolDynamic()
     implements
         Type,
@@ -96,11 +96,7 @@ public record TypeBoolDynamic()
     return new TypeBoolDynamicBox();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamic.class, "bool_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -176,7 +172,7 @@ public record TypeBoolDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

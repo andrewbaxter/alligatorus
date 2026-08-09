@@ -4,7 +4,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
@@ -33,7 +33,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
@@ -46,7 +46,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-@Builtin(uniqueId = 6017L)
+@BuiltinFull(uniqueId = 6017L)
 public record TypeEResultDynamic(Type elementType)
     implements
         Type,
@@ -69,11 +69,7 @@ public record TypeEResultDynamic(Type elementType)
     return "eresult(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultDynamic.class, "eresult_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -198,7 +194,7 @@ public record TypeEResultDynamic(Type elementType)
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
-          EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+          EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), f.type()))));
     };
   }
 
@@ -230,7 +226,7 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {

@@ -14,7 +14,7 @@ import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;

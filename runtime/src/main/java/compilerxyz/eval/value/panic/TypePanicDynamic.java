@@ -2,7 +2,7 @@ package compilerxyz.eval.value.panic;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -41,7 +41,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 
 @BuiltinPath("panic")
-@BuiltinIdentity(uniqueId = 6133L)
+@BuiltinLight(uniqueId = 6133L)
 public record TypePanicDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -51,11 +51,7 @@ public record TypePanicDynamic()
     return "panic";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypePanicDynamic.class, "panic_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -102,7 +98,7 @@ public record TypePanicDynamic()
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -118,7 +114,7 @@ public record TypePanicDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

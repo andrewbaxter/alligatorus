@@ -2,7 +2,7 @@ package compilerxyz.eval.value.function;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.artifact.ExporterAny;
@@ -24,7 +24,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.gen.GenAspectInitialBind;
 
 @BuiltinPath("eval.cast_value")
-@BuiltinIdentity(uniqueId = 6109L)
+@BuiltinLight(uniqueId = 6109L)
 public record TypeFunctionCastValueDynamic()
     implements
         Type,
@@ -38,11 +38,7 @@ public record TypeFunctionCastValueDynamic()
     return "fn-cast-value";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeFunctionCastValueDynamic.class, "function_cast_value_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -64,7 +60,7 @@ public record TypeFunctionCastValueDynamic()
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -80,7 +76,7 @@ public record TypeFunctionCastValueDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

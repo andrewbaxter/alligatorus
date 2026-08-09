@@ -16,7 +16,7 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.binding.BindingValue;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;

@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.null_;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -54,7 +54,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @BuiltinPath("types.null")
-@BuiltinIdentity(uniqueId = 6128L)
+@BuiltinLight(uniqueId = 6128L)
 public record TypeNullDynamic()
     implements
         Type,
@@ -80,11 +80,7 @@ public record TypeNullDynamic()
     return "dynamic null";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullDynamic.class, "null_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -151,7 +147,7 @@ public record TypeNullDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

@@ -340,6 +340,46 @@ public final class T0150ReturnTest {
   }
 
   @Test
+  public void test01678LabeledReturnFinallyWithBranches() {
+    // The finally body contains a dynamic branch, so its code carries labels.
+    // It is emitted once on the try's own paths and instantiated again for the
+    // labeled return's pass-through — the second emission must get fresh
+    // labels.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    var dynTrue =
+        mb.operatorEq(
+            mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.labeled(
+                    "outer",
+                    mb.tryCatchFinally(
+                        mb.seqOf(
+                            mb.call(mb.log(), mb.str("body")),
+                            mb.return_("outer", null)),
+                        null,
+                        mb.ifOf(
+                            TList.of(
+                                new TestMb.Branch(
+                                    dynTrue, mb.call(mb.log(), mb.str("fin-then")))),
+                            mb.call(mb.log(), mb.str("fin-else"))))),
+                mb.call(mb.log(), mb.str("after")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    var messages = new TList<String>(ok.logs().size());
+    for (var l : ok.logs()) messages.add(l.message());
+    assertEquals(
+        TList.of("body", "fin-then", "after"),
+        messages,
+        () -> "branchy finally must run once on the labeled-return path; got logs=" + messages);
+  }
+
+  @Test
   public void test01680ImplicitEmptyTupleReturnFromNoValueReturn() {
     // Spec: "If return has no value and the exit target needs a value, it
     // implicitly returns an empty tuple." Verify: block value produced by

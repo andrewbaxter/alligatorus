@@ -2,7 +2,7 @@ package compilerxyz.eval.value.throw_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -38,7 +38,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 
 @BuiltinPath("throw")
-@BuiltinIdentity(uniqueId = 6146L)
+@BuiltinLight(uniqueId = 6146L)
 public record TypeThrowDynamic()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -48,11 +48,7 @@ public record TypeThrowDynamic()
     return "throw";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeThrowDynamic.class, "throw_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -99,11 +95,27 @@ public record TypeThrowDynamic()
     seq.add(JavaBytecodeUtils.invokeSpecial(loc, excInternal, "<init>", ctorDesc));
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     var throwCode = new CodeDynamic(loc, seq);
-    return EResult.ok(new CodeValue(Code.of(loc, throwCode), EvalOutcome.CONTROL_ENDED));
+    // The throw is a routed site like any throwing call: it jumps into the
+    // enclosing drop/finally chain when one is live.
+    var destRes = compilerxyz.eval.ScopeChains.excDest(xx, loc);
+    if (destRes.hasErrors()) return destRes.reerr();
+    Code outCode;
+    if (destRes.requireValue("throw exc dest")
+        instanceof Opt.Some<compilerxyz.eval.JumpKey> someDest) {
+      outCode =
+          Code.of(
+              loc,
+              new CodeDynamic(
+                  loc,
+                  new compilerxyz.eval.dynamic.JavaBytecodeGuarded(someDest.value(), throwCode)));
+    } else {
+      outCode = Code.of(loc, throwCode);
+    }
+    return EResult.ok(new CodeValue(outCode, EvalOutcome.CONTROL_ENDED));
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -119,7 +131,7 @@ public record TypeThrowDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

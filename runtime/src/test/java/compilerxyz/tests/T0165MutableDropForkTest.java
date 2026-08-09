@@ -186,7 +186,25 @@ public final class T0165MutableDropForkTest {
                                                 "int",
                                                 mb.scopeUse("int_binding")),
                                             new TestMb.RecordPair(
-                                                "state", mb.scopeUse("inner"))))))))))));
+                                                "state",
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "parity",
+                                                            mb.field(
+                                                                mb.scopeUse("inner"),
+                                                                mb.str("parity"))),
+                                                        new TestMb.RecordPair(
+                                                            "setter",
+                                                            mb.call(
+                                                                mb.field(
+                                                                    mb.call(
+                                                                        mb.typesOption(),
+                                                                        mb.builtin(
+                                                                            "eval",
+                                                                            "binding_setter")),
+                                                                    mb.str("none")),
+                                                                mb.literalNull())))))))))))))));
   }
 
   private static SourceExpr castFromPassthrough(TestMb mb) {
@@ -508,11 +526,48 @@ public final class T0165MutableDropForkTest {
                     new TestMb.Branch(
                         mb.str("binding"),
                         mb.seqOf(
-                            mb.set(
+                            mb.bind(
+                                "new_binding_",
+                                mb.call(
+                                    mb.lower(mb.scopeUse("even_binding_new")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "int",
+                                                mb.field(mb.scopeUse("sv"), mb.str("int"))),
+                                            new TestMb.RecordPair(
+                                                "state",
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair("parity", parity),
+                                                        new TestMb.RecordPair(
+                                                            "setter",
+                                                            mb.field(
+                                                                mb.field(
+                                                                    mb.scopeUse("sv"),
+                                                                    mb.str("state")),
+                                                                mb.str("setter")))))))))),
+                            mb.call(
                                 mb.field(
-                                    mb.field(mb.scopeUse("sv"), mb.str("state")),
-                                    mb.str("parity")),
-                                parity),
+                                    mb.field(
+                                        mb.field(
+                                            mb.field(mb.scopeUse("sv"), mb.str("state")),
+                                            mb.str("setter")),
+                                        mb.str("value")),
+                                    mb.str("set")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                        new TestMb.RecordPair(
+                                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                        new TestMb.RecordPair(
+                                            "new_binding", mb.scopeUse("new_binding_")),
+                                        new TestMb.RecordPair(
+                                            "drop_modified",
+                                            mb.as_(
+                                                mb.operatorEq(mb.num(1.0), mb.num(1.0)),
+                                                mb.typesBool()))))),
                             mb.return_(
                                 mb.call(
                                     mb.field(
@@ -553,6 +608,13 @@ public final class T0165MutableDropForkTest {
                                                                 mb.field(
                                                                     mb.scopeUse("arg"),
                                                                     mb.str("loc"))),
+                                                            new TestMb.RecordPair(
+                                                                "setter",
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")),
+                                                                        mb.str("none")),
+                                                                    mb.literalNull())),
                                                             new TestMb.RecordPair(
                                                                 "code",
                                                                 mb.field(
@@ -647,7 +709,8 @@ public final class T0165MutableDropForkTest {
                                                 mb.recordOf(
                                                     TList.of(
                                                         new TestMb.RecordPair(
-                                                            "parity", mb.typesLong()))))))))))),
+                                                            "parity", mb.typesLong()),
+                                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter"))))))))))))),
                 mb.bind(
                     "u",
                     mb.call(
@@ -789,7 +852,8 @@ public final class T0165MutableDropForkTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "parity", mb.typesLong()))))))),
+                                            "parity", mb.typesLong()),
+                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter"))))))))),
                 mb.bind(
                     "gp_method",
                     mb.call(
@@ -884,6 +948,14 @@ public final class T0165MutableDropForkTest {
                                         new TestMb.RecordPair(
                                             "use",
                                             mb.seqOf(
+                                                mb.set(
+                                                    mb.field(
+                                                        mb.field(
+                                                            mb.scopeUse("inner"),
+                                                            mb.str("state")),
+                                                        mb.str("setter")),
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("setter"))),
                                                 mb.bind(
                                                     "int_use_cv_",
                                                     mb.call(
@@ -904,6 +976,13 @@ public final class T0165MutableDropForkTest {
                                                                     mb.field(
                                                                         mb.scopeUse("arg"),
                                                                         mb.str("loc"))),
+                                                                new TestMb.RecordPair(
+                                                                    "setter",
+                                                                    mb.call(
+                                                                        mb.field(
+                                                                            mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")),
+                                                                            mb.str("none")),
+                                                                        mb.literalNull())),
                                                                 new TestMb.RecordPair(
                                                                     "code",
                                                                     mb.field(
@@ -992,7 +1071,17 @@ public final class T0165MutableDropForkTest {
                                                                                         mb.str(
                                                                                             "state")),
                                                                                     mb.str(
-                                                                                        "parity")))))))))))),
+                                                                                        "parity"))),
+                                                                            new TestMb.RecordPair(
+                                                                                "setter",
+                                                                                mb.field(
+                                                                                    mb.field(
+                                                                                        mb.scopeUse(
+                                                                                            "inner"),
+                                                                                        mb.str(
+                                                                                            "state")),
+                                                                                    mb.str(
+                                                                                        "setter")))))))))))),
                                         new TestMb.RecordPair(
                                             "merge",
                                             mb.labeled(

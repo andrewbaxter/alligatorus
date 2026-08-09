@@ -1,6 +1,6 @@
 package compilerxyz.eval.dynamic;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -16,7 +16,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@Builtin(uniqueId = 6014L)
+@BuiltinFull(uniqueId = 6014L)
 public class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
     public static final JavaDataDescriptor DESC_INT = new JavaDataDescriptor("I");
@@ -86,32 +86,4 @@ public class JavaDataDescriptor {
         return value.hashCode();
     }
 
-    public static Type dynamicType() {
-        return JavaDataDescriptorDynamicType.INSTANCE;
-    }
-
-    static final class JavaDataDescriptorDynamicType {
-        static final TypeObjectDynamic INSTANCE = build();
-
-        private JavaDataDescriptorDynamicType() {}
-
-        private static TypeObjectDynamic build() {
-            var jvmClass = JavaInternalName.fromClass(JavaDataDescriptor.class);
-            var trivialIdentityAspects = new TList<Unique>();
-            trivialIdentityAspects.add(GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY);
-            var castFromRules = new TList<TypeObjectCastFromRule>();
-            castFromRules.add(
-                new TypeObjectCastFromRule.RestampFromIdentity(
-                    GenTrivialIdentityAspects.JAVA_DATA_DESCRIPTOR_IDENTITY));
-            return new TypeObjectDynamic(
-                new TypeObjectMeta("JavaDataDescriptor", trivialIdentityAspects, new TList<TypeObjectCastRule>(), castFromRules, Opt.<ObjectAspectSource>none()),
-                jvmClass,
-                JavaDataDescriptor.fromClass(JavaDataDescriptor.class),
-                JavaDataDescriptor.class,
-                new TList<ObjectDataField>(),
-                new TList<ObjectMethod>(),
-                ObjectDropKind.DYNAMIC_LIGHT,
-                Opt.<JavaInternalName>none());
-        }
-    }
 }

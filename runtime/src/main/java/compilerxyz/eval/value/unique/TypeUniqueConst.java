@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.unique;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.ExporterAny;
@@ -34,7 +34,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectOperatorEq;
 
-@BuiltinIdentity(uniqueId = 6148L)
+@BuiltinLight(uniqueId = 6148L)
 public record TypeUniqueConst()
     implements
         Type,
@@ -52,11 +52,7 @@ public record TypeUniqueConst()
   @Override
   public String typeDesc() { return "unique_const"; }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUniqueConst.class, "unique_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -159,5 +155,5 @@ public record TypeUniqueConst()
   public EResult<Type> exporterAnyAsType() { return EResult.ok(new TypeUniqueConst()); }
 
   @Override
-  public EResult<Value> exporterAnyAsValue() { return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this)); }
+  public EResult<Value> exporterAnyAsValue() { return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this)); }
 }

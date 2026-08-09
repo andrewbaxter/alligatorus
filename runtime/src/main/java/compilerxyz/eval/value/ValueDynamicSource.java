@@ -1,6 +1,6 @@
 package compilerxyz.eval.value;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.eval.BindingId;
@@ -18,7 +18,7 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
 
-@Builtin(uniqueId = 1043L)
+@BuiltinFull(uniqueId = 1043L)
 @BuiltinPath("eval.value_source")
 public sealed interface ValueDynamicSource
     permits ValueDynamicSource.Binding, ValueDynamicSource.Expr, ValueDynamicSource.Field {

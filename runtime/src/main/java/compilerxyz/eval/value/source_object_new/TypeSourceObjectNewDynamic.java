@@ -1,10 +1,14 @@
 package compilerxyz.eval.value.source_object_new;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.ExporterAny;
@@ -20,7 +24,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectFunction;
@@ -34,13 +38,14 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinIdentity(uniqueId = 6139L)
+@BuiltinLight(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
     return compilerxyz.gen.GenType.dynamicType();
   }
+
 
 
   @Override
@@ -50,9 +55,6 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     return "definition_set_object_new";
   }
 
-                public Type valueType() {
-    return new TypeTypeSourceObjectNewConst(type_);
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -133,7 +135,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -144,12 +146,12 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectNewConst(type_()), this));
   }
 
   private record SourceObjectNewConstBinding(Value value) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
       return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
@@ -158,10 +160,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       return this;
     }
 
-    @Override
-    public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-      return this == other || this.equals(other);
-    }
+
 
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

@@ -1,6 +1,6 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
@@ -16,31 +16,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@Builtin(uniqueId = 6018L)
+@BuiltinFull(uniqueId = 6018L)
 public record QExprId(SourceId source, long expr) {
 
-  public static Type dynamicType() {
-    return QExprIdDynamicType.INSTANCE;
-  }
-
-  static final class QExprIdDynamicType {
-    static final TypeObjectDynamic INSTANCE = build();
-
-    private QExprIdDynamicType() {}
-
-    private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.fromClass(QExprId.class);
-      var trivialIdentityAspects = new TList<compilerxyz.eval.Unique>();
-      trivialIdentityAspects.add(GenTrivialIdentityAspects.Q_EXPR_ID_IDENTITY);
-      return new TypeObjectDynamic(
-          new TypeObjectMeta("QExprId", trivialIdentityAspects, new TList<TypeObjectCastRule>(), new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none()),
-          jvmClass,
-          JavaDataDescriptor.fromClass(QExprId.class),
-          QExprId.class,
-          new TList<ObjectDataField>(),
-          new TList<ObjectMethod>(),
-          ObjectDropKind.DYNAMIC_LIGHT,
-          Opt.<JavaInternalName>none());
-    }
-  }
 }

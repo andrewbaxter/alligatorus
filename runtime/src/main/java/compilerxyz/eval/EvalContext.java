@@ -1,6 +1,6 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
@@ -16,48 +16,22 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
-@Builtin(uniqueId = 6025L)
+@BuiltinFull(uniqueId = 6025L)
 public final class EvalContext {
 
-  public static Type dynamicType() {
-    return EvalContextDynamicType.INSTANCE;
-  }
-
-  static final class EvalContextDynamicType {
-    static final TypeObjectDynamic INSTANCE = build();
-
-    private EvalContextDynamicType() {}
-
-    private static TypeObjectDynamic build() {
-      var jvmClass = JavaInternalName.fromClass(EvalContext.class);
-      var trivialIdentityAspects = new TList<Unique>();
-      trivialIdentityAspects.add(GenTrivialIdentityAspects.EVAL_CONTEXT_IDENTITY);
-      var castFromRules = new TList<TypeObjectCastFromRule>();
-      castFromRules.add(
-          new TypeObjectCastFromRule.RestampFromIdentity(
-              GenTrivialIdentityAspects.EVAL_CONTEXT_IDENTITY));
-      return new TypeObjectDynamic(
-          new TypeObjectMeta(
-              "EvalContext",
-              trivialIdentityAspects,
-              new TList<TypeObjectCastRule>(),
-              castFromRules,
-              Opt.<ObjectAspectSource>none()),
-          jvmClass,
-          JavaDataDescriptor.fromClass(EvalContext.class),
-          EvalContext.class,
-          new TList<ObjectDataField>(),
-          new TList<ObjectMethod>(),
-          ObjectDropKind.DYNAMIC_LIGHT,
-          Opt.<JavaInternalName>none());
-    }
-  }
   public final TMap<DefSetId, DefinitionSet> definitionSets = new TMap<>();
   public final TList<ExternalEntry> externals = new TList<>();
   public final CompileImportContext ix;
   public final Counter nextLocalId = new Counter();
 
   public final Counter uniqueCounter = new Counter();
+
+  /**
+   * Mints drop-state ids for scope levels. Ids are unique across the whole
+   * eval so states minted on divergent branch paths never collide in the
+   * shared per-level chain lookups.
+   */
+  public final Counter dropStateCounter = new Counter();
 
   public final TList<LogEntry> logs = new TList<>();
 

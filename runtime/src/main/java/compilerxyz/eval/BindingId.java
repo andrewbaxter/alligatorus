@@ -8,4 +8,9 @@ public sealed interface BindingId {
   }
 
   record Local(JavaBytecodeBindingKey key) implements BindingId {}
+
+  /** Fresh anonymous local storage; the target maps key identity to a slot. */
+  static Local localFresh() {
+    return new Local(new JavaBytecodeBindingKey());
+  }
 }

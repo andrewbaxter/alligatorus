@@ -1,16 +1,13 @@
 package compilerxyz.eval;
 
-import compilerxyz.util.TList;
-
 /**
- * Result of const-evaluating an expression: the produced {@link CodeValue},
- * the scope tree of the expression's default (fall-through) exit — installed
- * into the evaluation context before the next expression runs — and any
- * control-flow {@link Exit}s that escaped the expression and are still
- * looking for their merge point.
+ * One expression's evaluation result: the code+value pair and the
+ * default-exit scope tree, installed into the context before the next
+ * expression evaluates. Control exits register directly on their target
+ * scope levels; nothing else passes upward.
  */
-public record EvalRes(CodeValue cv, Scope scope, TList<Exit> exits) {
+public record EvalRes(CodeValue cv, Scope scope) {
   public static EvalRes of(CodeValue cv, Scope scope) {
-    return new EvalRes(cv, scope, new TList<>());
+    return new EvalRes(cv, scope);
   }
 }

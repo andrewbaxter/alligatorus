@@ -1,9 +1,10 @@
-package compilerxyz.eval.dynamic.target;
+package compilerxyz.gen;
 
+import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.Type;
 
-public record IfBranch(CodeValue condition, CodeValue body) {
+public record TryCatchClause(BindingId.Local binding, Type excType, CodeValue body) {
   public static Type dynamicType() {
     return compilerxyz.gen.GenType.dynamicType();
   }

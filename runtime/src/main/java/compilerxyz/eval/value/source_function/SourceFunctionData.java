@@ -122,7 +122,7 @@ public final class SourceFunctionData {
         compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
 
-    var bodyScope = new Scope();
+    var bodyScope = new Scope(innerVx);
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
 
     var argSlots = new TList<DefSetFunctionsEmitter.ArgSlot>();
@@ -173,13 +173,6 @@ public final class SourceFunctionData {
       return implResult.reerr();
     }
     var implEv = implResult.requireValue("SourceFunctionData::compile constEval");
-    if (!implEv.exits().isEmpty()) {
-      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
-      for (var exit : implEv.exits()) {
-        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
-      }
-      return compilerxyz.eval.EResult.errs(exitErrs);
-    }
     var implCv = implEv.cv();
     var convertedResult = Eval.typecheckConvert(funcXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {

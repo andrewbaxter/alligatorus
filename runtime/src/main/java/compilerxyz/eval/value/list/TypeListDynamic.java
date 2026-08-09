@@ -4,7 +4,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.ExporterAny;
@@ -37,7 +37,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -58,7 +58,7 @@ import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectStringDynamic;
 
-@BuiltinIdentity(uniqueId = 6117L)
+@BuiltinLight(uniqueId = 6117L)
 public final class TypeListDynamic
     implements
         Type,
@@ -113,11 +113,7 @@ public final class TypeListDynamic
     return "list(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListDynamic.class, "list_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -199,7 +195,7 @@ public final class TypeListDynamic
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(self.code(), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+              new CodeValue(self.code(), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), f.type()))));
       case FieldSpec.Method m ->
           EResult.ok(
               new CodeValue(
@@ -323,7 +319,7 @@ public final class TypeListDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

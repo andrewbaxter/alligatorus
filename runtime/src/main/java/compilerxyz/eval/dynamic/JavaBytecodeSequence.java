@@ -1,43 +1,28 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.JumpKey;
+
 import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ASM8;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ATHROW;
-import static org.objectweb.asm.Opcodes.BASTORE;
 import static org.objectweb.asm.Opcodes.DLOAD;
 import static org.objectweb.asm.Opcodes.DSTORE;
+import static org.objectweb.asm.Opcodes.DUP;
+import static org.objectweb.asm.Opcodes.DUP2;
+import static org.objectweb.asm.Opcodes.FLOAD;
 import static org.objectweb.asm.Opcodes.FSTORE;
+import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.ISTORE;
 import static org.objectweb.asm.Opcodes.LLOAD;
 import static org.objectweb.asm.Opcodes.GOTO;
-import static org.objectweb.asm.Opcodes.IFEQ;
-import static org.objectweb.asm.Opcodes.IFGE;
-import static org.objectweb.asm.Opcodes.IFGT;
-import static org.objectweb.asm.Opcodes.IFLE;
-import static org.objectweb.asm.Opcodes.IFLT;
-import static org.objectweb.asm.Opcodes.IFNE;
-import static org.objectweb.asm.Opcodes.IFNONNULL;
-import static org.objectweb.asm.Opcodes.IFNULL;
-import static org.objectweb.asm.Opcodes.IF_ACMPEQ;
-import static org.objectweb.asm.Opcodes.IF_ACMPNE;
-import static org.objectweb.asm.Opcodes.IF_ICMPEQ;
-import static org.objectweb.asm.Opcodes.IF_ICMPGE;
-import static org.objectweb.asm.Opcodes.IF_ICMPGT;
-import static org.objectweb.asm.Opcodes.IF_ICMPLE;
-import static org.objectweb.asm.Opcodes.IF_ICMPLT;
-import static org.objectweb.asm.Opcodes.IF_ICMPNE;
-import static org.objectweb.asm.Opcodes.ISTORE;
-import static org.objectweb.asm.Opcodes.JSR;
 import static org.objectweb.asm.Opcodes.LSTORE;
 
 import compilerxyz.eval.QExprId;
-import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.util.TSet;
 import java.util.ArrayDeque;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.objectweb.asm.Label;
@@ -45,76 +30,18 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
-import org.pcollections.HashTreePMap;
-import org.pcollections.PMap;
-import org.pcollections.PVector;
-import org.pcollections.TreePVector;
 
 public class JavaBytecodeSequence implements JavaBytecode {
   public TList<CodeDynamic> children = new TList<>();
 
-  static void dispatchAsmFraming(AbstractInsnNode n, AsmFramingVisitor v) {
-    n.accept(
-        new MethodVisitor(ASM8) {
-          @Override
-          public void visitInsn(int opcode) {
-            throw new AssertionError();
-          }
-
-          @Override
-          public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
-            throw new AssertionError();
-          }
-
-          @Override
-          public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
-            v.handleTable(dflt, labels);
-          }
-
-          @Override
-          public void visitJumpInsn(int opcode, Label label) {
-            switch (opcode) {
-              case IFEQ:
-              case IFNE:
-              case IFLT:
-              case IFGE:
-              case IFGT:
-              case IFLE:
-              case IF_ICMPEQ:
-              case IF_ICMPNE:
-              case IF_ICMPLT:
-              case IF_ICMPGE:
-              case IF_ICMPGT:
-              case IF_ICMPLE:
-              case IF_ACMPEQ:
-              case IF_ACMPNE:
-              case IFNULL:
-              case IFNONNULL:
-                v.handleBranch(label);
-                break;
-              case GOTO:
-                v.handleJump(label);
-                break;
-              case JSR:
-                throw new AssertionError();
-              default:
-                throw new AssertionError();
-            }
-          }
-
-          @Override
-          public void visitLabel(Label label) {
-            v.handleLabel(label);
-          }
-        });
-  }
-
     private void walk(Function<CodeDynamic, Iterator<CodeDynamic>> handler) {
+        walkFrom(this.children.iterator(), handler);
+    }
+
+    private static void walkFrom(
+            Iterator<CodeDynamic> root, Function<CodeDynamic, Iterator<CodeDynamic>> handler) {
         var stack = new ArrayDeque<Iterator<CodeDynamic>>();
-        {
-            var iter = this.children.iterator();
-            if (iter.hasNext()) stack.addLast(iter);
-        }
+        if (root.hasNext()) stack.addLast(root);
         while (!stack.isEmpty()) {
             CodeDynamic next;
             {
@@ -157,34 +84,39 @@ public class JavaBytecodeSequence implements JavaBytecode {
             TList<InitialSlot> initialSlotWidths) {
         var locMap = new TMap<Integer, QExprId>();
         final int[] locCounter = {0};
-        var catchLastUses = new TMap<JavaBytecodeCatchKey, Integer>();
-        {
-            final int[] catchIndex = {0};
-            walk(
-                    cd ->
-                            cd.code()
-                                    .dispatch(
-                                            new DefaultDispatcher<Iterator<CodeDynamic>>() {
-                                                @Override
-                                                public Iterator<CodeDynamic> handleSequence(JavaBytecodeSequence n) {
-                                                    return n.children.iterator();
-                                                }
-
-                                                @Override
-                                                public Iterator<CodeDynamic> handleCatch(JavaBytecodeCatch n) {
-                                                    catchIndex[0] += 1;
-                                                    catchLastUses.put(n.key, catchIndex[0]);
-                                                    return TList.of(n.inner).iterator();
-                                                }
-                                            }));
-        }
         var flattened = new TList<JavaBytecode>();
         {
             var jumpLabels = new TMap<JumpKey, LabelNode>();
-            var catchStartLabels = new TMap<JavaBytecodeCatchKey, Label>();
-            var catchFinallyLabels = new TMap<JavaBytecodeCatchKey, Label>();
-            final int[] catchIndex = {0};
-            walk(
+            final int[] realInsnCount = {0};
+            // Per-site exception-dest runs: the innermost enclosing Guarded
+            // decides every instruction's handler; a maximal contiguous run
+            // of same-dest instructions becomes one catch-any table entry
+            // pointing at the dest key's landing label.
+            var destStack = new TList<JumpKey>();
+            final JumpKey[] runDest = {null};
+            final LabelNode[] runStart = {null};
+            final int[] runStartCount = {0};
+            class DestRuns {
+                void boundary(JumpKey newDest) {
+                    if (newDest == runDest[0]) return;
+                    var here = new LabelNode(new Label());
+                    flattened.add(new JavaBytecodeInstructionObj(here));
+                    if (runDest[0] != null && runStartCount[0] != realInsnCount[0]) {
+                        flattened.add(new JavaBytecodeInstructionTryCatch(
+                                runStart[0].getLabel(),
+                                here.getLabel(),
+                                jumpLabels.computeIfAbsentT(runDest[0], k -> new LabelNode()).getLabel(),
+                                null));
+                    }
+                    runDest[0] = newDest;
+                    runStart[0] = here;
+                    runStartCount[0] = realInsnCount[0];
+                }
+            }
+            var destRuns = new DestRuns();
+            @SuppressWarnings("unchecked")
+            Function<CodeDynamic, Iterator<CodeDynamic>>[] flattenStepRef = new Function[1];
+            java.util.function.Function<CodeDynamic, Iterator<CodeDynamic>> flattenStep =
                     cd -> {
                         if (cd.loc() instanceof CodeLoc.Some some) {
                             locCounter[0] += 1;
@@ -201,6 +133,12 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                         new Dispatcher<Iterator<CodeDynamic>>() {
                                             @Override
                                             public Iterator<CodeDynamic> handleInstruction(JavaBytecodeInstruction n) {
+                                                if (!(n instanceof JavaBytecodeInstructionTryCatch)
+                                                        && !(n instanceof JavaBytecodeInstructionObj obj
+                                                                && (obj.node instanceof LabelNode
+                                                                        || obj.node instanceof org.objectweb.asm.tree.LineNumberNode))) {
+                                                    realInsnCount[0] += 1;
+                                                }
                                                 flattened.add(n);
                                                 return null;
                                             }
@@ -212,79 +150,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                                             @Override
                                             public Iterator<CodeDynamic> handleStoreLoad(JavaBytecodeStoreLoad n) {
+                                                realInsnCount[0] += 1;
                                                 flattened.add(n);
-                                                return null;
-                                            }
-
-                                            @Override
-                                            public Iterator<CodeDynamic> handleCatch(JavaBytecodeCatch n) {
-                                                catchIndex[0] += 1;
-
-                                                final Label endLabel = new Label();
-                                                flattened.add(new JavaBytecodeInstructionObj(new LabelNode(endLabel)));
-                                                flattened.add(
-                                                        new JavaBytecodeInstructionTryCatch(
-                                                                catchStartLabels.getOrNull(n.key),
-                                                                endLabel,
-                                                                catchFinallyLabels.getOrNull(n.key),
-                                                                "java/lang/RuntimeException"));
-                                                var enclosingLoc = cd.loc();
-                                                if (catchIndex[0] < catchLastUses.getOrNull(n.key)) {
-                                                    return TList.of(
-                                                                    n.inner,
-                                                                    wrap(
-                                                                            enclosingLoc,
-                                                                            new JavaBytecodeOther<>(
-                                                                                    () -> {
-                                                                                        final Label newStartLabel = new Label();
-                                                                                        flattened.add(
-                                                                                                new JavaBytecodeInstructionObj(
-                                                                                                        new LabelNode(newStartLabel)));
-                                                                                        catchStartLabels.put(n.key, newStartLabel);
-                                                                                        return null;
-                                                                                    })))
-                                                            .iterator();
-                                                } else {
-                                                    final LabelNode postLabelNode = new LabelNode(new Label());
-                                                    final JavaBytecodeBindingKey exceptionKey =
-                                                            new JavaBytecodeBindingKey();
-                                                    return TList.of(
-                                                                    n.inner,
-                                                                    wrap(
-                                                                            enclosingLoc,
-                                                                            new JavaBytecodeOther<>(
-                                                                                    () -> {
-                                                                                        flattened.add(
-                                                                                                new JavaBytecodeInstructionObj(
-                                                                                                        new JumpInsnNode(GOTO, postLabelNode)));
-                                                                                        flattened.add(
-                                                                                                new JavaBytecodeInstructionObj(
-                                                                                                        new LabelNode(catchFinallyLabels.getOrNull(n.key))));
-                                                                                        flattened.add(new JavaBytecodeStoreLoad(ASTORE, exceptionKey));
-                                                                                        return null;
-                                                                                    })),
-                                                                    n.inner,
-                                                                    wrap(
-                                                                            enclosingLoc,
-                                                                            new JavaBytecodeOther<>(
-                                                                                    () -> {
-                                                                                        flattened.add(new JavaBytecodeStoreLoad(ALOAD, exceptionKey));
-                                                                                        flattened.add(new JavaBytecodeInstructionInt(ATHROW));
-                                                                                        flattened.add(new JavaBytecodeInstructionObj(postLabelNode));
-                                                                                        return null;
-                                                                                    })))
-                                                            .iterator();
-                                                }
-                                            }
-
-                                            @Override
-                                            public Iterator<CodeDynamic> handleCatchStart(JavaBytecodeCatchStart n) {
-                                                if (!catchLastUses.containsKey(n.key)) return null;
-                                                final Label startLabel = new Label();
-                                                final Label handleLabel = new Label();
-                                                flattened.add(new JavaBytecodeInstructionObj(new LabelNode(startLabel)));
-                                                catchStartLabels.put(n.key, startLabel);
-                                                catchFinallyLabels.put(n.key, handleLabel);
                                                 return null;
                                             }
 
@@ -298,6 +165,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                                             @Override
                                             public Iterator<CodeDynamic> handleJump(JavaBytecodeJump n) {
+                                                realInsnCount[0] += 1;
                                                 flattened.add(
                                                         new JavaBytecodeInstructionObj(
                                                                 new JumpInsnNode(
@@ -305,111 +173,79 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                                         jumpLabels.computeIfAbsentT(n.jumpKey, k -> new LabelNode()))));
                                                 return null;
                                             }
+
+                                            @Override
+                                            public Iterator<CodeDynamic> handleGuarded(JavaBytecodeGuarded n) {
+                                                destRuns.boundary(n.dest);
+                                                destStack.add(n.dest);
+                                                walkFrom(TList.of(n.inner).iterator(), flattenStepRef[0]);
+                                                destStack.remove(destStack.size() - 1);
+                                                destRuns.boundary(
+                                                        destStack.isEmpty()
+                                                                ? null
+                                                                : destStack.get(destStack.size() - 1));
+                                                return null;
+                                            }
+
                                         });
-                    });
-        }
-        var bindingLastUses = new TMap<JavaBytecodeBindingKey, TList<Integer>>();
-        var labelLiveness = new TMap<Label, PMap<JavaBytecodeBindingKey, Integer>>();
-        {
-            var totalUses = new TMap<JavaBytecodeBindingKey, Integer>();
-            @SuppressWarnings("unchecked") final PMap<JavaBytecodeBindingKey, Integer>[] currentBindingLastUses =
-                    new PMap[]{HashTreePMap.<JavaBytecodeBindingKey, Integer>empty()};
-            var branchBindingLastUses = labelLiveness;
-            for (int i = flattened.size() - 1; i >= 0; i--) {
-                JavaBytecode e = flattened.get(i);
-                int finalIndex = i;
-                e.dispatch(
-                        new DefaultDispatcher<Object>() {
-                            @Override
-                            public Object handleInstruction(JavaBytecodeInstruction n) {
-                                n.dispatchMore(
-                                        new JavaBytecodeInstruction.MoreDispatcher() {
-                                            @Override
-                                            public void handleObj(JavaBytecodeInstructionObj n) {
-                                                dispatchAsmFraming(
-                                                        n.node,
-                                                        new AsmFramingVisitor() {
-                                                            @Override
-                                                            public void handleTable(Label dflt, Label[] labels) {
-                                                                final HashMap<JavaBytecodeBindingKey, Integer> merged =
-                                                                        new HashMap<>(
-                                                                                emptyIfNull(branchBindingLastUses.getOrNull(dflt)));
-                                                                for (Label label : labels) {
-                                                                    merged.putAll(emptyIfNull(branchBindingLastUses.getOrNull(label)));
-                                                                }
-                                                                currentBindingLastUses[0] = HashTreePMap.from(merged);
-                                                            }
-
-                                                            @Override
-                                                            public void handleBranch(Label label) {
-                                                                final HashMap<JavaBytecodeBindingKey, Integer> merged =
-                                                                        new HashMap<>();
-                                                                merged.putAll(currentBindingLastUses[0]);
-                                                                merged.putAll(
-                                                                        emptyIfNull(branchBindingLastUses.getOrNull(label)));
-                                                                currentBindingLastUses[0] = HashTreePMap.from(merged);
-                                                            }
-
-                                                            @Override
-                                                            public void handleJump(Label label) {
-                                                                currentBindingLastUses[0] =
-                                                                        emptyIfNull(branchBindingLastUses.getOrNull(label));
-                                                            }
-
-                                                            @Override
-                                                            public void handleLabel(Label label) {
-                                                                branchBindingLastUses.put(label, currentBindingLastUses[0]);
-                                                            }
-                                                        });
-                                            }
-
-                                            @Override
-                                            public void handleInt(JavaBytecodeInstructionInt n) {
-                                                if (n.code == ATHROW) {
-                                                    currentBindingLastUses[0] = HashTreePMap.empty();
-                                                }
-                                            }
-
-                                            @Override
-                                            public void handleTryCatch(JavaBytecodeInstructionTryCatch n) {
-                                            }
-                                        });
-                                return null;
-                            }
-
-                            @Override
-                            public Object handleStoreLoad(JavaBytecodeStoreLoad n) {
-                                if (currentBindingLastUses[0].get(n.key) == null) {
-                                    bindingLastUses.computeIfAbsentT(n.key, k -> new TList<>()).add(finalIndex);
-                                    currentBindingLastUses[0] = currentBindingLastUses[0].plus(n.key, finalIndex);
-                                }
-                                totalUses.put(n.key, totalUses.getOrDefault(n.key, 0) + 1);
-                                return null;
-                            }
-                        });
+                    };
+            flattenStepRef[0] = flattenStep;
+            walk(flattenStep);
+            if (!destStack.isEmpty() || runDest[0] != null) {
+                throw new AssertionError("unbalanced exception-dest guard at end of method body");
             }
         }
+        TList<JavaBytecode> emitList;
         {
-            @SuppressWarnings("unchecked") final PMap<JavaBytecodeBindingKey, Integer>[] currentIndexes =
-                    new PMap[]{HashTreePMap.empty()};
-            @SuppressWarnings("unchecked") final PVector<JavaBytecodeBindingKey>[] currentRevIndexes =
-                    new PVector[]{TreePVector.empty()};
-            var branchIndexes =
-                    new TMap<Label, Pair<PMap<JavaBytecodeBindingKey, Integer>, PVector<JavaBytecodeBindingKey>>>();
-            var pendingTryCatchBlocks = new TList<JavaBytecodeInstructionTryCatch>();
-            int initSlot = 0;
-            for (int i = 0; i < initialSlotWidths.size(); i++) {
-                var s = initialSlotWidths.get(i);
-                currentIndexes[0] = currentIndexes[0].plus(s.key(), initSlot);
-                currentRevIndexes[0] = currentRevIndexes[0].plus(s.key());
-                if (s.wide()) {
-                    currentRevIndexes[0] = currentRevIndexes[0].plus(s.key());
+            // Shadow-store elision: a droppable temp's DUP;STORE pair whose
+            // local is never loaded (no throwing site occurred inside the
+            // temp's lifetime, so no handler reads it) is deleted outright —
+            // the emitted code matches never having tracked the temp. The
+            // pair is emitted adjacently by the shadow generator; matching is
+            // strict on that shape.
+            var loadedKeys = new TSet<JavaBytecodeBindingKey>();
+            for (var n : flattened) {
+                if (n instanceof JavaBytecodeStoreLoad sl
+                        && (sl.code == ALOAD
+                                || sl.code == ILOAD
+                                || sl.code == FLOAD
+                                || sl.code == LLOAD
+                                || sl.code == DLOAD)) {
+                    loadedKeys.add(sl.key);
                 }
-                initSlot += s.wide() ? 2 : 1;
             }
-            int codeIndex = 0;
-            for (JavaBytecode n : flattened) {
-                int finalCodeIndex = codeIndex;
+            emitList = new TList<>();
+            for (int i = 0; i < flattened.size(); i++) {
+                var n = flattened.get(i);
+                if (n instanceof JavaBytecodeInstructionInt ii
+                        && (ii.code == DUP || ii.code == DUP2)
+                        && i + 1 < flattened.size()
+                        && flattened.get(i + 1) instanceof JavaBytecodeStoreLoad sl
+                        && !loadedKeys.contains(sl.key)
+                        && (ii.code == DUP
+                                ? (sl.code == ASTORE || sl.code == ISTORE || sl.code == FSTORE)
+                                : (sl.code == LSTORE || sl.code == DSTORE))) {
+                    i += 1;
+                    continue;
+                }
+                emitList.add(n);
+            }
+        }
+        {
+            // Direct slot allocation: every binding key gets its own local for
+            // the method's lifetime, assigned on first use. Slot state is a
+            // plain map — no liveness, no per-label frame merging — so a slot
+            // referenced from any position (exception handlers included)
+            // always resolves to the same index.
+            var slotIndexes = new TMap<JavaBytecodeBindingKey, Integer>();
+            final int[] nextSlot = {0};
+            for (var s : initialSlotWidths) {
+                slotIndexes.put(s.key(), nextSlot[0]);
+                nextSlot[0] += s.wide() ? 2 : 1;
+            }
+            var pendingTryCatchBlocks = new TList<JavaBytecodeInstructionTryCatch>();
+            var emittedLabels = new TSet<Label>();
+            for (JavaBytecode n : emitList) {
                 n.dispatch(
                         new Dispatcher<Object>() {
                             @Override
@@ -418,122 +254,13 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                         new JavaBytecodeInstruction.MoreDispatcher() {
                                             @Override
                                             public void handleObj(JavaBytecodeInstructionObj n) {
+                                                if (n.node instanceof LabelNode ln
+                                                        && !emittedLabels.add(ln.getLabel())) {
+                                                    throw new AssertionError(
+                                                        "duplicate label emission — code fragment"
+                                                            + " reused without freshen");
+                                                }
                                                 n.node.accept(out);
-
-                                                dispatchAsmFraming(
-                                                        n.node,
-                                                        new AsmFramingVisitor() {
-                                                            void setFrameInitialVars(Label l) {
-                                                                // The frame is snapshotted along the linear
-                                                                // walk, but frees happen at last-use
-                                                                // instructions — a jump that branches AROUND a
-                                                                // key's last use would carry it as live even
-                                                                // though it is dead on the target path.
-                                                                // Intersect the snapshot with the pre-pass
-                                                                // liveness at the target label.
-                                                                var live = labelLiveness.getOrNull(l);
-                                                                var snapFwd = currentIndexes[0];
-                                                                var snapRev = currentRevIndexes[0];
-                                                                if (live != null && snapRev != null) {
-                                                                    for (int i = 0; i < snapRev.size(); ++i) {
-                                                                        var k = snapRev.get(i);
-                                                                        if (k != null && live.get(k) == null) {
-                                                                            snapRev = snapRev.with(i, null);
-                                                                            if (snapFwd.get(k) != null) {
-                                                                                snapFwd = snapFwd.minus(k);
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                                var old = branchIndexes.get(l);
-                                                                if (old == null) {
-                                                                    branchIndexes.put(
-                                                                        l, new Pair<>(snapFwd, snapRev));
-                                                                    return;
-                                                                }
-                                                                // Frame sizes at a merge may differ only by
-                                                                // DEAD trailing slots: a branch that allocated
-                                                                // temporaries into a full frame grew the
-                                                                // vector, and frees null entries but never
-                                                                // shrink it. A LIVE slot in the excess region
-                                                                // means a binding's liveness crosses the merge
-                                                                // inconsistently — that is a real bug.
-                                                                var oldRev = old.second();
-                                                                var curRev = snapRev;
-                                                                int common =
-                                                                        Math.min(oldRev.size(), curRev.size());
-                                                                var longer =
-                                                                        oldRev.size() >= curRev.size()
-                                                                                ? oldRev
-                                                                                : curRev;
-                                                                for (int i = common; i < longer.size(); ++i) {
-                                                                    if (longer.get(i) != null) {
-                                                                        throw new AssertionError(
-                                                                            "live slot in merge excess: pos="
-                                                                                + i
-                                                                                + " key="
-                                                                                + longer.get(i)
-                                                                                + " old="
-                                                                                + oldRev
-                                                                                + " cur="
-                                                                                + curRev);
-                                                                    }
-                                                                }
-                                                                var mergedFwd = old.first();
-                                                                var mergedRev = oldRev;
-                                                                while (mergedRev.size() > common) {
-                                                                    mergedRev =
-                                                                            mergedRev.minus(mergedRev.size() - 1);
-                                                                }
-                                                                for (int i = 0; i < common; ++i) {
-                                                                    var oldKey = oldRev.get(i);
-                                                                    var newKey = curRev.get(i);
-                                                                    if (oldKey != newKey) {
-                                                                        mergedRev =
-                                                                                mergedRev.with(i, null);
-                                                                        if (oldKey != null) {
-                                                                            mergedFwd =
-                                                                                    mergedFwd.minus(oldKey);
-                                                                        }
-                                                                    }
-                                                                }
-                                                                branchIndexes.put(
-                                                                        l,
-                                                                        new Pair<>(mergedFwd, mergedRev));
-                                                            }
-
-                                                            @Override
-                                                            public void handleTable(Label dflt, Label[] labels) {
-                                                                setFrameInitialVars(dflt);
-                                                                for (Label label : labels) setFrameInitialVars(label);
-                                                                currentIndexes[0] = null;
-                                                                currentRevIndexes[0] = null;
-                                                            }
-
-                                                            @Override
-                                                            public void handleBranch(Label label) {
-                                                                setFrameInitialVars(label);
-                                                            }
-
-                                                            @Override
-                                                            public void handleJump(Label label) {
-                                                                setFrameInitialVars(label);
-                                                                currentIndexes[0] = null;
-                                                                currentRevIndexes[0] = null;
-                                                            }
-
-                                                            @Override
-                                                            public void handleLabel(Label label) {
-                                                                var p = branchIndexes.remove(label);
-                                                                // Only restore snapshot when arriving via a jump
-                                                                // (currentIndexes is null); a natural fall-through
-                                                                // path already has the correct post-body state.
-                                                                if (p != null && currentIndexes[0] == null) {
-                                                                    currentIndexes[0] = p.first();
-                                                                    currentRevIndexes[0] = p.second();
-                                                                }
-                                                            }
-                                                        });
                                             }
 
                                             @Override
@@ -544,26 +271,10 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             @Override
                                             public void handleTryCatch(JavaBytecodeInstructionTryCatch n) {
                                                 // Defer visitTryCatchBlock so we can emit entries in
-                                                // reverse order at method end — the JVM matches exception
+                                                // nesting order at method end — the JVM matches exception
                                                 // table entries in table order, so innermost handlers must
                                                 // appear first for correct nesting.
                                                 pendingTryCatchBlocks.add(n);
-                                                // Register the handler label as an entry point so that when
-                                                // its LabelNode is emitted, the current frame (variable index
-                                                // allocations) is restored — otherwise a preceding GOTO nulls
-                                                // currentIndexes[0] and any StoreLoad inside the handler NPEs.
-                                                // bodyEnd is registered similarly: when the try body ends with
-                                                // a Jump (a return), control never reaches bodyEnd naturally,
-                                                // so the tracker needs a snapshot to resolve StoreLoad slots
-                                                // in the unreachable finally-normal code that follows.
-                                                if (currentIndexes[0] != null) {
-                                                    branchIndexes.put(
-                                                        n.handler,
-                                                        new Pair<>(currentIndexes[0], currentRevIndexes[0]));
-                                                    branchIndexes.put(
-                                                        n.end,
-                                                        new Pair<>(currentIndexes[0], currentRevIndexes[0]));
-                                                }
                                             }
                                         });
                                 return null;
@@ -576,78 +287,18 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                             @Override
                             public Object handleStoreLoad(JavaBytecodeStoreLoad storeLoad) {
-                                int index = currentIndexes[0].getOrDefault(storeLoad.key, -1);
-                                boolean wide = storeLoad.code == DSTORE
-                                        || storeLoad.code == LSTORE
-                                        || storeLoad.code == DLOAD
-                                        || storeLoad.code == LLOAD;
-                                if (index == -1) {
-                                    if (storeLoad.code == ISTORE
+                                var index = slotIndexes.getOrNull(storeLoad.key);
+                                if (index == null) {
+                                    boolean wide = storeLoad.code == DSTORE
                                             || storeLoad.code == LSTORE
-                                            || storeLoad.code == ASTORE
-                                            || storeLoad.code == BASTORE
-                                            || storeLoad.code == FSTORE
-                                            || storeLoad.code == DSTORE) {
-                                        // Reserve a run of 1 (narrow) or 2 (wide) consecutive
-                                        // free slots.
-                                        int need = wide ? 2 : 1;
-                                        int run = 0;
-                                        for (int j = 0; j < currentRevIndexes[0].size(); j++) {
-                                            if (currentRevIndexes[0].get(j) == null) {
-                                                run++;
-                                                if (run == need) {
-                                                    int start = j - need + 1;
-                                                    currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, start);
-                                                    for (int k = 0; k < need; k++) {
-                                                        currentRevIndexes[0] = currentRevIndexes[0].with(start + k, storeLoad.key);
-                                                    }
-                                                    index = start;
-                                                    break;
-                                                }
-                                            } else {
-                                                run = 0;
-                                            }
-                                        }
-                                        if (index == -1) {
-                                            // Use total JVM slot count (currentRevIndexes.size),
-                                            // not distinct-key count, so wide bindings that
-                                            // consume 2 slots push the next allocation past both.
-                                            index = currentRevIndexes[0].size();
-                                            currentIndexes[0] = currentIndexes[0].plus(storeLoad.key, index);
-                                            currentRevIndexes[0] = currentRevIndexes[0].plus(storeLoad.key);
-                                            if (wide) {
-                                                currentRevIndexes[0] = currentRevIndexes[0].plus(storeLoad.key);
-                                            }
-                                        }
-                                    } else {
-                                        // LOAD with unrecognized key: the ASTORE for this key
-                                        // occurred in code we jumped past. We're in a dead-code
-                                        // region between the bodyEnd label's restored snapshot
-                                        // (which lacks in-body Binds) and the next jump target.
-                                        // Runtime never executes this LOAD; emit slot 0 so the
-                                        // JVM verifier can parse the sequence.
-                                        index = 0;
-                                    }
+                                            || storeLoad.code == DLOAD
+                                            || storeLoad.code == LLOAD;
+                                    index = nextSlot[0];
+                                    slotIndexes.put(storeLoad.key, index);
+                                    nextSlot[0] += wide ? 2 : 1;
                                 }
                                 out.visitVarInsn(storeLoad.code, index);
-                                if (bindingLastUses.get(storeLoad.key).lastIndexOf(finalCodeIndex) != -1) {
-                                    currentIndexes[0] = currentIndexes[0].minus(storeLoad.key);
-                                    currentRevIndexes[0] = currentRevIndexes[0].with(index, null);
-                                    if (wide) {
-                                        currentRevIndexes[0] = currentRevIndexes[0].with(index + 1, null);
-                                    }
-                                }
                                 return null;
-                            }
-
-                            @Override
-                            public Object handleCatch(JavaBytecodeCatch n) {
-                                throw new AssertionError();
-                            }
-
-                            @Override
-                            public Object handleCatchStart(JavaBytecodeCatchStart n) {
-                                throw new AssertionError();
                             }
 
                             @Override
@@ -659,42 +310,23 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             public Object handleJump(JavaBytecodeJump n) {
                                 throw new AssertionError();
                             }
+
+                            @Override
+                            public Object handleGuarded(JavaBytecodeGuarded n) {
+                                throw new AssertionError();
+                            }
+
                         });
-                codeIndex += 1;
             }
-            // Flush deferred tryCatch entries sorted by nesting: innermost first, then
-            // preserve insertion order among siblings. The JVM matches entries in
-            // table order, and for nested handlers the inner one must be tried first;
-            // but sibling handlers at the same try (catch + finally) must preserve
-            // source order (catch before finally). Sort key = (span-length asc, index asc).
-            var indexed = new int[pendingTryCatchBlocks.size()];
-            for (int i = 0; i < indexed.length; i++) indexed[i] = i;
-            var sortedIndexes = java.util.stream.IntStream.of(indexed)
-                    .boxed()
-                    .sorted((a, b) -> {
-                        var na = pendingTryCatchBlocks.get(a);
-                        var nb = pendingTryCatchBlocks.get(b);
-                        int spanA = na.end.getOffset() - na.start.getOffset();
-                        int spanB = nb.end.getOffset() - nb.start.getOffset();
-                        int c = Integer.compare(spanA, spanB);
-                        if (c != 0) return c;
-                        return Integer.compare(a, b);
-                    })
-                    .toList();
-            for (int idx : sortedIndexes) {
-                var n = pendingTryCatchBlocks.get(idx);
+            // Dest runs never overlap, so table order is free; keep insertion
+            // order.
+            for (var n : pendingTryCatchBlocks) {
                 out.visitTryCatchBlock(n.start, n.end, n.handler, n.excType);
             }
         }
 
         return locMap;
     }
-
-  private static PMap<JavaBytecodeBindingKey, Integer> emptyIfNull(
-      PMap<JavaBytecodeBindingKey, Integer> m) {
-    return m == null ? HashTreePMap.empty() : m;
-  }
-
 
     public JavaBytecodeSequence add(CodeDynamic element) {
         if (element == null) return this;
@@ -711,13 +343,4 @@ public class JavaBytecodeSequence implements JavaBytecode {
     return dispatcher.handleSequence(this);
   }
 
-  interface AsmFramingVisitor {
-    void handleTable(Label dflt, Label[] labels);
-
-    void handleBranch(Label label);
-
-    void handleJump(Label label);
-
-    void handleLabel(Label label);
-  }
 }

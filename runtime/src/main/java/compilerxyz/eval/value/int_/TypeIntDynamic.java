@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.int_;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -28,7 +28,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -110,7 +110,7 @@ import compilerxyz.gen.GenAspectOperatorNeg;
 import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 
-@Builtin(uniqueId = 6163L)
+@BuiltinFull(uniqueId = 6163L)
 @BuiltinPath("types.int")
 public record TypeIntDynamic()
     implements
@@ -173,12 +173,7 @@ public record TypeIntDynamic()
     return NumericKind.INT;
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeIntDynamic.class, "int_dynamic");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -405,7 +400,7 @@ public record TypeIntDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -472,4 +467,6 @@ public record TypeIntDynamic()
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
+
+
 }

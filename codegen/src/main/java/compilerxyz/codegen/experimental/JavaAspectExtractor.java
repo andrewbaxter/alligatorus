@@ -42,7 +42,7 @@ public final class JavaAspectExtractor {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("@Builtin(")) continue;
+        if (!src.contains("@BuiltinFull(")) continue;
         var cu = StaticJavaParser.parse(file);
         var decl = findBuiltinType(cu);
         if (decl != null) {
@@ -79,8 +79,8 @@ public final class JavaAspectExtractor {
     var outerSimple = outer.getNameAsString();
     for (var member : outer.getMembers()) {
       if (member instanceof RecordDeclaration rec) {
-        var hasBuiltin = rec.getAnnotationByName("Builtin").isPresent()
-            || rec.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent();
+        var hasBuiltin = rec.getAnnotationByName("BuiltinFull").isPresent()
+            || rec.getAnnotationByName("compilerxyz.annotations.BuiltinFull").isPresent();
         if (hasBuiltin) {
           var spec = extractBuiltinSpecRecord(sourceFile, cu, rec, outerSimple);
           if (spec != null) builtins.add(spec);
@@ -215,8 +215,8 @@ public final class JavaAspectExtractor {
   private static @org.jspecify.annotations.Nullable TypeDeclaration<?>
       findBuiltinType(CompilationUnit cu) {
     for (var t : cu.getTypes()) {
-      var hasBuiltin = t.getAnnotationByName("Builtin").isPresent()
-          || t.getAnnotationByName("compilerxyz.annotations.Builtin").isPresent();
+      var hasBuiltin = t.getAnnotationByName("BuiltinFull").isPresent()
+          || t.getAnnotationByName("compilerxyz.annotations.BuiltinFull").isPresent();
       if (!hasBuiltin) continue;
       if (t instanceof ClassOrInterfaceDeclaration c) return c;
       if (t instanceof RecordDeclaration r) return r;
@@ -284,10 +284,10 @@ public final class JavaAspectExtractor {
       ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
 
   private static AnnotationExpr getBuiltinAnnotation(TypeDeclaration<?> decl) {
-    return decl.getAnnotationByName("Builtin")
-        .or(() -> decl.getAnnotationByName("compilerxyz.annotations.Builtin"))
+    return decl.getAnnotationByName("BuiltinFull")
+        .or(() -> decl.getAnnotationByName("compilerxyz.annotations.BuiltinFull"))
         .orElseThrow(() -> new IllegalStateException(
-            "@Builtin missing on " + decl.getNameAsString()));
+            "@BuiltinFull missing on " + decl.getNameAsString()));
   }
 
   private static AnnotationExpr requireAnnotation(

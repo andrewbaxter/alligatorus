@@ -3,7 +3,7 @@ package compilerxyz.eval.value.expr;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -23,7 +23,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 
-@BuiltinIdentity(uniqueId = 6107L)
+@BuiltinLight(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder()
     implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
 
@@ -90,7 +90,7 @@ public record TypeExprStagedPlaceholder()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

@@ -1,11 +1,11 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.eval.dynamic.CodeDynamic;
 
-@Builtin(uniqueId = 6016L)
+@BuiltinFull(uniqueId = 6016L)
 @BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 

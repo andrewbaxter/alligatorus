@@ -19,7 +19,6 @@ module compilerxyz.runtime {
     exports compilerxyz.eval.builtin;
     exports compilerxyz.eval.definition_set;
     exports compilerxyz.eval.dynamic;
-    exports compilerxyz.eval.dynamic.target;
     exports compilerxyz.eval.expr;
     exports compilerxyz.eval.push;
     exports compilerxyz.eval.value;

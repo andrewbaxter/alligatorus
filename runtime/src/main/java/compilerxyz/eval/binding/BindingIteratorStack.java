@@ -1,5 +1,11 @@
 package compilerxyz.eval.binding;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
+import compilerxyz.util.Opt;
+
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -18,7 +24,7 @@ import org.objectweb.asm.Opcodes;
  */
 public final class BindingIteratorStack implements Binding {
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     throw new IllegalStateException(
         "BindingIteratorStack: iterator is a stack-only scope entry, never resolved by name");
   }
@@ -33,10 +39,7 @@ public final class BindingIteratorStack implements Binding {
     return this;
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    return this == other || this.equals(other);
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

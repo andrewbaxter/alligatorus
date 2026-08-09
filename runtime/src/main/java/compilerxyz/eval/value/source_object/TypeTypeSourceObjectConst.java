@@ -4,7 +4,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.Artifact;
@@ -63,7 +63,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
-@BuiltinIdentity(uniqueId = 6138L)
+@BuiltinLight(uniqueId = 6138L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     implements
         Type,
@@ -89,11 +89,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return "object(" + (type_.name != null ? type_.name : "?") + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeTypeSourceObjectConst.class, "type_source_object_const", compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_CONST);
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -538,7 +534,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(type_));
+      return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectConst(type_), type_));
     }
   }
 
@@ -599,7 +595,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

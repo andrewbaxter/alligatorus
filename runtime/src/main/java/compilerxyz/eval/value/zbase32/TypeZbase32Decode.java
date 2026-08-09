@@ -2,7 +2,7 @@ package compilerxyz.eval.value.zbase32;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
@@ -44,7 +44,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @BuiltinPath("zbase32.decode")
-@BuiltinIdentity(uniqueId = 6153L)
+@BuiltinLight(uniqueId = 6153L)
 public record TypeZbase32Decode()
     implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -53,12 +53,7 @@ public record TypeZbase32Decode()
     return "zbase32.decode";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeZbase32Decode.class, "zbase32_decode");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -127,7 +122,7 @@ public record TypeZbase32Decode()
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -143,7 +138,7 @@ public record TypeZbase32Decode()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

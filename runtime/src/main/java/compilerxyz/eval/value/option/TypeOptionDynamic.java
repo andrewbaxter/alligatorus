@@ -3,7 +3,7 @@ package compilerxyz.eval.value.option;
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -38,7 +38,7 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.GenTrivialIdentityAspects;
@@ -59,7 +59,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@Builtin(uniqueId = 6008L)
+@BuiltinFull(uniqueId = 6008L)
 public final class TypeOptionDynamic
     implements
         
@@ -92,7 +92,11 @@ public final class TypeOptionDynamic
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    // Options are real Opt objects at runtime (Opt.Some for some, Opt.none()
+    // for none) — never bare nullable values — so Opt<Opt<X>> is
+    // unambiguous. The runtime data type is Opt, not Object.
+    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.util.Opt.class));
   }
 
   @Override
@@ -100,11 +104,7 @@ public final class TypeOptionDynamic
     return "option(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionDynamic.class, "option_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -369,7 +369,7 @@ public final class TypeOptionDynamic
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+              new CodeValue(Code.none(loc), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), f.type()))));
     };
   }
 
@@ -420,7 +420,7 @@ public final class TypeOptionDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -444,4 +444,6 @@ public final class TypeOptionDynamic
   public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
     return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
   }
+
+
 }

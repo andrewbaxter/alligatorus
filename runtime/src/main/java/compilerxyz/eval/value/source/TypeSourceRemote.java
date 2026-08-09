@@ -2,7 +2,7 @@ package compilerxyz.eval.value.source;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
@@ -26,7 +26,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 
 @BuiltinPath("source.remote")
-@BuiltinIdentity(uniqueId = 6158L)
+@BuiltinLight(uniqueId = 6158L)
 public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
@@ -34,12 +34,7 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
     return "source.remote";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceRemote.class, "source_remote");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -76,7 +71,7 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -92,7 +87,7 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

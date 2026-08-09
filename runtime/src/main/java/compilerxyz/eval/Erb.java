@@ -55,48 +55,9 @@ public final class Erb {
     return Optional.of(r.requireValue("Erb::mustErMaybeUnreachable value"));
   }
 
-  /** An exit reached an evaluation boundary without finding its target label. */
-  public static ExprErr exitUnmatchedError(Exit exit) {
-    if (exit.label instanceof Opt.Some<String> lbl) {
-      return new ExprErr(
-          exit.loc,
-          TList.of(
-              new ExprSubErr.Opaque(
-                  "return: no enclosing scope with label '" + lbl.value() + "'")));
-    }
-    return new ExprErr(
-        exit.loc,
-        TList.of(new ExprSubErr.Opaque("return: no enclosing control scope")));
-  }
-
-  public static ExprErr exitCrossError(Exit exit) {
-    if (exit.label instanceof Opt.Some<String> lbl) {
-      return new ExprErr(
-          exit.loc,
-          TList.of(
-              new ExprSubErr.Opaque(
-                  "return: control exit to label '"
-                      + lbl.value()
-                      + "' crosses an expression boundary; not valid in this position")));
-    }
-    return new ExprErr(
-        exit.loc,
-        TList.of(
-            new ExprSubErr.Opaque(
-                "return: control exit crosses an expression boundary; not valid in this"
-                    + " position")));
-  }
-
-  private boolean exitsRejected(EvalRes res) {
-    for (var exit : res.exits()) {
-      errors.add(exitCrossError(exit));
-    }
-    return !res.exits().isEmpty();
-  }
-
   /**
-   * Operand-position extraction: requires a fall-through value and no pending
-   * exits, and installs the result's default-exit scope tree into the context.
+   * Operand-position extraction: requires a fall-through value, and installs
+   * the result's default-exit scope tree into the context.
    */
   public Optional<CodeValue> mustCv(ExprContext xx, EResult<EvalRes> r) {
     if (r.hasErrors()) {
@@ -104,9 +65,6 @@ public final class Erb {
       return Optional.empty();
     }
     var res = r.requireValue("Erb::mustCv value");
-    if (exitsRejected(res)) {
-      return Optional.empty();
-    }
     xx.scope.adopt(res.scope());
     if (!(res.cv().value() instanceof Opt.Some<Value>)) {
       errPush(
@@ -117,16 +75,13 @@ public final class Erb {
     return Optional.of(res.cv());
   }
 
-  /** Like {@link #mustCv} but allows a control-ended value; still rejects pending exits. */
+  /** Like {@link #mustCv} but allows a control-ended value. */
   public Optional<CodeValue> mustCvMaybeUnreachable(ExprContext xx, EResult<EvalRes> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
       return Optional.empty();
     }
     var res = r.requireValue("Erb::mustCvMaybeUnreachable value");
-    if (exitsRejected(res)) {
-      return Optional.empty();
-    }
     xx.scope.adopt(res.scope());
     return Optional.of(res.cv());
   }

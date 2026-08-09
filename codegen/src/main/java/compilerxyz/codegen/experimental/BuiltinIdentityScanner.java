@@ -27,7 +27,7 @@ public final class BuiltinIdentityScanner {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
         var src = Files.readString(file);
-        if (!src.contains("@Builtin(") && !src.contains("@BuiltinIdentity(")) continue;
+        if (!src.contains("@BuiltinFull(") && !src.contains("@BuiltinLight(")) continue;
         var cu = StaticJavaParser.parse(file);
         for (var t : cu.getTypes()) {
           collect(t, "", out);
@@ -42,9 +42,9 @@ public final class BuiltinIdentityScanner {
     var mySimple = t.getNameAsString();
     for (var a : t.getAnnotations()) {
       var n = a.getNameAsString();
-      var isBuiltin = n.equals("Builtin") || n.equals("compilerxyz.annotations.Builtin");
+      var isBuiltin = n.equals("BuiltinFull") || n.equals("compilerxyz.annotations.BuiltinFull");
       var isIdentityOnly =
-          n.equals("BuiltinIdentity") || n.equals("compilerxyz.annotations.BuiltinIdentity");
+          n.equals("BuiltinLight") || n.equals("compilerxyz.annotations.BuiltinLight");
       if (isBuiltin || isIdentityOnly) {
         Long uniqueId = null;
         if (a instanceof NormalAnnotationExpr n2) {
@@ -55,7 +55,7 @@ public final class BuiltinIdentityScanner {
           uniqueId = parseLong(s.getMemberValue().toString());
         }
         if (uniqueId == null) {
-          throw new IllegalStateException("@Builtin missing uniqueId on " + mySimple);
+          throw new IllegalStateException("@BuiltinFull/@BuiltinLight missing uniqueId on " + mySimple);
         }
         var useChained = !enclosingChain.isEmpty();
         var name = useChained ? enclosingChain + mySimple : mySimple;

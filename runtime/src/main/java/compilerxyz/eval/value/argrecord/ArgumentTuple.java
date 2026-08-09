@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.EResult;
@@ -18,7 +18,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.stream.Collectors;
 
-@BuiltinIdentity(uniqueId = 6101L)
+@BuiltinLight(uniqueId = 6101L)
 public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
     implements Type, Value, Aspect, ExporterAny {
 
@@ -47,7 +47,7 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

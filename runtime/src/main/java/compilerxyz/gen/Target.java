@@ -1,27 +1,20 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
+import compilerxyz.eval.JumpKey;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.target.BindResult;
-import compilerxyz.eval.dynamic.target.IfBranch;
-import compilerxyz.eval.dynamic.target.RecordBindField;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.dynamic.target.TargetCase;
-import compilerxyz.eval.dynamic.target.TryCatchClause;
-import compilerxyz.eval.dynamic.target.TupleBindSlot;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-@Builtin(uniqueId = 2006L, scopeId = 3006)
+@BuiltinFull(uniqueId = 2006L, scopeId = 3006)
 @BuiltinPath("eval.target")
 public interface Target {
     BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);
@@ -34,15 +27,32 @@ public interface Target {
 
     TargetBindSub targetBindSubTuple(ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots);
 
-    EResult<Code> targetCastException(
-            ExprContext xx, QExprId loc, Code callCode, BindingId catchBinding, CodeValue castCv);
+    EResult<Opt<Code>> targetCastException(
+            ExprContext xx,
+            QExprId loc,
+            JumpKey self,
+            Type calleeExc,
+            Type callerExc,
+            Opt<JumpKey> next);
 
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 
-    EResult<Code> targetTryFinally(QExprId loc, Code body, Code finally_);
+    EResult<Code> targetJump(QExprId loc, JumpKey dest);
 
-    EResult<Code> targetTryDropOnThrow(
-            QExprId loc, Code body, TList<Code> drops, BindingId.Local stateSlot);
+    EResult<Code> targetLand(QExprId loc, JumpKey dest);
+
+    EResult<Code> targetGuarded(QExprId loc, JumpKey dest, Code inner);
+
+    EResult<Code> targetExcCleanup(
+            ExprContext xx, QExprId loc, JumpKey self, Code cleanup, Opt<JumpKey> parent);
+
+    EResult<Code> targetExitTrampoline(
+            ExprContext xx,
+            QExprId loc,
+            JumpKey self,
+            Opt<Type> carryType,
+            Code cleanup,
+            JumpKey next);
 
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
@@ -54,12 +64,15 @@ public interface Target {
     EResult<CodeValue> targetIf(
             ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_);
 
-    EResult<CodeDynamic> targetTryCatchFinally(
+    EResult<Code> targetTryCatchFinally(
             ExprContext xx,
             QExprId loc,
             CodeValue body,
             Opt<TryCatchClause> catch_,
-            Opt<CodeDynamic> finally_);
+            Opt<JumpKey> catchHandler,
+            Opt<Code> finallyNormal);
+
+    EResult<Code> targetFresh(QExprId loc, Code code);
 
     EResult<CodeValue> targetMatch(
             ExprContext xx,

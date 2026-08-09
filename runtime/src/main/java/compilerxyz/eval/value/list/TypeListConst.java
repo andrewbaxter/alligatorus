@@ -2,7 +2,7 @@ package compilerxyz.eval.value.list;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -59,7 +59,7 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinIdentity(uniqueId = 6152L)
+@BuiltinLight(uniqueId = 6152L)
 public final class TypeListConst
     implements
         Type,
@@ -89,12 +89,7 @@ public final class TypeListConst
     return "const list(" + elementType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeListConst.class, "list_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -346,7 +341,7 @@ public final class TypeListConst
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

@@ -4,7 +4,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.Artifact;
@@ -57,9 +57,9 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.Target;
-import compilerxyz.eval.dynamic.target.BindResult;
-import compilerxyz.eval.dynamic.target.RecordBindField;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.BindResult;
+import compilerxyz.gen.RecordBindField;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.eval.value.ValueDynamic;
@@ -86,7 +86,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectType;
 
-@BuiltinIdentity(uniqueId = 6134L)
+@BuiltinLight(uniqueId = 6134L)
 public final class Record
     implements
         Type,
@@ -1252,7 +1252,7 @@ public final class Record
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   public static final class RecordLift implements AspectLift {

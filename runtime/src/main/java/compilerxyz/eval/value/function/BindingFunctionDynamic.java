@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.function;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -20,7 +24,7 @@ import compilerxyz.util.TList;
 public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic type_)
     implements Binding {
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
     return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
   }
@@ -30,10 +34,7 @@ public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic t
     return this;
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    return this == other || this.equals(other);
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

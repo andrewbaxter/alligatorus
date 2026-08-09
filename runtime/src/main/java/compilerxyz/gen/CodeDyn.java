@@ -2,9 +2,9 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.BuiltinPath;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.TargetCode;
 
-@Builtin(uniqueId = 2007L, scopeId = 3007)
+@BuiltinFull(uniqueId = 2007L, scopeId = 3007)
 @BuiltinPath("eval.code_dyn")
 public interface CodeDyn extends TargetCode {}

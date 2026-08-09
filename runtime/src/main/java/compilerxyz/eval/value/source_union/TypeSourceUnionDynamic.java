@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.source_union;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
@@ -23,7 +23,7 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
@@ -38,7 +38,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectUnion;
 
-@Builtin(uniqueId = 6021L)
+@BuiltinFull(uniqueId = 6021L)
 public final class TypeSourceUnionDynamic
     implements
         Type,
@@ -111,6 +111,7 @@ public final class TypeSourceUnionDynamic
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
+
   @Override
   public String typeDesc() {
     return "union_dyn";
@@ -121,11 +122,7 @@ public final class TypeSourceUnionDynamic
     return new TypeTypeSourceUnionConst(this).exportArtifact(xx, loc);
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionDynamic.class, "source_union_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -201,7 +198,7 @@ public final class TypeSourceUnionDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceUnionConst(this), this));
   }
 
   @Override

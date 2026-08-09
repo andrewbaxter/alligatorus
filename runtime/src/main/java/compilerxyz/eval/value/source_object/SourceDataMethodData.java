@@ -83,7 +83,7 @@ public final class SourceDataMethodData {
     innerBindingId = selfId;
 
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    var bodyScope = new Scope();
+    var bodyScope = new Scope(innerVx);
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
     var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
     if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
@@ -157,13 +157,6 @@ public final class SourceDataMethodData {
       return implResult.reerr();
     }
     var implEv = implResult.requireValue("SourceDataMethodData::compile constEval");
-    if (!implEv.exits().isEmpty()) {
-      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
-      for (var exit : implEv.exits()) {
-        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
-      }
-      return compilerxyz.eval.EResult.errs(exitErrs);
-    }
     var implCv = implEv.cv();
     var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {

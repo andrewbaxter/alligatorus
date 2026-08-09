@@ -83,7 +83,7 @@ public final class ImportRun {
       var outcome = outcomeRes.requireValue("import outcome");
       switch (outcome) {
         case SpecOutcome.BundleOut b -> {
-          var bundleValue = ValueObjectConst.ofType(new TypeBundle(b.base()));
+          var bundleValue = new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeBundle(b.base()));
           fields.put(
               key,
               new RecordField.EvalRes(
@@ -159,7 +159,7 @@ public final class ImportRun {
           EResult.ok(
               new CodeValue(
                   Code.none(loc),
-                  EvalOutcome.ofValue(ValueObjectConst.ofType(new TypeBundle(b.base())))));
+                  EvalOutcome.ofValue(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
       case SpecOutcome.ModuleOut m -> {
         if (m.abs() instanceof SourceSpecAbsolute.Local) {
           xx.vx.ix.localDependencies.add(m.compileId());

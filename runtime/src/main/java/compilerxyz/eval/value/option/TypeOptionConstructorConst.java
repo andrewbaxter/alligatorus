@@ -2,7 +2,7 @@ package compilerxyz.eval.value.option;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -32,7 +32,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
 @BuiltinPath("types.option")
-@BuiltinIdentity(uniqueId = 6131L)
+@BuiltinLight(uniqueId = 6131L)
 public record TypeOptionConstructorConst()
     implements
         Type,
@@ -46,11 +46,7 @@ public record TypeOptionConstructorConst()
     return "option constructor";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeOptionConstructorConst.class, "option_constructor_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -82,11 +78,11 @@ public record TypeOptionConstructorConst()
             .aspectTypeType(argValue);
     Type optType = new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     return EResult.ok(
-        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(optType))));
+        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), optType))));
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -102,7 +98,7 @@ public record TypeOptionConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

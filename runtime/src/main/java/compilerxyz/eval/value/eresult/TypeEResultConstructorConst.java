@@ -2,7 +2,7 @@ package compilerxyz.eval.value.eresult;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -32,7 +32,7 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 
 @BuiltinPath("types.eresult")
-@BuiltinIdentity(uniqueId = 6105L)
+@BuiltinLight(uniqueId = 6105L)
 public record TypeEResultConstructorConst()
     implements
         Type,
@@ -45,11 +45,7 @@ public record TypeEResultConstructorConst()
     return "eresult constructor";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultConstructorConst.class, "eresult_constructor_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -80,11 +76,11 @@ public record TypeEResultConstructorConst()
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .aspectTypeType(argValue);
     Type eresultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
-    return EResult.ok(new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(eresultType))));
+    return EResult.ok(new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), eresultType))));
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -100,7 +96,7 @@ public record TypeEResultConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

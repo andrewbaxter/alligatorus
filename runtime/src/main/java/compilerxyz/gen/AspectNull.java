@@ -1,8 +1,8 @@
 package compilerxyz.gen;
 
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.aspect.Aspect;
 
-@Builtin(uniqueId = 1001L, identityId = 4001L)
+@BuiltinFull(uniqueId = 1001L, identityId = 4001L)
 public interface AspectNull extends Aspect {}

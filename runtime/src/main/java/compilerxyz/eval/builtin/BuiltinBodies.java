@@ -1,5 +1,6 @@
 package compilerxyz.eval.builtin;
 
+
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
@@ -78,9 +79,12 @@ public final class BuiltinBodies {
     return new CodeValue(code, EvalOutcome.ofValue(value));
   }
 
+
+
+
   @BuiltinPath(value = "eval.scope", scopeId = 5006L)
   public static Scope scope(ExprContext xx, TOrderedMap<ConstKey, Binding> entries) {
-    var scope = new Scope();
+    var scope = new Scope(xx.vx);
     var named = new TMap<ConstKey, Binding>();
     for (var entry : entries.entrySet()) {
       named.put(entry.getKey(), entry.getValue());
@@ -110,14 +114,6 @@ public final class BuiltinBodies {
           "builtin 5008 (const_eval): const_eval produced no value; errors: " + res.errorsOrNull());
     }
     var resEv = res.requireValue("BuiltinTreeGen builtin 5008 const_eval result");
-    if (!resEv.exits().isEmpty()) {
-      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
-      for (var exit : resEv.exits()) {
-        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
-      }
-      throw new IllegalStateException(
-          "builtin 5008 (const_eval): control exits escaped const_eval: " + exitErrs);
-    }
     return resEv.cv();
   }
 

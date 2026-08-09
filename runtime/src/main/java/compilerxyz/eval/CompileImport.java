@@ -66,7 +66,7 @@ public final class CompileImport {
                   cix.localDependencies);
             }
             var vx = new EvalContext(cix);
-            var rootScope = new Scope();
+            var rootScope = new Scope(vx);
             var target = new TargetDynamic(vx.nextLocalId);
             var xx =
                 new ExprContext(

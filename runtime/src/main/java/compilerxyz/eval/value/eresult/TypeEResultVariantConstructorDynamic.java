@@ -5,7 +5,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -34,7 +34,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinIdentity(uniqueId = 6106L)
+@BuiltinLight(uniqueId = 6106L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
     implements
         Type,
@@ -46,11 +46,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
     return "eresult(" + elementType.typeDesc() + ")." + (isOk ? "ok" : "err");
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeEResultVariantConstructorDynamic.class, "eresult_variant_constructor_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -95,7 +91,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
         new Tuple(
             Opt.none(),
             TList.of(
-                new TupleElement.Dynamic(QExprId.dynamicType()),
+                new TupleElement.Dynamic(compilerxyz.gen.GenQExprId.dynamicType()),
                 new TupleElement.Dynamic(new TypeStringDynamic())));
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
     if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
@@ -128,7 +124,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -139,7 +135,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

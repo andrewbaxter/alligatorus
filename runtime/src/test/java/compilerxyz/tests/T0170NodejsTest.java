@@ -978,10 +978,22 @@ public final class T0170NodejsTest {
                 rp("code_to_bind_sub", targetPanic(mb, "code_to_bind_sub")),
                 rp("bind_sub_record", targetPanic(mb, "bind_sub_record")),
                 rp("bind_sub_tuple", targetPanic(mb, "bind_sub_tuple")),
-                rp("cast_exception", eresultOk(mb, mb.typesCode(), codeNone(mb))),
+                rp(
+                    "cast_exception",
+                    eresultOk(
+                        mb,
+                        mb.call(mb.typesOption(), mb.typesCode()),
+                        mb.call(
+                            mb.field(
+                                mb.call(mb.typesOption(), mb.typesCode()), mb.str("none")),
+                            mb.literalNull()))),
                 rp("seq", eresultOk(mb, mb.typesCode(), codeNone(mb))),
-                rp("try_finally", eresultOk(mb, mb.typesCode(), codeNone(mb))),
-                rp("try_drop_on_throw", eresultOk(mb, mb.typesCode(), codeNone(mb))),
+                rp("jump", targetPanic(mb, "jump")),
+                rp("land", targetPanic(mb, "land")),
+                rp("guarded", targetPanic(mb, "guarded")),
+                rp("exc_cleanup", targetPanic(mb, "exc_cleanup")),
+                rp("exit_trampoline", targetPanic(mb, "exit_trampoline")),
+                rp("fresh", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("drop", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                 rp("return", targetPanic(mb, "return")),
                 rp("stage", targetPanic(mb, "stage")),

@@ -1,13 +1,13 @@
 package compilerxyz.gen;
 
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Value;
 import compilerxyz.util.TList;
 
-@Builtin(uniqueId = 1047L, identityId = 4045L)
+@BuiltinFull(uniqueId = 1047L, identityId = 4045L)
 public interface AspectListConst extends Aspect {
   TList<Value> aspectListConstElements(Value value);
 

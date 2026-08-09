@@ -3,7 +3,7 @@ package compilerxyz.eval.value.null_;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -41,7 +41,7 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
 
-@BuiltinIdentity(uniqueId = 6127L)
+@BuiltinLight(uniqueId = 6127L)
 public record TypeNullConst()
     implements
         Type, AspectArtifact, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectNull, ExporterAny {
@@ -57,11 +57,7 @@ public record TypeNullConst()
     return "null";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeNullConst.class, "null_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -134,7 +130,7 @@ public record TypeNullConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

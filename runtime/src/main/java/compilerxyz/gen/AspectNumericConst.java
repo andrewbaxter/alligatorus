@@ -1,11 +1,11 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.NumericKind;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.gen.Value;
 
-@Builtin(uniqueId = 1065L, identityId = 4065L)
+@BuiltinFull(uniqueId = 1065L, identityId = 4065L)
 public interface AspectNumericConst extends Aspect {
   NumericKind aspectNumericConstKind();
 

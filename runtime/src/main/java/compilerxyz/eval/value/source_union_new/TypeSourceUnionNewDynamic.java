@@ -1,10 +1,14 @@
 package compilerxyz.eval.value.source_union_new;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.ExporterAny;
@@ -34,13 +38,14 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
-@BuiltinIdentity(uniqueId = 6142L)
+@BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectBind, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
     return compilerxyz.gen.GenType.dynamicType();
   }
+
 
 
   @Override
@@ -51,11 +56,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     return "union_new(" + type_.variants.get(variantIndex).tag.toCanonical() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeSourceUnionNewDynamic.class, "source_union_new_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -131,7 +132,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -142,12 +143,12 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceUnionNewConst(type_(), variantIndex()), this));
   }
 
   private record SourceUnionNewConstBinding(Value value) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
       return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
@@ -156,10 +157,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       return this;
     }
 
-    @Override
-    public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-      return this == other || this.equals(other);
-    }
+
 
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

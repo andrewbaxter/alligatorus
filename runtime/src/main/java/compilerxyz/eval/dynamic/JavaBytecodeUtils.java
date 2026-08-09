@@ -1,5 +1,7 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.JumpKey;
+
 import static org.objectweb.asm.Opcodes.ACONST_NULL;
 import static org.objectweb.asm.Opcodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ASTORE;
@@ -28,10 +30,14 @@ import static org.objectweb.asm.Opcodes.PUTSTATIC;
 
 import compilerxyz.eval.QExprId;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
+import compilerxyz.util.TSet;
 import java.io.PrintWriter;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -499,6 +505,121 @@ public class JavaBytecodeUtils {
 
   public static CodeDynamic storeObj(QExprId loc, JavaBytecodeBindingKey key) {
     return new CodeDynamic(lc(loc), new JavaBytecodeStoreLoad(ASTORE, key));
+  }
+
+  // ------------------- fragment instantiation -------------------
+
+  /**
+   * Deep-copies a code fragment so it can be emitted more than once: every
+   * label defined inside gets a fresh identity (references to labels outside
+   * the fragment are preserved), and every Land key defined inside gets a
+   * fresh JumpKey with its internal Jumps remapped. Binding keys are shared —
+   * every copy addresses the same variables.
+   */
+  public static CodeDynamic freshen(CodeDynamic code) {
+    var definedLabels = new TSet<Label>();
+    var landKeys = new TSet<JumpKey>();
+    freshenScan(code.code(), definedLabels, landKeys);
+    var labelMap = new TMap<Label, Label>();
+    for (var l : definedLabels) labelMap.put(l, new Label());
+    var keyMap = new TMap<JumpKey, JumpKey>();
+    for (var k : landKeys) keyMap.put(k, new JumpKey());
+    @SuppressWarnings("serial")
+    var labelNodeMap = new java.util.HashMap<LabelNode, LabelNode>() {
+      @Override
+      public LabelNode get(Object key) {
+        var ln = (LabelNode) key;
+        var existing = super.get(ln);
+        if (existing != null) return existing;
+        var mapped = labelMap.getOrNull(ln.getLabel());
+        var fresh = mapped == null ? ln : new LabelNode(mapped);
+        put(ln, fresh);
+        return fresh;
+      }
+    };
+    return freshenCode(code, labelMap, labelNodeMap, keyMap);
+  }
+
+  private static void freshenScan(
+      JavaBytecode bc, TSet<Label> definedLabels, TSet<JumpKey> landKeys) {
+    if (bc instanceof CodeDynamic cd) {
+      freshenScan(cd.code(), definedLabels, landKeys);
+    } else if (bc instanceof JavaBytecodeSequence seq) {
+      for (var c : seq.children) freshenScan(c, definedLabels, landKeys);
+    } else if (bc instanceof JavaBytecodeInstructionObj obj) {
+      if (obj.node instanceof LabelNode ln) definedLabels.add(ln.getLabel());
+    } else if (bc instanceof JavaBytecodeLand land) {
+      landKeys.add(land.jumpKey);
+    } else if (bc instanceof JavaBytecodeGuarded guarded) {
+      freshenScan(guarded.inner, definedLabels, landKeys);
+    } else if (bc instanceof JavaBytecodeInstructionInt
+        || bc instanceof JavaBytecodeInstructionTryCatch
+        || bc instanceof JavaBytecodeStoreLoad
+        || bc instanceof JavaBytecodeJump) {
+      // No labels or land keys of their own.
+    } else {
+      throw new AssertionError("freshen: unsupported bytecode node " + bc.getClass());
+    }
+  }
+
+  private static CodeDynamic freshenCode(
+      CodeDynamic cd,
+      TMap<Label, Label> labelMap,
+      java.util.Map<LabelNode, LabelNode> labelNodeMap,
+      TMap<JumpKey, JumpKey> keyMap) {
+    return new CodeDynamic(
+        cd.loc(), freshenBytecode(cd.code(), labelMap, labelNodeMap, keyMap));
+  }
+
+  private static Label freshenLabel(Label l, TMap<Label, Label> labelMap) {
+    var mapped = labelMap.getOrNull(l);
+    return mapped == null ? l : mapped;
+  }
+
+  private static JavaBytecode freshenBytecode(
+      JavaBytecode bc,
+      TMap<Label, Label> labelMap,
+      java.util.Map<LabelNode, LabelNode> labelNodeMap,
+      TMap<JumpKey, JumpKey> keyMap) {
+    if (bc instanceof CodeDynamic cd) {
+      return freshenCode(cd, labelMap, labelNodeMap, keyMap);
+    }
+    if (bc instanceof JavaBytecodeSequence seq) {
+      var out = new JavaBytecodeSequence();
+      for (var c : seq.children) out.add(freshenCode(c, labelMap, labelNodeMap, keyMap));
+      return out;
+    }
+    if (bc instanceof JavaBytecodeInstructionObj obj) {
+      return new JavaBytecodeInstructionObj(obj.node.clone(labelNodeMap));
+    }
+    if (bc instanceof JavaBytecodeInstructionInt) {
+      return bc;
+    }
+    if (bc instanceof JavaBytecodeInstructionTryCatch tc) {
+      return new JavaBytecodeInstructionTryCatch(
+          freshenLabel(tc.start, labelMap),
+          freshenLabel(tc.end, labelMap),
+          freshenLabel(tc.handler, labelMap),
+          tc.excType);
+    }
+    if (bc instanceof JavaBytecodeStoreLoad) {
+      return bc;
+    }
+    if (bc instanceof JavaBytecodeLand land) {
+      var nk = keyMap.getOrNull(land.jumpKey);
+      return nk == null ? bc : new JavaBytecodeLand(nk);
+    }
+    if (bc instanceof JavaBytecodeJump jump) {
+      var nk = keyMap.getOrNull(jump.jumpKey);
+      return nk == null ? bc : new JavaBytecodeJump(nk);
+    }
+    if (bc instanceof JavaBytecodeGuarded guarded) {
+      var nk = keyMap.getOrNull(guarded.dest);
+      return new JavaBytecodeGuarded(
+          nk == null ? guarded.dest : nk,
+          freshenCode(guarded.inner, labelMap, labelNodeMap, keyMap));
+    }
+    throw new AssertionError("freshen: unsupported bytecode node " + bc.getClass());
   }
 
   // ------------------- misc -------------------

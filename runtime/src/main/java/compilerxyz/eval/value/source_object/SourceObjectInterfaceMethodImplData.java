@@ -93,7 +93,7 @@ public final class SourceObjectInterfaceMethodImplData {
     var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
     outerBindingId = outerId;
 
-    var bodyScope = new Scope();
+    var bodyScope = new Scope(innerVx);
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
     TypeSourceObjectDynamic outerType = dtData;
     var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
@@ -208,13 +208,6 @@ public final class SourceObjectInterfaceMethodImplData {
     }
     var implEv =
         implResult.requireValue("SourceObjectInterfaceMethodImplData::compile constEval");
-    if (!implEv.exits().isEmpty()) {
-      var exitErrs = new compilerxyz.util.TList<compilerxyz.eval.ExprErr>();
-      for (var exit : implEv.exits()) {
-        exitErrs.add(compilerxyz.eval.Erb.exitUnmatchedError(exit));
-      }
-      return compilerxyz.eval.EResult.errs(exitErrs);
-    }
     var implCv = implEv.cv();
     var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
     if (convertedResult.hasErrors()) {

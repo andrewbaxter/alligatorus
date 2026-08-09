@@ -1,4 +1,4 @@
-package compilerxyz.eval.dynamic.target;
+package compilerxyz.gen;
 
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
@@ -7,7 +7,7 @@ import compilerxyz.eval.Type;
 public record TargetCase(
     String dynamicTag,
     Type variantType,
-    String variantBinaryName,
+    int variantIndex,
     BindingId.Local payloadBinding,
     CodeValue body) {
   public static Type dynamicType() {

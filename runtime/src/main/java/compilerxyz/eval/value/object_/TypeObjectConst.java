@@ -4,7 +4,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -64,7 +64,7 @@ import compilerxyz.gen.GenAspectType;
  * aspect on {@code deferDynamic}.
  */
 @SuppressWarnings("rawtypes")
-@BuiltinIdentity(uniqueId = 6129L)
+@BuiltinLight(uniqueId = 6129L)
 public record TypeObjectConst(
     TypeObjectMeta meta,
     Class externalHostClass,
@@ -135,9 +135,6 @@ public record TypeObjectConst(
         && meta.typeDesc().equals(oSome.value().meta.typeDesc());
   }
 
-                public Type valueType() {
-    return this;
-  }
 
   @Override
   public Unique id() {
@@ -286,7 +283,7 @@ public record TypeObjectConst(
   }
 
   @Override
-  public EResult<Opt<compilerxyz.eval.dynamic.target.TargetBindSub>> aspectBindDynamicBindDynamic(
+  public EResult<Opt<compilerxyz.gen.TargetBindSub>> aspectBindDynamicBindDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value() instanceof Opt.Some<Value>) {
       return EResult.ok(Opt.none());
@@ -403,10 +400,16 @@ public record TypeObjectConst(
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
+    var innerRes = extractInnerType(loc, self, "exception_type");
+    if (!innerRes.hasErrors()
+        && innerRes.requireValue(typeDesc() + "::exception_type inner")
+            instanceof AspectFunction innerAsp) {
+      return innerAsp.aspectFunctionExceptionType(xx, loc, self);
+    }
     if (!(deferDynamic instanceof Opt.Some<Type> some)) return Opt.none();
     if (!(some.value() instanceof AspectFunction asp)) return Opt.none();
-    return asp.aspectFunctionExceptionType();
+    return asp.aspectFunctionExceptionType(xx, loc, self);
   }
 
   @Override

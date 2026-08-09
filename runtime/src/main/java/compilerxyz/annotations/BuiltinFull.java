@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
-public @interface Builtin {
+public @interface BuiltinFull {
   long uniqueId();
 
   int scopeId() default 0;

@@ -4,7 +4,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.Artifact;
@@ -51,9 +51,9 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.Target;
-import compilerxyz.eval.dynamic.target.BindResult;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
-import compilerxyz.eval.dynamic.target.TupleBindSlot;
+import compilerxyz.gen.BindResult;
+import compilerxyz.gen.TargetBindSub;
+import compilerxyz.gen.TupleBindSlot;
 import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.ExprSubErr;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -82,7 +82,7 @@ import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 
-@BuiltinIdentity(uniqueId = 6147L)
+@BuiltinLight(uniqueId = 6147L)
 public final class Tuple
     implements
         Type,
@@ -1131,7 +1131,7 @@ public final class Tuple
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

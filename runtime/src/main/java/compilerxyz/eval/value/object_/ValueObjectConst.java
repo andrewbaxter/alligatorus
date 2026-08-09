@@ -12,17 +12,20 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
   }
 
   /**
-   * Wrap a Java Type instance as a compile-time Value using its per-class META
-   * (the TOC returned by {@link compilerxyz.eval.Type#dynamicType()}
-   * .{@code aspectLiftLift}-style paired-const construction). This is the
-   * standard replacement wherever a Type used to be passed as a Value when
-   * Type extended Value.
+   * The type-of-type of a plain type — a type with no specialized type-of-type
+   * (primitives, list/map/option, functions, …). It is the const form of the
+   * builtin {@code Type} descriptor. Source kinds (object/union/interface) name
+   * their own {@code TypeTypeSource…} type-of-type at the wrap site instead.
    */
-  public static Value ofType(Type t) {
-    var td = (compilerxyz.eval.value.object_.TypeObjectDynamic) compilerxyz.gen.GenType.dynamicType();
-    var paired = new TypeObjectConst(td.meta(), td.hostClass(), compilerxyz.util.Opt.<Type>none(), compilerxyz.util.Opt.<compilerxyz.artifact.ExporterRoot>none());
-    return new ValueObjectConst(paired, t);
+  public static Type plainTypeType() {
+    var td = (TypeObjectDynamic) compilerxyz.gen.GenType.dynamicType();
+    return new TypeObjectConst(
+        td.meta(),
+        td.hostClass(),
+        compilerxyz.util.Opt.<Type>none(),
+        compilerxyz.util.Opt.<compilerxyz.artifact.ExporterRoot>none());
   }
+
 
   @Override
   public EResult<Type> exporterAnyAsType() {

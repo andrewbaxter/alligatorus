@@ -4,7 +4,7 @@ import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.ArtifactSupport;
@@ -34,7 +34,7 @@ import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -70,7 +70,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinIdentity(uniqueId = 6122L)
+@BuiltinLight(uniqueId = 6122L)
 public final class TypeMapDynamic
     implements
         Type,
@@ -113,11 +113,7 @@ public final class TypeMapDynamic
     return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.util.TOrderedMap.class);
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapDynamic.class, "map_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -203,7 +199,7 @@ public final class TypeMapDynamic
       return switch (spec) {
         case FieldSpec.Factory f ->
             EResult.ok(
-                new CodeValue(self.code(), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(f.type()))));
+                new CodeValue(self.code(), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), f.type()))));
         case FieldSpec.GetFn g -> {
           var selfDyn = self.code().dynamic();
           if (selfDyn == null) {
@@ -464,7 +460,7 @@ public final class TypeMapDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

@@ -1,6 +1,6 @@
 package compilerxyz.eval;
 
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.Artifactable;
@@ -10,7 +10,7 @@ import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectDynamicConst;
 import compilerxyz.util.Opt;
 
-@Builtin(uniqueId = 2002L, scopeId = 3002)
+@BuiltinFull(uniqueId = 2002L, scopeId = 3002)
 @BuiltinPath("eval.type")
 public interface Type extends Artifactable {
 
@@ -33,6 +33,7 @@ public interface Type extends Artifactable {
     }
     return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
   }
+
 
   boolean typeIsEqual(ExprContext xx, Type other);
 

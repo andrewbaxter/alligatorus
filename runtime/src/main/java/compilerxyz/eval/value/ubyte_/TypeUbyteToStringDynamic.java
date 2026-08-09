@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.ubyte_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -34,7 +34,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinIdentity(uniqueId = 6183L)
+@BuiltinLight(uniqueId = 6183L)
 public record TypeUbyteToStringDynamic()
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
@@ -55,12 +55,7 @@ public record TypeUbyteToStringDynamic()
     return "ubyte.to_string";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUbyteToStringDynamic.class, "ubyte_to_string_dynamic");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -101,7 +96,7 @@ public record TypeUbyteToStringDynamic()
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -117,7 +112,7 @@ public record TypeUbyteToStringDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

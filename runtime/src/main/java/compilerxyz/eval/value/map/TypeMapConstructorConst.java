@@ -2,7 +2,7 @@ package compilerxyz.eval.value.map;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinPath;
 
@@ -34,7 +34,7 @@ import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.gen.GenAspectType;
 
 @BuiltinPath("types.map")
-@BuiltinIdentity(uniqueId = 6121L)
+@BuiltinLight(uniqueId = 6121L)
 public record TypeMapConstructorConst()
     implements
         Type,
@@ -48,11 +48,7 @@ public record TypeMapConstructorConst()
     return "map constructor";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapConstructorConst.class, "map_constructor_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -113,11 +109,11 @@ public record TypeMapConstructorConst()
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
-        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(compilerxyz.eval.value.object_.ValueObjectConst.ofType(mapType))));
+        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), mapType))));
   }
 
   @Override
-  public Opt<Type> aspectFunctionExceptionType() {
+  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
     return Opt.none();
   }
 
@@ -133,7 +129,7 @@ public record TypeMapConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

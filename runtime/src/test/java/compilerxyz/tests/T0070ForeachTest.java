@@ -109,9 +109,9 @@ public final class T0070ForeachTest {
             DUP
             INVOKEINTERFACE java/util/Iterator.next ()Ljava/lang/Object; (itf)
             CHECKCAST java/lang/Integer
-            ASTORE 0
+            ASTORE 1
             GETSTATIC compilerxyz/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/eval/ExprContext;
-            ALOAD 0
+            ALOAD 1
             INVOKEVIRTUAL java/lang/Integer.intValue ()I
             INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.format (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
@@ -124,7 +124,7 @@ public final class T0070ForeachTest {
             INVOKESPECIAL compilerxyz/eval/gen/Composite$0.<init> ()V
             ARETURN
             MAXSTACK = 3
-            MAXLOCALS = 1
+            MAXLOCALS = 2
         }
         """,
         Helpers.disassembled(ok, "compilerxyz.eval.gen.EvalRoot$0"));

@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.expr;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.artifact.Artifact;
@@ -51,7 +51,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
 
-@Builtin(uniqueId = 6013L)
+@BuiltinFull(uniqueId = 6013L)
 @BuiltinPath("types.expr")
 public record TypeExpr()
     implements
@@ -209,7 +209,7 @@ public record TypeExpr()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.util.Opt<compilerxyz.eval.dynamic.target.TargetBindSub>>
+  public compilerxyz.eval.EResult<compilerxyz.util.Opt<compilerxyz.gen.TargetBindSub>>
       aspectBindDynamicBindDynamic(
           ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
@@ -227,7 +227,7 @@ public record TypeExpr()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

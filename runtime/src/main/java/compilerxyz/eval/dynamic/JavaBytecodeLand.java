@@ -1,5 +1,7 @@
 package compilerxyz.eval.dynamic;
 
+import compilerxyz.eval.JumpKey;
+
 
 public class JavaBytecodeLand implements JavaBytecode {
   public final JumpKey jumpKey;

@@ -1,10 +1,14 @@
 package compilerxyz.eval.value.argrecord;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -28,7 +32,7 @@ import compilerxyz.util.TOrderedMap;
 import java.util.stream.Collectors;
 import compilerxyz.gen.GenAspectField;
 
-@BuiltinIdentity(uniqueId = 6100L)
+@BuiltinLight(uniqueId = 6100L)
 public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     implements Type, Value, AspectField, ExporterAny {
 
@@ -67,7 +71,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     if (entry == null) {
       return EResult.err(loc, "Field '" + ck.toCanonical() + "' not found on argument record");
     }
-    return EResult.ok(entry.binding().bindingUse(xx, loc, Code.none(loc)));
+    return EResult.ok(entry.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc)));
   }
 
   @Override
@@ -87,7 +91,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -143,7 +147,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
         return EResult.err(
             loc, "ArgumentRecord::typeCastTo: missing field '" + key.toCanonical() + "'");
       }
-      var srcCv = srcEntry.binding().bindingUse(xx, loc, Code.none(loc));
+      var srcCv = srcEntry.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
       var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destEntry.getValue(), srcCv));
       if (convOpt.isEmpty()) return EResult.errs(erb.errors());
       convertedFields.put(key, new RecordField.EvalRes(EResult.ok(convOpt.get())));

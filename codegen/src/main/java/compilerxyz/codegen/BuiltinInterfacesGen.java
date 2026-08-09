@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
 
 /**
- * Unified generator for {@code @Builtin} interfaces. Emits a {@code Gen<X>}
+ * Unified generator for {@code @BuiltinFull} interfaces. Emits a {@code Gen<X>}
  * companion class carrying the runtime {@code TypeObjectDynamic} descriptor
  * plus, for aspects, an {@code AspectId} static and {@code get}/{@code getMaybe}
  * lookup helpers. Aspects and traits share this shell; the differences are

@@ -2,7 +2,7 @@ package compilerxyz.eval.value.bool_;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.gen.Binding;
@@ -24,7 +24,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectBind;
@@ -50,7 +50,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
-@BuiltinIdentity(uniqueId = 6104L)
+@BuiltinLight(uniqueId = 6104L)
 public record TypeBoolDynamicBox()
     implements
         Type,
@@ -80,11 +80,7 @@ public record TypeBoolDynamicBox()
     return new TypeBoolDynamic();
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeBoolDynamicBox.class, "bool_dynamic_box");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {

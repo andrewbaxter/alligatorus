@@ -2,7 +2,7 @@ package compilerxyz.eval.value.map;
 
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactExporter;
@@ -29,7 +29,7 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 
-@BuiltinIdentity(uniqueId = 6162L)
+@BuiltinLight(uniqueId = 6162L)
 public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
 
   public final Type keyType;
@@ -47,12 +47,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
     return "const map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeMapConst.class, "map_const");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -194,7 +189,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

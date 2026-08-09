@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.constkey;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.artifact.ExporterAny;
@@ -36,7 +36,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
-@Builtin(uniqueId = 6015L)
+@BuiltinFull(uniqueId = 6015L)
 @BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
     implements
@@ -60,11 +60,7 @@ public record TypeConstkeyDynamic()
     return "constkey";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeConstkeyDynamic.class, "constkey_dynamic");
 
-                public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -145,7 +141,7 @@ public record TypeConstkeyDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(new TypeConstkeyDynamic()));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeConstkeyDynamic()));
   }
 
   @Override

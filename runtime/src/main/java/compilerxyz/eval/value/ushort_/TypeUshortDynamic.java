@@ -1,7 +1,7 @@
 package compilerxyz.eval.value.ushort_;
 
 import compilerxyz.eval.EvalOutcome;
-import compilerxyz.annotations.Builtin;
+import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -28,7 +28,7 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -110,7 +110,7 @@ import compilerxyz.gen.GenAspectOperatorNeg;
 import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 
-@Builtin(uniqueId = 6184L)
+@BuiltinFull(uniqueId = 6184L)
 @BuiltinPath("types.ushort")
 public record TypeUshortDynamic()
     implements
@@ -173,12 +173,7 @@ public record TypeUshortDynamic()
     return NumericKind.USHORT;
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META =
-      compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeUshortDynamic.class, "ushort_dynamic");
 
-  public Type valueType() {
-    return META;
-  }
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
@@ -405,7 +400,7 @@ public record TypeUshortDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(compilerxyz.eval.value.object_.ValueObjectConst.ofType(this));
+    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -472,4 +467,6 @@ public record TypeUshortDynamic()
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
   }
+
+
 }

@@ -1,5 +1,9 @@
 package compilerxyz.eval.value.record;
 
+import compilerxyz.gen.BindingSetter;
+
+
+
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
@@ -26,7 +30,7 @@ public record BindingRecordBound(
     TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey) implements Binding {
 
   @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Code code) {
+  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     boolean hasDynamic = fields.values().stream().anyMatch(f -> f instanceof RecordScopeField.Dynamic);
     Code useCode;
     Opt<RecordBaseDynamic> base;
@@ -46,7 +50,7 @@ public record BindingRecordBound(
       RecordField rf =
           switch (entry.getValue()) {
             case RecordScopeField.Scope s -> new RecordField.EvalRes(
-                EResult.ok(s.binding().bindingUse(xx, loc, Code.none(loc))));
+                EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
             case RecordScopeField.Dynamic d -> new RecordField.Dynamic(d.type());
             case RecordScopeField.Error e -> new RecordField.EvalRes(EResult.errs(e.errors()));
           };
@@ -71,31 +75,7 @@ public record BindingRecordBound(
     return new BindingRecordBound(forked, jsKey);
   }
 
-  @Override
-  public boolean bindingEquals(ExprContext xx, QExprId loc, Binding other) {
-    if (this == other) return true;
-    if (!(other instanceof BindingRecordBound o)) return false;
-    if (o.fields.size() != fields.size()) return false;
-    for (var entry : fields.entrySet()) {
-      var b = o.fields.get(entry.getKey());
-      if (b == null) return false;
-      switch (entry.getValue()) {
-        case RecordScopeField.Scope s -> {
-          if (!(b instanceof RecordScopeField.Scope os)
-              || !s.binding().bindingEquals(xx, loc, os.binding())) {
-            return false;
-          }
-        }
-        case RecordScopeField.Dynamic d -> {
-          if (!d.equals(b)) return false;
-        }
-        case RecordScopeField.Error e -> {
-          if (!e.equals(b)) return false;
-        }
-      }
-    }
-    return true;
-  }
+
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {

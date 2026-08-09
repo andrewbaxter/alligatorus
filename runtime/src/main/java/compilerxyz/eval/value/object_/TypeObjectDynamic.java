@@ -4,7 +4,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.annotations.BuiltinIdentity;
+import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.Artifact;
@@ -35,7 +35,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.target.TargetBindSub;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.source_interface.InterfaceData;
@@ -67,7 +67,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 
 @SuppressWarnings("rawtypes")
-@BuiltinIdentity(uniqueId = 6130L)
+@BuiltinLight(uniqueId = 6130L)
 public record TypeObjectDynamic(
     TypeObjectMeta meta,
     JavaInternalName jvmClass,
@@ -178,9 +178,6 @@ public record TypeObjectDynamic(
     return data;
   }
 
-                public Type valueType() {
-    return this;
-  }
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
@@ -194,7 +191,7 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(ValueObjectConst.ofType(this));
+    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
   }
 
   public static final ExporterRootDelegate DELEGATE =
