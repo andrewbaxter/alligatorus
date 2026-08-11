@@ -11,6 +11,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
@@ -49,7 +50,7 @@ import compilerxyz.gen.GenAspectTuple;
 @BuiltinLight(uniqueId = 6110L)
 public record TypeFunctionDynamic(
     TList<FunctionParam> params,
-    Type ret,
+    Opt<Type> ret,
     JavaInternalName klass,
     String methodName,
     boolean needsExprContext)
@@ -73,7 +74,7 @@ public record TypeFunctionDynamic(
   }
 
   public static EResult<JavaMethodDescriptor> descriptorFor(
-      ExprContext xx, QExprId loc, Type arg, Type ret, boolean needsExprContext) {
+      ExprContext xx, QExprId loc, Type arg, Opt<Type> ret, boolean needsExprContext) {
     var argDescs = new TList<JavaDataDescriptor>();
     if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
     var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, arg);
@@ -97,11 +98,15 @@ public record TypeFunctionDynamic(
         argDescs.add(argDescRes.requireValue("TypeFunctionDynamic::descriptor single arg"));
       }
     }
-    var retDescRes = jvmDescOf(xx, loc, ret);
-    if (retDescRes.hasErrors()) return retDescRes.reerr();
-    return EResult.ok(
-        JavaMethodDescriptor.fromParts(
-            retDescRes.requireValue("TypeFunctionDynamic::descriptor ret"), argDescs));
+    JavaDataDescriptor retDesc;
+    if (ret instanceof Opt.Some<Type> retSome) {
+      var retDescRes = jvmDescOf(xx, loc, retSome.value());
+      if (retDescRes.hasErrors()) return retDescRes.reerr();
+      retDesc = retDescRes.requireValue("TypeFunctionDynamic::descriptor ret");
+    } else {
+      retDesc = JavaDataDescriptor.DESC_VOID;
+    }
+    return EResult.ok(JavaMethodDescriptor.fromParts(retDesc, argDescs));
   }
 
   public static EResult<CodeDynamic> emitStaticInvocation(
@@ -183,9 +188,6 @@ public record TypeFunctionDynamic(
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
-
     var argType = arg();
     var argList = new compilerxyz.util.TList<CodeDynamic>();
     compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
@@ -204,11 +206,16 @@ public record TypeFunctionDynamic(
     }
     var invocationRes = emitInvocation(xx, loc, argList);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
+    var invocation = invocationRes.requireValue("TypeFunctionDynamic::call invocation");
+    if (!(ret instanceof Opt.Some<Type> retSome)) {
+      return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
+    }
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retSome.value());
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeFunctionDynamic::call ret stack")
-            .aspectStackValueDynamicToValue(
-                xx, loc, invocationRes.requireValue("TypeFunctionDynamic::call invocation")));
+            .aspectStackValueDynamicToValue(xx, loc, invocation));
   }
 
   @Override
@@ -259,7 +266,7 @@ public record TypeFunctionDynamic(
   @Override
   public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
     return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_FUNCTION_DYNAMIC_IDENTITY, TypeFunctionDynamic.class) instanceof Opt.Some<TypeFunctionDynamic> oSome
-        && paramsEqual(xx, params, oSome.value().params) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && needsExprContext == oSome.value().needsExprContext;
+        && paramsEqual(xx, params, oSome.value().params) && retEqual(xx, ret, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && needsExprContext == oSome.value().needsExprContext;
   }
 
   static boolean paramsEqual(
@@ -270,6 +277,13 @@ public record TypeFunctionDynamic(
       if (!a.get(i).type().typeIsEqual(xx, b.get(i).type())) return false;
     }
     return true;
+  }
+
+  public static boolean retEqual(compilerxyz.eval.ExprContext xx, Opt<Type> a, Opt<Type> b) {
+    if (a instanceof Opt.Some<Type> as && b instanceof Opt.Some<Type> bs) {
+      return as.value().typeIsEqual(xx, bs.value());
+    }
+    return a instanceof Opt.None && b instanceof Opt.None;
   }
 
   @Override

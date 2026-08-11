@@ -49,7 +49,8 @@ public final class SourceFunctionData {
   public @Nullable Type exceptionType;
   public @Nullable Value implExpr;
   public @Nullable Type argType;
-  public @Nullable Type retType;
+  // Optional return: some(type) if the function yields a value, none if it returns nothing.
+  public Opt<Type> retType = Opt.none();
   public int funcIdx;
   public @Nullable String compiledClassName;
   public @Nullable byte[] compiledBytecode;
@@ -107,10 +108,6 @@ public final class SourceFunctionData {
           rootLoc, "Definition set function '" + nameStr + "' is missing an arg type");
     }
     var retT = retType;
-    if (retT == null) {
-      return EResult.err(
-          rootLoc, "Definition set function '" + nameStr + "' is missing a return type");
-    }
     var funcSet = set;
     if (funcSet == null) {
       throw new AssertionError(
@@ -174,7 +171,10 @@ public final class SourceFunctionData {
     }
     var implEv = implResult.requireValue("SourceFunctionData::compile constEval");
     var implCv = implEv.cv();
-    var convertedResult = Eval.typecheckConvert(funcXx, rootLoc, retT, implCv);
+    var convertedResult =
+        retT instanceof Opt.Some<Type> retSome
+            ? Eval.typecheckConvert(funcXx, rootLoc, retSome.value(), implCv)
+            : EResult.ok(implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();
     }
@@ -237,8 +237,11 @@ public final class SourceFunctionData {
   }
 
   private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescForRes(
-      ExprContext xx, QExprId loc, Type t) {
-    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
+      ExprContext xx, QExprId loc, Opt<Type> t) {
+    if (!(t instanceof Opt.Some<Type> tSome)) {
+      return EResult.ok(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID);
+    }
+    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, tSome.value());
     if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
       return EResult.ok(some.value().aspectConsumeDynamicJvmClass(xx));
     }

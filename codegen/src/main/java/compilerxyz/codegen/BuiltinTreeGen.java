@@ -153,9 +153,10 @@ public final class BuiltinTreeGen {
         TList<NamedTypeRef> args,
         CodeBlock retDynamicType) {
       var innerExpr = CodeBlock.of(
-          "new $T($L, $L, $T.of($S), $S, $L)",
+          "new $T($L, $T.some($L), $T.of($S), $S, $L)",
           TYPE_FUNCTION_DYNAMIC,
           paramsExpr(args),
+          OPT,
           retDynamicType,
           JAVA_INTERNAL_NAME,
           ownerInternalName,

@@ -69,24 +69,22 @@ public final class T0130DropThrowTest {
                         new TestMb.RecordPair(
                             "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
             mb.str("value"));
+    var constEvalCall =
+        mb.call(
+            mb.evalConstEval(),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair(
+                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair(
+                        "staged",
+                        mb.stage(
+                            mb.seqOf(
+                                mb.call(mb.log(), mb.str(dropMessage)),
+                                mb.return_(mb.graft(mb.scopeUse("underlying_code_")))))))));
     return mb.seqOf(
         mb.bind("underlying_code_", underlyingCodeExpr),
-        mb.return_(mb.call(
-            mb.field(mb.call(mb.typesEresult(), mb.typesCode()), mb.str("ok")),
-            mb.field(
-                mb.call(
-                    mb.evalConstEval(),
-                    mb.recordOf(
-                        TList.of(
-                            new TestMb.RecordPair(
-                                "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                            new TestMb.RecordPair(
-                                "staged",
-                                mb.stage(
-                                    mb.seqOf(
-                                        mb.call(mb.log(), mb.str(dropMessage)),
-                                        mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))),
-                mb.str("code")))));
+        mb.return_(mb.constEvalCode(constEvalCall)));
   }
 
   private static SourceExpr canaryBindDynamicBody(TestMb mb) {
@@ -225,6 +223,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                 new TestMb.RecordPair(
                                                     "code",
                                                     mb.field(
+                                                        mb.field(
                                                         mb.call(
                                                             mb.evalConstEval(),
                                                             mb.recordOf(
@@ -243,6 +242,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                                                         "arg"),
                                                                                     mb.str(
                                                                                         "cv")))))))),
+                                                        mb.str("value")),
                                                         mb.str("code"))),
                                                 new TestMb.RecordPair(
                                                     "value",
@@ -563,6 +563,44 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
   }
 
   @Test
+  public void test01335FinallyThrowRejected() {
+    // A throw out of a finally expression is invalid: the finally must
+    // complete normally.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.tryCatchFinally(
+                mb.call(mb.log(), mb.str("body")), null, mb.throw_(mb.str("boom")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(
+        res instanceof Result.Err<?, ?>,
+        () -> "throw in a finally should fail compile: " + res);
+  }
+
+  @Test
+  public void test01337FinallyReturnRejected() {
+    // A return out of a finally expression is invalid, even when an enclosing
+    // label exists to target.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.labeled(
+                "outer",
+                mb.tryCatchFinally(
+                    mb.call(mb.log(), mb.str("body")), null, mb.return_("outer", null)))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(
+        res instanceof Result.Err<?, ?>,
+        () -> "return in a finally should fail compile: " + res);
+  }
+
+  @Test
   public void test01340ThrowCaughtLogsMessage() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
@@ -601,7 +639,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(mb.throw_(mb.str("x"))))))),
@@ -641,7 +679,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(mb.throw_(mb.str("x"))))))),
@@ -811,6 +849,80 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         () -> "drop should run before catch handler; got logs=" + messages);
   }
 
+  private static SourceExpr dynTrue(TestMb mb) {
+    return mb.operatorEq(
+        mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+  }
+
+  @Test
+  public void test01432IfArmDropRuntime() {
+    // A droppable produced inside an if-arm is dropped at the arm's end, before
+    // control rejoins after the if.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "arm_dropped"))),
+                mb.ifOf(
+                    TList.of(
+                        new TestMb.Branch(
+                            dynTrue(mb),
+                            mb.seqOf(
+                                mb.bind(
+                                    "cnry",
+                                    mb.as_(
+                                        mb.as_(mb.str("Z"), mb.typesString()),
+                                        mb.scopeUse("canary"))),
+                                mb.call(mb.log(), mb.str("then")),
+                                mb.tupleOf()))),
+                    null),
+                mb.call(mb.log(), mb.str("end")))));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    int dropIdx = messages.indexOf("arm_dropped");
+    int endIdx = messages.indexOf("end");
+    assertTrue(dropIdx >= 0, () -> "expected arm-local drop 'arm_dropped', got " + messages);
+    assertTrue(
+        dropIdx < endIdx,
+        () -> "arm-local value should drop at arm end, before 'end'; got " + messages);
+  }
+
+  @Test
+  public void test01434IfArmDropOnThrowRuntime() {
+    // A droppable that is live when an if-arm throws is dropped on the
+    // exceptional edge, before the catch handler runs.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.tryCatchFinally(
+                mb.seqOf(
+                    mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
+                    mb.bind(
+                        "cnry",
+                        mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
+                    mb.ifOf(
+                        TList.of(new TestMb.Branch(dynTrue(mb), mb.throw_(mb.str("boom")))),
+                        mb.tupleOf())),
+                new TestMb.Catch(
+                    "e",
+                    mb.builtin("types", "string"),
+                    mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf())),
+                null)));
+    var res = compileOk(modules);
+    var messages = messages(res);
+    int dropIdx = messages.indexOf("dropped");
+    int caughtIdx = messages.indexOf("caught");
+    assertTrue(dropIdx >= 0, () -> "expected 'dropped' log, got " + messages);
+    assertTrue(caughtIdx >= 0, () -> "expected 'caught' log, got " + messages);
+    assertTrue(
+        dropIdx < caughtIdx,
+        () -> "live value should drop before the catch when an if-arm throws; got " + messages);
+  }
+
   @Test
   public void test01440TryCatchUnifiesBranchTypes() {
     var mb = new TestMb();
@@ -899,7 +1011,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(
@@ -950,7 +1062,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(

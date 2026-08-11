@@ -392,7 +392,17 @@ public final class Tuple
 
   @Override
   public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
+    var types = new TList<Type>(elements.size());
+    for (var e : elements) {
+      if (!(e instanceof TupleElement.Dynamic d)) {
+        throw new IllegalStateException("Tuple::jvmClass: self has non-Dynamic element");
+      }
+      types.add(d.type());
+    }
+    var sortedTypes = sortTupleTypes(xx, types);
+    var klass = CompositeClassEmitter.getOrEmit(xx, sortedTypes);
+    return JavaDataDescriptor.fromInternalName(
+        JavaInternalName.of(klass.getName().replace('.', '/')));
   }
 
   @Override
@@ -790,11 +800,11 @@ public final class Tuple
       return EResult.ok(
           new BindResult(
               Code.of(loc, bound.code()),
-              new BindingTupleBound(sub.scopeFields(), Opt.some(bound.id()))));
+              new BindingTuple(sub.scopeFields(), Opt.some(bound.id()))));
     }
     return EResult.ok(
         new BindResult(
-            Code.none(loc), new BindingTupleBound(sub.scopeFields(), Opt.none())));
+            Code.none(loc), new BindingTuple(sub.scopeFields(), Opt.none())));
   }
 
   private record BindSub(
@@ -964,6 +974,9 @@ public final class Tuple
       throw new IllegalStateException(
           "Tuple::toDynamic: expected Tuple value, got " + some.value().getClass());
     }
+    if (tuple.base instanceof Opt.Some<TupleBaseDynamic> baseSome) {
+      return baseSome.value().tupleBaseToDynamic(loc, carry);
+    }
     var types = new TList<Type>(elements.size());
     for (var e : elements) {
       if (!(e instanceof TupleElement.Dynamic d)) {
@@ -1031,9 +1044,6 @@ public final class Tuple
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
-    if (elements.isEmpty()) {
-      return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(new Tuple(Opt.none(), new TList<>())));
-    }
     var source = new ValueDynamicSource.Expr(1);
     return new CodeValue(
         Code.of(loc, value),
@@ -1042,16 +1052,19 @@ public final class Tuple
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    var elementTypes = new TList<Type>(elements.size());
+    // An initial-bind tuple is the whole composite in one local: every element
+    // reads out of it (Dynamic), and the composite itself is the stored value
+    // (jsKey). Same shape as any other bound tuple — one BindingTuple.
+    var scopeFields = new TList<TupleScopeField>(elements.size());
     for (int i = 0; i < elements.size(); i++) {
       var e = elements.get(i);
       if (!(e instanceof TupleElement.Dynamic d)) {
         throw new IllegalStateException(
             "Tuple::initialBind: element " + i + " is not Dynamic-only");
       }
-      elementTypes.add(d.type());
+      scopeFields.add(new TupleScopeField.Dynamic(d.type()));
     }
-    return new BindingTupleDynamic(dynamicKey, elementTypes);
+    return new BindingTuple(scopeFields, Opt.some(dynamicKey));
   }
 
   public static final class TupleLift implements AspectLift {

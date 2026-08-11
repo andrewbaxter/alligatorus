@@ -99,23 +99,34 @@ public final class T0160EvenOddTest {
                         new TestMb.RecordPair(
                             "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
             mb.str("value"));
+    var constEvalCall =
+        mb.call(
+            mb.evalConstEval(),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair(
+                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair(
+                        "staged",
+                        mb.stage(mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))));
     return mb.seqOf(
         mb.bind("underlying_code_", underlyingCodeExpr),
-        mb.return_(
-            mb.call(
-                mb.field(mb.call(mb.typesEresult(), mb.typesCode()), mb.str("ok")),
-                mb.field(
-                    mb.call(
-                        mb.evalConstEval(),
-                        mb.recordOf(
-                            TList.of(
-                                new TestMb.RecordPair(
-                                    "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                new TestMb.RecordPair(
-                                    "staged",
-                                    mb.stage(
-                                        mb.return_(mb.graft(mb.scopeUse("underlying_code_")))))))),
-                    mb.str("code")))));
+        mb.return_(mb.constEvalCode(constEvalCall)));
+  }
+
+  /** A drop body that PRODUCES throwing code (stages a throw), to test that the
+   * produced drop code — not just the drop's meta body — is exception-checked. */
+  private static SourceExpr evenOddDropBodyStagedThrow(TestMb mb) {
+    var constEvalCall =
+        mb.call(
+            mb.evalConstEval(),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair(
+                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair(
+                        "staged", mb.stage(mb.throw_(mb.str("drop boom")))))));
+    return mb.seqOf(mb.return_(mb.constEvalCode(constEvalCall)));
   }
 
   private static SourceExpr evenOddBindBody(TestMb mb) {
@@ -651,6 +662,10 @@ public final class T0160EvenOddTest {
   }
 
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
+    return makeEvenOddTypeInner(mb, name, evenOddDropBody(mb));
+  }
+
+  private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name, SourceExpr dropBody) {
     return mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                 mb.bind(
@@ -703,7 +718,7 @@ public final class T0160EvenOddTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesLong()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesLong())),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(
@@ -762,7 +777,7 @@ public final class T0160EvenOddTest {
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
                             new TestMb.RecordPair(
-                                "ret", mb.field(mb.scopeUse("vs"), mb.str("type"))),
+                                "ret", mb.optSomeType(mb.field(mb.scopeUse("vs"), mb.str("type")))),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(
@@ -839,7 +854,7 @@ public final class T0160EvenOddTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesLong()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesLong())),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(
@@ -1276,7 +1291,7 @@ public final class T0160EvenOddTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "drop", evenOddDropBody(mb)))))))),
+                                            "drop", dropBody))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1389,12 +1404,16 @@ public final class T0160EvenOddTest {
   }
 
   private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {
+    return bindEvenOddType(mb, name, evenOddDropBody(mb));
+  }
+
+  private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name, SourceExpr dropBody) {
     return TList.of(
         mb.bind(
             "even_type",
             mb.lower(
                 mb.seqOf(
-                    mb.bind("even_type_new", mb.lower(makeEvenOddTypeInner(mb, name))),
+                    mb.bind("even_type_new", mb.lower(makeEvenOddTypeInner(mb, name, dropBody))),
                     mb.return_(
                         mb.call(
                             mb.scopeUse("even_type_new"),
@@ -1416,6 +1435,55 @@ public final class T0160EvenOddTest {
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     return ok;
+  }
+
+  @Test
+  public void test00110DropCannotThrow() {
+    // A drop implementation must not throw: its body is evaluated with no
+    // declared exception type, so a throw (or a call to a throwing function)
+    // is a compile error.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd", mb.throw_(mb.str("drop boom"))),
+                mb.call(mb.log(), mb.str("defined")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(
+        res instanceof Result.Err<?, ?>, () -> "a throwing drop should fail compile: " + res);
+    assertTrue(
+        res.toString().contains("throw not allowed"),
+        () -> "expected the throw-not-allowed gate to fire, got: " + res);
+  }
+
+  @Test
+  public void test00120DropProducedCodeCannotThrow() {
+    // Not just the drop's meta body: the code a drop PRODUCES must not throw
+    // either. The drop is invoked with no declared exception type, so a staged
+    // throw in the produced drop code is rejected even though the enclosing
+    // (module) context does declare an exception type.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            moduleSeq(
+                mb,
+                bindEvenOddType(mb, "EvenOdd", evenOddDropBodyStagedThrow(mb)),
+                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.call(mb.log(), mb.str("bound")))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(
+        res instanceof Result.Err<?, ?>,
+        () -> "a drop that produces a throw should fail compile: " + res);
+    assertTrue(
+        res.toString().contains("throw not allowed"),
+        () -> "expected the throw-not-allowed gate to fire on the produced drop code, got: " + res);
   }
 
   @Test

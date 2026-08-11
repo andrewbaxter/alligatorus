@@ -67,7 +67,7 @@ public final class T0050IntsTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesInt()),
-                                        new TestMb.RecordPair("ret", mb.typesInt()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesInt())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(

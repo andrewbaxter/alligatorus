@@ -33,7 +33,8 @@ public final class SourceDataMethodData {
 
   public final String name;
   public @Nullable Type argType;
-  public @Nullable Type retType;
+  // Optional return: some(type) if the method yields a value, none if it returns nothing.
+  public Opt<Type> retType = Opt.none();
   public @Nullable Value implExpr;
   public @Nullable String compiledClassName;
   public @Nullable byte[] compiledBytecode;
@@ -72,10 +73,6 @@ public final class SourceDataMethodData {
           "Data type '" + dtName + "' method '" + name + "' impl is not an Expr: " + implExprValue);
     }
     var retT = retType;
-    if (retT == null) {
-      return EResult.err(
-          rootLoc, "Data type '" + dtName + "' method '" + name + "' is missing a return type");
-    }
     var innerVx = new EvalContext(xx.vx.ix);
     innerVx.evalRootInternalName = objectInternalName;
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
@@ -158,7 +155,10 @@ public final class SourceDataMethodData {
     }
     var implEv = implResult.requireValue("SourceDataMethodData::compile constEval");
     var implCv = implEv.cv();
-    var convertedResult = Eval.typecheckConvert(methodXx, rootLoc, retT, implCv);
+    var convertedResult =
+        retT instanceof Opt.Some<Type> retSome
+            ? Eval.typecheckConvert(methodXx, rootLoc, retSome.value(), implCv)
+            : EResult.ok(implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();
     }

@@ -40,6 +40,7 @@ public final class BuiltinMethodEmit {
   private static final ClassName RECORD_FIELD = ClassName.get("compilerxyz.eval.value.record", "RecordField");
   private static final ClassName RECORD_FIELD_DYNAMIC = ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
+  private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
   private static final ClassName JAVA_METHOD_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
@@ -133,7 +134,7 @@ public final class BuiltinMethodEmit {
     b.addStatement("var $L = $L", argRecordName, paramsExpr.build());
 
     var retTypeName = "retType_" + suffix;
-    b.addStatement("var $L = $L", retTypeName, retDesc);
+    b.addStatement("var $L = $T.<$T>some($L)", retTypeName, OPT, TYPE, retDesc);
 
     var descName = "desc_" + suffix;
     var argClassBuilder = CodeBlock.builder();

@@ -7,6 +7,7 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.CompileId;
 import compilerxyz.eval.ConstEval;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.DefSetId;
@@ -94,7 +95,7 @@ public final class BuiltinBodies {
   }
 
   @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
-  public static CodeValue constEval(ExprContext xx, ExprContext xx_, StagedExprCell staged) {
+  public static EResult<CodeValue> constEval(ExprContext xx, ExprContext xx_, StagedExprCell staged) {
     ExprContext targetXx;
     if (xx_ instanceof ExprContext raw) {
       targetXx = raw;
@@ -108,13 +109,9 @@ public final class BuiltinBodies {
       throw new AssertionError(
           "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
     }
-    var res = ConstEval.constEval(targetXx, exprAst);
-    if (res.hasErrors()) {
-      throw new IllegalStateException(
-          "builtin 5008 (const_eval): const_eval produced no value; errors: " + res.errorsOrNull());
-    }
-    var resEv = res.requireValue("BuiltinTreeGen builtin 5008 const_eval result");
-    return resEv.cv();
+    // Errors from the user-staged code ride out through the return: the caller
+    // gets an eresult and propagates it (e.g. a drop via match).
+    return ConstEval.constEval(targetXx, exprAst).map(compilerxyz.eval.EvalRes::cv);
   }
 
   @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)

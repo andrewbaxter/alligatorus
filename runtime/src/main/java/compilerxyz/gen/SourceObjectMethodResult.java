@@ -19,12 +19,13 @@ public final class SourceObjectMethodResult {
         return GenObjectTypes.sourceObjectMethodResult();
     }
 
-    public void impl(ExprContext xx, Type arg, Type ret, StagedExprCell implBody) {
+    public void impl(
+        ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret, StagedExprCell implBody) {
         if (this.method.argType != null) {
             throw new IllegalStateException("Method already has an arg type");
         }
         this.method.argType = arg;
-        if (this.method.retType != null) {
+        if (this.method.retType instanceof compilerxyz.util.Opt.Some) {
             throw new IllegalStateException("Method already has a ret type");
         }
         this.method.retType = ret;

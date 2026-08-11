@@ -42,7 +42,6 @@ public final class ScopeChains {
         case ScopeLevel.Temp temp -> cleanups.add(temp);
         case ScopeLevel.Finally finally_ -> cleanups.add(finally_);
         case ScopeLevel.Labeled labeled -> {}
-        case ScopeLevel.Barrier barrier -> {}
       }
       if (done) break;
     }
@@ -85,8 +84,6 @@ public final class ScopeChains {
         case ScopeLevel.Finally finally_ -> cleanups.add(finally_);
         case ScopeLevel.Labeled labeled -> {}
         case ScopeLevel.Catch catch_ -> {}
-        case ScopeLevel.Barrier barrier ->
-            throw new AssertionError("exitDest: return across an operand barrier");
       }
     }
     if (!found) {
@@ -119,7 +116,6 @@ public final class ScopeChains {
       case ScopeLevel.Finally finally_ -> 0L;
       case ScopeLevel.Labeled labeled -> throw new AssertionError();
       case ScopeLevel.Catch catch_ -> throw new AssertionError();
-      case ScopeLevel.Barrier barrier -> throw new AssertionError();
     };
   }
 
@@ -151,7 +147,6 @@ public final class ScopeChains {
           case ScopeLevel.Finally finally_ -> throw new AssertionError();
           case ScopeLevel.Labeled labeled -> throw new AssertionError();
           case ScopeLevel.Catch catch_ -> throw new AssertionError();
-          case ScopeLevel.Barrier barrier -> throw new AssertionError();
         };
     // Pre-register as pass-through before generating: drop-code generation
     // runs user code whose nested evaluation may request this same node — a

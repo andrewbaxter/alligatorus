@@ -14,6 +14,47 @@ import compilerxyz.eval.ExprErr;
 
 public final class T0010DefineFuncTest {
   @Test
+  public void test00650DefineVoidFunc() {
+    // A function declared to return NO value (ret: none). Its body just performs
+    // a side effect and yields nothing; calling it produces no stack value.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(
+            mb.seqOf(
+                mb.bind(
+                    "act",
+                    mb.lower(
+                        mb.seqOf(
+                            mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                            mb.bind(
+                                "nfr",
+                                mb.call(
+                                    mb.field(mb.scopeUse("d"), mb.str("func")),
+                                    mb.str("act"))),
+                            mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
+                            mb.call(
+                                mb.field(mb.scopeUse("nfr"), mb.str("impl")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optNoneType()),
+                                        new TestMb.RecordPair(
+                                            "impl_body",
+                                            mb.stage(mb.call(mb.log(), mb.str("acted"))))))),
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
+                            mb.return_(mb.scopeUse("f"))))),
+                mb.call(mb.scopeUse("act"), mb.tupleOf()))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    assertEquals(1, ok.logs().size());
+    assertEquals("acted", ok.logs().get(0).message());
+  }
+
+  @Test
   public void test00600DefineFunc() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
@@ -37,7 +78,7 @@ public final class T0010DefineFuncTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(mb.call(mb.log(), mb.str("hello"))))))),
@@ -76,7 +117,7 @@ public final class T0010DefineFuncTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesString()),
-                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(
@@ -122,7 +163,7 @@ public final class T0010DefineFuncTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesString()),
-                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(
@@ -168,7 +209,7 @@ public final class T0010DefineFuncTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesInt()),
-                                        new TestMb.RecordPair("ret", mb.typesInt()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesInt())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(

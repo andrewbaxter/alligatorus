@@ -6,6 +6,7 @@ import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -19,7 +20,7 @@ public interface Binding extends AspectElementUseDynamicBind {
 
     default EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         var useCv = bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
-        return xx.target.targetDrop(xx, loc, useCv);
+        return Eval.dropValue(xx, loc, useCv);
     }
 
     Binding bindingFork();

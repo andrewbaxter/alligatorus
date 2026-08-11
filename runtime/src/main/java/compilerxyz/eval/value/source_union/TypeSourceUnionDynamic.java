@@ -51,6 +51,7 @@ public final class TypeSourceUnionDynamic
         AspectInitialBind,
         AspectStackValueDynamic,
         AspectUnion,
+        compilerxyz.eval.dynamic.MatchDynamic,
         ExporterAny {
 
   @SuppressWarnings("NullAway.Init")
@@ -189,6 +190,45 @@ public final class TypeSourceUnionDynamic
       out.add(new AspectUnion.Variant(v.tag, v.jsTag, v.type));
     }
     return out;
+  }
+
+  private compilerxyz.eval.dynamic.JavaInternalName variantInternal(QExprId loc, int variantIndex) {
+    var unionIndex = set.unions.indexOf(this);
+    return compilerxyz.eval.dynamic.JavaInternalName.of(
+        compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(
+                set.defSetId, unionIndex, variantIndex)
+            .replace('.', '/'));
+  }
+
+  @Override
+  public EResult<Void> matchPrepare(ExprContext xx, QExprId loc) {
+    if (set.unions.indexOf(this) < 0) {
+      return EResult.err(loc, "Match: source union not in owning DefinitionSet");
+    }
+    xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
+    return EResult.ok(null);
+  }
+
+  @Override
+  public EResult<CodeDynamic> matchTest(ExprContext xx, QExprId loc, int variantIndex) {
+    return EResult.ok(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(loc, variantInternal(loc, variantIndex)));
+  }
+
+  @Override
+  public EResult<CodeDynamic> matchExtract(
+      ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
+    var internal = variantInternal(loc, variantIndex);
+    var payloadDesc =
+        compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, variantType);
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+            loc, compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(internal)));
+    seq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
+            loc, internal, compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD, payloadDesc));
+    return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override

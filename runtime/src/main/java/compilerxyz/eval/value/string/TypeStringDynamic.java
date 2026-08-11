@@ -107,7 +107,7 @@ public record TypeStringDynamic()
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
                   TList.<compilerxyz.eval.value.function.FunctionParam>of(),
-                  new TypeStringDynamic(),
+                  Opt.some(new TypeStringDynamic()),
                   JAVA_STRING,
                   "toLowerCase",
                   DESC_TO_STR,
@@ -118,7 +118,7 @@ public record TypeStringDynamic()
               new compilerxyz.eval.value.function.TypeMethodDynamic(
                   new TypeStringDynamic(),
                   TList.<compilerxyz.eval.value.function.FunctionParam>of(),
-                  new TypeStringDynamic(),
+                  Opt.some(new TypeStringDynamic()),
                   JAVA_STRING,
                   "toUpperCase",
                   DESC_TO_STR,

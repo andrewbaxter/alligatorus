@@ -67,18 +67,6 @@ public final class InterfaceData {
 
   public EResult<Void> finish(QExprId loc, long interfaceIndex) {
     var name = description != null ? description : "(unnamed)";
-    for (var method : methods) {
-      if (method.argType == null) {
-        return EResult.err(
-            loc,
-            "Interface '" + name + "' method '" + method.name + "' is missing an arg type");
-      }
-      if (method.retType == null) {
-        return EResult.err(
-            loc,
-            "Interface '" + name + "' method '" + method.name + "' is missing a return type");
-      }
-    }
     if (builtinKind != null) {
       return EResult.ok(null);
     }

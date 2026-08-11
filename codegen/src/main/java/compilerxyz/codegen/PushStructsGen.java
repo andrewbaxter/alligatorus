@@ -752,7 +752,7 @@ public final class PushStructsGen {
   private static CodeBlock methodFunctionType(
       PushStructSpec spec, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {
     var argDynType = paramsExpr(m.args());
-    var retDynType = unitOrDynamic(m.ret());
+    var retDynType = optRetType(m.ret());
     if (INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
       var receiverInternalName = receiverClass.canonicalName().replace('.', '/');
       var descriptor = methodDescriptorExprVirtual(receiverClass, m);
@@ -831,12 +831,11 @@ public final class PushStructsGen {
     return b.build();
   }
 
-  private static CodeBlock unitOrDynamic(String ret) {
+  private static CodeBlock optRetType(String ret) {
     if (ret.equals("()") || ret.isEmpty()) {
-      return CodeBlock.of("new $T($T.none(), $T.<$T>of())", TUPLE, OPT, TLIST,
-          ClassName.get("compilerxyz.eval.value.tuple", "TupleElement"));
+      return CodeBlock.of("$T.none()", OPT);
     }
-    return CodeBlock.of("$L", ret);
+    return CodeBlock.of("$T.some($L)", OPT, ret);
   }
 
   private static final ClassName DEFINITION_SET =

@@ -265,39 +265,18 @@ public final class ConstEval {
   }
 
   /**
-   * Operand-position evaluation: a barrier level rejects returns from
-   * crossing into expression-operand positions; exceptional chains pass
-   * through unaffected. Site blocks attached to the barrier (exception-cast
-   * nodes) splice in right after the operand's own code.
+   * Operand-position evaluation. A control exit (return/throw) out of an
+   * operand is rejected by the operand consumers' fall-through checks (an
+   * operand's value is needed on the stack, so it cannot abandon the
+   * expression); nothing structural is needed here. The level-count is
+   * restored so a construct that aborted mid-eval on an error path does not
+   * leave its levels for a sibling operand.
    */
   private static EResult<EvalRes> constEvalOperand(ExprContext xx, Expr expr) {
-    var loc = expr.loc();
     int before = xx.scope.levelCount();
-    var barrier = xx.scope.pushBarrier();
     var res = constEval(xx, expr);
-    // Error paths abort constructs mid-eval and may leave their levels; pop
-    // everything from the barrier up.
     xx.scope.popToLevelCount(before);
-    var v = res.valueOrNull();
-    if (v != null && v.scope() != xx.scope) {
-      var resScope = v.scope();
-      if (!resScope.levels.isEmpty()
-          && resScope.levels.get(resScope.levels.size() - 1) instanceof ScopeLevel.Barrier) {
-        resScope.levels.remove(resScope.levels.size() - 1);
-      }
-    }
-    var blocks = barrier.scopeLevelEmission().blocks;
-    if (v == null || blocks.isEmpty()) return res;
-    var erb = new Erb(loc);
-    var splice = blocksSplice(xx, loc, blocks, erb);
-    if (splice == null) return EResult.errs(erb.errors());
-    var cv = new CodeValue(Code.concat(loc, v.cv().code(), splice), v.cv().outcome());
-    var out = EvalRes.of(cv, v.scope());
-    var errs = res.errorsOrNull();
-    if (errs == null || errs.isEmpty()) return EResult.ok(out);
-    var copied = new TList<ExprErr>();
-    copied.addAll(errs);
-    return EResult.mixed(out, copied);
+    return res;
   }
 
   /** Pop the topmost level, which must share {@code level}'s lineage (fork copies allowed). */
@@ -447,16 +426,6 @@ public final class ConstEval {
     for (int i = xx.scope.levels.size() - 1; i >= 0 && target == null; i--) {
       var level = xx.scope.levels.get(i);
       switch (level) {
-        case ScopeLevel.Barrier barrier -> {
-          erb.errPush(
-              e.label() instanceof Opt.Some<String> lbl
-                  ? "return: control exit to label '"
-                      + lbl.value()
-                      + "' crosses an expression boundary; not valid in this position"
-                  : "return: control exit crosses an expression boundary; not valid in this"
-                      + " position");
-          return EResult.errs(erb.errors());
-        }
         case ScopeLevel.Labeled lb -> {
           if (e.label() instanceof Opt.Some<String> want) {
             if (lb.label instanceof Opt.Some<String> have && have.value().equals(want.value())) {
@@ -523,7 +492,7 @@ public final class ConstEval {
         continue;
       }
       if (pendingDiscard != null) {
-        var dropOpt = erb.mustErMaybeUnreachable(xx.target.targetDrop(xx, sub.loc(), pendingDiscard));
+        var dropOpt = erb.mustErMaybeUnreachable(Eval.dropValue(xx, sub.loc(), pendingDiscard));
         if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
         codes.add(dropOpt.get());
         pendingDiscard = null;
@@ -586,7 +555,7 @@ public final class ConstEval {
       }
     }
     if (pendingDiscard != null) {
-      var dropOpt = erb.mustErMaybeUnreachable(xx.target.targetDrop(xx, loc, pendingDiscard));
+      var dropOpt = erb.mustErMaybeUnreachable(Eval.dropValue(xx, loc, pendingDiscard));
       if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
       codes.add(dropOpt.get());
       pendingDiscard = null;
@@ -1276,12 +1245,14 @@ public final class ConstEval {
       // before evaluating the body (source order: after body and catch).
       popByBox(xx.scope, finallyLevel);
       var finSome = (Opt.Some<Expr>) e.finallyBlock();
-      var finCvOpt = erb.mustCvMaybeUnreachable(xx, constEvalOperand(xx, finSome.value()));
+      // A finally expression must complete normally: a throw or return (any
+      // non-fall-through control exit) out of a finally is invalid.
+      var finCvOpt = erb.mustCv(xx, constEvalOperand(xx, finSome.value()));
       if (finCvOpt.isEmpty()) return EResult.errs(erb.errors());
       var finCv = finCvOpt.get();
       // A finally block has no result: whatever value it produced is dropped, so every exit path
       // leaves the stack exactly as it found it.
-      var finallyDropOpt = erb.mustEr(xx.target.targetDrop(xx, loc, finCv));
+      var finallyDropOpt = erb.mustEr(Eval.dropValue(xx, loc, finCv));
       if (finallyDropOpt.isEmpty()) return EResult.errs(erb.errors());
       Code finallyDropCode = finallyDropOpt.get();
       Code combinedFinally;

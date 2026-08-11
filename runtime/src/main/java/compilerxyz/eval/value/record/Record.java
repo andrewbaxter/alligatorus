@@ -736,11 +736,11 @@ public final class Record
       return EResult.ok(
           new BindResult(
               Code.of(loc, bound.code()),
-              new BindingRecordBound(sub.scopeFields(), Opt.some(bound.id()))));
+              new BindingRecord(sub.scopeFields(), Opt.some(bound.id()))));
     }
     return EResult.ok(
         new BindResult(
-            Code.none(loc), new BindingRecordBound(sub.scopeFields(), Opt.none())));
+            Code.none(loc), new BindingRecord(sub.scopeFields(), Opt.none())));
   }
 
   private record BindSub(
@@ -1238,11 +1238,14 @@ public final class Record
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    var typeFields = new TOrderedMap<ConstKey, Type>();
+    // An initial-bind record is the whole composite in one local: every field
+    // reads out of it (Dynamic) and the composite is the stored value (jsKey).
+    // Same shape as any other bound record — one BindingRecord.
+    var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
     for (var entry : fields.entrySet()) {
-      typeFields.put(entry.getKey(), recordFieldType(entry.getValue()));
+      scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(recordFieldType(entry.getValue())));
     }
-    return new BindingRecordDynamic(dynamicKey, typeFields);
+    return new BindingRecord(scopeFields, Opt.some(dynamicKey));
   }
 
   @Override

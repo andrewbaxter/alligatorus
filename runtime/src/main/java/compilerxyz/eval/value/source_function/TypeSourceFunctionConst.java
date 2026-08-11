@@ -148,13 +148,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                     + "' missing arg type");
           }
           var retType = data.retType;
-          if (retType == null) {
-            return EResult.err(
-                loc,
-                "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                    + (data.name == null ? "(unnamed)" : data.name)
-                    + "' missing ret type");
-          }
           if (data.compiledClassName == null) {
             var finishRes = data.finish(xx, loc);
             if (finishRes.hasErrors()) {
@@ -195,13 +188,18 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                             ? argArtRes.requireValue(
                                 "TypeSourceFunctionConst::exporterExport arg")
                             : nullArtifact();
-                    var retArtRes = retType.exportArtifact(xx, loc);
-                    retArtRes.drainInto(errors);
-                    var retArt =
-                        retArtRes.valueOrNull() != null
-                            ? retArtRes.requireValue(
-                                "TypeSourceFunctionConst::exporterExport ret")
-                            : nullArtifact();
+                    Artifact retArt;
+                    if (retType instanceof Opt.Some<Type> retSome) {
+                      var retArtRes = retSome.value().exportArtifact(xx, loc);
+                      retArtRes.drainInto(errors);
+                      retArt =
+                          retArtRes.valueOrNull() != null
+                              ? retArtRes.requireValue(
+                                  "TypeSourceFunctionConst::exporterExport ret")
+                              : nullArtifact();
+                    } else {
+                      retArt = nullArtifact();
+                    }
                     var externalsRes =
                         ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
                     externalsRes.drainInto(errors);
@@ -301,7 +299,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                       var retVal =
                           retRes.requireValue(
                               "TypeSourceFunctionConst::finalizer ret type");
-                      funcData.retType = retVal;
+                      funcData.retType = Opt.some(retVal);
                       var extRes =
                           ExternalCodec.importExternals(xx2, loc2, body.capturedExternals());
                       var extVal =
@@ -342,11 +340,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return EResult.err(
           loc, "TypeSourceFunctionConst::call: definition set function missing arg type");
     }
-    Type retType = data.retType;
-    if (retType == null) {
-      return EResult.err(
-          loc, "TypeSourceFunctionConst::call: definition set function missing return type");
-    }
+    var retType = data.retType;
     var klass =
         compilerxyz.eval.dynamic.JavaInternalName.of(
             compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
@@ -359,11 +353,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     if (argCodesRes.hasErrors()) return argCodesRes.reerr();
     var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
 
-    var retStackRes =
-        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retType);
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
-
-    var descRes = TypeFunctionDynamic.descriptorFor(xx, loc, argType, retType, false);
+    var descRes =
+        TypeFunctionDynamic.descriptorFor(xx, loc, argType, retType, false);
     if (descRes.hasErrors()) return descRes.reerr();
     var invocationRes =
         TypeFunctionDynamic.emitStaticInvocation(
@@ -375,12 +366,17 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             false,
             argCodes);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
+    var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
+    if (!(retType instanceof Opt.Some<Type> retSome)) {
+      return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
+    }
+    var retStackRes =
+        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retSome.value());
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeSourceFunctionConst::call ret stack")
-            .aspectStackValueDynamicToValue(
-                xx, loc,
-                invocationRes.requireValue("TypeSourceFunctionConst::call invocation")));
+            .aspectStackValueDynamicToValue(xx, loc, invocation));
   }
 
   @Override

@@ -9,9 +9,11 @@ import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -44,7 +46,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 public record TypeMethodDynamic(
     Type receiver,
     TList<FunctionParam> params,
-    Type ret,
+    Opt<Type> ret,
     JavaInternalName klass,
     String methodName,
     JavaMethodDescriptor descriptor,
@@ -116,9 +118,6 @@ public record TypeMethodDynamic(
           compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, argType, converted);
       if (argsDynRes.hasErrors()) return argsDynRes.reerr();
     }
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret);
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
-
     var seq = new JavaBytecodeSequence();
     seq.add(receiverDyn);
     if (needsExprContext) {
@@ -147,10 +146,16 @@ public record TypeMethodDynamic(
     } else {
       seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
     }
+    var seqCode = new CodeDynamic(loc, seq);
+    if (!(ret instanceof Opt.Some<Type> retSome)) {
+      return EResult.ok(new CodeValue(Code.of(loc, seqCode), EvalOutcome.NO_VALUE));
+    }
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retSome.value());
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeMethodDynamic::call ret stack")
-            .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
+            .aspectStackValueDynamicToValue(xx, loc, seqCode));
   }
 
 
@@ -201,7 +206,7 @@ public record TypeMethodDynamic(
   @Override
   public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
     return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class) instanceof Opt.Some<TypeMethodDynamic> oSome
-        && receiver.typeIsEqual(xx, oSome.value().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oSome.value().params) && ret.typeIsEqual(xx, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
+        && receiver.typeIsEqual(xx, oSome.value().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oSome.value().params) && TypeFunctionDynamic.retEqual(xx, ret, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
   }
 
   @Override

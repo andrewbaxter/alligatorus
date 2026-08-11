@@ -82,12 +82,6 @@ public final class Scope {
     return level;
   }
 
-  public ScopeLevel.Barrier pushBarrier() {
-    var level = new ScopeLevel.Barrier();
-    levels.add(level);
-    return level;
-  }
-
   public ScopeLevel.Catch pushCatch(JumpKey handler) {
     var level = new ScopeLevel.Catch(handler);
     levels.add(level);
@@ -156,7 +150,6 @@ public final class Scope {
             case ScopeLevel.Labeled labeled -> labeled.forkCopy();
             case ScopeLevel.Catch catch_ -> catch_.forkCopy();
             case ScopeLevel.Finally finally_ -> finally_.forkCopy();
-            case ScopeLevel.Barrier barrier -> barrier.forkCopy();
           });
     }
     return out;

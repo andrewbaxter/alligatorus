@@ -189,9 +189,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                       var argT = m.argType;
                       var retT = m.retType;
                       Artifact argArt;
-                      if (argT == null) {
-                        argArt = nullArtifact();
-                      } else {
+                      {
                         var res = argT.exportArtifact(xx, loc);
                         res.drainInto(errors);
                         argArt =
@@ -201,16 +199,16 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                                 : nullArtifact();
                       }
                       Artifact retArt;
-                      if (retT == null) {
-                        retArt = nullArtifact();
-                      } else {
-                        var res = retT.exportArtifact(xx, loc);
+                      if (retT instanceof Opt.Some<Type> retSome) {
+                        var res = retSome.value().exportArtifact(xx, loc);
                         res.drainInto(errors);
                         retArt =
                             res.valueOrNull() != null
                                 ? res.requireValue(
                                     "TypeSourceInterfaceDynamic::exporterExport method ret")
                                 : nullArtifact();
+                      } else {
+                        retArt = nullArtifact();
                       }
                       methodsOut.add(
                           new ArtifactDataDefSetInterfaceMethodData(
@@ -302,8 +300,9 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             ArtifactSupport.independentFinalizeImportTypeArtifact(
                                 xx2, loc2, mBody.retType());
                         md.retType =
-                            retRes.requireValue(
-                                "TypeSourceInterfaceDynamic::finalizer method ret");
+                            Opt.some(
+                                retRes.requireValue(
+                                    "TypeSourceInterfaceDynamic::finalizer method ret"));
                       }
                     };
                 return new Result.Ok<>(
@@ -347,12 +346,6 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     if (match == null) {
       return EResult.err(loc, "Field '" + keyName + "' not found on interface");
     }
-    var argType = match.argType;
-    var retType = match.retType;
-    if (argType == null || retType == null) {
-      return EResult.err(
-          loc, "Interface method '" + keyName + "' is missing arg or return type");
-    }
     var fieldType = new TypeInterfaceMethodDynamic(data, match);
     if (!(self.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.gen.Value> ifmSome)
         || !(ifmSome.value() instanceof compilerxyz.eval.value.ValueDynamic ifmVd)) {
@@ -376,12 +369,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     if (!(key instanceof ConstKey.Str s)) return Opt.none();
     for (var m : data.methods) {
       if (m.name.equals(s.value())) {
-        var argType = m.argType;
-        var retType = m.retType;
-        if (argType != null && retType != null) {
-          return Opt.some(new TypeInterfaceMethodDynamic(data, m));
-        }
-        return Opt.none();
+        return Opt.some(new TypeInterfaceMethodDynamic(data, m));
       }
     }
     return Opt.none();

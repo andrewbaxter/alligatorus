@@ -35,15 +35,29 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 
 @BuiltinLight(uniqueId = 6106L)
-public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isOk)
+public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     implements
         Type,
         AspectFunction,
         ExporterAny {
 
+  /** ok(value), err(loc, message), or errs(error-list). */
+  public enum Kind {
+    OK,
+    ERR,
+    ERRS
+  }
+
   @Override
   public String typeDesc() {
-    return "eresult(" + elementType.typeDesc() + ")." + (isOk ? "ok" : "err");
+    return "eresult("
+        + elementType.typeDesc()
+        + ")."
+        + switch (kind) {
+          case OK -> "ok";
+          case ERR -> "err";
+          case ERRS -> "errs";
+        };
   }
 
 
@@ -63,7 +77,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
     Type resultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
-    if (isOk) {
+    if (kind == Kind.OK) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
       if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
       var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, elementType);
@@ -86,6 +100,34 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
                       JavaInternalName.fromClass(EResult.class)),
                   TList.of(JvmConstants.DESC_OBJECT))));
       return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType, 1));
+    }
+    if (kind == Kind.ERRS) {
+      var errsArgType =
+          new compilerxyz.eval.value.list.TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
+      var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
+      if (convertedErrsOpt.isEmpty()) return EResult.errs(erb.errors());
+      var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, errsArgType);
+      if (consumeRes.hasErrors()) return consumeRes.reerr();
+      var listJsRes =
+          consumeRes
+              .requireValue("TypeEResultVariantConstructorDynamic::call errs consume")
+              .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.get());
+      if (listJsRes.hasErrors()) return listJsRes.reerr();
+      var errsSeq = new JavaBytecodeSequence();
+      errsSeq.add(
+          listJsRes.requireValue("TypeEResultVariantConstructorDynamic::call errs toDynamic"));
+      errsSeq.add(
+          JavaBytecodeUtils.callStaticMethod(
+              loc,
+              JavaInternalName.fromClass(EResult.class),
+              "errs",
+              JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
+                  TList.of(
+                      JavaDataDescriptor.fromInternalName(
+                          JavaInternalName.fromClass(compilerxyz.util.TList.class))))));
+      return EResult.ok(
+          DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errsSeq), resultType, 1));
     }
     var argTupleType =
         new Tuple(
@@ -145,7 +187,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, boolean isO
   @Override
   public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
     return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeEResultVariantConstructorDynamic.class) instanceof Opt.Some<TypeEResultVariantConstructorDynamic> oSome
-        && elementType.typeIsEqual(xx, oSome.value().elementType) && isOk == oSome.value().isOk;
+        && elementType.typeIsEqual(xx, oSome.value().elementType) && kind == oSome.value().kind;
   }
 
   @Override

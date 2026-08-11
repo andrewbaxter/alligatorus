@@ -203,7 +203,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                     for (var m : dt.methods) {
                       var argT = m.argType;
                       var retT = m.retType;
-                      if (argT == null || retT == null) {
+                      if (argT == null) {
                         errors.add(
                             new compilerxyz.eval.ExprErr(
                                 loc,
@@ -249,13 +249,18 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                               ? argArtRes.requireValue(
                                   "TypeTypeSourceObjectConst::exporterExport method arg")
                               : nullArtifact();
-                      var retArtRes = retT.exportArtifact(xx, loc);
-                      retArtRes.drainInto(errors);
-                      var retArt =
-                          retArtRes.valueOrNull() != null
-                              ? retArtRes.requireValue(
-                                  "TypeTypeSourceObjectConst::exporterExport method ret")
-                              : nullArtifact();
+                      Artifact retArt;
+                      if (retT instanceof Opt.Some<Type> retSome) {
+                        var retArtRes = retSome.value().exportArtifact(xx, loc);
+                        retArtRes.drainInto(errors);
+                        retArt =
+                            retArtRes.valueOrNull() != null
+                                ? retArtRes.requireValue(
+                                    "TypeTypeSourceObjectConst::exporterExport method ret")
+                                : nullArtifact();
+                      } else {
+                        retArt = nullArtifact();
+                      }
                       var extRes = ExternalCodec.exportExternals(xx, loc, m.capturedExternals);
                       extRes.drainInto(errors);
                       var ext =
@@ -464,7 +469,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         var retVal =
                             retRes.requireValue(
                                 "TypeTypeSourceObjectConst::finalizer method ret type");
-                        md.retType = retVal;
+                        md.retType = Opt.some(retVal);
                         var extRes =
                             ExternalCodec.importExternals(
                                 xx2, loc2, sm.capturedExternals());

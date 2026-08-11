@@ -1,8 +1,12 @@
-There's an intersection of behaviors with scope forking/merging, labeled returns, and drop semantics.
+There's an intersection of behaviors with scope mutation, scope forking/merging, labeled returns, and drop semantics.
 
 The fundamental consideration is that any expression can mutate scope entries, and each scope "state" may require/produce unique drop code at the end of the scope. Around branches scopes must agree. The way we do this currently is "forking" the scope before any branch, then "merging" where the branches come back together. Each expression has two possible return paths - the immediate value (or none if local control ends here) and a collection of child expressions that returned to a label.
 
-The scope should be part of the eval context, as a single flat pcollection/immutable datastructure sorted map (instead of a stack of maps tracked by the expression context). Each scope state (local to the eval context) has two unique ids - the "state" and a "dropState" that are basically counters. We also track stack depth. The map is keyed with a composite over (depth, depth start marker|label|trycatch|binding id), and range queries (using the depth start marker) can be used for popping. Whenever a type modifies a scope entry, it increments "state" and optionally "dropState" and modifies the data structure replacing the current scope in the eval context. TODO nope - mutable, explicit copy; TODO binding key indexed, not flat
+The key to this is tracking mutations to the scope. The way we do this is:
+
+1. The scope is stored in the eval context, along with a "state" and "dropState", counter-ids that get incremented at changes. A dropState change means drop behavior has changed, while a `state` change means merging is required. All changes increment `state`. State modifications result in an entirely new scope tree that does not invalidate other references - the new tree replaces the old tree reference in the eval context.
+2. We create a new `BindingSetter` interface. This is used by types to send binding modifications (as a new Binding instance) back to the state (and also communicate whether the drop state changed or not). We have a root `BindingSetter` implementation that creates the new scope tree and is passed through `scopeUse`. 
+3. `BindingSetter` is composable, so for instance if a type delegates to another type, it can create a `BindingSetter` that forwards and modifies the calls.
 
 Here's how I think things should work:
 

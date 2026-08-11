@@ -119,7 +119,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesNull()),
-                    rp("ret", mb.scopeUse("code_tu")),
+                    rp("ret", mb.optSomeType(mb.scopeUse("code_tu"))),
                     rp("impl_body", mb.stage(mb.scopeUse("inner")))))),
         mb.bind(
             "code_call_builder",
@@ -135,7 +135,7 @@ public final class T0170NodejsTest {
                             TList.of(
                                 rp("func", mb.scopeUse("code")),
                                 rp("arg", mb.scopeUse("code"))))),
-                    rp("ret", mb.scopeUse("code")),
+                    rp("ret", mb.optSomeType(mb.scopeUse("code"))),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -153,7 +153,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesString()),
-                    rp("ret", mb.scopeUse("code")),
+                    rp("ret", mb.optSomeType(mb.scopeUse("code"))),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -176,7 +176,7 @@ public final class T0170NodejsTest {
                             TList.of(
                                 rp("base", mb.scopeUse("code")),
                                 rp("field", mb.scopeUse("code"))))),
-                    rp("ret", mb.scopeUse("code")),
+                    rp("ret", mb.optSomeType(mb.scopeUse("code"))),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -195,7 +195,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesString()),
-                    rp("ret", mb.scopeUse("code")),
+                    rp("ret", mb.optSomeType(mb.scopeUse("code"))),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -227,7 +227,7 @@ public final class T0170NodejsTest {
                                                 "out",
                                                 mb.call(mb.typesList(), mb.typesString()))))),
                                 rp("code", mb.scopeUse("code"))))),
-                    rp("ret", mb.typesString()),
+                    rp("ret", mb.optSomeType(mb.typesString())),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -357,7 +357,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.scopeUse("code")),
-                    rp("ret", mb.typesString()),
+                    rp("ret", mb.optSomeType(mb.typesString())),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -621,7 +621,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesCve()),
-                    rp("ret", mb.field(mb.scopeUse("code"), mb.str("type")))))));
+                    rp("ret", mb.optSomeType(mb.field(mb.scopeUse("code"), mb.str("type"))))))));
     exprs.add(
         mb.bind(
             "ntype_str",
@@ -1025,7 +1025,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesExpr()),
-                    rp("ret", mb.typesNull()),
+                    rp("ret", mb.optSomeType(mb.typesNull())),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -1044,7 +1044,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesNull()),
-                    rp("ret", mb.typesString()),
+                    rp("ret", mb.optSomeType(mb.typesString())),
                     rp(
                         "impl_body",
                         mb.stage(
@@ -1196,7 +1196,9 @@ public final class T0170NodejsTest {
                                                                     mb.str("render"))),
                                                             mb.as_(
                                                                 mb.field(
-                                                                    mb.scopeUse("res"),
+                                                                    mb.field(
+                                                                        mb.scopeUse("res"),
+                                                                        mb.str("value")),
                                                                     mb.str("code")),
                                                                 mb.lower(
                                                                     mb.field(
@@ -1213,7 +1215,7 @@ public final class T0170NodejsTest {
             mb.recordOf(
                 TList.of(
                     rp("arg", mb.typesNull()),
-                    rp("ret", mb.field(mb.scopeUse("napp"), mb.str("type"))),
+                    rp("ret", mb.optSomeType(mb.field(mb.scopeUse("napp"), mb.str("type")))),
                     rp(
                         "impl_body",
                         mb.stage(

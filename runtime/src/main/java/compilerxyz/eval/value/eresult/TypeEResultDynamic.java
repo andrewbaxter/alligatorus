@@ -57,6 +57,8 @@ public record TypeEResultDynamic(Type elementType)
         compilerxyz.gen.AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
+        compilerxyz.gen.AspectUnion,
+        compilerxyz.eval.dynamic.MatchDynamic,
         ExporterAny {
 
   @Override
@@ -80,10 +82,83 @@ public record TypeEResultDynamic(Type elementType)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
-        || key.equals(GenAspectStackValueDynamic.AspectId)) {
+        || key.equals(GenAspectStackValueDynamic.AspectId)
+        || key.equals(compilerxyz.gen.GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
+  }
+
+  private static Type errsPayloadType() {
+    return new compilerxyz.eval.value.list.TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
+  }
+
+  @Override
+  public TList<compilerxyz.gen.AspectUnion.Variant> aspectUnionVariants() {
+    var out = new TList<compilerxyz.gen.AspectUnion.Variant>();
+    out.add(new compilerxyz.gen.AspectUnion.Variant(new ConstKey.Str("ok"), "ok", elementType));
+    out.add(new compilerxyz.gen.AspectUnion.Variant(new ConstKey.Str("errs"), "errs", errsPayloadType()));
+    return out;
+  }
+
+  @Override
+  public EResult<CodeDynamic> matchTest(ExprContext xx, QExprId loc, int variantIndex) {
+    // Stack: [eresult] -> [boolean]. Variant 0 = ok (no errors), 1 = errs.
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    seq.add(
+        compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+            loc,
+            JavaInternalName.fromClass(EResult.class),
+            "hasErrors",
+            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL)));
+    if (variantIndex == 0) {
+      // ok = !hasErrors
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(
+              loc, org.objectweb.asm.Opcodes.ICONST_1));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
+    }
+    return EResult.ok(new CodeDynamic(loc, seq));
+  }
+
+  @Override
+  public EResult<CodeDynamic> matchExtract(
+      ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
+    // Stack: [eresult] -> [payload].
+    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    if (variantIndex == 0) {
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.literalString(
+              new compilerxyz.eval.dynamic.CodeLoc.Some(loc), "eresult match ok"));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.fromClass(EResult.class),
+              "requireValue",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
+                  JavaDataDescriptor.fromClass(String.class))));
+      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+      if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
+      var elemDesc =
+          elemConsumeRes
+              .requireValue("TypeEResultDynamic::matchExtract ok consume")
+              .aspectConsumeDynamicJvmClass(xx);
+      if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
+        seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+      }
+    } else {
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
+              loc,
+              JavaInternalName.fromClass(EResult.class),
+              "errorsOrNull",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromInternalName(
+                      JavaInternalName.fromClass(compilerxyz.util.TList.class)))));
+    }
+    return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override
@@ -122,10 +197,19 @@ public record TypeEResultDynamic(Type elementType)
     return TMap.ofEntries(
         new Pair<>(
             new ConstKey.Str("ok"),
-            new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(elementType, true))),
+            new FieldSpec.Factory(
+                new TypeEResultVariantConstructorDynamic(
+                    elementType, TypeEResultVariantConstructorDynamic.Kind.OK))),
         new Pair<>(
             new ConstKey.Str("err"),
-            new FieldSpec.Factory(new TypeEResultVariantConstructorDynamic(elementType, false))));
+            new FieldSpec.Factory(
+                new TypeEResultVariantConstructorDynamic(
+                    elementType, TypeEResultVariantConstructorDynamic.Kind.ERR))),
+        new Pair<>(
+            new ConstKey.Str("errs"),
+            new FieldSpec.Factory(
+                new TypeEResultVariantConstructorDynamic(
+                    elementType, TypeEResultVariantConstructorDynamic.Kind.ERRS))));
   }
 
   @Override

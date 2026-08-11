@@ -234,7 +234,7 @@ public final class T0100ImportTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesString()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(
@@ -429,7 +429,7 @@ public final class T0100ImportTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesString()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                             new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello")))))),
                 mb.call(
                     mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
@@ -451,7 +451,7 @@ public final class T0100ImportTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesString()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(

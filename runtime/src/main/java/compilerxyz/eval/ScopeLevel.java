@@ -209,32 +209,6 @@ public sealed interface ScopeLevel {
     public record Pending(JumpKey self, DestKey key) {}
   }
 
-  /**
-   * An operand-position boundary: a return may not cross it (control exits
-   * are not valid in expression-operand positions), while exceptional chains
-   * pass through freely.
-   */
-  final class Barrier implements ScopeLevel {
-    private final Emission emission;
-
-    public Barrier() {
-      this(new Emission());
-    }
-
-    private Barrier(Emission emission) {
-      this.emission = emission;
-    }
-
-    public Barrier forkCopy() {
-      return new Barrier(emission);
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-  }
-
   /** A return's arrival at a {@link Labeled} level, pre-convergence. */
   record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {}
 

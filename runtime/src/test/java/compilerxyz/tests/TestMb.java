@@ -298,6 +298,16 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "option");
   }
 
+  /** {@code option(type).some(typeExpr)} — an optional return type that yields a value. */
+  public SourceExpr optSomeType(SourceExpr typeExpr) {
+    return call(field(call(typesOption(), evalType()), str("some")), typeExpr);
+  }
+
+  /** {@code option(type).none} — an optional return type meaning "returns no value". */
+  public SourceExpr optNoneType() {
+    return call(field(call(typesOption(), evalType()), str("none")), literalNull());
+  }
+
   public SourceExpr typesString() {
     return builtin("types", "string");
   }
@@ -331,6 +341,30 @@ public final class TestMb extends ModuleBuilder {
     var out = new TList<SourceExpr.MatchBranch>(cases.size());
     for (var b : cases) out.add(new SourceExpr.MatchBranch(b.condition(), b.body()));
     return match_(base, elementKey, out, fallback);
+  }
+
+  /**
+   * Turn a {@code const_eval(...)} result — an {@code eresult(cve)} — into an
+   * {@code eresult(code)} by matching: on {@code ok} take the value's {@code
+   * code}; on {@code errs} propagate the errors. This is how a meta-function
+   * (e.g. a drop body) surfaces const-eval errors through its own return.
+   */
+  public SourceExpr constEvalCode(SourceExpr constEvalCall) {
+    return matchOf(
+        constEvalCall,
+        str("__ce_p"),
+        TList.of(
+            new Branch(
+                str("ok"),
+                call(
+                    field(call(typesEresult(), typesCode()), str("ok")),
+                    field(scopeUse("__ce_p"), str("code")))),
+            new Branch(
+                str("errs"),
+                call(
+                    field(call(typesEresult(), typesCode()), str("errs")),
+                    scopeUse("__ce_p")))),
+        null);
   }
 
   public SourceExpr tryCatchFinally(

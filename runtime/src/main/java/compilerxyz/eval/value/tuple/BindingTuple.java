@@ -20,20 +20,18 @@ import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> jsKey)
+public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey)
     implements Binding {
 
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-    boolean hasDynamic =
-        elements.stream().anyMatch(f -> f instanceof TupleScopeField.Dynamic);
+    // Sourced-ness is exactly "is a composite stored?" — i.e. jsKey. Inferring
+    // it from whether any element is dynamic is a lossy proxy: a 0-field
+    // composite (empty tuple) is stored yet has no dynamic element, so it must
+    // still load from its local on use.
     Code useCode;
     Opt<TupleBaseDynamic> base;
-    if (hasDynamic) {
-      if (!(jsKey instanceof Opt.Some<BindingId> some)) {
-        throw new IllegalStateException(
-            "BindingTupleBound: tuple has dynamic elements but no jsKey");
-      }
+    if (jsKey instanceof Opt.Some<BindingId> some) {
       useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
       base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(some.value())));
     } else {
@@ -64,7 +62,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
         case TupleScopeField.Error er -> forked.add(er);
       }
     }
-    return new BindingTupleBound(forked, jsKey);
+    return new BindingTuple(forked, jsKey);
   }
 
 
@@ -72,13 +70,13 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
-      if (!(other instanceof BindingTupleBound o)) {
+      if (!(other instanceof BindingTuple o)) {
         return EResult.err(loc,
-            "cannot merge BindingTupleBound with a differently-typed binding across branches");
+            "cannot merge BindingTuple with a differently-typed binding across branches");
       }
       if (o.elements.size() != elements.size()) {
         return EResult.err(loc,
-            "cannot merge BindingTupleBound with different element count across branches");
+            "cannot merge BindingTuple with different element count across branches");
       }
     }
     var mergedElements = new TList<TupleScopeField>(elements.size());
@@ -90,7 +88,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
           var otherSubs = new TList<Binding>(others.size());
           boolean shapeOk = true;
           for (var other : others) {
-            var oe = ((BindingTupleBound) other).elements.get(i);
+            var oe = ((BindingTuple) other).elements.get(i);
             if (!(oe instanceof TupleScopeField.Scope os)) {
               shapeOk = false;
               break;
@@ -100,7 +98,7 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
           if (!shapeOk) {
             errors.add(new compilerxyz.eval.ExprErr(loc,
                 TList.of(new compilerxyz.eval.ExprSubErr.Opaque(
-                    "cannot merge BindingTupleBound: element " + i
+                    "cannot merge BindingTuple: element " + i
                         + " has a different variant across branches"))));
             mergedElements.add(e);
           } else {
@@ -116,11 +114,11 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
         }
         case TupleScopeField.Dynamic d -> {
           for (var other : others) {
-            var oe = ((BindingTupleBound) other).elements.get(i);
+            var oe = ((BindingTuple) other).elements.get(i);
             if (!(oe instanceof TupleScopeField.Dynamic)) {
               errors.add(new compilerxyz.eval.ExprErr(loc,
                   TList.of(new compilerxyz.eval.ExprSubErr.Opaque(
-                      "cannot merge BindingTupleBound: element " + i
+                      "cannot merge BindingTuple: element " + i
                           + " has a different variant across branches"))));
               break;
             }
@@ -133,6 +131,6 @@ public record BindingTupleBound(TList<TupleScopeField> elements, Opt<BindingId> 
     if (!errors.isEmpty()) {
       return EResult.errs(errors);
     }
-    return EResult.ok(new BindingTupleBound(mergedElements, jsKey));
+    return EResult.ok(new BindingTuple(mergedElements, jsKey));
   }
 }

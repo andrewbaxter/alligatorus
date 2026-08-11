@@ -25,23 +25,19 @@ import org.junit.jupiter.api.Test;
  */
 public final class T0165MutableDropForkTest {
   private static SourceExpr dropCodeLogging(TestMb mb, String msg) {
-    return mb.call(
-        mb.field(mb.call(mb.typesEresult(), mb.typesCode()), mb.str("ok")),
-        mb.field(
-            mb.call(
-                mb.evalConstEval(),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair(
-                            "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair(
-                            "staged",
-                            mb.stage(
-                                mb.seqOf(
-                                    mb.call(mb.log(), mb.str(msg)),
-                                    mb.return_(
-                                        mb.graft(mb.scopeUse("underlying_code_"))))))))),
-            mb.str("code")));
+    return mb.constEvalCode(
+        mb.call(
+            mb.evalConstEval(),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair(
+                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair(
+                        "staged",
+                        mb.stage(
+                            mb.seqOf(
+                                mb.call(mb.log(), mb.str(msg)),
+                                mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))));
   }
 
   private static SourceExpr mutCanaryDropBody(TestMb mb, String evenMsg, String oddMsg) {
@@ -728,7 +724,7 @@ public final class T0165MutableDropForkTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesLong()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesLong())),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(
@@ -787,7 +783,7 @@ public final class T0165MutableDropForkTest {
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
                             new TestMb.RecordPair(
-                                "ret", mb.field(mb.scopeUse("vs"), mb.str("type"))),
+                                "ret", mb.optSomeType(mb.field(mb.scopeUse("vs"), mb.str("type")))),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(
@@ -864,7 +860,7 @@ public final class T0165MutableDropForkTest {
                     mb.recordOf(
                         TList.of(
                             new TestMb.RecordPair("arg", mb.typesNull()),
-                            new TestMb.RecordPair("ret", mb.typesLong()),
+                            new TestMb.RecordPair("ret", mb.optSomeType(mb.typesLong())),
                             new TestMb.RecordPair(
                                 "impl_body",
                                 mb.stage(

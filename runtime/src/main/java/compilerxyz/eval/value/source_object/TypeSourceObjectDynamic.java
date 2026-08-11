@@ -279,13 +279,10 @@ public final class TypeSourceObjectDynamic
     String keyName = keyStr.value();
     String fieldName = null;
     Type argType = null;
-    Type retType = null;
+    Opt<Type> retType = Opt.none();
     for (int i = 0; i < methods.size(); i++) {
       var m = methods.get(i);
       if (m.name.equals(keyName)) {
-        if (m.retType == null) {
-          throw new IllegalStateException("Data type method missing return type");
-        }
         retType = m.retType;
         argType = m.argType != null ? m.argType : new TypeNullDynamic();
         fieldName = compilerxyz.eval.dynamic.SourceObjectEmitter.methodMethodName(i);
@@ -299,12 +296,6 @@ public final class TypeSourceObjectDynamic
         for (int mIdx = 0; mIdx < impl.interface_.methods.size(); mIdx++) {
           var method = impl.interface_.methods.get(mIdx);
           if (method.name.equals(keyName)) {
-            if (method.argType == null) {
-              throw new IllegalStateException("Interface method missing arg type");
-            }
-            if (method.retType == null) {
-              throw new IllegalStateException("Interface method missing return type");
-            }
             argType = method.argType;
             retType = method.retType;
             fieldName =
@@ -330,8 +321,14 @@ public final class TypeSourceObjectDynamic
     if (set != null) {
       xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
     }
-    if (!(retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
-      return EResult.err(loc, "TypeSourceObjectDynamic::field: retType does not implement AspectConsumeDynamic");
+    compilerxyz.eval.dynamic.JavaDataDescriptor retJvmDesc;
+    if (retType instanceof Opt.Some<Type> retSome) {
+      if (!(retSome.value() instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+        return EResult.err(loc, "TypeSourceObjectDynamic::field: retType does not implement AspectConsumeDynamic");
+      }
+      retJvmDesc = retConsume.aspectConsumeDynamicJvmClass(xx);
+    } else {
+      retJvmDesc = compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID;
     }
     var slotsRes = compilerxyz.eval.dynamic.DynUtil.argSignatureSlots(xx, loc, argType);
     if (slotsRes.hasErrors()) return slotsRes.reerr();
@@ -340,9 +337,7 @@ public final class TypeSourceObjectDynamic
         new TList<compilerxyz.eval.dynamic.JavaDataDescriptor>(slots.size());
     for (var s : slots) argDescs.add(s.jvmDesc());
     var descObjObj =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            retConsume.aspectConsumeDynamicJvmClass(xx),
-            argDescs);
+        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(retJvmDesc, argDescs);
     if (setId == null) {
       throw new AssertionError(
           "TypeSourceObjectDynamic::field: setId is null on '"

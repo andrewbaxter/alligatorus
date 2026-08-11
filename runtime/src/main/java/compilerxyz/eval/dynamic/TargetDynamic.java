@@ -438,28 +438,19 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
     compilerxyz.eval.Type resultType = null;
     boolean allControlEnded = true;
     var baseType = ((Opt.Some<Value>) base.value()).value().valueType();
-    compilerxyz.eval.value.source_union.TypeSourceUnionDynamic sud;
-    if (baseType instanceof compilerxyz.eval.value.source_union.TypeSourceUnionDynamic direct) {
-      sud = direct;
+    MatchDynamic md;
+    if (baseType instanceof MatchDynamic direct) {
+      md = direct;
     } else if (baseType
-        instanceof compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst wrapped) {
-      sud = wrapped.type_();
+            instanceof compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst wrapped
+        && wrapped.type_() instanceof MatchDynamic wrappedMd) {
+      md = wrappedMd;
     } else {
-      return EResult.err(loc, "Match: base type is not a source union: " + baseType.typeDesc());
+      return EResult.err(loc, "Match: base type is not matchable: " + baseType.typeDesc());
     }
-    var unionIndex = sud.set.unions.indexOf(sud);
-    if (unionIndex < 0) {
-      return EResult.err(loc, "Match: source union not in owning DefinitionSet");
-    }
-    xx.vx.definitionSets.putIfAbsent(sud.set.defSetId, sud.set);
+    var prepRes = md.matchPrepare(xx, loc);
+    if (prepRes.hasErrors()) return prepRes.reerr();
     for (var branch : cases) {
-      var variantInternal =
-          JavaInternalName.of(
-              SourceUnionEmitter.variantBinaryNameFor(
-                      sud.set.defSetId, unionIndex, branch.variantIndex())
-                  .replace('.', '/'));
-      var payloadDesc =
-          compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, branch.variantType());
       var bodyCv = branch.body();
       boolean bodyControlEnded = !(bodyCv.value() instanceof Opt.Some<Value>);
       if (!bodyControlEnded) {
@@ -484,18 +475,16 @@ public final class TargetDynamic implements compilerxyz.gen.Target {
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
-      seq.add(JavaBytecodeUtils.instanceOf(loc, variantInternal));
+      var testRes = md.matchTest(xx, loc, branch.variantIndex());
+      if (testRes.hasErrors()) return testRes.reerr();
+      seq.add(testRes.requireValue("targetMatch variant test"));
       seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextCaseLabel)));
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
-      seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(variantInternal)));
-      seq.add(
-          JavaBytecodeUtils.accessField(
-              loc,
-              variantInternal,
-              compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD,
-              payloadDesc));
+      var extractRes = md.matchExtract(xx, loc, branch.variantIndex(), branch.variantType());
+      if (extractRes.hasErrors()) return extractRes.reerr();
+      seq.add(extractRes.requireValue("targetMatch variant extract"));
       seq.add(
           new CodeDynamic(
               new CodeLoc.Some(loc),

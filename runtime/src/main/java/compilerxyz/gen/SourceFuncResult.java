@@ -31,13 +31,14 @@ public final class SourceFuncResult {
         this.func.data().description = description;
     }
 
-    public void impl(ExprContext xx, Type arg, Type ret, StagedExprCell implBody) {
+    public void impl(
+        ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret, StagedExprCell implBody) {
         var data = this.func.data();
         if (data.argType != null) {
             throw new IllegalStateException("Function already has an arg type");
         }
         data.argType = arg;
-        if (data.retType != null) {
+        if (data.retType instanceof compilerxyz.util.Opt.Some) {
             throw new IllegalStateException("Function already has a ret type");
         }
         data.retType = ret;

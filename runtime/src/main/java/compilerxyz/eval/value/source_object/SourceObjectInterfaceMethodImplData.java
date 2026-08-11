@@ -71,10 +71,10 @@ public final class SourceObjectInterfaceMethodImplData {
           "Interface method impl is not an Expr: " + implExprValue);
     }
     var ifaceMethod = iface.methods.get(interfaceMethodIndex);
-    var retT = ifaceMethod.retType;
-    if (retT == null) {
-      throw new AssertionError("Interface method missing return type");
+    if (!(ifaceMethod.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retTSome)) {
+      throw new AssertionError("Interface method impl for a no-value return is unsupported");
     }
+    var retT = retTSome.value();
     var innerVx = new EvalContext(xx.vx.ix);
     if (dtData.setId == null) {
       throw new AssertionError(

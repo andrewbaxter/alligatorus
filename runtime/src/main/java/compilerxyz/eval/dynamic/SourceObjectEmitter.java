@@ -384,10 +384,16 @@ public final class SourceObjectEmitter {
       CodeDynamic bodyCode) {
     var methodName = methodMethodName(methodIdx);
     var prefix = methodFieldPrefix(methodIdx);
-    if (!(method.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
-      throw new IllegalStateException(
-          "SourceObjectEmitter.emitMethodMethod: method '" + method.name
-              + "' retType does not implement AspectConsumeDynamic");
+    JavaDataDescriptor retDesc;
+    if (method.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retSome) {
+      if (!(retSome.value() instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+        throw new IllegalStateException(
+            "SourceObjectEmitter.emitMethodMethod: method '" + method.name
+                + "' retType does not implement AspectConsumeDynamic");
+      }
+      retDesc = retConsume.aspectConsumeDynamicJvmClass(xx);
+    } else {
+      retDesc = JavaDataDescriptor.DESC_VOID;
     }
     var argSlots = method.compiledArgSlots;
     var argSlotIds = method.compiledArgSlotIds;
@@ -396,7 +402,6 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.emitMethodMethod: method '" + method.name
               + "' has no compiledArgSlots (finish ordering violation)");
     }
-    var retDesc = retConsume.aspectConsumeDynamicJvmClass(xx);
     var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
     for (var s : argSlots) argDescs.add(s.jvmDesc());
     var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
@@ -799,11 +804,14 @@ public final class SourceObjectEmitter {
     JavaDataDescriptor retDesc;
     if (ifaceMethod.hostMethodDescriptor != null) {
       retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor);
-    } else if (ifaceMethod.retType instanceof compilerxyz.gen.AspectConsumeDynamic retConsume) {
+    } else if (ifaceMethod.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retSome) {
+      if (!(retSome.value() instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+        throw new IllegalStateException(
+            "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
+      }
       retDesc = retConsume.aspectConsumeDynamicJvmClass(xx);
     } else {
-      throw new IllegalStateException(
-          "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
+      retDesc = JavaDataDescriptor.DESC_VOID;
     }
     return JavaMethodDescriptor.fromParts(retDesc, jvmParamDescs);
   }

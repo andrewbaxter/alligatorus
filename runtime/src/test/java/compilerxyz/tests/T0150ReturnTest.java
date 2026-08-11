@@ -54,6 +54,21 @@ public final class T0150ReturnTest {
   }
 
   @Test
+  public void test01615ReturnInOperandRejected() {
+    // A return in an operator-operand position abandons the expression whose
+    // value is needed on the stack; the operand consumer rejects it.
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+    modules.put(
+        "main",
+        new SourceModule.V1(mb.seqOf(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
+    var gx = Helpers.newGx(modules);
+    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+    assertTrue(
+        res instanceof Result.Err<?, ?>, () -> "return in an operand should fail compile: " + res);
+  }
+
+  @Test
   public void test01620ReturnUnknownLabelErrors() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();

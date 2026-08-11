@@ -95,12 +95,18 @@ public final class Eval {
             xx.target.targetCastException(xx, loc, siteKey, calleeExcType, callerExc, chainDest));
     if (siteBlockRes.isEmpty()) return EResult.errs(erb.errors());
     JumpKey dest;
+    Code trailer = Code.none(loc);
     if (siteBlockRes.get() instanceof Opt.Some<Code> someBlock) {
-      var levels = xx.scope.levels;
-      if (levels.isEmpty()) {
-        return EResult.err(loc, "Call with exception cast outside any scope level");
-      }
-      levels.get(levels.size() - 1).scopeLevelEmission().blocks.add(someBlock.value());
+      // The cast handler belongs to the call site, not to any enclosing scope:
+      // emit it out of line right around the call (behind a skip jump) so a
+      // normal return falls past it and the guard's exceptional edge lands in
+      // it. Nothing is stashed in a ScopeLevel.
+      var skip = new JumpKey();
+      var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
+      var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
+      if (jumpOpt.isEmpty() || landOpt.isEmpty()) return EResult.errs(erb.errors());
+      trailer =
+          Code.concat(loc, jumpOpt.get(), Code.concat(loc, someBlock.value(), landOpt.get()));
       dest = siteKey;
     } else {
       if (!(chainDest instanceof Opt.Some<JumpKey> someChain)) {
@@ -112,7 +118,21 @@ public final class Eval {
     }
     var wrappedOpt = erb.mustEr(xx.target.targetGuarded(loc, dest, callCv.code()));
     if (wrappedOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(new CodeValue(wrappedOpt.get(), callCv.outcome()));
+    return EResult.ok(new CodeValue(Code.concat(loc, wrappedOpt.get(), trailer), callCv.outcome()));
+  }
+
+  /**
+   * Generate the drop of a value. A drop must never throw, so it is generated
+   * with no declared exception type in scope: any throw (or call to a throwing
+   * function) in the drop code — including code the drop itself produces — is a
+   * compile error regardless of the enclosing function's declared exception
+   * type. This is the single target-agnostic entry point for dropping a value;
+   * enforcing the rule here (rather than in each target's targetDrop) keeps it
+   * out of the hands of target authors, since targets can be user-defined.
+   */
+  public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
+    var dropXx = xx.withExceptionType(null);
+    return dropXx.target.targetDrop(dropXx, loc, cv);
   }
 
   public static EResult<CodeValue> typecheckConvert(

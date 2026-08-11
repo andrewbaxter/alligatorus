@@ -75,18 +75,6 @@ public final class Erb {
     return Optional.of(res.cv());
   }
 
-  /** Like {@link #mustCv} but allows a control-ended value. */
-  public Optional<CodeValue> mustCvMaybeUnreachable(ExprContext xx, EResult<EvalRes> r) {
-    if (r.hasErrors()) {
-      r.drainInto(this.errors);
-      return Optional.empty();
-    }
-    var res = r.requireValue("Erb::mustCvMaybeUnreachable value");
-    xx.scope.adopt(res.scope());
-    return Optional.of(res.cv());
-  }
-
-
   public <T> Optional<T> mustRes(Result<T, String> r) {
     return switch (r) {
       case Result.Ok<T, String> o -> Optional.of(o.value());

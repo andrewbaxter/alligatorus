@@ -26,19 +26,17 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 
-public record BindingRecordBound(
+public record BindingRecord(
     TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey) implements Binding {
 
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-    boolean hasDynamic = fields.values().stream().anyMatch(f -> f instanceof RecordScopeField.Dynamic);
+    // Sourced-ness is exactly "is a composite stored?" — i.e. jsKey — not
+    // whether some field happens to be dynamic (a lossy proxy that misses a
+    // 0-field composite).
     Code useCode;
     Opt<RecordBaseDynamic> base;
-    if (hasDynamic) {
-      if (!(jsKey instanceof Opt.Some<BindingId> some)) {
-        throw new IllegalStateException(
-            "BindingRecordBound: record has dynamic fields but no jsKey");
-      }
+    if (jsKey instanceof Opt.Some<BindingId> some) {
       useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
       base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
     } else {
@@ -72,7 +70,7 @@ public record BindingRecordBound(
           };
       forked.put(entry.getKey(), nf);
     }
-    return new BindingRecordBound(forked, jsKey);
+    return new BindingRecord(forked, jsKey);
   }
 
 
@@ -80,13 +78,13 @@ public record BindingRecordBound(
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
-      if (!(other instanceof BindingRecordBound o)) {
+      if (!(other instanceof BindingRecord o)) {
         return EResult.err(loc,
-            "cannot merge BindingRecordBound with a differently-typed binding across branches");
+            "cannot merge BindingRecord with a differently-typed binding across branches");
       }
       if (!o.fields.keySet().equals(fields.keySet())) {
         return EResult.err(loc,
-            "cannot merge BindingRecordBound with different field keys across branches");
+            "cannot merge BindingRecord with different field keys across branches");
       }
     }
     var mergedFields = new TOrderedMap<ConstKey, RecordScopeField>();
@@ -99,7 +97,7 @@ public record BindingRecordBound(
           var otherSubs = new TList<Binding>(others.size());
           boolean shapeOk = true;
           for (var other : others) {
-            var ov = ((BindingRecordBound) other).fields.get(key);
+            var ov = ((BindingRecord) other).fields.get(key);
             if (!(ov instanceof RecordScopeField.Scope os)) {
               shapeOk = false;
               break;
@@ -109,7 +107,7 @@ public record BindingRecordBound(
           if (!shapeOk) {
             errors.add(new ExprErr(loc,
                 TList.of(new ExprSubErr.Opaque(
-                    "cannot merge BindingRecordBound: field " + key
+                    "cannot merge BindingRecord: field " + key
                         + " has a different variant across branches"))));
             mergedFields.put(key, v);
           } else {
@@ -125,11 +123,11 @@ public record BindingRecordBound(
         }
         case RecordScopeField.Dynamic d -> {
           for (var other : others) {
-            var ov = ((BindingRecordBound) other).fields.get(key);
+            var ov = ((BindingRecord) other).fields.get(key);
             if (!(ov instanceof RecordScopeField.Dynamic)) {
               errors.add(new ExprErr(loc,
                   TList.of(new ExprSubErr.Opaque(
-                      "cannot merge BindingRecordBound: field " + key
+                      "cannot merge BindingRecord: field " + key
                           + " has a different variant across branches"))));
               break;
             }
@@ -142,6 +140,6 @@ public record BindingRecordBound(
     if (!errors.isEmpty()) {
       return EResult.errs(errors);
     }
-    return EResult.ok(new BindingRecordBound(mergedFields, jsKey));
+    return EResult.ok(new BindingRecord(mergedFields, jsKey));
   }
 }

@@ -49,12 +49,6 @@ public final class SourceInterfaceEmitter {
                 + method.name
                 + "' has no arg type (finish ordering violation)");
       }
-      if (method.retType == null) {
-        throw new IllegalStateException(
-            "SourceInterfaceEmitter.emit: method '"
-                + method.name
-                + "' has no ret type (finish ordering violation)");
-      }
       cw.visitMethod(
               Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
               method.name,

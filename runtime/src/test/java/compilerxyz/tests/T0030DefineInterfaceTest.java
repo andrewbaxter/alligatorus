@@ -42,7 +42,7 @@ public final class T0030DefineInterfaceTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesString())))),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString()))))),
                             mb.bind(
                                 "ndr",
                                 mb.call(
@@ -266,7 +266,7 @@ public final class T0030DefineInterfaceTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesString())))),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString()))))),
                             mb.bind(
                                 "ndr",
                                 mb.call(
@@ -457,7 +457,7 @@ public final class T0030DefineInterfaceTest {
                                         new TestMb.RecordPair(
                                             "arg",
                                             mb.field(mb.scopeUse("iface"), mb.str("type"))),
-                                        new TestMb.RecordPair("ret", mb.typesNull()),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(
@@ -520,7 +520,7 @@ public final class T0030DefineInterfaceTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.typesString())))),
+                                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString()))))),
                             mb.bind(
                                 "ndr",
                                 mb.call(

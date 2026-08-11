@@ -9,7 +9,9 @@ import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
@@ -79,13 +81,6 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var argType = method.argType;
     var retType = method.retType;
-    if (argType == null || retType == null) {
-      return EResult.err(
-          loc,
-          "TypeInterfaceMethodDynamic::call: method '"
-              + method.name
-              + "' missing arg or ret type");
-    }
     var ifaceInternalName = JavaInternalName.of(iface.compiledBinaryName.replace('.', '/'));
 
     var selfDyn = self.code().dynamic();
@@ -104,9 +99,6 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     if (argDynRes.hasErrors()) return argDynRes.reerr();
     var argDyn = argDynRes.requireValue("TypeInterfaceMethodDynamic argDyn");
 
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
-
     var descObject = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
     var methodDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject));
 
@@ -116,7 +108,15 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     seq.add(argDyn);
     var hostName = method.hostMethodName == null ? method.name : method.hostMethodName;
     seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
-    var retConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, retType);
+    if (!(retType instanceof Opt.Some<Type> retSome)) {
+      // No return value: the interface host method still hands back an Object on
+      // the stack (its JVM signature returns Object), so discard it.
+      seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+      return EResult.ok(
+          new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+    }
+    var retTypeVal = retSome.value();
+    var retConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, retTypeVal);
     if (retConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> retConsumeSome) {
       var retDesc = retConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
       if (!retDesc.value().equals(descObject.value())) {
@@ -126,6 +126,8 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
         }
       }
     }
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retTypeVal);
+    if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
             .requireValue("TypeInterfaceMethodDynamic AspectStackValueDynamic.get")
