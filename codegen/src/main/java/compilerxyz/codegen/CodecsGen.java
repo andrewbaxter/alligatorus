@@ -72,8 +72,8 @@ public final class CodecsGen {
       }
     }
 
-    var initSrc = CodecEmitter.emitInit(emitted, closure, index, HAND_CODED);
-    writeFormattedRaw(outRoot, formatter, GEN_PACKAGE + ".CodecsInit", initSrc);
+    var codecsSrc = CodecEmitter.emitCodecs(emitted);
+    writeFormattedRaw(outRoot, formatter, "compilerxyz.gen.codec.Codecs", codecsSrc);
   }
 
   private static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {

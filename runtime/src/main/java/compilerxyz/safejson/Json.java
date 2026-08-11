@@ -2,6 +2,7 @@ package compilerxyz.safejson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import compilerxyz.gen.codec.Codecs;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -32,7 +33,7 @@ public final class Json {
       writer.nullValue();
       return;
     }
-    var codec = (Codec<Object>) (Codec<?>) CodecRegistry.lookup(object.getClass());
+    var codec = (Codec<Object>) (Codec<?>) Codecs.lookup(object.getClass());
     if (codec == null) {
       throw new SafeJsonException(
           "No registered Codec for runtime class " + object.getClass().getName()
@@ -49,7 +50,7 @@ public final class Json {
       writer.nullValue();
       return;
     }
-    var codec = (Codec<Object>) (Codec<?>) CodecRegistry.lookup(declaredClass);
+    var codec = (Codec<Object>) (Codec<?>) Codecs.lookup(declaredClass);
     if (codec != null) {
       codec.codecEncode(writer, object, style);
     } else {
@@ -59,7 +60,7 @@ public final class Json {
 
   public static <T> T decodeValue(JsonReader reader, Class<T> clazz, FieldPath path)
       throws IOException {
-    var codec = CodecRegistry.lookup(clazz);
+    var codec = Codecs.lookup(clazz);
     if (codec == null) {
       throw new SafeJsonException(
           "No registered Codec for class " + clazz.getName()

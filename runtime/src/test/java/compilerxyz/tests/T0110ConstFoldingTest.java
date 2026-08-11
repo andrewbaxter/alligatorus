@@ -97,7 +97,7 @@ public final class T0110ConstFoldingTest {
             ISTORE 0
             GETSTATIC compilerxyz/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/eval/ExprContext;
             ILOAD 0
-            INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.format (I)Ljava/lang/String;
+            INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
             POP
             NEW compilerxyz/eval/gen/Composite$0

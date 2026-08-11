@@ -2,37 +2,19 @@ package compilerxyz.safejson;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
+import compilerxyz.artifact.ArtifactCodecs;
 import java.io.IOException;
 import org.jspecify.annotations.Nullable;
-import compilerxyz.artifact.ArtifactCodecs;
-import compilerxyz.util.TMap;
 
-public final class CodecRegistry {
-  private CodecRegistry() {}
+public final class ManualCodecs {
+  private ManualCodecs() {}
 
-  private static final TMap<Class<?>, Codec<?>> BY_CLASS = new TMap<>();
-
-  public static <T> void register(Class<T> clazz, Codec<T> codec) {
-    BY_CLASS.put(clazz, codec);
-  }
+  private static final Codec<JsonValue> JSON_VALUE = adapterToCodec(JsonValue.safeJsonAdapter);
 
   @SuppressWarnings("unchecked")
   public static <T> @Nullable Codec<T> lookup(Class<T> clazz) {
-    return (Codec<T>) BY_CLASS.get(clazz);
-  }
-
-  static {
-
-    register(JsonValue.class, adapterToCodec(JsonValue.safeJsonAdapter));
-
-    ArtifactCodecs.registerAll();
-
-    var initClassName = "compilerxyz.gen.codec.CodecsInit";
-    try {
-      Class.forName(initClassName, true, CodecRegistry.class.getClassLoader());
-    } catch (ClassNotFoundException ignored) {
-
-    }
+    if (clazz == JsonValue.class) return (Codec<T>) (Codec<?>) JSON_VALUE;
+    return ArtifactCodecs.lookup(clazz);
   }
 
   private static <T> Codec<T> adapterToCodec(Json.SafeJsonAdapter<T> adapter) {

@@ -21,15 +21,12 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.eval.value.numeric.NumericFormat;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
@@ -81,14 +78,9 @@ public record TypeDoubleToStringDynamic()
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
     if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var helperName = JavaInternalName.fromClass(NumericFormat.class);
-    var stringDesc = JavaDataDescriptor.fromClass(String.class);
-    var formatDesc =
-        JavaMethodDescriptor.fromParts(stringDesc, TList.of(JavaDataDescriptor.DESC_DOUBLE));
-
     var seq = new JavaBytecodeSequence();
     seq.add(selfDyn);
-    seq.add(JavaBytecodeUtils.callStaticMethod(loc, helperName, "format", formatDesc));
+    seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.NUMERIC_FORMAT_FORMAT_DOUBLE));
     return EResult.ok(
         retStackRes
             .requireValue("AspectStackValueDynamic.get")

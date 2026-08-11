@@ -3,7 +3,6 @@ package compilerxyz.artifact;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import compilerxyz.safejson.Codec;
-import compilerxyz.safejson.CodecRegistry;
 import compilerxyz.safejson.Json;
 import compilerxyz.safejson.Json.DeserializationException;
 import compilerxyz.safejson.Json.FieldPath;
@@ -19,19 +18,22 @@ import compilerxyz.eval.SourceId;
 public final class ArtifactCodecs {
   private ArtifactCodecs() {}
 
-  public static void registerAll() {
-    CodecRegistry.register(Artifact.class, ArtifactCodec.INSTANCE);
-    CodecRegistry.register(Artifact.Body.class, ArtifactCodec.INSTANCE_BODY);
-    CodecRegistry.register(Artifact.Ref.class, ArtifactCodec.INSTANCE_REF);
-    CodecRegistry.register(ArtifactBody.class, ArtifactBodyCodec.INSTANCE);
-    CodecRegistry.register(ArtifactBodyExporter.class, ArtifactBodyExporterCodec.INSTANCE);
-    CodecRegistry.register(
-        ArtifactBodyExporter.Body.class, ArtifactBodyExporterCodec.INSTANCE_BODY);
-    CodecRegistry.register(
-        ArtifactBodyExporter.Root.class, ArtifactBodyExporterCodec.INSTANCE_ROOT);
-    CodecRegistry.register(
-        ArtifactBodyExporter.SourceRef.class, ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF);
-    CodecRegistry.register(ArtifactIdSource.class, ArtifactIdSourceCodec.INSTANCE);
+  @SuppressWarnings("unchecked")
+  public static <T> @org.jspecify.annotations.Nullable Codec<T> lookup(Class<T> clazz) {
+    if (clazz == Artifact.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE;
+    if (clazz == Artifact.Body.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_BODY;
+    if (clazz == Artifact.Ref.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_REF;
+    if (clazz == ArtifactBody.class) return (Codec<T>) (Codec<?>) ArtifactBodyCodec.INSTANCE;
+    if (clazz == ArtifactBodyExporter.class)
+      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE;
+    if (clazz == ArtifactBodyExporter.Body.class)
+      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_BODY;
+    if (clazz == ArtifactBodyExporter.Root.class)
+      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_ROOT;
+    if (clazz == ArtifactBodyExporter.SourceRef.class)
+      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF;
+    if (clazz == ArtifactIdSource.class) return (Codec<T>) (Codec<?>) ArtifactIdSourceCodec.INSTANCE;
+    return null;
   }
 
   static final class ArtifactCodec implements Codec<Artifact> {

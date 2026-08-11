@@ -13,6 +13,7 @@
         <module>util</module>
         <module>codegen</module>
         <module>runtime</module>
+        <module>analysis</module>
     </modules>
 
     <properties>
@@ -30,6 +31,7 @@
         <pcollections.version>4.0.2</pcollections.version>
         <sqlite.version>3.45.3.0</sqlite.version>
         <junit.version>5.10.2</junit.version>
+        <spoon.version>11.5.0</spoon.version>
     </properties>
 
     <dependencyManagement>
@@ -63,6 +65,11 @@
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm-util</artifactId>
                 <version>${asm.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>fr.inria.gforge.spoon</groupId>
+                <artifactId>spoon-core</artifactId>
+                <version>${spoon.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>

@@ -1,5 +1,6 @@
 package compilerxyz.codegen;
 
+import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
@@ -8,6 +9,7 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.TypeVariableName;
 import compilerxyz.codegen.CodecsGen.Component;
 import compilerxyz.codegen.CodecsGen.ParsedType;
 import compilerxyz.codegen.CodecsGen.ParsedTypeKind;
@@ -43,8 +45,10 @@ final class CodecEmitter {
   private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
-  private static final ClassName CODEC_REGISTRY =
-      ClassName.get("compilerxyz.safejson", "CodecRegistry");
+  private static final ClassName MANUAL_CODECS =
+      ClassName.get("compilerxyz.safejson", "ManualCodecs");
+  private static final ClassName NULLABLE =
+      ClassName.get("org.jspecify.annotations", "Nullable");
 
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
     for (var c : info.components) {
@@ -672,21 +676,34 @@ final class CodecEmitter {
     return cs.sortedBy((a, b) -> toSnakeCase(a.name).compareTo(toSnakeCase(b.name)));
   }
 
-  static String emitInit(
-      TList<String> emitted, TOrderedSet<String> closure, TypeIndex index, TSet<String> handCoded) {
-    var cls =
-            TypeSpec.classBuilder("CodecsInit")
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-    cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
-
-    var staticBlock = CodeBlock.builder();
+  static String emitCodecs(TList<String> emitted) {
+    var t = TypeVariableName.get("T");
+    var codecOfT = ParameterizedTypeName.get(CODEC, t);
+    var lookup =
+        MethodSpec.methodBuilder("lookup")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addTypeVariable(t)
+            .addAnnotation(
+                AnnotationSpec.builder(SuppressWarnings.class)
+                    .addMember("value", "$S", "unchecked")
+                    .build())
+            .returns(codecOfT.annotated(AnnotationSpec.builder(NULLABLE).build()))
+            .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), t), "clazz");
     for (var q : emitted) {
-      staticBlock.addStatement("$T.register($L.class, $L)", CODEC_REGISTRY, q, codecRef(q));
+      lookup.addStatement(
+          "if (clazz == $L.class) return ($T) (Codec<?>) $L", q, codecOfT, codecRef(q));
     }
-    cls.addStaticBlock(staticBlock.build());
+    lookup.addStatement("return $T.lookup(clazz)", MANUAL_CODECS);
 
-    var javaFile =
-        JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build()).skipJavaLangImports(true).build();
-    return javaFile.toString();
+    var cls =
+        TypeSpec.classBuilder("Codecs")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build())
+            .addMethod(lookup.build());
+
+    return JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build())
+        .skipJavaLangImports(true)
+        .build()
+        .toString();
   }
 }

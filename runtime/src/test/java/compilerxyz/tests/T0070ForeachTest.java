@@ -113,7 +113,7 @@ public final class T0070ForeachTest {
             GETSTATIC compilerxyz/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/eval/ExprContext;
             ALOAD 1
             INVOKEVIRTUAL java/lang/Integer.intValue ()I
-            INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.format (I)Ljava/lang/String;
+            INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
             POP
             GOTO L0

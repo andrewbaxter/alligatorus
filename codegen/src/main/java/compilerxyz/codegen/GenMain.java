@@ -80,6 +80,10 @@ public final class GenMain {
         scannedPushStructs);
     BuiltinTreeGen.run(outRoot, formatter, scopeIds);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
+
+    var codegenDescriptors =
+        compilerxyz.codegen.experimental.CodegenDescriptorScanner.scanRoot(runtimeSourceRoot);
+    CodegenDescriptorGen.run(outRoot, formatter, codegenDescriptors);
   }
 
   static void write(Path outRoot, JavaFile file, Formatter formatter) throws IOException {

@@ -342,6 +342,18 @@ public class JavaBytecodeUtils {
     return callStaticMethod(CodeLoc.Infallible.INSTANCE, klass, method, methodDesc);
   }
 
+  public static CodeDynamic callStaticMethod(CodeLoc loc, JavaStaticMethodRef ref) {
+    return callStaticMethod(loc, ref.owner, ref.name, ref.descriptor);
+  }
+
+  public static CodeDynamic callStaticMethod(QExprId loc, JavaStaticMethodRef ref) {
+    return callStaticMethod(lc(loc), ref.owner, ref.name, ref.descriptor);
+  }
+
+  public static CodeDynamic callStaticMethod(JavaStaticMethodRef ref) {
+    return callStaticMethod(CodeLoc.Infallible.INSTANCE, ref.owner, ref.name, ref.descriptor);
+  }
+
   public static CodeDynamic callStaticMethodReflect(QExprId loc, Class<?> klass, String method) {
     for (var method1 : klass.getMethods()) {
       if (!method.equals(method1.getName())) continue;

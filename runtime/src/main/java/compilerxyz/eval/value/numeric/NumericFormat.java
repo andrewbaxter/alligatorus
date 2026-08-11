@@ -1,45 +1,57 @@
 package compilerxyz.eval.value.numeric;
 
+import compilerxyz.annotations.CodegenDescriptor;
+
 public final class NumericFormat {
   private NumericFormat() {}
 
-  public static String format(byte v) {
+  @CodegenDescriptor
+  public static String formatByte(byte v) {
     return Byte.toString(v);
   }
 
-  public static String format(short v) {
+  @CodegenDescriptor
+  public static String formatShort(short v) {
     return Short.toString(v);
   }
 
-  public static String format(int v) {
+  @CodegenDescriptor
+  public static String formatInt(int v) {
     return Integer.toString(v);
   }
 
-  public static String format(long v) {
+  @CodegenDescriptor
+  public static String formatLong(long v) {
     return Long.toString(v);
   }
 
-  public static String format(float v) {
+  @CodegenDescriptor
+  public static String formatFloat(float v) {
     return Float.toString(v);
   }
 
-  public static String format(double v) {
+  @CodegenDescriptor
+  public static String formatDouble(double v) {
     return Double.toString(v);
   }
 
-  public static String formatUnsigned(byte v) {
+  @CodegenDescriptor
+  public static String formatUnsignedByte(byte v) {
     return Integer.toString(Byte.toUnsignedInt(v));
   }
 
-  public static String formatUnsigned(short v) {
+  @CodegenDescriptor
+  public static String formatUnsignedShort(short v) {
     return Integer.toString(Short.toUnsignedInt(v));
   }
 
-  public static String formatUnsigned(int v) {
+  @CodegenDescriptor
+  public static String formatUnsignedInt(int v) {
     return Integer.toUnsignedString(v);
   }
 
-  public static String formatUnsigned(long v) {
+  @CodegenDescriptor
+  public static String formatUnsignedLong(long v) {
     return Long.toUnsignedString(v);
   }
 }
