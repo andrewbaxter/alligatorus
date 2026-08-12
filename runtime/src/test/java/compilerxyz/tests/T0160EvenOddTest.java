@@ -662,10 +662,6 @@ public final class T0160EvenOddTest {
                     mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_"))))))));
   }
 
-  private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
-    return makeEvenOddTypeInner(mb, name, evenOddDropBody(mb));
-  }
-
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name, SourceExpr dropBody) {
     return mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),

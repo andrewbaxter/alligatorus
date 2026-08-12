@@ -58,14 +58,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_field_use_dynamic_id");
   }
 
-  public SourceExpr evalAspectElementUseDynamic() {
-    return builtin("eval", "aspect_element_use_dynamic");
-  }
-
-  public SourceExpr evalAspectElementUseDynamicId() {
-    return builtin("eval", "aspect_element_use_dynamic_id");
-  }
-
   public SourceExpr evalAspectSet() {
     return builtin("eval", "aspect_set");
   }
@@ -74,20 +66,12 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "operator_add");
   }
 
-  public SourceExpr evalOperatorMod() {
-    return builtin("eval", "operator_mod");
-  }
-
   public SourceExpr mustReinterpret() {
     return builtin("must_reinterpret");
   }
 
   public SourceExpr evalValue() {
     return builtin("eval", "value");
-  }
-
-  public SourceExpr evalValueSource() {
-    return builtin("eval", "value_source");
   }
 
   public SourceExpr evalType() {
@@ -112,10 +96,6 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalAspectInt() {
     return builtin("eval", "aspect_int");
-  }
-
-  public SourceExpr evalTypeIntDynamicIdentity() {
-    return builtin("eval", "type_int_dynamic_identity");
   }
 
   public SourceExpr evalTypeLongDynamicIdentity() {
@@ -146,32 +126,8 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_operator_add_id");
   }
 
-  public SourceExpr evalOperatorModId() {
-    return builtin("eval", "aspect_operator_mod_id");
-  }
-
-  public SourceExpr evalAspectDropDynamicLightId() {
-    return builtin("eval", "aspect_drop_dynamic_light_id");
-  }
-
-  public SourceExpr evalAspectStackValueDynamicId() {
-    return builtin("eval", "aspect_stack_value_dynamic_id");
-  }
-
-  public SourceExpr evalAspectInitialBindId() {
-    return builtin("eval", "aspect_initial_bind_id");
-  }
-
-  public SourceExpr evalFreshUnique() {
-    return builtin("eval", "fresh_unique");
-  }
-
   public SourceExpr evalBindResult() {
     return builtin("eval", "bind_result");
-  }
-
-  public SourceExpr evalCastValue() {
-    return builtin("eval", "cast_value");
   }
 
   public SourceExpr evalCodeDyn() {
@@ -184,18 +140,6 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalConstEval() {
     return builtin("eval", "const_eval");
-  }
-
-  public SourceExpr evalConstkeyToStr() {
-    return builtin("eval", "constkey_to_str");
-  }
-
-  public SourceExpr evalGenBindingName() {
-    return builtin("eval", "gen_binding_name");
-  }
-
-  public SourceExpr evalNewExprContext() {
-    return builtin("eval", "new_expr_context");
   }
 
   public SourceExpr evalStack() {
