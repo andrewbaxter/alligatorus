@@ -245,12 +245,5 @@ public final class Json {
       this.path = path;
     }
 
-    public String getErrorMessage() {
-      return errorMessage;
-    }
-
-    public FieldPath getPath() {
-      return path;
-    }
   }
 }

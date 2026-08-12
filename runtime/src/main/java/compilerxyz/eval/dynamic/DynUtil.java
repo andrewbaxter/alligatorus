@@ -153,11 +153,6 @@ public final class DynUtil {
             EvalOutcome.NO_VALUE);
     }
 
-    public static EResult<CodeValue> elementUseDefaultDynamic(
-            ExprContext xx, QExprId loc, Type self, ValueDynamicSource elementSource, Code carry) {
-        return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueDynamic(elementSource, self))));
-    }
-
     public static CodeDynamic renderSource(
             ExprContext xx, QExprId loc, ValueDynamicSource src) {
         return switch (src) {
@@ -421,23 +416,6 @@ public final class DynUtil {
      * lowers the whole value via {@code argType}'s AspectConsumeDynamic and returns a
      * singleton list. Used at call sites whose JVM descriptor takes destructured positional args.
      */
-    public static EResult<CodeValue> elementUseDefault(
-            ExprContext xx,
-            QExprId loc,
-            ValueDynamicSource source,
-            Code carry,
-            Type type_) {
-        var seq = new JavaBytecodeSequence();
-        var carryDyn = carry.codeDynamic();
-        if (carryDyn != null) seq.add(carryDyn);
-        seq.add(renderSource(xx, loc, source));
-        return EResult.ok(
-                new CodeValue(
-                        Code.of(loc, new CodeDynamic(loc, seq)),
-                        EvalOutcome.ofValue(
-                                new ValueDynamic(source, type_))));
-    }
-
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {
         var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
@@ -516,14 +494,6 @@ public final class DynUtil {
             out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
         }
         return EResult.ok(out);
-    }
-
-    public static Type derivedSourceType(ExprContext xx, CodeValue cv) {
-        if (cv.value().optIsNone()) {
-            throw new IllegalStateException(
-                    "derivedSourceType: CodeValue has no compile-time value");
-        }
-        return cv.value().optUnwrap().valueType();
     }
 
 }

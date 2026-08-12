@@ -25,10 +25,6 @@ public final class SourceInterfaceEmitter {
         + interfaceIndex;
   }
 
-  public static String internalNameFor(DefSetId defSet, long interfaceIndex) {
-    return binaryNameFor(defSet, interfaceIndex).replace('.', '/');
-  }
-
   public static EmittedInterface emit(DefSetId defSet, long interfaceIndex, InterfaceData data) {
     var binaryName = binaryNameFor(defSet, interfaceIndex);
     var internalName = binaryName.replace('.', '/');

@@ -55,10 +55,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
     }
 
-  private static CodeDynamic wrap(CodeLoc loc, JavaBytecode bc) {
-    return new CodeDynamic(loc, bc);
-  }
-
     public record InitialSlot(JavaBytecodeBindingKey key, boolean wide) {
         public InitialSlot(JavaBytecodeBindingKey key) {
             this(key, false);
@@ -337,10 +333,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
         children.add(element);
         return this;
     }
-
-  public int size() {
-    return children.size();
-  }
 
   @Override
   public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {

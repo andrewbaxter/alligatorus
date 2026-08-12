@@ -40,7 +40,6 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import org.objectweb.asm.tree.IntInsnNode;
 
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
@@ -669,24 +668,6 @@ public final class SourceObjectEmitter {
     return out;
   }
 
-  private static int parameterSlotCount(String descriptor) {
-    var n = 0;
-    var i = 1;
-    while (i < descriptor.length() && descriptor.charAt(i) != ')') {
-      var c = descriptor.charAt(i);
-      if (c == 'L') {
-        n++;
-        i = descriptor.indexOf(';', i) + 1;
-      } else if (c == '[') {
-        i++;
-      } else {
-        n++;
-        i++;
-      }
-    }
-    return n;
-  }
-
   private static TOrderedSet<String> emitHostInterfaceAdapters(
       ExprContext xx, ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
     var emitted = new TOrderedSet<String>();
@@ -773,19 +754,6 @@ public final class SourceObjectEmitter {
     JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
-  private static compilerxyz.util.Opt<JavaInternalName> returnTypeInternalName(
-      String descriptor) {
-    var closeParen = descriptor.indexOf(')');
-    if (closeParen < 0 || closeParen + 1 >= descriptor.length()) {
-      return compilerxyz.util.Opt.none();
-    }
-    var ret = descriptor.charAt(closeParen + 1);
-    if (ret != 'L') {
-      return compilerxyz.util.Opt.none();
-    }
-    return compilerxyz.util.Opt.some(JavaInternalName.of(descriptor.substring(closeParen + 2, descriptor.length() - 1)));
-  }
-
   private static JavaMethodDescriptor interfaceMethodMethodDescriptor(
       ExprContext xx,
       SourceObjectInterfaceMethodImplData m,
@@ -824,14 +792,6 @@ public final class SourceObjectEmitter {
     var s = md.value();
     var raw = s.substring(s.indexOf(')') + 1);
     return JavaDataDescriptor.create(raw);
-  }
-
-  private static void pushIntConst(JavaBytecodeSequence seq, int value) {
-    if (value >= 0 && value <= 5) {
-      seq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_0 + value));
-    } else {
-      seq.add(JavaBytecodeUtils.wrapObj(CodeLoc.Infallible.INSTANCE, new IntInsnNode(Opcodes.BIPUSH, value)));
-    }
   }
 
 }

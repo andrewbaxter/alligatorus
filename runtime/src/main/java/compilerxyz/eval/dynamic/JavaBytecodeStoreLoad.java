@@ -12,10 +12,6 @@ public class JavaBytecodeStoreLoad implements JavaBytecode {
     this.key = key;
   }
 
-  public static JavaBytecodeStoreLoad create(int code, JavaBytecodeBindingKey key) {
-    return new JavaBytecodeStoreLoad(code, key);
-  }
-
   @Override
   public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
     return dispatcher.dispatcherHandleStoreLoad(this);

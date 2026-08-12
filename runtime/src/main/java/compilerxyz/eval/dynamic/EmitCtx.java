@@ -27,18 +27,4 @@ public final class EmitCtx {
     this(ownerInternalName, nextSlot, fieldPrefix);
   }
 
-  public int allocSlot(BindingId id) {
-    var slot = nextSlot;
-    nextSlot += 1;
-    slots.put(id, slot);
-    return slot;
-  }
-
-  public int slotOf(BindingId id) {
-    var s = slots.getOrNull(id);
-    if (s == null) {
-      throw new AssertionError("BindingId not bound: " + id);
-    }
-    return s;
-  }
 }

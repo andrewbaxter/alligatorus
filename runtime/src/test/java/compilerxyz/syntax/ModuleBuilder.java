@@ -61,10 +61,6 @@ public class ModuleBuilder {
     return field(call(builtin("import"), rec), str("v"));
   }
 
-  public SourceExpr sourceVirtual(SourceExpr name) {
-    return call(builtin("source", "virtual"), name);
-  }
-
   public SourceExpr sourceLocal(SourceExpr path) {
     return call(builtin("source", "local"), path);
   }

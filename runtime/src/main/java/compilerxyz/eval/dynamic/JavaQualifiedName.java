@@ -9,14 +9,6 @@ public class JavaQualifiedName {
         this.value = value;
     }
 
-    public static JavaQualifiedName create(String... parts) {
-        return new JavaQualifiedName(TList.of(parts));
-    }
-
-    public static JavaQualifiedName create(TList<String> parts) {
-        return new JavaQualifiedName(parts);
-    }
-
     @Override
     public String toString() {
         var out = new StringBuilder();

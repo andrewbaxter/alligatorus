@@ -33,14 +33,4 @@ public final class JsonValues {
     }
   }
 
-  public static <T> Opt<T> fromValueNullable(Class<T> clazz, JsonValue value) {
-    return switch (value) {
-      case JsonValueNull n -> Opt.none();
-      case JsonValueString s -> Opt.some(fromValue(clazz, value));
-      case JsonValueNumber n -> Opt.some(fromValue(clazz, value));
-      case JsonValueBoolean b -> Opt.some(fromValue(clazz, value));
-      case JsonValueArray a -> Opt.some(fromValue(clazz, value));
-      case JsonValueObject o -> Opt.some(fromValue(clazz, value));
-    };
-  }
 }

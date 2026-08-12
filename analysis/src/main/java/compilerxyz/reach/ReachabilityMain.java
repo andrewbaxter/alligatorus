@@ -97,10 +97,26 @@ public final class ReachabilityMain {
       }
     }
     // Fixpoint.
+    Set<String> fieldInitDone = new HashSet<>();
     while (!work.isEmpty()) {
       String workKey = work.poll();
       CtExecutable<?> ex = execByKey.get(workKey);
       if (ex == null) continue;
+      if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
+        String tn = tm.getDeclaringType().getQualifiedName();
+        if (fieldInitDone.add(tn)) {
+          for (CtField<?> f : tm.getDeclaringType().getFields()) {
+            var init = f.getDefaultExpression();
+            if (init == null) continue;
+            for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
+              onCall(inv.getExecutable(), inv.getArguments().size(), work);
+            }
+            for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+              onCall(cc.getExecutable(), cc.getArguments().size(), work);
+            }
+          }
+        }
+      }
       addReferencedTypesOf(ex);
       for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
         onCall(inv.getExecutable(), inv.getArguments().size(), work);
