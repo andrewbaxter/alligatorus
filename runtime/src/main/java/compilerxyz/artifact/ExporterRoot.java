@@ -331,10 +331,6 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
     this.tag = tag;
   }
 
-  public String tag() {
-    return tag;
-  }
-
   abstract ExporterRootDelegate delegate();
 
   public static Opt<ExporterRoot> fromTag(String tag) {

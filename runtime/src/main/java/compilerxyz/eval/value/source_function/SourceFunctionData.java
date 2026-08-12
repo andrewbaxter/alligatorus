@@ -5,7 +5,6 @@ import compilerxyz.eval.ConstEval;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
-import compilerxyz.eval.DefinitionSetClassLoader;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalContext;
@@ -252,13 +251,4 @@ public final class SourceFunctionData {
             compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT));
   }
 
-  public EResult<Void> instantiate(QExprId rootLoc, DefinitionSetClassLoader loader) {
-
-    var binaryName = compiledClassName;
-    if (binaryName == null) {
-      throw new AssertionError(
-          "SourceFunctionData.instantiate: compiledClassName is null (finish was not called)");
-    }
-    return EResult.ok(null);
-  }
 }

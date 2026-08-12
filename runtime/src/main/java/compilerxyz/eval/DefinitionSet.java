@@ -133,15 +133,6 @@ public final class DefinitionSet implements ExporterAny {
     return Opt.some(emitted);
   }
 
-  public EResult<Void> checkMutable(QExprId loc) {
-    if (finished) {
-      return EResult.err(
-          loc,
-          "definition set " + defSetId + " has been finalized; mutation not allowed");
-    }
-    return EResult.ok(null);
-  }
-
   @Override
   public EResult<Type> exporterAnyAsType() {
     throw new UnsupportedOperationException("DefinitionSet is neither a Type nor a Value");

@@ -143,24 +143,6 @@ public final class ArtifactSupport {
     return exporter.artifactExporterImportFromData(xx, loc, id, body.data());
   }
 
-  public static EResult<Type> importTypeArtifact(
-      ExprContext xx, QExprId loc, Artifact artifact) {
-    var errors = new TList<ExprErr>();
-    var res = importArtifact(xx, loc, artifact);
-    if (res.hasErrors()) {
-      res.drainInto(errors);
-      return errsOrEmpty(errors);
-    }
-    var v = res.requireValue("ArtifactSupport::importTypeArtifact imported");
-    var exporterAnyAsType = v.exporterAnyAsType();
-    if (exporterAnyAsType.hasErrors()) {
-      exporterAnyAsType.drainInto(errors);
-      return errsOrEmpty(errors);
-    }
-    var t = exporterAnyAsType.requireValue("ArtifactSupport::importTypeArtifact type");
-    return EResult.ok(t);
-  }
-
   public static Artifact implExportIndependentArtifact(
       Artifacts artifacts, ArtifactIdHolder cell, Supplier<ArtifactBody> produce) {
     if (cell.id().optIsSome()) {

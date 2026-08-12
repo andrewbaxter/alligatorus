@@ -51,6 +51,7 @@ public final class Zbase32 {
     return sb.toString();
   }
 
+  @SuppressWarnings("unused")
   public static TList<Byte> decodeToList(String encoded) {
     var bytes = decode(encoded);
     var list = new TList<Byte>(bytes.length);

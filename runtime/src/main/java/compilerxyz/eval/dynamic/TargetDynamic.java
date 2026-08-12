@@ -163,25 +163,6 @@ public final class TargetDynamic implements Target {
     return new BindResult(new CodeDynamic(loc, seq), local);
   }
 
-  /** Discards a value of the given descriptor from the operand stack. */
-  private static CodeDynamic popValue(QExprId loc, JavaDataDescriptor desc) {
-    return switch (desc.value().charAt(0)) {
-      case 'J', 'D' -> JavaBytecodeUtils.inst(loc, Opcodes.POP2);
-      default -> JavaBytecodeUtils.inst(loc, Opcodes.POP);
-    };
-  }
-
-  /** Zero/null of the given descriptor, used to definitely-assign a join local on every path. */
-  private static CodeDynamic defaultValue(QExprId loc, JavaDataDescriptor desc) {
-    return switch (desc.value().charAt(0)) {
-      case 'J' -> JavaBytecodeUtils.inst(loc, Opcodes.LCONST_0);
-      case 'D' -> JavaBytecodeUtils.inst(loc, Opcodes.DCONST_0);
-      case 'F' -> JavaBytecodeUtils.inst(loc, Opcodes.FCONST_0);
-      case 'I', 'S', 'B', 'Z', 'C' -> JavaBytecodeUtils.inst(loc, Opcodes.ICONST_0);
-      default -> JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL);
-    };
-  }
-
   @Override
   public EResult<Code> targetTryCatchFinally(
       ExprContext xx,
@@ -675,14 +656,6 @@ public final class TargetDynamic implements Target {
     }
   }
 
-  private int slotForBinding(EmitCtx ctx, BindingId id) {
-    var existing = ctx.slots.getOrNull(id);
-    if (existing != null) {
-      return existing;
-    }
-    return ctx.allocSlot(id);
-  }
-
   @Override
   public EResult<Opt<TargetBindSub>> targetMaybeBindSub(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value().optIsNone()) {
@@ -785,6 +758,7 @@ public final class TargetDynamic implements Target {
     return EResult.ok(Opt.some(Code.of(loc, new CodeDynamic(loc, seq))));
   }
 
+  @SuppressWarnings("unused")
   @Override
   public EResult<Code> targetFresh(QExprId loc, Code code) {
     var dyn = code.codeDynamic();

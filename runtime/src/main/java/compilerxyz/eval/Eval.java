@@ -8,7 +8,6 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStringConst;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.string.TypeStringConst;
@@ -43,26 +42,6 @@ public final class Eval {
   public static final String KEY_BUILTINS = "builtins";
 
   private Eval() {}
-
-  public static boolean codeUsesBinding(CodeDynamic code, BindingId targetId) {
-    return switch (code.code()) {
-      case JavaBytecodeStoreLoad sl -> switch (targetId) {
-        case BindingId.Local local -> local.key().equals(sl.key);
-      };
-      case JavaBytecodeSequence s -> {
-        boolean found = false;
-        for (var child : s.children) {
-          if (codeUsesBinding(child, targetId)) {
-            found = true;
-            break;
-          }
-        }
-        yield found;
-      }
-      case CodeDynamic nested -> codeUsesBinding(nested, targetId);
-      case JavaBytecode jbc -> false;
-    };
-  }
 
   public static Result<ConstKey, String> extractConstKey(ExprContext xx, QExprId loc, Value v) {
     var typeRes = v.valueType();

@@ -12,7 +12,6 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
-import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 
@@ -220,35 +219,4 @@ public final class ArtifactJson {
     return EResult.ok(out);
   }
 
-  public static EResult<String> decodeString(QExprId loc, JsonValue v) {
-    return switch (v) {
-      case JsonValueString s -> EResult.ok(s.value());
-      case JsonValueNull n -> EResult.err(loc, "decodeString: expected string");
-      case JsonValueBoolean b -> EResult.err(loc, "decodeString: expected string");
-      case JsonValueNumber n -> EResult.err(loc, "decodeString: expected string");
-      case JsonValueArray a -> EResult.err(loc, "decodeString: expected string");
-      case JsonValueObject o -> EResult.err(loc, "decodeString: expected string");
-    };
-  }
-
-  public static JsonValue encodeString(String s) {
-    return new JsonValueString(s);
-  }
-
-  public static EResult<JsonValue> requiredField(QExprId loc, JsonValueObject obj, String name) {
-    var v = obj.entries().get(name);
-    if (v == null) return EResult.err(loc, "missing field '" + name + "'");
-    return EResult.ok(v);
-  }
-
-  public static Opt<JsonValueObject> asObject(JsonValue v) {
-    return switch (v) {
-      case JsonValueObject o -> Opt.some(o);
-      case JsonValueNull n -> Opt.none();
-      case JsonValueBoolean b -> Opt.none();
-      case JsonValueNumber n -> Opt.none();
-      case JsonValueString s -> Opt.none();
-      case JsonValueArray a -> Opt.none();
-    };
-  }
 }

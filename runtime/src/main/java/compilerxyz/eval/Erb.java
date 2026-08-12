@@ -14,10 +14,6 @@ public final class Erb {
     this.errors = new TList<>();
   }
 
-  public QExprId loc() {
-    return loc;
-  }
-
   public TList<ExprErr> errors() {
     return errors;
   }

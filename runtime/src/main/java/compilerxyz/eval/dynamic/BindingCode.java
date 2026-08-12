@@ -19,21 +19,4 @@ public final class BindingCode {
     return bindingUse(new CodeLoc.Some(loc), vx, id);
   }
 
-  public static CodeDynamic bindingSet(
-      CodeLoc loc, EvalContext vx, BindingId id, CodeDynamic value) {
-    var seq = new JavaBytecodeSequence();
-    seq.add(value);
-    switch (id) {
-      case BindingId.Local local ->
-          seq.add(
-              new CodeDynamic(
-                  loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, local.key())));
-    }
-    return new CodeDynamic(loc, seq);
-  }
-
-  public static CodeDynamic bindingSet(
-      QExprId loc, EvalContext vx, BindingId id, CodeDynamic value) {
-    return bindingSet(new CodeLoc.Some(loc), vx, id, value);
-  }
 }

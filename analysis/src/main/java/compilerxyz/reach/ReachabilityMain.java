@@ -18,6 +18,7 @@ import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtFieldRead;
 import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.CtNewClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
@@ -87,9 +88,9 @@ public final class ReachabilityMain {
     // Seed roots.
     Deque<String> work = new ArrayDeque<>();
     for (CtType<?> t : types) {
-      boolean rootedType = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t);
+      boolean rootedType = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t) || hasSuppressUnused(t);
       for (CtExecutable<?> ex : executablesOf(t)) {
-        if (rootedType || isRoot(ex)) {
+        if (rootedType || isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
           String k = key(ex);
           if (reachable.add(k)) work.add(k);
         }
@@ -97,7 +98,8 @@ public final class ReachabilityMain {
     }
     // Fixpoint.
     while (!work.isEmpty()) {
-      CtExecutable<?> ex = execByKey.get(work.poll());
+      String workKey = work.poll();
+      CtExecutable<?> ex = execByKey.get(workKey);
       if (ex == null) continue;
       addReferencedTypesOf(ex);
       for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
@@ -139,7 +141,9 @@ public final class ReachabilityMain {
       for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
         CtExecutable<?> cex = execByKey.get(cand);
         if (cex == null) continue;
-        if (refDecl == null || isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+        boolean direct = isDirect(ref, cex);
+        boolean sub = !direct && refDecl != null && subtypeOf(cex, refDecl);
+        if (refDecl == null || direct || sub) {
           if (reachable.add(cand)) work.add(cand);
         }
       }
@@ -198,10 +202,20 @@ public final class ReachabilityMain {
   private boolean isRoot(CtExecutable<?> ex) {
     if (hasAnnotation(ex, JUNIT) || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
     if (hasAnnotation(ex, BUILTIN)) return true;
+    if (hasSuppressUnusedAnnotation(ex)) return true;
     return ex instanceof CtMethod<?> m
         && m.getSimpleName().equals("main")
         && m.getModifiers().contains(ModifierKind.STATIC)
         && m.getParameters().size() == 1;
+  }
+
+  private static boolean hasSuppressUnusedAnnotation(CtExecutable<?> ex) {
+    return ex.getAnnotations().stream()
+        .filter(a -> "SuppressWarnings".equals(a.getAnnotationType().getSimpleName()))
+        .anyMatch(a -> {
+          var v = a.getValues().get("value");
+          return v != null && v.toString().contains("unused");
+        });
   }
 
   // ---- reporting ----
@@ -230,7 +244,7 @@ public final class ReachabilityMain {
       String qn = t.getQualifiedName();
       List<CtExecutable<?>> execs = executablesOf(t);
       boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t);
+      boolean rooted = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t) || hasSuppressUnused(t);
       boolean isAnnotation = t.isAnnotationType();
       if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
         deadClasses.add(qn);
@@ -250,7 +264,8 @@ public final class ReachabilityMain {
             && !rooted
             && !isRoot(ex)
             && !m.getSimpleName().equals("main")
-            && !overridesExternal(m)) {
+            && !overridesExternal(m)
+            && !isRecordAccessor(t, m)) {
           deadMethods.add(qn + "#" + sig(ex));
         }
         if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
@@ -330,6 +345,17 @@ public final class ReachabilityMain {
     for (CtType<?> nested : t.getNestedTypes()) {
       collectTypes(nested, out);
     }
+    // Spoon's getNestedTypes() omits anonymous classes from field initializers
+    // (e.g. `static final Iface DELEGATE = new Iface() {...}`). Include them so
+    // the BFS can resolve interface dispatch to their implementations.
+    for (CtField<?> f : t.getFields()) {
+      var init = f.getDefaultExpression();
+      if (init == null) continue;
+      for (CtNewClass<?> nc : init.getElements(new TypeFilter<>(CtNewClass.class))) {
+        var anon = nc.getAnonymousClass();
+        if (anon != null) collectTypes(anon, out);
+      }
+    }
   }
 
   private static List<CtExecutable<?>> executablesOf(CtType<?> t) {
@@ -381,6 +407,22 @@ public final class ReachabilityMain {
   private static boolean hasAnyAnnotation(CtType<?> t, Set<String> simpleNames) {
     return t.getAnnotations().stream()
         .anyMatch(a -> simpleNames.contains(a.getAnnotationType().getSimpleName()));
+  }
+
+  private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {
+    if (!(t instanceof spoon.reflect.declaration.CtRecord rec)) return false;
+    if (!m.getParameters().isEmpty()) return false;
+    return rec.getRecordComponents().stream()
+        .anyMatch(rc -> rc.getSimpleName().equals(m.getSimpleName()));
+  }
+
+  private static boolean hasSuppressUnused(CtType<?> t) {
+    return t.getAnnotations().stream()
+        .filter(a -> "SuppressWarnings".equals(a.getAnnotationType().getSimpleName()))
+        .anyMatch(a -> {
+          var v = a.getValues().get("value");
+          return v != null && v.toString().contains("unused");
+        });
   }
 
   private static void section(StringBuilder out, String title, List<String> items) {
