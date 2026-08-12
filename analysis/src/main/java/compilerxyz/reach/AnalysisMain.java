@@ -48,7 +48,7 @@ public final class AnalysisMain {
 
     var conventionFindings = new ConventionChecks(generatedFiles).run(model);
     printConventions(conventionFindings);
-    int reachabilityFindings = new ReachabilityMain().run(model);
+    int reachabilityFindings = new ReachabilityMain(generatedFiles).run(model);
 
     int total = conventionFindings.size() + reachabilityFindings;
     if (total > 0) {

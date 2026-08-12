@@ -40,6 +40,12 @@ import spoon.reflect.visitor.filter.TypeFilter;
  */
 public final class ReachabilityMain {
 
+  private final Set<String> generatedFiles;
+
+  public ReachabilityMain(Set<String> generatedFiles) {
+    this.generatedFiles = generatedFiles;
+  }
+
   private static final Set<String> JUNIT =
       Set.of(
           "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
@@ -59,12 +65,15 @@ public final class ReachabilityMain {
     // Exclude codegen: it uses external library types (JavaPoet, JavaParser, Palantir) that
     // noClasspath mode cannot resolve, producing systematic false positives in the call graph.
     // Convention checks still run on codegen via ConventionChecks; reachability focuses on runtime.
-    List<CtType<?>> types = model.getAllTypes().stream()
-        .filter(t -> {
-          String qn = t.getQualifiedName();
-          return qn != null && !qn.startsWith("compilerxyz.codegen.");
-        })
-        .collect(Collectors.toCollection(ArrayList::new));
+    // Spoon's getAllTypes() omits inner classes of interfaces; collect them recursively.
+    List<CtType<?>> types = new ArrayList<>();
+    for (CtType<?> t : model.getAllTypes()) {
+      collectTypes(t, types);
+    }
+    types.removeIf(t -> {
+      String qn = t.getQualifiedName();
+      return qn == null || qn.startsWith("compilerxyz.codegen.");
+    });
     // Index all executables.
     for (CtType<?> t : types) {
       for (CtExecutable<?> ex : executablesOf(t)) {
@@ -78,7 +87,7 @@ public final class ReachabilityMain {
     // Seed roots.
     Deque<String> work = new ArrayDeque<>();
     for (CtType<?> t : types) {
-      boolean rootedType = hasAnyAnnotation(t, BUILTIN);
+      boolean rootedType = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t);
       for (CtExecutable<?> ex : executablesOf(t)) {
         if (rootedType || isRoot(ex)) {
           String k = key(ex);
@@ -160,14 +169,23 @@ public final class ReachabilityMain {
     if (!(cex instanceof CtTypeMember tm) || tm.getDeclaringType() == null) return false;
     try {
       CtTypeReference<?> ct = tm.getDeclaringType().getReference();
-      return ct.isSubtypeOf(superRef);
-    } catch (RuntimeException e) {
-      // noClasspath resolution failure: fall back to simple-name match so calls to types that
-      // extend JDK classes (e.g. TMap extends AbstractMap) are not falsely unreachable.
-      String dn = tm.getDeclaringType().getSimpleName();
-      String sn = superRef.getSimpleName();
-      return dn != null && sn != null && dn.equals(sn);
+      if (ct.isSubtypeOf(superRef)) return true;
+    } catch (RuntimeException ignored) {
     }
+    String sn = superRef.getSimpleName();
+    if (sn == null) return false;
+    CtType<?> dt = tm.getDeclaringType();
+    String dn = dt.getSimpleName();
+    if (dn != null && dn.equals(sn)) return true;
+    try {
+      for (CtTypeReference<?> iface : dt.getSuperInterfaces()) {
+        if (sn.equals(iface.getSimpleName())) return true;
+      }
+      CtTypeReference<?> superClass = dt.getSuperclass();
+      if (superClass != null && sn.equals(superClass.getSimpleName())) return true;
+    } catch (RuntimeException ignored) {
+    }
+    return false;
   }
 
   private void addReferencedTypesOf(CtExecutable<?> ex) {
@@ -179,6 +197,7 @@ public final class ReachabilityMain {
 
   private boolean isRoot(CtExecutable<?> ex) {
     if (hasAnnotation(ex, JUNIT) || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
+    if (hasAnnotation(ex, BUILTIN)) return true;
     return ex instanceof CtMethod<?> m
         && m.getSimpleName().equals("main")
         && m.getModifiers().contains(ModifierKind.STATIC)
@@ -211,7 +230,7 @@ public final class ReachabilityMain {
       String qn = t.getQualifiedName();
       List<CtExecutable<?>> execs = executablesOf(t);
       boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = hasAnyAnnotation(t, BUILTIN);
+      boolean rooted = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t);
       boolean isAnnotation = t.isAnnotationType();
       if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
         deadClasses.add(qn);
@@ -281,6 +300,12 @@ public final class ReachabilityMain {
     return total;
   }
 
+  private boolean isGeneratedType(CtType<?> t) {
+    var pos = t.getPosition();
+    if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
+    return generatedFiles.contains(pos.getFile().getAbsolutePath());
+  }
+
   private boolean overridesExternal(CtMethod<?> m) {
     try {
       for (CtMethod<?> top : m.getTopDefinitions()) {
@@ -299,6 +324,13 @@ public final class ReachabilityMain {
   }
 
   // ---- helpers ----
+
+  private static void collectTypes(CtType<?> t, List<CtType<?>> out) {
+    out.add(t);
+    for (CtType<?> nested : t.getNestedTypes()) {
+      collectTypes(nested, out);
+    }
+  }
 
   private static List<CtExecutable<?>> executablesOf(CtType<?> t) {
     List<CtExecutable<?>> out = new ArrayList<>();
