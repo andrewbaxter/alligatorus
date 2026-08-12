@@ -22,11 +22,6 @@ public final class Erb {
     errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message))));
   }
 
-  public <T> Opt<T> errNew(String message) {
-    errPush(message);
-    return Opt.none();
-  }
-
   public <T> Opt<T> mustEr(EResult<T> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
@@ -69,7 +64,10 @@ public final class Erb {
   public <T> Opt<T> mustRes(Result<T, String> r) {
     return switch (r) {
       case Result.Ok<T, String> o -> Opt.some(o.value());
-      case Result.Err<T, String> e -> errNew(e.error());
+      case Result.Err<T, String> e -> {
+        errPush(e.error());
+        yield Opt.none();
+      }
     };
   }
 }

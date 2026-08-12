@@ -2,7 +2,6 @@ package compilerxyz.eval;
 
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import java.util.function.Function;
 
 public final class EResult<T> {
   private final Opt<T> value;
@@ -56,10 +55,6 @@ public final class EResult<T> {
 
   public void drainInto(TList<ExprErr> sink) {
     if (errors.optIsSome()) sink.addAll(errors.optUnwrap());
-  }
-
-  public <U> EResult<U> map(Function<T, U> f) {
-    return new EResult<>(value.optIsNone() ? Opt.none() : Opt.some(f.apply(value.optUnwrap())), errors);
   }
 
   public <U> EResult<U> reerr() {

@@ -37,7 +37,7 @@ public final class T0056UnsignedMatrixTest {
     }
 
     SourceExpr ushortV(double v) {
-      return mb.as_(mb.num(v), mb.typesUshort());
+      return mb.as_(mb.num(v), mb.builtin("types", "ushort"));
     }
 
     SourceExpr uintV(double v) {
@@ -62,9 +62,9 @@ public final class T0056UnsignedMatrixTest {
     }
   }
 
-  private Compile.CompileResult compile(TestMb mb, SourceExpr body) {
+  private void check(Cases c) {
     var modules = new TMap<String, SourceModule>();
-    modules.put("main", new SourceModule.V1(body));
+    modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
@@ -79,11 +79,7 @@ public final class T0056UnsignedMatrixTest {
         throw new RuntimeException("unreachable");
       }
     }
-    return resOk.value();
-  }
-
-  private void check(Cases c) {
-    var ok = compile(c.mb, c.mb.seqOf(c.stmts.toArray(new SourceExpr[0])));
+    var ok = resOk.value();
     var got = new ArrayList<String>();
     for (var l : ok.logs()) got.add(l.message());
     assertEquals(c.expected, got);

@@ -94,7 +94,11 @@ public final class Helpers {
         }
         yield new JsonValueObject(out);
       }
-      case JsonValueArray a -> new JsonValueArray(a.elements().map(Helpers::jsonRedacted));
+      case JsonValueArray a -> {
+        var _out = new TList<JsonValue>(a.elements().size());
+        for (var _e : a.elements()) _out.add(Helpers.jsonRedacted(_e));
+        yield new JsonValueArray(_out);
+      }
       case JsonValueNull n -> n;
       case JsonValueBoolean b -> b;
       case JsonValueNumber n -> n;
@@ -151,17 +155,12 @@ public final class Helpers {
       throw new AssertionError(
           "no captured bytecode for " + binaryName + "; captured: " + result.bytecode().keySet());
     }
-    return disassemble(bytes);
-  }
-
-  public static String disassemble(byte[] bytecode) {
-    var reader = new ClassReader(bytecode);
-    var writer = new StringWriter();
-    reader.accept(
-        new TraceClassVisitor(
-            null, new Textifier(), new PrintWriter(writer)),
+    var _reader = new ClassReader(bytes);
+    var _writer = new StringWriter();
+    _reader.accept(
+        new TraceClassVisitor(null, new Textifier(), new PrintWriter(_writer)),
         ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
-    return writer.toString();
+    return _writer.toString();
   }
 
   public static GlobalContext newGx(TMap<String, SourceModule> modules) {

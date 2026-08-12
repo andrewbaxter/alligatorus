@@ -416,6 +416,6 @@ public final class T0180ImportRealTest {
 
   private static SourceExpr hashSpec(TestMb mb, byte[] digest) {
     var decoded = mb.call(mb.builtin("zbase32", "decode"), mb.str(Zbase32.encode(digest)));
-    return mb.sourceSha256(decoded);
+    return mb.call(mb.builtin("source", "sha256"), decoded);
   }
 }

@@ -278,10 +278,12 @@ public final class ReachabilityMain {
         String k = key(ex);
         boolean concrete = m.getBody() != null;
         boolean inlinable =
-            (m.getModifiers().contains(ModifierKind.PRIVATE)
-                    || m.getModifiers().contains(ModifierKind.STATIC))
-                && !isRoot(ex)
-                && !rooted;
+            !isRoot(ex)
+                && !rooted
+                && m.getBody() != null
+                && !overridesExternal(m)
+                && !implementsAbstractMethod(m)
+                && !isRecordAccessor(t, m);
         if (!reachable.contains(k)
             && concrete
             && !rooted
@@ -292,13 +294,7 @@ public final class ReachabilityMain {
           deadMethods.add(qn + "#" + sig(ex));
         }
         if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
-          var body = m.getBody();
-          if (body != null && body.getPosition().isValidPosition()) {
-            int bodyLines = body.getPosition().getEndLine() - body.getPosition().getLine() + 1;
-            if (bodyLines <= 8) {
-              singleUseMethods.add(qn + "#" + sig(ex));
-            }
-          }
+          singleUseMethods.add(qn + "#" + sig(ex));
         }
       }
       boolean recordOrEnum = t.isEnum() || (t instanceof spoon.reflect.declaration.CtRecord);
@@ -351,6 +347,17 @@ public final class ReachabilityMain {
     var pos = t.getPosition();
     if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
     return generatedFiles.contains(pos.getFile().getAbsolutePath());
+  }
+
+  private static boolean implementsAbstractMethod(CtMethod<?> m) {
+    try {
+      for (CtMethod<?> top : m.getTopDefinitions()) {
+        if (top != m && top.isAbstract()) return true;
+      }
+    } catch (RuntimeException ignored) {
+      return false;
+    }
+    return false;
   }
 
   private boolean overridesExternal(CtMethod<?> m) {

@@ -4,7 +4,6 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.function.Function;
 public final class TList<T> extends AbstractList<T> {
   private final ArrayList<T> backing;
 
@@ -71,12 +70,6 @@ public final class TList<T> extends AbstractList<T> {
   @Override
   public T set(int index, T value) {
     return backing.set(index, value);
-  }
-
-  public <U> TList<U> map(Function<T, U> f) {
-    var out = new TList<U>(backing.size());
-    for (var e : backing) out.backing.add(f.apply(e));
-    return out;
   }
 
   @Override

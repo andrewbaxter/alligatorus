@@ -155,11 +155,19 @@ public final class Scope {
     for (var level : levels) {
       out.levels.add(
           switch (level) {
-            case ScopeLevel.Entry entry -> entry.forkCopy();
-            case ScopeLevel.Temp temp -> temp.forkCopy();
-            case ScopeLevel.Labeled labeled -> labeled.forkCopy();
-            case ScopeLevel.Catch catch_ -> catch_.forkCopy();
-            case ScopeLevel.Finally finally_ -> finally_.forkCopy();
+            case ScopeLevel.Entry entry ->
+                new ScopeLevel.Entry(entry.name, entry.binding.bindingFork(), entry.stackOnly, entry.state, entry.dropState, entry.emission);
+            case ScopeLevel.Temp temp ->
+                new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
+            case ScopeLevel.Labeled labeled ->
+                new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
+            case ScopeLevel.Catch catch_ ->
+                new ScopeLevel.Catch(catch_.handler, catch_.emission);
+            case ScopeLevel.Finally finally_ -> {
+                var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
+                _f.body = finally_.body;
+                yield _f;
+            }
           });
     }
     return out;

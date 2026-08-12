@@ -41,41 +41,6 @@ public final class T0165MutableDropForkTest {
                                 mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))));
   }
 
-  private static SourceExpr mutCanaryDropBody(TestMb mb, String evenMsg, String oddMsg) {
-    var underlyingCodeExpr =
-        mb.field(
-            mb.call(
-                mb.field(
-                    mb.field(
-                        mb.call(
-                            mb.evalAspectLookup(),
-                            mb.tupleOf(
-                                mb.typesLong(),
-                                mb.evalAspectDropDynamicLight(),
-                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                        mb.str("value")),
-                    mb.str("drop_dynamic_light")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair(
-                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair(
-                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
-            mb.str("value"));
-    return mb.seqOf(
-        mb.bind("underlying_code_", underlyingCodeExpr),
-        mb.return_(
-            mb.ifOf(
-                TList.of(
-                    new TestMb.Branch(
-                        mb.operatorEq(
-                            mb.field(mb.scopeUse("inner"), mb.str("parity")),
-                            mb.as_(mb.num(0.0), mb.typesLong())),
-                        dropCodeLogging(mb, evenMsg))),
-                Opt.some(dropCodeLogging(mb, oddMsg)))));
-  }
 
   private static SourceExpr ifaceMethods(TestMb mb, TList<TestMb.RecordPair> methods) {
     var staged = new TList<TestMb.RecordPair>(methods.size());
@@ -89,25 +54,6 @@ public final class T0165MutableDropForkTest {
         mb.recordOf(staged));
   }
 
-  private static SourceExpr delegateVia(
-      TestMb mb, SourceExpr valueType, SourceExpr aspectRef, String methodName) {
-    return mb.call(
-        mb.field(
-            mb.field(
-                mb.call(
-                    mb.evalAspectLookup(),
-                    mb.tupleOf(
-                        valueType,
-                        aspectRef,
-                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                mb.str("value")),
-            mb.str(methodName)),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
-  }
 
   private static SourceExpr delegateNull(TestMb mb, SourceExpr underlying, SourceExpr aspectRef, String methodName) {
     return mb.call(
@@ -140,69 +86,6 @@ public final class T0165MutableDropForkTest {
         mb.scopeUse("arg"));
   }
 
-  private static SourceExpr evenOddBindBody(TestMb mb) {
-    var intBindCall =
-        mb.call(
-            mb.field(
-                mb.field(
-                    mb.call(
-                        mb.evalAspectLookup(),
-                        mb.tupleOf(
-                            mb.typesLong(),
-                            mb.evalAspectBind(),
-                            mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                    mb.str("value")),
-                mb.str("bind")),
-            mb.recordOf(
-                TList.of(
-                    new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                    new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                    new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
-    return mb.seqOf(
-        mb.bind("int_bind_er", intBindCall),
-        mb.bind("int_bind_res", mb.field(mb.scopeUse("int_bind_er"), mb.str("value"))),
-        mb.bind("int_code", mb.field(mb.scopeUse("int_bind_res"), mb.str("code"))),
-        mb.bind("int_binding", mb.field(mb.scopeUse("int_bind_res"), mb.str("binding"))),
-        mb.return_(
-            mb.call(
-                mb.field(
-                    mb.call(mb.typesEresult(), mb.typesBindResult()),
-                    mb.str("ok")),
-                mb.call(
-                    mb.evalBindResult(),
-                    mb.recordOf(
-                        TList.of(
-                            new TestMb.RecordPair("code", mb.scopeUse("int_code")),
-                            new TestMb.RecordPair(
-                                "binding",
-                                mb.call(
-                                    mb.lower(mb.scopeUse("even_binding_new")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "int",
-                                                mb.scopeUse("int_binding")),
-                                            new TestMb.RecordPair(
-                                                "state",
-                                                mb.recordOf(
-                                                    TList.of(
-                                                        new TestMb.RecordPair(
-                                                            "parity",
-                                                            mb.field(
-                                                                mb.scopeUse("inner"),
-                                                                mb.str("parity"))),
-                                                        new TestMb.RecordPair(
-                                                            "setter",
-                                                            mb.call(
-                                                                mb.field(
-                                                                    mb.call(
-                                                                        mb.typesOption(),
-                                                                        mb.builtin(
-                                                                            "eval",
-                                                                            "binding_setter")),
-                                                                    mb.str("none")),
-                                                                mb.literalNull())))))))))))))));
-  }
 
   private static SourceExpr castFromPassthrough(TestMb mb) {
     return mb.call(
@@ -210,132 +93,6 @@ public final class T0165MutableDropForkTest {
         mb.field(mb.scopeUse("arg"), mb.str("cv")));
   }
 
-  private static SourceExpr evenOddCastFromBody(TestMb mb) {
-    var wrapped =
-        mb.call(
-            mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
-            mb.call(
-                mb.evalCodevalue(),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair(
-                            "code",
-                            mb.field(mb.scopeUse("cast_cv_"), mb.str("code"))),
-                        new TestMb.RecordPair(
-                            "value",
-                            mb.call(
-                                mb.lower(mb.scopeUse("even_value_new")),
-                                mb.recordOf(
-                                    TList.of(
-                                        new TestMb.RecordPair(
-                                            "type",
-                                            mb.call(
-                                                mb.lower(mb.scopeUse("even_type_new")),
-                                                mb.recordOf(
-                                                    TList.of(
-                                                        new TestMb.RecordPair(
-                                                            "parity",
-                                                            mb.operatorMod(
-                                                                mb.call(
-                                                                    mb.field(
-                                                                        mb.field(
-                                                                            mb.scopeUse(
-                                                                                "int_aspect_opt_"),
-                                                                            mb.str("value")),
-                                                                        mb.str("get")),
-                                                                    mb.scopeUse("val_")),
-                                                                mb.as_(mb.num(2.0), mb.typesLong()))))))),
-                                        new TestMb.RecordPair(
-                                            "source",
-                                            mb.call(
-                                                mb.lower(mb.scopeUse("vs_expr")),
-                                                mb.literalNull()))))))))));
-    return mb.seqOf(
-        mb.bind(
-            "val_opt_",
-            mb.call(
-                mb.field(mb.field(mb.scopeUse("arg"), mb.str("cv")), mb.str("value")),
-                mb.tupleOf())),
-        mb.return_(
-            mb.ifOf(
-                TList.of(
-                    new TestMb.Branch(
-                        mb.field(mb.scopeUse("val_opt_"), mb.str("is_some")),
-                        mb.seqOf(
-                            mb.bind("val_", mb.field(mb.scopeUse("val_opt_"), mb.str("value"))),
-                            mb.bind(
-                                "val_type_obj_",
-                                mb.call(
-                                    mb.field(mb.scopeUse("val_"), mb.str("type")),
-                                    mb.tupleOf())),
-                            mb.bind(
-                                "int_aspect_opt_",
-                                mb.call(
-                                    mb.evalAspectLookup(),
-                                    mb.tupleOf(
-                                        mb.scopeUse("val_type_obj_"),
-                                        mb.evalAspectInt(),
-                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
-                            mb.bind(
-                                "int_dynamic_opt_",
-                                mb.call(
-                                    mb.field(mb.scopeUse("val_type_obj_"), mb.str("aspect")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "key", mb.evalTypeLongDynamicIdentity()))))),
-                            mb.return_(
-                                mb.ifOf(
-                                    TList.of(
-                                        new TestMb.Branch(
-                                            mb.field(
-                                                mb.scopeUse("int_aspect_opt_"),
-                                                mb.str("is_some")),
-                                            mb.seqOf(
-                                                mb.bind(
-                                                    "cast_cv_",
-                                                    mb.field(
-                                                        mb.call(
-                                                            mb.field(
-                                                                mb.typesLong(),
-                                                                mb.str("cast_from")),
-                                                            mb.recordOf(
-                                                                TList.of(
-                                                                    new TestMb.RecordPair(
-                                                                        "xx",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("xx"))),
-                                                                    new TestMb.RecordPair(
-                                                                        "loc",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("loc"))),
-                                                                    new TestMb.RecordPair(
-                                                                        "cv",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("cv")))))),
-                                                        mb.str("value"))),
-                                                mb.return_(wrapped))),
-                                        new TestMb.Branch(
-                                            mb.field(
-                                                mb.scopeUse("int_dynamic_opt_"),
-                                                mb.str("is_some")),
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("err")),
-                                                mb.tupleOf(
-                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                                                    mb.str(
-                                                        "cast: cannot cast a dynamic int to"
-                                                            + " evenodd; parity unknown"))))),
-                                    Opt.some(castFromPassthrough(mb))))))),
-                Opt.some(castFromPassthrough(mb)))));
-  }
 
   private static SourceExpr evenOddAddWrapped(TestMb mb, SourceExpr parity) {
     return mb.call(
@@ -366,314 +123,17 @@ public final class T0165MutableDropForkTest {
                                             mb.literalNull()))))))))));
   }
 
-  private static SourceExpr evenOddAddBody(TestMb mb) {
-    var constIntParity =
-        mb.operatorMod(
-            mb.operatorAdd(
-                mb.field(mb.scopeUse("inner"), mb.str("parity")),
-                mb.call(
-                    mb.field(
-                        mb.field(mb.scopeUse("ref_int_aspect_opt_"), mb.str("value")),
-                        mb.str("get")),
-                    mb.scopeUse("ref_val_"))),
-            mb.as_(mb.num(2.0), mb.typesLong()));
-    var evenOddParity =
-        mb.operatorMod(
-            mb.operatorAdd(
-                mb.field(mb.scopeUse("inner"), mb.str("parity")),
-                mb.call(
-                    mb.field(mb.scopeUse("ref_evenodd_type_"), mb.str("get_parity")),
-                    mb.literalNull())),
-            mb.as_(mb.num(2.0), mb.typesLong()));
-    return mb.seqOf(
-        mb.bind(
-            "sum_er_",
-            mb.call(
-                mb.field(
-                    mb.field(
-                        mb.call(
-                            mb.evalAspectLookup(),
-                            mb.tupleOf(
-                                mb.typesLong(),
-                                mb.evalOperatorAdd(),
-                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                        mb.str("value")),
-                    mb.str("add")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "base", mb.field(mb.scopeUse("arg"), mb.str("base"))),
-                        new TestMb.RecordPair(
-                            "reference",
-                            mb.field(
-                                mb.call(
-                                    mb.field(mb.typesLong(), mb.str("cast_from")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                            new TestMb.RecordPair(
-                                                "cv",
-                                                mb.field(
-                                                    mb.scopeUse("arg"), mb.str("reference")))))),
-                                mb.str("value"))))))),
-        mb.bind("sum_cv_", mb.field(mb.scopeUse("sum_er_"), mb.str("value"))),
-        mb.bind(
-            "ref_opt_",
-            mb.call(
-                mb.field(
-                    mb.field(mb.scopeUse("arg"), mb.str("reference")), mb.str("value")),
-                mb.tupleOf())),
-        mb.return_(
-            mb.ifOf(
-                TList.of(
-                    new TestMb.Branch(
-                        mb.field(mb.scopeUse("ref_opt_"), mb.str("is_some")),
-                        mb.seqOf(
-                            mb.bind("ref_val_", mb.field(mb.scopeUse("ref_opt_"), mb.str("value"))),
-                            mb.bind(
-                                "ref_type_obj_",
-                                mb.call(
-                                    mb.field(mb.scopeUse("ref_val_"), mb.str("type")),
-                                    mb.tupleOf())),
-                            mb.bind(
-                                "ref_int_aspect_opt_",
-                                mb.call(
-                                    mb.evalAspectLookup(),
-                                    mb.tupleOf(
-                                        mb.scopeUse("ref_type_obj_"),
-                                        mb.evalAspectInt(),
-                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
-                            mb.bind(
-                                "ref_int_dynamic_opt_",
-                                mb.call(
-                                    mb.field(mb.scopeUse("ref_type_obj_"), mb.str("aspect")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "key", mb.evalTypeLongDynamicIdentity()))))),
-                            mb.return_(
-                                mb.ifOf(
-                                    TList.of(
-                                        new TestMb.Branch(
-                                            mb.field(
-                                                mb.scopeUse("ref_int_aspect_opt_"),
-                                                mb.str("is_some")),
-                                            evenOddAddWrapped(mb, constIntParity)),
-                                        new TestMb.Branch(
-                                            mb.field(
-                                                mb.scopeUse("ref_int_dynamic_opt_"),
-                                                mb.str("is_some")),
-                                            mb.call(
-                                                mb.field(
-                                                    mb.call(mb.typesEresult(), mb.typesCve()),
-                                                    mb.str("err")),
-                                                mb.tupleOf(
-                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                                                    mb.str(
-                                                        "operator_add: reference is a dynamic"
-                                                            + " int; parity unknown"))))),
-                                    Opt.some(mb.seqOf(
-                                        mb.bind(
-                                            "ref_evenodd_type_",
-                                            mb.call(
-                                                mb.mustReinterpret(),
-                                                mb.tupleOf(
-                                                    mb.scopeUse("ref_type_obj_"),
-                                                    mb.lower(mb.scopeUse("u_type"))))),
-                                        mb.return_(evenOddAddWrapped(mb, evenOddParity))))))))),
-                Opt.some(mb.call(
-                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
-                    mb.tupleOf(
-                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("operator_add: reference has no compile-time value")))))));
-  }
 
-  private static SourceExpr evenOddSetApply(TestMb mb, SourceExpr parity) {
-    return mb.seqOf(
-        mb.bind(
-            "self_val_",
-            mb.field(
-                mb.call(
-                    mb.field(
-                        mb.field(mb.scopeUse("arg"), mb.str("self")), mb.str("value")),
-                    mb.tupleOf()),
-                mb.str("value"))),
-        mb.bind(
-            "src_",
-            mb.call(
-                mb.field(
-                    mb.call(
-                        mb.mustReinterpret(),
-                        mb.tupleOf(
-                            mb.scopeUse("self_val_"), mb.lower(mb.scopeUse("vb_type")))),
-                    mb.str("get_source")),
-                mb.literalNull())),
-        mb.return_(
-            mb.matchOf(
-                mb.scopeUse("src_"),
-                mb.str("sv"),
-                TList.of(
-                    new TestMb.Branch(
-                        mb.str("binding"),
-                        mb.seqOf(
-                            mb.bind(
-                                "new_binding_",
-                                mb.call(
-                                    mb.lower(mb.scopeUse("even_binding_new")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "int",
-                                                mb.field(mb.scopeUse("sv"), mb.str("int"))),
-                                            new TestMb.RecordPair(
-                                                "state",
-                                                mb.recordOf(
-                                                    TList.of(
-                                                        new TestMb.RecordPair("parity", parity),
-                                                        new TestMb.RecordPair(
-                                                            "setter",
-                                                            mb.field(
-                                                                mb.field(
-                                                                    mb.scopeUse("sv"),
-                                                                    mb.str("state")),
-                                                                mb.str("setter")))))))))),
-                            mb.call(
-                                mb.field(
-                                    mb.field(
-                                        mb.field(
-                                            mb.field(mb.scopeUse("sv"), mb.str("state")),
-                                            mb.str("setter")),
-                                        mb.str("value")),
-                                    mb.str("set")),
-                                mb.recordOf(
-                                    TList.of(
-                                        new TestMb.RecordPair(
-                                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                        new TestMb.RecordPair(
-                                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                        new TestMb.RecordPair(
-                                            "new_binding", mb.scopeUse("new_binding_")),
-                                        new TestMb.RecordPair(
-                                            "drop_modified",
-                                            mb.as_(
-                                                mb.operatorEq(mb.num(1.0), mb.num(1.0)),
-                                                mb.typesBool()))))),
-                            mb.return_(
-                                mb.call(
-                                    mb.field(
-                                        mb.field(
-                                            mb.call(
-                                                mb.evalAspectLookup(),
-                                                mb.tupleOf(
-                                                    mb.typesLong(),
-                                                    mb.evalAspectSet(),
-                                                    mb.field(
-                                                        mb.scopeUse("arg"), mb.str("xx")))),
-                                            mb.str("value")),
-                                        mb.str("set")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx",
-                                                mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "loc",
-                                                mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                            new TestMb.RecordPair(
-                                                "self",
-                                                mb.call(
-                                                    mb.field(
-                                                        mb.field(
-                                                            mb.scopeUse("sv"), mb.str("int")),
-                                                        mb.str("use")),
-                                                    mb.recordOf(
-                                                        TList.of(
-                                                            new TestMb.RecordPair(
-                                                                "xx",
-                                                                mb.field(
-                                                                    mb.scopeUse("arg"),
-                                                                    mb.str("xx"))),
-                                                            new TestMb.RecordPair(
-                                                                "loc",
-                                                                mb.field(
-                                                                    mb.scopeUse("arg"),
-                                                                    mb.str("loc"))),
-                                                            new TestMb.RecordPair(
-                                                                "setter",
-                                                                mb.call(
-                                                                    mb.field(
-                                                                        mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")),
-                                                                        mb.str("none")),
-                                                                    mb.literalNull())),
-                                                            new TestMb.RecordPair(
-                                                                "code",
-                                                                mb.field(
-                                                                    mb.field(
-                                                                        mb.scopeUse("arg"),
-                                                                        mb.str("self")),
-                                                                    mb.str("code"))))))),
-                                            new TestMb.RecordPair(
-                                                "value", mb.scopeUse("conv_cv_"))))))))),
-                Opt.some(mb.call(
-                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
-                    mb.tupleOf(
-                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("set: cannot set a non-binding evenodd value")))))));
-  }
 
-  private static SourceExpr evenOddSetBody(TestMb mb) {
-    return mb.seqOf(
-        mb.bind(
-            "conv_er_",
-            mb.call(
-                mb.field(mb.scopeUse("outer"), mb.str("cast_from")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "cv", mb.field(mb.scopeUse("arg"), mb.str("value"))))))),
-        mb.return_(
-            mb.ifOf(
-                TList.of(
-                    new TestMb.Branch(
-                        mb.field(mb.scopeUse("conv_er_"), mb.str("has_errors")),
-                        mb.scopeUse("conv_er_"))),
-                Opt.some(mb.seqOf(
-                    mb.bind("conv_cv_", mb.field(mb.scopeUse("conv_er_"), mb.str("value"))),
-                    mb.bind(
-                        "rhs_parity_",
-                        mb.call(
-                            mb.field(
-                                mb.call(
-                                    mb.mustReinterpret(),
-                                    mb.tupleOf(
-                                        mb.call(
-                                            mb.field(
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.field(
-                                                            mb.scopeUse("conv_cv_"),
-                                                            mb.str("value")),
-                                                        mb.tupleOf()),
-                                                    mb.str("value")),
-                                                mb.str("type")),
-                                            mb.tupleOf()),
-                                        mb.lower(mb.scopeUse("u_type")))),
-                                mb.str("get_parity")),
-                            mb.literalNull())),
-                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_"))))))));
-  }
 
-  private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
-    return mb.seqOf(
+
+  private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {
+    return TList.of(
+        mb.bind(
+            "even_type",
+            mb.lower(
+                mb.seqOf(
+                    mb.bind("even_type_new", mb.lower(mb.seqOf(
                 mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                 mb.bind(
                     "vs",
@@ -1194,7 +654,128 @@ public final class T0165MutableDropForkTest {
                                                 mb.return_(
                                                     mb.operatorEq(mb.num(1.0), mb.num(1.0))))),
                                         new TestMb.RecordPair(
-                                            "cast_from", evenOddCastFromBody(mb)),
+                                            "cast_from", mb.seqOf(
+        mb.bind(
+            "val_opt_",
+            mb.call(
+                mb.field(mb.field(mb.scopeUse("arg"), mb.str("cv")), mb.str("value")),
+                mb.tupleOf())),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("val_opt_"), mb.str("is_some")),
+                        mb.seqOf(
+                            mb.bind("val_", mb.field(mb.scopeUse("val_opt_"), mb.str("value"))),
+                            mb.bind(
+                                "val_type_obj_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("val_"), mb.str("type")),
+                                    mb.tupleOf())),
+                            mb.bind(
+                                "int_aspect_opt_",
+                                mb.call(
+                                    mb.evalAspectLookup(),
+                                    mb.tupleOf(
+                                        mb.scopeUse("val_type_obj_"),
+                                        mb.evalAspectInt(),
+                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.bind(
+                                "int_dynamic_opt_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("val_type_obj_"), mb.str("aspect")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "key", mb.evalTypeLongDynamicIdentity()))))),
+                            mb.return_(
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("int_aspect_opt_"),
+                                                mb.str("is_some")),
+                                            mb.seqOf(
+                                                mb.bind(
+                                                    "cast_cv_",
+                                                    mb.field(
+                                                        mb.call(
+                                                            mb.field(
+                                                                mb.typesLong(),
+                                                                mb.str("cast_from")),
+                                                            mb.recordOf(
+                                                                TList.of(
+                                                                    new TestMb.RecordPair(
+                                                                        "xx",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("xx"))),
+                                                                    new TestMb.RecordPair(
+                                                                        "loc",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("loc"))),
+                                                                    new TestMb.RecordPair(
+                                                                        "cv",
+                                                                        mb.field(
+                                                                            mb.scopeUse("arg"),
+                                                                            mb.str("cv")))))),
+                                                        mb.str("value"))),
+                                                mb.return_(mb.call(
+            mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
+            mb.call(
+                mb.evalCodevalue(),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair(
+                            "code",
+                            mb.field(mb.scopeUse("cast_cv_"), mb.str("code"))),
+                        new TestMb.RecordPair(
+                            "value",
+                            mb.call(
+                                mb.lower(mb.scopeUse("even_value_new")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "type",
+                                            mb.call(
+                                                mb.lower(mb.scopeUse("even_type_new")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "parity",
+                                                            mb.operatorMod(
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.field(
+                                                                            mb.scopeUse(
+                                                                                "int_aspect_opt_"),
+                                                                            mb.str("value")),
+                                                                        mb.str("get")),
+                                                                    mb.scopeUse("val_")),
+                                                                mb.as_(mb.num(2.0), mb.typesLong()))))))),
+                                        new TestMb.RecordPair(
+                                            "source",
+                                            mb.call(
+                                                mb.lower(mb.scopeUse("vs_expr")),
+                                                mb.literalNull()))))))))))))),
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("int_dynamic_opt_"),
+                                                mb.str("is_some")),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(mb.typesEresult(), mb.typesCve()),
+                                                    mb.str("err")),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                                                    mb.str(
+                                                        "cast: cannot cast a dynamic int to"
+                                                            + " evenodd; parity unknown"))))),
+                                    Opt.some(castFromPassthrough(mb))))))),
+                Opt.some(castFromPassthrough(mb)))))),
                                         new TestMb.RecordPair(
                                             "desc", mb.seqOf(mb.return_(mb.str("evenodd")))),
                                         new TestMb.RecordPair(
@@ -1284,7 +865,65 @@ public final class T0165MutableDropForkTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "bind", evenOddBindBody(mb)))))))),
+                                            "bind", mb.seqOf(
+        mb.bind("int_bind_er", mb.call(
+            mb.field(
+                mb.field(
+                    mb.call(
+                        mb.evalAspectLookup(),
+                        mb.tupleOf(
+                            mb.typesLong(),
+                            mb.evalAspectBind(),
+                            mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                    mb.str("value")),
+                mb.str("bind")),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                    new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))),
+        mb.bind("int_bind_res", mb.field(mb.scopeUse("int_bind_er"), mb.str("value"))),
+        mb.bind("int_code", mb.field(mb.scopeUse("int_bind_res"), mb.str("code"))),
+        mb.bind("int_binding", mb.field(mb.scopeUse("int_bind_res"), mb.str("binding"))),
+        mb.return_(
+            mb.call(
+                mb.field(
+                    mb.call(mb.typesEresult(), mb.typesBindResult()),
+                    mb.str("ok")),
+                mb.call(
+                    mb.evalBindResult(),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("code", mb.scopeUse("int_code")),
+                            new TestMb.RecordPair(
+                                "binding",
+                                mb.call(
+                                    mb.lower(mb.scopeUse("even_binding_new")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "int",
+                                                mb.scopeUse("int_binding")),
+                                            new TestMb.RecordPair(
+                                                "state",
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair(
+                                                            "parity",
+                                                            mb.field(
+                                                                mb.scopeUse("inner"),
+                                                                mb.str("parity"))),
+                                                        new TestMb.RecordPair(
+                                                            "setter",
+                                                            mb.call(
+                                                                mb.field(
+                                                                    mb.call(
+                                                                        mb.typesOption(),
+                                                                        mb.builtin(
+                                                                            "eval",
+                                                                            "binding_setter")),
+                                                                    mb.str("none")),
+                                                                mb.literalNull())))))))))))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1298,11 +937,22 @@ public final class T0165MutableDropForkTest {
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "bind_dynamic",
-                                            delegateVia(
-                                                mb,
-                                                mb.typesLong(),
-                                                mb.evalAspectBindDynamic(),
-                                                "bind_dynamic")))))))),
+                                            mb.call(
+        mb.field(
+            mb.field(
+                mb.call(
+                    mb.evalAspectLookup(),
+                    mb.tupleOf(
+                        mb.typesLong(),
+                        mb.evalAspectBindDynamic(),
+                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                mb.str("value")),
+            mb.str("bind_dynamic")),
+        mb.recordOf(
+            TList.of(
+                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1315,7 +965,37 @@ public final class T0165MutableDropForkTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "drop", mutCanaryDropBody(mb, "drop_even", "drop_odd")))))))),
+                                            "drop", mb.seqOf(
+        mb.bind("underlying_code_", mb.field(
+            mb.call(
+                mb.field(
+                    mb.field(
+                        mb.call(
+                            mb.evalAspectLookup(),
+                            mb.tupleOf(
+                                mb.typesLong(),
+                                mb.evalAspectDropDynamicLight(),
+                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                        mb.str("value")),
+                    mb.str("drop_dynamic_light")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair(
+                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair(
+                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
+            mb.str("value"))),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.operatorEq(
+                            mb.field(mb.scopeUse("inner"), mb.str("parity")),
+                            mb.as_(mb.num(0.0), mb.typesLong())),
+                        dropCodeLogging(mb, "drop_even"))),
+                Opt.some(dropCodeLogging(mb, "drop_odd")))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1352,7 +1032,176 @@ public final class T0165MutableDropForkTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "set", evenOddSetBody(mb)))))))),
+                                            "set", mb.seqOf(
+        mb.bind(
+            "conv_er_",
+            mb.call(
+                mb.field(mb.scopeUse("outer"), mb.str("cast_from")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "cv", mb.field(mb.scopeUse("arg"), mb.str("value"))))))),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("conv_er_"), mb.str("has_errors")),
+                        mb.scopeUse("conv_er_"))),
+                Opt.some(mb.seqOf(
+                    mb.bind("conv_cv_", mb.field(mb.scopeUse("conv_er_"), mb.str("value"))),
+                    mb.bind(
+                        "rhs_parity_",
+                        mb.call(
+                            mb.field(
+                                mb.call(
+                                    mb.mustReinterpret(),
+                                    mb.tupleOf(
+                                        mb.call(
+                                            mb.field(
+                                                mb.field(
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.scopeUse("conv_cv_"),
+                                                            mb.str("value")),
+                                                        mb.tupleOf()),
+                                                    mb.str("value")),
+                                                mb.str("type")),
+                                            mb.tupleOf()),
+                                        mb.lower(mb.scopeUse("u_type")))),
+                                mb.str("get_parity")),
+                            mb.literalNull())),
+                    mb.return_(mb.seqOf(
+        mb.bind(
+            "self_val_",
+            mb.field(
+                mb.call(
+                    mb.field(
+                        mb.field(mb.scopeUse("arg"), mb.str("self")), mb.str("value")),
+                    mb.tupleOf()),
+                mb.str("value"))),
+        mb.bind(
+            "src_",
+            mb.call(
+                mb.field(
+                    mb.call(
+                        mb.mustReinterpret(),
+                        mb.tupleOf(
+                            mb.scopeUse("self_val_"), mb.lower(mb.scopeUse("vb_type")))),
+                    mb.str("get_source")),
+                mb.literalNull())),
+        mb.return_(
+            mb.matchOf(
+                mb.scopeUse("src_"),
+                mb.str("sv"),
+                TList.of(
+                    new TestMb.Branch(
+                        mb.str("binding"),
+                        mb.seqOf(
+                            mb.bind(
+                                "new_binding_",
+                                mb.call(
+                                    mb.lower(mb.scopeUse("even_binding_new")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "int",
+                                                mb.field(mb.scopeUse("sv"), mb.str("int"))),
+                                            new TestMb.RecordPair(
+                                                "state",
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair("parity", mb.scopeUse("rhs_parity_")),
+                                                        new TestMb.RecordPair(
+                                                            "setter",
+                                                            mb.field(
+                                                                mb.field(
+                                                                    mb.scopeUse("sv"),
+                                                                    mb.str("state")),
+                                                                mb.str("setter")))))))))),
+                            mb.call(
+                                mb.field(
+                                    mb.field(
+                                        mb.field(
+                                            mb.field(mb.scopeUse("sv"), mb.str("state")),
+                                            mb.str("setter")),
+                                        mb.str("value")),
+                                    mb.str("set")),
+                                mb.recordOf(
+                                    TList.of(
+                                        new TestMb.RecordPair(
+                                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                        new TestMb.RecordPair(
+                                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                        new TestMb.RecordPair(
+                                            "new_binding", mb.scopeUse("new_binding_")),
+                                        new TestMb.RecordPair(
+                                            "drop_modified",
+                                            mb.as_(
+                                                mb.operatorEq(mb.num(1.0), mb.num(1.0)),
+                                                mb.typesBool()))))),
+                            mb.return_(
+                                mb.call(
+                                    mb.field(
+                                        mb.field(
+                                            mb.call(
+                                                mb.evalAspectLookup(),
+                                                mb.tupleOf(
+                                                    mb.typesLong(),
+                                                    mb.evalAspectSet(),
+                                                    mb.field(
+                                                        mb.scopeUse("arg"), mb.str("xx")))),
+                                            mb.str("value")),
+                                        mb.str("set")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx",
+                                                mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "loc",
+                                                mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                            new TestMb.RecordPair(
+                                                "self",
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.field(
+                                                            mb.scopeUse("sv"), mb.str("int")),
+                                                        mb.str("use")),
+                                                    mb.recordOf(
+                                                        TList.of(
+                                                            new TestMb.RecordPair(
+                                                                "xx",
+                                                                mb.field(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.str("xx"))),
+                                                            new TestMb.RecordPair(
+                                                                "loc",
+                                                                mb.field(
+                                                                    mb.scopeUse("arg"),
+                                                                    mb.str("loc"))),
+                                                            new TestMb.RecordPair(
+                                                                "setter",
+                                                                mb.call(
+                                                                    mb.field(
+                                                                        mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")),
+                                                                        mb.str("none")),
+                                                                    mb.literalNull())),
+                                                            new TestMb.RecordPair(
+                                                                "code",
+                                                                mb.field(
+                                                                    mb.field(
+                                                                        mb.scopeUse("arg"),
+                                                                        mb.str("self")),
+                                                                    mb.str("code"))))))),
+                                            new TestMb.RecordPair(
+                                                "value", mb.scopeUse("conv_cv_"))))))))),
+                Opt.some(mb.call(
+                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
+                    mb.tupleOf(
+                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                        mb.str("set: cannot set a non-binding evenodd value")))))))))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1364,7 +1213,128 @@ public final class T0165MutableDropForkTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "add", evenOddAddBody(mb)))))))),
+                                            "add", mb.seqOf(
+        mb.bind(
+            "sum_er_",
+            mb.call(
+                mb.field(
+                    mb.field(
+                        mb.call(
+                            mb.evalAspectLookup(),
+                            mb.tupleOf(
+                                mb.typesLong(),
+                                mb.evalOperatorAdd(),
+                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                        mb.str("value")),
+                    mb.str("add")),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair(
+                            "base", mb.field(mb.scopeUse("arg"), mb.str("base"))),
+                        new TestMb.RecordPair(
+                            "reference",
+                            mb.field(
+                                mb.call(
+                                    mb.field(mb.typesLong(), mb.str("cast_from")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                            new TestMb.RecordPair(
+                                                "cv",
+                                                mb.field(
+                                                    mb.scopeUse("arg"), mb.str("reference")))))),
+                                mb.str("value"))))))),
+        mb.bind("sum_cv_", mb.field(mb.scopeUse("sum_er_"), mb.str("value"))),
+        mb.bind(
+            "ref_opt_",
+            mb.call(
+                mb.field(
+                    mb.field(mb.scopeUse("arg"), mb.str("reference")), mb.str("value")),
+                mb.tupleOf())),
+        mb.return_(
+            mb.ifOf(
+                TList.of(
+                    new TestMb.Branch(
+                        mb.field(mb.scopeUse("ref_opt_"), mb.str("is_some")),
+                        mb.seqOf(
+                            mb.bind("ref_val_", mb.field(mb.scopeUse("ref_opt_"), mb.str("value"))),
+                            mb.bind(
+                                "ref_type_obj_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("ref_val_"), mb.str("type")),
+                                    mb.tupleOf())),
+                            mb.bind(
+                                "ref_int_aspect_opt_",
+                                mb.call(
+                                    mb.evalAspectLookup(),
+                                    mb.tupleOf(
+                                        mb.scopeUse("ref_type_obj_"),
+                                        mb.evalAspectInt(),
+                                        mb.field(mb.scopeUse("arg"), mb.str("xx"))))),
+                            mb.bind(
+                                "ref_int_dynamic_opt_",
+                                mb.call(
+                                    mb.field(mb.scopeUse("ref_type_obj_"), mb.str("aspect")),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "key", mb.evalTypeLongDynamicIdentity()))))),
+                            mb.return_(
+                                mb.ifOf(
+                                    TList.of(
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("ref_int_aspect_opt_"),
+                                                mb.str("is_some")),
+                                            evenOddAddWrapped(mb, mb.operatorMod(
+            mb.operatorAdd(
+                mb.field(mb.scopeUse("inner"), mb.str("parity")),
+                mb.call(
+                    mb.field(
+                        mb.field(mb.scopeUse("ref_int_aspect_opt_"), mb.str("value")),
+                        mb.str("get")),
+                    mb.scopeUse("ref_val_"))),
+            mb.as_(mb.num(2.0), mb.typesLong())))),
+                                        new TestMb.Branch(
+                                            mb.field(
+                                                mb.scopeUse("ref_int_dynamic_opt_"),
+                                                mb.str("is_some")),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.call(mb.typesEresult(), mb.typesCve()),
+                                                    mb.str("err")),
+                                                mb.tupleOf(
+                                                    mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                                                    mb.str(
+                                                        "operator_add: reference is a dynamic"
+                                                            + " int; parity unknown"))))),
+                                    Opt.some(mb.seqOf(
+                                        mb.bind(
+                                            "ref_evenodd_type_",
+                                            mb.call(
+                                                mb.mustReinterpret(),
+                                                mb.tupleOf(
+                                                    mb.scopeUse("ref_type_obj_"),
+                                                    mb.lower(mb.scopeUse("u_type"))))),
+                                        mb.return_(evenOddAddWrapped(mb, mb.operatorMod(
+            mb.operatorAdd(
+                mb.field(mb.scopeUse("inner"), mb.str("parity")),
+                mb.call(
+                    mb.field(mb.scopeUse("ref_evenodd_type_"), mb.str("get_parity")),
+                    mb.literalNull())),
+            mb.as_(mb.num(2.0), mb.typesLong()))))))))))),
+                Opt.some(mb.call(
+                    mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
+                    mb.tupleOf(
+                        mb.field(mb.scopeUse("arg"), mb.str("loc")),
+                        mb.str("operator_add: reference has no compile-time value")))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -1418,16 +1388,7 @@ public final class T0165MutableDropForkTest {
                                                     mb.operatorEq(
                                                         mb.num(1.0), mb.num(1.0))))))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                mb.return_(mb.scopeUse("even_type_new")));
-  }
-
-  private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {
-    return TList.of(
-        mb.bind(
-            "even_type",
-            mb.lower(
-                mb.seqOf(
-                    mb.bind("even_type_new", mb.lower(makeEvenOddTypeInner(mb, name))),
+                mb.return_(mb.scopeUse("even_type_new"))))),
                     mb.return_(
                         mb.call(
                             mb.scopeUse("even_type_new"),

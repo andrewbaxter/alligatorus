@@ -104,8 +104,8 @@ public record Expr(QExprId loc, Variant variant) implements Value {
     }
 
     public static final class LitValue {
-        private final boolean once;
-        private Opt<Value> value;
+        final boolean once;
+        Opt<Value> value;
 
         public LitValue(Value value, boolean once) {
             this.value = Opt.some(value);
@@ -114,22 +114,6 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
         public static LitValue shared(Value v) {
             return new LitValue(v, false);
-        }
-
-        public Value consume() {
-            if (!once) {
-                return value.optUnwrap();
-            }
-            if (value.optIsNone()) {
-                throw new IllegalStateException("Once Literal already consumed");
-            }
-            var v = value.optUnwrap();
-            value = Opt.none();
-            return v;
-        }
-
-        public Opt<Value> peek() {
-            return value;
         }
     }
 

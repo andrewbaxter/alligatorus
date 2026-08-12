@@ -39,7 +39,7 @@ public final class T0010DefineFuncTest {
                                 mb.recordOf(
                                     TList.of(
                                         new TestMb.RecordPair("arg", mb.typesNull()),
-                                        new TestMb.RecordPair("ret", mb.optNoneType()),
+                                        new TestMb.RecordPair("ret", mb.call(mb.field(mb.call(mb.typesOption(), mb.evalType()), mb.str("none")), mb.literalNull())),
                                         new TestMb.RecordPair(
                                             "impl_body",
                                             mb.stage(mb.call(mb.log(), mb.str("acted"))))))),

@@ -50,9 +50,6 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.Graft(expr));
   }
 
-  public SourceExpr if_(TList<SourceExpr.IfBranch> cases, Opt<SourceExpr> elseBody) {
-    return new SourceExpr(id(), new SourceExpr.If(cases, elseBody));
-  }
 
   public SourceExpr importExpr(SourceExpr spec) {
     var entry =
@@ -69,9 +66,6 @@ public class ModuleBuilder {
     return call(builtin("source", "remote"), tuple(TList.of(url, hash)));
   }
 
-  public SourceExpr sourceSha256(SourceExpr bytes) {
-    return call(builtin("source", "sha256"), bytes);
-  }
 
   public SourceExpr importRecord(TList<SourceExpr.RecordEntry> entries) {
     return call(builtin("import"), record(entries));
@@ -105,13 +99,6 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.Lower(expr));
   }
 
-  public SourceExpr match_(
-      SourceExpr base,
-      SourceExpr elementKey,
-      TList<SourceExpr.MatchBranch> cases,
-      Opt<SourceExpr> fallback) {
-    return new SourceExpr(id(), new SourceExpr.Match(base, elementKey, cases, fallback));
-  }
 
   public SourceExpr operatorBinary(BinaryOperator op, SourceExpr base, SourceExpr reference) {
     return new SourceExpr(id(), new SourceExpr.OperatorBinary(op, base, reference));

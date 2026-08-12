@@ -37,7 +37,7 @@ public final class T0055NumericMatrixTest {
     }
 
     SourceExpr shortV(double v) {
-      return mb.as_(mb.num(v), mb.typesShort());
+      return mb.as_(mb.num(v), mb.builtin("types", "short"));
     }
 
     SourceExpr intV(double v) {
@@ -49,11 +49,11 @@ public final class T0055NumericMatrixTest {
     }
 
     SourceExpr floatV(double v) {
-      return mb.as_(mb.num(v), mb.typesFloat());
+      return mb.as_(mb.num(v), mb.builtin("types", "float"));
     }
 
     SourceExpr doubleV(double v) {
-      return mb.as_(mb.num(v), mb.typesDouble());
+      return mb.as_(mb.num(v), mb.builtin("types", "double"));
     }
 
     /** Log the numeric result's to_string and record the expectation. */

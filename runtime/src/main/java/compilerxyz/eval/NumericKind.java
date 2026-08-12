@@ -46,22 +46,6 @@ public enum NumericKind {
     };
   }
 
-  /**
-   * Binary numeric promotion. Unsigned operands promote among the unsigned tower (ubyte/ushort/uint
-   * collapse to uint); signed operands follow Java (byte/short/int collapse to int). Callers ensure
-   * both operands share a signedness domain before promoting.
-   */
-  public static NumericKind promote(NumericKind a, NumericKind b) {
-    if (a.unsigned() || b.unsigned()) {
-      if (a == ULONG || b == ULONG) return ULONG;
-      return UINT;
-    }
-    if (a == DOUBLE || b == DOUBLE) return DOUBLE;
-    if (a == FLOAT || b == FLOAT) return FLOAT;
-    if (a == LONG || b == LONG) return LONG;
-    return INT;
-  }
-
   /** Unary numeric promotion: small kinds collapse to (u)int; wider kinds unchanged. */
   public static NumericKind unaryPromote(NumericKind a) {
     return switch (a) {

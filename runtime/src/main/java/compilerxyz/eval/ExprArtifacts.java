@@ -443,7 +443,7 @@ public final class ExprArtifacts {
         return EResult.ok(new ArtifactExpr(loc, new ArtifactExpr.Variant.Return(rt.label(), value)));
       }
       case Expr.Literal l -> {
-        var peeked = l.value().peek();
+        var peeked = l.value().value;
         if (peeked.optIsNone()) {
           return EResult.err(expr.loc(), "Cannot serialize consumed Literal");
         }

@@ -34,29 +34,6 @@ public final class T0140PanicTest {
             mb.return_(mb.scopeUse("f"))));
   }
 
-  private static SourceExpr panickyFnWithExceptionType(TestMb mb, String message) {
-    return mb.lower(
-        mb.seqOf(
-            mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
-            mb.bind(
-                "nfr",
-                mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
-            mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
-            mb.call(
-                mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
-                mb.typesString()),
-            mb.call(
-                mb.field(mb.scopeUse("nfr"), mb.str("impl")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair("arg", mb.typesNull()),
-                        new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
-                        new TestMb.RecordPair(
-                            "impl_body", mb.stage(mb.panic(mb.str(message))))))),
-            mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-            mb.return_(mb.scopeUse("f"))));
-  }
-
   @Test
   public void test01500PanicTerminatesCall() {
     var mb = new TestMb();
@@ -118,7 +95,26 @@ public final class T0140PanicTest {
         "main",
         new SourceModule.V1(
             mb.seqOf(
-                mb.bind("f", panickyFnWithExceptionType(mb, "inner panic")),
+                mb.bind("f", mb.lower(
+                    mb.seqOf(
+                        mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                        mb.bind(
+                            "nfr",
+                            mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("f"))),
+                        mb.bind("f", mb.field(mb.scopeUse("nfr"), mb.str("func"))),
+                        mb.call(
+                            mb.field(mb.scopeUse("nfr"), mb.str("set_exception_type")),
+                            mb.typesString()),
+                        mb.call(
+                            mb.field(mb.scopeUse("nfr"), mb.str("impl")),
+                            mb.recordOf(
+                                TList.of(
+                                    new TestMb.RecordPair("arg", mb.typesNull()),
+                                    new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
+                                    new TestMb.RecordPair(
+                                        "impl_body", mb.stage(mb.panic(mb.str("inner panic"))))))),
+                        mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
+                        mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("f"), mb.tupleOf()),
                     Opt.some(new TestMb.Catch(

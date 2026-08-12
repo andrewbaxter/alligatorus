@@ -45,13 +45,13 @@ public sealed interface ScopeLevel {
      * not matter that such changes are invisible where drop code is emitted.
      */
     public long dropState;
-    private final Emission emission;
+    final Emission emission;
 
     public Entry(Opt<ConstKey> name, Binding binding, boolean stackOnly, long state, long dropState) {
       this(name, binding, stackOnly, state, dropState, new Emission());
     }
 
-    private Entry(
+    Entry(
         Opt<ConstKey> name,
         Binding binding,
         boolean stackOnly,
@@ -64,10 +64,6 @@ public sealed interface ScopeLevel {
       this.state = state;
       this.dropState = dropState;
       this.emission = emission;
-    }
-
-    public Entry forkCopy() {
-      return new Entry(name, binding.bindingFork(), stackOnly, state, dropState, emission);
     }
 
     @Override
@@ -86,21 +82,17 @@ public sealed interface ScopeLevel {
     public Binding binding;
     public long state;
     public long dropState;
-    private final Emission emission;
+    final Emission emission;
 
     public Temp(Binding binding, long state, long dropState) {
       this(binding, state, dropState, new Emission());
     }
 
-    private Temp(Binding binding, long state, long dropState, Emission emission) {
+    Temp(Binding binding, long state, long dropState, Emission emission) {
       this.binding = binding;
       this.state = state;
       this.dropState = dropState;
       this.emission = emission;
-    }
-
-    public Temp forkCopy() {
-      return new Temp(binding.bindingFork(), state, dropState, emission);
     }
 
     @Override
@@ -121,21 +113,17 @@ public sealed interface ScopeLevel {
     public final JumpKey end;
     /** Arrivals recorded by matched returns; shared across forks. */
     public final TList<Arrival> arrivals;
-    private final Emission emission;
+    final Emission emission;
 
     public Labeled(Opt<String> label, JumpKey end) {
       this(label, end, new TList<>(), new Emission());
     }
 
-    private Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
+    Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
       this.label = label;
       this.end = end;
       this.arrivals = arrivals;
       this.emission = emission;
-    }
-
-    public Labeled forkCopy() {
-      return new Labeled(label, end, arrivals, emission);
     }
 
     @Override
@@ -151,19 +139,15 @@ public sealed interface ScopeLevel {
    */
   final class Catch implements ScopeLevel {
     public final JumpKey handler;
-    private final Emission emission;
+    final Emission emission;
 
     public Catch(JumpKey handler) {
       this(handler, new Emission());
     }
 
-    private Catch(JumpKey handler, Emission emission) {
+    Catch(JumpKey handler, Emission emission) {
       this.handler = handler;
       this.emission = emission;
-    }
-
-    public Catch forkCopy() {
-      return new Catch(handler, emission);
     }
 
     @Override
@@ -184,21 +168,15 @@ public sealed interface ScopeLevel {
     public Code body;
     /** Deferred chain nodes, shared across forks; generated at the try's close. */
     public final TList<Pending> pending;
-    private final Emission emission;
+    final Emission emission;
 
     public Finally() {
       this(new TList<>(), new Emission());
     }
 
-    private Finally(TList<Pending> pending, Emission emission) {
+    Finally(TList<Pending> pending, Emission emission) {
       this.pending = pending;
       this.emission = emission;
-    }
-
-    public Finally forkCopy() {
-      var out = new Finally(pending, emission);
-      out.body = body;
-      return out;
     }
 
     @Override

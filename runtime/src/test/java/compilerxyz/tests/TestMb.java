@@ -14,18 +14,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "aspect_field");
   }
 
-  public SourceExpr evalAspectFieldId() {
-    return builtin("eval", "aspect_field_id");
-  }
-
-  public SourceExpr evalAspectFunction() {
-    return builtin("eval", "aspect_function");
-  }
-
-  public SourceExpr evalAspectFunctionId() {
-    return builtin("eval", "aspect_function_id");
-  }
-
   public SourceExpr evalAspectLookup() {
     return builtin("eval", "aspect_lookup");
   }
@@ -52,10 +40,6 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalAspectFieldUseDynamic() {
     return builtin("eval", "aspect_field_use_dynamic");
-  }
-
-  public SourceExpr evalAspectFieldUseDynamicId() {
-    return builtin("eval", "aspect_field_use_dynamic_id");
   }
 
   public SourceExpr evalAspectSet() {
@@ -130,10 +114,6 @@ public final class TestMb extends ModuleBuilder {
     return builtin("eval", "bind_result");
   }
 
-  public SourceExpr evalCodeDyn() {
-    return builtin("eval", "code_dyn");
-  }
-
   public SourceExpr evalCodevalue() {
     return builtin("eval", "codevalue");
   }
@@ -144,10 +124,6 @@ public final class TestMb extends ModuleBuilder {
 
   public SourceExpr evalStack() {
     return builtin("eval", "stack");
-  }
-
-  public SourceExpr evalStrToJson() {
-    return builtin("eval", "str_to_json");
   }
 
   public SourceExpr evalTarget() {
@@ -206,28 +182,12 @@ public final class TestMb extends ModuleBuilder {
     return builtin("types", "byte");
   }
 
-  public SourceExpr typesShort() {
-    return builtin("types", "short");
-  }
-
   public SourceExpr typesLong() {
     return builtin("types", "long");
   }
 
-  public SourceExpr typesFloat() {
-    return builtin("types", "float");
-  }
-
-  public SourceExpr typesDouble() {
-    return builtin("types", "double");
-  }
-
   public SourceExpr typesUbyte() {
     return builtin("types", "ubyte");
-  }
-
-  public SourceExpr typesUshort() {
-    return builtin("types", "ushort");
   }
 
   public SourceExpr typesUint() {
@@ -245,11 +205,6 @@ public final class TestMb extends ModuleBuilder {
   /** {@code option(type).some(typeExpr)} — an optional return type that yields a value. */
   public SourceExpr optSomeType(SourceExpr typeExpr) {
     return call(field(call(typesOption(), evalType()), str("some")), typeExpr);
-  }
-
-  /** {@code option(type).none} — an optional return type meaning "returns no value". */
-  public SourceExpr optNoneType() {
-    return call(field(call(typesOption(), evalType()), str("none")), literalNull());
   }
 
   public SourceExpr typesString() {
@@ -277,14 +232,14 @@ public final class TestMb extends ModuleBuilder {
   public SourceExpr ifOf(TList<Branch> cases, Opt<SourceExpr> elseBody) {
     var out = new TList<SourceExpr.IfBranch>(cases.size());
     for (var b : cases) out.add(new SourceExpr.IfBranch(b.condition(), b.body()));
-    return if_(out, elseBody);
+    return new SourceExpr(id(), new SourceExpr.If(out, elseBody));
   }
 
   public SourceExpr matchOf(
       SourceExpr base, SourceExpr elementKey, TList<Branch> cases, Opt<SourceExpr> fallback) {
     var out = new TList<SourceExpr.MatchBranch>(cases.size());
     for (var b : cases) out.add(new SourceExpr.MatchBranch(b.condition(), b.body()));
-    return match_(base, elementKey, out, fallback);
+    return new SourceExpr(id(), new SourceExpr.Match(base, elementKey, out, fallback));
   }
 
   /**

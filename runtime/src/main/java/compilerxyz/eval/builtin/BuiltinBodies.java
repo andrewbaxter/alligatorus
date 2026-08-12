@@ -111,7 +111,12 @@ public final class BuiltinBodies {
     }
     // Errors from the user-staged code ride out through the return: the caller
     // gets an eresult and propagates it (e.g. a drop via match).
-    return ConstEval.constEval(targetXx, exprAst).map(compilerxyz.eval.EvalRes::cv);
+    var _constEvalResult = ConstEval.constEval(targetXx, exprAst);
+    if (_constEvalResult.valueOrNull().optIsNone()) return _constEvalResult.reerr();
+    var _cv = _constEvalResult.requireValue("const_eval map").cv();
+    var _errs = _constEvalResult.errorsOrNull();
+    if (_errs.optIsNone() || _errs.optUnwrap().isEmpty()) return EResult.ok(_cv);
+    return EResult.mixed(_cv, _errs.optUnwrap());
   }
 
   @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)

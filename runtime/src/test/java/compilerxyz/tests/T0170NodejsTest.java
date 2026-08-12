@@ -106,7 +106,7 @@ public final class T0170NodejsTest {
             mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
             mb.recordOf(
                 TList.of(
-                    rp("iface_ref", mb.evalCodeDyn()),
+                    rp("iface_ref", mb.builtin("eval", "code_dyn")),
                     rp("record", ifaceMethods(mb, TList.of()))))),
         
         
@@ -313,7 +313,7 @@ public final class T0170NodejsTest {
                                                 valuePush(
                                                     mb,
                                                     mb.call(
-                                                        mb.evalStrToJson(),
+                                                        mb.builtin("eval", "str_to_json"),
                                                         mb.scopeUse("code"))))),
                                         new TestMb.Branch(
                                             mb.str("field"),
@@ -557,8 +557,12 @@ public final class T0170NodejsTest {
     return mb.panic(mb.str("ntarget." + method + " not implemented"));
   }
 
-  private static SourceExpr buildNodejs(TestMb mb) {
-    var exprs = new TList<SourceExpr>();
+
+  @Test
+  public void test00010NodejsHelloworld() {
+    var mb = new TestMb();
+    var modules = new TMap<String, SourceModule>();
+var exprs = new TList<SourceExpr>();
     exprs.add(mb.bind("code", buildNodejsCode(mb)));
     exprs.add(mb.bind("d", mb.call(mb.define(), mb.tupleOf())));
     exprs.add(mb.bind("root_t", mb.call(mb.typesOption(), mb.typesExpr())));
@@ -658,12 +662,12 @@ public final class T0170NodejsTest {
     exprs.addAll(
         implAsSelfType(
             mb, "ntype_func", "nodejs function",
-            aspectDispatch(mb, mb.evalAspectFunctionId())));
+            aspectDispatch(mb, mb.builtin("eval", "aspect_function_id"))));
     exprs.add(
         implInterface(
             mb,
             "ntype_func",
-            mb.evalAspectFunction(),
+            mb.builtin("eval", "aspect_function"),
             TList.of(
                 rp(
                     "exception_type",
@@ -785,7 +789,7 @@ public final class T0170NodejsTest {
     exprs.addAll(
         implAsSelfType(
             mb, "ntype_object", "nodejs object",
-            aspectDispatch(mb, mb.evalAspectFieldId())));
+            aspectDispatch(mb, mb.builtin("eval", "aspect_field_id"))));
     exprs.add(
         implInterface(
             mb,
@@ -1236,14 +1240,7 @@ public final class T0170NodejsTest {
                                                 mb.literalNull())))))))))));
     exprs.add(mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()));
     exprs.add(mb.return_(mb.field(mb.scopeUse("nodejs"), mb.str("func"))));
-    return mb.seq(exprs);
-  }
-
-  @Test
-  public void test00010NodejsHelloworld() {
-    var mb = new TestMb();
-    var modules = new TMap<String, SourceModule>();
-    modules.put("nodejs", new SourceModule.V1(mb.lower(buildNodejs(mb))));
+    modules.put("nodejs", new SourceModule.V1(mb.lower(mb.seq(exprs))));
     modules.put(
         "main",
         new SourceModule.V1(

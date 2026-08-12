@@ -28,85 +28,6 @@ public final class T0130DropThrowTest {
         mb.recordOf(staged));
   }
 
-  private static SourceExpr canaryBindBody(TestMb mb) {
-    return mb.call(
-        mb.field(
-            mb.field(
-                mb.call(
-                    mb.evalAspectLookup(),
-                    mb.tupleOf(
-                        mb.typesString(),
-                        mb.evalAspectBind(),
-                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                mb.str("value")),
-            mb.str("bind")),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
-  }
-
-  private static SourceExpr canaryDropBody(TestMb mb, String dropMessage) {
-    var underlyingCodeExpr =
-        mb.field(
-            mb.call(
-                mb.field(
-                    mb.field(
-                        mb.call(
-                            mb.evalAspectLookup(),
-                            mb.tupleOf(
-                                mb.typesString(),
-                                mb.evalAspectDropDynamicLight(),
-                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                        mb.str("value")),
-                    mb.str("drop_dynamic_light")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair(
-                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair(
-                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
-            mb.str("value"));
-    var constEvalCall =
-        mb.call(
-            mb.evalConstEval(),
-            mb.recordOf(
-                TList.of(
-                    new TestMb.RecordPair(
-                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                    new TestMb.RecordPair(
-                        "staged",
-                        mb.stage(
-                            mb.seqOf(
-                                mb.call(mb.log(), mb.str(dropMessage)),
-                                mb.return_(mb.graft(mb.scopeUse("underlying_code_")))))))));
-    return mb.seqOf(
-        mb.bind("underlying_code_", underlyingCodeExpr),
-        mb.return_(mb.constEvalCode(constEvalCall)));
-  }
-
-  private static SourceExpr canaryBindDynamicBody(TestMb mb) {
-    return mb.call(
-        mb.field(
-            mb.field(
-                mb.call(
-                    mb.evalAspectLookup(),
-                    mb.tupleOf(
-                        mb.typesString(),
-                        mb.evalAspectBindDynamic(),
-                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
-                mb.str("value")),
-            mb.str("bind_dynamic")),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
-  }
-
 private static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
     return mb.call(
         mb.lower(
@@ -307,7 +228,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                         new TestMb.Branch(
                                             mb.operatorEq(
                                                 mb.field(mb.scopeUse("arg"), mb.str("key")),
-                                                mb.evalAspectFieldUseDynamicId()),
+                                                mb.builtin("eval", "aspect_field_use_dynamic_id")),
                                             mb.call(
                                                 mb.field(
                                                     mb.call(
@@ -344,7 +265,40 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "drop",
-                                            canaryDropBody(mb, dropMessage)))))))),
+                                            mb.seqOf(
+                                                mb.bind("underlying_code_", mb.field(
+                                                    mb.call(
+                                                        mb.field(
+                                                            mb.field(
+                                                                mb.call(
+                                                                    mb.evalAspectLookup(),
+                                                                    mb.tupleOf(
+                                                                        mb.typesString(),
+                                                                        mb.evalAspectDropDynamicLight(),
+                                                                        mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                                                                mb.str("value")),
+                                                            mb.str("drop_dynamic_light")),
+                                                        mb.recordOf(
+                                                            TList.of(
+                                                                new TestMb.RecordPair(
+                                                                    "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                                new TestMb.RecordPair(
+                                                                    "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                                                new TestMb.RecordPair(
+                                                                    "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
+                                                    mb.str("value"))),
+                                                mb.return_(mb.constEvalCode(mb.call(
+                                                    mb.evalConstEval(),
+                                                    mb.recordOf(
+                                                        TList.of(
+                                                            new TestMb.RecordPair(
+                                                                "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                            new TestMb.RecordPair(
+                                                                "staged",
+                                                                mb.stage(
+                                                                    mb.seqOf(
+                                                                        mb.call(mb.log(), mb.str(dropMessage)),
+                                                                        mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -408,7 +362,23 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
-                                            "bind", canaryBindBody(mb)))))))),
+                                            "bind",
+                                            mb.call(
+                                                mb.field(
+                                                    mb.field(
+                                                        mb.call(
+                                                            mb.evalAspectLookup(),
+                                                            mb.tupleOf(
+                                                                mb.typesString(),
+                                                                mb.evalAspectBind(),
+                                                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                                                        mb.str("value")),
+                                                    mb.str("bind")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                                        new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -422,7 +392,22 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     TList.of(
                                         new TestMb.RecordPair(
                                             "bind_dynamic",
-                                            canaryBindDynamicBody(mb)))))))),
+                                            mb.call(
+                                                mb.field(
+                                                    mb.field(
+                                                        mb.call(
+                                                            mb.evalAspectLookup(),
+                                                            mb.tupleOf(
+                                                                mb.typesString(),
+                                                                mb.evalAspectBindDynamic(),
+                                                                mb.field(mb.scopeUse("arg"), mb.str("xx")))),
+                                                        mb.str("value")),
+                                                    mb.str("bind_dynamic")),
+                                                mb.recordOf(
+                                                    TList.of(
+                                                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                                        new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(

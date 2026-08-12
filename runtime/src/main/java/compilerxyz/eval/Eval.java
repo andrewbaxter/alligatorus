@@ -53,52 +53,6 @@ public final class Eval {
         "TODO value type [X] must expose const key aspect [LIST] but doesn't");
   }
 
-  public static EResult<CodeValue> maybeWrapCallException(
-      ExprContext xx, QExprId loc, Opt<Type> calleeExc, CodeValue callCv) {
-    if (calleeExc.optIsNone()) {
-      return EResult.ok(callCv);
-    }
-    var calleeExcType = calleeExc.optUnwrap();
-    if (xx.currentExceptionType.optIsNone()) {
-      return EResult.err(
-          loc,
-          "Cannot call a function that may throw from a function that did not declare an"
-              + " exception type");
-    }
-    var callerExc = xx.currentExceptionType.optUnwrap();
-    var erb = new Erb(loc);
-    var chainDestRes = ScopeChains.excDest(xx, loc);
-    if (chainDestRes.hasErrors()) return chainDestRes.reerr();
-    var chainDest = chainDestRes.requireValue("maybeWrapCallException chain dest");
-    // Site cast node: the target converts the callee's exception to the
-    // caller's declared type before it enters the chain; none when the cast
-    // is free.
-    var siteKey = new JumpKey();
-    var siteBlockRes =
-        erb.mustEr(
-            xx.target.targetCastException(xx, loc, siteKey, calleeExcType, callerExc, chainDest));
-    if (siteBlockRes.optIsNone()) return EResult.errs(erb.errors());
-    JumpKey dest;
-    Code trailer = Code.none(loc);
-    if (siteBlockRes.optUnwrap().optIsSome()) {
-      var skip = new JumpKey();
-      var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
-      var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
-      if (jumpOpt.optIsNone() || landOpt.optIsNone()) return EResult.errs(erb.errors());
-      trailer =
-          Code.concat(loc, jumpOpt.optUnwrap(), Code.concat(loc, siteBlockRes.optUnwrap().optUnwrap(), landOpt.optUnwrap()));
-      dest = siteKey;
-    } else {
-      if (chainDest.optIsNone()) {
-        return EResult.ok(callCv);
-      }
-      dest = chainDest.optUnwrap();
-    }
-    var wrappedOpt = erb.mustEr(xx.target.targetGuarded(loc, dest, callCv.code()));
-    if (wrappedOpt.optIsNone()) return EResult.errs(erb.errors());
-    return EResult.ok(new CodeValue(Code.concat(loc, wrappedOpt.optUnwrap(), trailer), callCv.outcome()));
-  }
-
   /**
    * Generate the drop of a value. A drop must never throw, so it is generated
    * with no declared exception type in scope: any throw (or call to a throwing
@@ -155,20 +109,6 @@ public final class Eval {
     return scopeEntries;
   }
 
-  public static EResult<TMap<ConstKey, Binding>> initBuiltinScope(
-      ExprContext xx, QExprId loc, ImportStateId importState) {
-    var bindingRes = GenBuiltinTree.installRoot(xx, loc, importState);
-    if (bindingRes.hasErrors()) {
-      return bindingRes.reerr();
-    }
-    var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope installRoot");
-    xx.vx.ix.builtinScopeRootBinding = Opt.some(rootBinding);
-    var scopeEntries = new TMap<ConstKey, Binding>();
-    scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
-    return EResult.ok(scopeEntries);
-  }
-
-
   public static CompileImport.EvalOutcome eval(
       CompileImportContext cix, ImportStateId importState, Expr expr) {
     var rootLoc = expr.loc();
@@ -176,11 +116,14 @@ public final class Eval {
     var rootScope = new Scope(vx);
     var target = new TargetDynamic(vx.nextLocalId);
     var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringConst()));
-    var scopeRes = initBuiltinScope(xx, rootLoc, importState);
-    if (scopeRes.hasErrors()) {
-      return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull().optUnwrap());
+    var _bindingRes = GenBuiltinTree.installRoot(xx, rootLoc, importState);
+    if (_bindingRes.hasErrors()) {
+      return new CompileImport.EvalOutcome.Err(_bindingRes.errorsOrNull().optUnwrap());
     }
-    var scopeEntries = scopeRes.requireValue("Eval::eval initBuiltinScope");
+    var _rootBinding = _bindingRes.requireValue("Eval::eval installRoot");
+    xx.vx.ix.builtinScopeRootBinding = Opt.some(_rootBinding);
+    var scopeEntries = new TMap<ConstKey, Binding>();
+    scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), _rootBinding);
     for (var entry : scopeEntries.entrySet()) {
       rootScope.pushNamed(entry.getKey(), entry.getValue());
     }

@@ -61,54 +61,8 @@ public final class ScopeChains {
     return EResult.ok(parent);
   }
 
-  /**
-   * Destination for a return targeting {@code target}: the innermost
-   * trampoline node of the chain that drops every cleanup level between the
-   * site and the target, then lands at the target's end. {@code carryType}
-   * is the carried value's type when it rides the stack across the jump.
-   */
-  public static EResult<JumpKey> exitDest(
-      ExprContext xx, QExprId loc, ScopeLevel.Labeled target, Opt<Type> carryType) {
-    var levels = xx.scope.levels;
-    var cleanups = new TList<ScopeLevel>();
-    boolean found = false;
-    for (int i = levels.size() - 1; i >= 0; i--) {
-      var level = levels.get(i);
-      if (level == target) {
-        found = true;
-        break;
-      }
-      switch (level) {
-        case ScopeLevel.Entry entry -> cleanups.add(entry);
-        case ScopeLevel.Temp temp -> cleanups.add(temp);
-        case ScopeLevel.Finally finally_ -> cleanups.add(finally_);
-        case ScopeLevel.Labeled labeled -> {}
-        case ScopeLevel.Catch catch_ -> {}
-      }
-    }
-    if (!found) {
-      throw new AssertionError("exitDest: target label level is not in scope");
-    }
-    var discriminator = target.label.optIsSome() ? target.label.optUnwrap() : "";
-    var next = target.end;
-    for (int i = cleanups.size() - 1; i >= 0; i--) {
-      var resolved =
-          node(
-              xx,
-              loc,
-              cleanups.get(i),
-              new ScopeLevel.DestKey(
-                  levelDropState(cleanups.get(i)),
-                  Opt.some(discriminator),
-                  Opt.some(next),
-                  carryType));
-      if (resolved.hasErrors()) return resolved.reerr();
-      next = resolved.requireValue("ScopeChains.exitDest node").optUnwrap();
-    }
-    return EResult.ok(next);
-  }
 
-  private static long levelDropState(ScopeLevel level) {
+  static long levelDropState(ScopeLevel level) {
     return switch (level) {
       case ScopeLevel.Entry entry -> entry.dropState;
       case ScopeLevel.Temp temp -> temp.dropState;
@@ -125,7 +79,7 @@ public final class ScopeChains {
    * Finally nodes always materialize, with code generation deferred to the
    * try's close (the body is const-evaled after the covered code).
    */
-  private static EResult<Opt<JumpKey>> node(
+  static EResult<Opt<JumpKey>> node(
       ExprContext xx, QExprId loc, ScopeLevel level, ScopeLevel.DestKey key) {
     var emission = level.scopeLevelEmission();
     var existing = emission.dests.getOrNull(key);
@@ -172,29 +126,4 @@ public final class ScopeChains {
     return EResult.ok(resolved);
   }
 
-  /**
-   * Generate the deferred blocks for a finally level once its body is known.
-   * Called at the try's close; every pending node becomes one instance of
-   * the body bracketed for its chain kind.
-   */
-  public static EResult<Void> finallyGenerate(
-      ExprContext xx, QExprId loc, ScopeLevel.Finally level) {
-    var emission = level.scopeLevelEmission();
-    for (var pending : level.pending) {
-      var key = pending.key();
-      EResult<Code> nodeRes;
-      if (key.label().optIsSome()) {
-        nodeRes =
-            xx.target.targetExitTrampoline(
-                xx, loc, pending.self(), key.carryType(), level.body,
-                key.next().optUnwrap());
-      } else {
-        nodeRes = xx.target.targetExcCleanup(xx, loc, pending.self(), level.body, key.next());
-      }
-      if (nodeRes.hasErrors()) return nodeRes.reerr();
-      emission.blocks.add(nodeRes.requireValue("ScopeChains finally block"));
-    }
-    level.pending.clear();
-    return EResult.ok(null);
-  }
 }

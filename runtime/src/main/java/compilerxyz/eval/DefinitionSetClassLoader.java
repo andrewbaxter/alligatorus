@@ -39,7 +39,31 @@ public final class DefinitionSetClassLoader extends ClassLoader {
     var bytes = pendingBytecode.getOrNull(name);
     if (bytes != null) {
       var defined = defineClass(name, bytes, 0, bytes.length);
-      injectExternals(defined, name);
+      var externals = pendingExternals.getOrNull(name);
+      if (externals != null) {
+        for (var entry : externals.entrySet()) {
+          Field field;
+          try {
+            field = defined.getDeclaredField(entry.getKey());
+          } catch (NoSuchFieldException e) {
+            throw new AssertionError(
+                "External field "
+                    + entry.getKey()
+                    + " not declared on generated class "
+                    + name,
+                e);
+          }
+          if (!Modifier.isStatic(field.getModifiers())) {
+            throw new AssertionError("External field " + entry.getKey() + " must be static");
+          }
+          field.setAccessible(true);
+          try {
+            field.set(null, entry.getValue());
+          } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+          }
+        }
+      }
       return defined;
     }
     if (name.startsWith(compilerxyz.eval.dynamic.CompositeClassEmitter.BINARY_NAME_PREFIX)) {
@@ -58,30 +82,4 @@ public final class DefinitionSetClassLoader extends ClassLoader {
     throw new ClassNotFoundException(name);
   }
 
-  private void injectExternals(Class<?> defined, String name) {
-    var externals = pendingExternals.getOrNull(name);
-    if (externals == null) return;
-    for (var entry : externals.entrySet()) {
-      Field field;
-      try {
-        field = defined.getDeclaredField(entry.getKey());
-      } catch (NoSuchFieldException e) {
-        throw new AssertionError(
-            "External field "
-                + entry.getKey()
-                + " not declared on generated class "
-                + name,
-            e);
-      }
-      if (!Modifier.isStatic(field.getModifiers())) {
-        throw new AssertionError("External field " + entry.getKey() + " must be static");
-      }
-      field.setAccessible(true);
-      try {
-        field.set(null, entry.getValue());
-      } catch (IllegalAccessException e) {
-        throw new AssertionError(e);
-      }
-    }
-  }
 }
