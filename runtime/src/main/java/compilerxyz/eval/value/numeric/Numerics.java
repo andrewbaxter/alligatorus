@@ -52,6 +52,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectInt;
 import compilerxyz.gen.AspectNumericConst;
 import compilerxyz.gen.AspectNumericDynamic;
+import compilerxyz.gen.GenCodegenDescriptors;
 
 /**
  * Central operator/cast machinery shared by every numeric type family. A type's operator aspects
@@ -679,9 +680,8 @@ public final class Numerics {
           seq.add(staticCall(loc, Integer.class, "toUnsignedLong", "J", "I"));
           seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.L2D : Opcodes.L2F));
         }
-        case ULONG -> seq.add(
-            staticCall(
-                loc, Unsigned.class, toDouble ? "toDouble" : "toFloat", toDouble ? "D" : "F", "J"));
+        case ULONG -> seq.add(JavaBytecodeUtils.callStaticMethod(
+            loc, toDouble ? GenCodegenDescriptors.UNSIGNED_TO_DOUBLE : GenCodegenDescriptors.UNSIGNED_TO_FLOAT));
         default -> throw new IllegalStateException("intToFloat from " + from);
       }
       return;
