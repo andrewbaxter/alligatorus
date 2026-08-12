@@ -184,7 +184,7 @@ public final class Eval {
     for (var entry : scopeEntries.entrySet()) {
       rootScope.pushNamed(entry.getKey(), entry.getValue());
     }
-    var binaryName = EvalRootEmitter.allocateBinaryName(xx);
+    var binaryName = "compilerxyz.eval.gen.EvalRoot$" + xx.vx.ix.evalRootCounter.next();
     vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);
     if (cvRes.hasErrors()) {
@@ -334,7 +334,7 @@ public final class Eval {
         }
 
         if (cause instanceof DynException dynEx) {
-          var rendered = renderThrownValue(dynEx.payload);
+          var rendered = dynEx.payload == null ? "null" : dynEx.payload.toString();
           return new CompileImport.EvalOutcome.Err(
               TList.of(
                   new ExprErr(rootLoc, TList.of(new ExprSubErr.Opaque(rendered)))));
@@ -373,7 +373,4 @@ public final class Eval {
     return new CompileImport.EvalOutcome.Ok(finalValue, vx.logs, true);
   }
 
-  private static String renderThrownValue(Object payload) {
-    return payload == null ? "null" : payload.toString();
-  }
 }

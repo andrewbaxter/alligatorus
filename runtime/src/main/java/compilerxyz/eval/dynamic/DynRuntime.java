@@ -185,7 +185,7 @@ public final class DynRuntime {
           yield switch (values.next()) {
             case StageLowerValue.ExprStage e -> e.expr();
             case StageLowerValue.Val v ->
-                new Expr(loc, new Expr.Literal(Expr.LitValue.once(v.value())));
+                new Expr(loc, new Expr.Literal(new Expr.LitValue(v.value(), true)));
           };
         }
         yield new Expr(

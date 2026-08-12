@@ -67,7 +67,7 @@ public final class CompileImport {
         case Expr.Try t -> false;
         case Expr.Tuple t -> false;
       };
-      var evalResult = eval(cix, importState, rootExpr);
+      var evalResult = Eval.eval(cix, importState, rootExpr);
       switch (evalResult) {
         case EvalOutcome.Err err -> {
           return new CompileImportResult(
@@ -110,11 +110,6 @@ public final class CompileImport {
         }
       }
     }
-  }
-
-  private static EvalOutcome eval(
-      CompileImportContext cix, ImportStateId importState, Expr expr) {
-    return Eval.eval(cix, importState, expr);
   }
 
   private static int maxLowerExcess(Expr expr, int sd, int ld) {

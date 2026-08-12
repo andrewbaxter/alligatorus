@@ -1442,15 +1442,13 @@ public final class T0165MutableDropForkTest {
     return mb.seq(all);
   }
 
-  private static SourceExpr dynBool(TestMb mb, boolean value) {
-    return mb.operatorEq(
-        mb.as_(mb.num(1.0), mb.typesLong()),
-        mb.as_(mb.num(value ? 1.0 : 2.0), mb.typesLong()));
-  }
-
   private static SourceExpr maybeThrow(TestMb mb, boolean doThrow, String msg) {
     return mb.ifOf(
-        TList.of(new TestMb.Branch(dynBool(mb, doThrow), mb.throw_(mb.str(msg)))),
+        TList.of(new TestMb.Branch(
+            mb.operatorEq(
+                mb.as_(mb.num(1.0), mb.typesLong()),
+                mb.as_(mb.num(doThrow ? 1.0 : 2.0), mb.typesLong())),
+            mb.throw_(mb.str(msg)))),
         Opt.none());
   }
 

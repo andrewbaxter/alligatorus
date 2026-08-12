@@ -285,7 +285,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
       case Result.Err<byte[], String> err -> { return Result.err(err.error()); }
       case Result.Ok<byte[], String> ok -> bytes = ok.value();
     }
-    var isZip = looksLikeZip(bytes);
+    var isZip = bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K' && bytes[2] == 3 && bytes[3] == 4;
     if (r.subpath().isEmpty()) {
       if (isZip) return Result.ok(new SourceResolved.Bundle(r));
       return parseRemoteModule(r, bytes);
@@ -342,7 +342,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
   }
 
   private static Result<byte[], String> verifyHash(String url, byte[] bytes, HashValue hash) {
-    var actual = sha256(bytes);
+    byte[] actual;
+    try {
+      actual = MessageDigest.getInstance("SHA-256").digest(bytes);
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException("SHA-256 unavailable", e);
+    }
     switch (hash) {
       case HashValue.Sha256 expected -> {
         if (!java.util.Arrays.equals(actual, expected.digest())) {
@@ -353,22 +358,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
       }
     }
     return Result.ok(bytes);
-  }
-
-  private static byte[] sha256(byte[] data) {
-    try {
-      return MessageDigest.getInstance("SHA-256").digest(data);
-    } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException("SHA-256 unavailable", e);
-    }
-  }
-
-  private static boolean looksLikeZip(byte[] bytes) {
-    return bytes.length >= 4
-        && bytes[0] == 'P'
-        && bytes[1] == 'K'
-        && bytes[2] == 3
-        && bytes[3] == 4;
   }
 
   private static byte[] extractZipEntry(byte[] zipBytes, String entryName) {
@@ -423,7 +412,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         ps.setLong(3, id.index());
         try (var rs = ps.executeQuery()) {
           if (!rs.next()) return Result.err("Unknown artifact: " + id);
-          var body = decodeArtifactBody(rs.getString(1));
+          var body = ArtifactJson.decodeArtifactBody(DUMMY_LOC, parseJson(rs.getString(1))).requireValue("CacheReal.decodeArtifactBody");
           artifactMem.put(id, body);
           return Result.ok(body);
         }
@@ -443,13 +432,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
   public synchronized void artifactsSet(ArtifactIdSource id, ArtifactBody body) {
     artifactMem.put(id, body);
     pendingArtifacts.put(id, body);
-  }
-
-  private synchronized TMap<ArtifactIdSource, ArtifactBody> takePendingArtifacts() {
-    var out = new TMap<ArtifactIdSource, ArtifactBody>();
-    for (var e : pendingArtifacts.entrySet()) out.put(e.getKey(), e.getValue());
-    pendingArtifacts.clear();
-    return out;
   }
 
   @Override
@@ -576,7 +558,12 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
    * compile result row in a single transaction.
    */
   private void flush(CompileId id, CompileProduct product) {
-    var artifacts = takePendingArtifacts();
+    TMap<ArtifactIdSource, ArtifactBody> artifacts;
+    synchronized (this) {
+      artifacts = new TMap<ArtifactIdSource, ArtifactBody>();
+      for (var e : pendingArtifacts.entrySet()) artifacts.put(e.getKey(), e.getValue());
+      pendingArtifacts.clear();
+    }
     synchronized (dbLock) {
       try {
         conn.setAutoCommit(false);
@@ -589,7 +576,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
               ps.setLong(1, aid.compileId().importState().value());
               ps.setLong(2, aid.compileId().source().value());
               ps.setLong(3, aid.index());
-              ps.setString(4, encodeArtifactBody(e.getValue()));
+              ps.setString(4, serializeJson(ArtifactJson.encodeArtifactBody(e.getValue())));
               ps.addBatch();
             }
             ps.executeBatch();
@@ -693,15 +680,6 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     } catch (IOException e) {
       throw new RuntimeException("CacheReal.parseJson", e);
     }
-  }
-
-  private static String encodeArtifactBody(ArtifactBody body) {
-    return serializeJson(ArtifactJson.encodeArtifactBody(body));
-  }
-
-  private static ArtifactBody decodeArtifactBody(String s) {
-    var res = ArtifactJson.decodeArtifactBody(DUMMY_LOC, parseJson(s));
-    return res.requireValue("CacheReal.decodeArtifactBody");
   }
 
   private static String encodeCompileRes(CompileRes res) {

@@ -20,12 +20,6 @@ import org.junit.jupiter.api.Test;
  */
 public final class T0190CarryCodeTest {
 
-  private static SourceExpr listOf(TestMb mb, String first) {
-    return mb.call(
-        mb.field(mb.call(mb.typesList(), mb.typesString()), mb.str("new")),
-        mb.tupleOf(mb.str(first)));
-  }
-
   private static SourceExpr push(TestMb mb, String value) {
     return mb.call(mb.field(mb.scopeUse("l"), mb.str("push")), mb.str(value));
   }
@@ -44,17 +38,14 @@ public final class T0190CarryCodeTest {
         label, mb.seqOf(push(mb, pushed), mb.return_(label, constValue)));
   }
 
-  private static SourceExpr joinLog(TestMb mb) {
-    return mb.call(
-        mb.log(), mb.call(mb.field(mb.scopeUse("l"), mb.str("join")), mb.str("_")));
-  }
-
   /** Builds `l = ["a"]; <body>; log(l.join("_"))` and returns the logs. */
   private static TList<String> run(TestMb mb, SourceExpr... body) {
     var exprs = new TList<SourceExpr>();
-    exprs.add(mb.bind("l", listOf(mb, "a")));
+    exprs.add(mb.bind("l", mb.call(
+        mb.field(mb.call(mb.typesList(), mb.typesString()), mb.str("new")),
+        mb.tupleOf(mb.str("a")))));
     for (var e : body) exprs.add(e);
-    exprs.add(joinLog(mb));
+    exprs.add(mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("l"), mb.str("join")), mb.str("_"))));
 
     var modules = new TMap<String, SourceModule>();
     modules.put("main", new SourceModule.V1(mb.seq(exprs)));
@@ -338,19 +329,15 @@ public final class T0190CarryCodeTest {
   // Other consumers of a CodeValue.
   // ---------------------------------------------------------------------------------------
 
-  private static void assertJoin(TList<String> logs, String expected) {
-    assertTrue(
-        logs.contains(expected),
-        () -> "carried dynamic code was discarded; expected a log of \"" + expected + "\", got " + logs);
-  }
-
   @Test
   public void test03000DynamicMethodArgument() {
     var mb = new TestMb();
     // l.push({ l.push("b"); return "c"; }) -> both pushes must happen, inner one first.
     var logs =
         run(mb, mb.call(mb.field(mb.scopeUse("l"), mb.str("push")), carrying(mb, "b", mb.str("c"))));
-    assertJoin(logs, "a_b_c");
+    assertTrue(
+        logs.contains("a_b_c"),
+        () -> "carried dynamic code was discarded; expected a log of \"a_b_c\", got " + logs);
   }
 
   /** A one-element int list; foreach binds int elements. */

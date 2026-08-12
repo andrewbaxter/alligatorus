@@ -17,11 +17,6 @@ public final class EvalRootEmitter {
   private static final JavaMethodDescriptor MDESC_RUN =
       JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, compilerxyz.util.TList.of());
 
-  public static String allocateBinaryName(ExprContext xx) {
-    var index = xx.vx.ix.evalRootCounter.next();
-    return "compilerxyz.eval.gen.EvalRoot$" + index;
-  }
-
   public static String toInternalName(String binaryName) {
     return binaryName.replace('.', '/');
   }

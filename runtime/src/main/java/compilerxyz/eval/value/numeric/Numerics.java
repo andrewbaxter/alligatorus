@@ -358,7 +358,9 @@ public final class Numerics {
       seq.add(compareBytecode(loc, compute, op));
       resultValue = ValueDynamic.stack(new TypeBoolDynamic(), 1);
     } else if (compute.unsigned() && (op == Op.DIV || op == Op.MOD)) {
-      seq.add(unsignedDivRem(loc, compute, op));
+      seq.add(compute == NumericKind.UINT
+          ? staticCall(loc, Integer.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "I", "I", "I")
+          : staticCall(loc, Long.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "J", "J", "J"));
       resultValue = ValueDynamic.stack(dynamicType(compute), compute.slots());
     } else {
       seq.add(JavaBytecodeUtils.inst(loc, arithOpcode(compute, op)));
@@ -414,7 +416,12 @@ public final class Numerics {
     if (baseSeq.hasErrors()) return baseSeq.reerr();
     seq.add(new CodeDynamic(loc, baseSeq.requireValue("Numerics::unary pushConverted")));
     if (op == Unary.NEG) {
-      seq.add(JavaBytecodeUtils.inst(loc, negOpcode(compute)));
+      seq.add(JavaBytecodeUtils.inst(loc, switch (compute) {
+        case INT, BYTE, SHORT, UINT, UBYTE, USHORT -> Opcodes.INEG;
+        case LONG, ULONG -> Opcodes.LNEG;
+        case FLOAT -> Opcodes.FNEG;
+        case DOUBLE -> Opcodes.DNEG;
+      }));
     } else if (compute.wide()) {
       seq.add(JavaBytecodeUtils.literalLong(loc, -1L));
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LXOR));
@@ -771,24 +778,6 @@ public final class Numerics {
         default -> throw new IllegalStateException("not a double arithmetic op: " + op);
       };
       case UBYTE, USHORT -> throw new IllegalStateException("compute kind not promoted: " + compute);
-    };
-  }
-
-  private static CodeDynamic unsignedDivRem(QExprId loc, NumericKind compute, Op op) {
-    if (compute == NumericKind.UINT) {
-      return staticCall(
-          loc, Integer.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "I", "I", "I");
-    }
-    return staticCall(
-        loc, Long.class, op == Op.DIV ? "divideUnsigned" : "remainderUnsigned", "J", "J", "J");
-  }
-
-  private static int negOpcode(NumericKind compute) {
-    return switch (compute) {
-      case INT, BYTE, SHORT, UINT, UBYTE, USHORT -> Opcodes.INEG;
-      case LONG, ULONG -> Opcodes.LNEG;
-      case FLOAT -> Opcodes.FNEG;
-      case DOUBLE -> Opcodes.DNEG;
     };
   }
 

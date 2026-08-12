@@ -107,17 +107,13 @@ public record Expr(QExprId loc, Variant variant) implements Value {
         private final boolean once;
         private Opt<Value> value;
 
-        private LitValue(Value value, boolean once) {
+        public LitValue(Value value, boolean once) {
             this.value = Opt.some(value);
             this.once = once;
         }
 
         public static LitValue shared(Value v) {
             return new LitValue(v, false);
-        }
-
-        public static LitValue once(Value v) {
-            return new LitValue(v, true);
         }
 
         public Value consume() {

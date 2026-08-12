@@ -17,6 +17,7 @@ import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtFieldRead;
+import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtNewClass;
 import spoon.reflect.declaration.CtConstructor;
@@ -60,6 +61,7 @@ public final class ReachabilityMain {
   private final Set<String> reachable = new HashSet<>();
   private final Map<String, Integer> callCounts = new HashMap<>();
   private final Map<String, Integer> fieldReads = new HashMap<>();
+  private final Map<String, Integer> fieldWrites = new HashMap<>();
   private final Set<String> referencedTypes = new HashSet<>();
 
   public int run(CtModel model) {
@@ -127,6 +129,11 @@ public final class ReachabilityMain {
       for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
         if (fr.getVariable() != null) {
           fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+        }
+      }
+      for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
+        if (fw.getVariable() != null) {
+          fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
         }
       }
     }
@@ -272,7 +279,8 @@ public final class ReachabilityMain {
         boolean concrete = m.getBody() != null;
         boolean inlinable =
             (m.getModifiers().contains(ModifierKind.PRIVATE)
-                    || m.getModifiers().contains(ModifierKind.STATIC))
+                    || (m.getModifiers().contains(ModifierKind.STATIC)
+                            && !m.getModifiers().contains(ModifierKind.PUBLIC)))
                 && !isRoot(ex)
                 && !rooted;
         if (!reachable.contains(k)
@@ -285,13 +293,22 @@ public final class ReachabilityMain {
           deadMethods.add(qn + "#" + sig(ex));
         }
         if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
-          singleUseMethods.add(qn + "#" + sig(ex));
+          var body = m.getBody();
+          if (body != null && body.getPosition().isValidPosition()) {
+            int bodyLines = body.getPosition().getEndLine() - body.getPosition().getLine() + 1;
+            if (bodyLines <= 8) {
+              singleUseMethods.add(qn + "#" + sig(ex));
+            }
+          }
         }
       }
       boolean recordOrEnum = t.isEnum() || (t instanceof spoon.reflect.declaration.CtRecord);
       if (!recordOrEnum) {
         for (CtField<?> f : t.getFields()) {
           if (f.getModifiers().contains(ModifierKind.PRIVATE)
+              && !f.getModifiers().contains(ModifierKind.FINAL)
+              && !f.getModifiers().contains(ModifierKind.VOLATILE)
+              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
               && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
             singleUseFields.add(qn + "#" + f.getSimpleName());
           }

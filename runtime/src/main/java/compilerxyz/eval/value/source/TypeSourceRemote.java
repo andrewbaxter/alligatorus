@@ -23,6 +23,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.Value;
+import compilerxyz.syntax.HashValue;
 import compilerxyz.util.Opt;
 
 @BuiltinPath("source.remote")
@@ -59,7 +60,11 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
     }
     var urlRes = SourceSpecs.constString(xx, loc, elements.get(0), "source.remote url");
     if (urlRes.hasErrors()) return urlRes.reerr();
-    var hashRes = SourceSpecs.hashValue(loc, elements.get(1), "source.remote hash");
+    var hashRes = (elements.get(1) instanceof ValueObjectConst voc_
+        && voc_.type() instanceof TypeHash
+        && voc_.data() instanceof HashValue hv_)
+        ? EResult.ok(hv_)
+        : EResult.<HashValue>err(loc, "source.remote hash: expected a hash value");
     if (hashRes.hasErrors()) return hashRes.reerr();
     var remote =
         new SourceSpecValue.SourceSpecRemote(

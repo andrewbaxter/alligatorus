@@ -401,7 +401,7 @@ public final class DynUtil {
             seq.add(valueCode);
             seq.add(
                 JavaBytecodeUtils.setField(
-                    loc, fieldSrc.klass(), fieldSrc.slotName(), fieldSrc.slotDesc()));
+                    new CodeLoc.Some(loc), fieldSrc.klass(), fieldSrc.slotName(), fieldSrc.slotDesc()));
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
             var setJs = new CodeDynamic(loc, seq);
             yield EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));

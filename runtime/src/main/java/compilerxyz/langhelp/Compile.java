@@ -62,7 +62,10 @@ public final class Compile {
 
     var allErrors = new TList<ExprErr>();
     for (var entryRes : gx.compiles.compilesResults()) {
-      collectErrors(entryRes, allErrors);
+      switch (entryRes.result()) {
+        case CompileResResult.Err err -> allErrors.addAll(err.errors());
+        case CompileResResult.Ok ignored -> {}
+      }
     }
     if (!allErrors.isEmpty()) {
       return Result.err(allErrors);
@@ -70,12 +73,6 @@ public final class Compile {
     return Result.ok(new CompileResult(res.logs(), gx.capturedBytecode));
   }
 
-  private static void collectErrors(CompileRes r, TList<ExprErr> out) {
-    switch (r.result()) {
-      case CompileResResult.Err err -> out.addAll(err.errors());
-      case CompileResResult.Ok ignored -> {}
-    }
-  }
 
   public record CompileResult(TList<LogEntry> logs, TOrderedMap<String, byte[]> bytecode) {}
 }

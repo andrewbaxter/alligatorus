@@ -96,44 +96,24 @@ public class JavaBytecodeUtils {
     return literalIntShortByte(lc(loc), value);
   }
 
-  public static CodeDynamic literalLong(CodeLoc loc, long value) {
-    return wrapObj(loc, new LdcInsnNode(value));
-  }
-
   public static CodeDynamic literalLong(QExprId loc, long value) {
-    return literalLong(lc(loc), value);
-  }
-
-  public static CodeDynamic literalDouble(CodeLoc loc, double value) {
-    return wrapObj(loc, new LdcInsnNode(value));
+    return wrapObj(lc(loc), new LdcInsnNode(value));
   }
 
   public static CodeDynamic literalDouble(QExprId loc, double value) {
-    return literalDouble(lc(loc), value);
-  }
-
-  public static CodeDynamic literalFloat(CodeLoc loc, float value) {
-    return wrapObj(loc, new LdcInsnNode(value));
+    return wrapObj(lc(loc), new LdcInsnNode(value));
   }
 
   public static CodeDynamic literalFloat(QExprId loc, float value) {
-    return literalFloat(lc(loc), value);
-  }
-
-  public static CodeDynamic literalNull(CodeLoc loc) {
-    return inst(loc, ACONST_NULL);
+    return wrapObj(lc(loc), new LdcInsnNode(value));
   }
 
   public static CodeDynamic literalNull(QExprId loc) {
-    return literalNull(lc(loc));
-  }
-
-  public static CodeDynamic literalBool(CodeLoc loc, boolean value) {
-    return inst(loc, value ? ICONST_1 : ICONST_0);
+    return inst(lc(loc), ACONST_NULL);
   }
 
   public static CodeDynamic literalBool(QExprId loc, boolean value) {
-    return literalBool(lc(loc), value);
+    return inst(lc(loc), value ? ICONST_1 : ICONST_0);
   }
 
   // ------------------- fields -------------------
@@ -156,11 +136,6 @@ public class JavaBytecodeUtils {
   public static CodeDynamic setField(
       CodeLoc loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
     return fieldOp(loc, PUTFIELD, klass, field, fieldDesc);
-  }
-
-  public static CodeDynamic setField(
-      QExprId loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
-    return setField(lc(loc), klass, field, fieldDesc);
   }
 
   public static CodeDynamic accessStaticField(
@@ -207,13 +182,8 @@ public class JavaBytecodeUtils {
   }
 
   public static CodeDynamic callInterfaceMethod(
-      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
-    return methodCall(loc, INVOKEINTERFACE, klass, method, methodDesc, true);
-  }
-
-  public static CodeDynamic callInterfaceMethod(
       QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
-    return callInterfaceMethod(lc(loc), klass, method, methodDesc);
+    return methodCall(lc(loc), INVOKEINTERFACE, klass, method, methodDesc, true);
   }
 
   public static CodeDynamic callMethod(
@@ -257,7 +227,7 @@ public class JavaBytecodeUtils {
       for (var p : method1.getParameters()) args.add(JavaDataDescriptor.fromClass(p.getType()));
       return callStaticMethod(
           lc(loc),
-          internalNameFromClass(klass),
+          qualifiedNameFromClass(klass).asInternalName(),
           method,
           JavaMethodDescriptor.fromParts(ret, args));
     }
@@ -278,12 +248,8 @@ public class JavaBytecodeUtils {
     return newInstance(lc(loc), klass);
   }
 
-  public static CodeDynamic instanceOf(CodeLoc loc, JavaInternalName klass) {
-    return typeInsn(loc, INSTANCEOF, klass);
-  }
-
   public static CodeDynamic instanceOf(QExprId loc, JavaInternalName klass) {
-    return instanceOf(lc(loc), klass);
+    return typeInsn(lc(loc), INSTANCEOF, klass);
   }
 
   public static CodeDynamic cast(CodeLoc loc, JavaDataDescriptor toClass) {
@@ -301,24 +267,17 @@ public class JavaBytecodeUtils {
   // ------------------- composite builders -------------------
 
   public static CodeDynamic instantiate(
-      CodeLoc loc,
-      JavaInternalName klass,
-      JavaMethodDescriptor desc,
-      CodeDynamic arguments) {
-    var code = new JavaBytecodeSequence();
-    code.add(newInstance(loc, klass));
-    code.add(new CodeDynamic(loc, JBC_DUP));
-    code.add(arguments);
-    code.add(callConstructor(loc, klass, desc));
-    return new CodeDynamic(loc, code);
-  }
-
-  public static CodeDynamic instantiate(
       QExprId loc,
       JavaInternalName klass,
       JavaMethodDescriptor desc,
       CodeDynamic arguments) {
-    return instantiate(lc(loc), klass, desc, arguments);
+    var lc = lc(loc);
+    var code = new JavaBytecodeSequence();
+    code.add(newInstance(lc, klass));
+    code.add(new CodeDynamic(lc, JBC_DUP));
+    code.add(arguments);
+    code.add(callConstructor(lc, klass, desc));
+    return new CodeDynamic(lc, code);
   }
 
   public static CodeDynamic buildObjectArray(CodeLoc loc, TList<CodeDynamic> elements) {
@@ -493,10 +452,6 @@ public class JavaBytecodeUtils {
     }
     java.util.Collections.reverse(value);
     return new JavaQualifiedName(value);
-  }
-
-  public static JavaInternalName internalNameFromClass(Class<?> klass) {
-    return qualifiedNameFromClass(klass).asInternalName();
   }
 
   public static JavaBytecodeSequence seq() {

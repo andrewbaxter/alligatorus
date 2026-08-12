@@ -35,10 +35,6 @@ import org.objectweb.asm.tree.LineNumberNode;
 public class JavaBytecodeSequence implements JavaBytecode {
   public TList<CodeDynamic> children = new TList<>();
 
-    private void walk(Function<CodeDynamic, Iterator<CodeDynamic>> handler) {
-        walkFrom(this.children.iterator(), handler);
-    }
-
     private static void walkFrom(
             Iterator<CodeDynamic> root, Function<CodeDynamic, Iterator<CodeDynamic>> handler) {
         var stack = new ArrayDeque<Iterator<CodeDynamic>>();
@@ -190,7 +186,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                         });
                     };
             flattenStepRef[0] = flattenStep;
-            walk(flattenStep);
+            walkFrom(this.children.iterator(), flattenStep);
             if (!destStack.isEmpty() || runDest[0] != null) {
                 throw new AssertionError("unbalanced exception-dest guard at end of method body");
             }

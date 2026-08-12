@@ -16,7 +16,6 @@ import compilerxyz.gen.GenAspectListConst;
 import compilerxyz.gen.GenAspectNumericConst;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.Value;
-import compilerxyz.syntax.HashValue;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -25,10 +24,6 @@ public final class SourceSpecs {
 
   public static Value spec(SourceSpecValue value) {
     return new ValueObjectConst(new TypeSourceSpec(), value);
-  }
-
-  public static Value hash(HashValue value) {
-    return new ValueObjectConst(new TypeHash(), value);
   }
 
   public static EResult<Value> argValue(QExprId loc, CodeValue argument, String context) {
@@ -72,15 +67,6 @@ public final class SourceSpecs {
       out.add(some.value());
     }
     return EResult.ok(out);
-  }
-
-  public static EResult<HashValue> hashValue(QExprId loc, Value value, String context) {
-    if (value instanceof ValueObjectConst voc
-        && voc.type() instanceof TypeHash
-        && voc.data() instanceof HashValue hv) {
-      return EResult.ok(hv);
-    }
-    return EResult.err(loc, context + ": expected a hash value");
   }
 
   public static EResult<byte[]> constBytes(

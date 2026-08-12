@@ -137,7 +137,7 @@ public final class SourceObjectEmitter {
   private static final JavaMethodDescriptor MDESC_OBJECT_INIT =
       JavaMethodDescriptor.VOID_NOARGS;
   private static final JavaMethodDescriptor MDESC_CTOR_OBJECT =
-      JavaMethodDescriptor.fromConstructorParts(JvmConstants.DESC_OBJECT);
+      JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(JvmConstants.DESC_OBJECT));
   private static final JavaMethodDescriptor MDESC_HASHMAP_INIT =
       JavaMethodDescriptor.VOID_NOARGS;
   private static final JavaMethodDescriptor MDESC_HASHMAP_PUT =
@@ -775,7 +775,8 @@ public final class SourceObjectEmitter {
     }
     JavaDataDescriptor retDesc;
     if (ifaceMethod.hostMethodDescriptor.optIsSome()) {
-      retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor.optUnwrap());
+      var hmd = ifaceMethod.hostMethodDescriptor.optUnwrap();
+      retDesc = JavaDataDescriptor.create(hmd.value().substring(hmd.value().indexOf(')') + 1));
     } else if (ifaceMethod.retType.optIsSome()) {
       if (!(ifaceMethod.retType.optUnwrap() instanceof AspectConsumeDynamic retConsume)) {
         throw new IllegalStateException(
@@ -788,10 +789,5 @@ public final class SourceObjectEmitter {
     return JavaMethodDescriptor.fromParts(retDesc, jvmParamDescs);
   }
 
-  private static JavaDataDescriptor returnDescOf(JavaMethodDescriptor md) {
-    var s = md.value();
-    var raw = s.substring(s.indexOf(')') + 1);
-    return JavaDataDescriptor.create(raw);
-  }
-
 }
+

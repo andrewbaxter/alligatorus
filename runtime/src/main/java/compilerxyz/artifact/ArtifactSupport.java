@@ -181,7 +181,7 @@ public final class ArtifactSupport {
       depRes.drainInto(errors);
     }
     triple.finalizer().finalizerRun(xx, loc);
-    return errors.isEmpty() ? EResult.ok(triple.value()) : drainOk(triple.value(), errors);
+    return errors.isEmpty() ? EResult.ok(triple.value()) : EResult.mixed(triple.value(), errors);
   }
 
   public static EResult<ExporterAny> independentFinalizeImportArtifact(
@@ -279,10 +279,6 @@ public final class ArtifactSupport {
 
   private static <T> EResult<T> errsOrEmpty(TList<ExprErr> errors) {
     return EResult.errs(errors);
-  }
-
-  private static <T> EResult<T> drainOk(T value, TList<ExprErr> errors) {
-    return EResult.mixed(value, errors);
   }
 
   public static final class ArtifactIdHolder {

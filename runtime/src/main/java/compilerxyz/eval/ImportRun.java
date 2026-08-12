@@ -257,7 +257,9 @@ public final class ImportRun {
                 yield Result.err(
                     "relative import is only allowed from a bundle, not a single remote file");
               }
-              var resolved = posixResolve(posixDir(cr.subpath()), l.path());
+              var subpath = cr.subpath();
+              var slashIdx = subpath.lastIndexOf('/');
+              var resolved = posixResolve(slashIdx < 0 ? "" : subpath.substring(0, slashIdx), l.path());
               Result.Ok<String, String> resolvedOk;
               switch (resolved) {
                 case Result.Ok<String, String> ok -> resolvedOk = ok;
@@ -271,11 +273,6 @@ public final class ImportRun {
             }
           };
     };
-  }
-
-  private static String posixDir(String file) {
-    var i = file.lastIndexOf('/');
-    return i < 0 ? "" : file.substring(0, i);
   }
 
   static Result<String, String> posixResolve(String baseDir, String rel) {

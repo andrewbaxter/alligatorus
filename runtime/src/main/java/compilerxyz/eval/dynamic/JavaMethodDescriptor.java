@@ -31,10 +31,6 @@ public class JavaMethodDescriptor {
     return fromParts(returnDescriptor, TList.of(argDescriptors));
   }
 
-  public static JavaMethodDescriptor fromConstructorParts(JavaDataDescriptor... argDescriptors) {
-    return fromParts(JavaDataDescriptor.DESC_VOID, TList.of(argDescriptors));
-  }
-
   public TList<JavaDataDescriptor> parameterDescriptors() {
     var out = new TList<JavaDataDescriptor>();
     if (value.isEmpty() || value.charAt(0) != '(') {

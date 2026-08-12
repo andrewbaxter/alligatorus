@@ -238,7 +238,7 @@ public final class CompositeClassEmitter {
       seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
       seq.add(JavaBytecodeUtils.varInsn(loc, loadOp, localSlot));
       seq.add(JavaBytecodeUtils.setField(loc, ownName, slotFieldName(i), desc));
-      localSlot += slotSizeFor(desc);
+      localSlot += desc.value().isEmpty() ? 1 : switch (desc.value().charAt(0)) { case 'D', 'J' -> 2; default -> 1; };
     }
     seq.add(JavaBytecodeUtils.inst(loc, Opcodes.RETURN));
     JavaBytecodeUtils.renderMethod(seq, ctor, TList.of());
@@ -259,13 +259,5 @@ public final class CompositeClassEmitter {
     };
   }
 
-  private static int slotSizeFor(JavaDataDescriptor desc) {
-    var v = desc.value();
-    if (v.isEmpty()) return 1;
-    return switch (v.charAt(0)) {
-      case 'D', 'J' -> 2;
-      default -> 1;
-    };
-  }
-
 }
+

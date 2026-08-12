@@ -61,7 +61,7 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
     return EResult.ok(
         new CodeValue(
             Code.concat(loc, self.code(), argument.code()),
-            EvalOutcome.ofValue(SourceSpecs.hash(new HashValue.Sha256(bytes)))));
+            EvalOutcome.ofValue(new ValueObjectConst(new TypeHash(), new HashValue.Sha256(bytes)))));
   }
 
   @Override
