@@ -18,7 +18,6 @@ import compilerxyz.codegen.CodecsGen.TypeInfo;
 import compilerxyz.codegen.CodecsGen.TypeKind;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedSet;
-import compilerxyz.util.TSet;
 import java.io.IOException;
 import javax.lang.model.element.Modifier;
 
@@ -670,7 +669,9 @@ final class CodecEmitter {
   }
 
   private static TList<Component> sortedBySnake(TList<Component> cs) {
-    return cs.sortedBy((a, b) -> toSnakeCase(a.name).compareTo(toSnakeCase(b.name)));
+    var out = TList.from(cs);
+    out.sort((a, b) -> toSnakeCase(a.name).compareTo(toSnakeCase(b.name)));
+    return out;
   }
 
   static String emitCodecs(TList<String> emitted) {

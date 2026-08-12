@@ -39,7 +39,9 @@ public final class CodegenDescriptorGen {
                     .addModifiers(Modifier.PRIVATE)
                     .build());
 
-    for (var e : entries.sortedBy((a, b) -> a.constantName().compareTo(b.constantName()))) {
+    var sortedEntries = TList.from(entries);
+    sortedEntries.sort((a, b) -> a.constantName().compareTo(b.constantName()));
+    for (var e : sortedEntries) {
       var descArgs = CodeBlock.builder();
       descArgs.add("$T.fromClass($T.class)", DATA_DESCRIPTOR, e.returnType());
       for (var p : e.paramTypes()) {

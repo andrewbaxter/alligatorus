@@ -175,7 +175,7 @@ public final class TypeListDynamic
   }
 
   private TMap<ConstKey, FieldSpec> fieldSpecs(ExprContext xx) {
-    var m = TMap.<ConstKey, FieldSpec>of();
+    var m = new TMap<ConstKey, FieldSpec>();
     m.put(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeListNewDynamic(elementType)));
     m.put(new ConstKey.Str("push"), new FieldSpec.Method(new TypeListPushDynamic(elementType)));
     if (GenAspectStringDynamic.getMaybe(xx, elementType).optIsSome()) {

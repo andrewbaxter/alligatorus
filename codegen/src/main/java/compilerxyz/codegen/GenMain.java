@@ -76,7 +76,7 @@ public final class GenMain {
     PushStructsGen.run(
         outRoot,
         formatter,
-        PushStructsGen.specs(new TList<>()),
+        PushStructsGen.specs(),
         scannedPushStructs);
     BuiltinTreeGen.run(outRoot, formatter, scopeIds);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);

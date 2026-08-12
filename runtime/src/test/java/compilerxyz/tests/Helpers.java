@@ -104,7 +104,9 @@ public final class Helpers {
 
   @SafeVarargs
   public static JsonValueObject jsonObj(Pair<String, JsonValue>... entries) {
-    return new JsonValueObject(TOrderedMap.ofEntries(entries));
+    var m = new TOrderedMap<String, JsonValue>(entries.length);
+    for (var e : entries) m.put(e.first(), e.second());
+    return new JsonValueObject(m);
   }
 
   public static JsonValueArray jsonArr(JsonValue... elements) {

@@ -15,7 +15,7 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
-import compilerxyz.util.TSet;
+import java.util.Set;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,8 +28,8 @@ public final class CodecsGen {
 
   static final String GEN_PACKAGE = "compilerxyz.gen.codec";
 
-  private static final TSet<String> HAND_CODED =
-      TSet.of(
+  private static final Set<String> HAND_CODED =
+      Set.of(
           "compilerxyz.safejson.JsonValue",
           "compilerxyz.artifact.Artifact",
           "compilerxyz.artifact.ArtifactBody",
@@ -53,7 +53,8 @@ public final class CodecsGen {
         roots.add(entry.getKey());
       }
     }
-    var sortedRoots = roots.sortedBy(String::compareTo);
+    var sortedRoots = TList.from(roots);
+    sortedRoots.sort(String::compareTo);
 
     var closure = new TOrderedSet<String>();
     for (var root : sortedRoots) {
@@ -440,7 +441,7 @@ public final class CodecsGen {
         }
       }
 
-      if (TSet.of(
+      if (Set.of(
               "String",
               "Integer",
               "Long",

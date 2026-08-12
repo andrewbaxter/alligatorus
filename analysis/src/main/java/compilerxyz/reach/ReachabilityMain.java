@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
@@ -55,7 +56,15 @@ public final class ReachabilityMain {
   private final Set<String> referencedTypes = new HashSet<>();
 
   public int run(CtModel model) {
-    List<CtType<?>> types = new ArrayList<>(model.getAllTypes());
+    // Exclude codegen: it uses external library types (JavaPoet, JavaParser, Palantir) that
+    // noClasspath mode cannot resolve, producing systematic false positives in the call graph.
+    // Convention checks still run on codegen via ConventionChecks; reachability focuses on runtime.
+    List<CtType<?>> types = model.getAllTypes().stream()
+        .filter(t -> {
+          String qn = t.getQualifiedName();
+          return qn != null && !qn.startsWith("compilerxyz.codegen.");
+        })
+        .collect(Collectors.toCollection(ArrayList::new));
     // Index all executables.
     for (CtType<?> t : types) {
       for (CtExecutable<?> ex : executablesOf(t)) {
@@ -83,10 +92,10 @@ public final class ReachabilityMain {
       if (ex == null) continue;
       addReferencedTypesOf(ex);
       for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
-        onCall(inv.getExecutable(), work);
+        onCall(inv.getExecutable(), inv.getArguments().size(), work);
       }
       for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-        onCall(cc.getExecutable(), work);
+        onCall(cc.getExecutable(), cc.getArguments().size(), work);
       }
       for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
         if (fr.getVariable() != null) {
@@ -97,21 +106,47 @@ public final class ReachabilityMain {
     return report(types);
   }
 
-  private void onCall(CtExecutableReference<?> ref, Deque<String> work) {
+  private void onCall(CtExecutableReference<?> ref, int actualArity, Deque<String> work) {
     if (ref == null) return;
     CtExecutable<?> decl = ref.getExecutableDeclaration();
     if (decl != null) {
       String dk = key(decl);
       callCounts.merge(dk, 1, Integer::sum);
+      // Mark the directly-resolved declaration reachable; this handles generic/varargs calls where
+      // the arity-based fallback below may compute the wrong arity from the reference.
+      if (reachable.add(dk)) work.add(dk);
     }
-    // Reach the static target plus all same-name/arity overriders that are subtypes of the
-    // reference's declaring type (class-hierarchy analysis).
+    // Reach all same-name/arity overriders that are subtypes of the reference's declaring type
+    // (class-hierarchy analysis). Use the actual argument count from the call site since
+    // ref.getParameters() may return 0 when noClasspath can't resolve generic/lambda types.
     CtTypeReference<?> refDecl = ref.getDeclaringType();
-    for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), ref.getParameters().size()), List.of())) {
-      CtExecutable<?> cex = execByKey.get(cand);
-      if (cex == null) continue;
-      if (refDecl == null || isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
-        if (reachable.add(cand)) work.add(cand);
+    int refArity = ref.getParameters().size();
+    // Prefer the actual call-site arity; fall back to the reference arity when they differ.
+    // Also try varargs methods (1 varargs param handles any call arity).
+    Set<Integer> arities = new java.util.LinkedHashSet<>();
+    arities.add(actualArity);
+    if (refArity != actualArity) arities.add(refArity);
+    for (int arity : arities) {
+      for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
+        CtExecutable<?> cex = execByKey.get(cand);
+        if (cex == null) continue;
+        if (refDecl == null || isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+          if (reachable.add(cand)) work.add(cand);
+        }
+      }
+    }
+    // Also check varargs methods with 1 parameter when the call has != 1 argument.
+    if (actualArity != 1) {
+      for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), 1), List.of())) {
+        CtExecutable<?> cex = execByKey.get(cand);
+        if (cex == null) continue;
+        boolean isVarargs =
+            !cex.getParameters().isEmpty()
+                && cex.getParameters().get(cex.getParameters().size() - 1).isVarArgs();
+        if (!isVarargs) continue;
+        if (refDecl == null || isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+          if (reachable.add(cand)) work.add(cand);
+        }
       }
     }
   }
@@ -127,7 +162,11 @@ public final class ReachabilityMain {
       CtTypeReference<?> ct = tm.getDeclaringType().getReference();
       return ct.isSubtypeOf(superRef);
     } catch (RuntimeException e) {
-      return false;
+      // noClasspath resolution failure: fall back to simple-name match so calls to types that
+      // extend JDK classes (e.g. TMap extends AbstractMap) are not falsely unreachable.
+      String dn = tm.getDeclaringType().getSimpleName();
+      String sn = superRef.getSimpleName();
+      return dn != null && sn != null && dn.equals(sn);
     }
   }
 

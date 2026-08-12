@@ -1,0 +1,58 @@
+# Static analysis
+
+All static analysis lives in the `analysis/` module and runs on **Spoon** (a whole-program,
+source-level model). There is no Error Prone / per-file compiler plugin — one Spoon model is built
+and both the convention checks and the reachability analysis run against it.
+
+## Running it
+
+It runs automatically in the `verify` phase (so `mvn verify` / `mvn install` include it), and can be
+run on demand:
+
+```sh
+mvn -q -pl analysis exec:java
+```
+
+It builds the model over all sources (`util`, `codegen`, `runtime` main + test + generated) and writes:
+
+- `analysis/target/conventions-report.txt` — per-location convention findings (summary printed to stdout).
+- `analysis/target/reachability-report.txt` — dead code (#1) and single-use (#2).
+
+`mvn compile` / `mvn test` do **not** run it (it's bound to `verify`), so the inner dev loop is fast;
+the whole-program pass runs on full builds.
+
+## 1. Convention checks (`ConventionChecks`)
+
+The CLAUDE.md conventions, as Spoon checks over the source model (generated `compilerxyz.gen.*` code
+is excluded via source-root origin):
+
+| Check | Convention |
+|-------|-----------|
+| `InterfaceMethodNamePrefix` | Interface methods are prefixed with the lowerCamelCase interface name (`Value.valueType()`). |
+| `NoInstanceofOnSealed` | Discriminate a sealed type with an exhaustive `switch`, not `instanceof`. |
+| `NoNullableType` | No `@Nullable`; model optional values with `Opt<T>`. |
+| `AvoidJdkOptional` | Use `Opt` instead of an explicitly-written `java.util.Optional`. |
+| `UnnecessaryFullyQualifiedName` | Import types and use simple names (unless ambiguous). |
+
+To add a check: add a method to `ConventionChecks.run(CtModel)` that emits `Finding`s.
+
+## 2. Reachability + single-use (`ReachabilityMain`)
+
+Class-hierarchy reachability over the same Spoon model. Roots are `main` methods, JUnit tests,
+`@Builtin*`-annotated types, and `@CodegenDescriptor`-annotated methods. Because it is source-level,
+generics are not erased, constant references are visible, and implemented interfaces are in the model.
+
+Reports unreachable classes/methods (#1) and single-use private/static methods and private fields (#2).
+
+The two dynamic-dispatch patterns that used to cause false positives are now static and traceable:
+
+- **Emitted-into-target calls** — helpers the compiler emits (e.g. `NumericFormat.formatInt`) are
+  marked `@CodegenDescriptor`; codegen generates `compilerxyz.gen.GenCodegenDescriptors`
+  (`JavaStaticMethodRef`) constants that emit sites reference by name. The annotation roots the method;
+  an unused generated constant is flagged as dead.
+- **JSON dispatch** — no runtime `Class → Codec` registry or reflection; `CodecsGen` emits a static
+  `compilerxyz.gen.codec.Codecs.lookup` (class-literal dispatch) that `Json` calls directly.
+
+**Caveat:** `Class.forName(binaryName)` on *computed* names (the compiler loading its own emitted
+target classes) is opaque to the analysis, but those load the compiled program's output, not project
+code, so they don't produce false positives. Findings are candidates to review.

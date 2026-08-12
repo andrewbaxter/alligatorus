@@ -17,10 +17,6 @@ public final class TMap<K, V> extends AbstractMap<K, V> {
     this.backing = new HashMap<>(initialCapacity);
   }
 
-  public static <K, V> TMap<K, V> of() {
-    return new TMap<>();
-  }
-
   @SafeVarargs
   public static <K, V> TMap<K, V> ofEntries(Pair<K, V>... entries) {
     var out = new TMap<K, V>(entries.length);
@@ -34,24 +30,12 @@ public final class TMap<K, V> extends AbstractMap<K, V> {
     return Opt.some(v);
   }
 
+  public V computeIfAbsentT(K key, Function<K, V> f) {
+    return backing.computeIfAbsent(key, f);
+  }
+
   public V getOrNull(K key) {
     return backing.get(key);
-  }
-
-  public V computeIfAbsentT(K key, Function<K, V> mapper) {
-    var existing = backing.get(key);
-    if (existing != null) return existing;
-    var value = mapper.apply(key);
-    backing.put(key, value);
-    return value;
-  }
-
-  public TSet<K> keysT() {
-    return TSet.from(backing.keySet());
-  }
-
-  public TList<V> valuesT() {
-    return TList.from(backing.values());
   }
 
   @Override

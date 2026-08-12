@@ -10,13 +10,13 @@ import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.codegen.util.InterfaceSpec;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.PushMethod;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
+import java.util.Set;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
@@ -724,8 +724,8 @@ public final class PushStructsGen {
     return t;
   }
 
-  private static final TSet<String> INSTANCE_METHOD_STRUCTS =
-      TSet.of(
+  private static final Set<String> INSTANCE_METHOD_STRUCTS =
+      Set.of(
           "DefinitionSetBuilder",
           "SourceFuncResult",
           "SourceInterfaceMethodResult",
@@ -739,8 +739,8 @@ public final class PushStructsGen {
    * generating the {@code .java} for these but still emits their GenObjectTypes registry entry
    * from the PushStructSpec.
    */
-  private static final TSet<String> HANDWRITTEN_STRUCTS =
-      TSet.of(
+  private static final Set<String> HANDWRITTEN_STRUCTS =
+      Set.of(
           "DefinitionSetBuilder",
           "SourceFuncResult",
           "SourceInterfaceMethodResult",
@@ -899,10 +899,6 @@ public final class PushStructsGen {
   }
 
   public static TList<PushStructSpec> specs() {
-    return specs(TList.of());
-  }
-
-  public static TList<PushStructSpec> specs(TList<InterfaceSpec> traitSpecs) {
     return TList.of();
   }
 

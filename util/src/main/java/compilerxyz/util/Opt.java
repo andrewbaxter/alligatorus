@@ -2,7 +2,6 @@ package compilerxyz.util;
 
 import java.util.NoSuchElementException;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public sealed interface Opt<T> {
   record Some<T>(T value) implements Opt<T> {}
@@ -52,13 +51,6 @@ public sealed interface Opt<T> {
     };
   }
 
-  default T optUnwrapOrElse(Supplier<T> fallback) {
-    return switch (this) {
-      case Some<T> s -> s.value();
-      case None<T> n -> fallback.get();
-    };
-  }
-
   default <U> Opt<U> optMap(Function<T, U> f) {
     return switch (this) {
       case Some<T> s -> Opt.some(f.apply(s.value()));
@@ -66,10 +58,4 @@ public sealed interface Opt<T> {
     };
   }
 
-  default <U> Opt<U> optAndThen(Function<T, Opt<U>> f) {
-    return switch (this) {
-      case Some<T> s -> f.apply(s.value());
-      case None<T> n -> Opt.none();
-    };
-  }
 }
