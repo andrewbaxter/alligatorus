@@ -279,8 +279,7 @@ public final class ReachabilityMain {
         boolean concrete = m.getBody() != null;
         boolean inlinable =
             (m.getModifiers().contains(ModifierKind.PRIVATE)
-                    || (m.getModifiers().contains(ModifierKind.STATIC)
-                            && !m.getModifiers().contains(ModifierKind.PUBLIC)))
+                    || m.getModifiers().contains(ModifierKind.STATIC))
                 && !isRoot(ex)
                 && !rooted;
         if (!reachable.contains(k)

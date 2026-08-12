@@ -44,8 +44,8 @@ final class CodecEmitter {
   private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
-  private static final ClassName MANUAL_CODECS =
-      ClassName.get("compilerxyz.safejson", "ManualCodecs");
+  private static final ClassName ARTIFACT_CODECS =
+      ClassName.get("compilerxyz.artifact", "ArtifactCodecs");
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
     for (var c : info.components) {
       resolveType(c.type, ctxQname, index);
@@ -693,7 +693,7 @@ final class CodecEmitter {
           "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
           q, OPT, codecOfT, codecRef(q));
     }
-    lookup.addStatement("return $T.lookup(clazz)", MANUAL_CODECS);
+    lookup.addStatement("return $T.lookup(clazz)", ARTIFACT_CODECS);
 
     var cls =
         TypeSpec.classBuilder("Codecs")

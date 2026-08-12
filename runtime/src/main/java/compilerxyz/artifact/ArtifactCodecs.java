@@ -19,8 +19,21 @@ import compilerxyz.eval.SourceId;
 public final class ArtifactCodecs {
   private ArtifactCodecs() {}
 
+  private static final Codec<JsonValue> JSON_VALUE = new Codec<>() {
+    @Override
+    public void codecEncode(JsonWriter writer, JsonValue value, Style style) throws IOException {
+      JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value, style);
+    }
+
+    @Override
+    public JsonValue codecDecode(JsonReader reader, FieldPath path) throws IOException {
+      return JsonValue.safeJsonAdapter.safeJsonAdapterDeserialize(reader, path);
+    }
+  };
+
   @SuppressWarnings("unchecked")
   public static <T> Opt<Codec<T>> lookup(Class<T> clazz) {
+    if (clazz == JsonValue.class) return Opt.some((Codec<T>) (Codec<?>) JSON_VALUE);
     if (clazz == Artifact.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE);
     if (clazz == Artifact.Body.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_BODY);
     if (clazz == Artifact.Ref.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_REF);
