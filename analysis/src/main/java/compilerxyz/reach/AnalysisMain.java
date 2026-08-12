@@ -14,9 +14,9 @@ import spoon.Launcher;
 import spoon.reflect.CtModel;
 
 /**
- * Single entry point for all Spoon-based static analysis: builds the whole-program source model
- * once, then runs the convention checks (warnings) and the reachability / single-use analysis
- * (report file). Replaces the former Error Prone checkers.
+ * Single entry point for all Spoon-based static analysis. All lints are fatal: every finding from
+ * every linter is summed into a single total and the build fails if that total is nonzero. To add
+ * a new linter, run it and add its finding count to {@code total} — it is then automatically fatal.
  */
 public final class AnalysisMain {
   private AnalysisMain() {}
@@ -46,16 +46,15 @@ public final class AnalysisMain {
     launcher.buildModel();
     CtModel model = launcher.getModel();
 
-    var findings = new ConventionChecks(generatedFiles).run(model);
-    printConventions(findings);
-    new ReachabilityMain().run(model);
+    var conventionFindings = new ConventionChecks(generatedFiles).run(model);
+    printConventions(conventionFindings);
+    int reachabilityFindings = new ReachabilityMain().run(model);
 
-    // Convention violations fail the build. (Reachability stays a report — its findings are
-    // review candidates, not hard errors.)
-    if (!findings.isEmpty()) {
+    int total = conventionFindings.size() + reachabilityFindings;
+    if (total > 0) {
       throw new IllegalStateException(
-          findings.size()
-              + " convention violations — see analysis/target/conventions-report.txt");
+          total + " lint violations — see analysis/target/conventions-report.txt"
+              + " and analysis/target/reachability-report.txt");
     }
   }
 

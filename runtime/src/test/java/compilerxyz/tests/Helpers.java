@@ -86,7 +86,7 @@ public final class Helpers {
                 case JsonValueBoolean ignored -> v;
                 case JsonValueArray ignored -> jsonRedacted(v);
                 case JsonValueObject inner ->
-                    k.equals("key") && inner.entries().getOrNull("id") != null
+                    k.equals("artifact_external_key") && inner.entries().getOrNull("id") != null
                         ? jsonObj(jsonField("id", jsonStr("KEY")))
                         : jsonRedacted(v);
               };

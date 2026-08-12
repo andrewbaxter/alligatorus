@@ -29,11 +29,13 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 /**
- * Whole-program dead-code (#1) and single-use (#2) analysis over the source model (Spoon). Because
- * this is source-level, generics are not erased, references to compile-time constants are visible,
- * and implemented interfaces are in the model — so classes used only those ways are not false
- * positives. Roots are main methods, JUnit tests, and {@code @Builtin*}/{@code @CodegenDescriptor}
- * members (dynamically dispatched or emitted-into-target entrypoints).
+ * Whole-program dead-code (#1) and single-use (#2) analysis over the source model (Spoon). Returns
+ * the total finding count; AnalysisMain adds it to the combined total and fails the build if
+ * nonzero. Because this is source-level, generics are not erased, references to compile-time
+ * constants are visible, and implemented interfaces are in the model — so classes used only those
+ * ways are not false positives. Roots are main methods, JUnit tests, and
+ * {@code @Builtin*}/{@code @CodegenDescriptor} members (dynamically dispatched or
+ * emitted-into-target entrypoints).
  */
 public final class ReachabilityMain {
 
@@ -92,7 +94,7 @@ public final class ReachabilityMain {
         }
       }
     }
-    report(types);
+    return report(types);
   }
 
   private void onCall(CtExecutableReference<?> ref, Deque<String> work) {
@@ -146,7 +148,7 @@ public final class ReachabilityMain {
 
   // ---- reporting ----
 
-  private void report(List<CtType<?>> types) {
+  private int report(List<CtType<?>> types) {
     // A live type (has a reachable method or is a builtin root) keeps every type it names —
     // superclass, implemented (marker) interfaces, field types — alive as a referenced type.
     for (CtType<?> t : types) {
@@ -221,6 +223,7 @@ public final class ReachabilityMain {
     section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
     section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
     section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
+    int total = deadClasses.size() + deadMethods.size() + singleUseMethods.size() + singleUseFields.size();
     line(
         out,
         String.format(
@@ -236,6 +239,7 @@ public final class ReachabilityMain {
     } catch (IOException e) {
       // best-effort
     }
+    return total;
   }
 
   private boolean overridesExternal(CtMethod<?> m) {

@@ -156,7 +156,7 @@ public final class SourceDataMethodData {
       }
     }
     var methodXx =
-        new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, null);
+        new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none());
 
     var implResult = ConstEval.constEval(methodXx, implExprAst);
     if (implResult.hasErrors()) {

@@ -164,7 +164,19 @@ public record TypeEResultDynamic(Type elementType)
               "errorsOrNull",
               compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
                   JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.fromClass(compilerxyz.util.TList.class)))));
+                      JavaInternalName.fromClass(compilerxyz.util.Opt.class)))));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.callInterfaceMethod(
+              loc,
+              JavaInternalName.fromClass(compilerxyz.util.Opt.class),
+              "optUnwrap",
+              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+                  JavaDataDescriptor.fromClass(Object.class))));
+      seq.add(
+          compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+              loc,
+              JavaDataDescriptor.fromInternalName(
+                  JavaInternalName.fromClass(compilerxyz.util.TList.class))));
     }
     return EResult.ok(new CodeDynamic(loc, seq));
   }

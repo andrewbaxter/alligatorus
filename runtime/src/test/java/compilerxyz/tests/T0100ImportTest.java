@@ -273,7 +273,7 @@ public final class T0100ImportTest {
         jsonObj(
             jsonField("def_set", artifactRef(1)),
             jsonField("def_set_id", defSetIdJson()),
-            jsonField("name", jsonStr("upper")),
+            jsonField("name", jsonObj(jsonField("some", jsonStr("upper")))),
             jsonField(
                 "identity",
                 jsonObj(
@@ -295,8 +295,8 @@ public final class T0100ImportTest {
                         jsonField("name", jsonStr("to_string")),
                         jsonField("arg_type", typeArtifact("null_dynamic")),
                         jsonField("ret_type", typeArtifact("string_dynamic")),
-                        jsonField("compiled_class_name", jsonNull()),
-                        jsonField("compiled_bytecode", jsonNull()),
+                        jsonField("compiled_class_name", jsonObj(jsonField("none", jsonNull()))),
+                        jsonField("compiled_bytecode", jsonObj(jsonField("none", jsonNull()))),
                         jsonField("captured_externals", jsonArr())))),
             jsonField(
                 "interface_impls",
@@ -316,7 +316,7 @@ public final class T0100ImportTest {
                         methodImpl(1),
                         methodImpl(2)),
                     interfaceImpl("aspect_lift"))),
-            jsonField("compiled_binary_name", jsonStr("SourceObject$0_0_0_0")),
+            jsonField("compiled_binary_name", jsonObj(jsonField("some", jsonStr("SourceObject$0_0_0_0")))),
             jsonField("compiled_bytecode", jsonStr("BYTECODE"))),
         Helpers.jsonRedacted(objArt.data()));
     var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");
@@ -379,16 +379,16 @@ public final class T0100ImportTest {
         jsonField(
             "type",
             jsonObj(
-                jsonField("key", jsonObj(jsonField("id", jsonStr("KEY")))),
+                jsonField("artifact_external_key", jsonObj(jsonField("id", jsonStr("KEY")))),
                 jsonField("type_artifact", typeArtifact("string_dynamic")))));
   }
 
   private static JsonValue externalUnique(long builtinId) {
     return jsonObj(
         jsonField(
-            "unique",
+            "unique_ref",
             jsonObj(
-                jsonField("key", jsonObj(jsonField("id", jsonStr("KEY")))),
+                jsonField("artifact_external_key", jsonObj(jsonField("id", jsonStr("KEY")))),
                 jsonField(
                     "unique",
                     jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(builtinId)))))))));
@@ -397,15 +397,15 @@ public final class T0100ImportTest {
   private static JsonValue methodImpl(long index, JsonValue... externals) {
     return jsonObj(
         jsonField("interface_method_index", jsonNum(index)),
-        jsonField("compiled_class_name", jsonNull()),
-        jsonField("compiled_bytecode", jsonNull()),
+        jsonField("compiled_class_name", jsonObj(jsonField("none", jsonNull()))),
+        jsonField("compiled_bytecode", jsonObj(jsonField("none", jsonNull()))),
         jsonField("captured_externals", jsonArr(externals)));
   }
 
   private static JsonValue interfaceImpl(String kind, JsonValue... methodImpls) {
     return jsonObj(
-        jsonField("builtin_kind", jsonStr(kind)),
-        jsonField("user_iface", jsonNull()),
+        jsonField("builtin_kind", jsonObj(jsonField("some", jsonStr(kind)))),
+        jsonField("user_iface", jsonObj(jsonField("none", jsonNull()))),
         jsonField("method_impls", jsonArr(methodImpls)));
   }
 

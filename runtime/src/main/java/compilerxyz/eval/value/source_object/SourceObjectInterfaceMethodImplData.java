@@ -208,7 +208,7 @@ public final class SourceObjectInterfaceMethodImplData {
       }
     }
     compiledArgParamTypes = Opt.some(paramTypes);
-    var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, null);
+    var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, Opt.none());
 
     var implResult = ConstEval.constEval(methodXx, implExprAst);
     if (implResult.hasErrors()) {
