@@ -17,7 +17,7 @@ public class JavaBytecodeStoreLoad implements JavaBytecode {
   }
 
   @Override
-  public <T> T dispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.handleStoreLoad(this);
+  public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleStoreLoad(this);
   }
 }

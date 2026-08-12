@@ -44,7 +44,7 @@ public final class T0125RecordCastTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?,?> o -> true; case Result.Err<?,?> e -> false; }, () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(2, ok.logs().size());
@@ -84,7 +84,7 @@ public final class T0125RecordCastTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?,?> o -> true; case Result.Err<?,?> e -> false; }, () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(2, ok.logs().size());

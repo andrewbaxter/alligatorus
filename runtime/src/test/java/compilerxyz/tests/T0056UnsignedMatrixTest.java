@@ -8,6 +8,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public final class T0056UnsignedMatrixTest {
       stmts.add(
           mb.ifOf(
               TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
-              mb.call(mb.log(), mb.str("F"))));
+              Opt.some(mb.call(mb.log(), mb.str("F")))));
       expected.add(exp ? "T" : "F");
     }
   }
@@ -66,10 +67,19 @@ public final class T0056UnsignedMatrixTest {
     modules.put("main", new SourceModule.V1(body));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
-    return ok;
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<?, ?> o -> {
+        @SuppressWarnings("unchecked")
+        var cast = (Result.Ok<Compile.CompileResult, TList<ExprErr>>) o;
+        resOk = cast;
+      }
+      case Result.Err<?, ?> e -> {
+        assertTrue(false, () -> "compile failed: " + res);
+        throw new RuntimeException("unreachable");
+      }
+    }
+    return resOk.value();
   }
 
   private void check(Cases c) {
@@ -184,7 +194,10 @@ public final class T0056UnsignedMatrixTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) {
+          case Result.Ok<?, ?> o -> false;
+          case Result.Err<?, ?> e -> true;
+        },
         () -> "expected mixed signed/unsigned add to fail, got " + res);
     assertTrue(
         res.toString().contains("mix signed and unsigned"),

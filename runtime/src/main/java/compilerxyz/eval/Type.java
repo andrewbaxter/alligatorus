@@ -21,9 +21,9 @@ public interface Type extends Artifactable {
    * default will fail at call time.
    */
   @Override
-  default EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc) {
+  default EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
     if (this instanceof AspectDynamicConst dc && !(this instanceof AspectArtifact)) {
-      return dc.aspectDynamicConstConstForm().exportArtifact(xx, loc);
+      return dc.aspectDynamicConstConstForm().artifactableExportArtifact(xx, loc);
     }
     if (!(this instanceof AspectArtifact aa)) {
       return EResult.err(loc, typeDesc() + " does not implement AspectArtifact");

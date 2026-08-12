@@ -3,12 +3,17 @@ package compilerxyz.eval.value.source;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.NumericKind;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
+import compilerxyz.gen.AspectListConst;
+import compilerxyz.gen.AspectNumericConst;
+import compilerxyz.gen.AspectStringConst;
 import compilerxyz.gen.GenAspectByte;
 import compilerxyz.gen.GenAspectListConst;
+import compilerxyz.gen.GenAspectNumericConst;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.Value;
 import compilerxyz.syntax.HashValue;
@@ -27,19 +32,22 @@ public final class SourceSpecs {
   }
 
   public static EResult<Value> argValue(QExprId loc, CodeValue argument, String context) {
-    if (argument.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(some.value());
+    Opt.Some<Value> some;
+    switch (argument.value()) {
+      case Opt.Some<Value> s -> some = s;
+      case Opt.None<Value> n -> { return EResult.err(loc, context + ": argument has no compile-time value"); }
     }
-    return EResult.err(loc, context + ": argument has no compile-time value");
+    return EResult.ok(some.value());
   }
 
   public static EResult<String> constString(
       ExprContext xx, QExprId loc, Value value, String context) {
-    if (GenAspectStringConst.getMaybe(xx, value.valueType())
-        instanceof Opt.Some<compilerxyz.gen.AspectStringConst> some) {
-      return EResult.ok(some.value().aspectStringConstGet(value));
+    Opt.Some<AspectStringConst> some;
+    switch (GenAspectStringConst.getMaybe(xx, value.valueType())) {
+      case Opt.Some<AspectStringConst> s -> some = s;
+      case Opt.None<AspectStringConst> n -> { return EResult.err(loc, context + ": expected a const string, got " + value.valueType().typeDesc()); }
     }
-    return EResult.err(loc, context + ": expected a const string, got " + value.valueType().typeDesc());
+    return EResult.ok(some.value().aspectStringConstGet(value));
   }
 
   public static EResult<TList<Value>> constTuple(QExprId loc, Value value, String context) {
@@ -48,14 +56,18 @@ public final class SourceSpecs {
     }
     var out = new TList<Value>(tuple.elements().size());
     for (var element : tuple.elements()) {
-      if (!(element instanceof TupleElement.EvalRes er)) {
-        return EResult.err(loc, context + ": tuple element is not const");
+      TupleElement.EvalRes er;
+      switch (element) {
+        case TupleElement.EvalRes e -> er = e;
+        case TupleElement.Dynamic d -> { return EResult.err(loc, context + ": tuple element is not const"); }
       }
       var res = er.result();
       if (res.hasErrors()) return res.reerr();
       var cv = res.requireValue(context + " tuple element");
-      if (!(cv.value() instanceof Opt.Some<Value> some)) {
-        return EResult.err(loc, context + ": tuple element has no value");
+      Opt.Some<Value> some;
+      switch (cv.value()) {
+        case Opt.Some<Value> s -> some = s;
+        case Opt.None<Value> n -> { return EResult.err(loc, context + ": tuple element has no value"); }
       }
       out.add(some.value());
     }
@@ -73,17 +85,21 @@ public final class SourceSpecs {
 
   public static EResult<byte[]> constBytes(
       ExprContext xx, QExprId loc, Value value, String context) {
-    if (!(GenAspectListConst.getMaybe(xx, value.valueType())
-        instanceof Opt.Some<compilerxyz.gen.AspectListConst> listSome)) {
-      return EResult.err(loc, context + ": expected a const list of bytes");
+    Opt.Some<AspectListConst> listSome;
+    switch (GenAspectListConst.getMaybe(xx, value.valueType())) {
+      case Opt.Some<AspectListConst> s -> listSome = s;
+      case Opt.None<AspectListConst> n -> { return EResult.err(loc, context + ": expected a const list of bytes"); }
     }
     var elements = listSome.value().aspectListConstElements(value);
     var out = new byte[elements.size()];
     for (var i = 0; i < elements.size(); i++) {
       var element = elements.get(i);
-      if (!(compilerxyz.gen.GenAspectNumericConst.getMaybe(xx, element.valueType())
-          instanceof Opt.Some<compilerxyz.gen.AspectNumericConst> byteSome)
-          || byteSome.value().aspectNumericConstKind() != compilerxyz.eval.NumericKind.BYTE) {
+      Opt.Some<AspectNumericConst> byteSome;
+      switch (GenAspectNumericConst.getMaybe(xx, element.valueType())) {
+        case Opt.Some<AspectNumericConst> s -> byteSome = s;
+        case Opt.None<AspectNumericConst> n -> { return EResult.err(loc, context + ": list element is not a byte"); }
+      }
+      if (byteSome.value().aspectNumericConstKind() != NumericKind.BYTE) {
         return EResult.err(loc, context + ": list element is not a byte");
       }
       out[i] = byteSome.value().aspectNumericConstGet(element).byteValue();

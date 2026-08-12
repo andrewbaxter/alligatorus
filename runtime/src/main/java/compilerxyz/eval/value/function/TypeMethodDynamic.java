@@ -41,6 +41,8 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6112L)
 public record TypeMethodDynamic(
@@ -73,8 +75,8 @@ public record TypeMethodDynamic(
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -102,7 +104,7 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var receiverDyn = self.code().dynamic();
+    var receiverDyn = self.code().codeDynamic();
     if (receiverDyn == null) {
       return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
     }
@@ -147,10 +149,10 @@ public record TypeMethodDynamic(
       seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
     }
     var seqCode = new CodeDynamic(loc, seq);
-    if (!(ret instanceof Opt.Some<Type> retSome)) {
+    if (ret.optIsNone()) {
       return EResult.ok(new CodeValue(Code.of(loc, seqCode), EvalOutcome.NO_VALUE));
     }
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retSome.value());
+    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
     if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
@@ -171,7 +173,7 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeMethodDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -188,37 +190,37 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class) instanceof Opt.Some<TypeMethodDynamic> oSome
-        && receiver.typeIsEqual(xx, oSome.value().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oSome.value().params) && TypeFunctionDynamic.retEqual(xx, ret, oSome.value().ret) && klass.equals(oSome.value().klass) && methodName.equals(oSome.value().methodName) && isInterface == oSome.value().isInterface && needsExprContext == oSome.value().needsExprContext;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class);
+    return oOpt.optIsSome() && receiver.typeIsEqual(xx, oOpt.optUnwrap().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oOpt.optUnwrap().params) && TypeFunctionDynamic.retEqual(xx, ret, oOpt.optUnwrap().ret) && klass.equals(oOpt.optUnwrap().klass) && methodName.equals(oOpt.optUnwrap().methodName) && isInterface == oOpt.optUnwrap().isInterface && needsExprContext == oOpt.optUnwrap().needsExprContext;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

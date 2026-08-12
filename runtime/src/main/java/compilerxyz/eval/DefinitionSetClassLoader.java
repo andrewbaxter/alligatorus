@@ -5,16 +5,17 @@ import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import compilerxyz.langhelp.GlobalContext;
 
 public final class DefinitionSetClassLoader extends ClassLoader {
 
-  private final compilerxyz.langhelp.GlobalContext gx;
+  private final GlobalContext gx;
   private final TList<DefinitionSetClassLoader> dependencyLoaders;
   private final TMap<String, byte[]> pendingBytecode = new TMap<>();
   private final TMap<String, TOrderedMap<String, Object>> pendingExternals = new TMap<>();
 
   public DefinitionSetClassLoader(
-      compilerxyz.langhelp.GlobalContext gx,
+      GlobalContext gx,
       ClassLoader parent,
       TList<DefinitionSetClassLoader> dependencyLoaders) {
     super(parent);

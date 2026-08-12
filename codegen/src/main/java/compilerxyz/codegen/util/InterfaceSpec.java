@@ -1,26 +1,26 @@
 package compilerxyz.codegen.util;
 
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 
 public record InterfaceSpec(
     String name,
     int builtinUniqueId,
     int scopeId,
     String kind,
-    @Nullable String description,
+    Opt<String> description,
     boolean registerInScope,
-    @Nullable String javaTraitName,
-    @Nullable String hostInterfaceBinaryName,
+    Opt<String> javaTraitName,
+    Opt<String> hostInterfaceBinaryName,
     TList<Method> methods) {
   public InterfaceSpec(
       String name,
       int builtinUniqueId,
       int scopeId,
       String kind,
-      @Nullable String description,
+      Opt<String> description,
       boolean registerInScope,
-      @Nullable String javaTraitName,
+      Opt<String> javaTraitName,
       TList<Method> methods) {
     this(
         name,
@@ -30,13 +30,13 @@ public record InterfaceSpec(
         description,
         registerInScope,
         javaTraitName,
-        null,
+        Opt.none(),
         methods);
   }
 
-  public @Nullable String effectiveHostInterfaceBinaryName() {
-    if (hostInterfaceBinaryName != null) return hostInterfaceBinaryName;
-    if (javaTraitName != null) return "compilerxyz.gen." + javaTraitName;
-    return null;
+  public Opt<String> effectiveHostInterfaceBinaryName() {
+    if (hostInterfaceBinaryName.optIsSome()) return hostInterfaceBinaryName;
+    if (javaTraitName.optIsSome()) return Opt.some("compilerxyz.gen." + javaTraitName.optUnwrap());
+    return Opt.none();
   }
 }

@@ -35,6 +35,10 @@ import java.util.ArrayList;
 import java.util.Map;
 import static compilerxyz.util.MustCast.mustCast;
 import compilerxyz.gen.GenAspectLift;
+import compilerxyz.eval.CompileId;
+import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.DefSetId;
+import compilerxyz.eval.DefinitionSet;
 
 /**
  * Static entry points for callables that source code invokes. Members are only invoked from
@@ -60,7 +64,7 @@ public final class DynRuntime {
         var cell = (StagedExprCell) valArg;
         var cellValue = cell.value();
         if (cellValue instanceof Expr expr) {
-          values.add(new StageLowerValue.Expr(expr));
+          values.add(new StageLowerValue.ExprStage(expr));
         } else {
           values.add(new StageLowerValue.Val((Value) cellValue));
         }
@@ -79,16 +83,16 @@ public final class DynRuntime {
               "__stage: AspectLift lookup failed for source type "
                   + liftCell.sourceType().typeDesc()
                   + ": "
-                  + liftRes.errorsOrNull());
+                  + liftRes.errorsOrNull().optUnwrapOr(new compilerxyz.util.TList<>()));
         }
         var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
-        var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), valArg);
+        var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), Opt.ofNullable(valArg));
         if (liftedRes.hasErrors()) {
           throw new IllegalStateException(
               "__stage: AspectLift.lift failed for source type "
                   + liftCell.sourceType().typeDesc()
                   + ": "
-                  + liftedRes.errorsOrNull());
+                  + liftedRes.errorsOrNull().optUnwrapOr(new compilerxyz.util.TList<>()));
         }
         var lifted = liftedRes.requireValue("DynRuntime::__stage AspectLift.lift");
         values.add(new StageLowerValue.Val(lifted));
@@ -116,16 +120,16 @@ public final class DynRuntime {
     return new StagedExprCell(newTree);
   }
 
-  public static Map<compilerxyz.eval.ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
+  public static Map<ConstKey, Expr> recordToConstKeyExprMap(Object arg) {
     var rawMap = mustCast(Map.class, arg);
-    var out = new java.util.LinkedHashMap<compilerxyz.eval.ConstKey, Expr>();
+    var out = new java.util.LinkedHashMap<ConstKey, Expr>();
     for (var entry : ((Map<?, ?>) rawMap).entrySet()) {
-      var ckey = mustCast(compilerxyz.eval.ConstKey.class, entry.getKey());
+      var ckey = mustCast(ConstKey.class, entry.getKey());
       var v = entry.getValue();
       Expr expr;
       if (v instanceof Expr e) {
         expr = e;
-      } else if (v instanceof compilerxyz.eval.expr.StagedExprCell cell) {
+      } else if (v instanceof StagedExprCell cell) {
         expr = mustCast(Expr.class, cell.value());
       } else {
         throw new IllegalStateException(
@@ -139,12 +143,12 @@ public final class DynRuntime {
 
   public static Unique freshUnique(ExprContext xx) {
     var vx = xx.vx;
-    var compileId = new compilerxyz.eval.CompileId(vx.ix.importState, vx.ix.sourceId);
+    var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
     return new Unique.Source(compileId, vx.uniqueCounter.next());
   }
 
-  public static compilerxyz.eval.DefinitionSet lookupDefSet(
-      ExprContext xx, compilerxyz.eval.DefSetId id) {
+  public static DefinitionSet lookupDefSet(
+      ExprContext xx, DefSetId id) {
     if (id == null) {
       throw new IllegalStateException("DynRuntime: definition set id is null");
     }
@@ -158,7 +162,7 @@ public final class DynRuntime {
   }
 
   private sealed interface StageLowerValue {
-    record Expr(compilerxyz.eval.Expr expr) implements StageLowerValue {}
+    record ExprStage(Expr expr) implements StageLowerValue {}
 
     record Val(Value value) implements StageLowerValue {}
   }
@@ -179,7 +183,7 @@ public final class DynRuntime {
                 "__stage: not enough lower values for substitution");
           }
           yield switch (values.next()) {
-            case StageLowerValue.Expr e -> e.expr();
+            case StageLowerValue.ExprStage e -> e.expr();
             case StageLowerValue.Val v ->
                 new Expr(loc, new Expr.Literal(Expr.LitValue.once(v.value())));
           };
@@ -221,10 +225,9 @@ public final class DynRuntime {
                   lb.label(), cloneWithLowerSubstitutions(lb.inner(), sd, ld, values, grafts)));
       case Expr.Return rt -> {
         Opt<Expr> newValue;
-        if (rt.value() instanceof Opt.Some<Expr> someV) {
-          newValue = Opt.some(cloneWithLowerSubstitutions(someV.value(), sd, ld, values, grafts));
-        } else {
-          newValue = Opt.none();
+        switch (rt.value()) {
+          case Opt.Some<Expr> someV -> newValue = Opt.some(cloneWithLowerSubstitutions(someV.value(), sd, ld, values, grafts));
+          case Opt.None<Expr> none -> newValue = Opt.none();
         }
         yield new Expr(loc, new Expr.Return(rt.label(), newValue));
       }
@@ -291,10 +294,9 @@ public final class DynRuntime {
                   cloneWithLowerSubstitutions(branch.body(), sd, ld, values, grafts)));
         }
         Opt<Expr> newElse;
-        if (ifExpr.else_() instanceof Opt.Some<Expr> some) {
-          newElse = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
-        } else {
-          newElse = Opt.none();
+        switch (ifExpr.else_()) {
+          case Opt.Some<Expr> some -> newElse = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
+          case Opt.None<Expr> none -> newElse = Opt.none();
         }
         yield new Expr(loc, new Expr.If(newConds, newElse));
       }
@@ -326,10 +328,9 @@ public final class DynRuntime {
                   cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
         }
         Opt<Expr> newFallback;
-        if (m.fallback() instanceof Opt.Some<Expr> some) {
-          newFallback = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
-        } else {
-          newFallback = Opt.none();
+        switch (m.fallback()) {
+          case Opt.Some<Expr> some -> newFallback = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
+          case Opt.None<Expr> none -> newFallback = Opt.none();
         }
         yield new Expr(
             loc,
@@ -341,22 +342,22 @@ public final class DynRuntime {
       }
       case Expr.Try t -> {
         Opt<Expr.TryCatch> newCatch;
-        if (t.catchClause() instanceof Opt.Some<Expr.TryCatch> someCatch) {
-          var c = someCatch.value();
-          newCatch =
-              Opt.some(
-                  new Expr.TryCatch(
-                      cloneWithLowerSubstitutions(c.bindingName(), sd, ld, values, grafts),
-                      cloneWithLowerSubstitutions(c.exceptionType(), sd, ld, values, grafts),
-                      cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
-        } else {
-          newCatch = Opt.none();
+        switch (t.catchClause()) {
+          case Opt.Some<Expr.TryCatch> someCatch -> {
+            var c = someCatch.value();
+            newCatch =
+                Opt.some(
+                    new Expr.TryCatch(
+                        cloneWithLowerSubstitutions(c.bindingName(), sd, ld, values, grafts),
+                        cloneWithLowerSubstitutions(c.exceptionType(), sd, ld, values, grafts),
+                        cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
+          }
+          case Opt.None<Expr.TryCatch> none -> newCatch = Opt.none();
         }
         Opt<Expr> newFinally;
-        if (t.finallyBlock() instanceof Opt.Some<Expr> someFin) {
-          newFinally = Opt.some(cloneWithLowerSubstitutions(someFin.value(), sd, ld, values, grafts));
-        } else {
-          newFinally = Opt.none();
+        switch (t.finallyBlock()) {
+          case Opt.Some<Expr> someFin -> newFinally = Opt.some(cloneWithLowerSubstitutions(someFin.value(), sd, ld, values, grafts));
+          case Opt.None<Expr> none -> newFinally = Opt.none();
         }
         yield new Expr(
             loc,

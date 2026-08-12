@@ -8,6 +8,7 @@ import compilerxyz.safejson.Json.DeserializationException;
 import compilerxyz.safejson.Json.FieldPath;
 import compilerxyz.safejson.Json.Style;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.util.Opt;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -19,21 +20,21 @@ public final class ArtifactCodecs {
   private ArtifactCodecs() {}
 
   @SuppressWarnings("unchecked")
-  public static <T> @org.jspecify.annotations.Nullable Codec<T> lookup(Class<T> clazz) {
-    if (clazz == Artifact.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE;
-    if (clazz == Artifact.Body.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_BODY;
-    if (clazz == Artifact.Ref.class) return (Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_REF;
-    if (clazz == ArtifactBody.class) return (Codec<T>) (Codec<?>) ArtifactBodyCodec.INSTANCE;
+  public static <T> Opt<Codec<T>> lookup(Class<T> clazz) {
+    if (clazz == Artifact.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE);
+    if (clazz == Artifact.Body.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_BODY);
+    if (clazz == Artifact.Ref.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_REF);
+    if (clazz == ArtifactBody.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyCodec.INSTANCE);
     if (clazz == ArtifactBodyExporter.class)
-      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE;
+      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE);
     if (clazz == ArtifactBodyExporter.Body.class)
-      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_BODY;
+      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_BODY);
     if (clazz == ArtifactBodyExporter.Root.class)
-      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_ROOT;
+      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_ROOT);
     if (clazz == ArtifactBodyExporter.SourceRef.class)
-      return (Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF;
-    if (clazz == ArtifactIdSource.class) return (Codec<T>) (Codec<?>) ArtifactIdSourceCodec.INSTANCE;
-    return null;
+      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF);
+    if (clazz == ArtifactIdSource.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactIdSourceCodec.INSTANCE);
+    return Opt.none();
   }
 
   static final class ArtifactCodec implements Codec<Artifact> {
@@ -121,7 +122,7 @@ public final class ArtifactCodecs {
             () -> {
               try {
                 writer.name("data");
-                JsonValue.safeJsonAdapter.serialize(writer, value.data(), style);
+                JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value.data(), style);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
@@ -141,7 +142,7 @@ public final class ArtifactCodecs {
         }
       } else {
         writer.name("data");
-        JsonValue.safeJsonAdapter.serialize(writer, value.data(), style);
+        JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value.data(), style);
         writer.name("exporter");
         ArtifactBodyExporterCodec.INSTANCE.codecEncode(writer, value.exporter(), style);
       }
@@ -160,7 +161,7 @@ public final class ArtifactCodecs {
         switch (fname) {
           case "data" -> {
             seenData = true;
-            data = JsonValue.safeJsonAdapter.deserialize(reader, path.field("data"));
+            data = JsonValue.safeJsonAdapter.safeJsonAdapterDeserialize(reader, path.field("data"));
           }
           case "exporter" -> {
             seenExporter = true;

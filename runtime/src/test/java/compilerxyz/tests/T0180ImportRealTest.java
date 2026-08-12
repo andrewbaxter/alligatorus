@@ -31,12 +31,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import com.google.gson.stream.JsonWriter;
+import java.io.StringWriter;
 
 public final class T0180ImportRealTest {
 
   private static String serializeModule(SourceExpr expr) throws IOException {
-    var sw = new java.io.StringWriter();
-    var writer = new com.google.gson.stream.JsonWriter(sw);
+    var sw = new StringWriter();
+    var writer = new JsonWriter(sw);
     writer.setSerializeNulls(true);
     writer.setIndent("");
     Json.encodeValue(writer, new SourceModule.V1(expr), SourceModule.class, Json.Style.COMPACT);
@@ -61,8 +63,12 @@ public final class T0180ImportRealTest {
   }
 
   private static Compile.CompileResult expectOk(Result<Compile.CompileResult, ?> res) {
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    return ((Result.Ok<Compile.CompileResult, ?>) res).value();
+    Result.Ok<Compile.CompileResult, ?> ok;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, ?> o -> ok = o;
+      case Result.Err<Compile.CompileResult, ?> e -> throw new AssertionError("compile failed: " + res);
+    }
+    return ok.value();
   }
 
   private static SourceExpr importField(TestMb mb, String key, SourceExpr spec) {
@@ -243,11 +249,21 @@ public final class T0180ImportRealTest {
         mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at")))));
     try (var cache = new CacheReal(cacheDir)) {
       var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
-      assertTrue(res instanceof Result.Err<?, ?>, () -> "expected failure, got " + res);
+      assertTrue(
+          switch (res) {
+            case Result.Ok<?, ?> o -> false;
+            case Result.Err<?, ?> e -> true;
+          },
+          () -> "expected failure, got " + res);
     }
     try (var cache = new CacheReal(cacheDir)) {
       var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
-      assertTrue(res instanceof Result.Err<?, ?>, () -> "expected cached failure, got " + res);
+      assertTrue(
+          switch (res) {
+            case Result.Ok<?, ?> o -> false;
+            case Result.Err<?, ?> e -> true;
+          },
+          () -> "expected cached failure, got " + res);
     }
 
     // Fixing the source (new mtime) must invalidate the cached failure.
@@ -375,7 +391,12 @@ public final class T0180ImportRealTest {
       try (var cache = new CacheReal(tmp.resolve("cache"))) {
         var res =
             Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
-        assertTrue(res instanceof Result.Err<?, ?>, () -> "expected hash mismatch, got " + res);
+        assertTrue(
+            switch (res) {
+              case Result.Ok<?, ?> o -> false;
+              case Result.Err<?, ?> e -> true;
+            },
+            () -> "expected hash mismatch, got " + res);
       }
     } finally {
       server.close();

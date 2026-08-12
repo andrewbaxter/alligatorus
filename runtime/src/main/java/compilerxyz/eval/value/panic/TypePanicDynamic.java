@@ -39,6 +39,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinPath("panic")
 @BuiltinLight(uniqueId = 6133L)
@@ -69,19 +70,19 @@ public record TypePanicDynamic()
     Type stringType = new TypeStringDynamic();
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, stringType, argument));
-    if (convertedOpt.isEmpty()) {
+    if (convertedOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var converted = convertedOpt.get();
+    var converted = convertedOpt.optUnwrap();
     var toDynamicOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, stringType));
-    if (toDynamicOpt.isEmpty()) {
+    if (toDynamicOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var msgCodeOpt = erb.mustEr(toDynamicOpt.get().aspectConsumeDynamicToDynamic(xx, loc, converted));
-    if (msgCodeOpt.isEmpty()) {
+    var msgCodeOpt = erb.mustEr(toDynamicOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, converted));
+    if (msgCodeOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var msgCode = msgCodeOpt.get();
+    var msgCode = msgCodeOpt.optUnwrap();
     var panicInternal = JavaInternalName.fromClass(DynPanic.class);
     var ctorDesc =
         JavaMethodDescriptor.fromParts(
@@ -114,28 +115,28 @@ public record TypePanicDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_PANIC_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

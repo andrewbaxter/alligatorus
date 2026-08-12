@@ -122,7 +122,7 @@ public final class BuiltinBodies {
   @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
   public static ExprContext exprContext(
       ExprContext xx, Scope scope, Target target, EvalContext vx, Type exception_type) {
-    return new ExprContext(scope, target, vx, vx.ix.importState, exception_type);
+    return new ExprContext(scope, target, vx, vx.ix.importState, Opt.some(exception_type));
   }
 
   @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
@@ -133,10 +133,11 @@ public final class BuiltinBodies {
   @BuiltinPath(value = "eval.extract_constkey", scopeId = 5019L)
   public static ConstKey extractConstkey(ExprContext xx, QExprId loc, Value value) {
     var res = Eval.extractConstKey(xx, loc, value);
-    if (res instanceof compilerxyz.util.Result.Err<ConstKey, String> err) {
-      throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
-    }
-    return ((compilerxyz.util.Result.Ok<ConstKey, String>) res).value();
+    return switch (res) {
+      case compilerxyz.util.Result.Err<ConstKey, String> err ->
+          throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
+      case compilerxyz.util.Result.Ok<ConstKey, String> ok -> ok.value();
+    };
   }
 
   @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

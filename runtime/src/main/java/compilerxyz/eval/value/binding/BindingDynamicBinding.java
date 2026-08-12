@@ -23,21 +23,19 @@ import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     CodeDynamic dyn;
-    if (dynamicKey instanceof BindingId.Local local) {
-      // Local slot: pick the typed load opcode from the binding's own type so a
-      // primitive-typed slot yields a primitive on the stack directly.
-      dyn = new CodeDynamic(
-          new CodeLoc.Some(loc),
-          new compilerxyz.eval.dynamic.JavaBytecodeStoreLoad(
-              compilerxyz.eval.dynamic.JvmSort.loadOpcode(xx, type_), local.key()));
-    } else {
-      dyn = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, dynamicKey);
-    }
+    dyn = switch (dynamicKey) {
+      case BindingId.Local local ->
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(
+                  compilerxyz.eval.dynamic.JvmSort.loadOpcode(xx, type_), local.key()));
+    };
     Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
     return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));
   }

@@ -9,8 +9,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.jspecify.annotations.Nullable;
-
 public final class TList<T> extends AbstractList<T> {
   private final ArrayList<T> backing;
 
@@ -55,11 +53,6 @@ public final class TList<T> extends AbstractList<T> {
 
   @Override
   public T get(int index) {
-    return backing.get(index);
-  }
-
-  public @Nullable T getOrNull(int index) {
-    if (index < 0 || index >= backing.size()) return null;
     return backing.get(index);
   }
 

@@ -9,6 +9,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,7 @@ public final class T0165MutableDropForkTest {
                             mb.field(mb.scopeUse("inner"), mb.str("parity")),
                             mb.as_(mb.num(0.0), mb.typesLong())),
                         dropCodeLogging(mb, evenMsg))),
-                dropCodeLogging(mb, oddMsg))));
+                Opt.some(dropCodeLogging(mb, oddMsg)))));
   }
 
   private static SourceExpr ifaceMethods(TestMb mb, TList<TestMb.RecordPair> methods) {
@@ -332,8 +333,8 @@ public final class T0165MutableDropForkTest {
                                                     mb.str(
                                                         "cast: cannot cast a dynamic int to"
                                                             + " evenodd; parity unknown"))))),
-                                    castFromPassthrough(mb)))))),
-                castFromPassthrough(mb))));
+                                    Opt.some(castFromPassthrough(mb))))))),
+                Opt.some(castFromPassthrough(mb)))));
   }
 
   private static SourceExpr evenOddAddWrapped(TestMb mb, SourceExpr parity) {
@@ -478,7 +479,7 @@ public final class T0165MutableDropForkTest {
                                                     mb.str(
                                                         "operator_add: reference is a dynamic"
                                                             + " int; parity unknown"))))),
-                                    mb.seqOf(
+                                    Opt.some(mb.seqOf(
                                         mb.bind(
                                             "ref_evenodd_type_",
                                             mb.call(
@@ -486,12 +487,12 @@ public final class T0165MutableDropForkTest {
                                                 mb.tupleOf(
                                                     mb.scopeUse("ref_type_obj_"),
                                                     mb.lower(mb.scopeUse("u_type"))))),
-                                        mb.return_(evenOddAddWrapped(mb, evenOddParity)))))))),
-                mb.call(
+                                        mb.return_(evenOddAddWrapped(mb, evenOddParity))))))))),
+                Opt.some(mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
                         mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("operator_add: reference has no compile-time value"))))));
+                        mb.str("operator_add: reference has no compile-time value")))))));
   }
 
   private static SourceExpr evenOddSetApply(TestMb mb, SourceExpr parity) {
@@ -620,11 +621,11 @@ public final class T0165MutableDropForkTest {
                                                                     mb.str("code"))))))),
                                             new TestMb.RecordPair(
                                                 "value", mb.scopeUse("conv_cv_"))))))))),
-                mb.call(
+                Opt.some(mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
                         mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("set: cannot set a non-binding evenodd value"))))));
+                        mb.str("set: cannot set a non-binding evenodd value")))))));
   }
 
   private static SourceExpr evenOddSetBody(TestMb mb) {
@@ -645,7 +646,7 @@ public final class T0165MutableDropForkTest {
                     new TestMb.Branch(
                         mb.field(mb.scopeUse("conv_er_"), mb.str("has_errors")),
                         mb.scopeUse("conv_er_"))),
-                mb.seqOf(
+                Opt.some(mb.seqOf(
                     mb.bind("conv_cv_", mb.field(mb.scopeUse("conv_er_"), mb.str("value"))),
                     mb.bind(
                         "rhs_parity_",
@@ -668,7 +669,7 @@ public final class T0165MutableDropForkTest {
                                         mb.lower(mb.scopeUse("u_type")))),
                                 mb.str("get_parity")),
                             mb.literalNull())),
-                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_")))))));
+                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_"))))))));
   }
 
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
@@ -1115,7 +1116,7 @@ public final class T0165MutableDropForkTest {
                                                                     mb.as_(
                                                                         mb.literalNull(),
                                                                         mb.typesNull()))),
-                                                            mb.return_(
+                                                            Opt.some(mb.return_(
                                                                 "merge_res",
                                                                 mb.call(
                                                                     mb.field(
@@ -1130,7 +1131,7 @@ public final class T0165MutableDropForkTest {
                                                                         mb.str(
                                                                             "evenodd merge:"
                                                                                 + " branch parities"
-                                                                                + " differ")))))),
+                                                                                + " differ"))))))),
                                                     mb.return_(
                                                         mb.call(
                                                             mb.field(
@@ -1260,11 +1261,11 @@ public final class T0165MutableDropForkTest {
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
                                                             mb.scopeUse("outer")))),
-                                                mb.call(
+                                                Opt.some(mb.call(
                                                     mb.field(
                                                         mb.call(mb.typesOption(), mb.typesAspect()),
                                                         mb.str("none")),
-                                                    mb.literalNull()))),
+                                                    mb.literalNull())))),
                                         new TestMb.RecordPair(
                                             "can_cast_to",
                                             mb.seqOf(mb.return_(mb.bool(false)))),
@@ -1450,7 +1451,7 @@ public final class T0165MutableDropForkTest {
   private static SourceExpr maybeThrow(TestMb mb, boolean doThrow, String msg) {
     return mb.ifOf(
         TList.of(new TestMb.Branch(dynBool(mb, doThrow), mb.throw_(mb.str(msg)))),
-        null);
+        Opt.none());
   }
 
   private static SourceExpr program(TestMb mb, boolean throwBefore, boolean throwAfter) {
@@ -1463,11 +1464,11 @@ public final class T0165MutableDropForkTest {
                 maybeThrow(mb, throwBefore, "boom_before"),
                 mb.set(mb.scopeUse("a"), mb.num(3.0)),
                 maybeThrow(mb, throwAfter, "boom_after")),
-            new TestMb.Catch(
+            Opt.some(new TestMb.Catch(
                 "e",
                 mb.builtin("types", "string"),
-                mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")))),
-            null),
+                mb.seqOf(mb.call(mb.log(), mb.scopeUse("e"))))),
+            Opt.none()),
         mb.call(mb.log(), mb.str("after")));
   }
 
@@ -1476,9 +1477,19 @@ public final class T0165MutableDropForkTest {
     modules.put("main", new SourceModule.V1(main));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<?, ?> o -> {
+        @SuppressWarnings("unchecked")
+        var cast = (Result.Ok<Compile.CompileResult, TList<ExprErr>>) o;
+        resOk = cast;
+      }
+      case Result.Err<?, ?> e -> {
+        assertTrue(false, () -> "compile failed: " + res);
+        throw new RuntimeException("unreachable");
+      }
+    }
+    var ok = resOk.value();
     var out = new TList<String>(ok.logs().size());
     for (var l : ok.logs()) out.add(l.message());
     return out;
@@ -1545,11 +1556,11 @@ public final class T0165MutableDropForkTest {
                         mb.seqOf(
                             mb.set(mb.scopeUse("a"), mb.num(3.0)),
                             maybeThrow(mb, true, "boom_same"))),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.builtin("types", "string"),
-                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")))),
-                    null),
+                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e"))))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("after"))));
     assertEquals(
         TList.of("drop_odd", "boom_same", "after"),
@@ -1575,11 +1586,11 @@ public final class T0165MutableDropForkTest {
                             maybeThrow(mb, true, "boom_first"),
                             mb.set(mb.scopeUse("a"), mb.num(3.0)),
                             maybeThrow(mb, false, "boom_last"))),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.builtin("types", "string"),
-                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")))),
-                    null),
+                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e"))))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("after"))));
     assertEquals(
         TList.of("drop_even", "boom_first", "after"),

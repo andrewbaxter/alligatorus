@@ -30,7 +30,12 @@ import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValueNumber;
+import compilerxyz.safejson.JsonValueObject;
+import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
@@ -40,6 +45,8 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectNull;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6127L)
 public record TypeNullConst()
@@ -48,8 +55,8 @@ public record TypeNullConst()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -90,7 +97,7 @@ public record TypeNullConst()
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!((self instanceof compilerxyz.eval.value.object_.ValueObjectConst voc
+          if (!((self instanceof ValueObjectConst voc
                   && voc.type() instanceof TypeNullConst)
               || self instanceof TypeNullConst)) {
             return EResult.err(
@@ -102,18 +109,21 @@ public record TypeNullConst()
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (data instanceof JsonValueNull) {
-            return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeNullConst(), null));
-          }
-          return EResult.err(
-              loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          return switch (data) {
+            case JsonValueNull ignored -> EResult.ok(new ValueObjectConst(new TypeNullConst(), null));
+            case JsonValueBoolean ignored -> EResult.err(loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueNumber ignored -> EResult.err(loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueString ignored -> EResult.err(loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueArray ignored -> EResult.err(loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueObject ignored -> EResult.err(loc, "TypeNullConst::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          };
         }
       };
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeNullConst::bind: CodeValue has no compile-time value");
   }
@@ -130,36 +140,36 @@ public record TypeNullConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_NULL_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

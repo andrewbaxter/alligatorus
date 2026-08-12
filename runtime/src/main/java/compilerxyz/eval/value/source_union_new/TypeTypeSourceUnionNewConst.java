@@ -42,6 +42,7 @@ import java.util.function.Function;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6143L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
@@ -129,7 +130,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                   variant.newArtifactIdCell,
                   () -> {
                     var parentConst = new TypeTypeSourceUnionConst(tu);
-                    var tuArtRes = parentConst.exportArtifact(xx, loc);
+                    var tuArtRes = parentConst.artifactableExportArtifact(xx, loc);
                     tuArtRes.drainInto(errors);
                     var tuArt =
                         tuArtRes.valueOrNull() != null
@@ -146,11 +147,11 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(
                 loc, "TypeTypeSourceUnionNewConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -228,29 +229,29 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY, TypeTypeSourceUnionNewConst.class) instanceof Opt.Some<TypeTypeSourceUnionNewConst> oSome
-        && type_.typeIsEqual(xx, oSome.value().type_) && variantIndex == oSome.value().variantIndex;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY, TypeTypeSourceUnionNewConst.class);
+    return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_) && variantIndex == oOpt.optUnwrap().variantIndex;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -6,6 +6,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
+import compilerxyz.util.Opt;
 import java.lang.Boolean;
 import java.lang.IllegalStateException;
 import java.lang.String;
@@ -28,10 +29,10 @@ public final class SourceInterfaceResult {
 
     public void set_description(ExprContext xx, String description) {
         var ifaceData = this.type_.getInterfaceData();
-        if (ifaceData.description != null) {
+        if (ifaceData.description.optIsSome()) {
             throw new IllegalStateException("Interface already has a description");
         }
-        ifaceData.description = description;
+        ifaceData.description = Opt.some(description);
     }
 
     public SourceInterfaceMethodResult func(ExprContext xx, String name) {
@@ -44,8 +45,8 @@ public final class SourceInterfaceResult {
     public void set_is_aspect(ExprContext xx, boolean isAspect) {
         var data = this.type_.getInterfaceData();
         data.isAspect = isAspect;
-        if (isAspect && data.aspectId == null) {
-            data.aspectId = compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx);
+        if (isAspect && data.aspectId.optIsNone()) {
+            data.aspectId = Opt.some(compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx));
         }
     }
 }

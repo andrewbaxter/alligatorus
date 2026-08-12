@@ -1,68 +1,68 @@
 package compilerxyz.eval;
 
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 
 public final class EResult<T> {
-  private final @Nullable T value;
-  private final @Nullable TList<ExprErr> errors;
+  private final Opt<T> value;
+  private final Opt<TList<ExprErr>> errors;
 
-  private EResult(@Nullable T value, @Nullable TList<ExprErr> errors) {
+  private EResult(Opt<T> value, Opt<TList<ExprErr>> errors) {
     this.value = value;
     this.errors = errors;
   }
 
   public static <T> EResult<T> ok(T value) {
-    return new EResult<>(value, null);
+    return new EResult<>(Opt.some(value), Opt.none());
   }
 
   public static <T> EResult<T> err(QExprId loc, String message) {
     var errs = new TList<ExprErr>();
     errs.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message))));
-    return new EResult<>(null, errs);
+    return new EResult<>(Opt.none(), Opt.some(errs));
   }
 
   public static <T> EResult<T> errs(TList<ExprErr> errors) {
-    return new EResult<>(null, errors);
+    return new EResult<>(Opt.none(), Opt.some(errors));
   }
 
   public static <T> EResult<T> mixed(T value, TList<ExprErr> errors) {
-    return new EResult<>(value, errors);
+    return new EResult<>(Opt.some(value), Opt.some(errors));
   }
 
-  public @Nullable T valueOrNull() {
+  public Opt<T> valueOrNull() {
     return value;
   }
 
   public T requireValue(String context) {
-    if (value == null) {
-      if (errors != null && !errors.isEmpty()) {
-        throw new IllegalStateException(context + " returned errors: " + errors);
+    if (value.optIsNone()) {
+      if (errors.optIsSome() && !errors.optUnwrap().isEmpty()) {
+        throw new IllegalStateException(context + " returned errors: " + errors.optUnwrap());
       }
       throw new IllegalStateException(
           context + " returned neither value nor errors");
     }
-    return value;
+    return value.optUnwrap();
   }
 
-  public @Nullable TList<ExprErr> errorsOrNull() {
+  public Opt<TList<ExprErr>> errorsOrNull() {
     return errors;
   }
 
   public boolean hasErrors() {
-    return errors != null && !errors.isEmpty();
+    return errors.optIsSome() && !errors.optUnwrap().isEmpty();
   }
 
   public void drainInto(TList<ExprErr> sink) {
-    if (errors != null) sink.addAll(errors);
+    if (errors.optIsSome()) sink.addAll(errors.optUnwrap());
   }
 
   public <U> EResult<U> map(Function<T, U> f) {
-    return new EResult<>(value == null ? null : f.apply(value), errors);
+    return new EResult<>(value.optIsNone() ? Opt.none() : Opt.some(f.apply(value.optUnwrap())), errors);
   }
 
   public <U> EResult<U> reerr() {
-    return new EResult<>(null, errors);
+    return new EResult<>(Opt.none(), errors);
   }
 }

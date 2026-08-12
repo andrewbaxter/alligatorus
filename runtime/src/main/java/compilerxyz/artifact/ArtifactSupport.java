@@ -13,7 +13,6 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectArtifact;
 
 public final class ArtifactSupport {
@@ -67,33 +66,33 @@ public final class ArtifactSupport {
 
   public static EResult<ExporterAny> importArtifact(
       ExprContext xx, QExprId loc, Artifact artifact) {
-    @Nullable ArtifactIdSource id;
+    Opt<ArtifactIdSource> id;
     ArtifactBody body;
     switch (artifact) {
       case Artifact.Body b -> {
-        id = null;
+        id = Opt.none();
         body = b.body();
       }
       case Artifact.Ref r -> {
-        id = r.id();
+        id = Opt.some(r.id());
         var cached = xx.vx.ix.deserializedArtifacts.getOpt(r.id());
-        if (cached instanceof Opt.Some<ExporterAny> some) {
-          return EResult.ok(some.value());
+        if (cached.optIsSome()) {
+          return EResult.ok(cached.optUnwrap());
         }
         var got = xx.vx.ix.gx.artifacts.artifactsGet(r.id());
-        if (got instanceof Result.Err<ArtifactBody, String> err) {
-          return EResult.err(loc, err.error());
+        switch (got) {
+          case Result.Err<ArtifactBody, String> err -> { return EResult.err(loc, err.error()); }
+          case Result.Ok<ArtifactBody, String> ok -> body = ok.value();
         }
-        body = ((Result.Ok<ArtifactBody, String>) got).value();
       }
     }
-    return importArtifactBody(xx, loc, Opt.ofNullable(id), body);
+    return importArtifactBody(xx, loc, id, body);
   }
 
   private static EResult<ExporterAny> importArtifactBody(
       ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, ArtifactBody body) {
     var errors = new TList<ExprErr>();
-    @Nullable ArtifactExporter exporter = null;
+    ArtifactExporter exporter = null;
     ArtifactBodyExporter bex = body.exporter();
     switch (bex) {
       case ArtifactBodyExporter.Root r -> {
@@ -116,15 +115,16 @@ public final class ArtifactSupport {
       case ArtifactBodyExporter.SourceRef sr -> {
         ExporterAny exporterAny;
         var cached = xx.vx.ix.deserializedArtifacts.getOpt(sr.id());
-        if (cached instanceof Opt.Some<ExporterAny> some) {
-          exporterAny = some.value();
+        if (cached.optIsSome()) {
+          exporterAny = cached.optUnwrap();
         } else {
           var got = xx.vx.ix.gx.artifacts.artifactsGet(sr.id());
-          if (got instanceof Result.Err<ArtifactBody, String> err) {
-            return EResult.err(loc, err.error());
+          ArtifactBody gotBody;
+          switch (got) {
+            case Result.Err<ArtifactBody, String> err -> { return EResult.err(loc, err.error()); }
+            case Result.Ok<ArtifactBody, String> ok -> gotBody = ok.value();
           }
-          var inner = importArtifactBody(xx, loc, Opt.some(sr.id()),
-              ((Result.Ok<ArtifactBody, String>) got).value());
+          var inner = importArtifactBody(xx, loc, Opt.some(sr.id()), gotBody);
           if (inner.hasErrors()) {
             inner.drainInto(errors);
             return errsOrEmpty(errors);
@@ -163,8 +163,8 @@ public final class ArtifactSupport {
 
   public static Artifact implExportIndependentArtifact(
       Artifacts artifacts, ArtifactIdHolder cell, Supplier<ArtifactBody> produce) {
-    if (cell.id() != null) {
-      return new Artifact.Ref(cell.id());
+    if (cell.id().optIsSome()) {
+      return new Artifact.Ref(cell.id().optUnwrap());
     }
     var id = artifacts.artifactsReserveId();
     cell.set(id);
@@ -181,22 +181,24 @@ public final class ArtifactSupport {
       Function<JsonValue, Result<T, String>> deserialize,
       Function<T, Result<ImportIndependentResult, String>> create) {
     var deser = deserialize.apply(data);
-    if (deser instanceof Result.Err<T, String> err) {
-      return EResult.err(loc, err.error());
+    T payload;
+    switch (deser) {
+      case Result.Err<T, String> err -> { return EResult.err(loc, err.error()); }
+      case Result.Ok<T, String> ok -> payload = ok.value();
     }
-    var payload = ((Result.Ok<T, String>) deser).value();
     var created = create.apply(payload);
-    if (created instanceof Result.Err<ImportIndependentResult, String> err) {
-      return EResult.err(loc, err.error());
+    ImportIndependentResult triple;
+    switch (created) {
+      case Result.Err<ImportIndependentResult, String> err -> { return EResult.err(loc, err.error()); }
+      case Result.Ok<ImportIndependentResult, String> ok -> triple = ok.value();
     }
-    var triple = ((Result.Ok<ImportIndependentResult, String>) created).value();
     xx.vx.ix.deserializedArtifacts.put(id, triple.value());
     var errors = new TList<ExprErr>();
     for (var dep : triple.dependencies()) {
       var depRes = importArtifact(xx, loc, dep);
       depRes.drainInto(errors);
     }
-    triple.finalizer().run(xx, loc);
+    triple.finalizer().finalizerRun(xx, loc);
     return errors.isEmpty() ? EResult.ok(triple.value()) : drainOk(triple.value(), errors);
   }
 
@@ -231,8 +233,8 @@ public final class ArtifactSupport {
   private static EResult<ExporterAny> lookupRef(
       ExprContext xx, QExprId loc, ArtifactIdSource id) {
     var cached = xx.vx.ix.deserializedArtifacts.getOpt(id);
-    if (cached instanceof Opt.Some<ExporterAny> some) {
-      return EResult.ok(some.value());
+    if (cached.optIsSome()) {
+      return EResult.ok(cached.optUnwrap());
     }
     var cachedIds = new TList<ArtifactIdSource>();
 
@@ -302,14 +304,14 @@ public final class ArtifactSupport {
   }
 
   public static final class ArtifactIdHolder {
-    private @Nullable ArtifactIdSource id;
+    private Opt<ArtifactIdSource> id = Opt.none();
 
-    public @Nullable ArtifactIdSource id() {
+    public Opt<ArtifactIdSource> id() {
       return id;
     }
 
     public void set(ArtifactIdSource id) {
-      this.id = id;
+      this.id = Opt.some(id);
     }
   }
 
@@ -317,7 +319,7 @@ public final class ArtifactSupport {
       ExporterAny value, TList<Artifact> dependencies, Finalizer finalizer) {
     @FunctionalInterface
     public interface Finalizer {
-      void run(ExprContext xx, QExprId loc);
+      void finalizerRun(ExprContext xx, QExprId loc);
     }
   }
 }

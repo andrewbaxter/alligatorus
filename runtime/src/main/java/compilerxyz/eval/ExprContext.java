@@ -15,11 +15,9 @@ import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
-
 @BuiltinFull(uniqueId = 6001L)
 public final class ExprContext {
-  public final @Nullable Type currentExceptionType;
+  public final Opt<Type> currentExceptionType;
   public final ImportStateId importState;
   public final Scope scope;
   public final Target target;
@@ -30,7 +28,7 @@ public final class ExprContext {
       Target target,
       EvalContext vx,
       ImportStateId importState,
-      @Nullable Type currentExceptionType) {
+      Opt<Type> currentExceptionType) {
     this.scope = scope;
     this.target = target;
     this.vx = vx;
@@ -38,7 +36,7 @@ public final class ExprContext {
     this.currentExceptionType = currentExceptionType;
   }
 
-  public ExprContext withExceptionType(@Nullable Type newExceptionType) {
+  public ExprContext withExceptionType(Opt<Type> newExceptionType) {
     return new ExprContext(scope, target, vx, importState, newExceptionType);
   }
 

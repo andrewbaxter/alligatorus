@@ -24,6 +24,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import compilerxyz.gen.AspectRecord;
+import java.util.concurrent.ExecutionException;
 
 public final class ImportRun {
   private ImportRun() {}
@@ -36,15 +38,15 @@ public final class ImportRun {
   }
 
   public static EResult<CodeValue> importRecord(ExprContext xx, QExprId loc, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(loc, "import: argument must have a compile-time value");
     }
-    var argValue = argSome.value();
+    var argValue = argument.value().optUnwrap();
     var recordAspectOpt = GenAspectRecord.getMaybe(xx, argValue.valueType());
-    if (!(recordAspectOpt instanceof Opt.Some<compilerxyz.gen.AspectRecord> recordSome)) {
+    if (recordAspectOpt.optIsNone()) {
       return EResult.err(loc, "import: argument must be a record of source specs");
     }
-    var takenFields = recordSome.value().aspectRecordTakeFields(xx, loc, argValue);
+    var takenFields = recordAspectOpt.optUnwrap().aspectRecordTakeFields(xx, loc, argValue);
 
     var erb = new Erb(loc);
     var specs = new TOrderedMap<ConstKey, SourceSpecValue>();
@@ -56,11 +58,11 @@ public final class ImportRun {
         continue;
       }
       var fieldCv = fieldRes.requireValue("import field");
-      if (!(fieldCv.value() instanceof Opt.Some<Value> fieldSome)
-          || !(fieldSome.value() instanceof ValueObjectConst voc)
+      if (fieldCv.value().optIsNone()
+          || !(fieldCv.value().optUnwrap() instanceof ValueObjectConst voc)
           || !(voc.type() instanceof TypeSourceSpec)
           || !(voc.data() instanceof SourceSpecValue specValue)) {
-        erb.errPush("import: entry '" + key.toCanonical() + "' is not a source spec");
+        erb.errPush("import: entry '" + key.constKeyToCanonical() + "' is not a source spec");
         continue;
       }
       specs.put(key, specValue);
@@ -90,8 +92,10 @@ public final class ImportRun {
                   EResult.ok(new CodeValue(Code.none(loc), EvalOutcome.ofValue(bundleValue)))));
         }
         case SpecOutcome.ModuleOut m -> {
-          if (m.abs() instanceof SourceSpecAbsolute.Local) {
-            ix.localDependencies.add(m.compileId());
+          switch (m.abs()) {
+            case SourceSpecAbsolute.Local ignored -> ix.localDependencies.add(m.compileId());
+            case SourceSpecAbsolute.Virtual v -> {}
+            case SourceSpecAbsolute.Remote r -> {}
           }
           var valueRes = materialize(xx, loc, m.res());
           if (valueRes.hasErrors()) {
@@ -128,7 +132,7 @@ public final class ImportRun {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new RuntimeException("import: interrupted", e);
-        } catch (java.util.concurrent.ExecutionException e) {
+        } catch (ExecutionException e) {
           var cause = e.getCause();
           throw cause instanceof RuntimeException re ? re : new RuntimeException("import task failed", cause);
         }
@@ -142,10 +146,12 @@ public final class ImportRun {
   private static EResult<SpecOutcome> compileOne(ExprContext xx, QExprId loc, SourceSpecValue specValue) {
     var ix = xx.vx.ix;
     var resolveRes = resolve(specValue, ix.currentSpec);
-    if (resolveRes instanceof Result.Err<SourceSpecAbsolute, String> err) {
-      return EResult.err(loc, err.error());
+    Result.Ok<SourceSpecAbsolute, String> resolveResOk;
+    switch (resolveRes) {
+      case Result.Ok<SourceSpecAbsolute, String> ok -> resolveResOk = ok;
+      case Result.Err<SourceSpecAbsolute, String> err -> { return EResult.err(loc, err.error()); }
     }
-    var abs = ((Result.Ok<SourceSpecAbsolute, String>) resolveRes).value();
+    var abs = resolveResOk.value();
     return compileAbsolute(xx, loc, abs);
   }
 
@@ -161,8 +167,10 @@ public final class ImportRun {
                   Code.none(loc),
                   EvalOutcome.ofValue(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
       case SpecOutcome.ModuleOut m -> {
-        if (m.abs() instanceof SourceSpecAbsolute.Local) {
-          xx.vx.ix.localDependencies.add(m.compileId());
+        switch (m.abs()) {
+          case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
+          case SourceSpecAbsolute.Virtual v -> {}
+          case SourceSpecAbsolute.Remote r -> {}
         }
         yield materialize(xx, loc, m.res());
       }
@@ -174,10 +182,12 @@ public final class ImportRun {
     var ix = xx.vx.ix;
     var gx = ix.gx;
     var resolvedRes = gx.sources.sourcesGet(abs);
-    if (resolvedRes instanceof Result.Err<Sources.SourceResolved, String> err) {
-      return EResult.err(loc, err.error());
+    Result.Ok<Sources.SourceResolved, String> resolvedResOk;
+    switch (resolvedRes) {
+      case Result.Ok<Sources.SourceResolved, String> ok -> resolvedResOk = ok;
+      case Result.Err<Sources.SourceResolved, String> err -> { return EResult.err(loc, err.error()); }
     }
-    var resolved = ((Result.Ok<Sources.SourceResolved, String>) resolvedRes).value();
+    var resolved = resolvedResOk.value();
     return switch (resolved) {
       case Sources.SourceResolved.Bundle b -> EResult.ok(new SpecOutcome.BundleOut(b.base()));
       case Sources.SourceResolved.Module m -> {
@@ -204,25 +214,25 @@ public final class ImportRun {
   public static EResult<CodeValue> materialize(ExprContext xx, QExprId loc, CompileRes compileRes) {
     var erb = new Erb(loc);
     Artifact artifact;
-    if (compileRes.result() instanceof CompileResResult.Ok okRes) {
-      artifact = okRes.artifact();
-    } else {
-      var errRes = (CompileResResult.Err) compileRes.result();
-      for (var ee : errRes.errors()) erb.errors().add(ee);
-      erb.errPush("Import failed");
-      return EResult.errs(erb.errors());
+    switch (compileRes.result()) {
+      case CompileResResult.Ok okRes -> artifact = okRes.artifact();
+      case CompileResResult.Err errRes -> {
+        for (var ee : errRes.errors()) erb.errors().add(ee);
+        erb.errPush("Import failed");
+        return EResult.errs(erb.errors());
+      }
     }
     var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
-    if (exporterRes.isEmpty()) return EResult.errs(erb.errors());
-    var valueRes = erb.mustEr(exporterRes.get().exporterAnyAsValue());
-    if (valueRes.isEmpty()) return EResult.errs(erb.errors());
-    var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(valueRes.get()));
-    var valueType = valueRes.get().valueType();
+    if (exporterRes.optIsNone()) return EResult.errs(erb.errors());
+    var valueRes = erb.mustEr(exporterRes.optUnwrap().exporterAnyAsValue());
+    if (valueRes.optIsNone()) return EResult.errs(erb.errors());
+    var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(valueRes.optUnwrap()));
+    var valueType = valueRes.optUnwrap().valueType();
     var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
-    if (pdRes.isEmpty()) return EResult.errs(erb.errors());
-    var finalRes = erb.mustEr(pdRes.get().aspectPostDeserializePostDeserialize(xx, loc, cv));
-    if (finalRes.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(finalRes.get());
+    if (pdRes.optIsNone()) return EResult.errs(erb.errors());
+    var finalRes = erb.mustEr(pdRes.optUnwrap().aspectPostDeserializePostDeserialize(xx, loc, cv));
+    if (finalRes.optIsNone()) return EResult.errs(erb.errors());
+    return EResult.ok(finalRes.optUnwrap());
   }
 
   public static Result<SourceSpecAbsolute, String> resolve(
@@ -248,14 +258,16 @@ public final class ImportRun {
                     "relative import is only allowed from a bundle, not a single remote file");
               }
               var resolved = posixResolve(posixDir(cr.subpath()), l.path());
-              if (resolved instanceof Result.Err<String, String> err) {
-                yield Result.err(err.error());
+              Result.Ok<String, String> resolvedOk;
+              switch (resolved) {
+                case Result.Ok<String, String> ok -> resolvedOk = ok;
+                case Result.Err<String, String> err -> { yield Result.err(err.error()); }
               }
               yield Result.ok(
                   new SourceSpecAbsolute.Remote(
                       cr.baseUrl(),
                       cr.hash(),
-                      ((Result.Ok<String, String>) resolved).value()));
+                      resolvedOk.value()));
             }
           };
     };

@@ -21,19 +21,19 @@ import compilerxyz.util.TList;
 
 public sealed interface TypeObjectCastRule {
 
-  boolean matches(ExprContext xx, Type destType);
+  boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);
 
-  EResult<CodeValue> apply(
+  EResult<CodeValue> typeObjectCastRuleApply(
       ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType);
 
   record RestampToIdentity(Unique identity) implements TypeObjectCastRule {
     @Override
-    public boolean matches(ExprContext xx, Type destType) {
+    public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
       return destType.typeAspect(xx, identity).optIsSome();
     }
 
     @Override
-    public EResult<CodeValue> apply(
+    public EResult<CodeValue> typeObjectCastRuleApply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
       return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
@@ -42,12 +42,12 @@ public sealed interface TypeObjectCastRule {
   record CallByDestIdentity(Unique identity, DynRuntimeHelper helper)
       implements TypeObjectCastRule {
     @Override
-    public boolean matches(ExprContext xx, Type destType) {
+    public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
       return destType.typeAspect(xx, identity).optIsSome();
     }
 
     @Override
-    public EResult<CodeValue> apply(
+    public EResult<CodeValue> typeObjectCastRuleApply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
       return emitRuntimeCall(xx, source, loc, cv, destType, helper);
     }
@@ -65,14 +65,14 @@ public sealed interface TypeObjectCastRule {
       JavaMethodDescriptor descriptor)
       implements TypeObjectCastRule {
     @Override
-    public boolean matches(ExprContext xx, Type destType) {
+    public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
       return destType.typeAspect(xx, identity).optIsSome();
     }
 
     @Override
-    public EResult<CodeValue> apply(
+    public EResult<CodeValue> typeObjectCastRuleApply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      var sourceCode = cv.code().dynamic();
+      var sourceCode = cv.code().codeDynamic();
       if (sourceCode == null) {
         return EResult.err(
             loc,
@@ -111,7 +111,7 @@ public sealed interface TypeObjectCastRule {
       CodeValue cv,
       Type destType,
       DynRuntimeHelper helper) {
-    var sourceCode = cv.code().dynamic();
+    var sourceCode = cv.code().codeDynamic();
     if (sourceCode == null) {
       return EResult.err(
           loc,

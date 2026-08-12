@@ -1,7 +1,6 @@
 package compilerxyz.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
@@ -226,9 +225,12 @@ public final class T0120ImplTypeTest {
                         mb.scopeUse("upper"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO", ok.logs().get(0).message());
   }
@@ -250,9 +252,12 @@ public final class T0120ImplTypeTest {
                         mb.scopeUse("upper"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO", ok.logs().get(0).message());
   }

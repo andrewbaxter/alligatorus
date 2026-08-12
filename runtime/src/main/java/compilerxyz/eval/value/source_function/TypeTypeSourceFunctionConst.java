@@ -133,18 +133,21 @@ public final class TypeTypeSourceFunctionConst {
 
     @Override
     public EResult<Value> aspectLiftLift(
-        ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-      if (externalHostValue instanceof ValueObjectConst voc
+        ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+      if (externalHostValue.optIsNone()) {
+        return EResult.err(loc, typeDesc() + "::lift: unexpected host null");
+      }
+      var rawHostValue = externalHostValue.optUnwrap();
+      if (rawHostValue instanceof ValueObjectConst voc
           && voc.data() instanceof TypeSourceFunctionConst func) {
         return EResult.ok(new ValueEmpty(func));
       }
-      if (externalHostValue instanceof TypeSourceFunctionConst func) {
+      if (rawHostValue instanceof TypeSourceFunctionConst func) {
         return EResult.ok(new ValueEmpty(func));
       }
       return EResult.err(
           loc,
-          typeDesc() + "::lift: unexpected host "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+          typeDesc() + "::lift: unexpected host " + rawHostValue.getClass().getName());
     }
   }
 }

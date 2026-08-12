@@ -35,6 +35,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.Map;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6126L)
 public record TypeMapPutFnDynamic(Type keyType, Type valueType)
@@ -71,7 +72,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn == null) {
       return EResult.err(loc, "TypeMapPutFnDynamic::toDynamic: no dynamic code");
     }
@@ -81,15 +82,16 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
   @Override
   public EResult<CodeValue> aspectFunctionCall(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(loc, "TypeMapPutFnDynamic::call: argument has no compile-time value");
     }
-    var argMeta = argSome.value().valueType();
+    var argValue = argument.value().optUnwrap();
+    var argMeta = argValue.valueType();
     var tupleOpt = GenAspectTuple.getMaybe(xx, argMeta);
-    if (!(tupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
+    if (tupleOpt.optIsNone()) {
       return EResult.err(loc, "TypeMapPutFnDynamic::call: argument must be a (key, value) tuple");
     }
-    var elements = tupleSome.value().aspectTupleTakeElements(xx, loc, argSome.value());
+    var elements = tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
     if (elements.size() != 2) {
       return EResult.err(
           loc,
@@ -125,7 +127,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
     if (valDynRes.hasErrors()) return valDynRes.reerr();
     var valDyn = valDynRes.requireValue("toDynamic value");
 
-    var selfDyn = self.code().dynamic();
+    var selfDyn = self.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeMapPutFnDynamic::call: self has no dynamic code");
     }
@@ -164,7 +166,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -174,10 +176,11 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_PUT_FN_DYNAMIC_IDENTITY, TypeMapPutFnDynamic.class) instanceof Opt.Some<TypeMapPutFnDynamic> oSome
-        && keyType.typeIsEqual(xx, oSome.value().keyType)
-        && valueType.typeIsEqual(xx, oSome.value().valueType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_PUT_FN_DYNAMIC_IDENTITY, TypeMapPutFnDynamic.class);
+    return oOpt.optIsSome()
+        && keyType.typeIsEqual(xx, oOpt.optUnwrap().keyType)
+        && valueType.typeIsEqual(xx, oOpt.optUnwrap().valueType);
   }
 
   @Override

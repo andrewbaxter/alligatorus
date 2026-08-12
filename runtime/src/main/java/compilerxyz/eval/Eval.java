@@ -33,6 +33,10 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStringConst;
+import compilerxyz.eval.dynamic.CodeLoc.Some;
+import compilerxyz.eval.dynamic.DynCompileErrors;
+import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
+import compilerxyz.eval.value.null_.TypeNullDynamic;
 
 public final class Eval {
 
@@ -42,8 +46,9 @@ public final class Eval {
 
   public static boolean codeUsesBinding(CodeDynamic code, BindingId targetId) {
     return switch (code.code()) {
-      case compilerxyz.eval.dynamic.JavaBytecodeStoreLoad sl ->
-          targetId instanceof BindingId.Local local && local.key().equals(sl.key);
+      case JavaBytecodeStoreLoad sl -> switch (targetId) {
+        case BindingId.Local local -> local.key().equals(sl.key);
+      };
       case JavaBytecodeSequence s -> {
         boolean found = false;
         for (var child : s.children) {
@@ -62,8 +67,8 @@ public final class Eval {
   public static Result<ConstKey, String> extractConstKey(ExprContext xx, QExprId loc, Value v) {
     var typeRes = v.valueType();
     var stringConst = GenAspectStringConst.getMaybe(xx, typeRes);
-    if (stringConst instanceof Opt.Some<AspectStringConst> some) {
-      return Result.ok(new ConstKey.Str(some.value().aspectStringConstGet(v)));
+    if (stringConst.optIsSome()) {
+      return Result.ok(new ConstKey.Str(stringConst.optUnwrap().aspectStringConstGet(v)));
     }
     return Result.err(
         "TODO value type [X] must expose const key aspect [LIST] but doesn't");
@@ -71,17 +76,17 @@ public final class Eval {
 
   public static EResult<CodeValue> maybeWrapCallException(
       ExprContext xx, QExprId loc, Opt<Type> calleeExc, CodeValue callCv) {
-    if (!(calleeExc instanceof Opt.Some<Type> calleeExcSome)) {
+    if (calleeExc.optIsNone()) {
       return EResult.ok(callCv);
     }
-    var calleeExcType = calleeExcSome.value();
-    if (xx.currentExceptionType == null) {
+    var calleeExcType = calleeExc.optUnwrap();
+    if (xx.currentExceptionType.optIsNone()) {
       return EResult.err(
           loc,
           "Cannot call a function that may throw from a function that did not declare an"
               + " exception type");
     }
-    var callerExc = xx.currentExceptionType;
+    var callerExc = xx.currentExceptionType.optUnwrap();
     var erb = new Erb(loc);
     var chainDestRes = ScopeChains.excDest(xx, loc);
     if (chainDestRes.hasErrors()) return chainDestRes.reerr();
@@ -93,32 +98,26 @@ public final class Eval {
     var siteBlockRes =
         erb.mustEr(
             xx.target.targetCastException(xx, loc, siteKey, calleeExcType, callerExc, chainDest));
-    if (siteBlockRes.isEmpty()) return EResult.errs(erb.errors());
+    if (siteBlockRes.optIsNone()) return EResult.errs(erb.errors());
     JumpKey dest;
     Code trailer = Code.none(loc);
-    if (siteBlockRes.get() instanceof Opt.Some<Code> someBlock) {
-      // The cast handler belongs to the call site, not to any enclosing scope:
-      // emit it out of line right around the call (behind a skip jump) so a
-      // normal return falls past it and the guard's exceptional edge lands in
-      // it. Nothing is stashed in a ScopeLevel.
+    if (siteBlockRes.optUnwrap().optIsSome()) {
       var skip = new JumpKey();
       var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
       var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
-      if (jumpOpt.isEmpty() || landOpt.isEmpty()) return EResult.errs(erb.errors());
+      if (jumpOpt.optIsNone() || landOpt.optIsNone()) return EResult.errs(erb.errors());
       trailer =
-          Code.concat(loc, jumpOpt.get(), Code.concat(loc, someBlock.value(), landOpt.get()));
+          Code.concat(loc, jumpOpt.optUnwrap(), Code.concat(loc, siteBlockRes.optUnwrap().optUnwrap(), landOpt.optUnwrap()));
       dest = siteKey;
     } else {
-      if (!(chainDest instanceof Opt.Some<JumpKey> someChain)) {
-        // Nothing intervenes: the exception propagates out of the method as
-        // is, no handler routing needed at this site.
+      if (chainDest.optIsNone()) {
         return EResult.ok(callCv);
       }
-      dest = someChain.value();
+      dest = chainDest.optUnwrap();
     }
     var wrappedOpt = erb.mustEr(xx.target.targetGuarded(loc, dest, callCv.code()));
-    if (wrappedOpt.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(new CodeValue(Code.concat(loc, wrappedOpt.get(), trailer), callCv.outcome()));
+    if (wrappedOpt.optIsNone()) return EResult.errs(erb.errors());
+    return EResult.ok(new CodeValue(Code.concat(loc, wrappedOpt.optUnwrap(), trailer), callCv.outcome()));
   }
 
   /**
@@ -131,7 +130,7 @@ public final class Eval {
    * out of the hands of target authors, since targets can be user-defined.
    */
   public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dropXx = xx.withExceptionType(null);
+    var dropXx = xx.withExceptionType(Opt.none());
     return dropXx.target.targetDrop(dropXx, loc, cv);
   }
 
@@ -141,20 +140,20 @@ public final class Eval {
       return EResult.ok(source);
     }
     var erb = new Erb(loc);
-    var sourceType = ((Opt.Some<Value>) source.value()).value().valueType();
+    var sourceType = source.value().optUnwrap().valueType();
     CodeValue dest;
     if (sourceType.typeCanCastTo(xx, loc, destType)) {
       var castOpt = erb.mustEr(sourceType.typeCastTo(xx, loc, source, destType));
-      if (castOpt.isEmpty()) {
+      if (castOpt.optIsNone()) {
         return EResult.errs(erb.errors());
       }
-      dest = castOpt.get();
+      dest = castOpt.optUnwrap();
     } else if (destType.typeCanCastFrom(xx, loc, sourceType)) {
       var castOpt = erb.mustEr(destType.typeCastFrom(xx, loc, source));
-      if (castOpt.isEmpty()) {
+      if (castOpt.optIsNone()) {
         return EResult.errs(erb.errors());
       }
-      dest = castOpt.get();
+      dest = castOpt.optUnwrap();
     } else {
       return EResult.err(
           loc,
@@ -167,11 +166,11 @@ public final class Eval {
   }
 
   public static TMap<ConstKey, Binding> bodyBuiltinScope(ExprContext xx) {
-    var rootBinding = xx.vx.ix.builtinScopeRootBinding;
-    if (rootBinding == null) {
+    if (xx.vx.ix.builtinScopeRootBinding.optIsNone()) {
       throw new IllegalStateException(
           "bodyBuiltinScope called before initBuiltinScope");
     }
+    var rootBinding = xx.vx.ix.builtinScopeRootBinding.optUnwrap();
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
     return scopeEntries;
@@ -184,7 +183,7 @@ public final class Eval {
       return bindingRes.reerr();
     }
     var rootBinding = bindingRes.requireValue("Eval::initBuiltinScope installRoot");
-    xx.vx.ix.builtinScopeRootBinding = rootBinding;
+    xx.vx.ix.builtinScopeRootBinding = Opt.some(rootBinding);
     var scopeEntries = new TMap<ConstKey, Binding>();
     scopeEntries.put(new ConstKey.Str(KEY_BUILTINS), rootBinding);
     return EResult.ok(scopeEntries);
@@ -197,10 +196,10 @@ public final class Eval {
     var vx = new EvalContext(cix);
     var rootScope = new Scope(vx);
     var target = new TargetDynamic(vx.nextLocalId);
-    var xx = new ExprContext(rootScope, target, vx, importState, new TypeStringConst());
+    var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringConst()));
     var scopeRes = initBuiltinScope(xx, rootLoc, importState);
     if (scopeRes.hasErrors()) {
-      return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull());
+      return new CompileImport.EvalOutcome.Err(scopeRes.errorsOrNull().optUnwrap());
     }
     var scopeEntries = scopeRes.requireValue("Eval::eval initBuiltinScope");
     for (var entry : scopeEntries.entrySet()) {
@@ -210,15 +209,15 @@ public final class Eval {
     vx.evalRootInternalName = EvalRootEmitter.toInternalName(binaryName);
     var cvRes = ConstEval.constEval(xx, expr);
     if (cvRes.hasErrors()) {
-      return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull());
+      return new CompileImport.EvalOutcome.Err(cvRes.errorsOrNull().optUnwrap());
     }
     var evalRes = cvRes.requireValue("Eval::eval constEval");
     var cv = evalRes.cv();
     Opt<CodeDynamic> stage1Code;
     Opt<Value> fallbackValue;
     Type valueType;
-    if (!(cv.value() instanceof Opt.Some<Value> cvValSome)) {
-      var codeDyn = cv.code().dynamic();
+    if (cv.value().optIsNone()) {
+      var codeDyn = cv.code().codeDynamic();
       if (codeDyn == null) {
         return new CompileImport.EvalOutcome.Err(
             TList.of(
@@ -228,40 +227,40 @@ public final class Eval {
                         new ExprSubErr.Opaque(
                             "eval: const_eval produced no compile-time value and no dynamic code")))));
       }
-      var nullType = new compilerxyz.eval.value.null_.TypeNullDynamic();
-      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var nullType = new TypeNullDynamic();
+      var seq = new JavaBytecodeSequence();
       seq.add(codeDyn);
       seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.literalNull(rootLoc));
-      stage1Code = Opt.some(new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(rootLoc), seq));
+      stage1Code = Opt.some(new CodeDynamic(new Some(rootLoc), seq));
       fallbackValue = Opt.none();
       valueType = nullType;
     } else {
-      var cvValue = cvValSome.value();
+      var cvValue = cv.value().optUnwrap();
       valueType = cvValue.valueType();
-      if (cv.code().isNone()) {
+      if (cv.code().codeIsNone()) {
         stage1Code = Opt.none();
         fallbackValue = Opt.some(cvValue);
       } else {
         var consumeRes = GenAspectConsumeDynamic.get(xx, rootLoc, valueType);
         if (consumeRes.hasErrors()) {
-          return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull());
+          return new CompileImport.EvalOutcome.Err(consumeRes.errorsOrNull().optUnwrap());
         }
         var consume = consumeRes.requireValue("Eval::eval consume aspect");
         var dynamicRes = consume.aspectConsumeDynamicToDynamic(xx, rootLoc, cv);
         if (dynamicRes.hasErrors()) {
-          return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull());
+          return new CompileImport.EvalOutcome.Err(dynamicRes.errorsOrNull().optUnwrap());
         }
         var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
         stage1Code = Opt.some(dynamicCode);
         fallbackValue = Opt.none();
       }
     }
-    if (stage1Code instanceof Opt.None && vx.definitionSets.isEmpty()) {
-      if (!(fallbackValue instanceof Opt.Some<Value> fb)) {
+    if (stage1Code.optIsNone() && vx.definitionSets.isEmpty()) {
+      if (fallbackValue.optIsNone()) {
         throw new IllegalStateException(
             "eval: no dynamic code but also no fallback value");
       }
-      return new CompileImport.EvalOutcome.Ok(fb.value(), new TList<>(), false);
+      return new CompileImport.EvalOutcome.Ok(fallbackValue.optUnwrap(), new TList<>(), false);
     }
     var dependencyLoaders = new TList<DefinitionSetClassLoader>();
 
@@ -280,7 +279,7 @@ public final class Eval {
         }
         var installRes = ImportInstall.installDefSetToDynamic(xx, rootLoc, ds);
         if (installRes.hasErrors()) {
-          return new CompileImport.EvalOutcome.Err(installRes.errorsOrNull());
+          return new CompileImport.EvalOutcome.Err(installRes.errorsOrNull().optUnwrap());
         }
         var installedLoader =
             installRes.requireValue("Eval::eval installDefSetToDynamic");
@@ -306,26 +305,26 @@ public final class Eval {
 
     Object rawResult;
     try {
-      if (!(stage1Code instanceof Opt.Some<CodeDynamic> rootSome)) {
-        if (!(fallbackValue instanceof Opt.Some<Value> fb)) {
+      if (stage1Code.optIsNone()) {
+        if (fallbackValue.optIsNone()) {
           throw new IllegalStateException(
               "eval: no stage1 code and no fallback value");
         }
 
-        return new CompileImport.EvalOutcome.Ok(fb.value(), vx.logs, false);
+        return new CompileImport.EvalOutcome.Ok(fallbackValue.optUnwrap(), vx.logs, false);
       }
       var emitted =
           EvalRootEmitter.emit(
               target,
               binaryName,
-              rootSome.value(),
+              stage1Code.optUnwrap(),
               vx.externals);
-      if (xx.vx.ix.classLoader == null) {
+      if (xx.vx.ix.classLoader.optIsNone()) {
         xx.vx.ix.classLoader =
-            new DefinitionSetClassLoader(
-                xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders);
+            Opt.some(new DefinitionSetClassLoader(
+                xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
       }
-      var loader = xx.vx.ix.classLoader;
+      var loader = xx.vx.ix.classLoader.optUnwrap();
       loader.registerClass(emitted.binaryName(), emitted.bytecode());
 
       var rootStaticFields = new TOrderedMap<String, Object>();
@@ -351,7 +350,7 @@ public final class Eval {
                   new ExprErr(rootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
         }
 
-        if (cause instanceof compilerxyz.eval.dynamic.DynCompileErrors compileErrs) {
+        if (cause instanceof DynCompileErrors compileErrs) {
           return new CompileImport.EvalOutcome.Err(compileErrs.errors);
         }
 
@@ -377,17 +376,17 @@ public final class Eval {
     }
 
     Value finalValue;
-    if (fallbackValue instanceof Opt.Some<Value> fb) {
-      finalValue = fb.value();
+    if (fallbackValue.optIsSome()) {
+      finalValue = fallbackValue.optUnwrap();
     } else {
       var liftRes = GenAspectLift.get(xx, rootLoc, valueType);
       if (liftRes.hasErrors()) {
-        return new CompileImport.EvalOutcome.Err(liftRes.errorsOrNull());
+        return new CompileImport.EvalOutcome.Err(liftRes.errorsOrNull().optUnwrap());
       }
       var liftAspect = liftRes.requireValue("Eval::eval lift aspect");
-      var liftedRes = liftAspect.aspectLiftLift(xx, rootLoc, rawResult);
+      var liftedRes = liftAspect.aspectLiftLift(xx, rootLoc, Opt.ofNullable(rawResult));
       if (liftedRes.hasErrors()) {
-        return new CompileImport.EvalOutcome.Err(liftedRes.errorsOrNull());
+        return new CompileImport.EvalOutcome.Err(liftedRes.errorsOrNull().optUnwrap());
       }
       var lifted = liftedRes.requireValue("Eval::eval lift result");
       finalValue = lifted;

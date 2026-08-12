@@ -7,6 +7,7 @@ import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import java.lang.IllegalStateException;
 import java.lang.String;
+import compilerxyz.util.Opt;
 
 @BuiltinPushStruct
 public final class SourceFuncResult {
@@ -25,33 +26,33 @@ public final class SourceFuncResult {
     }
 
     public void set_description(ExprContext xx, String description) {
-        if (this.func.data().description != null) {
+        if (this.func.data().description.optIsSome()) {
             throw new IllegalStateException("Function already has a description");
         }
-        this.func.data().description = description;
+        this.func.data().description = Opt.some(description);
     }
 
     public void impl(
-        ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret, StagedExprCell implBody) {
+        ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
         var data = this.func.data();
-        if (data.argType != null) {
+        if (data.argType.optIsSome()) {
             throw new IllegalStateException("Function already has an arg type");
         }
-        data.argType = arg;
-        if (data.retType instanceof compilerxyz.util.Opt.Some) {
+        data.argType = Opt.some(arg);
+        if (data.retType.optIsSome()) {
             throw new IllegalStateException("Function already has a ret type");
         }
         data.retType = ret;
-        if (data.implExpr != null) {
+        if (data.implExpr.optIsSome()) {
             throw new IllegalStateException("Function already has an implementation");
         }
-        data.implExpr = (Value) implBody.value();
+        data.implExpr = Opt.some((Value) implBody.value());
     }
 
     public void set_exception_type(ExprContext xx, Type exceptionType) {
-        if (this.func.data().exceptionType != null) {
+        if (this.func.data().exceptionType.optIsSome()) {
             throw new IllegalStateException("Function already has an exception type");
         }
-        this.func.data().exceptionType = exceptionType;
+        this.func.data().exceptionType = compilerxyz.util.Opt.some(exceptionType);
     }
 }

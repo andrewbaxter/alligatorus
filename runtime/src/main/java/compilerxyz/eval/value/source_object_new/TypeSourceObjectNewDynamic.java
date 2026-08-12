@@ -37,6 +37,7 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
@@ -50,9 +51,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public String typeDesc() {
-    var d = type_.description;
-    if (d != null) return d;
-    return "definition_set_object_new";
+    return type_.description.optUnwrapOr("definition_set_object_new");
   }
 
 
@@ -76,11 +75,11 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(
           loc, "TypeSourceObjectNewDynamic::bind: CodeValue has no compile-time value");
     }
-    Value v = some.value();
+    Value v = cv.value().optUnwrap();
     return EResult.ok(new BindResult(Code.none(loc), new SourceObjectNewConstBinding(v)));
   }
 
@@ -93,17 +92,17 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
           loc, "TypeSourceObjectNewDynamic::call: object has no definition set reference");
     }
     xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-    Type underlyingType = type_.underlyingType;
-    if (underlyingType == null) {
+    if (type_.underlyingType.optIsNone()) {
       return EResult.err(
           loc, "TypeSourceObjectNewDynamic::call: object underlying type not finalised");
     }
+    Type underlyingType = type_.underlyingType.optUnwrap();
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
-    if (convertedOpt.isEmpty()) {
+    if (convertedOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var converted = convertedOpt.get();
+    var converted = convertedOpt.optUnwrap();
     var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
@@ -146,7 +145,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectNewConst(type_()), this));
+    return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectNewConst(type_()), this));
   }
 
   private record SourceObjectNewConstBinding(Value value) implements Binding {
@@ -176,25 +175,25 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_IDENTITY, TypeSourceObjectNewDynamic.class) instanceof Opt.Some<TypeSourceObjectNewDynamic> oSome
-        && type_.typeIsEqual(xx, oSome.value().type_);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_NEW_DYNAMIC_IDENTITY, TypeSourceObjectNewDynamic.class);
+    return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

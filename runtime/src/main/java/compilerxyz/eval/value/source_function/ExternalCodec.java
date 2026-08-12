@@ -15,6 +15,8 @@ import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.StageLiftCell;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.util.TList;
+import compilerxyz.eval.value.expr.TypeExpr;
+import compilerxyz.eval.value.unique.TypeUniqueDynamic;
 
 public final class ExternalCodec {
   private ExternalCodec() {}
@@ -43,7 +45,7 @@ public final class ExternalCodec {
         out.add(new ArtifactExternal.StagedExpr(key, exprArt));
       } else if (host instanceof StageLiftCell liftCell) {
         var srcTypeArtRes =
-            liftCell.sourceType().exportArtifact(xx, loc);
+            liftCell.sourceType().artifactableExportArtifact(xx, loc);
         if (srcTypeArtRes.hasErrors()) {
           srcTypeArtRes.drainInto(errors);
           return EResult.errs(errors);
@@ -52,7 +54,7 @@ public final class ExternalCodec {
             srcTypeArtRes.requireValue("ExternalCodec::export StageLift source type artifact");
         out.add(new ArtifactExternal.StageLift(key, srcTypeArt));
       } else if (host instanceof Type wrappedType) {
-        var typeArtRes = wrappedType.exportArtifact(xx, loc);
+        var typeArtRes = wrappedType.artifactableExportArtifact(xx, loc);
         if (typeArtRes.hasErrors()) {
           typeArtRes.drainInto(errors);
           return EResult.errs(errors);
@@ -60,7 +62,7 @@ public final class ExternalCodec {
         var typeArt = typeArtRes.requireValue("ExternalCodec::export Type artifact");
         out.add(new ArtifactExternal.Type(key, typeArt));
       } else if (host instanceof Unique u) {
-        out.add(new ArtifactExternal.Unique(key, u));
+        out.add(new ArtifactExternal.UniqueRef(key, u));
       } else {
         return EResult.err(
             loc,
@@ -87,8 +89,8 @@ public final class ExternalCodec {
           var cell = new StagedExprCell(expr);
           out.add(
               new EvalContext.ExternalEntry(
-                  se.key(),
-                  new compilerxyz.eval.value.expr.TypeExpr(),
+                  se.artifactExternalKey(),
+                  new TypeExpr(),
                   new External(StagedExprCell.class, cell)));
         }
         case ArtifactExternal.StageLift sl -> {
@@ -112,7 +114,7 @@ public final class ExternalCodec {
                   xx.target);
           out.add(
               new EvalContext.ExternalEntry(
-                  sl.key(),
+                  sl.artifactExternalKey(),
                   sourceType,
                   new External(StageLiftCell.class, liftCell)));
         }
@@ -125,13 +127,13 @@ public final class ExternalCodec {
           }
           var type = typeRes.requireValue("ExternalCodec::import Type external");
           out.add(
-              new EvalContext.ExternalEntry(te.key(), type, new External(Type.class, type)));
+              new EvalContext.ExternalEntry(te.artifactExternalKey(), type, new External(Type.class, type)));
         }
-        case ArtifactExternal.Unique uq -> {
+        case ArtifactExternal.UniqueRef uq -> {
           out.add(
               new EvalContext.ExternalEntry(
-                  uq.key(),
-                  new compilerxyz.eval.value.unique.TypeUniqueDynamic(),
+                  uq.artifactExternalKey(),
+                  new TypeUniqueDynamic(),
                   new External(Unique.class, uq.unique())));
         }
       }

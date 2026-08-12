@@ -19,7 +19,7 @@ public class JavaBytecodeGuarded implements JavaBytecode {
   }
 
   @Override
-  public <T> T dispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.handleGuarded(this);
+  public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleGuarded(this);
   }
 }

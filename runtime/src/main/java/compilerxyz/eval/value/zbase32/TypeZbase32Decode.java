@@ -42,6 +42,7 @@ import compilerxyz.gen.GenAspectStringDynamic;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.AspectStringConst;
 
 @BuiltinPath("zbase32.decode")
 @BuiltinLight(uniqueId = 6153L)
@@ -71,13 +72,14 @@ public record TypeZbase32Decode()
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(loc, "zbase32.decode: argument must have a value");
     }
-    var argValue = argSome.value();
+    var argValue = argument.value().optUnwrap();
     var argType = argValue.valueType();
-    if (GenAspectStringConst.getMaybe(xx, argType) instanceof Opt.Some<compilerxyz.gen.AspectStringConst> strConst) {
-      var s = strConst.value().aspectStringConstGet(argValue);
+    var strConstOpt = GenAspectStringConst.getMaybe(xx, argType);
+    if (strConstOpt.optIsSome()) {
+      var s = strConstOpt.optUnwrap().aspectStringConstGet(argValue);
       byte[] bytes;
       try {
         bytes = Zbase32.decode(s);

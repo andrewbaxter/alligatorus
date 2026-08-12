@@ -33,6 +33,8 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.value.list.TypeListDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6106L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
@@ -79,13 +81,13 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     Type resultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
     if (kind == Kind.OK) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
-      if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
+      if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
       var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (consumeRes.hasErrors()) return consumeRes.reerr();
       var innerJsRes =
           consumeRes
               .requireValue("TypeEResultVariantConstructorDynamic::call ok consume")
-              .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.get());
+              .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.optUnwrap());
       if (innerJsRes.hasErrors()) return innerJsRes.reerr();
       var innerJs = innerJsRes.requireValue("TypeEResultVariantConstructorDynamic::call ok toDynamic");
       var okSeq = new JavaBytecodeSequence();
@@ -103,15 +105,15 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     }
     if (kind == Kind.ERRS) {
       var errsArgType =
-          new compilerxyz.eval.value.list.TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
+          new TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
       var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
-      if (convertedErrsOpt.isEmpty()) return EResult.errs(erb.errors());
+      if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
       var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, errsArgType);
       if (consumeRes.hasErrors()) return consumeRes.reerr();
       var listJsRes =
           consumeRes
               .requireValue("TypeEResultVariantConstructorDynamic::call errs consume")
-              .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.get());
+              .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.optUnwrap());
       if (listJsRes.hasErrors()) return listJsRes.reerr();
       var errsSeq = new JavaBytecodeSequence();
       errsSeq.add(
@@ -136,8 +138,8 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
                 new TupleElement.Dynamic(compilerxyz.gen.GenQExprId.dynamicType()),
                 new TupleElement.Dynamic(new TypeStringDynamic())));
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
-    if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-    var slotsRes = DynUtil.destructurePositional(xx, loc, argTupleType, convertedOpt.get());
+    if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+    var slotsRes = DynUtil.destructurePositional(xx, loc, argTupleType, convertedOpt.optUnwrap());
     if (slotsRes.hasErrors()) return slotsRes.reerr();
     var slots = slotsRes.requireValue("TypeEResultVariantConstructorDynamic::call destructure");
     if (slots.size() != 2) {
@@ -177,29 +179,29 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeEResultVariantConstructorDynamic.class) instanceof Opt.Some<TypeEResultVariantConstructorDynamic> oSome
-        && elementType.typeIsEqual(xx, oSome.value().elementType) && kind == oSome.value().kind;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeEResultVariantConstructorDynamic.class);
+    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType) && kind == oOpt.optUnwrap().kind;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -49,6 +49,7 @@ import compilerxyz.gen.GenAspectDynamicUnboxed;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 
 @BuiltinLight(uniqueId = 6104L)
 public record TypeBoolDynamicBox()
@@ -59,7 +60,7 @@ public record TypeBoolDynamicBox()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectDynamicUnboxed,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic {
 
@@ -70,8 +71,8 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class));
   }
 
@@ -124,12 +125,12 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_BOX_IDENTITY).optIsSome();
   }
 
@@ -146,18 +147,18 @@ public record TypeBoolDynamicBox()
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeBoolDynamicBox::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueType();
+    var sourceType = cv.value().optUnwrap().valueType();
     var boolConstOpt = GenAspectBoolConst.getMaybe(xx, sourceType);
     var seq = new JavaBytecodeSequence();
-    var existingDyn = cv.code().dynamic();
+    var existingDyn = cv.code().codeDynamic();
     if (existingDyn != null) {
       seq.add(existingDyn);
     }
-    if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
-      boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());
+    if (boolConstOpt.optIsSome()) {
+      boolean boolVal = boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap());
       seq.add(JavaBytecodeUtils.literalBool(loc, boolVal));
       seq.add(valueOfBoolean(loc));
     } else if (sourceType instanceof TypeBoolDynamic) {
@@ -188,16 +189,16 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 }

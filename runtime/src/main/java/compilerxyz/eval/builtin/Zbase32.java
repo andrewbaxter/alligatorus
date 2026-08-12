@@ -1,6 +1,7 @@
 package compilerxyz.eval.builtin;
 
 import compilerxyz.util.TList;
+import java.io.ByteArrayOutputStream;
 
 public final class Zbase32 {
   private Zbase32() {}
@@ -14,7 +15,7 @@ public final class Zbase32 {
   }
 
   public static byte[] decode(String encoded) {
-    var out = new java.io.ByteArrayOutputStream(encoded.length() * 5 / 8 + 1);
+    var out = new ByteArrayOutputStream(encoded.length() * 5 / 8 + 1);
     var buffer = 0;
     var bits = 0;
     for (var i = 0; i < encoded.length(); i++) {

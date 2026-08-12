@@ -7,6 +7,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
@@ -28,12 +29,15 @@ public final class T0110ConstFoldingTest {
                         new TestMb.Branch(
                             mb.operatorLt(mb.scopeUse("x"), mb.num(10.0)),
                             mb.call(mb.log(), mb.str("less")))),
-                    mb.call(mb.log(), mb.str("not less"))))));
+                    Opt.some(mb.call(mb.log(), mb.str("not less")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("less", ok.logs().get(0).message());
   }
@@ -52,12 +56,15 @@ public final class T0110ConstFoldingTest {
                         new TestMb.Branch(
                             mb.operatorLt(mb.scopeUse("x"), mb.num(10.0)),
                             mb.call(mb.log(), mb.str("less")))),
-                    mb.call(mb.log(), mb.str("not less"))))));
+                    Opt.some(mb.call(mb.log(), mb.str("not less")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("less", ok.logs().get(0).message());
   }

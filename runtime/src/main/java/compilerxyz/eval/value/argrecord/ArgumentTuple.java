@@ -17,6 +17,10 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.stream.Collectors;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6101L)
 public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
@@ -47,17 +51,18 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    if (!(AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.ARGUMENT_TUPLE_IDENTITY, ArgumentTuple.class) instanceof Opt.Some<ArgumentTuple> oSome)) return false;
-    var o = oSome.value();
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.ARGUMENT_TUPLE_IDENTITY, ArgumentTuple.class);
+    if (oOpt.optIsNone()) return false;
+    var o = oOpt.optUnwrap();
     if (elementTypes.size() != o.elementTypes.size()) return false;
     for (int i = 0; i < elementTypes.size(); i++) {
       if (!elementTypes.get(i).typeIsEqual(xx, o.elementTypes.get(i))) return false;
@@ -66,21 +71,21 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
-      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
-    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
+  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+      ExprContext xx, QExprId loc) {
+    return Value.super.artifactableExportArtifact(xx, loc);
   }
 }

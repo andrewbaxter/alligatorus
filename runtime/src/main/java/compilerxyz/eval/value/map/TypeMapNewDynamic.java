@@ -35,6 +35,7 @@ import compilerxyz.util.TOrderedMap;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6125L)
 public record TypeMapNewDynamic(Type keyType, Type valueType)
@@ -66,13 +67,12 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var instanceType = new TypeMapDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, keyType), compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType));
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
     }
-    var argType = argSome.value().valueType();
+    var argType = argument.value().optUnwrap().valueType();
     var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
-    if (argTupleOpt instanceof Opt.Some<AspectTuple> argTupleSome
-        && argTupleSome.value().aspectTupleElementTypes().isEmpty()) {
+    if (argTupleOpt.optIsSome() && argTupleOpt.optUnwrap().aspectTupleElementTypes().isEmpty()) {
       var retStackRes = GenAspectStackValueDynamic.get(xx, loc, instanceType);
       if (retStackRes.hasErrors()) return retStackRes.reerr();
 
@@ -83,7 +83,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
               torderedMapIntname,
               JavaMethodDescriptor.fromConstructorParts(TList.of()),
               new CodeDynamic(loc, new JavaBytecodeSequence()));
-      var selfDyn = self.code().dynamic();
+      var selfDyn = self.code().codeDynamic();
       CodeDynamic newMap;
       if (selfDyn == null) {
         newMap = instantiateMap;
@@ -116,29 +116,29 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_NEW_DYNAMIC_IDENTITY, TypeMapNewDynamic.class) instanceof Opt.Some<TypeMapNewDynamic> oSome
-        && keyType.typeIsEqual(xx, oSome.value().keyType) && valueType.typeIsEqual(xx, oSome.value().valueType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_NEW_DYNAMIC_IDENTITY, TypeMapNewDynamic.class);
+    return oOpt.optIsSome() && keyType.typeIsEqual(xx, oOpt.optUnwrap().keyType) && valueType.typeIsEqual(xx, oOpt.optUnwrap().valueType);
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

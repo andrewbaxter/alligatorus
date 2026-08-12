@@ -12,10 +12,10 @@ import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TSet;
 import java.util.HashMap;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
+import compilerxyz.util.Opt;
 
 public final class CompileImportContext {
-  public @Nullable Binding builtinScopeRootBinding = null;
+  public Opt<Binding> builtinScopeRootBinding = Opt.none();
 
   public final TList<CompileId> compilePath;
   public final Counter defSetCounter = new Counter();
@@ -29,7 +29,7 @@ public final class CompileImportContext {
   public final SourceSpecAbsolute currentSpec;
   public final TList<CompileId> localDependencies = new TList<>();
 
-  public @Nullable DefinitionSetClassLoader classLoader = null;
+  public Opt<DefinitionSetClassLoader> classLoader = Opt.none();
 
   public final Map<Object, Class<?>> compositeCache = new HashMap<>();
 

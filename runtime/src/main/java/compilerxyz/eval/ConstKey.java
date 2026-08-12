@@ -8,9 +8,9 @@ public sealed interface ConstKey {
 
   record Uint(long value) implements ConstKey {}
 
-  Comparator<ConstKey> CANONICAL_ORDER = Comparator.comparing(ConstKey::toCanonical);
+  Comparator<ConstKey> CANONICAL_ORDER = Comparator.comparing(ConstKey::constKeyToCanonical);
 
-  default String toCanonical() {
+  default String constKeyToCanonical() {
     return switch (this) {
       case Str s -> "\"" + s.value().replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
       case Uint u -> Long.toUnsignedString(u.value());

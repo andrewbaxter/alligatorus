@@ -28,6 +28,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinLight(uniqueId = 6162L)
 public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
@@ -66,8 +69,8 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
   private static Artifact nullArtifact() {
     return new Artifact.Body(
         new ArtifactBody(
-            new compilerxyz.safejson.JsonValueNull(),
-            new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+            new JsonValueNull(),
+            new Root()));
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -81,7 +84,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
           TypeMapConst map;
           if (self instanceof TypeMapConst t) {
             map = t;
-          } else if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+          } else if (self instanceof ValueObjectConst v
               && v.type() instanceof TypeMapConst t) {
             map = t;
           } else {
@@ -97,13 +100,13 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
                   xx.vx.ix.gx.artifacts,
                   cell,
                   () -> {
-                    var keyArtRes = map.keyType.exportArtifact(xx, loc);
+                    var keyArtRes = map.keyType.artifactableExportArtifact(xx, loc);
                     keyArtRes.drainInto(errors);
                     var keyArt =
                         keyArtRes.valueOrNull() != null
                             ? keyArtRes.requireValue("TypeMapConst::exporterExport key")
                             : nullArtifact();
-                    var valueArtRes = map.valueType.exportArtifact(xx, loc);
+                    var valueArtRes = map.valueType.artifactableExportArtifact(xx, loc);
                     valueArtRes.drainInto(errors);
                     var valueArt =
                         valueArtRes.valueOrNull() != null
@@ -119,10 +122,10 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(loc, "TypeMapConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -189,13 +192,14 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
-    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY) instanceof Opt.Some<Aspect> some
-        && some.value() instanceof TypeMapConst o
+    var someOpt = other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY);
+    return someOpt.optIsSome()
+        && someOpt.optUnwrap() instanceof TypeMapConst o
         && keyType.typeIsEqual(xx, o.keyType)
         && valueType.typeIsEqual(xx, o.valueType);
   }

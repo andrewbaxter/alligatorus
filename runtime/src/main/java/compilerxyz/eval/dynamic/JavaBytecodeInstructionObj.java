@@ -11,7 +11,7 @@ public class JavaBytecodeInstructionObj implements JavaBytecodeInstruction {
   }
 
   @Override
-  public void dispatchMore(MoreDispatcher moreDispatcher) {
-    moreDispatcher.handleObj(this);
+  public void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher) {
+    moreDispatcher.moreDispatcherHandleObj(this);
   }
 }

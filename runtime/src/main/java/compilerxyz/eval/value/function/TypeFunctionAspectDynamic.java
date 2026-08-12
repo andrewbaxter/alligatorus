@@ -39,6 +39,10 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectTuple;
+import compilerxyz.eval.TypeAspect;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
+import compilerxyz.gen.AspectTuple;
 
 @BuiltinPath("eval.aspect_lookup")
 @BuiltinLight(uniqueId = 6108L)
@@ -54,7 +58,7 @@ public record TypeFunctionAspectDynamic()
   private static final JavaMethodDescriptor DESC_TYPE_ASPECT =
       JavaMethodDescriptor.fromParts(
           JavaDataDescriptor.fromClass(compilerxyz.util.Opt.class),
-          JavaDataDescriptor.fromClass(compilerxyz.eval.ExprContext.class),
+          JavaDataDescriptor.fromClass(ExprContext.class),
           JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class));
 
 
@@ -78,16 +82,16 @@ public record TypeFunctionAspectDynamic()
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(loc, "aspect_lookup: arg has no compile-time value");
     }
-    var argVal = argSome.value();
+    var argVal = argument.value().optUnwrap();
     var argType = argVal.valueType();
     var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
-    if (!(tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome)) {
+    if (tupleOpt.optIsNone()) {
       return EResult.err(loc, "aspect_lookup: expected 3-tuple arg (subject, aspect_type, xx)");
     }
-    var elemCvs = tupleSome.value().aspectTupleTakeElements(xx, loc, argVal);
+    var elemCvs = tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argVal);
     if (elemCvs.size() != 3) {
       return EResult.err(
           loc,
@@ -100,26 +104,26 @@ public record TypeFunctionAspectDynamic()
     var aspectTypeCv = elemCvs.get(1).requireValue("aspect_lookup aspect_type");
     var xxCv = elemCvs.get(2).requireValue("aspect_lookup xx");
 
-    if (!(aspectTypeCv.value() instanceof Opt.Some<Value> atSome)) {
+    if (aspectTypeCv.value().optIsNone()) {
       return EResult.err(loc, "aspect_lookup: aspect_type has no compile-time value");
     }
-    Object aspectTypeVal = atSome.value();
-    if (aspectTypeVal instanceof compilerxyz.eval.value.object_.ValueObjectConst wrap) {
+    Object aspectTypeVal = aspectTypeCv.value().optUnwrap();
+    if (aspectTypeVal instanceof ValueObjectConst wrap) {
       aspectTypeVal = wrap.data();
     }
-    if (!(aspectTypeVal instanceof compilerxyz.eval.TypeAspect aspTa)) {
+    if (!(aspectTypeVal instanceof TypeAspect aspTa)) {
       return EResult.err(
           loc,
           "aspect_lookup: aspect_type must implement TypeAspect, got " + aspectTypeVal.getClass());
     }
     if (aspectTypeVal
-            instanceof compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic si
+            instanceof TypeSourceInterfaceDynamic si
         && !si.data().isAspect) {
       return EResult.err(
           loc,
           "aspect_lookup: interface is not an aspect (set_is_aspect was not called)");
     }
-    var auq = aspTa.id();
+    var auq = aspTa.typeAspectId();
 
     var anyDyn = compilerxyz.gen.GenType.dynamicType();
     var subjectConvertedRes =
@@ -136,7 +140,7 @@ public record TypeFunctionAspectDynamic()
             .aspectConsumeDynamicToDynamic(xx, loc, subjectConverted);
     if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
     var subjectDyn = subjectDynRes.requireValue("aspect_lookup subject toDynamic");
-    var xxDyn = xxCv.code().dynamic();
+    var xxDyn = xxCv.code().codeDynamic();
     if (xxDyn == null) {
       return EResult.err(loc, "aspect_lookup: xx has no runtime code");
     }
@@ -177,28 +181,28 @@ public record TypeFunctionAspectDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_FUNCTION_ASPECT_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

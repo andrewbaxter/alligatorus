@@ -30,6 +30,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6187L)
 public record TypeUshortToStringDynamic()
@@ -42,7 +43,7 @@ public record TypeUshortToStringDynamic()
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeUshortToStringDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -70,7 +71,7 @@ public record TypeUshortToStringDynamic()
   @Override
   public EResult<CodeValue> aspectFunctionCall(
       ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var selfDyn = self.code().dynamic();
+    var selfDyn = self.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeUshortToStringDynamic::call: self has no dynamic code");
     }
@@ -104,7 +105,7 @@ public record TypeUshortToStringDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

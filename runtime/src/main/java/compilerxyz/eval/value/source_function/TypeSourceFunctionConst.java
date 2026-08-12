@@ -58,6 +58,12 @@ import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectType;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
+import compilerxyz.eval.BindingId;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.gen.AspectDropDynamicLight;
+import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
@@ -65,28 +71,26 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         AspectArtifact,
         AspectBind,
         AspectBindDynamic,
-        compilerxyz.gen.AspectDropDynamicLight,
-        compilerxyz.gen.AspectInitialBind,
+        AspectDropDynamicLight,
+        AspectInitialBind,
         AspectFunction,
         AspectType,
         ExporterAny {
 
   @Override
-  public compilerxyz.eval.value.binding.BindingDynamicBinding aspectInitialBindInitialBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public BindingDynamicBinding aspectInitialBindInitialBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override
-  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
 
   @Override
   public String typeDesc() {
-    var d = data.description;
-    if (d != null) return d;
-    return "definition_set_function";
+    return data.description.optUnwrapOr("definition_set_function");
   }
 
 
@@ -136,35 +140,36 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             return EResult.err(
                 loc,
                 "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                    + (data.name == null ? "(unnamed)" : data.name)
+                    + data.name.optUnwrapOr("(unnamed)")
                     + "' is not attached to a definition set");
           }
-          var argType = data.argType;
-          if (argType == null) {
+          var argTypeOpt = data.argType;
+          if (argTypeOpt.optIsNone()) {
             return EResult.err(
                 loc,
                 "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                    + (data.name == null ? "(unnamed)" : data.name)
+                    + data.name.optUnwrapOr("(unnamed)")
                     + "' missing arg type");
           }
+          var argType = argTypeOpt.optUnwrap();
           var retType = data.retType;
-          if (data.compiledClassName == null) {
+          if (data.compiledClassName.optIsNone()) {
             var finishRes = data.finish(xx, loc);
             if (finishRes.hasErrors()) {
               return finishRes.reerr();
             }
           }
 
-          if (data.compiledClassName == null && data.functionSpec != null) {
+          if (data.compiledClassName.optIsNone() && data.functionSpec.optIsSome()) {
             set.finishFunctions();
           }
           var compiledClassName = data.compiledClassName;
           var compiledBytecode = data.compiledBytecode;
-          if (compiledClassName == null || compiledBytecode == null) {
+          if (compiledClassName.optIsNone() || compiledBytecode.optIsNone()) {
             return EResult.err(
                 loc,
                 "TypeSourceFunctionConst::exporterRootDelegateSelfExport: function '"
-                    + (data.name == null ? "(unnamed)" : data.name)
+                    + data.name.optUnwrapOr("(unnamed)")
                     + "' has not been compiled (finish() returned no source)");
           }
           var errors = new TList<ExprErr>();
@@ -181,7 +186,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                             ? defSetArtRes.requireValue(
                                 "TypeSourceFunctionConst::exporterExport defSet")
                             : nullArtifact();
-                    var argArtRes = argType.exportArtifact(xx, loc);
+                    var argArtRes = argType.artifactableExportArtifact(xx, loc);
                     argArtRes.drainInto(errors);
                     var argArt =
                         argArtRes.valueOrNull() != null
@@ -189,8 +194,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                                 "TypeSourceFunctionConst::exporterExport arg")
                             : nullArtifact();
                     Artifact retArt;
-                    if (retType instanceof Opt.Some<Type> retSome) {
-                      var retArtRes = retSome.value().exportArtifact(xx, loc);
+                    if (retType.optIsSome()) {
+                      var retArtRes = retType.optUnwrap().artifactableExportArtifact(xx, loc);
                       retArtRes.drainInto(errors);
                       retArt =
                           retArtRes.valueOrNull() != null
@@ -229,18 +234,18 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         private static Artifact nullArtifact() {
           return new Artifact.Body(
               new ArtifactBody(
-                  new compilerxyz.safejson.JsonValueNull(),
-                  new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+                  new JsonValueNull(),
+                  new Root()));
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(
                 loc, "TypeSourceFunctionConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -273,7 +278,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                     case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
                     case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
                     case ArtifactExternal.StagedExpr ignored -> {}
-                    case ArtifactExternal.Unique ignored -> {}
+                    case ArtifactExternal.UniqueRef ignored -> {}
                   }
                 }
                 ArtifactSupport.ImportIndependentResult.Finalizer fin =
@@ -292,7 +297,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                       var argVal =
                           argRes.requireValue(
                               "TypeSourceFunctionConst::finalizer arg type");
-                      funcData.argType = argVal;
+                      funcData.argType = Opt.some(argVal);
                       var retRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
                               xx2, loc2, body.retType());
@@ -315,10 +320,10 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeSourceFunctionConst::bind: CodeValue has no compile-time value");
     }
-    Value v = some.value();
+    Value v = cv.value().optUnwrap();
     return EResult.ok(new BindResult(Code.none(loc), new SourceFunctionConstBinding(v)));
   }
 
@@ -335,11 +340,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
           loc, "TypeSourceFunctionConst::call: definition set function has no set reference");
     }
     xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-    Type argType = data.argType;
-    if (argType == null) {
+    if (data.argType.optIsNone()) {
       return EResult.err(
           loc, "TypeSourceFunctionConst::call: definition set function missing arg type");
     }
+    var argType = data.argType.optUnwrap();
     var retType = data.retType;
     var klass =
         compilerxyz.eval.dynamic.JavaInternalName.of(
@@ -367,11 +372,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             argCodes);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
     var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
-    if (!(retType instanceof Opt.Some<Type> retSome)) {
+    if (retType.optIsNone()) {
       return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
     }
     var retStackRes =
-        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retSome.value());
+        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
     if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
@@ -381,7 +386,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-    return data.exceptionType == null ? Opt.none() : Opt.some(data.exceptionType);
+    return data.exceptionType;
   }
 
   @Override
@@ -396,7 +401,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   private record SourceFunctionConstBinding(Value value) implements Binding {
@@ -433,30 +438,30 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), new TypeSourceFunctionConst(data)));
+      return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeSourceFunctionConst(data)));
     }
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY, TypeSourceFunctionConst.class) instanceof Opt.Some<TypeSourceFunctionConst> oSome
-        && data == oSome.value().data;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY, TypeSourceFunctionConst.class);
+    return oOpt.optIsSome() && data == oOpt.optUnwrap().data;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

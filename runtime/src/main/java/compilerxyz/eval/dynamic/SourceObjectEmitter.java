@@ -37,6 +37,10 @@ import org.jspecify.annotations.Nullable;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.value.source_interface.InterfaceData;
+import org.objectweb.asm.tree.IntInsnNode;
 
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
@@ -194,7 +198,7 @@ public final class SourceObjectEmitter {
   public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
 
   public static EmittedSourceObject emit(
-      compilerxyz.eval.ExprContext xx,
+      ExprContext xx,
       DefSetId defSet,
       long objectIndex,
       TypeSourceObjectDynamic data) {
@@ -204,8 +208,8 @@ public final class SourceObjectEmitter {
 
     var claimedKinds = new java.util.HashSet<BuiltinInterfaceKind>();
     for (var impl : data.interfaceImpls) {
-      if (impl.interface_.builtinKind != null) {
-        claimedKinds.add(impl.interface_.builtinKind);
+      if (impl.interface_.builtinKind.optIsSome()) {
+        claimedKinds.add(impl.interface_.builtinKind.optUnwrap());
       }
     }
     var implementsInternalNames = new TOrderedSet<String>();
@@ -235,7 +239,8 @@ public final class SourceObjectEmitter {
         interfacesArr);
 
     JavaDataDescriptor dataFieldDesc;
-    if (data.underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume) {
+    var underlyingTypeMaybe = data.underlyingType.optUnwrapOr(null);
+    if (underlyingTypeMaybe instanceof AspectConsumeDynamic underlyingConsume) {
       dataFieldDesc = underlyingConsume.aspectConsumeDynamicJvmClass(xx);
     } else {
       dataFieldDesc = JvmConstants.DESC_OBJECT;
@@ -246,9 +251,9 @@ public final class SourceObjectEmitter {
     var ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", MDESC_OBJECT_INIT.value(), null, null);
     ctor.visitCode();
     var ctorSeq = new JavaBytecodeSequence();
-    ctorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-    ctorSeq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_OBJECT, "<init>", MDESC_OBJECT_INIT));
-    ctorSeq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+    ctorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+    ctorSeq.add(JavaBytecodeUtils.invokeSpecial(CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_OBJECT, "<init>", MDESC_OBJECT_INIT));
+    ctorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
     ctorSeq.render(ctor, TList.of());
     ctor.visitMaxs(0, 0);
     ctor.visitEnd();
@@ -259,9 +264,9 @@ public final class SourceObjectEmitter {
         cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", realCtorDesc.value(), null, null);
     realCtor.visitCode();
     var realCtorSeq = new JavaBytecodeSequence();
-    realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-    realCtorSeq.add(JavaBytecodeUtils.invokeSpecial(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_OBJECT, "<init>", MDESC_OBJECT_INIT));
-    realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+    realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+    realCtorSeq.add(JavaBytecodeUtils.invokeSpecial(CodeLoc.Infallible.INSTANCE, JvmConstants.INTNAME_OBJECT, "<init>", MDESC_OBJECT_INIT));
+    realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
     {
       var c = dataFieldDesc.value().charAt(0);
       int loadOp = switch (c) {
@@ -271,10 +276,10 @@ public final class SourceObjectEmitter {
         case 'I', 'B', 'C', 'S', 'Z' -> Opcodes.ILOAD;
         default -> Opcodes.ALOAD;
       };
-      realCtorSeq.add(JavaBytecodeUtils.varInsn(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, loadOp, 1));
+      realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, loadOp, 1));
     }
-    realCtorSeq.add(JavaBytecodeUtils.setField(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
-    realCtorSeq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+    realCtorSeq.add(JavaBytecodeUtils.setField(CodeLoc.Infallible.INSTANCE, internalName, DATA_INSTANCE_FIELD, dataFieldDesc));
+    realCtorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
     realCtorSeq.render(realCtor, TList.of());
     realCtor.visitMaxs(0, 0);
     realCtor.visitEnd();
@@ -287,10 +292,10 @@ public final class SourceObjectEmitter {
       var impl = data.interfaceImpls.get(implIdx);
       for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
         var m = impl.methodImpls.get(mIdx);
-        var bodyCode = m.compiledBodyCode;
-        if (bodyCode == null) {
+        if (m.compiledBodyCode.optIsNone()) {
           continue;
         }
+        var bodyCode = m.compiledBodyCode.optUnwrap();
         var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
         collectMethodFields(
             bodyCode, m.capturedExternals, prefix, allFieldNames, fieldDescriptors,
@@ -348,23 +353,21 @@ public final class SourceObjectEmitter {
 
     for (long methodIdx = 0; methodIdx < data.methods.size(); methodIdx++) {
       var method = data.methods.get((int) methodIdx);
-      var bodyCode = method.compiledBodyCode;
-      if (bodyCode == null) {
+      if (method.compiledBodyCode.optIsNone()) {
         continue;
       }
-      emitMethodMethod(xx, cw, internalName, methodIdx, method, data.underlyingType, bodyCode);
+      emitMethodMethod(xx, cw, internalName, methodIdx, method, data.underlyingType.optUnwrapOr(null), method.compiledBodyCode.optUnwrap());
     }
 
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
       var impl = data.interfaceImpls.get(implIdx);
       for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
         var m = impl.methodImpls.get(mIdx);
-        var bodyCode = m.compiledBodyCode;
-        if (bodyCode == null) {
+        if (m.compiledBodyCode.optIsNone()) {
           continue;
         }
         emitInterfaceMethodMethod(
-            xx, cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType, bodyCode);
+            xx, cw, internalName, implIdx, mIdx, impl.interface_, m, data.underlyingType.optUnwrapOr(null), m.compiledBodyCode.optUnwrap());
       }
     }
 
@@ -375,18 +378,18 @@ public final class SourceObjectEmitter {
   }
 
   private static void emitMethodMethod(
-      compilerxyz.eval.ExprContext xx,
+      ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       long methodIdx,
       SourceDataMethodData method,
-      compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
+      Type underlyingType,
       CodeDynamic bodyCode) {
     var methodName = methodMethodName(methodIdx);
     var prefix = methodFieldPrefix(methodIdx);
     JavaDataDescriptor retDesc;
-    if (method.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retSome) {
-      if (!(retSome.value() instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+    if (method.retType.optIsSome()) {
+      if (!(method.retType.optUnwrap() instanceof AspectConsumeDynamic retConsume)) {
         throw new IllegalStateException(
             "SourceObjectEmitter.emitMethodMethod: method '" + method.name
                 + "' retType does not implement AspectConsumeDynamic");
@@ -395,13 +398,13 @@ public final class SourceObjectEmitter {
     } else {
       retDesc = JavaDataDescriptor.DESC_VOID;
     }
-    var argSlots = method.compiledArgSlots;
-    var argSlotIds = method.compiledArgSlotIds;
-    if (argSlots == null || argSlotIds == null) {
+    if (method.compiledArgSlots.optIsNone() || method.compiledArgSlotIds.optIsNone()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.emitMethodMethod: method '" + method.name
               + "' has no compiledArgSlots (finish ordering violation)");
     }
+    var argSlots = method.compiledArgSlots.optUnwrap();
+    var argSlotIds = method.compiledArgSlotIds.optUnwrap();
     var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
     for (var s : argSlots) argDescs.add(s.jvmDesc());
     var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
@@ -417,20 +420,20 @@ public final class SourceObjectEmitter {
     int totalArgSlots = 0;
     for (var s : argSlots) totalArgSlots += slotWidth(s.jvmDesc());
     var ctx = new EmitCtx(internalName.value(), 1, 1 + totalArgSlots, prefix);
-    var selfId = method.innerBindingId;
-    if (selfId == null) {
+    if (method.innerBindingId.optIsNone()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.emit: method '" + method.name + "' has no innerBindingId (finish ordering violation)");
     }
+    var selfId = method.innerBindingId.optUnwrap();
 
     var seq = new JavaBytecodeSequence();
-    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
+    var loc = CodeLoc.Infallible.INSTANCE;
     var selfLocal = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, selfId);
     JavaDataDescriptor dataFieldDesc =
         switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, underlyingType)) {
-          case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s ->
+          case compilerxyz.util.Opt.Some<AspectConsumeDynamic> s ->
               s.value().aspectConsumeDynamicJvmClass(xx);
-          case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+          case compilerxyz.util.Opt.None<AspectConsumeDynamic> n ->
               throw new IllegalStateException(
                   "SourceObjectEmitter.emit: underlyingType " + underlyingType.typeDesc()
                       + " does not implement AspectConsumeDynamic; cannot emit data field access");
@@ -441,7 +444,7 @@ public final class SourceObjectEmitter {
 
     var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
     initialSlots.add(new JavaBytecodeSequence.InitialSlot(
-        new compilerxyz.eval.dynamic.JavaBytecodeBindingKey()));
+        new JavaBytecodeBindingKey()));
     for (int i = 0; i < argSlots.size(); i++) {
       initialSlots.add(new JavaBytecodeSequence.InitialSlot(
           argSlotIds.get(i).key(),
@@ -526,47 +529,46 @@ public final class SourceObjectEmitter {
   }
 
   private static void emitInterfaceMethodMethod(
-      compilerxyz.eval.ExprContext xx,
+      ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       int implIdx,
       int mIdx,
-      compilerxyz.eval.value.source_interface.InterfaceData iface,
+      InterfaceData iface,
       SourceObjectInterfaceMethodImplData m,
-      compilerxyz.eval.@org.jspecify.annotations.Nullable Type underlyingType,
+      Type underlyingType,
       CodeDynamic bodyCode) {
     var methodName = interfaceMethodMethodName(implIdx, mIdx);
     var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
-    var selfIdRaw = m.innerBindingId;
-    if (selfIdRaw == null) {
+    if (m.innerBindingId.optIsNone()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.emitInterfaceMethodMethod: impl has no innerBindingId");
     }
-    var selfId = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, selfIdRaw);
-    var argParamIds = m.compiledArgParamIds;
-    if (argParamIds == null) {
+    var selfId = compilerxyz.util.MustCast.mustCast(compilerxyz.eval.BindingId.Local.class, m.innerBindingId.optUnwrap());
+    if (m.compiledArgParamIds.optIsNone()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.emitInterfaceMethodMethod: impl has no compiledArgParamIds");
     }
+    var argParamIds = m.compiledArgParamIds.optUnwrap();
     var ifaceMethod = iface.methods.get(m.interfaceMethodIndex);
 
     var descriptor = interfaceMethodMethodDescriptor(xx, m, ifaceMethod);
-    var jvmParamKeys = new TList<compilerxyz.eval.dynamic.JavaBytecodeBindingKey>();
+    var jvmParamKeys = new TList<JavaBytecodeBindingKey>();
     var jvmParamWides = new TList<Boolean>();
-    var argParamTypes = m.compiledArgParamTypes;
-    if (argParamTypes == null || argParamTypes.size() != argParamIds.size()) {
+    if (m.compiledArgParamTypes.optIsNone() || m.compiledArgParamTypes.optUnwrap().size() != argParamIds.size()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.emitInterfaceMethodMethod: compiledArgParamTypes missing or mismatched");
     }
+    var argParamTypes = m.compiledArgParamTypes.optUnwrap();
     for (int i = 0; i < argParamIds.size(); i++) {
       var argType = argParamTypes.get(i);
       var argConsumeOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType);
-      if (!(argConsumeOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> argConsumeSome)) {
+      if (argConsumeOpt.optIsNone()) {
         throw new IllegalStateException(
             "SourceObjectEmitter.emitInterfaceMethodMethod: arg type " + argType.typeDesc()
                 + " does not implement AspectConsumeDynamic");
       }
-      var argDesc = argConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+      var argDesc = argConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       jvmParamKeys.add(argParamIds.get(i).key());
       jvmParamWides.add(slotWidth(argDesc) == 2);
     }
@@ -583,16 +585,19 @@ public final class SourceObjectEmitter {
     var ctx = new EmitCtx(internalName.value(), 1, 1 + totalParamSlots, prefix);
 
     var seq = new JavaBytecodeSequence();
-    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
+    var loc = CodeLoc.Infallible.INSTANCE;
 
-    var outerBindingId = m.outerBindingId;
-    if (outerBindingId instanceof BindingId.Local outerLocal) {
-      seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-      seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, outerLocal.key())));
+    if (m.outerBindingId.optIsSome()) {
+      switch (m.outerBindingId.optUnwrap()) {
+        case BindingId.Local outerLocal -> {
+          seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
+          seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, outerLocal.key())));
+        }
+      }
     }
 
     JavaDataDescriptor innerDesc =
-        underlyingType instanceof compilerxyz.gen.AspectConsumeDynamic underlyingConsume
+        underlyingType instanceof AspectConsumeDynamic underlyingConsume
             ? underlyingConsume.aspectConsumeDynamicJvmClass(xx)
             : JvmConstants.DESC_OBJECT;
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
@@ -601,7 +606,7 @@ public final class SourceObjectEmitter {
 
     var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
     initialSlots.add(new JavaBytecodeSequence.InitialSlot(
-        new compilerxyz.eval.dynamic.JavaBytecodeBindingKey()));
+        new JavaBytecodeBindingKey()));
     for (int i = 0; i < jvmParamKeys.size(); i++) {
       initialSlots.add(new JavaBytecodeSequence.InitialSlot(
           jvmParamKeys.get(i), jvmParamWides.get(i)));
@@ -621,7 +626,7 @@ public final class SourceObjectEmitter {
 
   private static void emitReturnConversion(
       JavaBytecodeSequence seq,
-      compilerxyz.eval.dynamic.CodeLoc loc,
+      CodeLoc loc,
       JavaMethodDescriptor descriptor) {
     var descStr = descriptor.value();
     var retDesc = descStr.substring(descStr.indexOf(')') + 1);
@@ -683,21 +688,21 @@ public final class SourceObjectEmitter {
   }
 
   private static TOrderedSet<String> emitHostInterfaceAdapters(
-      compilerxyz.eval.ExprContext xx, ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
+      ExprContext xx, ClassWriter cw, JavaInternalName internalName, TypeSourceObjectDynamic data) {
     var emitted = new TOrderedSet<String>();
     for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
       var impl = data.interfaceImpls.get(implIdx);
       var iface = impl.interface_;
       for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
         var m = impl.methodImpls.get(mIdx);
-        if (m.compiledBodyCode == null) {
+        if (m.compiledBodyCode.optIsNone()) {
           continue;
         }
         var ifaceMethod = iface.methods.get(m.interfaceMethodIndex);
         HostMethodSpec spec;
-        if (ifaceMethod.hostMethodName != null && ifaceMethod.hostMethodDescriptor != null) {
+        if (ifaceMethod.hostMethodName.optIsSome() && ifaceMethod.hostMethodDescriptor.optIsSome()) {
           spec = new HostMethodSpec(
-              ifaceMethod.hostMethodName, ifaceMethod.hostMethodDescriptor);
+              ifaceMethod.hostMethodName.optUnwrap(), ifaceMethod.hostMethodDescriptor.optUnwrap());
         } else {
           spec = new HostMethodSpec(
               ifaceMethod.name,
@@ -716,7 +721,7 @@ public final class SourceObjectEmitter {
 
 
   private static void emitHostAdapter(
-      compilerxyz.eval.ExprContext xx,
+      ExprContext xx,
       ClassWriter cw,
       JavaInternalName internalName,
       int implIdx,
@@ -728,7 +733,7 @@ public final class SourceObjectEmitter {
         Opcodes.ACC_PUBLIC, spec.hostName(), spec.hostDescriptor().value(), null, null);
     var hostDescStr = spec.hostDescriptor().value();
 
-    var loc = compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE;
+    var loc = CodeLoc.Infallible.INSTANCE;
     var seq = new JavaBytecodeSequence();
 
     seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
@@ -736,19 +741,19 @@ public final class SourceObjectEmitter {
     var calleeDescriptor = interfaceMethodMethodDescriptor(xx, m, ifaceMethod);
 
     int hostSlot = 1;
-    var argParamTypes = m.compiledArgParamTypes;
-    if (argParamTypes != null) {
+    if (m.compiledArgParamTypes.optIsSome()) {
+      var argParamTypes = m.compiledArgParamTypes.optUnwrap();
       var hostParams = parameterDescriptors(hostDescStr);
       int argIdx = 0;
       for (var argType : argParamTypes) {
         seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, hostSlot));
         var argConsumeOpt = compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType);
-        if (!(argConsumeOpt instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> argConsumeSome)) {
+        if (argConsumeOpt.optIsNone()) {
           throw new IllegalStateException(
               "SourceObjectEmitter.emitHostAdapter: arg type " + argType.typeDesc()
                   + " does not implement AspectConsumeDynamic");
         }
-        var argDesc = argConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+        var argDesc = argConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
         var hostParam = hostParams.get(argIdx);
         if (!hostParam.equals(argDesc.value())
             && (argDesc.value().startsWith("L") || argDesc.value().startsWith("["))
@@ -768,33 +773,32 @@ public final class SourceObjectEmitter {
     JavaBytecodeUtils.renderMethod(seq, mv, TList.of());
   }
 
-  private static @org.jspecify.annotations.Nullable JavaInternalName returnTypeInternalName(
+  private static compilerxyz.util.Opt<JavaInternalName> returnTypeInternalName(
       String descriptor) {
     var closeParen = descriptor.indexOf(')');
     if (closeParen < 0 || closeParen + 1 >= descriptor.length()) {
-      return null;
+      return compilerxyz.util.Opt.none();
     }
     var ret = descriptor.charAt(closeParen + 1);
     if (ret != 'L') {
-      return null;
+      return compilerxyz.util.Opt.none();
     }
-    return JavaInternalName.of(descriptor.substring(closeParen + 2, descriptor.length() - 1));
+    return compilerxyz.util.Opt.some(JavaInternalName.of(descriptor.substring(closeParen + 2, descriptor.length() - 1)));
   }
 
   private static JavaMethodDescriptor interfaceMethodMethodDescriptor(
-      compilerxyz.eval.ExprContext xx,
+      ExprContext xx,
       SourceObjectInterfaceMethodImplData m,
       InterfaceMethodData ifaceMethod) {
     var jvmParamDescs = new TList<JavaDataDescriptor>();
-    var argParamTypes = m.compiledArgParamTypes;
-    if (argParamTypes == null) {
+    if (m.compiledArgParamTypes.optIsNone()) {
       throw new IllegalStateException(
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: missing compiledArgParamTypes");
     }
-    for (var argType : argParamTypes) {
+    for (var argType : m.compiledArgParamTypes.optUnwrap()) {
       var argConsume = switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType)) {
-        case compilerxyz.util.Opt.Some<compilerxyz.gen.AspectConsumeDynamic> s -> s.value();
-        case compilerxyz.util.Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+        case compilerxyz.util.Opt.Some<AspectConsumeDynamic> s -> s.value();
+        case compilerxyz.util.Opt.None<AspectConsumeDynamic> n ->
             throw new IllegalStateException(
                 "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
                     + argType.typeDesc() + " does not implement AspectConsumeDynamic");
@@ -802,10 +806,10 @@ public final class SourceObjectEmitter {
       jvmParamDescs.add(argConsume.aspectConsumeDynamicJvmClass(xx));
     }
     JavaDataDescriptor retDesc;
-    if (ifaceMethod.hostMethodDescriptor != null) {
-      retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor);
-    } else if (ifaceMethod.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retSome) {
-      if (!(retSome.value() instanceof compilerxyz.gen.AspectConsumeDynamic retConsume)) {
+    if (ifaceMethod.hostMethodDescriptor.optIsSome()) {
+      retDesc = returnDescOf(ifaceMethod.hostMethodDescriptor.optUnwrap());
+    } else if (ifaceMethod.retType.optIsSome()) {
+      if (!(ifaceMethod.retType.optUnwrap() instanceof AspectConsumeDynamic retConsume)) {
         throw new IllegalStateException(
             "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
       }
@@ -824,9 +828,9 @@ public final class SourceObjectEmitter {
 
   private static void pushIntConst(JavaBytecodeSequence seq, int value) {
     if (value >= 0 && value <= 5) {
-      seq.add(JavaBytecodeUtils.inst(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_0 + value));
+      seq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ICONST_0 + value));
     } else {
-      seq.add(JavaBytecodeUtils.wrapObj(compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, new org.objectweb.asm.tree.IntInsnNode(Opcodes.BIPUSH, value)));
+      seq.add(JavaBytecodeUtils.wrapObj(CodeLoc.Infallible.INSTANCE, new IntInsnNode(Opcodes.BIPUSH, value)));
     }
   }
 

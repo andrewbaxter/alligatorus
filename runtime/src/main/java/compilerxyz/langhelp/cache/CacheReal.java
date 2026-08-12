@@ -52,6 +52,10 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.zip.ZipInputStream;
+import com.google.gson.stream.JsonWriter;
+import java.io.StringWriter;
+import java.nio.channels.OverlappingFileLockException;
+import java.util.zip.ZipEntry;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
   private static final int SCHEMA_VERSION = 2;
@@ -88,7 +92,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
       FileLock acquired;
       try {
         acquired = lockChannel.tryLock();
-      } catch (java.nio.channels.OverlappingFileLockException e) {
+      } catch (OverlappingFileLockException e) {
         acquired = null;
       }
       if (acquired == null) {
@@ -129,10 +133,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
   private void initSchema() throws SQLException {
     synchronized (dbLock) {
       var existing = readSchemaVersion();
-      if (existing instanceof Opt.Some<Integer> some && some.value() != SCHEMA_VERSION) {
+      if (existing.optIsSome() && existing.optUnwrap() != SCHEMA_VERSION) {
         System.err.println(
             "warning: allig cache schema version "
-                + some.value()
+                + existing.optUnwrap()
                 + " does not match expected "
                 + SCHEMA_VERSION
                 + "; rebuilding cache");
@@ -269,17 +273,18 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     } catch (IOException | RuntimeException e) {
       return Result.err("failed to parse local source " + l.path() + ": " + e.getMessage());
     }
-    var id = sourceIdFor(l.specKey());
+    var id = sourceIdFor(l.sourceSpecAbsoluteSpecKey());
     return Result.ok(
         new SourceResolved.Module(id, module, Opt.some(new Compiles.LocalMeta(l.path(), mtime))));
   }
 
   private Result<SourceResolved, String> resolveRemote(SourceSpecAbsolute.Remote r) {
     var bytesRes = fetchRemote(r.baseUrl(), r.hash());
-    if (bytesRes instanceof Result.Err<byte[], String> err) {
-      return Result.err(err.error());
+    byte[] bytes;
+    switch (bytesRes) {
+      case Result.Err<byte[], String> err -> { return Result.err(err.error()); }
+      case Result.Ok<byte[], String> ok -> bytes = ok.value();
     }
-    var bytes = ((Result.Ok<byte[], String>) bytesRes).value();
     var isZip = looksLikeZip(bytes);
     if (r.subpath().isEmpty()) {
       if (isZip) return Result.ok(new SourceResolved.Bundle(r));
@@ -302,7 +307,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     } catch (IOException | RuntimeException e) {
       return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
     }
-    var id = sourceIdFor(r.specKey());
+    var id = sourceIdFor(r.sourceSpecAbsoluteSpecKey());
     return Result.ok(new SourceResolved.Module(id, module, Opt.none()));
   }
 
@@ -328,17 +333,24 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
       return Result.err("remote fetch interrupted: " + url);
     }
     var verified = verifyHash(url, bytes, hash);
-    if (verified instanceof Result.Err<byte[], String>) return verified;
+    switch (verified) {
+      case Result.Err<byte[], String> ignored -> { return verified; }
+      case Result.Ok<byte[], String> ignored -> {}
+    }
     storeRemoteBytes(url, bytes);
     return verified;
   }
 
   private static Result<byte[], String> verifyHash(String url, byte[] bytes, HashValue hash) {
     var actual = sha256(bytes);
-    if (!(hash instanceof HashValue.Sha256 expected) || !java.util.Arrays.equals(actual, expected.digest())) {
-      return Result.err(
-          "remote hash mismatch for " + url + ": expected " + hash.hashKey()
-              + ", got sha256:" + java.util.HexFormat.of().formatHex(actual));
+    switch (hash) {
+      case HashValue.Sha256 expected -> {
+        if (!java.util.Arrays.equals(actual, expected.digest())) {
+          return Result.err(
+              "remote hash mismatch for " + url + ": expected " + hash.hashValueHashKey()
+                  + ", got sha256:" + java.util.HexFormat.of().formatHex(actual));
+        }
+      }
     }
     return Result.ok(bytes);
   }
@@ -361,7 +373,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
 
   private static byte[] extractZipEntry(byte[] zipBytes, String entryName) {
     try (var zin = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
-      java.util.zip.ZipEntry entry;
+      ZipEntry entry;
       while ((entry = zin.getNextEntry()) != null) {
         if (entry.getName().equals(entryName)) {
           return zin.readAllBytes();
@@ -590,9 +602,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
             ps.setLong(1, id.importState().value());
             ps.setLong(2, id.source().value());
             ps.setString(3, encodeCompileRes(product.res()));
-            if (product.local() instanceof Opt.Some<Compiles.LocalMeta> some) {
-              ps.setString(4, some.value().path());
-              ps.setLong(5, some.value().timestampMs());
+            if (product.local().optIsSome()) {
+              var localMeta = product.local().optUnwrap();
+              ps.setString(4, localMeta.path());
+              ps.setLong(5, localMeta.timestampMs());
             } else {
               ps.setNull(4, java.sql.Types.VARCHAR);
               ps.setNull(5, java.sql.Types.INTEGER);
@@ -661,8 +674,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
   }
 
   private static String serializeJson(JsonValue jv) {
-    var sw = new java.io.StringWriter();
-    var writer = new com.google.gson.stream.JsonWriter(sw);
+    var sw = new StringWriter();
+    var writer = new JsonWriter(sw);
     writer.setSerializeNulls(true);
     writer.setIndent("");
     try {

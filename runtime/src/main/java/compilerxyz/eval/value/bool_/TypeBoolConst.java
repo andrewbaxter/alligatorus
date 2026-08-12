@@ -41,6 +41,9 @@ import compilerxyz.gen.GenAspectBoolConst;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6102L)
 public record TypeBoolConst()
@@ -55,8 +58,8 @@ public record TypeBoolConst()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -98,7 +101,7 @@ public record TypeBoolConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+          if (self instanceof ValueObjectConst v
               && v.data() instanceof Boolean bv) {
             data = new JsonValueBoolean(bv);
           } else if (self instanceof TypeBoolConst) {
@@ -116,7 +119,7 @@ public record TypeBoolConst()
           return switch (data) {
             case JsonValueNull ignored -> EResult.ok(new TypeBoolConst());
             case JsonValueBoolean b -> EResult.ok(
-                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeBoolConst(), b.value()));
+                new ValueObjectConst(new TypeBoolConst(), b.value()));
             default -> EResult.err(
                 loc, "TypeBoolConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -125,18 +128,18 @@ public record TypeBoolConst()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeBoolConst::bind: CodeValue has no compile-time value");
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (cv.value().optIsSome()
+        && cv.value().optUnwrap() instanceof ValueObjectConst v
         && v.data() instanceof Boolean bv) {
-      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var seq = new JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.literalBool(loc, bv));
       seq.add(boxBoolean(loc));
       return EResult.ok(new CodeDynamic(loc, seq));
@@ -146,7 +149,7 @@ public record TypeBoolConst()
 
   @Override
   public boolean aspectBoolConstGet(Value value) {
-    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (value instanceof ValueObjectConst v
         && v.data() instanceof Boolean bv) return bv;
     throw new IllegalArgumentException(
         "TypeBoolConst::get: expected bool ValueObjectConst, got " + value.getClass());
@@ -159,47 +162,47 @@ public record TypeBoolConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BOOL_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
-  private static compilerxyz.eval.dynamic.CodeDynamic boxBoolean(compilerxyz.eval.QExprId loc) {
+  private static CodeDynamic boxBoolean(QExprId loc) {
     return JavaBytecodeUtils.callStaticMethod(
         loc,
         compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class),
         "valueOf",
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+            JavaDataDescriptor.fromInternalName(
                 compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class)),
-            compilerxyz.util.TList.of(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL)));
+            compilerxyz.util.TList.of(JavaDataDescriptor.DESC_BOOL)));
   }
 }

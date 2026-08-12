@@ -83,6 +83,9 @@ import compilerxyz.gen.AspectOperatorNeg;
 import compilerxyz.gen.GenAspectOperatorNeg;
 import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6113L)
 public record TypeLongConst()
@@ -117,8 +120,8 @@ public record TypeLongConst()
         ExporterAny {
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -134,7 +137,7 @@ public record TypeLongConst()
 
   @Override
   public Number aspectNumericConstGet(Value value) {
-    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (value instanceof ValueObjectConst v
         && v.data() instanceof Number dv) return dv;
     throw new IllegalArgumentException(
         "TypeLongConst::get: expected long ValueObjectConst, got " + value.getClass());
@@ -142,7 +145,7 @@ public record TypeLongConst()
 
   @Override
   public long aspectIntGet(Value value) {
-    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (value instanceof ValueObjectConst v
         && v.data() instanceof Number dv) return dv.longValue();
     throw new IllegalArgumentException(
         "TypeLongConst::get: expected long ValueObjectConst, got " + value.getClass());
@@ -204,7 +207,7 @@ public record TypeLongConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+          if (self instanceof ValueObjectConst v
               && v.data() instanceof Number dv) {
             data = new JsonValueNumber(dv.doubleValue());
           } else if (self instanceof TypeLongConst) {
@@ -222,7 +225,7 @@ public record TypeLongConst()
           return switch (data) {
             case JsonValueNull ignored -> EResult.ok(new TypeLongConst());
             case JsonValueNumber n -> EResult.ok(
-                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeLongConst(), (long) n.value()));
+                new ValueObjectConst(new TypeLongConst(), (long) n.value()));
             default -> EResult.err(
                 loc, "TypeLongConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -231,8 +234,8 @@ public record TypeLongConst()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeLongConst::bind: CodeValue has no compile-time value");
   }
@@ -361,11 +364,11 @@ public record TypeLongConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
@@ -393,8 +396,9 @@ public record TypeLongConst()
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (Numerics.kindOf(xx, destType) instanceof Opt.Some<NumericKind> k) {
-      return Numerics.castTo(xx, loc, cv, k.value(), destType);
+    var kOpt = Numerics.kindOf(xx, destType);
+    if (kOpt.optIsSome()) {
+      return Numerics.castTo(xx, loc, cv, kOpt.optUnwrap(), destType);
     }
     return EResult.err(loc, "TypeLongConst::typeCastTo: destination is not numeric");
   }

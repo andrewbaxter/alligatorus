@@ -45,6 +45,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
+import org.objectweb.asm.MethodVisitor;
 
 public class JavaBytecodeUtils {
   public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
@@ -638,7 +639,7 @@ public class JavaBytecodeUtils {
 
   public static void renderMethod(
       JavaBytecodeSequence seq,
-      org.objectweb.asm.MethodVisitor mv,
+      MethodVisitor mv,
       TList<JavaBytecodeBindingKey> initialIndexes) {
     seq.render(mv, initialIndexes);
     mv.visitMaxs(0, 0);
@@ -647,7 +648,7 @@ public class JavaBytecodeUtils {
 
   public static void renderMethodTyped(
       JavaBytecodeSequence seq,
-      org.objectweb.asm.MethodVisitor mv,
+      MethodVisitor mv,
       TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
     seq.renderTyped(mv, initialSlots);
     mv.visitMaxs(0, 0);

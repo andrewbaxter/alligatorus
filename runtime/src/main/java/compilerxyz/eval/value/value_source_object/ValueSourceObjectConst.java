@@ -20,6 +20,8 @@ import compilerxyz.safejson.SafeJsonSerializable;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
 
 public final class ValueSourceObjectConst {
   private ValueSourceObjectConst() {}
@@ -35,12 +37,12 @@ public final class ValueSourceObjectConst {
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof compilerxyz.eval.value.object_.ValueObjectConst inst)) {
+          if (!(self instanceof ValueObjectConst inst)) {
             return EResult.err(loc,
                 "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected ValueObjectConst, got "
                     + self.getClass());
           }
-          if (!(inst.type() instanceof compilerxyz.eval.value.source_object.TypeSourceObjectConst tsoc)) {
+          if (!(inst.type() instanceof TypeSourceObjectConst tsoc)) {
             return EResult.err(loc,
                 "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected TypeSourceObjectConst type, got "
                     + inst.type().getClass());
@@ -60,21 +62,21 @@ public final class ValueSourceObjectConst {
                     + compilerxyz.eval.dynamic.SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
           }
           // Lift the underlying JVM value to a compile-time Value via the underlying type's AspectLift.
-          var ut = tsod.underlyingType;
-          if (ut == null) {
+          if (tsod.underlyingType.optIsNone()) {
             return EResult.err(loc,
                 "ValueSourceObjectConst::exporterRootDelegateSelfExport: object underlying type not finalised");
           }
+          var ut = tsod.underlyingType.optUnwrap();
           var underlyingLiftRes = compilerxyz.gen.GenAspectLift.get(xx, loc, ut);
           if (underlyingLiftRes.hasErrors()) return underlyingLiftRes.reerr();
           var underlyingLiftRes2 = underlyingLiftRes
               .requireValue("ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift aspect")
-              .aspectLiftLift(xx, loc, underlyingHost);
+              .aspectLiftLift(xx, loc, Opt.ofNullable(underlyingHost));
           if (underlyingLiftRes2.hasErrors()) return underlyingLiftRes2.reerr();
           Value underlying = underlyingLiftRes2.requireValue(
               "ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift");
           var errors = new TList<ExprErr>();
-          // Export instType directly by invoking its AspectArtifact — bypass the exportArtifact
+          // Export instType directly by invoking its AspectArtifact — bypass the artifactableExportArtifact
           // wrap, which would go through ofType and recurse back into this delegate.
           var typeArtRes = instType.aspectArtifactExporter().artifactExporterExport(xx, loc, instType);
           if (typeArtRes.hasErrors()) {
@@ -83,7 +85,7 @@ public final class ValueSourceObjectConst {
           }
           var typeArt =
               typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
-          var underArtRes = underlying.exportArtifact(xx, loc);
+          var underArtRes = underlying.artifactableExportArtifact(xx, loc);
           if (underArtRes.hasErrors()) {
             underArtRes.drainInto(errors);
             return EResult.errs(errors);
@@ -152,20 +154,20 @@ public final class ValueSourceObjectConst {
             installRes.drainInto(errors);
             return EResult.errs(errors);
           }
-          var loader = xx.vx.ix.classLoader;
-          if (loader == null) {
+          if (xx.vx.ix.classLoader.optIsNone()) {
             return EResult.err(
                 loc,
                 "ValueSourceObjectConst::exporterFromArtifactData: classLoader missing after install");
           }
-          var binaryName = dt.compiledBinaryName;
-          if (binaryName == null) {
+          var loader = xx.vx.ix.classLoader.optUnwrap();
+          if (dt.compiledBinaryName.optIsNone()) {
             return EResult.err(
                 loc,
                 "ValueSourceObjectConst::exporterFromArtifactData: source object '"
-                    + (dt.name == null ? "(unnamed)" : dt.name)
+                    + dt.name.optUnwrapOr("(unnamed)")
                     + "' has not been compiled");
           }
+          var binaryName = dt.compiledBinaryName.optUnwrap();
           Class<?> cls;
           try {
             cls = Class.forName(binaryName, true, loader);
@@ -187,7 +189,7 @@ public final class ValueSourceObjectConst {
                 "ValueSourceObjectConst::finalizer: " + binaryName + " has no single-arg constructor");
           }
           Object underlyingHost;
-          if (underlying instanceof compilerxyz.eval.value.object_.ValueObjectConst uvoc) {
+          if (underlying instanceof ValueObjectConst uvoc) {
             underlyingHost = uvoc.data();
           } else {
             underlyingHost = underlying;
@@ -200,7 +202,7 @@ public final class ValueSourceObjectConst {
                 loc,
                 "ValueSourceObjectConst::finalizer: cannot instantiate " + binaryName + ": " + e.getMessage());
           }
-          ExporterAny out = new compilerxyz.eval.value.object_.ValueObjectConst(
+          ExporterAny out = new ValueObjectConst(
               new TypeTypeSourceObjectConst(dt), instance);
           if (errors.isEmpty()) return EResult.ok(out);
           return EResult.mixed(out, errors);

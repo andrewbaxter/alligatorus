@@ -29,7 +29,6 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -37,21 +36,33 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectUnion;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.MatchDynamic;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.AspectFieldUseDynamic;
 
 @BuiltinFull(uniqueId = 6021L)
 public final class TypeSourceUnionDynamic
     implements
         Type,
-        compilerxyz.gen.AspectFieldUseDynamic,
+        AspectFieldUseDynamic,
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         AspectUnion,
-        compilerxyz.eval.dynamic.MatchDynamic,
+        MatchDynamic,
         ExporterAny {
 
   @SuppressWarnings("NullAway.Init")
@@ -59,13 +70,13 @@ public final class TypeSourceUnionDynamic
   public final Unique identity;
   public final Counter nextTagId;
   public final TList<SourceUnionVariant> variants;
-  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
-      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
+  public final ArtifactIdHolder artifactIdCell =
+      new ArtifactIdHolder();
 
-  public @Nullable String compiledBaseBinaryName;
-  public @Nullable TList<String> compiledVariantBinaryNames;
-  public byte @Nullable [] compiledBaseBytecode;
-  public @Nullable TList<byte[]> compiledVariantBytecode;
+  public Opt<String> compiledBaseBinaryName = Opt.none();
+  public Opt<TList<String>> compiledVariantBinaryNames = Opt.none();
+  public byte @org.jspecify.annotations.Nullable [] compiledBaseBytecode;
+  public Opt<TList<byte[]>> compiledVariantBytecode = Opt.none();
 
   public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
     this.set = set;
@@ -94,21 +105,21 @@ public final class TypeSourceUnionDynamic
   }
 
   public EResult<Void> finish(ExprContext xx, QExprId loc, long unionIndex) {
-    if (compiledBaseBinaryName != null) {
+    if (compiledBaseBinaryName.optIsSome()) {
       return EResult.ok(null);
     }
     var emitted =
         compilerxyz.eval.dynamic.SourceUnionEmitter.emit(xx, set.defSetId, unionIndex, this);
-    compiledBaseBinaryName = emitted.baseBinaryName();
-    compiledVariantBinaryNames = emitted.variantBinaryNames();
+    compiledBaseBinaryName = Opt.some(emitted.baseBinaryName());
+    compiledVariantBinaryNames = Opt.some(emitted.variantBinaryNames());
     compiledBaseBytecode = emitted.baseBytecode();
-    compiledVariantBytecode = emitted.variantBytecode();
+    compiledVariantBytecode = Opt.some(emitted.variantBytecode());
     return EResult.ok(null);
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
@@ -119,8 +130,8 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public EResult<compilerxyz.artifact.Artifact> exportArtifact(ExprContext xx, QExprId loc) {
-    return new TypeTypeSourceUnionConst(this).exportArtifact(xx, loc);
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return new TypeTypeSourceUnionConst(this).artifactableExportArtifact(xx, loc);
   }
 
 
@@ -152,12 +163,12 @@ public final class TypeSourceUnionDynamic
   public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
-      compilerxyz.eval.value.ValueDynamicSource source) {
+      ValueDynamicSource source) {
     return compilerxyz.eval.EResult.ok(
         new CodeValue(
-            compilerxyz.eval.Code.of(loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
+            Code.of(loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
             compilerxyz.eval.EvalOutcome.ofValue(
-                new compilerxyz.eval.value.ValueDynamic(source, this))));
+                new ValueDynamic(source, this))));
   }
 
   @Override
@@ -173,7 +184,7 @@ public final class TypeSourceUnionDynamic
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeSourceUnionDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -192,16 +203,16 @@ public final class TypeSourceUnionDynamic
     return out;
   }
 
-  private compilerxyz.eval.dynamic.JavaInternalName variantInternal(QExprId loc, int variantIndex) {
+  private JavaInternalName variantInternal(QExprId loc, int variantIndex) {
     var unionIndex = set.unions.indexOf(this);
-    return compilerxyz.eval.dynamic.JavaInternalName.of(
+    return JavaInternalName.of(
         compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(
                 set.defSetId, unionIndex, variantIndex)
             .replace('.', '/'));
   }
 
   @Override
-  public EResult<Void> matchPrepare(ExprContext xx, QExprId loc) {
+  public EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
     if (set.unions.indexOf(this) < 0) {
       return EResult.err(loc, "Match: source union not in owning DefinitionSet");
     }
@@ -210,21 +221,21 @@ public final class TypeSourceUnionDynamic
   }
 
   @Override
-  public EResult<CodeDynamic> matchTest(ExprContext xx, QExprId loc, int variantIndex) {
+  public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
     return EResult.ok(
         compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(loc, variantInternal(loc, variantIndex)));
   }
 
   @Override
-  public EResult<CodeDynamic> matchExtract(
+  public EResult<CodeDynamic> matchDynamicExtract(
       ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
     var internal = variantInternal(loc, variantIndex);
     var payloadDesc =
         compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, variantType);
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var seq = new JavaBytecodeSequence();
     seq.add(
         compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
-            loc, compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(internal)));
+            loc, JavaDataDescriptor.fromInternalName(internal)));
     seq.add(
         compilerxyz.eval.dynamic.JavaBytecodeUtils.accessField(
             loc, internal, compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD, payloadDesc));
@@ -238,40 +249,40 @@ public final class TypeSourceUnionDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceUnionConst(this), this));
+    return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionConst(this), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.EResult.ok(cv);
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, identity).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return sourceType.typeAspect(xx, identity).optIsSome();
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return destType.typeAspect(xx, identity).optIsSome();
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     return compilerxyz.eval.EResult.ok(cv);
   }
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 }

@@ -25,26 +25,33 @@ import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectTuple;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.value.argrecord.ArgumentEntry;
+import compilerxyz.eval.value.argrecord.ArgumentTuple;
+import compilerxyz.eval.value.argrecord.ArgumentTupleBinding;
+import compilerxyz.eval.value.record.Record;
+import compilerxyz.eval.value.record.RecordField;
+import compilerxyz.eval.value.record.RecordField.Dynamic;
+import compilerxyz.gen.AspectTuple;
 
 public final class SourceObjectInterfaceMethodImplData {
   public final int interfaceMethodIndex;
-  public @Nullable Value implExpr;
-  public @Nullable String compiledClassName;
-  public @Nullable byte[] compiledBytecode;
-  public @Nullable BindingId innerBindingId;
-  public @Nullable BindingId outerBindingId;
+  public Opt<Value> implExpr = Opt.none();
+  public Opt<String> compiledClassName = Opt.none();
+  public Opt<byte[]> compiledBytecode = Opt.none();
+  public Opt<BindingId> innerBindingId = Opt.none();
+  public Opt<BindingId> outerBindingId = Opt.none();
   public int methodImplIdx;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
-  public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
-  public @Nullable CodeDynamic compiledBodyCode;
+  public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
+  public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
-  public @Nullable TList<BindingId.Local> compiledArgParamIds;
+  public Opt<TList<BindingId.Local>> compiledArgParamIds = Opt.none();
 
-  public @Nullable TList<Type> compiledArgParamTypes;
+  public Opt<TList<Type>> compiledArgParamTypes = Opt.none();
 
   public SourceObjectInterfaceMethodImplData(int interfaceMethodIndex) {
     this.interfaceMethodIndex = interfaceMethodIndex;
@@ -57,26 +64,25 @@ public final class SourceObjectInterfaceMethodImplData {
       InterfaceData iface,
       TypeSourceObjectDynamic dtData,
       Type underlyingType) {
-    if (compiledBodyCode != null) {
+    if (compiledBodyCode.optIsSome()) {
       return EResult.ok(null);
     }
-    var implExprValue = implExpr;
-    if (implExprValue == null) {
-
+    if (implExpr.optIsNone()) {
       return EResult.ok(null);
     }
-    implExpr = null;
+    var implExprValue = implExpr.optUnwrap();
+    implExpr = Opt.none();
     if (!(implExprValue instanceof Expr implExprAst)) {
       throw new AssertionError(
           "Interface method impl is not an Expr: " + implExprValue);
     }
     var ifaceMethod = iface.methods.get(interfaceMethodIndex);
-    if (!(ifaceMethod.retType instanceof compilerxyz.util.Opt.Some<compilerxyz.eval.Type> retTSome)) {
+    if (ifaceMethod.retType.optIsNone()) {
       throw new AssertionError("Interface method impl for a no-value return is unsupported");
     }
-    var retT = retTSome.value();
+    var retT = ifaceMethod.retType.optUnwrap();
     var innerVx = new EvalContext(xx.vx.ix);
-    if (dtData.setId == null) {
+    if (dtData.setId.optIsNone()) {
       throw new AssertionError(
           "SourceObjectInterfaceMethodImplData::finish: dtData.setId is null");
     }
@@ -86,25 +92,25 @@ public final class SourceObjectInterfaceMethodImplData {
           "SourceObjectInterfaceMethodImplData::finish: dtData not in its owning set");
     }
     innerVx.evalRootInternalName =
-        compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dtData.setId, objectIndex);
+        compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), objectIndex);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-    var selfId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    innerBindingId = selfId;
-    var outerId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
-    outerBindingId = outerId;
+    var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
+    innerBindingId = Opt.some(selfId);
+    var outerId = new BindingId.Local(new JavaBytecodeBindingKey());
+    outerBindingId = Opt.some(outerId);
 
     var bodyScope = new Scope(innerVx);
     bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
     TypeSourceObjectDynamic outerType = dtData;
     var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
-    if (outerIb instanceof Opt.Some<AspectInitialBind> outerIbSome) {
-      bodyScope.pushNamed(new ConstKey.Str("outer"), outerIbSome.value().aspectInitialBindInitialBind(outerId));
+    if (outerIb.optIsSome()) {
+      bodyScope.pushNamed(new ConstKey.Str("outer"), outerIb.optUnwrap().aspectInitialBindInitialBind(outerId));
     }
 
     var selfIb = GenAspectInitialBind.getMaybe(xx, underlyingType);
-    if (selfIb instanceof Opt.Some<AspectInitialBind> selfIbSome) {
+    if (selfIb.optIsSome()) {
       bodyScope.pushNamed(
-          new ConstKey.Str("inner"), selfIbSome.value().aspectInitialBindInitialBind(selfId));
+          new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindInitialBind(selfId));
     }
     var methodArgType = ifaceMethod.argType;
     if (methodArgType == null) {
@@ -114,7 +120,7 @@ public final class SourceObjectInterfaceMethodImplData {
     var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, methodArgType);
     TList<Type> paramTypes;
     var argParamIds = new TList<BindingId.Local>();
-    if (methodArgType instanceof compilerxyz.eval.value.record.Record rec) {
+    if (methodArgType instanceof Record rec) {
       if (dataFieldNames.size() != rec.fields().size()) {
         throw new AssertionError(
             "Record method '"
@@ -126,19 +132,21 @@ public final class SourceObjectInterfaceMethodImplData {
                 + ")");
       }
       paramTypes = new TList<>(dataFieldNames.size());
-      var fields = new TOrderedMap<ConstKey, compilerxyz.eval.value.argrecord.ArgumentEntry>();
+      var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
       for (var fieldName : dataFieldNames) {
         var f = rec.fields().getOrNull(new ConstKey.Str(fieldName));
         if (f == null) {
           throw new AssertionError(
               "Record method arg_type missing field '" + fieldName + "'");
         }
-        if (!(f instanceof compilerxyz.eval.value.record.RecordField.Dynamic fd)) {
-          throw new AssertionError(
+        Dynamic fd;
+        switch (f) {
+          case Dynamic d -> fd = d;
+          case RecordField.EvalRes ignored -> throw new AssertionError(
               "Record method arg_type field '" + fieldName + "' is not Dynamic");
         }
         paramTypes.add(fd.type());
-        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var pid = new BindingId.Local(new JavaBytecodeBindingKey());
         argParamIds.add(pid);
         var ibResult = GenAspectInitialBind.get(xx, rootLoc, fd.type());
         if (ibResult.hasErrors()) {
@@ -149,13 +157,13 @@ public final class SourceObjectInterfaceMethodImplData {
                 "SourceObjectInterfaceMethodImplData::compile param InitialBind");
         fields.put(
             new ConstKey.Str(fieldName),
-            new compilerxyz.eval.value.argrecord.ArgumentEntry(
+            new ArgumentEntry(
                 ibAspect.aspectInitialBindInitialBind(pid), fd.type()));
       }
       var argRecord = new ArgumentRecord(fields);
       bodyScope.pushNamed(
           new ConstKey.Str("arg"), new ArgumentRecordBinding(argRecord));
-    } else if (tupleOpt instanceof Opt.Some<compilerxyz.gen.AspectTuple> tupleSome) {
+    } else if (tupleOpt.optIsSome()) {
       if (!dataFieldNames.isEmpty()) {
         throw new AssertionError(
             "Tuple method '"
@@ -163,12 +171,12 @@ public final class SourceObjectInterfaceMethodImplData {
                 + "' must have empty data_field_names, got: "
                 + dataFieldNames);
       }
-      var elemTypes = tupleSome.value().aspectTupleElementTypes();
+      var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
       paramTypes = new TList<>(elemTypes.size());
       var elemBindings = new TList<Binding>(elemTypes.size());
       for (var elemType : elemTypes) {
         paramTypes.add(elemType);
-        var pid = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var pid = new BindingId.Local(new JavaBytecodeBindingKey());
         argParamIds.add(pid);
         var ibResult = GenAspectInitialBind.get(xx, rootLoc, elemType);
         if (ibResult.hasErrors()) {
@@ -178,10 +186,10 @@ public final class SourceObjectInterfaceMethodImplData {
             "SourceObjectInterfaceMethodImplData::compile tuple elem InitialBind");
         elemBindings.add(ibAspect.aspectInitialBindInitialBind(pid));
       }
-      var argTuple = new compilerxyz.eval.value.argrecord.ArgumentTuple(elemBindings, elemTypes);
+      var argTuple = new ArgumentTuple(elemBindings, elemTypes);
       bodyScope.pushNamed(
           new ConstKey.Str("arg"),
-          new compilerxyz.eval.value.argrecord.ArgumentTupleBinding(argTuple));
+          new ArgumentTupleBinding(argTuple));
     } else {
       if (!dataFieldNames.isEmpty()) {
         throw new AssertionError(
@@ -191,15 +199,15 @@ public final class SourceObjectInterfaceMethodImplData {
                 + dataFieldNames);
       }
       paramTypes = TList.of(methodArgType);
-      var argId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+      var argId = new BindingId.Local(new JavaBytecodeBindingKey());
       argParamIds.add(argId);
       var argIbMaybe = GenAspectInitialBind.getMaybe(xx, methodArgType);
-      if (argIbMaybe instanceof Opt.Some<AspectInitialBind> argIbSome) {
+      if (argIbMaybe.optIsSome()) {
         bodyScope.pushNamed(
-            new ConstKey.Str("arg"), argIbSome.value().aspectInitialBindInitialBind(argId));
+            new ConstKey.Str("arg"), argIbMaybe.optUnwrap().aspectInitialBindInitialBind(argId));
       }
     }
-    compiledArgParamTypes = paramTypes;
+    compiledArgParamTypes = Opt.some(paramTypes);
     var methodXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, null);
 
     var implResult = ConstEval.constEval(methodXx, implExprAst);
@@ -217,8 +225,8 @@ public final class SourceObjectInterfaceMethodImplData {
         convertedResult.requireValue(
             "SourceObjectInterfaceMethodImplData::compile typecheckConvert");
     CodeDynamic bodyCode;
-    if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
-      var valueType = someVal.value().valueType();
+    if (convertedCv.value().optIsSome()) {
+      var valueType = convertedCv.value().optUnwrap().valueType();
       var consumeResult = GenAspectConsumeDynamic.get(methodXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
@@ -234,7 +242,7 @@ public final class SourceObjectInterfaceMethodImplData {
           dynResult.requireValue(
               "SourceObjectInterfaceMethodImplData::compile consume.toDynamic");
     } else {
-      bodyCode = convertedCv.code().dynamic();
+      bodyCode = convertedCv.code().codeDynamic();
       if (bodyCode == null) {
         return EResult.err(rootLoc, "Interface method impl body produced no compile-time value");
       }
@@ -255,8 +263,8 @@ public final class SourceObjectInterfaceMethodImplData {
     var captured = innerVx.externals;
     capturedExternals.addAll(captured);
 
-    compiledBodyCode = bodyCode;
-    compiledArgParamIds = argParamIds;
+    compiledBodyCode = Opt.some(bodyCode);
+    compiledArgParamIds = Opt.some(argParamIds);
     return EResult.ok(null);
   }
 

@@ -21,7 +21,7 @@ public final class AspectLookup {
   public static <A extends Aspect> EResult<A> get(
       ExprContext xx, QExprId loc, Type type, Unique id, Class<A> aspectClass) {
     var maybe = getMaybe(xx, type, id, aspectClass);
-    if (maybe instanceof Opt.Some<A> s) return EResult.ok(s.value());
+    if (maybe.optIsSome()) return EResult.ok(maybe.optUnwrap());
     return EResult.err(
         loc, "Type " + type.typeDesc() + " does not implement " + aspectClass.getSimpleName());
   }

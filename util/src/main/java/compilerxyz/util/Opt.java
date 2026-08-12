@@ -20,7 +20,7 @@ public sealed interface Opt<T> {
     return new Some<>(value);
   }
 
-  static <T> Opt<T> ofNullable(@org.jspecify.annotations.Nullable T value) {
+  static <T> Opt<T> ofNullable(T value) {
     return value == null ? Opt.none() : Opt.some(value);
   }
 

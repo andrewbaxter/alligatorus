@@ -8,6 +8,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
@@ -322,8 +323,8 @@ public final class T0160EvenOddTest {
                                                     mb.str(
                                                         "cast: cannot cast a dynamic int to"
                                                             + " evenodd; parity unknown"))))),
-                                    castFromPassthrough(mb)))))),
-                castFromPassthrough(mb))));
+                                    Opt.some(castFromPassthrough(mb))))))),
+                Opt.some(castFromPassthrough(mb)))));
   }
 
   private static SourceExpr evenOddAddWrapped(TestMb mb, SourceExpr parity) {
@@ -468,7 +469,7 @@ public final class T0160EvenOddTest {
                                                     mb.str(
                                                         "operator_add: reference is a dynamic"
                                                             + " int; parity unknown"))))),
-                                    mb.seqOf(
+                                    Opt.some(mb.seqOf(
                                         mb.bind(
                                             "ref_evenodd_type_",
                                             mb.call(
@@ -476,12 +477,12 @@ public final class T0160EvenOddTest {
                                                 mb.tupleOf(
                                                     mb.scopeUse("ref_type_obj_"),
                                                     mb.lower(mb.scopeUse("u_type"))))),
-                                        mb.return_(evenOddAddWrapped(mb, evenOddParity)))))))),
-                mb.call(
+                                        mb.return_(evenOddAddWrapped(mb, evenOddParity))))))))),
+                Opt.some(mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
                         mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("operator_add: reference has no compile-time value"))))));
+                        mb.str("operator_add: reference has no compile-time value")))))));
   }
 
   private static SourceExpr evenOddSetApply(TestMb mb, SourceExpr parity) {
@@ -610,11 +611,11 @@ public final class T0160EvenOddTest {
                                                                     mb.str("code"))))))),
                                             new TestMb.RecordPair(
                                                 "value", mb.scopeUse("conv_cv_"))))))))),
-                mb.call(
+                Opt.some(mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
                         mb.field(mb.scopeUse("arg"), mb.str("loc")),
-                        mb.str("set: cannot set a non-binding evenodd value"))))));
+                        mb.str("set: cannot set a non-binding evenodd value")))))));
   }
 
   private static SourceExpr evenOddSetBody(TestMb mb) {
@@ -635,7 +636,7 @@ public final class T0160EvenOddTest {
                     new TestMb.Branch(
                         mb.field(mb.scopeUse("conv_er_"), mb.str("has_errors")),
                         mb.scopeUse("conv_er_"))),
-                mb.seqOf(
+                Opt.some(mb.seqOf(
                     mb.bind("conv_cv_", mb.field(mb.scopeUse("conv_er_"), mb.str("value"))),
                     mb.bind(
                         "rhs_parity_",
@@ -658,7 +659,7 @@ public final class T0160EvenOddTest {
                                         mb.lower(mb.scopeUse("u_type")))),
                                 mb.str("get_parity")),
                             mb.literalNull())),
-                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_")))))));
+                    mb.return_(evenOddSetApply(mb, mb.scopeUse("rhs_parity_"))))))));
   }
 
   private static SourceExpr makeEvenOddTypeInner(TestMb mb, String name) {
@@ -1109,7 +1110,7 @@ public final class T0160EvenOddTest {
                                                                     mb.as_(
                                                                         mb.literalNull(),
                                                                         mb.typesNull()))),
-                                                            mb.return_(
+                                                            Opt.some(mb.return_(
                                                                 "merge_res",
                                                                 mb.call(
                                                                     mb.field(
@@ -1124,7 +1125,7 @@ public final class T0160EvenOddTest {
                                                                         mb.str(
                                                                             "evenodd merge:"
                                                                                 + " branch parities"
-                                                                                + " differ")))))),
+                                                                                + " differ"))))))),
                                                     mb.return_(
                                                         mb.call(
                                                             mb.field(
@@ -1237,11 +1238,11 @@ public final class T0160EvenOddTest {
                                                                     mb.typesOption(), mb.typesAspect()),
                                                                 mb.str("some")),
                                                             mb.scopeUse("outer")))),
-                                                mb.call(
+                                                Opt.some(mb.call(
                                                     mb.field(
                                                         mb.call(mb.typesOption(), mb.typesAspect()),
                                                         mb.str("none")),
-                                                    mb.literalNull()))),
+                                                    mb.literalNull())))),
                                         new TestMb.RecordPair(
                                             "can_cast_to",
                                             mb.seqOf(mb.return_(mb.bool(false)))),
@@ -1431,10 +1432,12 @@ public final class T0160EvenOddTest {
   private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
-    return ok;
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return null; }
+    }
+    return okRes.value();
   }
 
   @Test
@@ -1454,7 +1457,7 @@ public final class T0160EvenOddTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>, () -> "a throwing drop should fail compile: " + res);
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "a throwing drop should fail compile: " + res);
     assertTrue(
         res.toString().contains("throw not allowed"),
         () -> "expected the throw-not-allowed gate to fire, got: " + res);
@@ -1479,7 +1482,7 @@ public final class T0160EvenOddTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "a drop that produces a throw should fail compile: " + res);
     assertTrue(
         res.toString().contains("throw not allowed"),
@@ -1642,7 +1645,7 @@ public final class T0160EvenOddTest {
                 mb.call(mb.log(), mb.str("unreachable")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected compile error, got " + res);
     assertTrue(
         res.toString().contains("cast: cannot cast a dynamic int"),
         () -> "expected dynamic-int cast error from set, got " + res);
@@ -1660,7 +1663,7 @@ public final class T0160EvenOddTest {
   private static void assertParityMergeError(TMap<String, SourceModule> modules) {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected merge error, got " + res);
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected merge error, got " + res);
     assertTrue(
         res.toString().contains("evenodd merge: branch parities differ"),
         () -> "expected parity merge error, got " + res);
@@ -1712,7 +1715,7 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.ifOf(
                     TList.of(new TestMb.Branch(dynTrue(mb), thenSet)),
-                    elseSet),
+                    Opt.some(elseSet)),
                 mb.call(mb.log(), mb.str("done")))));
     return modules;
   }
@@ -1796,9 +1799,9 @@ public final class T0160EvenOddTest {
                             mb.set(
                                 mb.scopeUse("a"),
                                 mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))))),
-                    mb.set(
+                    Opt.some(mb.set(
                         mb.scopeUse("a"),
-                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b")))),
+                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))))),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -1823,9 +1826,9 @@ public final class T0160EvenOddTest {
                             mb.set(
                                 mb.scopeUse("a"),
                                 mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))))),
-                    mb.set(
+                    Opt.some(mb.set(
                         mb.scopeUse("a"),
-                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("c")))),
+                        mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("c"))))),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -1845,7 +1848,7 @@ public final class T0160EvenOddTest {
                     TList.of(
                         new TestMb.Branch(
                             dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                    null),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -1865,7 +1868,7 @@ public final class T0160EvenOddTest {
                     TList.of(
                         new TestMb.Branch(
                             dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(3.0)))),
-                    null),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -1931,11 +1934,11 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.tryCatchFinally(
                     mb.set(mb.scopeUse("a"), mb.num(4.0)),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.typesString(),
-                        mb.set(mb.scopeUse("a"), mb.num(6.0))),
-                    null),
+                        mb.set(mb.scopeUse("a"), mb.num(6.0)))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -1953,11 +1956,11 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.tryCatchFinally(
                     mb.set(mb.scopeUse("a"), mb.num(4.0)),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.typesString(),
-                        mb.set(mb.scopeUse("a"), mb.num(3.0))),
-                    null),
+                        mb.set(mb.scopeUse("a"), mb.num(3.0)))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -1985,7 +1988,7 @@ public final class T0160EvenOddTest {
                             mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0))),
                         new TestMb.Branch(
                             mb.str("numtag"), mb.set(mb.scopeUse("a"), mb.num(6.0)))),
-                    null),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -2013,7 +2016,7 @@ public final class T0160EvenOddTest {
                             mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0))),
                         new TestMb.Branch(
                             mb.str("numtag"), mb.set(mb.scopeUse("a"), mb.num(3.0)))),
-                    null),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -2034,7 +2037,7 @@ public final class T0160EvenOddTest {
                 mb.call(mb.log(), mb.str("unreachable")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected compile error, got " + res);
     assertTrue(
         res.toString().contains("cast: cannot cast a dynamic int"),
         () -> "expected dynamic-int cast error, got " + res);
@@ -2061,7 +2064,7 @@ public final class T0160EvenOddTest {
                     TList.of(
                         new TestMb.Branch(
                             mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                    mb.set(mb.scopeUse("a"), mb.num(6.0))),
+                    Opt.some(mb.set(mb.scopeUse("a"), mb.num(6.0)))),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -2087,7 +2090,7 @@ public final class T0160EvenOddTest {
                     TList.of(
                         new TestMb.Branch(
                             mb.str("strtag"), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                    mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                    Opt.some(mb.set(mb.scopeUse("a"), mb.num(3.0)))),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -2115,7 +2118,7 @@ public final class T0160EvenOddTest {
                         TList.of(
                             new TestMb.Branch(
                                 dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                        mb.set(mb.scopeUse("a"), mb.num(6.0)))),
+                        Opt.some(mb.set(mb.scopeUse("a"), mb.num(6.0))))),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -2143,7 +2146,7 @@ public final class T0160EvenOddTest {
                         TList.of(
                             new TestMb.Branch(
                                 dynTrue(mb), mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                        mb.set(mb.scopeUse("a"), mb.num(3.0)))),
+                        Opt.some(mb.set(mb.scopeUse("a"), mb.num(3.0))))),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -2168,8 +2171,8 @@ public final class T0160EvenOddTest {
                                     new TestMb.Branch(
                                         dynTrue(mb),
                                         mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                                mb.set(mb.scopeUse("a"), mb.num(6.0))))),
-                    mb.set(mb.scopeUse("a"), mb.num(3.0))),
+                                Opt.some(mb.set(mb.scopeUse("a"), mb.num(6.0)))))),
+                    Opt.some(mb.set(mb.scopeUse("a"), mb.num(3.0)))),
                 mb.call(mb.log(), mb.str("done")))));
     assertParityMergeError(modules);
   }
@@ -2194,8 +2197,8 @@ public final class T0160EvenOddTest {
                                     new TestMb.Branch(
                                         dynTrue(mb),
                                         mb.set(mb.scopeUse("a"), mb.num(4.0)))),
-                                mb.set(mb.scopeUse("a"), mb.num(6.0))))),
-                    mb.set(mb.scopeUse("a"), mb.num(8.0))),
+                                Opt.some(mb.set(mb.scopeUse("a"), mb.num(6.0)))))),
+                    Opt.some(mb.set(mb.scopeUse("a"), mb.num(8.0)))),
                 mb.call(mb.log(), mb.str("done")))));
     compileOk(modules);
   }
@@ -2218,7 +2221,7 @@ public final class T0160EvenOddTest {
                 mb.call(mb.log(), mb.str("unreachable")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error, got " + res);
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected compile error, got " + res);
     assertTrue(
         res.toString().contains("operator_add: reference is a dynamic int"),
         () -> "expected dynamic-int parity error, got " + res);

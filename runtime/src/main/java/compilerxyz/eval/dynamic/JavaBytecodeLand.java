@@ -11,7 +11,7 @@ public class JavaBytecodeLand implements JavaBytecode {
   }
 
   @Override
-  public <T> T dispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.handleLand(this);
+  public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleLand(this);
   }
 }

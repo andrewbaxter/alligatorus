@@ -1,21 +1,21 @@
 package compilerxyz.eval.value.code_value_extern;
 
 import compilerxyz.eval.CodeValue;
-import org.jspecify.annotations.Nullable;
+import compilerxyz.util.Opt;
 
 public final class CodeValueExtern {
-  private @Nullable CodeValue value;
+  private Opt<CodeValue> value;
 
   public CodeValueExtern(CodeValue value) {
-    this.value = value;
+    this.value = Opt.some(value);
   }
 
   public CodeValue intoInner() {
-    var v = value;
-    if (v == null) {
+    if (value.optIsNone()) {
       throw new IllegalStateException("CodeValueExtern: already taken");
     }
-    value = null;
+    var v = value.optUnwrap();
+    value = Opt.none();
     return v;
   }
 }

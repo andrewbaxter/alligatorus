@@ -26,6 +26,15 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.eval.DefinitionSetClassLoader;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.langhelp.Compile.CompileResult;
+import compilerxyz.syntax.SourceSpecAbsolute.Virtual;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.concurrent.locks.ReentrantLock;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceClassVisitor;
 
 public final class Helpers {
   private Helpers() {}
@@ -118,26 +127,23 @@ public final class Helpers {
     return new JsonValueNull();
   }
 
-  public static compilerxyz.langhelp.Compile.CompileResult compileCaptured(
+  public static CompileResult compileCaptured(
       TMap<String, SourceModule> modules) {
     var gx = newGx(modules);
     gx.captureBytecode = true;
     var res =
         compilerxyz.langhelp.Compile.compile(
-            gx, new compilerxyz.syntax.SourceSpecAbsolute.Virtual("main"));
-    if (!(res
-        instanceof
-        compilerxyz.util.Result.Ok<
-                compilerxyz.langhelp.Compile.CompileResult,
-                compilerxyz.util.TList<compilerxyz.eval.ExprErr>>
-            ok)) {
-      throw new AssertionError("compile failed: " + res);
+            gx, new Virtual("main"));
+    Result.Ok<CompileResult, compilerxyz.util.TList<ExprErr>> ok;
+    switch (res) {
+      case Result.Ok<CompileResult, compilerxyz.util.TList<ExprErr>> o -> ok = o;
+      case Result.Err<CompileResult, compilerxyz.util.TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
     }
     return ok.value();
   }
 
   public static String disassembled(
-      compilerxyz.langhelp.Compile.CompileResult result, String binaryName) {
+      CompileResult result, String binaryName) {
     var bytes = result.bytecode().getOrNull(binaryName);
     if (bytes == null) {
       throw new AssertionError(
@@ -147,12 +153,12 @@ public final class Helpers {
   }
 
   public static String disassemble(byte[] bytecode) {
-    var reader = new org.objectweb.asm.ClassReader(bytecode);
-    var writer = new java.io.StringWriter();
+    var reader = new ClassReader(bytecode);
+    var writer = new StringWriter();
     reader.accept(
-        new org.objectweb.asm.util.TraceClassVisitor(
-            null, new org.objectweb.asm.util.Textifier(), new java.io.PrintWriter(writer)),
-        org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES);
+        new TraceClassVisitor(
+            null, new Textifier(), new PrintWriter(writer)),
+        ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
     return writer.toString();
   }
 
@@ -204,12 +210,12 @@ public final class Helpers {
 
   public static final class TestCompiles implements Compiles {
     private final TMap<CompileId, Entry> entries = new TMap<>();
-    private final java.util.concurrent.locks.ReentrantLock mapLock =
-        new java.util.concurrent.locks.ReentrantLock();
+    private final ReentrantLock mapLock =
+        new ReentrantLock();
 
     private static final class Entry {
-      final java.util.concurrent.locks.ReentrantLock lock =
-          new java.util.concurrent.locks.ReentrantLock();
+      final ReentrantLock lock =
+          new ReentrantLock();
       CompileRes value;
     }
 

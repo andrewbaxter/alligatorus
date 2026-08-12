@@ -20,6 +20,7 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6154L)
 public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLight, ExporterAny {
@@ -44,8 +45,8 @@ public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLig
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeSourceSpec::bind: CodeValue has no compile-time value");
   }
@@ -62,7 +63,7 @@ public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLig
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

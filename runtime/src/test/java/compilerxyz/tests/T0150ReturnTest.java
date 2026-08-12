@@ -8,6 +8,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ public final class T0150ReturnTest {
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>,
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "expected unreachable-code error: " + res);
   }
 
@@ -41,12 +42,16 @@ public final class T0150ReturnTest {
                 mb.call(mb.log(), mb.str("before")),
                 mb.labeled("outer", mb.seqOf(
                     mb.call(mb.log(), mb.str("inside")),
-                    mb.return_("outer", null))),
+                    mb.returnLabel("outer"))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes49;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes49 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes49.value();
     assertEquals(3, ok.logs().size());
     assertEquals("before", ok.logs().get(0).message());
     assertEquals("inside", ok.logs().get(1).message());
@@ -65,7 +70,7 @@ public final class T0150ReturnTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>, () -> "return in an operand should fail compile: " + res);
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "return in an operand should fail compile: " + res);
   }
 
   @Test
@@ -74,10 +79,10 @@ public final class T0150ReturnTest {
     var modules = new TMap<String, SourceModule>();
     modules.put(
         "main",
-        new SourceModule.V1(mb.return_("nowhere", null)));
+        new SourceModule.V1(mb.returnLabel("nowhere")));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>,
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "expected unknown-label error: " + res);
   }
 
@@ -92,11 +97,11 @@ public final class T0150ReturnTest {
         new SourceModule.V1(
             mb.seqOf(
                 mb.labeled("other", mb.call(mb.log(), mb.str("in-other"))),
-                mb.labeled("outer", mb.seqOf(mb.return_("other", null))),
+                mb.labeled("outer", mb.seqOf(mb.returnLabel("other"))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>,
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "expected non-enclosing-label error: " + res);
   }
 
@@ -122,7 +127,7 @@ public final class T0150ReturnTest {
                         mb.call(mb.log(), mb.str("SHOULD NOT LOG")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>,
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "expected unreachable-after-return error: " + res);
   }
 
@@ -140,8 +145,12 @@ public final class T0150ReturnTest {
                         mb.return_("out", mb.str("returned-value")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes144;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes144 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes144.value();
     assertEquals(1, ok.logs().size());
     assertEquals("returned-value", ok.logs().get(0).message());
   }
@@ -160,13 +169,13 @@ public final class T0150ReturnTest {
                         mb.bool(true),
                         mb.seqOf(
                             mb.call(mb.log(), mb.str("in-if")),
-                            mb.return_("out", null),
+                            mb.returnLabel("out"),
                             mb.call(mb.log(), mb.str("SHOULD NOT LOG"))))),
-                    mb.call(mb.log(), mb.str("else"))),
+                    Opt.some(mb.call(mb.log(), mb.str("else")))),
                 mb.call(mb.log(), mb.str("SHOULD NOT LOG AFTER"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>,
+    assertTrue(switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "expected unreachable errors: " + res);
   }
 
@@ -195,12 +204,16 @@ public final class T0150ReturnTest {
                         mb.str("e"),
                         mb.seqOf(
                             mb.call(mb.log(), mb.str("iter")),
-                            mb.return_("outer", null)))),
+                            mb.returnLabel("outer")))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes203;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes203 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes203.value();
     assertEquals(2, ok.logs().size());
     assertEquals("iter", ok.logs().get(0).message());
     assertEquals("after", ok.logs().get(1).message());
@@ -221,13 +234,17 @@ public final class T0150ReturnTest {
                             mb.bool(true),
                             mb.seqOf(
                                 mb.call(mb.log(), mb.str("in-if")),
-                                mb.return_("outer", null)))),
-                        mb.call(mb.log(), mb.str("SHOULD NOT LOG else")))),
+                                mb.returnLabel("outer")))),
+                        Opt.some(mb.call(mb.log(), mb.str("SHOULD NOT LOG else"))))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes230;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes230 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes230.value();
     assertEquals(2, ok.logs().size());
     assertEquals("in-if", ok.logs().get(0).message());
     assertEquals("after", ok.logs().get(1).message());
@@ -281,13 +298,17 @@ public final class T0150ReturnTest {
                                 mb.str("strtag"),
                                 mb.seqOf(
                                     mb.call(mb.log(), mb.str("in-match")),
-                                    mb.return_("outer", null)))),
-                        null)),
+                                    mb.returnLabel("outer")))),
+                        Opt.none())),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes290;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes290 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes290.value();
     assertEquals(2, ok.logs().size());
     assertEquals("in-match", ok.logs().get(0).message());
     assertEquals("after", ok.logs().get(1).message());
@@ -310,13 +331,17 @@ public final class T0150ReturnTest {
                     mb.ifOf(
                         TList.of(new TestMb.Branch(
                             mb.bool(false),
-                            mb.return_("out", null))),
-                        mb.call(mb.log(), mb.str("else"))),
+                            mb.returnLabel("out"))),
+                        Opt.some(mb.call(mb.log(), mb.str("else")))),
                     mb.call(mb.log(), mb.str("after"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes319;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes319 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes319.value();
     assertEquals(3, ok.logs().size());
     assertEquals("before", ok.logs().get(0).message());
     assertEquals("else", ok.logs().get(1).message());
@@ -338,14 +363,18 @@ public final class T0150ReturnTest {
                     mb.tryCatchFinally(
                         mb.seqOf(
                             mb.call(mb.log(), mb.str("body")),
-                            mb.return_("outer", null)),
-                        null,
-                        mb.call(mb.log(), mb.str("finally")))),
+                            mb.returnLabel("outer")),
+                        Opt.none(),
+                        Opt.some(mb.call(mb.log(), mb.str("finally"))))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes348;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes348 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes348.value();
     var messages = new TList<String>(ok.logs().size());
     for (var l : ok.logs()) messages.add(l.message());
     assertEquals(
@@ -374,18 +403,22 @@ public final class T0150ReturnTest {
                     mb.tryCatchFinally(
                         mb.seqOf(
                             mb.call(mb.log(), mb.str("body")),
-                            mb.return_("outer", null)),
-                        null,
-                        mb.ifOf(
+                            mb.returnLabel("outer")),
+                        Opt.none(),
+                        Opt.some(mb.ifOf(
                             TList.of(
                                 new TestMb.Branch(
                                     dynTrue, mb.call(mb.log(), mb.str("fin-then")))),
-                            mb.call(mb.log(), mb.str("fin-else"))))),
+                            Opt.some(mb.call(mb.log(), mb.str("fin-else"))))))),
                 mb.call(mb.log(), mb.str("after")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes388;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes388 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes388.value();
     var messages = new TList<String>(ok.logs().size());
     for (var l : ok.logs()) messages.add(l.message());
     assertEquals(
@@ -410,8 +443,12 @@ public final class T0150ReturnTest {
                 mb.call(mb.log(), mb.str("done")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes414;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes414 = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = okRes414.value();
     assertEquals(1, ok.logs().size());
     assertEquals("done", ok.logs().get(0).message());
   }

@@ -43,6 +43,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.AspectLift;
 
 /**
  * The type-of-type for {@link TypeSourceInterfaceDynamic}: the {@code Type}
@@ -66,7 +67,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         AspectDropDynamicLight,
         AspectField,
         AspectInitialBind,
-        compilerxyz.gen.AspectLift,
+        AspectLift,
         AspectType,
         ExporterAny {
 
@@ -80,14 +81,14 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
       new TypeTypeSourceInterfaceDynamic(Opt.none());
 
   private TypeSourceInterfaceDynamic require(String op) {
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some) return some.value();
+    if (type_.optIsSome()) return type_.optUnwrap();
     throw new IllegalStateException(
         "TypeTypeSourceInterfaceDynamic::" + op + " on the generic (interface-agnostic) descriptor");
   }
 
   @Override
   public String typeDesc() {
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some) return some.value().typeDesc();
+    if (type_.optIsSome()) return type_.optUnwrap().typeDesc();
     return "interface";
   }
 
@@ -104,8 +105,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some
-        && key.equals(some.value().data().identity)) {
+    if (type_.optIsSome() && key.equals(type_.optUnwrap().data().identity)) {
       return Opt.some(this);
     }
     if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -127,7 +127,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
           new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
-      var sourceCode = cv.code().dynamic();
+      var sourceCode = cv.code().codeDynamic();
       if (sourceCode == null) {
         return EResult.err(
             loc, "cast interface → interface_data: source has no runtime code");
@@ -150,21 +150,21 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
   }
 
   @Override
-  public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Object externalHostValue) {
-    var host = (TypeSourceInterfaceDynamic) externalHostValue;
+  public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    var host = (TypeSourceInterfaceDynamic) externalHostValue.optUnwrap();
     return EResult.ok(
         new ValueObjectConst(
-            new TypeTypeSourceInterfaceDynamic(Opt.some(host)), externalHostValue));
+            new TypeTypeSourceInterfaceDynamic(Opt.some(host)), host));
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return require("aspectConsumeDynamicJvmClass").aspectConsumeDynamicJvmClass(xx);
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -177,7 +177,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var type = require("aspectFieldField");
-    if (!self.code().isNone()) {
+    if (!self.code().codeIsNone()) {
       return type.aspectFieldField(xx, loc, self, key);
     }
     var selfCodeRes = type.aspectConsumeDynamicToDynamic(xx, loc, self);
@@ -190,16 +190,16 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
   @Override
   public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some) {
-      return some.value().aspectFieldKeys(xx);
+    if (type_.optIsSome()) {
+      return type_.optUnwrap().aspectFieldKeys(xx);
     }
     return new TList<>();
   }
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some) {
-      return some.value().aspectFieldTypeOpt(xx, key);
+    if (type_.optIsSome()) {
+      return type_.optUnwrap().aspectFieldTypeOpt(xx, key);
     }
     return Opt.none();
   }
@@ -240,19 +240,18 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
-    if (!(AspectLookup.getMaybe(
-            xx,
-            other,
-            GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY,
-            TypeTypeSourceInterfaceDynamic.class)
-        instanceof Opt.Some<TypeTypeSourceInterfaceDynamic> oSome)) {
+    var oOpt = AspectLookup.getMaybe(
+        xx,
+        other,
+        GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY,
+        TypeTypeSourceInterfaceDynamic.class);
+    if (oOpt.optIsNone()) {
       return false;
     }
-    if (type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> some
-        && oSome.value().type_ instanceof Opt.Some<TypeSourceInterfaceDynamic> otherSome) {
-      return some.value().typeIsEqual(xx, otherSome.value());
+    if (type_.optIsSome() && oOpt.optUnwrap().type_.optIsSome()) {
+      return type_.optUnwrap().typeIsEqual(xx, oOpt.optUnwrap().type_.optUnwrap());
     }
-    return type_.optIsNone() && oSome.value().type_.optIsNone();
+    return type_.optIsNone() && oOpt.optUnwrap().type_.optIsNone();
   }
 
   @Override

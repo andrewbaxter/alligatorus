@@ -12,6 +12,7 @@ import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
 import java.io.IOException;
@@ -366,8 +367,8 @@ public final class BuiltinTreeGen {
                 fl.args(),
                 fl.retType().dynamicType());
       };
-      if (pathToLeaf.put(entry.path(), spec) != null) {
-        throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.path());
+      if (pathToLeaf.put(entry.entryPath(), spec) != null) {
+        throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.entryPath());
       }
     }
 
@@ -482,12 +483,12 @@ public final class BuiltinTreeGen {
 
   private record TreeNode(
       java.util.LinkedHashMap<String, TreeNode> children,
-      @org.jspecify.annotations.Nullable LeafSpec leaf) {
+      Opt<LeafSpec> leaf) {
     TreeNode() {
-      this(new java.util.LinkedHashMap<>(), null);
+      this(new java.util.LinkedHashMap<>(), Opt.none());
     }
     TreeNode(LeafSpec leaf) {
-      this(new java.util.LinkedHashMap<>(), leaf);
+      this(new java.util.LinkedHashMap<>(), Opt.some(leaf));
     }
   }
 
@@ -503,7 +504,7 @@ public final class BuiltinTreeGen {
           next = new TreeNode();
           cur.children().put(name, next);
         }
-        if (next.leaf() != null) {
+        if (next.leaf().optIsSome()) {
           throw new IllegalStateException(
               "path collision (leaf where branch needed): " + e.getKey());
         }
@@ -519,7 +520,7 @@ public final class BuiltinTreeGen {
   }
 
   private static NodeSpec toNodeSpec(TreeNode n, String branchPath) {
-    if (n.leaf() != null) return n.leaf();
+    if (n.leaf().optIsSome()) return n.leaf().optUnwrap();
     var children = new TList<Child>();
     var order = BRANCH_ORDER.get(branchPath);
     var remaining = new java.util.LinkedHashMap<>(n.children());

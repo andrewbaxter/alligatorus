@@ -43,7 +43,30 @@ public final class CompileImport {
 
     var allLogs = new TList<LogEntry>();
     while (true) {
-      var isStage = rootExpr.variant() instanceof Expr.Stage;
+      boolean isStage = switch (rootExpr.variant()) {
+        case Expr.Stage s -> true;
+        case Expr.As a -> false;
+        case Expr.Bind b -> false;
+        case Expr.Call c -> false;
+        case Expr.Field f -> false;
+        case Expr.Foreach f -> false;
+        case Expr.Graft.Pending p -> false;
+        case Expr.Graft.Evaluated g -> false;
+        case Expr.If i -> false;
+        case Expr.Labeled l -> false;
+        case Expr.Literal l -> false;
+        case Expr.Lower l -> false;
+        case Expr.Match m -> false;
+        case Expr.OperatorBinary o -> false;
+        case Expr.OperatorUnary o -> false;
+        case Expr.Record r -> false;
+        case Expr.Return r -> false;
+        case Expr.ScopeUse s -> false;
+        case Expr.Seq s -> false;
+        case Expr.Set s -> false;
+        case Expr.Try t -> false;
+        case Expr.Tuple t -> false;
+      };
       var evalResult = eval(cix, importState, rootExpr);
       switch (evalResult) {
         case EvalOutcome.Err err -> {
@@ -70,7 +93,7 @@ public final class CompileImport {
             var target = new TargetDynamic(vx.nextLocalId);
             var xx =
                 new ExprContext(
-                    rootScope, target, vx, importState, new TypeStringDynamic());
+                    rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
             var artifactRes = ArtifactSupport.exportArtifact(xx, rootLoc, ok.value());
             if (artifactRes.hasErrors()) {
               var artifactErrors = new TList<ExprErr>();
@@ -111,7 +134,7 @@ public final class CompileImport {
       case Expr.ScopeUse u -> 0;
       case Expr.Labeled lb -> maxLowerExcess(lb.inner(), sd, ld);
       case Expr.Return rt ->
-          rt.value() instanceof Opt.Some<Expr> someV ? maxLowerExcess(someV.value(), sd, ld) : 0;
+          rt.value().optIsSome() ? maxLowerExcess(rt.value().optUnwrap(), sd, ld) : 0;
       case Expr.As a -> Math.max(maxLowerExcess(a.base(), sd, ld), maxLowerExcess(a.target(), sd, ld));
       case Expr.Call c -> Math.max(maxLowerExcess(c.func(), sd, ld), maxLowerExcess(c.arg(), sd, ld));
       case Expr.Bind b -> Math.max(maxLowerExcess(b.base(), sd, ld), maxLowerExcess(b.value(), sd, ld));
@@ -142,8 +165,8 @@ public final class CompileImport {
           m = Math.max(m, maxLowerExcess(branch.body(), sd, ld));
         }
         var el = i.else_();
-        if (el instanceof Opt.Some<Expr> some) {
-          m = Math.max(m, maxLowerExcess(some.value(), sd, ld));
+        if (el.optIsSome()) {
+          m = Math.max(m, maxLowerExcess(el.optUnwrap(), sd, ld));
         }
         yield m;
       }
@@ -164,23 +187,23 @@ public final class CompileImport {
           x = Math.max(x, maxLowerExcess(c.body(), sd, ld));
         }
         var fb = m.fallback();
-        if (fb instanceof Opt.Some<Expr> some) {
-          x = Math.max(x, maxLowerExcess(some.value(), sd, ld));
+        if (fb.optIsSome()) {
+          x = Math.max(x, maxLowerExcess(fb.optUnwrap(), sd, ld));
         }
         yield x;
       }
       case Expr.Try t -> {
         var m = maxLowerExcess(t.body(), sd, ld);
         var cc = t.catchClause();
-        if (cc instanceof Opt.Some<Expr.TryCatch> some) {
-          var c = some.value();
+        if (cc.optIsSome()) {
+          var c = cc.optUnwrap();
           m = Math.max(m, maxLowerExcess(c.bindingName(), sd, ld));
           m = Math.max(m, maxLowerExcess(c.exceptionType(), sd, ld));
           m = Math.max(m, maxLowerExcess(c.body(), sd, ld));
         }
         var fb = t.finallyBlock();
-        if (fb instanceof Opt.Some<Expr> some) {
-          m = Math.max(m, maxLowerExcess(some.value(), sd, ld));
+        if (fb.optIsSome()) {
+          m = Math.max(m, maxLowerExcess(fb.optUnwrap(), sd, ld));
         }
         yield m;
       }

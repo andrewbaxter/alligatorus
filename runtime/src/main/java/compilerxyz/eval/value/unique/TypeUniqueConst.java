@@ -33,6 +33,7 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectOperatorEq;
+import compilerxyz.eval.value.bool_.TypeBoolConst;
 
 @BuiltinLight(uniqueId = 6148L)
 public record TypeUniqueConst()
@@ -71,20 +72,20 @@ public record TypeUniqueConst()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeUniqueConst::bind: CodeValue has no compile-time value");
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeUniqueConst::toDynamic: no compile-time value");
     }
-    Object hostValue = some.value();
+    Object hostValue = cv.value().optUnwrap();
     if (hostValue instanceof ValueObjectConst wrap) {
       hostValue = wrap.data();
     }
@@ -101,21 +102,21 @@ public record TypeUniqueConst()
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var b = extractUnique(base);
     var r = extractUnique(reference);
-    if (b instanceof Opt.Some<Unique> bs && r instanceof Opt.Some<Unique> rs) {
+    if (b.optIsSome() && r.optIsSome()) {
       return EResult.ok(
           new CodeValue(
               Code.concat(loc, base.code(), reference.code()),
               EvalOutcome.ofValue(
                   new ValueObjectConst(
-                      new compilerxyz.eval.value.bool_.TypeBoolConst(),
-                      bs.value().equals(rs.value())))));
+                      new TypeBoolConst(),
+                      b.optUnwrap().equals(r.optUnwrap())))));
     }
     return new TypeUniqueDynamic().aspectOperatorEqEq(xx, loc, base, reference);
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof ValueObjectConst v
+    if (cv.value().optIsSome()
+        && cv.value().optUnwrap() instanceof ValueObjectConst v
         && v.data() instanceof Unique u) {
       return Opt.some(u);
     }
@@ -123,13 +124,13 @@ public record TypeUniqueConst()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_CONST_IDENTITY).optIsSome();
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
@@ -155,5 +156,5 @@ public record TypeUniqueConst()
   public EResult<Type> exporterAnyAsType() { return EResult.ok(new TypeUniqueConst()); }
 
   @Override
-  public EResult<Value> exporterAnyAsValue() { return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this)); }
+  public EResult<Value> exporterAnyAsValue() { return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this)); }
 }

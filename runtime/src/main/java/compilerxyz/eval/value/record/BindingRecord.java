@@ -36,12 +36,15 @@ public record BindingRecord(
     // 0-field composite).
     Code useCode;
     Opt<RecordBaseDynamic> base;
-    if (jsKey instanceof Opt.Some<BindingId> some) {
-      useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
-      base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
-    } else {
-      useCode = Code.none(loc);
-      base = Opt.none();
+    switch (jsKey) {
+      case Opt.Some<BindingId> some -> {
+        useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
+        base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
+      }
+      case Opt.None<BindingId> none -> {
+        useCode = Code.none(loc);
+        base = Opt.none();
+      }
     }
     var resultFields = new TOrderedMap<ConstKey, RecordField>();
     for (var entry : fields.entrySet()) {
@@ -98,11 +101,16 @@ public record BindingRecord(
           boolean shapeOk = true;
           for (var other : others) {
             var ov = ((BindingRecord) other).fields.get(key);
-            if (!(ov instanceof RecordScopeField.Scope os)) {
+            var os = switch (ov) {
+              case RecordScopeField.Scope scopeField -> Opt.some(scopeField);
+              case RecordScopeField.Dynamic dynField -> Opt.<RecordScopeField.Scope>none();
+              case RecordScopeField.Error errField -> Opt.<RecordScopeField.Scope>none();
+            };
+            if (os.optIsNone()) {
               shapeOk = false;
               break;
             }
-            otherSubs.add(os.binding());
+            otherSubs.add(os.optUnwrap().binding());
           }
           if (!shapeOk) {
             errors.add(new ExprErr(loc,
@@ -114,8 +122,8 @@ public record BindingRecord(
             var mres = s.binding().bindingMerge(xx, loc, otherSubs);
             mres.drainInto(errors);
             var mv = mres.valueOrNull();
-            if (mv != null) {
-              mergedFields.put(key, new RecordScopeField.Scope(mv));
+            if (mv.optIsSome()) {
+              mergedFields.put(key, new RecordScopeField.Scope(mv.optUnwrap()));
             } else {
               mergedFields.put(key, v);
             }
@@ -124,7 +132,12 @@ public record BindingRecord(
         case RecordScopeField.Dynamic d -> {
           for (var other : others) {
             var ov = ((BindingRecord) other).fields.get(key);
-            if (!(ov instanceof RecordScopeField.Dynamic)) {
+            var isDynamic = switch (ov) {
+              case RecordScopeField.Dynamic od -> true;
+              case RecordScopeField.Scope os -> false;
+              case RecordScopeField.Error oe -> false;
+            };
+            if (!isDynamic) {
               errors.add(new ExprErr(loc,
                   TList.of(new ExprSubErr.Opaque(
                       "cannot merge BindingRecord: field " + key

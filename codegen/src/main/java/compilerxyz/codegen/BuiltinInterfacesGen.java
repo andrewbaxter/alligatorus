@@ -10,6 +10,7 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.BuiltinMethodEmit;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
@@ -36,8 +37,8 @@ public final class BuiltinInterfacesGen {
       boolean isRecord,
       TList<BuiltinMethodEmit.Method> methods,
       TList<DataField> dataFields,
-      @org.jspecify.annotations.Nullable String outerSimpleName,
-      @org.jspecify.annotations.Nullable String nestedSimpleName) {
+      Opt<String> outerSimpleName,
+      Opt<String> nestedSimpleName) {
     public BuiltinSpec(
         String simpleName,
         String pkg,
@@ -48,7 +49,7 @@ public final class BuiltinInterfacesGen {
         TList<BuiltinMethodEmit.Method> methods,
         TList<DataField> dataFields) {
       this(simpleName, pkg, uniqueId, identityId, isAspect, isRecord,
-          methods, dataFields, null, null);
+          methods, dataFields, Opt.none(), Opt.none());
     }
   }
 
@@ -92,11 +93,10 @@ public final class BuiltinInterfacesGen {
   private static final ClassName JAVA_DATA_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
 
-  private static @org.jspecify.annotations.Nullable TMap<ClassName, CodeBlock>
-      scannedLeafDescriptors;
+  private static Opt<TMap<ClassName, CodeBlock>> scannedLeafDescriptors = Opt.none();
 
   public static void setScannedLeafDescriptors(TMap<ClassName, CodeBlock> scanned) {
-    scannedLeafDescriptors = scanned;
+    scannedLeafDescriptors = Opt.some(scanned);
   }
 
   public static void run(
@@ -128,8 +128,8 @@ public final class BuiltinInterfacesGen {
     var companionName = "Gen" + spec.simpleName;
     var self = ClassName.get(GEN_PACKAGE, companionName);
     ClassName interfaceRef;
-    if (spec.outerSimpleName != null && spec.nestedSimpleName != null) {
-      interfaceRef = ClassName.get(spec.pkg, spec.outerSimpleName, spec.nestedSimpleName);
+    if (spec.outerSimpleName.optIsSome() && spec.nestedSimpleName.optIsSome()) {
+      interfaceRef = ClassName.get(spec.pkg, spec.outerSimpleName.optUnwrap(), spec.nestedSimpleName.optUnwrap());
     } else {
       interfaceRef = ClassName.get(spec.pkg, spec.simpleName);
     }
@@ -274,16 +274,19 @@ public final class BuiltinInterfacesGen {
     b.beginControlFlow("if (!methods.isEmpty() || !dataFields.isEmpty())");
     b.addStatement("return");
     b.endControlFlow();
-    if (scannedLeafDescriptors != null) {
+    if (scannedLeafDescriptors.optIsSome()) {
+      var leafDescriptors = scannedLeafDescriptors.optUnwrap();
       for (var m : spec.methods) {
         BuiltinMethodEmit.emitObjectMethod(
-            b, interfaceRef, "instance", "methods", m, scannedLeafDescriptors);
+            b, interfaceRef, "instance", "methods", m, leafDescriptors);
       }
       for (var f : spec.dataFields) {
-        var descExpr = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, scannedLeafDescriptors);
-        if (descExpr == null) continue;
-        var rawClass = BuiltinMethodEmit.rawClass(f.fieldJavaType);
-        if (rawClass == null) continue;
+        var descExprOpt = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, leafDescriptors);
+        if (descExprOpt.optIsNone()) continue;
+        var descExpr = descExprOpt.optUnwrap();
+        var rawClassOpt = BuiltinMethodEmit.rawClass(f.fieldJavaType);
+        if (rawClassOpt.optIsNone()) continue;
+        var rawClass = rawClassOpt.optUnwrap();
         if (spec.isRecord) {
           b.addStatement(
               "dataFields.add(new $T($S, new $T($S, $T.fromParts($T.fromClass($T.class), $T.of())), $L))",

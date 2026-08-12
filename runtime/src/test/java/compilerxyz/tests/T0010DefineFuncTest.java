@@ -1,7 +1,7 @@
 package compilerxyz.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
@@ -48,8 +48,12 @@ public final class T0010DefineFuncTest {
                 mb.call(mb.scopeUse("act"), mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { fail("compile failed: " + e); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("acted", ok.logs().get(0).message());
   }
@@ -87,8 +91,12 @@ public final class T0010DefineFuncTest {
                 mb.call(mb.scopeUse("hello"), mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { fail("compile failed: " + e); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("hello", ok.logs().get(0).message());
   }
@@ -133,8 +141,12 @@ public final class T0010DefineFuncTest {
                     mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { fail("compile failed: " + e); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO WORLD", ok.logs().get(0).message());
   }
@@ -179,8 +191,12 @@ public final class T0010DefineFuncTest {
                     mb.call(mb.scopeUse("my_func"), mb.str("hello world"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { fail("compile failed: " + e); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO WORLD", ok.logs().get(0).message());
   }

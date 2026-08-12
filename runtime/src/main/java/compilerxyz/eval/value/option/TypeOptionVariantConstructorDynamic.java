@@ -40,6 +40,8 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc.Some;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6132L)
 public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome)
@@ -102,10 +104,10 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     Type underlyingType = isSome ? elementType : new TypeNullDynamic();
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
-    if (convertedOpt.isEmpty()) {
+    if (convertedOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var converted = convertedOpt.get();
+    var converted = convertedOpt.optUnwrap();
     var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
@@ -129,7 +131,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     } else {
       newOpt =
           JavaBytecodeUtils.callStaticInterfaceMethod(
-              new compilerxyz.eval.dynamic.CodeLoc.Some(loc),
+              new Some(loc),
               JavaInternalName.fromClass(Opt.class),
               "none",
               JavaMethodDescriptor.fromParts(
@@ -152,29 +154,29 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeOptionVariantConstructorDynamic.class) instanceof Opt.Some<TypeOptionVariantConstructorDynamic> oSome
-        && elementType.typeIsEqual(xx, oSome.value().elementType) && isSome == oSome.value().isSome;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeOptionVariantConstructorDynamic.class);
+    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType) && isSome == oOpt.optUnwrap().isSome;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

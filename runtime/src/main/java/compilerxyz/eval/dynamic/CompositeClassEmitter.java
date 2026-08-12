@@ -7,6 +7,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.AspectConsumeDynamic;
 
 public final class CompositeClassEmitter {
   private CompositeClassEmitter() {}
@@ -148,9 +149,9 @@ public final class CompositeClassEmitter {
 
   public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
     return switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, t)) {
-      case Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some ->
+      case Opt.Some<AspectConsumeDynamic> some ->
           some.value().aspectConsumeDynamicJvmClass(xx);
-      case Opt.None<compilerxyz.gen.AspectConsumeDynamic> n ->
+      case Opt.None<AspectConsumeDynamic> n ->
           throw new IllegalStateException(
               "CompositeClassEmitter: type (" + t.typeDesc() + ") does not implement AspectConsumeDynamic");
     };
@@ -166,14 +167,14 @@ public final class CompositeClassEmitter {
       return existing;
     }
 
-    if (xx.vx.ix.classLoader == null) {
+    if (xx.vx.ix.classLoader.optIsNone()) {
       xx.vx.ix.classLoader =
-          new DefinitionSetClassLoader(
+          Opt.some(new DefinitionSetClassLoader(
               xx.vx.ix.gx,
               DefinitionSetClassLoader.class.getClassLoader(),
-              new compilerxyz.util.TList<>());
+              new compilerxyz.util.TList<>()));
     }
-    var loader = xx.vx.ix.classLoader;
+    var loader = xx.vx.ix.classLoader.optUnwrap();
     var binaryName = binaryNameFor(key);
     var bytecode = emitBytecode(binaryName, slotDescs);
     loader.registerClass(binaryName, bytecode);

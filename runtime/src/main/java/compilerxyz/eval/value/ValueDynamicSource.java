@@ -23,18 +23,18 @@ import org.objectweb.asm.Opcodes;
 public sealed interface ValueDynamicSource
     permits ValueDynamicSource.Binding, ValueDynamicSource.Expr, ValueDynamicSource.Field {
 
-  CodeDynamic realize(ExprContext xx, QExprId loc);
+  CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc);
 
-  Code drop(QExprId loc);
+  Code valueDynamicSourceDrop(QExprId loc);
 
   record Binding(BindingId key) implements ValueDynamicSource {
     @Override
-    public CodeDynamic realize(ExprContext xx, QExprId loc) {
+    public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
       return BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, key);
     }
 
     @Override
-    public Code drop(QExprId loc) {
+    public Code valueDynamicSourceDrop(QExprId loc) {
       return Code.none(loc);
     }
   }
@@ -48,12 +48,12 @@ public sealed interface ValueDynamicSource
     }
 
     @Override
-    public CodeDynamic realize(ExprContext xx, QExprId loc) {
+    public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
       return new CodeDynamic(loc, new JavaBytecodeSequence());
     }
 
     @Override
-    public Code drop(QExprId loc) {
+    public Code valueDynamicSourceDrop(QExprId loc) {
       int popOp = stackSize == 2 ? Opcodes.POP2 : Opcodes.POP;
       return Code.of(loc, JavaBytecodeUtils.inst(loc, popOp));
     }
@@ -67,16 +67,16 @@ public sealed interface ValueDynamicSource
       JavaDataDescriptor slotDesc)
       implements ValueDynamicSource {
     @Override
-    public CodeDynamic realize(ExprContext xx, QExprId loc) {
+    public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
       var seq = new JavaBytecodeSequence();
-      seq.add(base.realize(xx, loc));
+      seq.add(base.valueDynamicSourceRealize(xx, loc));
       seq.add(JavaBytecodeUtils.accessField(loc, klass, slotName, slotDesc));
       return new CodeDynamic(loc, seq);
     }
 
     @Override
-    public Code drop(QExprId loc) {
-      return base.drop(loc);
+    public Code valueDynamicSourceDrop(QExprId loc) {
+      return base.valueDynamicSourceDrop(loc);
     }
   }
 

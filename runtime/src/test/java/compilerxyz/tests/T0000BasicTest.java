@@ -22,7 +22,7 @@ public final class T0000BasicTest {
         new SourceModule.V1(mb.call(mb.log(), mb.str("Hello world (mortar)"))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
     assertEquals("Hello world (mortar)", ok.logs().get(0).message());
@@ -35,7 +35,7 @@ public final class T0000BasicTest {
     modules.put("main", new SourceModule.V1(mb.call(mb.log(), mb.literalNull())));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error but got: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> false; case Result.Err<?, ?> e -> true; }, () -> "expected compile error but got: " + res);
   }
 
   @Test
@@ -50,7 +50,7 @@ public final class T0000BasicTest {
                 mb.call(mb.log(), mb.scopeUse("hello")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
     assertEquals("Hello world (mortar)", ok.logs().get(0).message());
@@ -66,7 +66,7 @@ public final class T0000BasicTest {
             mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
     assertEquals("Hello world (mortar)", ok.logs().get(0).message());
@@ -82,7 +82,7 @@ public final class T0000BasicTest {
             mb.call(mb.log(), mb.lower(mb.str("Hello world (mortar)")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
     assertEquals("Hello world (mortar)", ok.logs().get(0).message());
@@ -102,7 +102,7 @@ public final class T0000BasicTest {
                     mb.tupleOf()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
   }
 }

@@ -5,9 +5,9 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Shared method-emission machinery used by every builtin-interface generator
@@ -105,20 +105,22 @@ public final class BuiltinMethodEmit {
       String methodsVar,
       Method method,
       TMap<ClassName, CodeBlock> leafDescriptors) {
-    var retDesc = resolveDescriptor(method.ret, leafDescriptors);
-    if (retDesc == null) return false;
+    var retDescOpt = resolveDescriptor(method.ret, leafDescriptors);
+    if (retDescOpt.optIsNone()) return false;
+    var retDesc = retDescOpt.optUnwrap();
     var paramDescs = new TList<CodeBlock>();
     var paramRawClasses = new TList<TypeName>();
     for (var p : method.params) {
-      var pd = resolveDescriptor(p.type, leafDescriptors);
-      if (pd == null) return false;
-      paramDescs.add(pd);
-      var raw = rawClass(p.type);
-      if (raw == null) return false;
-      paramRawClasses.add(raw);
+      var pdOpt = resolveDescriptor(p.type, leafDescriptors);
+      if (pdOpt.optIsNone()) return false;
+      paramDescs.add(pdOpt.optUnwrap());
+      var rawOpt = rawClass(p.type);
+      if (rawOpt.optIsNone()) return false;
+      paramRawClasses.add(rawOpt.optUnwrap());
     }
-    var retRaw = rawClass(method.ret);
-    if (retRaw == null) return false;
+    var retRawOpt = rawClass(method.ret);
+    if (retRawOpt.optIsNone()) return false;
+    var retRaw = retRawOpt.optUnwrap();
 
     var suffix = method.hostMethodName;
 
@@ -168,44 +170,44 @@ public final class BuiltinMethodEmit {
   }
 
   /** Resolve a Java {@link TypeName} to a runtime-type descriptor expression. */
-  public static @Nullable CodeBlock resolveDescriptor(
+  public static Opt<CodeBlock> resolveDescriptor(
       TypeName tn, TMap<ClassName, CodeBlock> leafDescriptors) {
-    if (tn.equals(TypeName.BOOLEAN)) return CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC);
-    if (tn.equals(TypeName.LONG)) return CodeBlock.of("new $T()", TYPE_LONG_DYNAMIC);
-    if (tn.equals(TypeName.VOID)) return CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC);
+    if (tn.equals(TypeName.BOOLEAN)) return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
+    if (tn.equals(TypeName.LONG)) return Opt.some(CodeBlock.of("new $T()", TYPE_LONG_DYNAMIC));
+    if (tn.equals(TypeName.VOID)) return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
     if (tn instanceof ClassName cn) {
       if (cn.equals(ClassName.get(String.class))) {
-        return CodeBlock.of(
-            "new $T()", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"));
+        return Opt.some(CodeBlock.of(
+            "new $T()", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")));
       }
-      return leafDescriptors.get(cn);
+      return Opt.ofNullable(leafDescriptors.get(cn));
     }
     if (tn instanceof ParameterizedTypeName pt) {
       var wrapper = COMPOSITE_DESCRIPTORS.get(pt.rawType);
-      if (wrapper == null) return null;
+      if (wrapper == null) return Opt.none();
       var parts = new TList<CodeBlock>();
       for (var arg : pt.typeArguments) {
         var sub = resolveDescriptor(arg, leafDescriptors);
-        if (sub == null) return null;
-        parts.add(sub);
+        if (sub.optIsNone()) return Opt.none();
+        parts.add(sub.optUnwrap());
       }
       var joined = CodeBlock.builder();
       for (int i = 0; i < parts.size(); i++) {
         if (i > 0) joined.add(", ");
         joined.add(parts.get(i));
       }
-      return CodeBlock.of("new $T($L)", wrapper, joined.build());
+      return Opt.some(CodeBlock.of("new $T($L)", wrapper, joined.build()));
     }
-    return null;
+    return Opt.none();
   }
 
   /** Raw class name of a type (drops type parameters). Primitive types map to their JVM class. */
-  public static @Nullable TypeName rawClass(TypeName tn) {
-    if (tn.equals(TypeName.BOOLEAN)) return TypeName.BOOLEAN;
-    if (tn.equals(TypeName.LONG)) return TypeName.LONG;
-    if (tn.equals(TypeName.VOID)) return TypeName.VOID;
-    if (tn instanceof ClassName cn) return cn;
-    if (tn instanceof ParameterizedTypeName pt) return pt.rawType;
-    return null;
+  public static Opt<TypeName> rawClass(TypeName tn) {
+    if (tn.equals(TypeName.BOOLEAN)) return Opt.some(TypeName.BOOLEAN);
+    if (tn.equals(TypeName.LONG)) return Opt.some(TypeName.LONG);
+    if (tn.equals(TypeName.VOID)) return Opt.some(TypeName.VOID);
+    if (tn instanceof ClassName cn) return Opt.some(cn);
+    if (tn instanceof ParameterizedTypeName pt) return Opt.some(pt.rawType);
+    return Opt.none();
   }
 }

@@ -1,11 +1,11 @@
 package compilerxyz.eval.value.source_object;
 
 import compilerxyz.eval.ArtifactExternal;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 
 public record ArtifactDataDefSetInterfaceMethodImpl(
     int interfaceMethodIndex,
-    @Nullable String compiledClassName,
-    @Nullable byte[] compiledBytecode,
+    Opt<String> compiledClassName,
+    Opt<byte[]> compiledBytecode,
     TList<ArtifactExternal> capturedExternals) {}

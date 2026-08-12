@@ -45,7 +45,12 @@ import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValueNumber;
+import compilerxyz.safejson.JsonValueObject;
+import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import java.util.function.Function;
@@ -61,6 +66,9 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 
 @BuiltinPath("types.bool")
 @BuiltinLight(uniqueId = 6103L)
@@ -74,7 +82,7 @@ public record TypeBoolDynamic()
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectDynamicBoxed,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectStackValueDynamic,
@@ -87,8 +95,8 @@ public record TypeBoolDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_BOOL;
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.DESC_BOOL;
   }
 
   @Override
@@ -150,18 +158,22 @@ public record TypeBoolDynamic()
 
   @Override
   public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof Boolean b)) {
+      ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    if (externalHostValue.optIsNone()) {
+      return EResult.err(loc, "TypeBoolDynamic::lift: expected java.lang.Boolean, got null");
+    }
+    var rawHostValue = externalHostValue.optUnwrap();
+    if (!(rawHostValue instanceof Boolean b)) {
       return EResult.err(
           loc,
           "TypeBoolDynamic::lift: expected java.lang.Boolean, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+              + rawHostValue.getClass().getName());
     }
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeBoolConst(), b));
+    return EResult.ok(new ValueObjectConst(new TypeBoolConst(), b));
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
@@ -172,11 +184,11 @@ public record TypeBoolDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_IDENTITY).optIsSome();
   }
 
@@ -193,15 +205,15 @@ public record TypeBoolDynamic()
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeBoolDynamic::typeCastFrom: CodeValue has no value");
     }
-    var sourceType = some.value().valueType();
+    var sourceType = cv.value().optUnwrap().valueType();
     var boolConstOpt = GenAspectBoolConst.getMaybe(xx, sourceType);
-    if (boolConstOpt instanceof Opt.Some<AspectBoolConst> boolConstSome) {
-      boolean boolVal = boolConstSome.value().aspectBoolConstGet(some.value());
+    if (boolConstOpt.optIsSome()) {
+      boolean boolVal = boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap());
       var seq = new JavaBytecodeSequence();
-      var existingDyn = cv.code().dynamic();
+      var existingDyn = cv.code().codeDynamic();
       if (existingDyn != null) {
         seq.add(existingDyn);
       }
@@ -243,25 +255,28 @@ public record TypeBoolDynamic()
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeBoolDynamic());
-          }
-          return EResult.err(
-              loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          return switch (data) {
+            case JsonValueNull n -> EResult.ok(new TypeBoolDynamic());
+            case JsonValueBoolean b -> EResult.err(loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueNumber n -> EResult.err(loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueString s -> EResult.err(loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueArray a -> EResult.err(loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueObject o -> EResult.err(loc, "TypeBoolDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          };
         }
       };
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 }

@@ -13,6 +13,13 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.util.Opt;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectType;
+import compilerxyz.gen.Value;
 
 /**
  * Compile-time type of a source-object *instance* — the value produced by lifting a runtime
@@ -25,18 +32,18 @@ import compilerxyz.util.Opt;
 @BuiltinLight(uniqueId = 6137L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     implements Type,
-        compilerxyz.gen.AspectArtifact,
-        compilerxyz.gen.AspectType,
-        compilerxyz.artifact.ExporterAny {
+        AspectArtifact,
+        AspectType,
+        ExporterAny {
 
   @Override
-  public compilerxyz.artifact.ArtifactExporter aspectArtifactExporter() {
+  public ArtifactExporter aspectArtifactExporter() {
     return compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
   }
 
   @Override
-  public Type aspectTypeType(compilerxyz.gen.Value value) {
-    if (!(value instanceof compilerxyz.eval.value.object_.ValueObjectConst voc)) {
+  public Type aspectTypeType(Value value) {
+    if (!(value instanceof ValueObjectConst voc)) {
       throw new IllegalStateException(
           "TypeSourceObjectConst::type_: expected ValueObjectConst, got "
               + (value == null ? "null" : value.getClass().getName()));
@@ -55,8 +62,8 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
-  public EResult<compilerxyz.gen.Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceObjectConst(dynamic), dynamic));
+  public EResult<Value> exporterAnyAsValue() {
+    return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectConst(dynamic), dynamic));
   }
 
 
@@ -75,7 +82,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     }
     if (key.equals(compilerxyz.gen.GenAspectType.AspectId)) {
       for (var impl : dynamic.interfaceImpls) {
-        if (impl.interface_.builtinKind
+        if (impl.interface_.builtinKind.optUnwrapOr(null)
             == compilerxyz.eval.value.source_interface.BuiltinInterfaceKind.TYPE) {
           return Opt.some(this);
         }
@@ -86,9 +93,9 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeSourceObjectConst.class) instanceof Opt.Some<TypeSourceObjectConst> oSome
-        && dynamic.typeIsEqual(xx, oSome.value().dynamic);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeSourceObjectConst.class);
+    return oOpt.optIsSome() && dynamic.typeIsEqual(xx, oOpt.optUnwrap().dynamic);
   }
 
   @Override
@@ -97,7 +104,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
-  public EResult<compilerxyz.eval.CodeValue> typeCastFrom(ExprContext xx, QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     return dynamic.typeCastFrom(xx, loc, cv);
   }
 
@@ -107,7 +114,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   }
 
   @Override
-  public EResult<compilerxyz.eval.CodeValue> typeCastTo(ExprContext xx, QExprId loc, compilerxyz.eval.CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     return dynamic.typeCastTo(xx, loc, cv, destType);
   }
 }

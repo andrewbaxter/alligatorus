@@ -89,8 +89,7 @@ public final class ScopeChains {
     if (!found) {
       throw new AssertionError("exitDest: target label level is not in scope");
     }
-    var discriminator =
-        target.label instanceof Opt.Some<String> someLabel ? someLabel.value() : "";
+    var discriminator = target.label.optIsSome() ? target.label.optUnwrap() : "";
     var next = target.end;
     for (int i = cleanups.size() - 1; i >= 0; i--) {
       var resolved =
@@ -133,41 +132,35 @@ public final class ScopeChains {
     if (existing != null) {
       return EResult.ok(existing);
     }
-    if (level instanceof ScopeLevel.Finally finally_) {
-      var self = new JumpKey();
-      finally_.pending.add(new ScopeLevel.Finally.Pending(self, key));
-      var resolved = Opt.some(self);
-      emission.dests.put(key, resolved);
-      return EResult.ok(resolved);
+    Binding binding;
+    switch (level) {
+      case ScopeLevel.Finally finally_ -> {
+        var self = new JumpKey();
+        finally_.pending.add(new ScopeLevel.Finally.Pending(self, key));
+        var resolved = Opt.some(self);
+        emission.dests.put(key, resolved);
+        return EResult.ok(resolved);
+      }
+      case ScopeLevel.Entry entry -> binding = entry.binding;
+      case ScopeLevel.Temp temp -> binding = temp.binding;
+      case ScopeLevel.Labeled labeled -> throw new AssertionError();
+      case ScopeLevel.Catch catch_ -> throw new AssertionError();
     }
-    Binding binding =
-        switch (level) {
-          case ScopeLevel.Entry entry -> entry.binding;
-          case ScopeLevel.Temp temp -> temp.binding;
-          case ScopeLevel.Finally finally_ -> throw new AssertionError();
-          case ScopeLevel.Labeled labeled -> throw new AssertionError();
-          case ScopeLevel.Catch catch_ -> throw new AssertionError();
-        };
-    // Pre-register as pass-through before generating: drop-code generation
-    // runs user code whose nested evaluation may request this same node — a
-    // throw during a drop routes outward, never back into the drop.
     emission.dests.put(key, key.next());
     var dropRes = binding.bindingDrop(xx, loc);
     if (dropRes.hasErrors()) return dropRes.reerr();
     var cleanup = dropRes.requireValue("ScopeChains node drop");
     Opt<JumpKey> resolved;
-    if (cleanup.isNone()) {
-      // Pass-through: the chain continues to the continuation (exceptional
-      // parent, next trampoline node, or terminal).
+    if (cleanup.codeIsNone()) {
       resolved = key.next();
     } else {
       var self = new JumpKey();
       EResult<Code> nodeRes;
-      if (key.label() instanceof Opt.Some<String>) {
+      if (key.label().optIsSome()) {
         nodeRes =
             xx.target.targetExitTrampoline(
                 xx, loc, self, key.carryType(), cleanup,
-                ((Opt.Some<JumpKey>) key.next()).value());
+                key.next().optUnwrap());
       } else {
         nodeRes = xx.target.targetExcCleanup(xx, loc, self, cleanup, key.next());
       }
@@ -190,11 +183,11 @@ public final class ScopeChains {
     for (var pending : level.pending) {
       var key = pending.key();
       EResult<Code> nodeRes;
-      if (key.label() instanceof Opt.Some<String>) {
+      if (key.label().optIsSome()) {
         nodeRes =
             xx.target.targetExitTrampoline(
                 xx, loc, pending.self(), key.carryType(), level.body,
-                ((Opt.Some<JumpKey>) key.next()).value());
+                key.next().optUnwrap());
       } else {
         nodeRes = xx.target.targetExcCleanup(xx, loc, pending.self(), level.body, key.next());
       }

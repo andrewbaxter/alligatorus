@@ -4,6 +4,7 @@ import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.Value;
+import compilerxyz.artifact.ExporterRoot;
 
 public record ValueObjectConst(Type type, Object data) implements Value, ExporterAny {
   @Override
@@ -23,7 +24,7 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
         td.meta(),
         td.hostClass(),
         compilerxyz.util.Opt.<Type>none(),
-        compilerxyz.util.Opt.<compilerxyz.artifact.ExporterRoot>none());
+        compilerxyz.util.Opt.<ExporterRoot>none());
   }
 
 

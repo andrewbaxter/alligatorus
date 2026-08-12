@@ -14,7 +14,7 @@ public record CodeDynamic(CodeLoc loc, JavaBytecode code) implements TargetCode,
   }
 
   @Override
-  public <T> T dispatch(JavaBytecode.Dispatcher<T> dispatcher) {
-    return code.dispatch(dispatcher);
+  public <T> T javaBytecodeDispatch(JavaBytecode.Dispatcher<T> dispatcher) {
+    return code.javaBytecodeDispatch(dispatcher);
   }
 }

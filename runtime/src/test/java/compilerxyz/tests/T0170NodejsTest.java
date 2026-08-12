@@ -9,6 +9,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
@@ -337,7 +338,7 @@ public final class T0170NodejsTest {
                                         new TestMb.Branch(
                                             mb.str("scope_use"),
                                             mb.seqOf(valuePush(mb, mb.scopeUse("code"))))),
-                                    null),
+                                    Opt.none()),
                                 mb.call(
                                     mb.field(mb.scopeUse("out"), mb.str("push")),
                                     mb.call(
@@ -455,9 +456,12 @@ public final class T0170NodejsTest {
                                             mb.str("Hello world (node)")))))))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals(
         """
@@ -499,7 +503,7 @@ public final class T0170NodejsTest {
                 mb.call(
                     mb.field(mb.call(mb.typesOption(), mb.typesAspect()), mb.str("some")),
                     mb.scopeUse("outer")))),
-        optionAspectNone(mb));
+        Opt.some(optionAspectNone(mb)));
   }
 
   private static SourceExpr implInterface(
@@ -707,7 +711,7 @@ public final class T0170NodejsTest {
                                                     mb.scopeUse("acn_opt"), mb.str("value")),
                                                 mb.str("to_code")),
                                             mb.field(mb.scopeUse("arg"), mb.str("argument"))))),
-                                mb.call(
+                                Opt.some(mb.call(
                                     mb.lower(
                                         mb.field(mb.scopeUse("code"), mb.str("lit_str"))),
                                     mb.call(
@@ -723,7 +727,7 @@ public final class T0170NodejsTest {
                                                             mb.str("loc"))),
                                                     rp(
                                                         "value",
-                                                        mb.scopeUse("arg_value"))))))))),
+                                                        mb.scopeUse("arg_value")))))))))),
                         mb.bind(
                             "call_code",
                             mb.call(
@@ -1204,7 +1208,7 @@ public final class T0170NodejsTest {
                                                                     mb.field(
                                                                         mb.scopeUse("code"),
                                                                         mb.str("type"))))))))),
-                                        mb.str(""))))))))));
+                                        Opt.some(mb.str("")))))))))));
     exprs.add(
         mb.bind(
             "nodejs",
@@ -1258,9 +1262,12 @@ public final class T0170NodejsTest {
     
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> { assertTrue(false, () -> "compile failed: " + res); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals(
         """

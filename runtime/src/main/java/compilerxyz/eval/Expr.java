@@ -5,7 +5,6 @@ import compilerxyz.syntax.BinaryOperator;
 import compilerxyz.syntax.UnaryOperator;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.Value;
 
 public record Expr(QExprId loc, Variant variant) implements Value {
@@ -106,10 +105,10 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
     public static final class LitValue {
         private final boolean once;
-        private @Nullable Value value;
+        private Opt<Value> value;
 
         private LitValue(Value value, boolean once) {
-            this.value = value;
+            this.value = Opt.some(value);
             this.once = once;
         }
 
@@ -123,18 +122,18 @@ public record Expr(QExprId loc, Variant variant) implements Value {
 
         public Value consume() {
             if (!once) {
-                return value;
+                return value.optUnwrap();
             }
-            var v = value;
-            if (v == null) {
+            if (value.optIsNone()) {
                 throw new IllegalStateException("Once Literal already consumed");
             }
-            value = null;
+            var v = value.optUnwrap();
+            value = Opt.none();
             return v;
         }
 
         public Opt<Value> peek() {
-            return value == null ? Opt.none() : Opt.some(value);
+            return value;
         }
     }
 

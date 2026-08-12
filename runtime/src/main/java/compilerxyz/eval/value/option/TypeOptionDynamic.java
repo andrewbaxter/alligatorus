@@ -58,20 +58,30 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
+import compilerxyz.eval.dynamic.CodeLoc.Some;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.ValueDynamicSource;
+import compilerxyz.eval.value.bool_.TypeBoolDynamic;
+import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.AspectFieldUseDynamic;
+import compilerxyz.gen.AspectSet;
+import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinFull(uniqueId = 6008L)
 public final class TypeOptionDynamic
     implements
         
-        compilerxyz.gen.AspectSet,
-        compilerxyz.gen.AspectFieldUseDynamic,Type,
+        AspectSet,
+        AspectFieldUseDynamic,Type,
         AspectArtifact,
         AspectBind,
         AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
         AspectField,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectStackValueDynamic,
         ExporterAny {
@@ -91,11 +101,11 @@ public final class TypeOptionDynamic
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     // Options are real Opt objects at runtime (Opt.Some for some, Opt.none()
     // for none) — never bare nullable values — so Opt<Opt<X>> is
     // unambiguous. The runtime data type is Opt, not Object.
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.util.Opt.class));
   }
 
@@ -130,36 +140,36 @@ public final class TypeOptionDynamic
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectFieldUseDynamicFieldUseDynamic(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.value.ValueDynamicSource source) {
+  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+      ExprContext xx,
+      QExprId loc,
+      ValueDynamicSource source) {
     return compilerxyz.eval.EResult.ok(
-        new compilerxyz.eval.CodeValue(
-            compilerxyz.eval.Code.of(
+        new CodeValue(
+            Code.of(
                 loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
             compilerxyz.eval.EvalOutcome.ofValue(
-                new compilerxyz.eval.value.ValueDynamic(source, this))));
+                new ValueDynamic(source, this))));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> aspectSetSet(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue base,
-      compilerxyz.eval.CodeValue value) {
+  public compilerxyz.eval.EResult<CodeValue> aspectSetSet(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue base,
+      CodeValue value) {
     return compilerxyz.eval.dynamic.DynUtil.dynamicSet(xx, loc, base, value);
   }
 
   @Override
-  public CodeValue aspectStackValueDynamicToValue(compilerxyz.eval.ExprContext xx, QExprId loc, CodeDynamic value) {
+  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
     return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY, TypeOptionDynamic.class) instanceof Opt.Some<TypeOptionDynamic> oSome
-        && elementType.typeIsEqual(xx, oSome.value().elementType);
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY, TypeOptionDynamic.class);
+    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
   }
 
   @Override
@@ -180,8 +190,8 @@ public final class TypeOptionDynamic
   private static Artifact nullArtifact() {
     return new Artifact.Body(
         new ArtifactBody(
-            new compilerxyz.safejson.JsonValueNull(),
-            new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+            new JsonValueNull(),
+            new Root()));
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -206,7 +216,7 @@ public final class TypeOptionDynamic
                   xx.vx.ix.gx.artifacts,
                   cell,
                   () -> {
-                    var elementArtRes = option.elementType().exportArtifact(xx, loc);
+                    var elementArtRes = option.elementType().artifactableExportArtifact(xx, loc);
                     elementArtRes.drainInto(errors);
                     var elementArt =
                         elementArtRes.valueOrNull() != null
@@ -223,10 +233,10 @@ public final class TypeOptionDynamic
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -285,11 +295,11 @@ public final class TypeOptionDynamic
       };
 
   private sealed interface FieldSpec {
-    Type fieldType();
+    Type fieldSpecFieldType();
 
     record Factory(Type type) implements FieldSpec {
       @Override
-      public Type fieldType() {
+      public Type fieldSpecFieldType() {
         return type;
       }
     }
@@ -308,23 +318,27 @@ public final class TypeOptionDynamic
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
-    if (!(key.value() instanceof Opt.Some<Value> keySome)) {
+    if (key.value().optIsNone()) {
       return EResult.err(loc, "TypeOptionDynamic::field: key has no compile-time value");
     }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
-    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    var ck = ckOpt.get();
-    if (ck instanceof ConstKey.Str s && s.value().equals("value")) {
-      var selfDyn = self.code().dynamic();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+    var ck = ckOpt.optUnwrap();
+    var ckStr = switch (ck) {
+      case ConstKey.Str s -> Opt.some(s);
+      case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
+    };
+    if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
+      var selfDyn = self.code().codeDynamic();
       if (selfDyn == null) {
         return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(value): self has no runtime code");
       }
-      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
               loc,
-              compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+              JavaDataDescriptor.fromInternalName(
                   compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class))));
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
@@ -344,32 +358,32 @@ public final class TypeOptionDynamic
       }
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
+              Code.of(loc, new CodeDynamic(new Some(loc), seq)),
               EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
     }
-    if (ck instanceof ConstKey.Str s2 && s2.value().equals("is_some")) {
-      var selfDyn = self.code().dynamic();
+    if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
+      var selfDyn = self.code().codeDynamic();
       if (selfDyn == null) {
         return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(is_some): self has no runtime code");
       }
-      var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+      var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
       seq.add(
           compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(
               loc, compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class)));
       return EResult.ok(
           new CodeValue(
-              Code.of(loc, new CodeDynamic(new compilerxyz.eval.dynamic.CodeLoc.Some(loc), seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(new compilerxyz.eval.value.bool_.TypeBoolDynamic(), 1))));
+              Code.of(loc, new CodeDynamic(new Some(loc), seq)),
+              EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
-      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on option");
+      return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
     }
     return switch (spec) {
       case FieldSpec.Factory f ->
           EResult.ok(
-              new CodeValue(Code.none(loc), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), f.type()))));
+              new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
     };
   }
 
@@ -380,11 +394,15 @@ public final class TypeOptionDynamic
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (key instanceof ConstKey.Str s && s.value().equals("is_some")) {
-      return Opt.some(new compilerxyz.eval.value.bool_.TypeBoolDynamic());
+    var keyStr = switch (key) {
+      case ConstKey.Str s -> Opt.some(s);
+      case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
+    };
+    if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("is_some")) {
+      return Opt.some(new TypeBoolDynamic());
     }
     var spec = fieldSpecs().getOrNull(key);
-    return spec == null ? Opt.none() : Opt.some(spec.fieldType());
+    return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
   }
 
   @Override
@@ -400,7 +418,7 @@ public final class TypeOptionDynamic
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn == null) {
       throw new IllegalStateException(
           "TypeOptionDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
@@ -420,29 +438,29 @@ public final class TypeOptionDynamic
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
 

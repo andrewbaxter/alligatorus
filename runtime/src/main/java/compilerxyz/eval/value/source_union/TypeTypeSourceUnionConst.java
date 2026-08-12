@@ -56,6 +56,9 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6141L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
@@ -73,8 +76,8 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -148,7 +151,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                             : nullArtifact();
                     var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
                     for (var v : tu.variants) {
-                      var tArtRes = v.type.exportArtifact(xx, loc);
+                      var tArtRes = v.type.artifactableExportArtifact(xx, loc);
                       tArtRes.drainInto(errors);
                       var tArt =
                           tArtRes.valueOrNull() != null
@@ -177,11 +180,11 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(
                 loc, "TypeTypeSourceUnionConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -255,7 +258,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), type_));
+      return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), type_));
     }
   }
 
@@ -271,7 +274,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(
         loc, "TypeTypeSourceUnionConst::toDynamic: CodeValue has no dynamic code");
@@ -303,37 +306,37 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY, TypeTypeSourceUnionConst.class) instanceof Opt.Some<TypeTypeSourceUnionConst> oSome
-        && type_.typeIsEqual(xx, oSome.value().type_);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY, TypeTypeSourceUnionConst.class);
+    return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

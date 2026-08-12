@@ -8,6 +8,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
+import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
@@ -313,11 +314,11 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                                         mb.typesOption(), mb.typesAspect()),
                                                     mb.str("some")),
                                                 mb.scopeUse("outer")))),
-                                    mb.call(
+                                    Opt.some(mb.call(
                                         mb.field(
                                             mb.call(mb.typesOption(), mb.typesAspect()),
                                             mb.str("none")),
-                                        mb.literalNull()))),
+                                        mb.literalNull())))),
                             new TestMb.RecordPair(
                                 "is_equal",
                                 mb.seqOf(mb.return_(mb.operatorEq(mb.num(0.0), mb.num(1.0))))),
@@ -484,10 +485,12 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
   private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
-    return ok;
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> r -> okRes = r;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + res); return null; }
+    }
+    return okRes.value();
   }
 
   private static TList<String> messages(Compile.CompileResult res) {
@@ -506,9 +509,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
             mb.seqOf(
                 mb.tryCatchFinally(
                     mb.throw_(mb.str("boom")),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                    null),
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("after")))));
     var res = compileOk(modules);
     assertEquals(TList.of("boom", "after"), messages(res));
@@ -523,8 +526,8 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         new SourceModule.V1(
             mb.tryCatchFinally(
                 mb.call(mb.log(), mb.str("body")),
-                null,
-                mb.call(mb.log(), mb.str("finally")))));
+                Opt.none(),
+                Opt.some(mb.call(mb.log(), mb.str("finally"))))));
     var res = compileOk(modules);
     assertEquals(TList.of("body", "finally"), messages(res));
   }
@@ -539,9 +542,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
             mb.seqOf(
                 mb.tryCatchFinally(
                     mb.throw_(mb.str("boom")),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                    null),
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("done")))));
     var res = compileOk(modules);
     assertEquals(TList.of("boom", "done"), messages(res));
@@ -554,11 +557,11 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
     modules.put(
         "main",
         new SourceModule.V1(
-            mb.tryCatchFinally(mb.call(mb.log(), mb.str("body")), null, null)));
+            mb.tryCatchFinally(mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.none())));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "Try with no catch and no finally should fail compile");
   }
 
@@ -572,11 +575,11 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         "main",
         new SourceModule.V1(
             mb.tryCatchFinally(
-                mb.call(mb.log(), mb.str("body")), null, mb.throw_(mb.str("boom")))));
+                mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "throw in a finally should fail compile: " + res);
   }
 
@@ -592,11 +595,11 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
             mb.labeled(
                 "outer",
                 mb.tryCatchFinally(
-                    mb.call(mb.log(), mb.str("body")), null, mb.return_("outer", null)))));
+                    mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "return in a finally should fail compile: " + res);
   }
 
@@ -609,9 +612,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         new SourceModule.V1(
             mb.tryCatchFinally(
                 mb.throw_(mb.str("boom")),
-                new TestMb.Catch(
-                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                null)));
+                Opt.some(new TestMb.Catch(
+                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                Opt.none())));
     var res = compileOk(modules);
     assertEquals(TList.of("boom"), messages(res));
   }
@@ -649,7 +652,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "throw in function with no declared exception type should be rejected: " + res);
   }
 
@@ -687,9 +690,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                    null))));
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                    Opt.none()))));
     var res = compileOk(modules);
     assertEquals(TList.of("x"), messages(res));
   }
@@ -703,9 +706,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         new SourceModule.V1(
             mb.tryCatchFinally(
                 mb.throw_(mb.str("boom")),
-                new TestMb.Catch(
-                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught"))),
-                mb.call(mb.log(), mb.str("always")))));
+                Opt.some(new TestMb.Catch(
+                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
+                Opt.some(mb.call(mb.log(), mb.str("always"))))));
     var res = compileOk(modules);
     assertEquals(TList.of("caught", "always"), messages(res));
   }
@@ -718,22 +721,23 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
     var inner =
         mb.tryCatchFinally(
             mb.throw_(mb.str("boom")),
-            new TestMb.Catch(
+            Opt.some(new TestMb.Catch(
                 "e",
                 mb.builtin("types", "string"),
-                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown")))),
-            mb.call(mb.log(), mb.str("always")));
+                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown"))))),
+            Opt.some(mb.call(mb.log(), mb.str("always"))));
     // The outer catch observes that the exception raised inside the inner catch propagated.
     modules.put(
         "main",
         new SourceModule.V1(
             mb.tryExpr(
                 inner,
-                new SourceExpr.TryCatch(
-                    mb.str("e2"),
-                    mb.builtin("types", "string"),
-                    mb.call(mb.log(), mb.str("outer"))),
-                null)));
+                Opt.some(
+                    new SourceExpr.TryCatch(
+                        mb.str("e2"),
+                        mb.builtin("types", "string"),
+                        mb.call(mb.log(), mb.str("outer")))),
+                Opt.none())));
     var res = compileOk(modules);
     assertEquals(TList.of("caught", "always", "outer"), messages(res));
   }
@@ -835,9 +839,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb.as_(mb.str("Z"), mb.typesString()),
                             mb.scopeUse("canary"))),
                     mb.throw_(mb.str("boom"))),
-                new TestMb.Catch(
-                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught"))),
-                null)));
+                Opt.some(new TestMb.Catch(
+                    "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
+                Opt.none())));
     var res = compileOk(modules);
     var messages = messages(res);
     int dropIdx = messages.indexOf("dropped");
@@ -877,7 +881,7 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                         mb.scopeUse("canary"))),
                                 mb.call(mb.log(), mb.str("then")),
                                 mb.tupleOf()))),
-                    null),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("end")))));
     var res = compileOk(modules);
     var messages = messages(res);
@@ -906,12 +910,12 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                         mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
                     mb.ifOf(
                         TList.of(new TestMb.Branch(dynTrue(mb), mb.throw_(mb.str("boom")))),
-                        mb.tupleOf())),
-                new TestMb.Catch(
+                        Opt.some(mb.tupleOf()))),
+                Opt.some(new TestMb.Catch(
                     "e",
                     mb.builtin("types", "string"),
-                    mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf())),
-                null)));
+                    mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
+                Opt.none())));
     var res = compileOk(modules);
     var messages = messages(res);
     int dropIdx = messages.indexOf("dropped");
@@ -933,9 +937,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
             mb.seqOf(
                 mb.tryCatchFinally(
                     mb.call(mb.log(), mb.str("body")),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught"))),
-                    null),
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
+                    Opt.none()),
                 mb.call(mb.log(), mb.str("after")))));
     var res = compileOk(modules);
     assertEquals(TList.of("body", "after"), messages(res));
@@ -950,12 +954,12 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
         new SourceModule.V1(
             mb.tryCatchFinally(
                 mb.call(mb.log(), mb.str("body")),
-                new TestMb.Catch("e", mb.builtin("types", "string"), mb.scopeUse("e")),
-                null)));
+                Opt.some(new TestMb.Catch("e", mb.builtin("types", "string"), mb.scopeUse("e"))),
+                Opt.none())));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
         () -> "Try with incompatible body/catch result types should fail compile: " + res);
   }
 
@@ -970,9 +974,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                 mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
                 mb.tryCatchFinally(
                     mb.call(mb.log(), mb.str("body")),
-                    null,
-                    mb.as_(
-                        mb.as_(mb.str("V"), mb.typesString()), mb.scopeUse("canary"))),
+                    Opt.none(),
+                    Opt.some(mb.as_(
+                        mb.as_(mb.str("V"), mb.typesString()), mb.scopeUse("canary")))),
                 mb.call(mb.log(), mb.str("after")))));
     var res = compileOk(modules);
     var messages = messages(res);
@@ -1023,13 +1027,13 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                    null))));
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>, () -> "expected compile error binding result of throw");
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected compile error binding result of throw");
     var msg = res.toString();
     assertTrue(
         msg.contains("Cannot bind result of expression that ends control flow"),
@@ -1075,13 +1079,13 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                             mb.return_(mb.scopeUse("f"))))),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
-                    new TestMb.Catch(
-                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e"))),
-                    null))));
+                    Opt.some(new TestMb.Catch(
+                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>, () -> "expected compile error for code after throw");
+        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "expected compile error for code after throw");
     var msg = res.toString();
     assertTrue(
         msg.contains("Unreachable"), () -> "expected Unreachable error message, got: " + msg);

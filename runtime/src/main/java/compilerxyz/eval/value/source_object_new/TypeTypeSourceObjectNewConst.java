@@ -46,6 +46,8 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6140L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
@@ -64,8 +66,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   @Override
   public String typeDesc() {
-    if (type_.description != null) return type_.description;
-    return "definition_set_object_new_const";
+    return type_.description.optUnwrapOr("definition_set_object_new_const");
   }
 
 
@@ -106,8 +107,8 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @Nullable Object externalHostValue) {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(
+      ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    return EResult.ok(new ValueObjectConst(
         new TypeSourceObjectNewDynamic(type_), null));
   }
 
@@ -117,7 +118,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
@@ -148,7 +149,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                   dt.newArtifactIdCell,
                   () -> {
                     var parentConst = new TypeTypeSourceObjectConst(dt);
-                    var objectArtRes = parentConst.exportArtifact(xx, loc);
+                    var objectArtRes = parentConst.artifactableExportArtifact(xx, loc);
                     objectArtRes.drainInto(errors);
                     var objectArt =
                         objectArtRes.valueOrNull() != null
@@ -165,12 +166,12 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(
                 loc,
                 "TypeTypeSourceObjectNewConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -202,7 +203,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                       }
 
                       @Override
-                      public EResult<compilerxyz.gen.Value> exporterAnyAsValue() {
+                      public EResult<Value> exporterAnyAsValue() {
                         if (holder[0] == null) {
                           throw new IllegalStateException(
                               "TypeTypeSourceObjectNewConst import stub accessed pre-finalize");
@@ -219,7 +220,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                       var parentVal =
                           parentAny.requireValue(
                               "TypeTypeSourceObjectNewConst::finalizer parent object");
-                      compilerxyz.eval.value.source_object.TypeSourceObjectDynamic dtData;
+                      TypeSourceObjectDynamic dtData;
                       if (parentVal instanceof TypeTypeSourceObjectConst pConst) {
                         dtData = pConst.type_();
                       } else if (parentVal
@@ -245,29 +246,29 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY, TypeTypeSourceObjectNewConst.class) instanceof Opt.Some<TypeTypeSourceObjectNewConst> oSome
-        && type_.typeIsEqual(xx, oSome.value().type_);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY, TypeTypeSourceObjectNewConst.class);
+    return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

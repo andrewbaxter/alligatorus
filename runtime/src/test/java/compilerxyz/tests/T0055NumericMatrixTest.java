@@ -8,6 +8,7 @@ import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ public final class T0055NumericMatrixTest {
       stmts.add(
           mb.ifOf(
               TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
-              mb.call(mb.log(), mb.str("F"))));
+              Opt.some(mb.call(mb.log(), mb.str("F")))));
       expected.add(exp ? "T" : "F");
     }
   }
@@ -77,9 +78,15 @@ public final class T0055NumericMatrixTest {
         "main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> okRes = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {
+        assertTrue(false, () -> "compile failed: " + e);
+        return;
+      }
+    }
+    var ok = okRes.value();
     var got = new ArrayList<String>();
     for (var l : ok.logs()) got.add(l.message());
     assertEquals(c.expected, got);

@@ -18,17 +18,17 @@ import compilerxyz.eval.Type;
 public interface MatchDynamic {
 
   /** Called once before the branch chain; e.g. register the owning definition set. */
-  default EResult<Void> matchPrepare(ExprContext xx, QExprId loc) {
+  default EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
     return EResult.ok(null);
   }
 
   /** Stack: {@code [base] -> [boolean]} — is the base the variant at {@code variantIndex}? */
-  EResult<CodeDynamic> matchTest(ExprContext xx, QExprId loc, int variantIndex);
+  EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex);
 
   /**
    * Stack: {@code [base] -> [payload]} — the payload of the variant at
    * {@code variantIndex}, whose type is {@code variantType}.
    */
-  EResult<CodeDynamic> matchExtract(
+  EResult<CodeDynamic> matchDynamicExtract(
       ExprContext xx, QExprId loc, int variantIndex, Type variantType);
 }

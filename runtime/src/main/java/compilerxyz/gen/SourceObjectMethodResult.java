@@ -6,6 +6,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
 import java.lang.IllegalStateException;
+import compilerxyz.util.Opt;
 
 @BuiltinPushStruct
 public final class SourceObjectMethodResult {
@@ -21,17 +22,17 @@ public final class SourceObjectMethodResult {
 
     public void impl(
         ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret, StagedExprCell implBody) {
-        if (this.method.argType != null) {
+        if (this.method.argType.optIsSome()) {
             throw new IllegalStateException("Method already has an arg type");
         }
-        this.method.argType = arg;
-        if (this.method.retType instanceof compilerxyz.util.Opt.Some) {
+        this.method.argType = Opt.some(arg);
+        if (this.method.retType.optIsSome()) {
             throw new IllegalStateException("Method already has a ret type");
         }
         this.method.retType = ret;
-        if (this.method.implExpr != null) {
+        if (this.method.implExpr.optIsSome()) {
             throw new IllegalStateException("Method already has an implementation");
         }
-        this.method.implExpr = (Value) implBody.value();
+        this.method.implExpr = Opt.some((Value) implBody.value());
     }
 }

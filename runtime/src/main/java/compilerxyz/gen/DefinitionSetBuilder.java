@@ -11,10 +11,12 @@ import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.util.Opt;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import java.lang.String;
+import compilerxyz.eval.dynamic.DynCompileErrors;
 
 @BuiltinPushStruct
 public final class DefinitionSetBuilder {
@@ -52,7 +54,7 @@ public final class DefinitionSetBuilder {
 
     public SourceInterfaceResult interface_(ExprContext xx) {
         var identity = DynRuntime.freshUnique(xx);
-        var iface = new InterfaceData(this.inner.defSetId, identity, null, this.inner);
+        var iface = new InterfaceData(this.inner.defSetId, identity, Opt.none(), this.inner);
         var ifaceIndex = (long) this.inner.interfaces.size();
         this.inner.interfaces.add(iface);
         iface.compiledBinaryName = SourceInterfaceEmitter.binaryNameFor(this.inner.defSetId, ifaceIndex);
@@ -64,8 +66,8 @@ public final class DefinitionSetBuilder {
         var _r = this.inner.finish(xx, _loc);
         if (_r.hasErrors()) {
             var _errs = _r.errorsOrNull();
-            throw new compilerxyz.eval.dynamic.DynCompileErrors(
-                _errs != null ? _errs : new compilerxyz.util.TList<>());
+            throw new DynCompileErrors(
+                _errs.optUnwrapOr(new compilerxyz.util.TList<>()));
         }
     }
 }

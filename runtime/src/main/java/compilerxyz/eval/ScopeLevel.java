@@ -246,14 +246,27 @@ public sealed interface ScopeLevel {
     }
 
     private static <T> boolean optIdentityEquals(Opt<T> a, Opt<T> b) {
-      if (a instanceof Opt.Some<T> as) {
-        return b instanceof Opt.Some<T> bs && as.value() == bs.value();
+      switch (a) {
+        case Opt.Some<T> as -> {
+          return switch (b) {
+            case Opt.Some<T> bs -> as.value() == bs.value();
+            case Opt.None<T> ignored -> false;
+          };
+        }
+        case Opt.None<T> ignored -> {
+          return switch (b) {
+            case Opt.Some<T> ignored2 -> false;
+            case Opt.None<T> ignored2 -> true;
+          };
+        }
       }
-      return b instanceof Opt.None<T>;
     }
 
     private static <T> int optIdentityHash(Opt<T> o) {
-      return o instanceof Opt.Some<T> some ? System.identityHashCode(some.value()) : 0;
+      return switch (o) {
+        case Opt.Some<T> some -> System.identityHashCode(some.value());
+        case Opt.None<T> ignored -> 0;
+      };
     }
 
     @Override

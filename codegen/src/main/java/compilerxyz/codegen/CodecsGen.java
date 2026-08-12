@@ -21,7 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
+import compilerxyz.util.Opt;
 
 public final class CodecsGen {
   private CodecsGen() {}
@@ -88,18 +88,18 @@ public final class CodecsGen {
     } else if (t.kind == TypeKind.RECORD) {
       for (var comp : t.components) {
         for (var dep : referencedTypeNames(comp.type, index, qname)) {
-          if (dep != null) walk(dep, index, seen);
+          walk(dep, index, seen);
         }
       }
     }
   }
 
-  static TList<@Nullable String> referencedTypeNames(
+  static TList<String> referencedTypeNames(
       ParsedType type, TypeIndex index, String contextQname) {
-    var out = new TList<@Nullable String>();
+    var out = new TList<String>();
     if (type.kind == ParsedTypeKind.NAMED) {
       var resolved = index.resolve(type.name, contextQname);
-      if (resolved != null) out.add(resolved);
+      if (resolved.optIsSome()) out.add(resolved.optUnwrap());
       for (var ta : type.typeArgs) {
         out.addAll(referencedTypeNames(ta, index, contextQname));
       }
@@ -406,20 +406,20 @@ public final class CodecsGen {
       throw new IllegalStateException("Unsupported type: " + t);
     }
 
-    @Nullable String resolve(String name, String contextQname) {
+    Opt<String> resolve(String name, String contextQname) {
 
       if (name.contains(".") && !name.isEmpty() && Character.isLowerCase(name.charAt(0))) {
 
-        return name;
+        return Opt.some(name);
       }
       var ctx = byQname.get(contextQname);
-      if (ctx == null) return null;
+      if (ctx == null) return Opt.none();
       return ctx.imports.containsKey(headOf(name))
-          ? ctx.imports.get(headOf(name)) + tailOf(name)
+          ? Opt.some(ctx.imports.get(headOf(name)) + tailOf(name))
           : sameCuOrPackageResolve(name, ctx.packageName, contextQname);
     }
 
-    private @Nullable String sameCuOrPackageResolve(
+    private Opt<String> sameCuOrPackageResolve(
         String name, String pkg, String contextQname) {
       var head = headOf(name);
       var tail = tailOf(name);
@@ -427,7 +427,7 @@ public final class CodecsGen {
       var current = contextQname;
       while (current.contains(".")) {
         var candidate = current + "." + name;
-        if (byQname.containsKey(candidate)) return candidate;
+        if (byQname.containsKey(candidate)) return Opt.some(candidate);
         current = current.substring(0, current.lastIndexOf('.'));
       }
 
@@ -436,7 +436,7 @@ public final class CodecsGen {
         for (var qn : samePackage) {
           var last = qn.lastIndexOf('.');
           var simple = last < 0 ? qn : qn.substring(last + 1);
-          if (simple.equals(head)) return qn + tail;
+          if (simple.equals(head)) return Opt.some(qn + tail);
         }
       }
 
@@ -452,9 +452,9 @@ public final class CodecsGen {
               "Character",
               "Object")
           .contains(head)) {
-        return "java.lang." + name;
+        return Opt.some("java.lang." + name);
       }
-      return null;
+      return Opt.none();
     }
 
     private static String headOf(String n) {

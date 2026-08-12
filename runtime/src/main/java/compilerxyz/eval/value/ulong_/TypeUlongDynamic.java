@@ -34,7 +34,12 @@ import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.numeric.Numerics;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValueNumber;
+import compilerxyz.safejson.JsonValueObject;
+import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
@@ -109,6 +114,8 @@ import compilerxyz.gen.AspectOperatorNeg;
 import compilerxyz.gen.GenAspectOperatorNeg;
 import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinFull(uniqueId = 6192L)
 @BuiltinPath("types.ulong")
@@ -159,8 +166,8 @@ public record TypeUlongDynamic()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_LONG;
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.DESC_LONG;
   }
 
   @Override
@@ -257,9 +264,9 @@ public record TypeUlongDynamic()
 
   @Override
   public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    var d = compilerxyz.util.MustCast.mustCast(Long.class, externalHostValue);
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeUlongConst(), d));
+      ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    var d = compilerxyz.util.MustCast.mustCast(Long.class, externalHostValue.optUnwrap());
+    return EResult.ok(new ValueObjectConst(new TypeUlongConst(), d));
   }
 
   @Override
@@ -270,18 +277,19 @@ public record TypeUlongDynamic()
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var erb = new Erb(loc);
-    if (!(key.value() instanceof Opt.Some<Value> keySome)) {
+    if (key.value().optIsNone()) {
       return EResult.err(loc, "TypeUlongDynamic::field: key has no compile-time value");
     }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
-    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    var ck = ckOpt.get();
-    if (!(aspectFieldTypeOpt(xx, ck) instanceof Opt.Some<Type> fieldTypeSome)) {
-      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on dynamic ulong");
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+    var ck = ckOpt.optUnwrap();
+    var fieldTypeOpt = aspectFieldTypeOpt(xx, ck);
+    if (fieldTypeOpt.optIsNone()) {
+      return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on dynamic ulong");
     }
     return EResult.ok(
         new CodeValue(
-            self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(fieldTypeSome.value(), 2))));
+            self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(fieldTypeOpt.optUnwrap(), 2))));
   }
 
   @Override
@@ -400,7 +408,7 @@ public record TypeUlongDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -425,8 +433,9 @@ public record TypeUlongDynamic()
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (Numerics.kindOf(xx, destType) instanceof Opt.Some<NumericKind> kk) {
-      return Numerics.castTo(xx, loc, cv, kk.value(), destType);
+    var kkOpt = Numerics.kindOf(xx, destType);
+    if (kkOpt.optIsSome()) {
+      return Numerics.castTo(xx, loc, cv, kkOpt.optUnwrap(), destType);
     }
     return EResult.err(loc, "TypeUlongDynamic::typeCastTo: destination is not numeric");
   }
@@ -449,11 +458,14 @@ public record TypeUlongDynamic()
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeUlongDynamic());
-          }
-          return EResult.err(
-              loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          return switch (data) {
+            case JsonValueNull n -> EResult.ok(new TypeUlongDynamic());
+            case JsonValueBoolean b -> EResult.err(loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueNumber n -> EResult.err(loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueString s -> EResult.err(loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueArray a -> EResult.err(loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+            case JsonValueObject o -> EResult.err(loc, "TypeUlongDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
+          };
         }
       };
 

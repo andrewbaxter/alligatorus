@@ -49,6 +49,11 @@ import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.unique.TypeUniqueDynamic;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValueNumber;
+import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
@@ -388,8 +393,19 @@ public enum ExporterRoot implements ArtifactExporter, ExporterAny {
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(data instanceof JsonValueString s)) {
-            return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data);
+          JsonValueString s;
+          switch (data) {
+            case JsonValueString js -> s = js;
+            case JsonValueNull ignored ->
+                { return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data); }
+            case JsonValueBoolean ignored ->
+                { return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data); }
+            case JsonValueNumber ignored ->
+                { return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data); }
+            case JsonValueArray ignored ->
+                { return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data); }
+            case JsonValueObject ignored ->
+                { return EResult.err(loc, "ExporterRoot::ROOT::import: expected string tag, got " + data); }
           }
           return switch (fromTag(s.value())) {
             case Opt.Some<ExporterRoot> some -> EResult.ok(some.value());

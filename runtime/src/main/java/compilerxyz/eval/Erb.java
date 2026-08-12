@@ -4,7 +4,6 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
-import java.util.Optional;
 
 public final class Erb {
   private final TList<ExprErr> errors;
@@ -27,57 +26,53 @@ public final class Erb {
     errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(message))));
   }
 
-  public <T> Optional<T> errNew(String message) {
+  public <T> Opt<T> errNew(String message) {
     errPush(message);
-    return Optional.empty();
+    return Opt.none();
   }
 
-  public <T> Optional<T> mustEr(EResult<T> r) {
+  public <T> Opt<T> mustEr(EResult<T> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
-      return Optional.empty();
+      return Opt.none();
     }
     var value = r.requireValue("Erb::mustEr value");
-    if (value instanceof CodeValue cv && !(cv.value() instanceof Opt.Some<Value>)) {
+    if (value instanceof CodeValue cv && cv.value().optIsNone()) {
       errPush(
           "Expression does not fall through (contains an unreachable control jump like"
               + " throw/panic); not valid in this position");
-      return Optional.empty();
+      return Opt.none();
     }
-    return Optional.of(value);
+    return Opt.some(value);
   }
 
-  public <T> Optional<T> mustErMaybeUnreachable(EResult<T> r) {
+  public <T> Opt<T> mustErMaybeUnreachable(EResult<T> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
-      return Optional.empty();
+      return Opt.none();
     }
-    return Optional.of(r.requireValue("Erb::mustErMaybeUnreachable value"));
+    return Opt.some(r.requireValue("Erb::mustErMaybeUnreachable value"));
   }
 
-  /**
-   * Operand-position extraction: requires a fall-through value, and installs
-   * the result's default-exit scope tree into the context.
-   */
-  public Optional<CodeValue> mustCv(ExprContext xx, EResult<EvalRes> r) {
+  public Opt<CodeValue> mustCv(ExprContext xx, EResult<EvalRes> r) {
     if (r.hasErrors()) {
       r.drainInto(this.errors);
-      return Optional.empty();
+      return Opt.none();
     }
     var res = r.requireValue("Erb::mustCv value");
     xx.scope.adopt(res.scope());
-    if (!(res.cv().value() instanceof Opt.Some<Value>)) {
+    if (res.cv().value().optIsNone()) {
       errPush(
           "Expression does not fall through (contains an unreachable control jump like"
               + " throw/panic); not valid in this position");
-      return Optional.empty();
+      return Opt.none();
     }
-    return Optional.of(res.cv());
+    return Opt.some(res.cv());
   }
 
-  public <T> Optional<T> mustRes(Result<T, String> r) {
+  public <T> Opt<T> mustRes(Result<T, String> r) {
     return switch (r) {
-      case Result.Ok<T, String> o -> Optional.of(o.value());
+      case Result.Ok<T, String> o -> Opt.some(o.value());
       case Result.Err<T, String> e -> errNew(e.error());
     };
   }

@@ -18,7 +18,7 @@ public record TupleBaseDynamic(ValueDynamicSource source) {
   }
 
   public EResult<CodeDynamic> tupleBaseToDynamic(QExprId loc, Code carry) {
-    var dyn = carry.dynamic();
+    var dyn = carry.codeDynamic();
     if (dyn == null) {
       return EResult.err(loc, "TupleBaseDynamic::toDynamic: carry has no dynamic code");
     }

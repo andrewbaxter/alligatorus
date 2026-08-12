@@ -206,9 +206,15 @@ public final class T0020DefineObjectTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {
+        assertTrue(false, () -> "compile failed: " + res);
+        return;
+      }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("HELLO", ok.logs().get(0).message());
   }

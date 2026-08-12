@@ -39,20 +39,21 @@ import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6120L)
 public record TypeListPushDynamic(Type elementType)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeListPushDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -90,7 +91,7 @@ public record TypeListPushDynamic(Type elementType)
     if (argDynRes.hasErrors()) return argDynRes.reerr();
     var argDyn = argDynRes.requireValue("toDynamic");
 
-    var selfDyn = self.code().dynamic();
+    var selfDyn = self.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeListPushDynamic::call: self has no dynamic code");
     }
@@ -132,7 +133,7 @@ public record TypeListPushDynamic(Type elementType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -142,9 +143,9 @@ public record TypeListPushDynamic(Type elementType)
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_PUSH_DYNAMIC_IDENTITY, TypeListPushDynamic.class) instanceof Opt.Some<TypeListPushDynamic> oSome
-        && elementType.typeIsEqual(xx, oSome.value().elementType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_PUSH_DYNAMIC_IDENTITY, TypeListPushDynamic.class);
+    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
   }
 
   @Override

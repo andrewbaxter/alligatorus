@@ -37,6 +37,8 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
@@ -53,7 +55,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     if (variantIndex < 0 || variantIndex >= type_.variants.size()) {
       return "union_new(?)";
     }
-    return "union_new(" + type_.variants.get(variantIndex).tag.toCanonical() + ")";
+    return "union_new(" + type_.variants.get(variantIndex).tag.constKeyToCanonical() + ")";
   }
 
 
@@ -71,11 +73,11 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(
           loc, "TypeSourceUnionNewDynamic::bind: CodeValue has no compile-time value");
     }
-    Value v = some.value();
+    Value v = cv.value().optUnwrap();
     return EResult.ok(new BindResult(Code.none(loc), new SourceUnionNewConstBinding(v)));
   }
 
@@ -103,10 +105,10 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
             type_.set.defSetId, unionIndex, variantIndex);
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
-    if (convertedOpt.isEmpty()) {
+    if (convertedOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var converted = convertedOpt.get();
+    var converted = convertedOpt.optUnwrap();
     var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
@@ -122,7 +124,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     var ctorDesc =
         compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
             compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var seq = new JavaBytecodeSequence();
     seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
     seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
     seq.add(underlyingJs);
@@ -143,7 +145,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeTypeSourceUnionNewConst(type_(), variantIndex()), this));
+    return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionNewConst(type_(), variantIndex()), this));
   }
 
   private record SourceUnionNewConstBinding(Value value) implements Binding {
@@ -173,25 +175,25 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY, TypeSourceUnionNewDynamic.class) instanceof Opt.Some<TypeSourceUnionNewDynamic> oSome
-        && type_.typeIsEqual(xx, oSome.value().type_) && variantIndex == oSome.value().variantIndex;
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY, TypeSourceUnionNewDynamic.class);
+    return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_) && variantIndex == oOpt.optUnwrap().variantIndex;
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

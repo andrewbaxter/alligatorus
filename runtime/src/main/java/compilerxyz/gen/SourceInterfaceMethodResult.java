@@ -5,6 +5,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import java.lang.IllegalStateException;
+import compilerxyz.util.Opt;
 
 @BuiltinPushStruct
 public final class SourceInterfaceMethodResult {
@@ -23,7 +24,7 @@ public final class SourceInterfaceMethodResult {
             throw new IllegalStateException("Interface method already has an arg type");
         }
         this.method.argType = arg;
-        if (this.method.retType instanceof compilerxyz.util.Opt.Some) {
+        if (this.method.retType.optIsSome()) {
             throw new IllegalStateException("Interface method already has a ret type");
         }
         this.method.retType = ret;

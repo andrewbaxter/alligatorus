@@ -5,15 +5,15 @@ import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.safejson.SafeJsonSerializable;
 
 public sealed interface ArtifactExternal extends SafeJsonSerializable {
-  JavaBytecodeBindingKey key();
+  JavaBytecodeBindingKey artifactExternalKey();
 
-  record StagedExpr(JavaBytecodeBindingKey key, ArtifactExpr expr) implements ArtifactExternal {}
+  record StagedExpr(JavaBytecodeBindingKey artifactExternalKey, ArtifactExpr expr) implements ArtifactExternal {}
 
-  record StageLift(JavaBytecodeBindingKey key, Artifact sourceTypeArtifact)
+  record StageLift(JavaBytecodeBindingKey artifactExternalKey, Artifact sourceTypeArtifact)
       implements ArtifactExternal {}
 
-  record Type(JavaBytecodeBindingKey key, Artifact typeArtifact) implements ArtifactExternal {}
+  record Type(JavaBytecodeBindingKey artifactExternalKey, Artifact typeArtifact) implements ArtifactExternal {}
 
-  record Unique(JavaBytecodeBindingKey key, compilerxyz.eval.Unique unique)
+  record UniqueRef(JavaBytecodeBindingKey artifactExternalKey, Unique unique)
       implements ArtifactExternal {}
 }

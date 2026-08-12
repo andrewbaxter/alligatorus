@@ -11,7 +11,7 @@ public class JavaBytecodeJump implements JavaBytecode {
     }
 
     @Override
-    public <T> T dispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.handleJump(this);
+    public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleJump(this);
     }
 }

@@ -1,6 +1,7 @@
 package compilerxyz.eval;
 
 import compilerxyz.eval.dynamic.Prefixes;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 
@@ -19,12 +20,12 @@ public final class ImportInstall {
           depResult.requireValue("ImportInstall::installDefSetToDynamic dependency loader");
       depLoaders.add(depLoader);
     }
-    if (xx.vx.ix.classLoader == null) {
+    if (xx.vx.ix.classLoader.optIsNone()) {
       xx.vx.ix.classLoader =
-          new DefinitionSetClassLoader(
-              xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders);
+          Opt.some(new DefinitionSetClassLoader(
+              xx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), depLoaders));
     }
-    var loader = xx.vx.ix.classLoader;
+    var loader = xx.vx.ix.classLoader.optUnwrap();
     if (!xx.vx.ix.installedDefSets.add(set.defSetId)) {
       return EResult.ok(loader);
     }
@@ -45,40 +46,40 @@ public final class ImportInstall {
     }
 
     for (var iface : set.interfaces) {
-      if (iface.compiledBytecode != null && iface.compiledBinaryName != null) {
-        loader.registerClass(iface.compiledBinaryName, iface.compiledBytecode);
+      if (iface.compiledBytecode.optIsSome() && iface.compiledBinaryName != null) {
+        loader.registerClass(iface.compiledBinaryName, iface.compiledBytecode.optUnwrap());
       }
     }
 
     for (long objIdx = 0; objIdx < set.objects.size(); objIdx++) {
       var obj = set.objects.get((int) objIdx);
-      var underlyingType = obj.underlyingType;
-      if (underlyingType == null) {
+      if (obj.underlyingType.optIsNone()) {
         return EResult.err(
-            loc, "Object '" + obj.name + "' underlying type not finalised before install");
+            loc, "Object '" + obj.name.optUnwrapOr("(unnamed)") + "' underlying type not finalised before install");
       }
-      if (obj.setId == null) {
+      if (obj.setId.optIsNone()) {
         throw new AssertionError(
-            "ImportInstall: source object '" + obj.name + "' has null setId");
+            "ImportInstall: source object '" + obj.name.optUnwrapOr("(unnamed)") + "' has null setId");
       }
-      if (obj.compiledBinaryName != null && obj.compiledBytecode != null) {
-        loader.registerClass(obj.compiledBinaryName, obj.compiledBytecode);
-        if (obj.compiledStaticFieldValues != null) {
+      if (obj.compiledBinaryName.optIsSome() && obj.compiledBytecode.optIsSome()) {
+        var binaryName = obj.compiledBinaryName.optUnwrap();
+        loader.registerClass(binaryName, obj.compiledBytecode.optUnwrap());
+        if (obj.compiledStaticFieldValues.optIsSome()) {
           var fields = new TOrderedMap<String, Object>();
-          fields.putAll(obj.compiledStaticFieldValues);
+          fields.putAll(obj.compiledStaticFieldValues.optUnwrap());
           fields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
-          loader.registerExternals(obj.compiledBinaryName, fields);
+          loader.registerExternals(binaryName, fields);
         }
       }
     }
 
     for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
       var union = set.unions.get((int) unionIdx);
-      if (union.compiledBaseBinaryName != null && union.compiledBaseBytecode != null) {
-        loader.registerClass(union.compiledBaseBinaryName, union.compiledBaseBytecode);
-        var variantNames = union.compiledVariantBinaryNames;
-        var variantBytes = union.compiledVariantBytecode;
-        if (variantNames != null && variantBytes != null) {
+      if (union.compiledBaseBinaryName.optIsSome() && union.compiledBaseBytecode != null) {
+        loader.registerClass(union.compiledBaseBinaryName.optUnwrap(), union.compiledBaseBytecode);
+        if (union.compiledVariantBinaryNames.optIsSome() && union.compiledVariantBytecode.optIsSome()) {
+          var variantNames = union.compiledVariantBinaryNames.optUnwrap();
+          var variantBytes = union.compiledVariantBytecode.optUnwrap();
           for (int i = 0; i < variantNames.size(); i++) {
             loader.registerClass(variantNames.get(i), variantBytes.get(i));
           }
@@ -86,8 +87,9 @@ public final class ImportInstall {
       }
     }
 
-    var emittedFuncs = set.finishFunctions();
-    if (emittedFuncs != null) {
+    var emittedFuncsOpt = set.finishFunctions();
+    if (emittedFuncsOpt.optIsSome()) {
+      var emittedFuncs = emittedFuncsOpt.optUnwrap();
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
       var funcStaticFields = new TOrderedMap<String, Object>();
       funcStaticFields.putAll(emittedFuncs.staticFieldValues());
@@ -105,15 +107,15 @@ public final class ImportInstall {
       byte[] bytecode = null;
       var mergedStaticFields = new TOrderedMap<String, Object>();
       for (var func : set.functions) {
-        if (func.compiledClassName == null || func.compiledBytecode == null) {
+        if (func.compiledClassName.optIsNone() || func.compiledBytecode.optIsNone()) {
           continue;
         }
         if (binaryName == null) {
-          binaryName = func.compiledClassName;
-          bytecode = func.compiledBytecode;
+          binaryName = func.compiledClassName.optUnwrap();
+          bytecode = func.compiledBytecode.optUnwrap();
         }
-        if (func.compiledStaticFieldValues != null) {
-          mergedStaticFields.putAll(func.compiledStaticFieldValues);
+        if (func.compiledStaticFieldValues.optIsSome()) {
+          mergedStaticFields.putAll(func.compiledStaticFieldValues.optUnwrap());
         }
       }
       if (binaryName != null) {
@@ -129,15 +131,15 @@ public final class ImportInstall {
       }
     }
     for (var func : set.functions) {
-      var binaryName = func.compiledClassName;
-      var bytecode = func.compiledBytecode;
-      if (binaryName == null || bytecode == null) {
-        if (binaryName != null || bytecode != null) {
+      var compiledClassName = func.compiledClassName;
+      var compiledBytecode = func.compiledBytecode;
+      if (compiledClassName.optIsNone() || compiledBytecode.optIsNone()) {
+        if (compiledClassName.optIsSome() || compiledBytecode.optIsSome()) {
           throw new AssertionError(
               "function has partially-populated compiled artifact (binaryName="
-                  + binaryName
+                  + compiledClassName.optUnwrapOr(null)
                   + ", bytecodeLen="
-                  + (bytecode == null ? "null" : bytecode.length)
+                  + compiledBytecode.optUnwrapOr(null)
                   + ")");
         }
         continue;
@@ -146,44 +148,44 @@ public final class ImportInstall {
 
     for (var obj : set.objects) {
       for (var method : obj.methods) {
-        var binaryName = method.compiledClassName;
-        var bytecode = method.compiledBytecode;
-        var staticFields = method.compiledStaticFieldValues;
-        if (binaryName == null || bytecode == null) {
-          if (binaryName != null || bytecode != null) {
+        if (method.compiledClassName.optIsNone() || method.compiledBytecode.optIsNone()) {
+          if (method.compiledClassName.optIsSome() || method.compiledBytecode.optIsSome()) {
             throw new AssertionError(
                 "method has partially-populated compiled artifact (binaryName="
-                    + binaryName
+                    + method.compiledClassName.optUnwrapOr(null)
                     + ", bytecodeLen="
-                    + (bytecode == null ? "null" : bytecode.length)
+                    + method.compiledBytecode.optUnwrapOr(null)
                     + ")");
           }
           continue;
         }
+        var binaryName = method.compiledClassName.optUnwrap();
+        var bytecode = method.compiledBytecode.optUnwrap();
         loader.registerClass(binaryName, bytecode);
-        if (staticFields != null && !staticFields.isEmpty()) {
-          loader.registerExternals(binaryName, staticFields);
+        if (method.compiledStaticFieldValues.optIsSome()
+            && !method.compiledStaticFieldValues.optUnwrap().isEmpty()) {
+          loader.registerExternals(binaryName, method.compiledStaticFieldValues.optUnwrap());
         }
       }
       for (var impl : obj.interfaceImpls) {
         for (var m : impl.methodImpls) {
-          var binaryName = m.compiledClassName;
-          var bytecode = m.compiledBytecode;
-          var staticFields = m.compiledStaticFieldValues;
-          if (binaryName == null || bytecode == null) {
-            if (binaryName != null || bytecode != null) {
+          if (m.compiledClassName.optIsNone() || m.compiledBytecode.optIsNone()) {
+            if (m.compiledClassName.optIsSome() || m.compiledBytecode.optIsSome()) {
               throw new AssertionError(
                   "iface method has partially-populated compiled artifact (binaryName="
-                      + binaryName
+                      + m.compiledClassName.optUnwrapOr(null)
                       + ", bytecodeLen="
-                      + (bytecode == null ? "null" : bytecode.length)
+                      + m.compiledBytecode.optUnwrapOr(null)
                       + ")");
             }
             continue;
           }
+          var binaryName = m.compiledClassName.optUnwrap();
+          var bytecode = m.compiledBytecode.optUnwrap();
           loader.registerClass(binaryName, bytecode);
-          if (staticFields != null && !staticFields.isEmpty()) {
-            loader.registerExternals(binaryName, staticFields);
+          if (m.compiledStaticFieldValues.optIsSome()
+              && !m.compiledStaticFieldValues.optUnwrap().isEmpty()) {
+            loader.registerExternals(binaryName, m.compiledStaticFieldValues.optUnwrap());
           }
         }
       }

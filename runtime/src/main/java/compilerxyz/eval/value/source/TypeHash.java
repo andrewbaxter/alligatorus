@@ -20,6 +20,7 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6155L)
 public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, ExporterAny {
@@ -44,8 +45,8 @@ public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, Ex
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeHash::bind: CodeValue has no compile-time value");
   }
@@ -62,7 +63,7 @@ public record TypeHash() implements Type, AspectBind, AspectDropDynamicLight, Ex
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

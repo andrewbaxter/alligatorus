@@ -30,6 +30,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LineNumberNode;
 
 public class JavaBytecodeSequence implements JavaBytecode {
   public TList<CodeDynamic> children = new TList<>();
@@ -118,7 +119,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
             Function<CodeDynamic, Iterator<CodeDynamic>>[] flattenStepRef = new Function[1];
             java.util.function.Function<CodeDynamic, Iterator<CodeDynamic>> flattenStep =
                     cd -> {
-                        if (cd.loc() instanceof CodeLoc.Some some) {
+                        switch (cd.loc()) {
+                          case CodeLoc.Some some -> {
                             locCounter[0] += 1;
                             int line = locCounter[0];
                             locMap.put(line, some.qExprId());
@@ -126,17 +128,19 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             flattened.add(new JavaBytecodeInstructionObj(label));
                             flattened.add(
                                     new JavaBytecodeInstructionObj(
-                                            new org.objectweb.asm.tree.LineNumberNode(line, label)));
+                                            new LineNumberNode(line, label)));
+                          }
+                          case CodeLoc.Infallible i -> {}
                         }
                         return cd.code()
-                                .dispatch(
+                                .javaBytecodeDispatch(
                                         new Dispatcher<Iterator<CodeDynamic>>() {
                                             @Override
-                                            public Iterator<CodeDynamic> handleInstruction(JavaBytecodeInstruction n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleInstruction(JavaBytecodeInstruction n) {
                                                 if (!(n instanceof JavaBytecodeInstructionTryCatch)
                                                         && !(n instanceof JavaBytecodeInstructionObj obj
                                                                 && (obj.node instanceof LabelNode
-                                                                        || obj.node instanceof org.objectweb.asm.tree.LineNumberNode))) {
+                                                                        || obj.node instanceof LineNumberNode))) {
                                                     realInsnCount[0] += 1;
                                                 }
                                                 flattened.add(n);
@@ -144,19 +148,19 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
 
                                             @Override
-                                            public Iterator<CodeDynamic> handleSequence(JavaBytecodeSequence n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleSequence(JavaBytecodeSequence n) {
                                                 return n.children.iterator();
                                             }
 
                                             @Override
-                                            public Iterator<CodeDynamic> handleStoreLoad(JavaBytecodeStoreLoad n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleStoreLoad(JavaBytecodeStoreLoad n) {
                                                 realInsnCount[0] += 1;
                                                 flattened.add(n);
                                                 return null;
                                             }
 
                                             @Override
-                                            public Iterator<CodeDynamic> handleLand(JavaBytecodeLand n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleLand(JavaBytecodeLand n) {
                                                 flattened.add(
                                                         new JavaBytecodeInstructionObj(
                                                                 jumpLabels.computeIfAbsentT(n.jumpKey, k -> new LabelNode())));
@@ -164,7 +168,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
 
                                             @Override
-                                            public Iterator<CodeDynamic> handleJump(JavaBytecodeJump n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleJump(JavaBytecodeJump n) {
                                                 realInsnCount[0] += 1;
                                                 flattened.add(
                                                         new JavaBytecodeInstructionObj(
@@ -175,7 +179,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
 
                                             @Override
-                                            public Iterator<CodeDynamic> handleGuarded(JavaBytecodeGuarded n) {
+                                            public Iterator<CodeDynamic> dispatcherHandleGuarded(JavaBytecodeGuarded n) {
                                                 destRuns.boundary(n.dest);
                                                 destStack.add(n.dest);
                                                 walkFrom(TList.of(n.inner).iterator(), flattenStepRef[0]);
@@ -246,14 +250,14 @@ public class JavaBytecodeSequence implements JavaBytecode {
             var pendingTryCatchBlocks = new TList<JavaBytecodeInstructionTryCatch>();
             var emittedLabels = new TSet<Label>();
             for (JavaBytecode n : emitList) {
-                n.dispatch(
+                n.javaBytecodeDispatch(
                         new Dispatcher<Object>() {
                             @Override
-                            public Object handleInstruction(JavaBytecodeInstruction n) {
-                                n.dispatchMore(
+                            public Object dispatcherHandleInstruction(JavaBytecodeInstruction n) {
+                                n.javaBytecodeInstructionDispatchMore(
                                         new JavaBytecodeInstruction.MoreDispatcher() {
                                             @Override
-                                            public void handleObj(JavaBytecodeInstructionObj n) {
+                                            public void moreDispatcherHandleObj(JavaBytecodeInstructionObj n) {
                                                 if (n.node instanceof LabelNode ln
                                                         && !emittedLabels.add(ln.getLabel())) {
                                                     throw new AssertionError(
@@ -264,12 +268,12 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             }
 
                                             @Override
-                                            public void handleInt(JavaBytecodeInstructionInt n) {
+                                            public void moreDispatcherHandleInt(JavaBytecodeInstructionInt n) {
                                                 out.visitInsn(n.code);
                                             }
 
                                             @Override
-                                            public void handleTryCatch(JavaBytecodeInstructionTryCatch n) {
+                                            public void moreDispatcherHandleTryCatch(JavaBytecodeInstructionTryCatch n) {
                                                 // Defer visitTryCatchBlock so we can emit entries in
                                                 // nesting order at method end — the JVM matches exception
                                                 // table entries in table order, so innermost handlers must
@@ -281,12 +285,12 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             }
 
                             @Override
-                            public Object handleSequence(JavaBytecodeSequence n) {
+                            public Object dispatcherHandleSequence(JavaBytecodeSequence n) {
                                 throw new AssertionError();
                             }
 
                             @Override
-                            public Object handleStoreLoad(JavaBytecodeStoreLoad storeLoad) {
+                            public Object dispatcherHandleStoreLoad(JavaBytecodeStoreLoad storeLoad) {
                                 var index = slotIndexes.getOrNull(storeLoad.key);
                                 if (index == null) {
                                     boolean wide = storeLoad.code == DSTORE
@@ -302,17 +306,17 @@ public class JavaBytecodeSequence implements JavaBytecode {
                             }
 
                             @Override
-                            public Object handleLand(JavaBytecodeLand n) {
+                            public Object dispatcherHandleLand(JavaBytecodeLand n) {
                                 throw new AssertionError();
                             }
 
                             @Override
-                            public Object handleJump(JavaBytecodeJump n) {
+                            public Object dispatcherHandleJump(JavaBytecodeJump n) {
                                 throw new AssertionError();
                             }
 
                             @Override
-                            public Object handleGuarded(JavaBytecodeGuarded n) {
+                            public Object dispatcherHandleGuarded(JavaBytecodeGuarded n) {
                                 throw new AssertionError();
                             }
 
@@ -339,8 +343,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
   }
 
   @Override
-  public <T> T dispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.handleSequence(this);
+  public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleSequence(this);
   }
 
 }

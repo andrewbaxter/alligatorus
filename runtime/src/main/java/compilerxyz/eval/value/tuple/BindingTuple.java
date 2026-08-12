@@ -19,6 +19,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.ExprSubErr.Opaque;
 
 public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey)
     implements Binding {
@@ -31,9 +32,9 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
     // still load from its local on use.
     Code useCode;
     Opt<TupleBaseDynamic> base;
-    if (jsKey instanceof Opt.Some<BindingId> some) {
-      useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
-      base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(some.value())));
+    if (jsKey.optIsSome()) {
+      useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, jsKey.optUnwrap()));
+      base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap())));
     } else {
       useCode = Code.none(loc);
       base = Opt.none();
@@ -89,15 +90,16 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
           boolean shapeOk = true;
           for (var other : others) {
             var oe = ((BindingTuple) other).elements.get(i);
-            if (!(oe instanceof TupleScopeField.Scope os)) {
-              shapeOk = false;
-              break;
+            switch (oe) {
+              case TupleScopeField.Scope os -> otherSubs.add(os.binding());
+              case TupleScopeField.Dynamic d -> shapeOk = false;
+              case TupleScopeField.Error er -> shapeOk = false;
             }
-            otherSubs.add(os.binding());
+            if (!shapeOk) break;
           }
           if (!shapeOk) {
-            errors.add(new compilerxyz.eval.ExprErr(loc,
-                TList.of(new compilerxyz.eval.ExprSubErr.Opaque(
+            errors.add(new ExprErr(loc,
+                TList.of(new Opaque(
                     "cannot merge BindingTuple: element " + i
                         + " has a different variant across branches"))));
             mergedElements.add(e);
@@ -105,22 +107,33 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
             var mres = s.binding().bindingMerge(xx, loc, otherSubs);
             mres.drainInto(errors);
             var mv = mres.valueOrNull();
-            if (mv != null) {
-              mergedElements.add(new TupleScopeField.Scope(mv));
+            if (mv.optIsSome()) {
+              mergedElements.add(new TupleScopeField.Scope(mv.optUnwrap()));
             } else {
               mergedElements.add(e);
             }
           }
         }
         case TupleScopeField.Dynamic d -> {
+          mergeOthers:
           for (var other : others) {
             var oe = ((BindingTuple) other).elements.get(i);
-            if (!(oe instanceof TupleScopeField.Dynamic)) {
-              errors.add(new compilerxyz.eval.ExprErr(loc,
-                  TList.of(new compilerxyz.eval.ExprSubErr.Opaque(
-                      "cannot merge BindingTuple: element " + i
-                          + " has a different variant across branches"))));
-              break;
+            switch (oe) {
+              case TupleScopeField.Dynamic ignored -> {}
+              case TupleScopeField.Scope s -> {
+                errors.add(new ExprErr(loc,
+                    TList.of(new Opaque(
+                        "cannot merge BindingTuple: element " + i
+                            + " has a different variant across branches"))));
+                break mergeOthers;
+              }
+              case TupleScopeField.Error er -> {
+                errors.add(new ExprErr(loc,
+                    TList.of(new Opaque(
+                        "cannot merge BindingTuple: element " + i
+                            + " has a different variant across branches"))));
+                break mergeOthers;
+              }
             }
           }
           mergedElements.add(d);

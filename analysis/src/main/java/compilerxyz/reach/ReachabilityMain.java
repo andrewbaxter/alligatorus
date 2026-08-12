@@ -52,7 +52,7 @@ public final class ReachabilityMain {
   private final Map<String, Integer> fieldReads = new HashMap<>();
   private final Set<String> referencedTypes = new HashSet<>();
 
-  public void run(CtModel model) {
+  public int run(CtModel model) {
     List<CtType<?>> types = new ArrayList<>(model.getAllTypes());
     // Index all executables.
     for (CtType<?> t : types) {

@@ -63,11 +63,11 @@ public record TypeEResultConstructorConst()
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
+    if (argument.value().optIsNone()) {
       return EResult.err(
           loc, "TypeEResultConstructorConst::call: argument must have a compile-time value");
     }
-    var argValue = argSome.value();
+    var argValue = argument.value().optUnwrap();
     var argMeta = argValue.valueType();
     var aspectTypeRes = GenAspectType.get(xx, loc, argMeta);
     if (aspectTypeRes.hasErrors()) return aspectTypeRes.reerr();
@@ -76,7 +76,7 @@ public record TypeEResultConstructorConst()
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .aspectTypeType(argValue);
     Type eresultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
-    return EResult.ok(new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), eresultType))));
+    return EResult.ok(new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), eresultType))));
   }
 
   @Override
@@ -96,28 +96,28 @@ public record TypeEResultConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_E_RESULT_CONSTRUCTOR_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

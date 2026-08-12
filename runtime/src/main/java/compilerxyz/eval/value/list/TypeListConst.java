@@ -58,6 +58,9 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinLight(uniqueId = 6152L)
 public final class TypeListConst
@@ -138,8 +141,8 @@ public final class TypeListConst
   private static Artifact nullArtifact() {
     return new Artifact.Body(
         new ArtifactBody(
-            new compilerxyz.safejson.JsonValueNull(),
-            new compilerxyz.artifact.ArtifactBodyExporter.Root()));
+            new JsonValueNull(),
+            new Root()));
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -162,13 +165,13 @@ public final class TypeListConst
                     + self.getClass());
           }
           var cell = list.artifactIdCell;
-          var errors = new TList<compilerxyz.eval.ExprErr>();
+          var errors = new TList<ExprErr>();
           var artifact =
               ArtifactSupport.implExportIndependentArtifact(
                   xx.vx.ix.gx.artifacts,
                   cell,
                   () -> {
-                    var elementArtRes = list.elementType().exportArtifact(xx, loc);
+                    var elementArtRes = list.elementType().artifactableExportArtifact(xx, loc);
                     elementArtRes.drainInto(errors);
                     var elementArt =
                         elementArtRes.valueOrNull() != null
@@ -184,10 +187,10 @@ public final class TypeListConst
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(loc, "TypeListConst requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,
@@ -246,8 +249,8 @@ public final class TypeListConst
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeListConst::bind: CodeValue has no compile-time value");
   }
@@ -259,10 +262,10 @@ public final class TypeListConst
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeListConst::toDynamic: CodeValue has no compile-time value");
     }
-    var elements = elementsOf(some.value());
+    var elements = elementsOf(cv.value().optUnwrap());
     var listName = JavaInternalName.fromClass(TList.class);
     var seq = new JavaBytecodeSequence();
     seq.add(
@@ -351,8 +354,9 @@ public final class TypeListConst
 
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
-    return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_CONST_IDENTITY) instanceof Opt.Some<Aspect> some
-        && some.value() instanceof TypeListConst o
+    var someOpt = other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_CONST_IDENTITY);
+    return someOpt.optIsSome()
+        && someOpt.optUnwrap() instanceof TypeListConst o
         && elementType.typeIsEqual(xx, o.elementType);
   }
 

@@ -13,8 +13,8 @@ public sealed interface RecordField {
     public boolean isUnreachable() {
       if (result.hasErrors()) return false;
       var cv = result.valueOrNull();
-      if (cv == null) return false;
-      return !(cv.value() instanceof Opt.Some<Value>);
+      if (cv.optIsNone()) return false;
+      return cv.optUnwrap().value().optIsNone();
     }
   }
 }

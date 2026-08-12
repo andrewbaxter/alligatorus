@@ -22,22 +22,29 @@ public final class Compile {
   public static Result<CompileResult, TList<ExprErr>> compile(
       GlobalContext gx, SourceSpecAbsolute entry) {
     var lookupResult = gx.sources.sourcesGet(entry);
-    if (lookupResult instanceof Result.Err<Sources.SourceResolved, String> err) {
-      return Result.err(
-          TList.of(
-              new ExprErr(
-                  new QExprId(new SourceId(0), 0),
-                  TList.of(new ExprSubErr.Opaque(err.error())))));
+    Sources.SourceResolved resolvedRaw;
+    switch (lookupResult) {
+      case Result.Err<Sources.SourceResolved, String> err -> {
+        return Result.err(
+            TList.of(
+                new ExprErr(
+                    new QExprId(new SourceId(0), 0),
+                    TList.of(new ExprSubErr.Opaque(err.error())))));
+      }
+      case Result.Ok<Sources.SourceResolved, String> ok -> resolvedRaw = ok.value();
     }
-    var resolved = ((Result.Ok<Sources.SourceResolved, String>) lookupResult).value();
-    if (!(resolved instanceof Sources.SourceResolved.Module lookup)) {
-      return Result.err(
-          TList.of(
-              new ExprErr(
-                  new QExprId(new SourceId(0), 0),
-                  TList.of(
-                      new ExprSubErr.Opaque(
-                          "Entry point must be a source file, not a bundle")))));
+    Sources.SourceResolved.Module lookup;
+    switch (resolvedRaw) {
+      case Sources.SourceResolved.Module m -> lookup = m;
+      case Sources.SourceResolved.Bundle ignored -> {
+        return Result.err(
+            TList.of(
+                new ExprErr(
+                    new QExprId(new SourceId(0), 0),
+                    TList.of(
+                        new ExprSubErr.Opaque(
+                            "Entry point must be a source file, not a bundle")))));
+      }
     }
     var rootImportState = new ImportStateId(0);
     var rootCompileId = new CompileId(rootImportState, lookup.id());
@@ -64,8 +71,9 @@ public final class Compile {
   }
 
   private static void collectErrors(CompileRes r, TList<ExprErr> out) {
-    if (r.result() instanceof CompileResResult.Err err) {
-      out.addAll(err.errors());
+    switch (r.result()) {
+      case CompileResResult.Err err -> out.addAll(err.errors());
+      case CompileResResult.Ok ignored -> {}
     }
   }
 

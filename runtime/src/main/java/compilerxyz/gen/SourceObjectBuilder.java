@@ -5,6 +5,7 @@ import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.util.Opt;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData;
@@ -32,17 +33,17 @@ public final class SourceObjectBuilder {
     }
 
     public void set_description(ExprContext xx, String description) {
-        if (this.type_.description != null) {
+        if (this.type_.description.optIsSome()) {
             throw new IllegalStateException("Object already has a description");
         }
-        this.type_.description = description;
+        this.type_.description = Opt.some(description);
     }
 
     public void set_inner(ExprContext xx, Type typeRef) {
-        if (this.type_.underlyingType != null) {
+        if (this.type_.underlyingType.optIsSome()) {
             throw new IllegalStateException("Object already has an inner type");
         }
-        this.type_.underlyingType = typeRef;
+        this.type_.underlyingType = Opt.some(typeRef);
     }
 
     public SourceObjectMethodResult func(ExprContext xx, String name) {
@@ -66,7 +67,7 @@ public final class SourceObjectBuilder {
                 throw new IllegalStateException("Missing implementation for interface method '" + im.name + "'");
             }
             var mImpl = new SourceObjectInterfaceMethodImplData(idx);
-            mImpl.implExpr = implExpr;
+            mImpl.implExpr = Opt.some((Value) implExpr);
             mImpl.methodImplIdx = impl.methodImpls.size();
             impl.methodImpls.add(mImpl);
         }

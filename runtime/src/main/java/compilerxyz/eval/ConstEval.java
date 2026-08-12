@@ -74,6 +74,12 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
+import compilerxyz.eval.ScopeEntrySetter;
+import compilerxyz.eval.Type;
+import compilerxyz.eval.binding.BindingIteratorStack;
+import compilerxyz.eval.value.null_.TypeNullConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.BindingSetter;
 
 public final class ConstEval {
   private ConstEval() {}
@@ -86,74 +92,74 @@ public final class ConstEval {
       case Expr.ScopeUse p -> {
         var erb = new Erb(loc);
         var keyOpt = erb.mustCv(xx, constEvalOperand(xx, p.key()));
-        if (keyOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var key = keyOpt.get();
+        if (keyOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var key = keyOpt.optUnwrap();
         var keyVal = (Opt.Some<Value>) key.value();
         var keyConstRes = Eval.extractConstKey(xx, loc, keyVal.value());
         var keyConstOpt = erb.mustRes(keyConstRes);
-        if (keyConstOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var ck = keyConstOpt.get();
+        if (keyConstOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var ck = keyConstOpt.optUnwrap();
         var found = xx.scope.lookupEntry(ck);
         if (found == null) {
           erb.errPush("No bound value with id [" + ck + "]");
           yield EResult.errs(erb.errors());
         }
-        var setter = new compilerxyz.eval.ScopeEntrySetter(xx.scope, found);
+        var setter = new ScopeEntrySetter(xx.scope, found);
         yield EResult.ok(
             EvalRes.of(
                 found.binding.bindingUse(
-                    xx, loc, Opt.<compilerxyz.gen.BindingSetter>some(setter), key.code()),
+                    xx, loc, Opt.<BindingSetter>some(setter), key.code()),
                 xx.scope));
       }
       case Expr.Call p -> {
         var erb = new Erb(loc);
         var fopt = erb.mustCv(xx, constEvalOperand(xx, p.func()));
         var aopt = erb.mustCv(xx, constEvalOperand(xx, p.arg()));
-        if (fopt.isEmpty() || aopt.isEmpty()) yield EResult.errs(erb.errors());
-        var func = fopt.get();
-        var arg = aopt.get();
+        if (fopt.optIsNone() || aopt.optIsNone()) yield EResult.errs(erb.errors());
+        var func = fopt.optUnwrap();
+        var arg = aopt.optUnwrap();
         var fv = (Opt.Some<Value>) func.value();
         var funcType = fv.value().valueType();
         var aspectFnOpt = erb.mustEr(GenAspectFunction.get(xx, loc, funcType));
-        if (aspectFnOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var aspectFn = aspectFnOpt.get();
+        if (aspectFnOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var aspectFn = aspectFnOpt.optUnwrap();
         var calleeExc = aspectFn.aspectFunctionExceptionType(xx, loc, func);
         var callOpt = erb.mustErMaybeUnreachable(aspectFn.aspectFunctionCall(xx, loc, func, arg));
-        if (callOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var wrapped = erb.mustErMaybeUnreachable(Eval.maybeWrapCallException(xx, loc, calleeExc, callOpt.get()));
-        if (wrapped.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(wrapped.get(), xx.scope));
+        if (callOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var wrapped = erb.mustErMaybeUnreachable(Eval.maybeWrapCallException(xx, loc, calleeExc, callOpt.optUnwrap()));
+        if (wrapped.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(wrapped.optUnwrap(), xx.scope));
       }
       case Expr.Set e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
         var vopt = erb.mustCv(xx, constEvalOperand(xx, e.value()));
-        if (bopt.isEmpty() || vopt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
-        var value = vopt.get();
+        if (bopt.optIsNone() || vopt.optIsNone()) yield EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
+        var value = vopt.optUnwrap();
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
         var setOpt = erb.mustEr(GenAspectSet.get(xx, loc, baseType));
-        if (setOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var out = erb.mustEr(setOpt.get().aspectSetSet(xx, loc, base, value));
-        if (out.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(out.get(), xx.scope));
+        if (setOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var out = erb.mustEr(setOpt.optUnwrap().aspectSetSet(xx, loc, base, value));
+        if (out.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
       }
       case Expr.Field e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
         var fopt = erb.mustCv(xx, constEvalOperand(xx, e.key()));
-        if (bopt.isEmpty() || fopt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
-        var field = fopt.get();
+        if (bopt.optIsNone() || fopt.optIsNone()) yield EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
+        var field = fopt.optUnwrap();
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
         var aspectFieldOpt = erb.mustEr(GenAspectField.get(xx, loc, baseType));
-        if (aspectFieldOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var aspectFieldField = aspectFieldOpt.get();
+        if (aspectFieldOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var aspectFieldField = aspectFieldOpt.optUnwrap();
         var primaryOpt = erb.mustEr(aspectFieldField.aspectFieldField(xx, loc, base, field));
-        if (primaryOpt.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(primaryOpt.get(), xx.scope));
+        if (primaryOpt.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(primaryOpt.optUnwrap(), xx.scope));
       }
       case Expr.Bind ignored ->
           EResult.err(loc, "Bind expression must be directly inside a block");
@@ -168,8 +174,8 @@ public final class ConstEval {
         var elements = new TList<TupleElement>(t.elements().size());
         for (var elExpr : t.elements()) {
           var elRes = elementResult(xx, constEvalOperand(xx, elExpr));
-          if (!elRes.hasErrors() && elRes.valueOrNull() != null
-              && !(elRes.valueOrNull().value() instanceof Opt.Some<Value>)) {
+          if (!elRes.hasErrors() && elRes.valueOrNull().optIsSome()
+              && elRes.valueOrNull().optUnwrap().value().optIsNone()) {
             erb.errors()
                 .add(
                     new ExprErr(
@@ -190,23 +196,23 @@ public final class ConstEval {
         var erb = new Erb(loc);
         var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
         var ropt = erb.mustCv(xx, constEvalOperand(xx, e.reference()));
-        if (bopt.isEmpty() || ropt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
+        if (bopt.optIsNone() || ropt.optIsNone()) yield EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
         var bv = (Opt.Some<Value>) base.value();
         var out =
-            erb.mustEr(constEvalBinaryOp(xx, loc, e.op(), bv.value().valueType(), base, ropt.get()));
-        if (out.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(out.get(), xx.scope));
+            erb.mustEr(constEvalBinaryOp(xx, loc, e.op(), bv.value().valueType(), base, ropt.optUnwrap()));
+        if (out.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
       }
       case Expr.OperatorUnary e -> {
         var erb = new Erb(loc);
         var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
-        if (bopt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
+        if (bopt.optIsNone()) yield EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
         var bv = (Opt.Some<Value>) base.value();
         var out = erb.mustEr(constEvalUnaryOp(xx, loc, e.op(), bv.value().valueType(), base));
-        if (out.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(out.get(), xx.scope));
+        if (out.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
       }
       case Expr.Foreach e -> {
         int baseLevelCount = xx.scope.levelCount();
@@ -227,17 +233,17 @@ public final class ConstEval {
         var erb = new Erb(loc);
         var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
         var topt = erb.mustCv(xx, constEvalOperand(xx, e.target()));
-        if (bopt.isEmpty() || topt.isEmpty()) yield EResult.errs(erb.errors());
-        var base = bopt.get();
-        var target = topt.get();
+        if (bopt.optIsNone() || topt.optIsNone()) yield EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
+        var target = topt.optUnwrap();
         var tv = (Opt.Some<Value>) target.value();
         var targetMeta = tv.value().valueType();
         var aspectTypeOpt = erb.mustEr(GenAspectType.get(xx, loc, targetMeta));
-        if (aspectTypeOpt.isEmpty()) yield EResult.errs(erb.errors());
-        var targetType = aspectTypeOpt.get().aspectTypeType(tv.value());
+        if (aspectTypeOpt.optIsNone()) yield EResult.errs(erb.errors());
+        var targetType = aspectTypeOpt.optUnwrap().aspectTypeType(tv.value());
         var converted = erb.mustEr(Eval.typecheckConvert(xx, loc, targetType, base));
-        if (converted.isEmpty()) yield EResult.errs(erb.errors());
-        yield EResult.ok(EvalRes.of(converted.get(), xx.scope));
+        if (converted.optIsNone()) yield EResult.errs(erb.errors());
+        yield EResult.ok(EvalRes.of(converted.optUnwrap(), xx.scope));
       }
       case Expr.Try e -> constEvalTry(xx, loc, e);
       case Expr.Labeled e -> {
@@ -254,13 +260,14 @@ public final class ConstEval {
    * default-exit scope tree is installed into the context.
    */
   private static EResult<CodeValue> elementResult(ExprContext xx, EResult<EvalRes> r) {
-    var v = r.valueOrNull();
-    if (v == null) return r.reerr();
+    var vOpt = r.valueOrNull();
+    if (vOpt.optIsNone()) return r.reerr();
+    var v = vOpt.optUnwrap();
     xx.scope.adopt(v.scope());
     var errs = r.errorsOrNull();
-    if (errs == null || errs.isEmpty()) return EResult.ok(v.cv());
+    if (errs.optIsNone() || errs.optUnwrap().isEmpty()) return EResult.ok(v.cv());
     var copied = new TList<ExprErr>();
-    copied.addAll(errs);
+    copied.addAll(errs.optUnwrap());
     return EResult.mixed(v.cv(), copied);
   }
 
@@ -296,11 +303,11 @@ public final class ConstEval {
     var skip = new JumpKey();
     var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
     var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
-    if (jumpOpt.isEmpty() || landOpt.isEmpty()) return null;
-    var code = jumpOpt.get();
+    if (jumpOpt.optIsNone() || landOpt.optIsNone()) return null;
+    var code = jumpOpt.optUnwrap();
     for (var b : blocks) code = Code.concat(loc, code, b);
     blocks.clear();
-    return Code.concat(loc, code, landOpt.get());
+    return Code.concat(loc, code, landOpt.optUnwrap());
   }
 
   /**
@@ -330,7 +337,7 @@ public final class ConstEval {
       ScopeLevel.Labeled level,
       int baseLevelCount,
       EResult<EvalRes> innerResult) {
-    if (innerResult.valueOrNull() == null) {
+    if (innerResult.valueOrNull().optIsNone()) {
       xx.scope.popToLevelCount(baseLevelCount);
       return innerResult;
     }
@@ -338,15 +345,27 @@ public final class ConstEval {
     innerResult.drainInto(erb.errors());
     var inner = innerResult.requireValue("labeledConsume inner");
     xx.scope.adopt(inner.scope());
-    if (!(xx.scope.levels.get(xx.scope.levels.size() - 1) instanceof ScopeLevel.Labeled top)
-        || top.scopeLevelEmission() != level.scopeLevelEmission()) {
+    var topLevelRaw = xx.scope.levels.get(xx.scope.levels.size() - 1);
+    ScopeLevel.Labeled top;
+    switch (topLevelRaw) {
+      case ScopeLevel.Labeled lb -> top = lb;
+      case ScopeLevel.Entry en -> throw new AssertionError("labeledConsume: consumer level is not on top");
+      case ScopeLevel.Temp t -> throw new AssertionError("labeledConsume: consumer level is not on top");
+      case ScopeLevel.Catch c -> throw new AssertionError("labeledConsume: consumer level is not on top");
+      case ScopeLevel.Finally f -> throw new AssertionError("labeledConsume: consumer level is not on top");
+    }
+    if (top.scopeLevelEmission() != level.scopeLevelEmission()) {
       throw new AssertionError("labeledConsume: consumer level is not on top");
     }
     xx.scope.levels.remove(xx.scope.levels.size() - 1);
     var innerCv = inner.cv();
     var arrivals = level.arrivals;
     var blocks = level.scopeLevelEmission().blocks;
-    boolean fallsThrough = !(innerCv.outcome() instanceof EvalOutcome.ControlEnded);
+    boolean fallsThrough = switch (innerCv.outcome()) {
+      case EvalOutcome.ControlEnded ce -> false;
+      case EvalOutcome.NoValue nv -> true;
+      case EvalOutcome.HasValue hv -> true;
+    };
     if (!arrivals.isEmpty()) {
       var arrivalScopes = new TList<Scope>(arrivals.size());
       for (var a : arrivals) {
@@ -375,24 +394,26 @@ public final class ConstEval {
     if (!arrivals.isEmpty() || !blocks.isEmpty()) {
       if (fallsThrough && !blocks.isEmpty()) {
         var jumpOpt = erb.mustEr(xx.target.targetJump(loc, level.end));
-        if (jumpOpt.isEmpty()) return EResult.errs(erb.errors());
-        code = Code.concat(loc, code, jumpOpt.get());
+        if (jumpOpt.optIsNone()) return EResult.errs(erb.errors());
+        code = Code.concat(loc, code, jumpOpt.optUnwrap());
       }
       for (var b : blocks) code = Code.concat(loc, code, b);
       blocks.clear();
       var landOpt = erb.mustEr(xx.target.targetLand(loc, level.end));
-      if (landOpt.isEmpty()) return EResult.errs(erb.errors());
-      code = Code.concat(loc, code, landOpt.get());
+      if (landOpt.optIsNone()) return EResult.errs(erb.errors());
+      code = Code.concat(loc, code, landOpt.optUnwrap());
     }
     Opt<Value> resultValue =
         arrivals.isEmpty() ? innerCv.value() : Opt.some(arrivals.get(0).value());
     EvalOutcome outcome;
-    if (resultValue instanceof Opt.Some<Value> someResult) {
-      outcome = EvalOutcome.ofValue(someResult.value());
-    } else if (innerCv.outcome() instanceof EvalOutcome.ControlEnded) {
-      outcome = EvalOutcome.CONTROL_ENDED;
+    if (resultValue.optIsSome()) {
+      outcome = EvalOutcome.ofValue(resultValue.optUnwrap());
     } else {
-      outcome = EvalOutcome.NO_VALUE;
+      outcome = switch (innerCv.outcome()) {
+        case EvalOutcome.ControlEnded ce -> EvalOutcome.CONTROL_ENDED;
+        case EvalOutcome.NoValue nv -> EvalOutcome.NO_VALUE;
+        case EvalOutcome.HasValue hv -> EvalOutcome.NO_VALUE;
+      };
     }
     var cv = new CodeValue(code, outcome);
     var res = EvalRes.of(cv, xx.scope);
@@ -403,9 +424,9 @@ public final class ConstEval {
   private static EResult<EvalRes> constEvalReturn(ExprContext xx, QExprId loc, Expr.Return e) {
     var erb = new Erb(loc);
     CodeValue valCv;
-    if (e.value() instanceof Opt.Some<Expr> someV) {
-      var vres = constEval(xx, someV.value());
-      if (vres.valueOrNull() == null) return vres;
+    if (e.value().optIsSome()) {
+      var vres = constEval(xx, e.value().optUnwrap());
+      if (vres.valueOrNull().optIsNone()) return vres;
       vres.drainInto(erb.errors());
       var vev = vres.requireValue("constEvalReturn value");
       xx.scope.adopt(vev.scope());
@@ -414,10 +435,19 @@ public final class ConstEval {
       valCv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(emptyTupleValue()));
     }
     valCv = xx.target.targetReturn(xx, loc, valCv);
-    if (!(valCv.outcome() instanceof EvalOutcome.HasValue someVal)) {
-      var cv = new CodeValue(valCv.code(), EvalOutcome.CONTROL_ENDED);
-      var res = EvalRes.of(cv, xx.scope);
-      return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
+    EvalOutcome.HasValue someVal;
+    switch (valCv.outcome()) {
+      case EvalOutcome.HasValue hv -> someVal = hv;
+      case EvalOutcome.ControlEnded ce -> {
+        var cv = new CodeValue(valCv.code(), EvalOutcome.CONTROL_ENDED);
+        var res = EvalRes.of(cv, xx.scope);
+        return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
+      }
+      case EvalOutcome.NoValue nv -> {
+        var cv = new CodeValue(valCv.code(), EvalOutcome.CONTROL_ENDED);
+        var res = EvalRes.of(cv, xx.scope);
+        return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
+      }
     }
     // Target: innermost Labeled level, name-matched for labeled returns. A
     // barrier on the way rejects the exit — control may not leave an
@@ -427,8 +457,8 @@ public final class ConstEval {
       var level = xx.scope.levels.get(i);
       switch (level) {
         case ScopeLevel.Labeled lb -> {
-          if (e.label() instanceof Opt.Some<String> want) {
-            if (lb.label instanceof Opt.Some<String> have && have.value().equals(want.value())) {
+          if (e.label().optIsSome()) {
+            if (lb.label.optIsSome() && lb.label.optUnwrap().equals(e.label().optUnwrap())) {
               target = lb;
             }
           } else {
@@ -443,8 +473,8 @@ public final class ConstEval {
     }
     if (target == null) {
       erb.errPush(
-          e.label() instanceof Opt.Some<String> lbl
-              ? "return: no enclosing scope with label '" + lbl.value() + "'"
+          e.label().optIsSome()
+              ? "return: no enclosing scope with label '" + e.label().optUnwrap() + "'"
               : "return: no enclosing control scope");
       return EResult.errs(erb.errors());
     }
@@ -460,10 +490,10 @@ public final class ConstEval {
     target.arrivals.add(
         new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
     var jumpOpt = erb.mustEr(xx.target.targetJump(loc, dest));
-    if (jumpOpt.isEmpty()) return EResult.errs(erb.errors());
+    if (jumpOpt.optIsNone()) return EResult.errs(erb.errors());
     var cv =
         new CodeValue(
-            Code.concat(loc, valCv.code(), jumpOpt.get()), EvalOutcome.CONTROL_ENDED);
+            Code.concat(loc, valCv.code(), jumpOpt.optUnwrap()), EvalOutcome.CONTROL_ENDED);
     var res = EvalRes.of(cv, xx.scope);
     return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
   }
@@ -493,31 +523,56 @@ public final class ConstEval {
       }
       if (pendingDiscard != null) {
         var dropOpt = erb.mustErMaybeUnreachable(Eval.dropValue(xx, sub.loc(), pendingDiscard));
-        if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
-        codes.add(dropOpt.get());
+        if (dropOpt.optIsNone()) return EResult.errs(erb.errors());
+        codes.add(dropOpt.optUnwrap());
         pendingDiscard = null;
       }
-      if (sub.variant() instanceof Expr.Bind bind) {
+      Opt<Expr.Bind> bindOpt = switch (sub.variant()) {
+        case Expr.Bind b -> Opt.some(b);
+        case Expr.As a -> Opt.none();
+        case Expr.Call c -> Opt.none();
+        case Expr.Field f -> Opt.none();
+        case Expr.Foreach f -> Opt.none();
+        case Expr.Graft.Pending p -> Opt.none();
+        case Expr.Graft.Evaluated g -> Opt.none();
+        case Expr.If i -> Opt.none();
+        case Expr.Labeled l -> Opt.none();
+        case Expr.Literal l -> Opt.none();
+        case Expr.Lower l -> Opt.none();
+        case Expr.Match m -> Opt.none();
+        case Expr.OperatorBinary o -> Opt.none();
+        case Expr.OperatorUnary o -> Opt.none();
+        case Expr.Record r -> Opt.none();
+        case Expr.Return r -> Opt.none();
+        case Expr.ScopeUse s -> Opt.none();
+        case Expr.Seq s -> Opt.none();
+        case Expr.Set s -> Opt.none();
+        case Expr.Stage s -> Opt.none();
+        case Expr.Try t -> Opt.none();
+        case Expr.Tuple t -> Opt.none();
+      };
+      if (bindOpt.optIsSome()) {
+        var bind = bindOpt.optUnwrap();
         var bopt = erb.mustCv(xx, constEvalOperand(xx, bind.base()));
         var vres = constEval(xx, bind.value());
-        if (vres.valueOrNull() == null) {
+        if (vres.valueOrNull().optIsNone()) {
           vres.drainInto(erb.errors());
           return EResult.errs(erb.errors());
         }
         vres.drainInto(erb.errors());
         var vev = vres.requireValue("constEvalSeq bind value");
         xx.scope.adopt(vev.scope());
-        if (bopt.isEmpty()) return EResult.errs(erb.errors());
-        var base = bopt.get();
+        if (bopt.optIsNone()) return EResult.errs(erb.errors());
+        var base = bopt.optUnwrap();
         var value = vev.cv();
-        if (!(base.value() instanceof Opt.Some<Value> baseV)) {
+        if (base.value().optIsNone()) {
           erb.errPush("Bind: base has no compile-time value");
           return EResult.errs(erb.errors());
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, sub.loc(), baseV.value()));
-        if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, sub.loc(), base.value().optUnwrap()));
+        if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         codes.add(base.code());
-        if (!(value.value() instanceof Opt.Some<Value> valV)) {
+        if (value.value().optIsNone()) {
           erb.errors()
               .add(
                   new ExprErr(
@@ -526,18 +581,18 @@ public final class ConstEval {
                           "Cannot bind result of expression that ends control flow"))));
           return EResult.errs(erb.errors());
         }
-        var valType = valV.value().valueType();
+        var valType = value.value().optUnwrap().valueType();
         var bindAspectOpt = erb.mustEr(GenAspectBind.get(xx, sub.loc(), valType));
-        if (bindAspectOpt.isEmpty()) return EResult.errs(erb.errors());
-        var brOpt = erb.mustEr(bindAspectOpt.get().aspectBindBind(xx, sub.loc(), value));
-        if (brOpt.isEmpty()) return EResult.errs(erb.errors());
-        var br = brOpt.get();
+        if (bindAspectOpt.optIsNone()) return EResult.errs(erb.errors());
+        var brOpt = erb.mustEr(bindAspectOpt.optUnwrap().aspectBindBind(xx, sub.loc(), value));
+        if (brOpt.optIsNone()) return EResult.errs(erb.errors());
+        var br = brOpt.optUnwrap();
         codes.add(br.code());
-        entries.add(xx.scope.pushNamed(ckOpt.get(), br.binding()));
+        entries.add(xx.scope.pushNamed(ckOpt.optUnwrap(), br.binding()));
         lastVal = Opt.some(emptyTupleValue());
       } else {
         var rres = constEval(xx, sub);
-        if (rres.valueOrNull() == null) {
+        if (rres.valueOrNull().optIsNone()) {
           rres.drainInto(erb.errors());
           return EResult.errs(erb.errors());
         }
@@ -546,18 +601,22 @@ public final class ConstEval {
         xx.scope.adopt(rev.scope());
         var r = rev.cv();
         codes.add(r.code());
-        if (r.outcome() instanceof EvalOutcome.ControlEnded) {
-          controlEnded = true;
-          lastVal = Opt.none();
-          continue;
+        switch (r.outcome()) {
+          case EvalOutcome.ControlEnded ce -> {
+            controlEnded = true;
+            lastVal = Opt.none();
+            continue;
+          }
+          case EvalOutcome.NoValue nv -> {}
+          case EvalOutcome.HasValue hv -> {}
         }
         pendingDiscard = r;
       }
     }
     if (pendingDiscard != null) {
       var dropOpt = erb.mustErMaybeUnreachable(Eval.dropValue(xx, loc, pendingDiscard));
-      if (dropOpt.isEmpty()) return EResult.errs(erb.errors());
-      codes.add(dropOpt.get());
+      if (dropOpt.optIsNone()) return EResult.errs(erb.errors());
+      codes.add(dropOpt.optUnwrap());
       pendingDiscard = null;
     }
     // Unwind binding entries innermost-first: normal drop from the final
@@ -566,8 +625,15 @@ public final class ConstEval {
     // bind — carries the current binding state.
     for (int i = entries.size() - 1; i >= 0; i--) {
       var top = xx.scope.levels.get(xx.scope.levels.size() - 1);
-      if (!(top instanceof ScopeLevel.Entry current)
-          || current.scopeLevelEmission() != entries.get(i).scopeLevelEmission()) {
+      ScopeLevel.Entry current;
+      switch (top) {
+        case ScopeLevel.Entry en -> current = en;
+        case ScopeLevel.Labeled lb -> throw new AssertionError("seq unwind: top level is not the expected entry");
+        case ScopeLevel.Temp t -> throw new AssertionError("seq unwind: top level is not the expected entry");
+        case ScopeLevel.Catch c -> throw new AssertionError("seq unwind: top level is not the expected entry");
+        case ScopeLevel.Finally f -> throw new AssertionError("seq unwind: top level is not the expected entry");
+      }
+      if (current.scopeLevelEmission() != entries.get(i).scopeLevelEmission()) {
         throw new AssertionError("seq unwind: top level is not the expected entry");
       }
       var closeCode = entryClose(xx, loc, current, erb);
@@ -576,10 +642,10 @@ public final class ConstEval {
       xx.scope.levels.remove(xx.scope.levels.size() - 1);
     }
     var seqOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, codes));
-    if (seqOpt.isEmpty()) return EResult.errs(erb.errors());
-    var innerCv = new CodeValue(seqOpt.get(),
-        lastVal instanceof Opt.Some<Value> lvs
-            ? EvalOutcome.ofValue(lvs.value())
+    if (seqOpt.optIsNone()) return EResult.errs(erb.errors());
+    var innerCv = new CodeValue(seqOpt.optUnwrap(),
+        lastVal.optIsSome()
+            ? EvalOutcome.ofValue(lastVal.optUnwrap())
             : (controlEnded ? EvalOutcome.CONTROL_ENDED : EvalOutcome.NO_VALUE));
     var innerRes = EvalRes.of(innerCv, xx.scope);
     return labeledConsume(
@@ -596,88 +662,88 @@ public final class ConstEval {
     return switch (op) {
       case ADD -> {
         var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorAddAdd(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorAddAdd(xx, loc, base, reference);
       }
       case SUB -> {
         var aopt = erb.mustEr(GenAspectOperatorSub.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorSubSub(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorSubSub(xx, loc, base, reference);
       }
       case MUL -> {
         var aopt = erb.mustEr(GenAspectOperatorMul.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorMulMul(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorMulMul(xx, loc, base, reference);
       }
       case DIV -> {
         var aopt = erb.mustEr(GenAspectOperatorDiv.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorDivDiv(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorDivDiv(xx, loc, base, reference);
       }
       case MOD -> {
         var aopt = erb.mustEr(GenAspectOperatorMod.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorModMod(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorModMod(xx, loc, base, reference);
       }
       case AND -> {
         var aopt = erb.mustEr(GenAspectOperatorAnd.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorAndAnd(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorAndAnd(xx, loc, base, reference);
       }
       case OR -> {
         var aopt = erb.mustEr(GenAspectOperatorOr.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorOrOr(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorOrOr(xx, loc, base, reference);
       }
       case XOR -> {
         var aopt = erb.mustEr(GenAspectOperatorXor.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorXorXor(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorXorXor(xx, loc, base, reference);
       }
       case SHL -> {
         var aopt = erb.mustEr(GenAspectOperatorShl.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorShlShl(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorShlShl(xx, loc, base, reference);
       }
       case SHR -> {
         var aopt = erb.mustEr(GenAspectOperatorShr.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorShrShr(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorShrShr(xx, loc, base, reference);
       }
       case USHR -> {
         var aopt = erb.mustEr(GenAspectOperatorUshr.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorUshrUshr(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorUshrUshr(xx, loc, base, reference);
       }
       case EQ -> {
         var aopt = erb.mustEr(GenAspectOperatorEq.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorEqEq(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorEqEq(xx, loc, base, reference);
       }
       case NE -> {
         var aopt = erb.mustEr(GenAspectOperatorNe.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorNeNe(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorNeNe(xx, loc, base, reference);
       }
       case LT -> {
         var aopt = erb.mustEr(GenAspectOperatorLt.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorLtLt(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorLtLt(xx, loc, base, reference);
       }
       case LE -> {
         var aopt = erb.mustEr(GenAspectOperatorLe.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorLeLe(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorLeLe(xx, loc, base, reference);
       }
       case GT -> {
         var aopt = erb.mustEr(GenAspectOperatorGt.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorGtGt(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorGtGt(xx, loc, base, reference);
       }
       case GE -> {
         var aopt = erb.mustEr(GenAspectOperatorGe.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorGeGe(xx, loc, base, reference);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorGeGe(xx, loc, base, reference);
       }
     };
   }
@@ -688,13 +754,13 @@ public final class ConstEval {
     return switch (op) {
       case NEG -> {
         var aopt = erb.mustEr(GenAspectOperatorNeg.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorNegNeg(xx, loc, base);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorNegNeg(xx, loc, base);
       }
       case BITNOT -> {
         var aopt = erb.mustEr(GenAspectOperatorBitNot.get(xx, loc, baseType));
-        if (aopt.isEmpty()) yield EResult.errs(erb.errors());
-        yield aopt.get().aspectOperatorBitNotBitNot(xx, loc, base);
+        if (aopt.optIsNone()) yield EResult.errs(erb.errors());
+        yield aopt.optUnwrap().aspectOperatorBitNotBitNot(xx, loc, base);
       }
     };
   }
@@ -711,27 +777,27 @@ public final class ConstEval {
         continue;
       }
       var kCv = kRes.requireValue("ConstEval::record key");
-      if (!kCv.code().isNone()) {
+      if (!kCv.code().codeIsNone()) {
         keyCodes.add(kCv.code());
       }
-      if (!(kCv.value() instanceof Opt.Some<Value> kv)) {
+      if (kCv.value().optIsNone()) {
         errors.add(
             new ExprErr(
                 loc,
                 TList.of(new ExprSubErr.Opaque("Record: key has no compile-time value"))));
         continue;
       }
-      var keyRes = Eval.extractConstKey(xx, loc, kv.value());
+      var keyRes = Eval.extractConstKey(xx, loc, kCv.value().optUnwrap());
       switch (keyRes) {
         case Result.Ok<ConstKey, String> ok -> {
           var valRes = elementResult(xx, constEvalOperand(xx, entry.value()));
-          if (!valRes.hasErrors() && valRes.valueOrNull() != null
-              && !(valRes.valueOrNull().value() instanceof Opt.Some<Value>)) {
+          if (!valRes.hasErrors() && valRes.valueOrNull().optIsSome()
+              && valRes.valueOrNull().optUnwrap().value().optIsNone()) {
             errors.add(
                 new ExprErr(
                     entry.value().loc(),
                     TList.of(new ExprSubErr.Opaque(
-                        "Record field '" + ok.value().toCanonical()
+                        "Record field '" + ok.value().constKeyToCanonical()
                             + "' does not fall through (contains an unreachable control"
                             + " jump like throw/panic); not valid in field position"))));
           } else {
@@ -759,17 +825,17 @@ public final class ConstEval {
     var erb = new Erb(loc);
     var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
     var ekopt = erb.mustCv(xx, constEvalOperand(xx, e.elementKey()));
-    if (bopt.isEmpty() || ekopt.isEmpty()) return EResult.errs(erb.errors());
-    var base = bopt.get();
-    var ekCv = ekopt.get();
+    if (bopt.optIsNone() || ekopt.optIsNone()) return EResult.errs(erb.errors());
+    var base = bopt.optUnwrap();
+    var ekCv = ekopt.optUnwrap();
     var ekv = (Opt.Some<Value>) ekCv.value();
     var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
-    if (ekOpt.isEmpty()) return EResult.errs(erb.errors());
+    if (ekOpt.optIsNone()) return EResult.errs(erb.errors());
     var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
     var iterOpt = erb.mustEr(GenAspectIterable.get(xx, loc, baseType));
-    if (iterOpt.isEmpty()) return EResult.errs(erb.errors());
-    var iterable = iterOpt.get();
+    if (iterOpt.optIsNone()) return EResult.errs(erb.errors());
+    var iterable = iterOpt.optUnwrap();
     var elementType = iterable.aspectIterableElementType();
     var elemBindRes = GenAspectElementUseDynamicBind.get(xx, loc, elementType);
     if (elemBindRes.hasErrors()) return elemBindRes.reerr();
@@ -789,12 +855,12 @@ public final class ConstEval {
     // exceptional unwinds discard the stack anyway. The element key is pushed
     // as a named entry immediately after so it shadows any outer name; the
     // iterator sits below.
-    var iterEntry = bodyScope.pushStackCleanup(new compilerxyz.eval.binding.BindingIteratorStack());
-    var elemEntry = bodyScope.pushNamed(ekOpt.get(), elementBinding);
+    var iterEntry = bodyScope.pushStackCleanup(new BindingIteratorStack());
+    var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
     var bodyXx = new ExprContext(
         bodyScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
     var bodyResult = constEval(bodyXx, e.body());
-    if (bodyResult.valueOrNull() == null) {
+    if (bodyResult.valueOrNull().optIsNone()) {
       bodyResult.drainInto(erb.errors());
       return EResult.errs(erb.errors());
     }
@@ -814,8 +880,8 @@ public final class ConstEval {
     if (mergeRes.hasErrors()) return mergeRes.reerr();
     xx.scope.adopt(bodyRanScope);
     var out = erb.mustErMaybeUnreachable(iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyEv.cv()));
-    if (out.isEmpty()) return EResult.errs(erb.errors());
-    var outCv = out.get();
+    if (out.optIsNone()) return EResult.errs(erb.errors());
+    var outCv = out.optUnwrap();
     outCv = new CodeValue(
         Code.concat(loc, outCv.code(), Code.concat(loc, elemSplice, iterSplice)),
         outCv.outcome());
@@ -827,26 +893,26 @@ public final class ConstEval {
     var erb = new Erb(loc);
     var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
     var ekopt = erb.mustCv(xx, constEvalOperand(xx, e.elementKey()));
-    if (bopt.isEmpty() || ekopt.isEmpty()) return EResult.errs(erb.errors());
-    var base = bopt.get();
-    var ekCv = ekopt.get();
+    if (bopt.optIsNone() || ekopt.optIsNone()) return EResult.errs(erb.errors());
+    var base = bopt.optUnwrap();
+    var ekCv = ekopt.optUnwrap();
     var ekv = (Opt.Some<Value>) ekCv.value();
     var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
-    if (ekOpt.isEmpty()) return EResult.errs(erb.errors());
-    var elementKey = ekOpt.get();
+    if (ekOpt.optIsNone()) return EResult.errs(erb.errors());
+    var elementKey = ekOpt.optUnwrap();
     var bv = (Opt.Some<Value>) base.value();
     var baseType = bv.value().valueType();
     var unionOpt = erb.mustEr(GenAspectUnion.get(xx, loc, baseType));
-    if (unionOpt.isEmpty()) return EResult.errs(erb.errors());
-    var variants = unionOpt.get().aspectUnionVariants();
+    if (unionOpt.optIsNone()) return EResult.errs(erb.errors());
+    var variants = unionOpt.optUnwrap().aspectUnionVariants();
     var caseTags = new TList<ConstKey>();
     for (var c : e.cases()) {
       var condOpt = erb.mustCv(xx, constEvalOperand(xx, c.condition()));
-      if (condOpt.isEmpty()) return EResult.errs(erb.errors());
-      var cv = (Opt.Some<Value>) condOpt.get().value();
+      if (condOpt.optIsNone()) return EResult.errs(erb.errors());
+      var cv = (Opt.Some<Value>) condOpt.optUnwrap().value();
       var tagOpt = erb.mustRes(Eval.extractConstKey(xx, loc, cv.value()));
-      if (tagOpt.isEmpty()) return EResult.errs(erb.errors());
-      var tag = tagOpt.get();
+      if (tagOpt.optIsNone()) return EResult.errs(erb.errors());
+      var tag = tagOpt.optUnwrap();
       boolean found = false;
       for (var info : variants) {
         if (info.key().equals(tag)) {
@@ -867,7 +933,7 @@ public final class ConstEval {
         break;
       }
     }
-    if (!exhaustive && !(e.fallback() instanceof Opt.Some<Expr>)) {
+    if (!exhaustive && e.fallback().optIsNone()) {
       for (var info : variants) {
         if (!caseTags.contains(info.key())) {
           erb.errPush("Non-exhaustive match: missing case for tag '" + info.key() + "'");
@@ -875,7 +941,7 @@ public final class ConstEval {
         }
       }
     }
-    if (exhaustive && e.fallback() instanceof Opt.Some<Expr>) {
+    if (exhaustive && e.fallback().optIsSome()) {
       erb.errPush("Exhaustive match must not have a fallback");
       return EResult.errs(erb.errors());
     }
@@ -884,7 +950,7 @@ public final class ConstEval {
     // across branches surface as a compile error at the merge.
     var initialScope = xx.scope.fork();
     var branchScopes = new TList<Scope>();
-    compilerxyz.eval.Type resultType = null;
+    Type resultType = null;
     boolean allControlEnded = true;
     var matchCases = new TList<TargetCase>(e.cases().size());
     for (int i = 0; i < e.cases().size(); i++) {
@@ -897,7 +963,7 @@ public final class ConstEval {
         }
       }
       if (variantIdx < 0) {
-        erb.errPush("Match: tag not found in union variants: " + tag.toCanonical());
+        erb.errPush("Match: tag not found in union variants: " + tag.constKeyToCanonical());
         return EResult.errs(erb.errors());
       }
       var variant = variants.get(variantIdx);
@@ -905,14 +971,14 @@ public final class ConstEval {
       var caseScope = initialScope.fork();
       ScopeLevel.Entry payloadEntry = null;
       var ibMaybe = GenAspectInitialBind.getMaybe(xx, variant.type());
-      if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
+      if (ibMaybe.optIsSome()) {
         payloadEntry = caseScope.pushNamed(
-            elementKey, ibSome.value().aspectInitialBindInitialBind(payloadBinding));
+            elementKey, ibMaybe.optUnwrap().aspectInitialBindInitialBind(payloadBinding));
       }
       var caseXx = new ExprContext(
           caseScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
       var bodyResult = constEval(caseXx, e.cases().get(i).body());
-      if (bodyResult.valueOrNull() == null) {
+      if (bodyResult.valueOrNull().optIsNone()) {
         bodyResult.drainInto(erb.errors());
         return EResult.errs(erb.errors());
       }
@@ -931,25 +997,25 @@ public final class ConstEval {
         popByBox(caseRanScope, payloadEntry);
       }
       branchScopes.add(caseRanScope);
-      if (bodyCv.value() instanceof Opt.Some<Value> bodyVal) {
+      if (bodyCv.value().optIsSome()) {
         allControlEnded = false;
         if (resultType == null) {
-          resultType = bodyVal.value().valueType();
+          resultType = bodyCv.value().optUnwrap().valueType();
         } else {
           var convertedOpt = erb.mustEr(Eval.typecheckConvert(caseXx, loc, resultType, bodyCv));
-          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-          bodyCv = convertedOpt.get();
+          if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+          bodyCv = convertedOpt.optUnwrap();
         }
       }
       matchCases.add(
           new TargetCase(variant.jsTag(), variant.type(), variantIdx, payloadBinding, bodyCv));
     }
     Opt<CodeValue> fallbackCv = Opt.none();
-    if (e.fallback() instanceof Opt.Some<Expr> someFallback) {
+    if (e.fallback().optIsSome()) {
       var fallbackXx = new ExprContext(
           initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
-      var fallbackResult = constEval(fallbackXx, someFallback.value());
-      if (fallbackResult.valueOrNull() == null) {
+      var fallbackResult = constEval(fallbackXx, e.fallback().optUnwrap());
+      if (fallbackResult.valueOrNull().optIsNone()) {
         fallbackResult.drainInto(erb.errors());
         return EResult.errs(erb.errors());
       }
@@ -957,14 +1023,14 @@ public final class ConstEval {
       var fallbackEv = fallbackResult.requireValue("constEvalMatch fallback");
       branchScopes.add(fallbackEv.scope());
       var fbCv = fallbackEv.cv();
-      if (fbCv.value() instanceof Opt.Some<Value> fbVal) {
+      if (fbCv.value().optIsSome()) {
         allControlEnded = false;
         if (resultType == null) {
-          resultType = fbVal.value().valueType();
+          resultType = fbCv.value().optUnwrap().valueType();
         } else {
           var convertedOpt = erb.mustEr(Eval.typecheckConvert(fallbackXx, loc, resultType, fbCv));
-          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-          fbCv = convertedOpt.get();
+          if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+          fbCv = convertedOpt.optUnwrap();
         }
       }
       fallbackCv = Opt.some(fbCv);
@@ -985,8 +1051,8 @@ public final class ConstEval {
       xx.scope.adopt(merged);
     }
     var out = erb.mustErMaybeUnreachable(xx.target.targetMatch(xx, loc, base, matchCases, fallbackCv));
-    if (out.isEmpty()) return EResult.errs(erb.errors());
-    var outCv = out.get();
+    if (out.optIsNone()) return EResult.errs(erb.errors());
+    var outCv = out.optUnwrap();
     var res = EvalRes.of(outCv, xx.scope);
     return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
   }
@@ -997,13 +1063,13 @@ public final class ConstEval {
     boolean allConst = true;
     for (var branch : e.conditions()) {
       var condOpt = erb.mustCv(xx, constEvalOperand(xx, branch.condition()));
-      if (condOpt.isEmpty()) return EResult.errs(erb.errors());
-      var cond = condOpt.get();
+      if (condOpt.optIsNone()) return EResult.errs(erb.errors());
+      var cond = condOpt.optUnwrap();
       var cv = (Opt.Some<Value>) cond.value();
       var condType = cv.value().valueType();
       var boolAspect = GenAspectBoolConst.getMaybe(xx, condType);
-      if (boolAspect instanceof Opt.Some<AspectBoolConst> some) {
-        var val = some.value().aspectBoolConstGet(cv.value());
+      if (boolAspect.optIsSome()) {
+        var val = boolAspect.optUnwrap().aspectBoolConstGet(cv.value());
         conditionsEvaluated.add(new IfEval(val, cond, branch.body()));
       } else {
         allConst = false;
@@ -1018,7 +1084,7 @@ public final class ConstEval {
         carried = Code.concat(loc, carried, ie.cond.code());
         if (ie.val) {
           var bodyResult = constEval(xx, ie.body);
-          if (bodyResult.valueOrNull() == null) {
+          if (bodyResult.valueOrNull().optIsNone()) {
             bodyResult.drainInto(erb.errors());
             return EResult.errs(erb.errors());
           }
@@ -1031,9 +1097,9 @@ public final class ConstEval {
           return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
         }
       }
-      if (e.else_() instanceof Opt.Some<Expr> els) {
-        var elseResult = constEval(xx, els.value());
-        if (elseResult.valueOrNull() == null) {
+      if (e.else_().optIsSome()) {
+        var elseResult = constEval(xx, e.else_().optUnwrap());
+        if (elseResult.valueOrNull().optIsNone()) {
           elseResult.drainInto(erb.errors());
           return EResult.errs(erb.errors());
         }
@@ -1045,20 +1111,20 @@ public final class ConstEval {
             elseEv.scope());
         return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
       }
-      return EResult.ok(EvalRes.of(new CodeValue(carried, EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(new compilerxyz.eval.value.null_.TypeNullConst(), null))), xx.scope));
+      return EResult.ok(EvalRes.of(new CodeValue(carried, EvalOutcome.ofValue(new ValueObjectConst(new TypeNullConst(), null))), xx.scope));
     }
     // Fork/merge scope across branches so any type mutations inside one
     // branch don't leak into siblings, and incompatible mutations across
     // branches surface as a compile error at the merge.
     var initialScope = xx.scope.fork();
     var branchScopes = new TList<Scope>();
-    compilerxyz.eval.Type resultType = null;
+    Type resultType = null;
     var branches = new TList<IfBranch>(conditionsEvaluated.size());
     for (var ie : conditionsEvaluated) {
       var branchXx = new ExprContext(
           initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
       var bodyResult = constEval(branchXx, ie.body);
-      if (bodyResult.valueOrNull() == null) {
+      if (bodyResult.valueOrNull().optIsNone()) {
         bodyResult.drainInto(erb.errors());
         return EResult.errs(erb.errors());
       }
@@ -1066,23 +1132,23 @@ public final class ConstEval {
       var bodyEv = bodyResult.requireValue("constEvalIf branch body");
       branchScopes.add(bodyEv.scope());
       var bodyCv = bodyEv.cv();
-      if (bodyCv.value() instanceof Opt.Some<Value> bodyVal) {
+      if (bodyCv.value().optIsSome()) {
         if (resultType == null) {
-          resultType = bodyVal.value().valueType();
+          resultType = bodyCv.value().optUnwrap().valueType();
         } else {
           var convertedOpt = erb.mustEr(Eval.typecheckConvert(branchXx, loc, resultType, bodyCv));
-          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-          bodyCv = convertedOpt.get();
+          if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+          bodyCv = convertedOpt.optUnwrap();
         }
       }
       branches.add(new IfBranch(ie.cond, bodyCv));
     }
     Opt<CodeValue> elseCv = Opt.none();
-    if (e.else_() instanceof Opt.Some<Expr> someElse) {
+    if (e.else_().optIsSome()) {
       var elseXx = new ExprContext(
           initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
-      var elseResult = constEval(elseXx, someElse.value());
-      if (elseResult.valueOrNull() == null) {
+      var elseResult = constEval(elseXx, e.else_().optUnwrap());
+      if (elseResult.valueOrNull().optIsNone()) {
         elseResult.drainInto(erb.errors());
         return EResult.errs(erb.errors());
       }
@@ -1090,13 +1156,13 @@ public final class ConstEval {
       var elseEv = elseResult.requireValue("constEvalIf else body");
       branchScopes.add(elseEv.scope());
       var eCv = elseEv.cv();
-      if (eCv.value() instanceof Opt.Some<Value> elseVal) {
+      if (eCv.value().optIsSome()) {
         if (resultType == null) {
-          resultType = elseVal.value().valueType();
+          resultType = eCv.value().optUnwrap().valueType();
         } else {
           var convertedOpt = erb.mustEr(Eval.typecheckConvert(elseXx, loc, resultType, eCv));
-          if (convertedOpt.isEmpty()) return EResult.errs(erb.errors());
-          eCv = convertedOpt.get();
+          if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+          eCv = convertedOpt.optUnwrap();
         }
       }
       elseCv = Opt.some(eCv);
@@ -1119,8 +1185,8 @@ public final class ConstEval {
       xx.scope.adopt(merged);
     }
     var out = erb.mustErMaybeUnreachable(xx.target.targetIf(xx, loc, branches, elseCv));
-    if (out.isEmpty()) return EResult.errs(erb.errors());
-    var outCv = out.get();
+    if (out.optIsNone()) return EResult.errs(erb.errors());
+    var outCv = out.optUnwrap();
     var res = EvalRes.of(outCv, xx.scope);
     return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
   }
@@ -1128,34 +1194,34 @@ public final class ConstEval {
   private record IfEval(boolean val, CodeValue cond, Expr body) {}
 
   private static EResult<EvalRes> constEvalTry(ExprContext xx, QExprId loc, Expr.Try e) {
-    if (!(e.catchClause() instanceof Opt.Some<Expr.TryCatch>)
-        && !(e.finallyBlock() instanceof Opt.Some<Expr>)) {
+    if (e.catchClause().optIsNone()
+        && e.finallyBlock().optIsNone()) {
       return EResult.err(loc, "Try requires at least one of catch/finally");
     }
     var erb = new Erb(loc);
-    Type bodyExcType;
-    if (e.catchClause() instanceof Opt.Some<Expr.TryCatch> catchSome) {
-      var catchObj = catchSome.value();
+    Opt<Type> bodyExcType;
+    if (e.catchClause().optIsSome()) {
+      var catchObj = e.catchClause().optUnwrap();
       var etCvOpt = erb.mustCv(xx, constEvalOperand(xx, catchObj.exceptionType()));
-      if (etCvOpt.isEmpty()) return EResult.errs(erb.errors());
-      var etCv = etCvOpt.get();
+      if (etCvOpt.optIsNone()) return EResult.errs(erb.errors());
+      var etCv = etCvOpt.optUnwrap();
       var etv = (Opt.Some<Value>) etCv.value();
       var etMeta = etv.value().valueType();
       var atOpt = erb.mustEr(GenAspectType.get(xx, loc, etMeta));
-      if (atOpt.isEmpty()) return EResult.errs(erb.errors());
-      bodyExcType = atOpt.get().aspectTypeType(etv.value());
+      if (atOpt.optIsNone()) return EResult.errs(erb.errors());
+      bodyExcType = Opt.some(atOpt.optUnwrap().aspectTypeType(etv.value()));
     } else {
       bodyExcType = xx.currentExceptionType;
     }
     // Levels: the finally participates in every chain crossing the try; the
     // catch terminates the exceptional chain for the body's extent only.
     ScopeLevel.Finally finallyLevel = null;
-    if (e.finallyBlock() instanceof Opt.Some<Expr>) {
+    if (e.finallyBlock().optIsSome()) {
       finallyLevel = xx.scope.pushFinally();
     }
     ScopeLevel.Catch catchLevel = null;
     JumpKey handlerKey = null;
-    if (e.catchClause() instanceof Opt.Some<Expr.TryCatch>) {
+    if (e.catchClause().optIsSome()) {
       handlerKey = new JumpKey();
       catchLevel = xx.scope.pushCatch(handlerKey);
     }
@@ -1166,7 +1232,7 @@ public final class ConstEval {
     var bodyXx = new ExprContext(
         xx.scope.fork(), xx.target, xx.vx, xx.importState, bodyExcType);
     var bodyResult = constEval(bodyXx, e.body());
-    if (bodyResult.valueOrNull() == null) {
+    if (bodyResult.valueOrNull().optIsNone()) {
       bodyResult.drainInto(erb.errors());
       return EResult.errs(erb.errors());
     }
@@ -1175,8 +1241,8 @@ public final class ConstEval {
     var bodyRanScope = bodyEv.scope();
     var bodyCv = bodyEv.cv();
     Type bodyType;
-    if (bodyCv.value() instanceof Opt.Some<Value> bv2) {
-      bodyType = bv2.value().valueType();
+    if (bodyCv.value().optIsSome()) {
+      bodyType = bodyCv.value().optUnwrap().valueType();
     } else {
       bodyType = null;
     }
@@ -1188,27 +1254,27 @@ public final class ConstEval {
       popByBox(bodyRanScope, catchLevel);
     }
     Opt<TryCatchClause> catch_ = Opt.none();
-    if (e.catchClause() instanceof Opt.Some<Expr.TryCatch> catchSome2) {
-      var catchObj = catchSome2.value();
+    if (e.catchClause().optIsSome()) {
+      var catchObj = e.catchClause().optUnwrap();
       var bnCvOpt = erb.mustCv(xx, constEvalOperand(xx, catchObj.bindingName()));
-      if (bnCvOpt.isEmpty()) return EResult.errs(erb.errors());
-      var bnCv = bnCvOpt.get();
+      if (bnCvOpt.optIsNone()) return EResult.errs(erb.errors());
+      var bnCv = bnCvOpt.optUnwrap();
       var bnv = (Opt.Some<Value>) bnCv.value();
       var bnCkOpt =
           erb.mustRes(Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
-      if (bnCkOpt.isEmpty()) return EResult.errs(erb.errors());
+      if (bnCkOpt.optIsNone()) return EResult.errs(erb.errors());
       var bindingId = BindingId.localFresh();
       var catchScope = xx.scope.fork();
       ScopeLevel.Entry payloadEntry = null;
-      var ibMaybe = GenAspectInitialBind.getMaybe(xx, bodyExcType);
-      if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
+      var ibMaybe = GenAspectInitialBind.getMaybe(xx, bodyExcType.optUnwrap());
+      if (ibMaybe.optIsSome()) {
         payloadEntry = catchScope.pushNamed(
-            bnCkOpt.get(), ibSome.value().aspectInitialBindInitialBind(bindingId));
+            bnCkOpt.optUnwrap(), ibMaybe.optUnwrap().aspectInitialBindInitialBind(bindingId));
       }
       var catchXx = new ExprContext(
           catchScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
       var catchResult = constEval(catchXx, catchObj.body());
-      if (catchResult.valueOrNull() == null) {
+      if (catchResult.valueOrNull().optIsNone()) {
         catchResult.drainInto(erb.errors());
         return EResult.errs(erb.errors());
       }
@@ -1228,15 +1294,15 @@ public final class ConstEval {
       mergeOthers.add(catchRanScope);
       var mergeRes = bodyRanScope.merge(xx, loc, mergeOthers);
       if (mergeRes.hasErrors()) return mergeRes.reerr();
-      if (bodyType != null && catchCv.value() instanceof Opt.Some<Value>) {
+      if (bodyType != null && catchCv.value().optIsSome()) {
         var convOpt = erb.mustErMaybeUnreachable(Eval.typecheckConvert(xx, loc, bodyType, catchCv));
-        if (convOpt.isEmpty()) return EResult.errs(erb.errors());
-        catchCv = convOpt.get();
+        if (convOpt.optIsNone()) return EResult.errs(erb.errors());
+        catchCv = convOpt.optUnwrap();
       }
-      if (!(resultValue instanceof Opt.Some<Value>)) {
+      if (resultValue.optIsNone()) {
         resultValue = catchCv.value();
       }
-      catch_ = Opt.some(new TryCatchClause(bindingId, bodyExcType, catchCv));
+      catch_ = Opt.some(new TryCatchClause(bindingId, bodyExcType.optUnwrap(), catchCv));
     }
     xx.scope.adopt(bodyRanScope);
     Opt<Code> finallyNormal = Opt.none();
@@ -1248,19 +1314,19 @@ public final class ConstEval {
       // A finally expression must complete normally: a throw or return (any
       // non-fall-through control exit) out of a finally is invalid.
       var finCvOpt = erb.mustCv(xx, constEvalOperand(xx, finSome.value()));
-      if (finCvOpt.isEmpty()) return EResult.errs(erb.errors());
-      var finCv = finCvOpt.get();
+      if (finCvOpt.optIsNone()) return EResult.errs(erb.errors());
+      var finCv = finCvOpt.optUnwrap();
       // A finally block has no result: whatever value it produced is dropped, so every exit path
       // leaves the stack exactly as it found it.
       var finallyDropOpt = erb.mustEr(Eval.dropValue(xx, loc, finCv));
-      if (finallyDropOpt.isEmpty()) return EResult.errs(erb.errors());
-      Code finallyDropCode = finallyDropOpt.get();
+      if (finallyDropOpt.optIsNone()) return EResult.errs(erb.errors());
+      Code finallyDropCode = finallyDropOpt.optUnwrap();
       Code combinedFinally;
-      if (!finallyDropCode.isNone()) {
+      if (!finallyDropCode.codeIsNone()) {
         var combinedOpt =
             erb.mustEr(xx.target.targetSeq(loc, TList.of(finCv.code(), finallyDropCode)));
-        if (combinedOpt.isEmpty()) return EResult.errs(erb.errors());
-        combinedFinally = combinedOpt.get();
+        if (combinedOpt.optIsNone()) return EResult.errs(erb.errors());
+        combinedFinally = combinedOpt.optUnwrap();
       } else {
         combinedFinally = finCv.code();
       }
@@ -1281,8 +1347,8 @@ public final class ConstEval {
                 catch_,
                 handlerKey == null ? Opt.<JumpKey>none() : Opt.some(handlerKey),
                 finallyNormal));
-    if (tryOpt.isEmpty()) return EResult.errs(erb.errors());
-    Code tryCode = tryOpt.get();
+    if (tryOpt.optIsNone()) return EResult.errs(erb.errors());
+    Code tryCode = tryOpt.optUnwrap();
     if (finallyLevel != null) {
       var finSplice = blocksSplice(xx, loc, finallyLevel.scopeLevelEmission().blocks, erb);
       if (finSplice == null) return EResult.errs(erb.errors());
@@ -1294,8 +1360,8 @@ public final class ConstEval {
       tryCode = Code.concat(loc, tryCode, catchSplice);
     }
     var innerCv = new CodeValue(tryCode,
-        resultValue instanceof Opt.Some<Value> rvs
-            ? EvalOutcome.ofValue(rvs.value())
+        resultValue.optIsSome()
+            ? EvalOutcome.ofValue(resultValue.optUnwrap())
             : EvalOutcome.NO_VALUE);
     var res = EvalRes.of(innerCv, xx.scope);
     return erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
@@ -1314,18 +1380,18 @@ public final class ConstEval {
     var lowerValues = new TList<CodeValue>(matchedLowers.size());
     for (var inner : matchedLowers) {
       var cvOpt = erb.mustCv(xx, constEvalOperand(xx, inner));
-      if (cvOpt.isEmpty()) return EResult.errs(erb.errors());
-      lowerValues.add(cvOpt.get());
+      if (cvOpt.optIsNone()) return EResult.errs(erb.errors());
+      lowerValues.add(cvOpt.optUnwrap());
     }
     var graftValues = new TList<CodeValue>(matchedGrafts.size());
     for (var inner : matchedGrafts) {
       var cvOpt = erb.mustCv(xx, constEvalOperand(xx, inner));
-      if (cvOpt.isEmpty()) return EResult.errs(erb.errors());
-      graftValues.add(cvOpt.get());
+      if (cvOpt.optIsNone()) return EResult.errs(erb.errors());
+      graftValues.add(cvOpt.optUnwrap());
     }
     var staged = erb.mustEr(xx.target.targetStage(xx, loc, e.expr(), lowerValues, graftValues));
-    if (staged.isEmpty()) return EResult.errs(erb.errors());
-    return EResult.ok(EvalRes.of(staged.get(), xx.scope));
+    if (staged.optIsNone()) return EResult.errs(erb.errors());
+    return EResult.ok(EvalRes.of(staged.optUnwrap(), xx.scope));
   }
 
   private static void findMatchedLowersInner(Expr expr, int sd, int ld, TList<Expr> out) {
@@ -1345,7 +1411,7 @@ public final class ConstEval {
       case Expr.ScopeUse ignored -> {}
       case Expr.Labeled lb -> findMatchedLowersInner(lb.inner(), sd, ld, out);
       case Expr.Return rt -> {
-        if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedLowersInner(someV.value(), sd, ld, out);
+        if (rt.value().optIsSome()) findMatchedLowersInner(rt.value().optUnwrap(), sd, ld, out);
       }
       case Expr.As as -> {
         findMatchedLowersInner(as.base(), sd, ld, out);
@@ -1384,8 +1450,8 @@ public final class ConstEval {
           findMatchedLowersInner(b.condition(), sd, ld, out);
           findMatchedLowersInner(b.body(), sd, ld, out);
         }
-        if (ifv.else_() instanceof Opt.Some<Expr> el) {
-          findMatchedLowersInner(el.value(), sd, ld, out);
+        if (ifv.else_().optIsSome()) {
+          findMatchedLowersInner(ifv.else_().optUnwrap(), sd, ld, out);
         }
       }
       case Expr.OperatorBinary o -> {
@@ -1405,19 +1471,20 @@ public final class ConstEval {
           findMatchedLowersInner(c.condition(), sd, ld, out);
           findMatchedLowersInner(c.body(), sd, ld, out);
         }
-        if (m.fallback() instanceof Opt.Some<Expr> f) {
-          findMatchedLowersInner(f.value(), sd, ld, out);
+        if (m.fallback().optIsSome()) {
+          findMatchedLowersInner(m.fallback().optUnwrap(), sd, ld, out);
         }
       }
       case Expr.Try tr -> {
         findMatchedLowersInner(tr.body(), sd, ld, out);
-        if (tr.catchClause() instanceof Opt.Some<Expr.TryCatch> cs) {
-          findMatchedLowersInner(cs.value().bindingName(), sd, ld, out);
-          findMatchedLowersInner(cs.value().exceptionType(), sd, ld, out);
-          findMatchedLowersInner(cs.value().body(), sd, ld, out);
+        if (tr.catchClause().optIsSome()) {
+          var cs = tr.catchClause().optUnwrap();
+          findMatchedLowersInner(cs.bindingName(), sd, ld, out);
+          findMatchedLowersInner(cs.exceptionType(), sd, ld, out);
+          findMatchedLowersInner(cs.body(), sd, ld, out);
         }
-        if (tr.finallyBlock() instanceof Opt.Some<Expr> f) {
-          findMatchedLowersInner(f.value(), sd, ld, out);
+        if (tr.finallyBlock().optIsSome()) {
+          findMatchedLowersInner(tr.finallyBlock().optUnwrap(), sd, ld, out);
         }
       }
     }
@@ -1436,7 +1503,7 @@ public final class ConstEval {
       case Expr.ScopeUse ignored -> {}
       case Expr.Labeled lb -> findMatchedGraftsInner(lb.inner(), sd, out);
       case Expr.Return rt -> {
-        if (rt.value() instanceof Opt.Some<Expr> someV) findMatchedGraftsInner(someV.value(), sd, out);
+        if (rt.value().optIsSome()) findMatchedGraftsInner(rt.value().optUnwrap(), sd, out);
       }
       case Expr.As as -> {
         findMatchedGraftsInner(as.base(), sd, out);
@@ -1475,8 +1542,8 @@ public final class ConstEval {
           findMatchedGraftsInner(b.condition(), sd, out);
           findMatchedGraftsInner(b.body(), sd, out);
         }
-        if (ifv.else_() instanceof Opt.Some<Expr> el) {
-          findMatchedGraftsInner(el.value(), sd, out);
+        if (ifv.else_().optIsSome()) {
+          findMatchedGraftsInner(ifv.else_().optUnwrap(), sd, out);
         }
       }
       case Expr.OperatorBinary o -> {
@@ -1496,19 +1563,20 @@ public final class ConstEval {
           findMatchedGraftsInner(c.condition(), sd, out);
           findMatchedGraftsInner(c.body(), sd, out);
         }
-        if (m.fallback() instanceof Opt.Some<Expr> f) {
-          findMatchedGraftsInner(f.value(), sd, out);
+        if (m.fallback().optIsSome()) {
+          findMatchedGraftsInner(m.fallback().optUnwrap(), sd, out);
         }
       }
       case Expr.Try tr -> {
         findMatchedGraftsInner(tr.body(), sd, out);
-        if (tr.catchClause() instanceof Opt.Some<Expr.TryCatch> cs) {
-          findMatchedGraftsInner(cs.value().bindingName(), sd, out);
-          findMatchedGraftsInner(cs.value().exceptionType(), sd, out);
-          findMatchedGraftsInner(cs.value().body(), sd, out);
+        if (tr.catchClause().optIsSome()) {
+          var cs = tr.catchClause().optUnwrap();
+          findMatchedGraftsInner(cs.bindingName(), sd, out);
+          findMatchedGraftsInner(cs.exceptionType(), sd, out);
+          findMatchedGraftsInner(cs.body(), sd, out);
         }
-        if (tr.finallyBlock() instanceof Opt.Some<Expr> f) {
-          findMatchedGraftsInner(f.value(), sd, out);
+        if (tr.finallyBlock().optIsSome()) {
+          findMatchedGraftsInner(tr.finallyBlock().optUnwrap(), sd, out);
         }
       }
     }

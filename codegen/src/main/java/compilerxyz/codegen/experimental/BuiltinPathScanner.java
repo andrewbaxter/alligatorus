@@ -15,6 +15,7 @@ import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
+import compilerxyz.util.Opt;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
@@ -26,7 +27,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Scans runtime source for {@code @BuiltinPath} on TYPE declarations (type leaves)
@@ -42,13 +42,13 @@ public final class BuiltinPathScanner {
   }
 
   public sealed interface Entry {
-    String path();
+    String entryPath();
   }
 
-  public record TypeLeaf(String path, ClassName typeClass) implements Entry {}
+  public record TypeLeaf(String entryPath, ClassName typeClass) implements Entry {}
 
   public record FunctionLeaf(
-      String path,
+      String entryPath,
       long scopeId,
       String methodName,
       String ownerInternalName,
@@ -83,19 +83,20 @@ public final class BuiltinPathScanner {
       TMap<String, String> imports,
       TList<Entry> out) {
     var simple = t.getNameAsString();
-    var path = pathFromAnnotation(t);
-    if (path != null) {
+    var pathOpt = pathFromAnnotation(t);
+    if (pathOpt.optIsSome()) {
       ClassName cn;
       if (enclosing.isEmpty()) cn = ClassName.get(pkg, simple);
       else cn = ClassName.get(pkg, enclosing, simple);
-      out.add(new TypeLeaf(path, cn));
+      out.add(new TypeLeaf(pathOpt.optUnwrap(), cn));
     }
     // Methods (only allow static)
     if (t instanceof ClassOrInterfaceDeclaration
-        || t instanceof com.github.javaparser.ast.body.RecordDeclaration) {
+        || t instanceof RecordDeclaration) {
       for (var m : t.getMethods()) {
-        var mpath = pathFromAnnotation(m);
-        if (mpath == null) continue;
+        var mpathOpt = pathFromAnnotation(m);
+        if (mpathOpt.optIsNone()) continue;
+        var mpath = mpathOpt.optUnwrap();
         var scopeId = scopeIdFromAnnotation(m);
         var args = new TList<NamedTypeRef>();
         var params = m.getParameters();
@@ -127,32 +128,32 @@ public final class BuiltinPathScanner {
     }
   }
 
-  private static java.util.Optional<AnnotationExpr> findBuiltinPath(
+  private static Opt<AnnotationExpr> findBuiltinPath(
       com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
     for (var a : node.getAnnotations()) {
       var n = a.getNameAsString();
       if (n.equals("BuiltinPath") || n.equals("compilerxyz.annotations.BuiltinPath")) {
-        return java.util.Optional.of(a);
+        return Opt.some(a);
       }
     }
-    return java.util.Optional.empty();
+    return Opt.none();
   }
 
-  private static @Nullable String pathFromAnnotation(
+  private static Opt<String> pathFromAnnotation(
       com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
     var opt = findBuiltinPath(node);
-    if (opt.isEmpty()) return null;
-    var ann = opt.get();
+    if (opt.optIsNone()) return Opt.none();
+    var ann = opt.optUnwrap();
     if (ann instanceof SingleMemberAnnotationExpr s) {
       var v = s.getMemberValue();
-      if (v instanceof StringLiteralExpr sl) return sl.asString();
+      if (v instanceof StringLiteralExpr sl) return Opt.some(sl.asString());
       throw new IllegalStateException("@BuiltinPath value must be string literal, got " + v);
     }
     if (ann instanceof NormalAnnotationExpr n) {
       for (var p : n.getPairs()) {
         if (p.getNameAsString().equals("value")) {
           var v = p.getValue();
-          if (v instanceof StringLiteralExpr sl) return sl.asString();
+          if (v instanceof StringLiteralExpr sl) return Opt.some(sl.asString());
           throw new IllegalStateException("@BuiltinPath value must be string literal, got " + v);
         }
       }
@@ -163,8 +164,8 @@ public final class BuiltinPathScanner {
   private static long scopeIdFromAnnotation(
       com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
     var opt = findBuiltinPath(node);
-    if (opt.isEmpty()) return 0L;
-    var ann = opt.get();
+    if (opt.optIsNone()) return 0L;
+    var ann = opt.optUnwrap();
     if (ann instanceof NormalAnnotationExpr n) {
       for (var p : n.getPairs()) {
         if (p.getNameAsString().equals("scopeId")) {

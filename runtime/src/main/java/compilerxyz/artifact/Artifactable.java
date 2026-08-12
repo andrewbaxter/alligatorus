@@ -11,5 +11,5 @@ import compilerxyz.eval.QExprId;
  * {@link compilerxyz.gen.Value} — Types can implement Artifactable directly without wrapping.
  */
 public interface Artifactable {
-  EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc);
+  EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc);
 }

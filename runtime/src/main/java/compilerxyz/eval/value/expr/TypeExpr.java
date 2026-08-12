@@ -39,7 +39,12 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.safejson.JsonValueNumber;
+import compilerxyz.safejson.JsonValueObject;
+import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -50,6 +55,15 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectType;
+import compilerxyz.eval.Code;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.object_.TypeObjectConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.TargetBindSub;
 
 @BuiltinFull(uniqueId = 6013L)
 @BuiltinPath("types.expr")
@@ -59,10 +73,10 @@ public record TypeExpr()
         Value,
         AspectArtifact,
         AspectBind,
-        compilerxyz.gen.AspectBindDynamic,
+        AspectBindDynamic,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectLift,
         AspectType,
@@ -70,8 +84,8 @@ public record TypeExpr()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.expr.StagedExprCell.class));
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.expr.StagedExprCell.class));
   }
 
   @Override
@@ -79,7 +93,7 @@ public record TypeExpr()
     return "expr";
   }
 
-  private static final compilerxyz.eval.value.object_.TypeObjectConst META = compilerxyz.eval.value.object_.TypeObjectConst.metaOf(TypeExpr.class, "expr");
+  private static final TypeObjectConst META = TypeObjectConst.metaOf(TypeExpr.class, "expr");
 
                 public Type valueType() {
     return META;
@@ -129,15 +143,19 @@ public record TypeExpr()
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeExpr());
-          }
-          return EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+          return switch (data) {
+            case JsonValueNull ignored -> EResult.ok(new TypeExpr());
+            case JsonValueBoolean ignored -> EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueNumber ignored -> EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueString ignored -> EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueArray ignored -> EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueObject ignored -> EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+          };
         }
       };
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY).optIsSome();
   }
 
@@ -148,10 +166,10 @@ public record TypeExpr()
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (!(cv.value() instanceof Opt.Some<Value> someVal)) {
+    if (cv.value().optIsNone()) {
       return EResult.ok(cv);
     }
-    var sourceValue = someVal.value();
+    var sourceValue = cv.value().optUnwrap();
     var sourceType = sourceValue.valueType();
     if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY).optIsSome()) {
       if (sourceValue instanceof Expr expr) {
@@ -166,12 +184,16 @@ public record TypeExpr()
 
   @Override
   public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    if (!(externalHostValue instanceof StagedExprCell cell)) {
+      ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    if (externalHostValue.optIsNone()) {
+      return EResult.err(loc, "TypeExpr::lift: expected StagedExprCell, got null");
+    }
+    var rawHostValue = externalHostValue.optUnwrap();
+    if (!(rawHostValue instanceof StagedExprCell cell)) {
       return EResult.err(
           loc,
           "TypeExpr::lift: expected StagedExprCell, got "
-              + (externalHostValue == null ? "null" : externalHostValue.getClass().getName()));
+              + rawHostValue.getClass().getName());
     }
     var inner = cell.value();
     if (!(inner instanceof Value value)) {
@@ -195,13 +217,13 @@ public record TypeExpr()
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
-    if (!(cv.value() instanceof Opt.Some<Value> some)) {
+    if (cv.value().optIsNone()) {
       return EResult.err(loc, "TypeExpr::toDynamic: CodeValue has no value to stage");
     }
-    var cell = new StagedExprCell(some.value());
-    var key = new compilerxyz.eval.dynamic.JavaBytecodeBindingKey();
+    var cell = new StagedExprCell(cv.value().optUnwrap());
+    var key = new JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(
         new EvalContext.ExternalEntry(key, this, new External(StagedExprCell.class, cell)));
@@ -209,15 +231,15 @@ public record TypeExpr()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.util.Opt<compilerxyz.gen.TargetBindSub>>
+  public compilerxyz.eval.EResult<compilerxyz.util.Opt<TargetBindSub>>
       aspectBindDynamicBindDynamic(
-          ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+          ExprContext xx, QExprId loc, CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
   }
 
   @Override
   public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override
@@ -227,34 +249,34 @@ public record TypeExpr()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.artifact.Artifact> exportArtifact(
-      compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc) {
-    return compilerxyz.gen.Value.super.exportArtifact(xx, loc);
+  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+      ExprContext xx, QExprId loc) {
+    return Value.super.artifactableExportArtifact(xx, loc);
   }
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 }

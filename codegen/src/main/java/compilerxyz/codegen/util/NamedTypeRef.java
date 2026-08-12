@@ -1,10 +1,10 @@
 package compilerxyz.codegen.util;
 
 import com.squareup.javapoet.CodeBlock;
-import org.jspecify.annotations.Nullable;
+import compilerxyz.util.Opt;
 
-public record NamedTypeRef(String name, TypeRef type, @Nullable CodeBlock derivedFrom) {
+public record NamedTypeRef(String name, TypeRef type, Opt<CodeBlock> derivedFrom) {
   public NamedTypeRef(String name, TypeRef type) {
-    this(name, type, null);
+    this(name, type, Opt.none());
   }
 }

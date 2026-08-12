@@ -1,7 +1,6 @@
 package compilerxyz.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
@@ -38,8 +37,12 @@ public final class T0040ListsTest {
                         mb.str("_"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok -> resOk = ok;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> throw new AssertionError("compile failed: " + res);
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("c_d_a_b", ok.logs().get(0).message());
   }

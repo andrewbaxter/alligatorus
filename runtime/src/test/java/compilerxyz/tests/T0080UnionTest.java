@@ -7,6 +7,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 import compilerxyz.util.TMap;
@@ -75,10 +76,10 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("y"), mb.str("to_string")),
                                     mb.tupleOf())))),
-                    null))));
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(res.resultIsOk(), () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
@@ -139,10 +140,10 @@ public final class T0080UnionTest {
                     TList.of(
                         new TestMb.Branch(
                             mb.str("strtag"), mb.call(mb.log(), mb.scopeUse("y")))),
-                    mb.call(mb.log(), mb.str("fallback"))))));
+                    Opt.some(mb.call(mb.log(), mb.str("fallback")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(res.resultIsOk(), () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
@@ -208,10 +209,10 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("y"), mb.str("to_string")),
                                     mb.tupleOf())))),
-                    null))));
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error but got: " + res);
+    assertTrue(res.resultIsErr(), () -> "expected compile error but got: " + res);
   }
 
   @Test
@@ -275,9 +276,9 @@ public final class T0080UnionTest {
                                 mb.call(
                                     mb.field(mb.scopeUse("y"), mb.str("to_string")),
                                     mb.tupleOf())))),
-                    mb.call(mb.log(), mb.str("fallback"))))));
+                    Opt.some(mb.call(mb.log(), mb.str("fallback")))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error but got: " + res);
+    assertTrue(res.resultIsErr(), () -> "expected compile error but got: " + res);
   }
 }

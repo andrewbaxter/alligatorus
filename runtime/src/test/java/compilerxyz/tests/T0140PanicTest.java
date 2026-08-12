@@ -7,6 +7,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
+import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
@@ -69,7 +70,7 @@ public final class T0140PanicTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Ok<?, ?> ok -> false; case Result.Err<?, ?> err -> true; },
         () ->
             "panic from called function should propagate as uncaught runtime exception; got: "
                 + res);
@@ -90,15 +91,15 @@ public final class T0140PanicTest {
                 mb.bind("f", panickyFn(mb, "uncatchable")),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("f"), mb.tupleOf()),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.builtin("types", "string"),
-                        mb.call(mb.log(), mb.str("caught"))),
-                    null))));
+                        mb.call(mb.log(), mb.str("caught")))),
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Ok<?, ?> ok -> false; case Result.Err<?, ?> err -> true; },
         () -> "panic should propagate through user try/catch; got: " + res);
     var combined = res.toString();
     assertTrue(
@@ -120,15 +121,15 @@ public final class T0140PanicTest {
                 mb.bind("f", panickyFnWithExceptionType(mb, "inner panic")),
                 mb.tryCatchFinally(
                     mb.call(mb.scopeUse("f"), mb.tupleOf()),
-                    new TestMb.Catch(
+                    Opt.some(new TestMb.Catch(
                         "e",
                         mb.builtin("types", "string"),
-                        mb.call(mb.log(), mb.str("caught"))),
-                    null))));
+                        mb.call(mb.log(), mb.str("caught")))),
+                    Opt.none()))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>,
+        switch (res) { case Result.Ok<?, ?> ok -> false; case Result.Err<?, ?> err -> true; },
         () ->
             "panic inside a function declaring its own exception type should still propagate"
                 + " through the auto-injected cast_exception try/catch; got: "

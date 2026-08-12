@@ -7,11 +7,11 @@ public sealed interface SourceSpecAbsolute {
 
   record Remote(String baseUrl, HashValue hash, String subpath) implements SourceSpecAbsolute {}
 
-  default String specKey() {
+  default String sourceSpecAbsoluteSpecKey() {
     return switch (this) {
       case Virtual v -> "virtual:" + v.name();
       case Local l -> "local:" + l.path();
-      case Remote r -> "remote:" + r.baseUrl() + "#" + r.hash().hashKey() + "!" + r.subpath();
+      case Remote r -> "remote:" + r.baseUrl() + "#" + r.hash().hashValueHashKey() + "!" + r.subpath();
     };
   }
 }

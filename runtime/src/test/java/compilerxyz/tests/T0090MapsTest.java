@@ -52,7 +52,7 @@ public final class T0090MapsTest {
                                 mb.tupleOf())))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(4, ok.logs().size());
     assertEquals("a", ok.logs().get(0).message());
@@ -96,7 +96,7 @@ public final class T0090MapsTest {
                             mb.field(mb.scopeUse("entry"), mb.str("value"))))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> o -> true; case Result.Err<?, ?> e -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(4, ok.logs().size());
     assertEquals("x", ok.logs().get(0).message());

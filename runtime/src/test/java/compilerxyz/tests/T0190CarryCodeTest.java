@@ -7,6 +7,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
+import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
@@ -59,9 +60,15 @@ public final class T0190CarryCodeTest {
     modules.put("main", new SourceModule.V1(mb.seq(exprs)));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> okRes = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {
+        assertTrue(false, () -> "compile failed: " + e);
+        throw new AssertionError();
+      }
+    }
+    var ok = okRes.value();
     var out = new TList<String>();
     for (var log : ok.logs()) out.add(log.message());
     return out;
@@ -133,7 +140,7 @@ public final class T0190CarryCodeTest {
                     new TestMb.Branch(
                         mb.operatorEq(carrying(mb, "b", mb.num(1.0)), mb.num(1.0)),
                         mb.call(mb.log(), mb.str("then")))),
-                mb.call(mb.log(), mb.str("else")))));
+                Opt.some(mb.call(mb.log(), mb.str("else"))))));
   }
 
   @Test
@@ -260,7 +267,7 @@ public final class T0190CarryCodeTest {
                     new TestMb.Branch(
                         mb.operatorLt(mb.num(0.0), carryingDynamicInt(mb, "b", 1.0)),
                         mb.call(mb.log(), mb.str("lt-then")))),
-                mb.call(mb.log(), mb.str("lt-else")))));
+                Opt.some(mb.call(mb.log(), mb.str("lt-else"))))));
   }
 
   @Test
@@ -285,7 +292,7 @@ public final class T0190CarryCodeTest {
                     new TestMb.Branch(
                         mb.operatorEq(carryingDynamicInt(mb, "b", 1.0), mb.num(1.0)),
                         mb.call(mb.log(), mb.str("then")))),
-                mb.call(mb.log(), mb.str("else")))));
+                Opt.some(mb.call(mb.log(), mb.str("else"))))));
   }
 
   @Test
@@ -411,9 +418,10 @@ public final class T0190CarryCodeTest {
             mb,
             mb.tryExpr(
                 mb.call(mb.log(), carrying(mb, "b", mb.str("try"))),
-                new SourceExpr.TryCatch(
-                    mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught"))),
-                mb.call(mb.log(), mb.str("fin")))));
+                Opt.some(
+                    new SourceExpr.TryCatch(
+                        mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught")))),
+                Opt.some(mb.call(mb.log(), mb.str("fin"))))));
   }
 
   @Test
@@ -425,9 +433,10 @@ public final class T0190CarryCodeTest {
             mb,
             mb.tryExpr(
                 mb.call(mb.log(), mb.str("body")),
-                new SourceExpr.TryCatch(
-                    mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught"))),
-                mb.call(mb.log(), carrying(mb, "b", mb.str("fin"))))));
+                Opt.some(
+                    new SourceExpr.TryCatch(
+                        mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught")))),
+                Opt.some(mb.call(mb.log(), carrying(mb, "b", mb.str("fin")))))));
   }
 
   @Test
@@ -438,8 +447,8 @@ public final class T0190CarryCodeTest {
             mb,
             mb.tryExpr(
                 mb.call(mb.log(), mb.str("body")),
-                null,
-                mb.call(mb.log(), carrying(mb, "b", mb.str("fin"))))));
+                Opt.none(),
+                Opt.some(mb.call(mb.log(), carrying(mb, "b", mb.str("fin")))))));
   }
 
   @Test
@@ -447,7 +456,7 @@ public final class T0190CarryCodeTest {
     var mb = new TestMb();
     // No carrying constant at all: a plain dynamic statement inside finally.
     assertPushed(
-        run(mb, mb.tryExpr(mb.call(mb.log(), mb.str("body")), null, push(mb, "b"))));
+        run(mb, mb.tryExpr(mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(push(mb, "b")))));
   }
 
   @Test
@@ -458,8 +467,8 @@ public final class T0190CarryCodeTest {
             mb,
             mb.tryExpr(
                 mb.call(mb.log(), carrying(mb, "b", mb.str("try"))),
-                null,
-                mb.call(mb.log(), mb.str("fin")))));
+                Opt.none(),
+                Opt.some(mb.call(mb.log(), mb.str("fin"))))));
   }
 
   /** A user-defined (define'd) string -> string function bound as {@code my_func}. */

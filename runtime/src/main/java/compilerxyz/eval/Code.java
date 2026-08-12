@@ -4,6 +4,7 @@ import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 
 @BuiltinFull(uniqueId = 6016L)
 @BuiltinPath("types.code")
@@ -15,13 +16,18 @@ public sealed interface Code permits Code.None, Code.Target {
   record Target(TargetCode impl) implements Code {
   }
 
-  default CodeDynamic dynamic() {
-    if (this instanceof Target t && t.impl() instanceof CodeDynamic cd) return cd;
-    return null;
+  default CodeDynamic codeDynamic() {
+    return switch (this) {
+      case Code.Target t -> t.impl() instanceof CodeDynamic cd ? cd : null;
+      case Code.None n -> null;
+    };
   }
 
-  default boolean isNone() {
-    return this instanceof None;
+  default boolean codeIsNone() {
+    return switch (this) {
+      case Code.None n -> true;
+      case Code.Target t -> false;
+    };
   }
 
   static Code none(QExprId loc) {
@@ -45,21 +51,21 @@ public sealed interface Code permits Code.None, Code.Target {
    * is produced from operands that may each carry code of their own.
    */
   static Code concat(QExprId loc, Code first, Code second) {
-    var firstDyn = first.dynamic();
-    var secondDyn = second.dynamic();
+    var firstDyn = first.codeDynamic();
+    var secondDyn = second.codeDynamic();
     if (firstDyn == null) return secondDyn == null ? first : second;
     if (secondDyn == null) return first;
-    var seq = new compilerxyz.eval.dynamic.JavaBytecodeSequence();
+    var seq = new JavaBytecodeSequence();
     seq.add(firstDyn);
     seq.add(secondDyn);
     return of(loc, new CodeDynamic(loc, seq));
   }
 
   static TargetCode targetImpl(Code code) {
-    if (!(code instanceof Target t)) {
-      throw new IllegalStateException(
-          "Code::targetImpl: code is " + code.getClass().getSimpleName() + ", not Target");
-    }
-    return t.impl();
+    return switch (code) {
+      case Code.Target t -> t.impl();
+      case Code.None n -> throw new IllegalStateException(
+          "Code::targetImpl: code is None, not Target");
+    };
   }
 }

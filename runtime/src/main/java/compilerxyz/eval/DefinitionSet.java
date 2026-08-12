@@ -26,7 +26,6 @@ import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.Value;
 import static compilerxyz.util.MustCast.mustCast;
 
@@ -64,19 +63,19 @@ public final class DefinitionSet implements ExporterAny {
     }
     for (long objIdx = 0; objIdx < objects.size(); objIdx++) {
       var obj = objects.get((int) objIdx);
-      var underlyingType = obj.underlyingType;
-      if (underlyingType == null) {
+      if (obj.underlyingType.optIsNone()) {
         return EResult.err(
-            loc, "Object '" + obj.name + "' underlying type not finalised before finish");
+            loc, "Object '" + obj.name.optUnwrapOr("(unnamed)") + "' underlying type not finalised before finish");
       }
-      if (obj.setId == null) {
+      var underlyingType = obj.underlyingType.optUnwrap();
+      if (obj.setId.optIsNone()) {
         throw new AssertionError(
-            "DefinitionSet.finish: source object '" + obj.name + "' has null setId");
+            "DefinitionSet.finish: source object '" + obj.name.optUnwrapOr("(unnamed)") + "' has null setId");
       }
       var objInternalName =
-          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId, objIdx);
+          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId.optUnwrap(), objIdx);
       for (var method : obj.methods) {
-        var nameStr = obj.name != null ? obj.name : "(unnamed)";
+        var nameStr = obj.name.optUnwrapOr("(unnamed)");
         var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
         if (r.hasErrors()) return r.reerr();
       }
@@ -107,32 +106,31 @@ public final class DefinitionSet implements ExporterAny {
     return EResult.ok(null);
   }
 
-  public DefSetFunctionsEmitter.@Nullable EmittedFunctions finishFunctions() {
+  public Opt<DefSetFunctionsEmitter.EmittedFunctions> finishFunctions() {
     var specs = new TList<DefSetFunctionsEmitter.FunctionSpec>();
     var contributors = new TList<SourceFunctionData>();
     for (var func : functions) {
       var spec = func.functionSpec;
-      if (spec == null) {
+      if (spec.optIsNone()) {
         continue;
       }
-      if (func.compiledClassName != null) {
-
+      if (func.compiledClassName.optIsSome()) {
         continue;
       }
-      specs.add(spec);
+      specs.add(spec.optUnwrap());
       contributors.add(func);
     }
     if (specs.isEmpty()) {
-      return null;
+      return Opt.none();
     }
     var emitted = DefSetFunctionsEmitter.emit(defSetId, specs);
     for (var func : contributors) {
-      func.compiledClassName = emitted.binaryName();
-      func.compiledBytecode = emitted.bytecode();
-      func.compiledStaticFieldValues = emitted.staticFieldValues();
-      func.functionSpec = null;
+      func.compiledClassName = Opt.some(emitted.binaryName());
+      func.compiledBytecode = Opt.some(emitted.bytecode());
+      func.compiledStaticFieldValues = Opt.some(emitted.staticFieldValues());
+      func.functionSpec = Opt.none();
     }
-    return emitted;
+    return Opt.some(emitted);
   }
 
   public EResult<Void> checkMutable(QExprId loc) {
@@ -172,7 +170,7 @@ public final class DefinitionSet implements ExporterAny {
                     var objects = new TList<Artifact>(set.objects.size());
                     for (var dt : set.objects) {
                       var dtConst = new TypeTypeSourceObjectConst(dt);
-                      var artRes = dtConst.exportArtifact(xx, loc);
+                      var artRes = dtConst.artifactableExportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         objects.add(
@@ -182,7 +180,7 @@ public final class DefinitionSet implements ExporterAny {
                     var functions = new TList<Artifact>(set.functions.size());
                     for (var f : set.functions) {
                       var fConst = new TypeSourceFunctionConst(f);
-                      var artRes = fConst.exportArtifact(xx, loc);
+                      var artRes = fConst.artifactableExportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         functions.add(
@@ -192,7 +190,7 @@ public final class DefinitionSet implements ExporterAny {
                     var interfaces = new TList<Artifact>(set.interfaces.size());
                     for (var i : set.interfaces) {
                       var iConst = new TypeSourceInterfaceDynamic(i);
-                      var artRes = iConst.exportArtifact(xx, loc);
+                      var artRes = iConst.artifactableExportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         interfaces.add(
@@ -202,7 +200,7 @@ public final class DefinitionSet implements ExporterAny {
                     var unions = new TList<Artifact>(set.unions.size());
                     for (var u : set.unions) {
                       var uConst = new TypeTypeSourceUnionConst(u);
-                      var artRes = uConst.exportArtifact(xx, loc);
+                      var artRes = uConst.artifactableExportArtifact(xx, loc);
                       artRes.drainInto(errors);
                       if (artRes.valueOrNull() != null) {
                         unions.add(artRes.requireValue("DefinitionSet::exporterExport union"));
@@ -238,10 +236,10 @@ public final class DefinitionSet implements ExporterAny {
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (!(id instanceof Opt.Some<ArtifactIdSource> idSome)) {
+          if (id.optIsNone()) {
             return EResult.err(loc, "DefinitionSet requires an artifact id to deserialize");
           }
-          var idValue = idSome.value();
+          var idValue = id.optUnwrap();
           return ArtifactSupport.implImportIndependentArtifact(
               xx,
               loc,

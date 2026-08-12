@@ -8,6 +8,8 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.Type;
 
 public final class SourceUnionEmitter {
   private SourceUnionEmitter() {}
@@ -37,7 +39,7 @@ public final class SourceUnionEmitter {
   public static final String PAYLOAD_FIELD = "payload";
 
   public static EmittedSourceUnion emit(
-      compilerxyz.eval.ExprContext xx, DefSetId defSet, long unionIndex, TypeSourceUnionDynamic data) {
+      ExprContext xx, DefSetId defSet, long unionIndex, TypeSourceUnionDynamic data) {
     var baseBinaryName = baseBinaryNameFor(defSet, unionIndex);
     var baseInternalName = baseBinaryName.replace('.', '/');
 
@@ -63,7 +65,7 @@ public final class SourceUnionEmitter {
         baseBinaryName, baseBytecode, variantBinaryNames, variantBytecode);
   }
 
-  public static JavaDataDescriptor payloadDescriptor(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type type) {
+  public static JavaDataDescriptor payloadDescriptor(ExprContext xx, Type type) {
     return switch (GenAspectConsumeDynamic.getMaybe(xx, type)) {
       case Opt.Some<AspectConsumeDynamic> some -> some.value().aspectConsumeDynamicJvmClass(xx);
       case Opt.None<AspectConsumeDynamic> n -> JvmConstants.DESC_OBJECT;

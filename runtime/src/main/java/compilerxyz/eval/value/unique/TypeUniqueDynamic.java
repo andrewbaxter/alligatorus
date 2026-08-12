@@ -45,9 +45,12 @@ import compilerxyz.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
 import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
+import compilerxyz.safejson.JsonValueString;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
 import compilerxyz.gen.GenAspectArtifact;
@@ -63,6 +66,10 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.TargetBindSub;
+import compilerxyz.eval.EvalContext;
+import compilerxyz.eval.value.bool_.TypeBoolConst;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 
 @BuiltinFull(uniqueId = 6003L)
 public record TypeUniqueDynamic()
@@ -72,7 +79,7 @@ public record TypeUniqueDynamic()
         AspectBind,
         AspectConsumeDynamic,
         AspectDropDynamicLight,
-        compilerxyz.gen.AspectElementUseDynamicBind,
+        AspectElementUseDynamicBind,
         AspectInitialBind,
         AspectOperatorEq,
         AspectStackValueDynamic,
@@ -82,8 +89,8 @@ public record TypeUniqueDynamic()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class);
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromClass(compilerxyz.eval.Unique.class);
   }
 
   @Override
@@ -125,7 +132,7 @@ public record TypeUniqueDynamic()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+          if (self instanceof ValueObjectConst v
               && v.data() instanceof Unique u) {
             data = encodeUnique(u);
           } else if (self instanceof TypeUniqueDynamic) {
@@ -140,21 +147,24 @@ public record TypeUniqueDynamic()
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (data instanceof JsonValueNull) {
-            return EResult.ok(new TypeUniqueDynamic());
-          }
-          if (data instanceof JsonValueObject obj) {
-            var decoded = decodeUnique(loc, obj);
-            if (decoded.hasErrors()) {
-              return EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: malformed");
+          return switch (data) {
+            case JsonValueNull n -> EResult.ok(new TypeUniqueDynamic());
+            case JsonValueObject obj -> {
+              var decoded = decodeUnique(loc, obj);
+              if (decoded.hasErrors()) {
+                yield EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: malformed");
+              }
+              yield EResult.ok(
+                  new ValueObjectConst(
+                      new TypeUniqueDynamic(),
+                      decoded.requireValue(
+                          "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded")));
             }
-            return EResult.ok(
-                new compilerxyz.eval.value.object_.ValueObjectConst(
-                    new TypeUniqueDynamic(),
-                    decoded.requireValue(
-                        "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded")));
-          }
-          return EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueBoolean b -> EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueNumber n -> EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueString s -> EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+            case JsonValueArray a -> EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
+          };
         }
       };
 
@@ -183,28 +193,76 @@ public record TypeUniqueDynamic()
     if (obj.entries().size() != 1) return EResult.err(loc, "expected tagged object");
     var entry = obj.entries().entrySet().iterator().next();
     var tag = entry.getKey();
-    if (!(entry.getValue() instanceof JsonValueObject inner)) {
-      return EResult.err(loc, "expected inner object");
+    JsonValueObject inner;
+    switch (entry.getValue()) {
+      case JsonValueObject o -> inner = o;
+      case JsonValueNull jn -> { return EResult.err(loc, "expected inner object"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "expected inner object"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "expected inner object"); }
+      case JsonValueString s -> { return EResult.err(loc, "expected inner object"); }
+      case JsonValueArray a -> { return EResult.err(loc, "expected inner object"); }
     }
     return switch (tag) {
       case "builtin" -> {
-        if (inner.entries().get("id") instanceof JsonValueNumber n) {
-          yield EResult.ok(new Unique.Builtin((long) n.value()));
-        }
-        yield EResult.err(loc, "builtin: missing id");
+        var idRaw = inner.entries().get("id");
+        if (idRaw == null) yield EResult.err(loc, "builtin: missing id");
+        else yield switch (idRaw) {
+          case JsonValueNumber n -> EResult.ok(new Unique.Builtin((long) n.value()));
+          case JsonValueNull jn -> EResult.err(loc, "builtin: missing id");
+          case JsonValueBoolean b -> EResult.err(loc, "builtin: missing id");
+          case JsonValueString s -> EResult.err(loc, "builtin: missing id");
+          case JsonValueArray a -> EResult.err(loc, "builtin: missing id");
+          case JsonValueObject o -> EResult.err(loc, "builtin: missing id");
+        };
       }
       case "source" -> {
-        if (inner.entries().get("compile_id") instanceof JsonValueObject ci
-            && inner.entries().get("id") instanceof JsonValueNumber n
-            && ci.entries().get("import_state") instanceof JsonValueNumber is
-            && ci.entries().get("source") instanceof JsonValueNumber src) {
-          yield EResult.ok(
-              new Unique.Source(
-                  new CompileId(
-                      new ImportStateId((long) is.value()), new SourceId((long) src.value())),
-                  (long) n.value()));
+        var ciRaw = inner.entries().get("compile_id");
+        var idRaw = inner.entries().get("id");
+        if (ciRaw == null || idRaw == null) yield EResult.err(loc, "source: malformed compile_id/id");
+        JsonValueObject ci;
+        switch (ciRaw) {
+          case JsonValueObject o -> ci = o;
+          case JsonValueNull jn -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueBoolean b -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueNumber n -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueString s -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueArray a -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
         }
-        yield EResult.err(loc, "source: malformed compile_id/id");
+        long nVal;
+        switch (idRaw) {
+          case JsonValueNumber n -> nVal = (long) n.value();
+          case JsonValueNull jn -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueBoolean b -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueString s -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueArray a -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueObject o -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+        }
+        var isRaw = ci.entries().get("import_state");
+        var srcRaw = ci.entries().get("source");
+        if (isRaw == null || srcRaw == null) yield EResult.err(loc, "source: malformed compile_id/id");
+        long isVal;
+        switch (isRaw) {
+          case JsonValueNumber n -> isVal = (long) n.value();
+          case JsonValueNull jn -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueBoolean b -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueString s -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueArray a -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueObject o -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+        }
+        long srcVal;
+        switch (srcRaw) {
+          case JsonValueNumber n -> srcVal = (long) n.value();
+          case JsonValueNull jn -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueBoolean b -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueString s -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueArray a -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+          case JsonValueObject o -> { yield EResult.err(loc, "source: malformed compile_id/id"); }
+        }
+        yield EResult.ok(
+            new Unique.Source(
+                new CompileId(
+                    new ImportStateId(isVal), new SourceId(srcVal)),
+                nVal));
       }
       default -> EResult.err(loc, "unknown unique tag: " + tag);
     };
@@ -238,9 +296,9 @@ public record TypeUniqueDynamic()
 
   @Override
   public EResult<Value> aspectLiftLift(
-      ExprContext xx, QExprId loc, @org.jspecify.annotations.Nullable Object externalHostValue) {
-    var u = compilerxyz.util.MustCast.mustCast(Unique.class, externalHostValue);
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(new TypeUniqueConst(), u));
+      ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    var u = compilerxyz.util.MustCast.mustCast(Unique.class, externalHostValue.optUnwrap());
+    return EResult.ok(new ValueObjectConst(new TypeUniqueConst(), u));
   }
 
   @Override
@@ -248,22 +306,21 @@ public record TypeUniqueDynamic()
       ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
     var b = extractUnique(base);
     var r = extractUnique(reference);
-    if (b instanceof Opt.Some<Unique> bs && r instanceof Opt.Some<Unique> rs) {
+    if (b.optIsSome() && r.optIsSome()) {
       return EResult.ok(
           new CodeValue(Code.none(loc), EvalOutcome.ofValue(
-              new compilerxyz.eval.value.object_.ValueObjectConst(
-                  new compilerxyz.eval.value.bool_.TypeBoolConst(),
-                  bs.value().equals(rs.value())))));
+              new ValueObjectConst(
+                  new TypeBoolConst(),
+                  b.optUnwrap().equals(r.optUnwrap())))));
     }
-    if (!(base.value() instanceof Opt.Some<Value> baseSome)
-        || !(reference.value() instanceof Opt.Some<Value> refSome)) {
+    if (base.value().optIsNone() || reference.value().optIsNone()) {
       return EResult.err(loc, "TypeUniqueDynamic::eq: operand has no value");
     }
-    var baseAspRes = GenAspectConsumeDynamic.get(xx, loc, baseSome.value().valueType());
+    var baseAspRes = GenAspectConsumeDynamic.get(xx, loc, base.value().optUnwrap().valueType());
     if (baseAspRes.hasErrors()) return baseAspRes.reerr();
     var baseDyn = baseAspRes.requireValue("TypeUniqueDynamic::eq base aspect").aspectConsumeDynamicToDynamic(xx, loc, base);
     if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: base lowering failed");
-    var refAspRes = GenAspectConsumeDynamic.get(xx, loc, refSome.value().valueType());
+    var refAspRes = GenAspectConsumeDynamic.get(xx, loc, reference.value().optUnwrap().valueType());
     if (refAspRes.hasErrors()) return refAspRes.reerr();
     var refDyn = refAspRes.requireValue("TypeUniqueDynamic::eq ref aspect").aspectConsumeDynamicToDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: reference lowering failed");
@@ -280,7 +337,7 @@ public record TypeUniqueDynamic()
   }
 
   private static CodeDynamic emitUniqueEqCall(
-      QExprId loc, compilerxyz.eval.EvalContext vx, CodeDynamic base, CodeDynamic reference) {
+      QExprId loc, EvalContext vx, CodeDynamic base, CodeDynamic reference) {
     var seq = new JavaBytecodeSequence();
     seq.add(base);
     seq.add(reference);
@@ -296,8 +353,8 @@ public record TypeUniqueDynamic()
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (cv.value().optIsSome()
+        && cv.value().optUnwrap() instanceof ValueObjectConst v
         && v.data() instanceof Unique u) {
       return Opt.some(u);
     }
@@ -305,24 +362,24 @@ public record TypeUniqueDynamic()
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
   public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY) instanceof Opt.Some<Aspect>;
+    return sourceType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.code().dynamic() != null) return EResult.ok(cv);
-    if (!(cv.value() instanceof Opt.Some<Value> some)) return EResult.ok(cv);
-    var srcType = some.value().valueType();
+    if (cv.code().codeDynamic() != null) return EResult.ok(cv);
+    if (cv.value().optIsNone()) return EResult.ok(cv);
+    var srcType = cv.value().optUnwrap().valueType();
     if (srcType instanceof TypeUniqueDynamic) return EResult.ok(cv);
     var asp = GenAspectConsumeDynamic.getMaybe(xx, srcType);
-    if (!(asp instanceof Opt.Some<AspectConsumeDynamic> aspSome)) return EResult.ok(cv);
-    var dynRes = aspSome.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
+    if (asp.optIsNone()) return EResult.ok(cv);
+    var dynRes = asp.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
     if (dynRes.hasErrors()) return dynRes.reerr();
     return EResult.ok(new CodeValue(Code.of(loc, dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
   }
@@ -339,24 +396,24 @@ public record TypeUniqueDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 }

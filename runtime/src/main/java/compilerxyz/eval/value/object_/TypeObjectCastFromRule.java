@@ -12,19 +12,19 @@ import compilerxyz.util.Opt;
 
 public sealed interface TypeObjectCastFromRule {
 
-  boolean matches(ExprContext xx, Type sourceType);
+  boolean typeObjectCastFromRuleMatches(ExprContext xx, Type sourceType);
 
-  EResult<CodeValue> apply(
+  EResult<CodeValue> typeObjectCastFromRuleApply(
       ExprContext xx, TypeObjectDynamic dest, QExprId loc, CodeValue cv, Type sourceType);
 
   record RestampFromIdentity(Unique identity) implements TypeObjectCastFromRule {
     @Override
-    public boolean matches(ExprContext xx, Type sourceType) {
+    public boolean typeObjectCastFromRuleMatches(ExprContext xx, Type sourceType) {
       return sourceType.typeAspect(xx, identity).optIsSome();
     }
 
     @Override
-    public EResult<CodeValue> apply(
+    public EResult<CodeValue> typeObjectCastFromRuleApply(
         ExprContext xx, TypeObjectDynamic dest, QExprId loc, CodeValue cv, Type sourceType) {
       return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(dest, 1))));
     }

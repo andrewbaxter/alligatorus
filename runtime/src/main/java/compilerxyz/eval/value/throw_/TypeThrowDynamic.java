@@ -36,6 +36,9 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.eval.JumpKey;
+import compilerxyz.eval.dynamic.JavaBytecodeGuarded;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinPath("throw")
 @BuiltinLight(uniqueId = 6146L)
@@ -64,17 +67,17 @@ public record TypeThrowDynamic()
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
-    var excType = xx.currentExceptionType;
-    if (excType == null) {
+    if (xx.currentExceptionType.optIsNone()) {
       return EResult.err(
           loc,
           "throw not allowed: enclosing function did not declare an exception type");
     }
+    var excType = xx.currentExceptionType.optUnwrap();
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, excType, argument));
-    if (convertedOpt.isEmpty()) {
+    if (convertedOpt.optIsNone()) {
       return EResult.errs(erb.errors());
     }
-    var converted = convertedOpt.get();
+    var converted = convertedOpt.optUnwrap();
     var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, excType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var valueDynRes =
@@ -99,15 +102,15 @@ public record TypeThrowDynamic()
     // enclosing drop/finally chain when one is live.
     var destRes = compilerxyz.eval.ScopeChains.excDest(xx, loc);
     if (destRes.hasErrors()) return destRes.reerr();
+    var dest = destRes.requireValue("throw exc dest");
     Code outCode;
-    if (destRes.requireValue("throw exc dest")
-        instanceof Opt.Some<compilerxyz.eval.JumpKey> someDest) {
+    if (dest.optIsSome()) {
       outCode =
           Code.of(
               loc,
               new CodeDynamic(
                   loc,
-                  new compilerxyz.eval.dynamic.JavaBytecodeGuarded(someDest.value(), throwCode)));
+                  new JavaBytecodeGuarded(dest.optUnwrap(), throwCode)));
     } else {
       outCode = Code.of(loc, throwCode);
     }
@@ -131,28 +134,28 @@ public record TypeThrowDynamic()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_THROW_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

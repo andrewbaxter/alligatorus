@@ -31,45 +31,47 @@ import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectRecord;
 import compilerxyz.gen.GenAspectTuple;
+import compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
 
 public final class SourceFunctionData {
-  public final compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder artifactIdCell =
-      new compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder();
-  public @Nullable DefSetId setId;
+  public final ArtifactIdHolder artifactIdCell =
+      new ArtifactIdHolder();
+  public Opt<DefSetId> setId;
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
-  public final @Nullable String name;
-  public @Nullable String description;
-  public @Nullable Type exceptionType;
-  public @Nullable Value implExpr;
-  public @Nullable Type argType;
+  public final Opt<String> name;
+  public Opt<String> description = Opt.none();
+  public Opt<Type> exceptionType = Opt.none();
+  public Opt<Value> implExpr = Opt.none();
+  public Opt<Type> argType = Opt.none();
   // Optional return: some(type) if the function yields a value, none if it returns nothing.
   public Opt<Type> retType = Opt.none();
   public int funcIdx;
-  public @Nullable String compiledClassName;
-  public @Nullable byte[] compiledBytecode;
+  public Opt<String> compiledClassName = Opt.none();
+  public Opt<byte[]> compiledBytecode = Opt.none();
 
-  public DefSetFunctionsEmitter.@Nullable FunctionSpec functionSpec;
+  public Opt<DefSetFunctionsEmitter.FunctionSpec> functionSpec = Opt.none();
 
-  public @Nullable TOrderedMap<String, Object> compiledStaticFieldValues;
+  public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
   public final TList<EvalContext.ExternalEntry> capturedExternals;
 
-  public SourceFunctionData(DefSetId setId, @Nullable String name, DefinitionSet set) {
-    this.setId = setId;
+  public SourceFunctionData(DefSetId setId, String name, DefinitionSet set) {
+    this.setId = Opt.some(setId);
     this.set = set;
-    this.name = name;
+    this.name = Opt.some(name);
     this.capturedExternals = new TList<>();
   }
 
   @SuppressWarnings("NullAway")
-  public SourceFunctionData(@Nullable DefSetId setId, @Nullable String name) {
-    this.setId = setId;
+  public SourceFunctionData(DefSetId setId, Opt<String> name) {
+    this.setId = Opt.some(setId);
     this.set = (DefinitionSet) null;
     this.name = name;
     this.capturedExternals = new TList<>();
@@ -87,26 +89,26 @@ public final class SourceFunctionData {
   }
 
   public EResult<Void> finish(ExprContext xx, QExprId rootLoc) {
-    if (functionSpec != null || compiledClassName != null) {
+    if (functionSpec.optIsSome() || compiledClassName.optIsSome()) {
       return EResult.ok(null);
     }
-    var nameStr = name != null ? name : "(unnamed)";
-    var implExprValue = implExpr;
-    if (implExprValue == null) {
+    var nameStr = name.optUnwrapOr("(unnamed)");
+    if (implExpr.optIsNone()) {
       return EResult.err(
           rootLoc,
           "Definition set function '" + nameStr + "' is missing an implementation");
     }
-    implExpr = null;
+    var implExprValue = implExpr.optUnwrap();
+    implExpr = Opt.none();
     if (!(implExprValue instanceof Expr implExprAst)) {
       throw new AssertionError(
           "Definition set function '" + nameStr + "' impl is not an Expr: " + implExprValue);
     }
-    var argT = argType;
-    if (argT == null) {
+    if (argType.optIsNone()) {
       return EResult.err(
           rootLoc, "Definition set function '" + nameStr + "' is missing an arg type");
     }
+    var argT = argType.optUnwrap();
     var retT = retType;
     var funcSet = set;
     if (funcSet == null) {
@@ -129,13 +131,13 @@ public final class SourceFunctionData {
       var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
       var elemBindings = new TList<Binding>();
       for (var et : elemTypes) {
-        var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
         argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
         var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
-        if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+        if (ibMaybe.optIsNone()) {
           return EResult.err(rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBind");
         }
-        elemBindings.add(ibSome.value().aspectInitialBindInitialBind(slotId));
+        elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
       }
       var argTuple = new ArgumentTuple(elemBindings, elemTypes);
       bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
@@ -144,22 +146,22 @@ public final class SourceFunctionData {
       var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
       for (var entry : fieldTypes.entrySet()) {
         var et = entry.getValue();
-        var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+        var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
         argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
         var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
-        if (!(ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome)) {
+        if (ibMaybe.optIsNone()) {
           return EResult.err(rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBind");
         }
-        fields.put(entry.getKey(), new ArgumentEntry(ibSome.value().aspectInitialBindInitialBind(slotId), et));
+        fields.put(entry.getKey(), new ArgumentEntry(ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId), et));
       }
       var argRec = new ArgumentRecord(fields);
       bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
     } else {
-      var slotId = new BindingId.Local(new compilerxyz.eval.dynamic.JavaBytecodeBindingKey());
+      var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
       argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
       var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
-      if (ibMaybe instanceof Opt.Some<AspectInitialBind> ibSome) {
-        bodyScope.pushNamed(new ConstKey.Str("arg"), ibSome.value().aspectInitialBindInitialBind(slotId));
+      if (ibMaybe.optIsSome()) {
+        bodyScope.pushNamed(new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
       }
     }
     var funcXx =
@@ -172,8 +174,8 @@ public final class SourceFunctionData {
     var implEv = implResult.requireValue("SourceFunctionData::compile constEval");
     var implCv = implEv.cv();
     var convertedResult =
-        retT instanceof Opt.Some<Type> retSome
-            ? Eval.typecheckConvert(funcXx, rootLoc, retSome.value(), implCv)
+        retT.optIsSome()
+            ? Eval.typecheckConvert(funcXx, rootLoc, retT.optUnwrap(), implCv)
             : EResult.ok(implCv);
     if (convertedResult.hasErrors()) {
       return convertedResult.reerr();
@@ -181,8 +183,8 @@ public final class SourceFunctionData {
     var convertedCv =
         convertedResult.requireValue("SourceFunctionData::compile typecheckConvert");
     CodeDynamic bodyCode;
-    if (convertedCv.value() instanceof Opt.Some<Value> someVal) {
-      var valueType = someVal.value().valueType();
+    if (convertedCv.value().optIsSome()) {
+      var valueType = convertedCv.value().optUnwrap().valueType();
       var consumeResult = GenAspectConsumeDynamic.get(funcXx, rootLoc, valueType);
       if (consumeResult.hasErrors()) {
         return consumeResult.reerr();
@@ -194,7 +196,7 @@ public final class SourceFunctionData {
       }
       bodyCode = dynResult.requireValue("SourceFunctionData::compile consume.toDynamic");
     } else {
-      bodyCode = convertedCv.code().dynamic();
+      bodyCode = convertedCv.code().codeDynamic();
       if (bodyCode == null) {
         return EResult.err(
             rootLoc,
@@ -221,32 +223,32 @@ public final class SourceFunctionData {
     if (retDescRes.hasErrors()) return retDescRes.reerr();
     var retDesc = retDescRes.requireValue("SourceFunctionData::finish retDesc");
     functionSpec =
-        new DefSetFunctionsEmitter.FunctionSpec(
-            funcIdx, argSlots, retDesc, bodyCode, TList.from(captured));
+        Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
+            funcIdx, argSlots, retDesc, bodyCode, TList.from(captured)));
     return EResult.ok(null);
   }
 
-  private static compilerxyz.eval.dynamic.JavaDataDescriptor jvmDescFor(
+  private static JavaDataDescriptor jvmDescFor(
       ExprContext xx, QExprId loc, Type t) {
     var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
-    if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return some.value().aspectConsumeDynamicJvmClass(xx);
+    if (consumeOpt.optIsSome()) {
+      return consumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
     }
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
-  private static EResult<compilerxyz.eval.dynamic.JavaDataDescriptor> jvmDescForRes(
+  private static EResult<JavaDataDescriptor> jvmDescForRes(
       ExprContext xx, QExprId loc, Opt<Type> t) {
-    if (!(t instanceof Opt.Some<Type> tSome)) {
-      return EResult.ok(compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID);
+    if (t.optIsNone()) {
+      return EResult.ok(JavaDataDescriptor.DESC_VOID);
     }
-    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, tSome.value());
-    if (consumeOpt instanceof Opt.Some<AspectConsumeDynamic> some) {
-      return EResult.ok(some.value().aspectConsumeDynamicJvmClass(xx));
+    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t.optUnwrap());
+    if (consumeOpt.optIsSome()) {
+      return EResult.ok(consumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx));
     }
     return EResult.ok(
-        compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+        JavaDataDescriptor.fromInternalName(
             compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT));
   }
 

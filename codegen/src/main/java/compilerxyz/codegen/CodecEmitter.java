@@ -47,9 +47,6 @@ final class CodecEmitter {
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
   private static final ClassName MANUAL_CODECS =
       ClassName.get("compilerxyz.safejson", "ManualCodecs");
-  private static final ClassName NULLABLE =
-      ClassName.get("org.jspecify.annotations", "Nullable");
-
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
     for (var c : info.components) {
       resolveType(c.type, ctxQname, index);
@@ -61,7 +58,7 @@ final class CodecEmitter {
         resolvedPerms.add(perm);
       } else {
         var resolved = index.resolve(perm, ctxQname);
-        resolvedPerms.add(resolved != null ? resolved : perm);
+        resolvedPerms.add(resolved.optUnwrapOr(perm));
       }
     }
     info.permittedSubclasses.clear();
@@ -72,7 +69,7 @@ final class CodecEmitter {
       CodecsGen.ParsedType type, String ctxQname, TypeIndex index) {
     if (type.kind == CodecsGen.ParsedTypeKind.NAMED) {
       var resolved = index.resolve(type.name, ctxQname);
-      if (resolved != null) type.name = resolved;
+      if (resolved.optIsSome()) type.name = resolved.optUnwrap();
     }
     for (var ta : type.typeArgs) {
       resolveType(ta, ctxQname, index);
@@ -679,6 +676,7 @@ final class CodecEmitter {
   static String emitCodecs(TList<String> emitted) {
     var t = TypeVariableName.get("T");
     var codecOfT = ParameterizedTypeName.get(CODEC, t);
+    var optCodecOfT = ParameterizedTypeName.get(OPT, codecOfT);
     var lookup =
         MethodSpec.methodBuilder("lookup")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -687,11 +685,12 @@ final class CodecEmitter {
                 AnnotationSpec.builder(SuppressWarnings.class)
                     .addMember("value", "$S", "unchecked")
                     .build())
-            .returns(codecOfT.annotated(AnnotationSpec.builder(NULLABLE).build()))
+            .returns(optCodecOfT)
             .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), t), "clazz");
     for (var q : emitted) {
       lookup.addStatement(
-          "if (clazz == $L.class) return ($T) (Codec<?>) $L", q, codecOfT, codecRef(q));
+          "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
+          q, OPT, codecOfT, codecRef(q));
     }
     lookup.addStatement("return $T.lookup(clazz)", MANUAL_CODECS);
 

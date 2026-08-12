@@ -22,64 +22,69 @@ import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 
 @BuiltinFull(uniqueId = 6005L)
 public final class InterfaceData {
-  public @Nullable DefSetId setId;
+  public Opt<DefSetId> setId;
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
   public final Unique identity;
-  public final @Nullable BuiltinInterfaceKind builtinKind;
-  public @Nullable String description;
+  public final Opt<BuiltinInterfaceKind> builtinKind;
+  public Opt<String> description;
   public boolean isAspect;
-  public @Nullable Unique aspectId;
+  public Opt<Unique> aspectId;
   public final TList<InterfaceMethodData> methods;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
   @SuppressWarnings("NullAway.Init")
   public String compiledBinaryName;
 
-  public byte @Nullable [] compiledBytecode;
+  public Opt<byte[]> compiledBytecode;
 
   public InterfaceData(
       DefSetId setId,
       Unique identity,
-      @Nullable BuiltinInterfaceKind builtinKind,
+      Opt<BuiltinInterfaceKind> builtinKind,
       DefinitionSet set) {
-    this.setId = setId;
+    this.setId = Opt.some(setId);
     this.set = set;
     this.identity = identity;
     this.builtinKind = builtinKind;
+    this.description = Opt.none();
+    this.aspectId = Opt.none();
+    this.compiledBytecode = Opt.none();
     this.methods = new TList<>();
   }
 
   @SuppressWarnings("NullAway")
   public InterfaceData(
-      @Nullable DefSetId setId, Unique identity, @Nullable BuiltinInterfaceKind builtinKind) {
+      Opt<DefSetId> setId, Unique identity, Opt<BuiltinInterfaceKind> builtinKind) {
     this.setId = setId;
     this.set = (DefinitionSet) null;
     this.identity = identity;
     this.builtinKind = builtinKind;
+    this.description = Opt.none();
+    this.aspectId = Opt.none();
+    this.compiledBytecode = Opt.none();
     this.methods = new TList<>();
   }
 
   public EResult<Void> finish(QExprId loc, long interfaceIndex) {
-    var name = description != null ? description : "(unnamed)";
-    if (builtinKind != null) {
+    var name = description.optUnwrapOr("(unnamed)");
+    if (builtinKind.optIsSome()) {
       return EResult.ok(null);
     }
-    if (compiledBytecode != null) {
+    if (compiledBytecode.optIsSome()) {
       return EResult.ok(null);
     }
-    if (setId == null) {
+    if (setId.optIsNone()) {
       return EResult.err(
           loc, "InterfaceData.finish: setId is null for user-declared interface '" + name + "'");
     }
-    var emitted = SourceInterfaceEmitter.emit(setId, interfaceIndex, this);
+    var emitted = SourceInterfaceEmitter.emit(setId.optUnwrap(), interfaceIndex, this);
     compiledBinaryName = emitted.binaryName();
-    compiledBytecode = emitted.bytecode();
+    compiledBytecode = Opt.some(emitted.bytecode());
     return EResult.ok(null);
   }
 

@@ -48,6 +48,7 @@ import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
 
 @BuiltinLight(uniqueId = 6186L)
 public record TypeUshortDynamicBox()
@@ -70,8 +71,8 @@ public record TypeUshortDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JavaInternalName.fromClass(Short.class));
   }
 
@@ -156,7 +157,7 @@ public record TypeUshortDynamicBox()
     if (unboxedCast.hasErrors()) return unboxedCast.reerr();
     var castCv = unboxedCast.requireValue("TypeUshortDynamicBox::typeCastFrom cast");
     var seq = new JavaBytecodeSequence();
-    var dyn = castCv.code().dynamic();
+    var dyn = castCv.code().codeDynamic();
     if (dyn != null) seq.add(dyn);
     seq.add(Numerics.box(loc, NumericKind.USHORT));
     return EResult.ok(
@@ -167,7 +168,7 @@ public record TypeUshortDynamicBox()
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    var selfDyn = cv.code().dynamic();
+    var selfDyn = cv.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeUshortDynamicBox::typeCastTo: receiver has no runtime code");
     }
@@ -178,8 +179,9 @@ public record TypeUshortDynamicBox()
         new CodeValue(
             Code.of(new CodeDynamic(loc, seq)),
             EvalOutcome.ofValue(ValueDynamic.stack(new TypeUshortDynamic(), 1)));
-    if (Numerics.kindOf(xx, destType) instanceof Opt.Some<NumericKind> kk) {
-      return Numerics.castTo(xx, loc, unboxed, kk.value(), destType);
+    var kkOpt = Numerics.kindOf(xx, destType);
+    if (kkOpt.optIsSome()) {
+      return Numerics.castTo(xx, loc, unboxed, kkOpt.optUnwrap(), destType);
     }
     return EResult.err(loc, "TypeUshortDynamicBox::typeCastTo: destination is not numeric");
   }
@@ -187,7 +189,7 @@ public record TypeUshortDynamicBox()
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
     var unboxed = new TypeUshortDynamic();
-    var selfDyn = self_.code().dynamic();
+    var selfDyn = self_.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeUshortDynamicBox::field: receiver has no runtime code");
     }

@@ -2,8 +2,8 @@ package compilerxyz.tests;
 
 import compilerxyz.syntax.ModuleBuilder;
 import compilerxyz.syntax.SourceExpr;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 
 public final class TestMb extends ModuleBuilder {
   public SourceExpr define() {
@@ -330,14 +330,14 @@ public final class TestMb extends ModuleBuilder {
     return record(out);
   }
 
-  public SourceExpr ifOf(TList<Branch> cases, @Nullable SourceExpr elseBody) {
+  public SourceExpr ifOf(TList<Branch> cases, Opt<SourceExpr> elseBody) {
     var out = new TList<SourceExpr.IfBranch>(cases.size());
     for (var b : cases) out.add(new SourceExpr.IfBranch(b.condition(), b.body()));
     return if_(out, elseBody);
   }
 
   public SourceExpr matchOf(
-      SourceExpr base, SourceExpr elementKey, TList<Branch> cases, @Nullable SourceExpr fallback) {
+      SourceExpr base, SourceExpr elementKey, TList<Branch> cases, Opt<SourceExpr> fallback) {
     var out = new TList<SourceExpr.MatchBranch>(cases.size());
     for (var b : cases) out.add(new SourceExpr.MatchBranch(b.condition(), b.body()));
     return match_(base, elementKey, out, fallback);
@@ -364,19 +364,23 @@ public final class TestMb extends ModuleBuilder {
                 call(
                     field(call(typesEresult(), typesCode()), str("errs")),
                     scopeUse("__ce_p")))),
-        null);
+        Opt.none());
   }
 
   public SourceExpr tryCatchFinally(
       SourceExpr body,
-      @Nullable Catch catchClause,
-      @Nullable SourceExpr finallyBlock) {
-    SourceExpr.TryCatch cc = null;
-    if (catchClause != null) {
-      cc = new SourceExpr.TryCatch(
-          str(catchClause.name()), catchClause.exceptionType(), catchClause.body());
-    }
-    return tryExpr(body, cc, finallyBlock);
+      Opt<Catch> catchClause,
+      Opt<SourceExpr> finallyBlock) {
+    return tryExpr(
+        body,
+        catchClause.optIsNone()
+            ? Opt.none()
+            : Opt.some(
+                new SourceExpr.TryCatch(
+                    str(catchClause.optUnwrap().name()),
+                    catchClause.optUnwrap().exceptionType(),
+                    catchClause.optUnwrap().body())),
+        finallyBlock);
   }
 
   public record RecordPair(String key, SourceExpr value) {}

@@ -6,7 +6,7 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Scope;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.Target;
-import org.jspecify.annotations.Nullable;
+import compilerxyz.util.Opt;
 
 public record StageLiftCell(
     QExprId loc,
@@ -14,5 +14,5 @@ public record StageLiftCell(
     ImportStateId importState,
     Scope scope,
     Type sourceType,
-    @Nullable Type currentExceptionType,
+    Opt<Type> currentExceptionType,
     Target target) {}

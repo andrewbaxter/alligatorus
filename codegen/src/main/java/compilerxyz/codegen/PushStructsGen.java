@@ -167,8 +167,8 @@ public final class PushStructsGen {
     for (var df : spec.dataFields()) {
       cls.addField(
           FieldSpec.builder(df.type().path(), df.name(), Modifier.PUBLIC, Modifier.FINAL).build());
-      if (df.derivedFrom() != null) {
-        ctor.addStatement("this.$N = $L", df.name(), df.derivedFrom());
+      if (df.derivedFrom().optIsSome()) {
+        ctor.addStatement("this.$N = $L", df.name(), df.derivedFrom().optUnwrap());
       } else {
         ctor.addParameter(ParameterSpec.builder(df.type().path(), df.name()).build());
         ctor.addStatement("this.$N = $N", df.name(), df.name());
@@ -288,7 +288,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("finish")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addStatement(
                 "var _loc = new $T(new $T(-1L), -1L)", qexprIdCls, sourceIdCls)
@@ -298,7 +298,7 @@ public final class PushStructsGen {
             .addStatement("var _r = _iface.finish(_loc, _i)")
             .beginControlFlow("if (_r.hasErrors())")
             .addStatement(
-                "throw new IllegalStateException(\"DefinitionSetBuilder.finish: \" + _r.errorsOrNull())")
+                "throw new IllegalStateException(\"DefinitionSetBuilder.finish: \" + _r.errorsOrNull().optElse(new compilerxyz.util.TList<>()))")
             .endControlFlow()
             .endControlFlow()
             .addStatement("this.inner.finished = true")
@@ -325,7 +325,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .beginControlFlow("if (this.func_ref.data().description != null)")
@@ -337,7 +337,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -360,7 +360,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_exception_type")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "excType")
             .beginControlFlow("if (this.func_ref.data().exceptionType != null)")
@@ -394,7 +394,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .addStatement("var ifaceData = this.interface_ref.getInterfaceData()")
@@ -419,7 +419,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_is_aspect")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(booleanClass, "isAspect")
             .addStatement("this.interface_ref.getInterfaceData().isAspect = isAspect")
@@ -454,7 +454,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_description")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(stringClass, "description")
             .beginControlFlow("if (this.type_.description != null)")
@@ -466,7 +466,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("set_inner")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "typeRef")
             .beginControlFlow("if (this.type_.underlyingType != null)")
@@ -491,7 +491,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl_interface")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(interfaceData, "ifaceData")
             .addParameter(mapClass, "recordArg")
@@ -557,7 +557,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -583,7 +583,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("impl")
             .addModifiers(Modifier.PUBLIC)
-            .returns(com.squareup.javapoet.TypeName.VOID)
+            .returns(TypeName.VOID)
             .addParameter(EXPR_CONTEXT, "xx")
             .addParameter(TYPE, "argType")
             .addParameter(TYPE, "retType")
@@ -719,8 +719,8 @@ public final class PushStructsGen {
   }
 
 
-  private static com.squareup.javapoet.TypeName rawTypeName(com.squareup.javapoet.TypeName t) {
-    if (t instanceof com.squareup.javapoet.ParameterizedTypeName p) return p.rawType;
+  private static TypeName rawTypeName(TypeName t) {
+    if (t instanceof ParameterizedTypeName p) return p.rawType;
     return t;
   }
 

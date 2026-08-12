@@ -24,7 +24,7 @@ public record RecordBaseDynamic(ValueDynamicSource source) {
   }
 
   public EResult<CodeDynamic> recordBaseToDynamic(QExprId loc, Code carry) {
-    var dyn = carry.dynamic();
+    var dyn = carry.codeDynamic();
     if (dyn == null) {
       return EResult.err(loc, "RecordBaseDynamic::toDynamic: carry has no dynamic code");
     }

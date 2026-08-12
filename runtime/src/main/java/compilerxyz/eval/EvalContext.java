@@ -15,6 +15,7 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 
 @BuiltinFull(uniqueId = 6025L)
 public final class EvalContext {
@@ -42,5 +43,5 @@ public final class EvalContext {
   }
 
   public record ExternalEntry(
-      compilerxyz.eval.dynamic.JavaBytecodeBindingKey key, Type type, External external) {}
+      JavaBytecodeBindingKey key, Type type, External external) {}
 }

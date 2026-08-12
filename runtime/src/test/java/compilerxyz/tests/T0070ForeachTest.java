@@ -37,8 +37,15 @@ public final class T0070ForeachTest {
                                 mb.tupleOf())))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {
+        assertTrue(false, () -> "compile failed: " + res);
+        return;
+      }
+    }
+    var ok = resOk.value();
     assertEquals(3, ok.logs().size());
     assertEquals("1", ok.logs().get(0).message());
     assertEquals("2", ok.logs().get(1).message());

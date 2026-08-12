@@ -28,7 +28,7 @@ public final class T0060ScopeTest {
                 mb.call(mb.log(), mb.scopeUse("x")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> ok2 -> true; case Result.Err<?, ?> err -> false; }, () -> "compile failed: " + res);
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(2, ok.logs().size());
     assertEquals("apple", ok.logs().get(0).message());
@@ -47,6 +47,6 @@ public final class T0060ScopeTest {
                 mb.call(mb.log(), mb.scopeUse("x")))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error but got: " + res);
+    assertTrue(switch (res) { case Result.Ok<?, ?> ok -> false; case Result.Err<?, ?> err -> true; }, () -> "expected compile error but got: " + res);
   }
 }

@@ -38,20 +38,21 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6136L)
 public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodData method)
     implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
   @Override
-  public JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn != null) return EResult.ok(dyn);
     return EResult.err(loc, "TypeInterfaceMethodDynamic::toDynamic: CodeValue has no dynamic code");
   }
@@ -83,7 +84,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     var retType = method.retType;
     var ifaceInternalName = JavaInternalName.of(iface.compiledBinaryName.replace('.', '/'));
 
-    var selfDyn = self.code().dynamic();
+    var selfDyn = self.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeInterfaceMethodDynamic::call: self has no dynamic code");
     }
@@ -106,19 +107,19 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     seq.add(selfDyn);
     seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(ifaceInternalName)));
     seq.add(argDyn);
-    var hostName = method.hostMethodName == null ? method.name : method.hostMethodName;
+    var hostName = method.hostMethodName.optUnwrapOr(method.name);
     seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
-    if (!(retType instanceof Opt.Some<Type> retSome)) {
+    if (retType.optIsNone()) {
       // No return value: the interface host method still hands back an Object on
       // the stack (its JVM signature returns Object), so discard it.
       seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
       return EResult.ok(
           new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
-    var retTypeVal = retSome.value();
+    var retTypeVal = retType.optUnwrap();
     var retConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, retTypeVal);
-    if (retConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> retConsumeSome) {
-      var retDesc = retConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+    if (retConsumeOpt.optIsSome()) {
+      var retDesc = retConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       if (!retDesc.value().equals(descObject.value())) {
         var c = retDesc.value().charAt(0);
         if (c == 'L' || c == '[') {
@@ -151,7 +152,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
@@ -161,9 +162,9 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
   }
 
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_DYNAMIC_IDENTITY, TypeInterfaceMethodDynamic.class) instanceof Opt.Some<TypeInterfaceMethodDynamic> oSome
-        && iface.identity.equals(oSome.value().iface.identity) && method.name.equals(oSome.value().method.name);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_DYNAMIC_IDENTITY, TypeInterfaceMethodDynamic.class);
+    return oOpt.optIsSome() && iface.identity.equals(oOpt.optUnwrap().iface.identity) && method.name.equals(oOpt.optUnwrap().method.name);
   }
 
   @Override

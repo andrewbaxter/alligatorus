@@ -45,6 +45,8 @@ import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.eval.dynamic.DynUtil.DropChild;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6123L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
@@ -70,41 +72,41 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicDrop(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicDrop(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     // Map entry has exactly two child slots (key, value) accessed through
     // Map.Entry.getKey / getValue. In practice both slots are just GC-managed
     // Object references, so the base POP suffices, but the destructuring
     // policy is emitted for correctness when a child type introduces its own
     // drop semantics.
-    if (!(cv.value() instanceof compilerxyz.util.Opt.Some<compilerxyz.gen.Value> some)) {
+    if (cv.value().optIsNone()) {
       throw new IllegalStateException("TypeMapEntryDynamic::drop: called on absent CodeValue");
     }
-    if (!(some.value() instanceof compilerxyz.eval.value.ValueDynamic vd)) {
+    if (!(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
       throw new IllegalStateException(
-          "TypeMapEntryDynamic::drop: expected ValueDynamic, got " + some.value().getClass());
+          "TypeMapEntryDynamic::drop: expected ValueDynamic, got " + cv.value().optUnwrap().getClass());
     }
     var descObjNoArgs =
         JavaMethodDescriptor.fromParts(
             JavaDataDescriptor.fromClass(Object.class), TList.of());
     var children =
-        new compilerxyz.util.TList<compilerxyz.eval.dynamic.DynUtil.DropChild>(2);
+        new compilerxyz.util.TList<DropChild>(2);
     children.add(
-        new compilerxyz.eval.dynamic.DynUtil.DropChild(
+        new DropChild(
             keyType,
             JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getKey", descObjNoArgs)));
     children.add(
-        new compilerxyz.eval.dynamic.DynUtil.DropChild(
+        new DropChild(
             valueType,
             JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
     return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, vd.source(), children);
   }
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(Map.Entry.class));
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(Map.Entry.class));
   }
 
   @Override
@@ -132,17 +134,17 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
-    if (!(key.value() instanceof Opt.Some<Value> keySome)) {
+    if (key.value().optIsNone()) {
       return EResult.err(loc, "TypeMapEntryDynamic::field: key has no compile-time value");
     }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
-    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    var ck = ckOpt.get();
+    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+    var ck = ckOpt.optUnwrap();
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
-      return EResult.err(loc, "Field " + ck.toCanonical() + " not found on map entry");
+      return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
     }
-    var selfDyn = self.code().dynamic();
+    var selfDyn = self.code().codeDynamic();
     if (selfDyn == null) {
       return EResult.err(loc, "TypeMapEntryDynamic::field: receiver has no runtime code");
     }
@@ -160,8 +162,8 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     // type. Container element types are already box-substituted at construction
     // time, so the target descriptor is always object-shaped here.
     var fieldConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, spec.type());
-    if (fieldConsumeOpt instanceof Opt.Some<AspectConsumeDynamic> fieldConsumeSome) {
-      var fieldDesc = fieldConsumeSome.value().aspectConsumeDynamicJvmClass(xx);
+    if (fieldConsumeOpt.optIsSome()) {
+      var fieldDesc = fieldConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       var d = fieldDesc.value();
       if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
@@ -189,7 +191,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().dynamic();
+    var dyn = cv.code().codeDynamic();
     if (dyn == null) {
       throw new IllegalStateException(
           "TypeMapEntryDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
@@ -209,34 +211,34 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.gen.Binding aspectElementUseDynamicBindElementUseDynamicBind(compilerxyz.eval.BindingId dynamicKey) {
-    return new compilerxyz.eval.value.binding.BindingDynamicBinding(dynamicKey, this);
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return new BindingDynamicBinding(dynamicKey, this);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
-    return AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_ENTRY_DYNAMIC_IDENTITY, TypeMapEntryDynamic.class) instanceof Opt.Some<TypeMapEntryDynamic> oSome
-        && keyType.typeIsEqual(xx, oSome.value().keyType) && valueType.typeIsEqual(xx, oSome.value().valueType);
+  public boolean typeIsEqual(ExprContext xx, Type other) {
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_MAP_ENTRY_DYNAMIC_IDENTITY, TypeMapEntryDynamic.class);
+    return oOpt.optIsSome() && keyType.typeIsEqual(xx, oOpt.optUnwrap().keyType) && valueType.typeIsEqual(xx, oOpt.optUnwrap().valueType);
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

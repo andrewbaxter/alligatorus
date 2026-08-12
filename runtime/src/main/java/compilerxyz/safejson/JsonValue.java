@@ -20,7 +20,7 @@ public sealed interface JsonValue
 
 class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
   @Override
-  public void serialize(JsonWriter writer, JsonValue value, Json.Style style) throws IOException {
+  public void safeJsonAdapterSerialize(JsonWriter writer, JsonValue value, Json.Style style) throws IOException {
     switch (value) {
       case JsonValueNull ignored -> writer.nullValue();
       case JsonValueBoolean b -> writer.value(b.value());
@@ -29,7 +29,7 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
       case JsonValueArray a -> {
         writer.beginArray();
         for (var element : a.elements()) {
-          serialize(writer, element, style);
+          safeJsonAdapterSerialize(writer, element, style);
         }
         writer.endArray();
       }
@@ -41,12 +41,12 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
           sorted.putAll(entries);
           for (var entry : sorted.entrySet()) {
             writer.name(entry.getKey());
-            serialize(writer, entry.getValue(), style);
+            safeJsonAdapterSerialize(writer, entry.getValue(), style);
           }
         } else {
           for (var entry : entries.entrySet()) {
             writer.name(entry.getKey());
-            serialize(writer, entry.getValue(), style);
+            safeJsonAdapterSerialize(writer, entry.getValue(), style);
           }
         }
         writer.endObject();
@@ -55,7 +55,7 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
   }
 
   @Override
-  public JsonValue deserialize(JsonReader reader, Json.FieldPath path) throws IOException {
+  public JsonValue safeJsonAdapterDeserialize(JsonReader reader, Json.FieldPath path) throws IOException {
     return switch (reader.peek()) {
       case NULL -> {
         reader.nextNull();
@@ -69,7 +69,7 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
         var elements = new TList<JsonValue>();
         var index = 0;
         while (reader.hasNext()) {
-          elements.add(deserialize(reader, path.index(index++)));
+          elements.add(safeJsonAdapterDeserialize(reader, path.index(index++)));
         }
         reader.endArray();
         yield new JsonValueArray(elements);
@@ -79,7 +79,7 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
         var entries = new TOrderedMap<String, JsonValue>();
         while (reader.hasNext()) {
           var key = reader.nextName();
-          entries.put(key, deserialize(reader, path.key(key)));
+          entries.put(key, safeJsonAdapterDeserialize(reader, path.key(key)));
         }
         reader.endObject();
         yield new JsonValueObject(entries);

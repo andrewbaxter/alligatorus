@@ -99,8 +99,8 @@ public final class ExprArtifacts {
                   bo.requireValue("ExprArtifacts::exprFromArtifact If branch body")));
         }
         Opt<Expr> else_;
-        if (i.else_() instanceof Opt.Some<ArtifactExpr> some) {
-          var e = exprFromArtifact(xx, some.value());
+        if (i.else_().optIsSome()) {
+          var e = exprFromArtifact(xx, i.else_().optUnwrap());
           if (e.hasErrors()) return e.reerr();
           else_ = Opt.some(e.requireValue("ExprArtifacts::exprFromArtifact If else"));
         } else {
@@ -120,8 +120,8 @@ public final class ExprArtifacts {
       }
       case ArtifactExpr.Variant.Return rt -> {
         Opt<Expr> value;
-        if (rt.value() instanceof Opt.Some<ArtifactExpr> some) {
-          var vv = exprFromArtifact(xx, some.value());
+        if (rt.value().optIsSome()) {
+          var vv = exprFromArtifact(xx, rt.value().optUnwrap());
           if (vv.hasErrors()) return vv.reerr();
           value = Opt.some(vv.requireValue("ExprArtifacts::exprFromArtifact Return value"));
         } else {
@@ -173,8 +173,8 @@ public final class ExprArtifacts {
         var elementKey = exprFromArtifact(xx, m.elementKey());
         if (elementKey.hasErrors()) return elementKey.reerr();
         Opt<Expr> fallback;
-        if (m.fallback() instanceof Opt.Some<ArtifactExpr> some) {
-          var f = exprFromArtifact(xx, some.value());
+        if (m.fallback().optIsSome()) {
+          var f = exprFromArtifact(xx, m.fallback().optUnwrap());
           if (f.hasErrors()) return f.reerr();
           fallback =
               Opt.some(f.requireValue("ExprArtifacts::exprFromArtifact Match fallback"));
@@ -271,8 +271,8 @@ public final class ExprArtifacts {
         var body = exprFromArtifact(xx, t.body());
         if (body.hasErrors()) return body.reerr();
         Opt<Expr.TryCatch> catchClause;
-        if (t.catchClause() instanceof Opt.Some<ArtifactExpr.TryCatchA> some) {
-          var c = some.value();
+        if (t.catchClause().optIsSome()) {
+          var c = t.catchClause().optUnwrap();
           var name = exprFromArtifact(xx, c.bindingName());
           if (name.hasErrors()) return name.reerr();
           var ex = exprFromArtifact(xx, c.exceptionType());
@@ -289,8 +289,8 @@ public final class ExprArtifacts {
           catchClause = Opt.none();
         }
         Opt<Expr> finallyBlock;
-        if (t.finallyBlock() instanceof Opt.Some<ArtifactExpr> some) {
-          var f = exprFromArtifact(xx, some.value());
+        if (t.finallyBlock().optIsSome()) {
+          var f = exprFromArtifact(xx, t.finallyBlock().optUnwrap());
           if (f.hasErrors()) return f.reerr();
           finallyBlock =
               Opt.some(f.requireValue("ExprArtifacts::exprFromArtifact Try finally"));
@@ -412,8 +412,8 @@ public final class ExprArtifacts {
                   bo.requireValue("ExprArtifacts::exprToArtifact If branch body")));
         }
         Opt<ArtifactExpr> else_;
-        if (i.else_() instanceof Opt.Some<Expr> some) {
-          var e = exprToArtifact(xx, some.value());
+        if (i.else_().optIsSome()) {
+          var e = exprToArtifact(xx, i.else_().optUnwrap());
           if (e.hasErrors()) return e.reerr();
           else_ = Opt.some(e.requireValue("ExprArtifacts::exprToArtifact If else"));
         } else {
@@ -433,8 +433,8 @@ public final class ExprArtifacts {
       }
       case Expr.Return rt -> {
         Opt<ArtifactExpr> value;
-        if (rt.value() instanceof Opt.Some<Expr> some) {
-          var vv = exprToArtifact(xx, some.value());
+        if (rt.value().optIsSome()) {
+          var vv = exprToArtifact(xx, rt.value().optUnwrap());
           if (vv.hasErrors()) return vv.reerr();
           value = Opt.some(vv.requireValue("ExprArtifacts::exprToArtifact Return value"));
         } else {
@@ -444,10 +444,10 @@ public final class ExprArtifacts {
       }
       case Expr.Literal l -> {
         var peeked = l.value().peek();
-        if (!(peeked instanceof Opt.Some<Value> someV)) {
+        if (peeked.optIsNone()) {
           return EResult.err(expr.loc(), "Cannot serialize consumed Literal");
         }
-        var value = someV.value();
+        var value = peeked.optUnwrap();
         var errors = new TList<ExprErr>();
         var type = value.valueType();
         var aspRes = GenAspectArtifact.get(xx, expr.loc(), type);
@@ -494,8 +494,8 @@ public final class ExprArtifacts {
         var elementKey = exprToArtifact(xx, m.elementKey());
         if (elementKey.hasErrors()) return elementKey.reerr();
         Opt<ArtifactExpr> fallback;
-        if (m.fallback() instanceof Opt.Some<Expr> some) {
-          var f = exprToArtifact(xx, some.value());
+        if (m.fallback().optIsSome()) {
+          var f = exprToArtifact(xx, m.fallback().optUnwrap());
           if (f.hasErrors()) return f.reerr();
           fallback =
               Opt.some(f.requireValue("ExprArtifacts::exprToArtifact Match fallback"));
@@ -592,8 +592,8 @@ public final class ExprArtifacts {
         var body = exprToArtifact(xx, t.body());
         if (body.hasErrors()) return body.reerr();
         Opt<ArtifactExpr.TryCatchA> catchClause;
-        if (t.catchClause() instanceof Opt.Some<Expr.TryCatch> some) {
-          var c = some.value();
+        if (t.catchClause().optIsSome()) {
+          var c = t.catchClause().optUnwrap();
           var name = exprToArtifact(xx, c.bindingName());
           if (name.hasErrors()) return name.reerr();
           var ex = exprToArtifact(xx, c.exceptionType());
@@ -610,8 +610,8 @@ public final class ExprArtifacts {
           catchClause = Opt.none();
         }
         Opt<ArtifactExpr> finallyBlock;
-        if (t.finallyBlock() instanceof Opt.Some<Expr> some) {
-          var f = exprToArtifact(xx, some.value());
+        if (t.finallyBlock().optIsSome()) {
+          var f = exprToArtifact(xx, t.finallyBlock().optUnwrap());
           if (f.hasErrors()) return f.reerr();
           finallyBlock =
               Opt.some(f.requireValue("ExprArtifacts::exprToArtifact Try finally"));

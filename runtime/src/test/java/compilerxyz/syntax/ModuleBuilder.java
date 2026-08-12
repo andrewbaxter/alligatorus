@@ -2,7 +2,6 @@ package compilerxyz.syntax;
 
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import org.jspecify.annotations.Nullable;
 
 public class ModuleBuilder {
   private long nextPhraseId = 0;
@@ -51,10 +50,8 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.Graft(expr));
   }
 
-  public SourceExpr if_(
-      TList<SourceExpr.IfBranch> cases, @Nullable SourceExpr elseBody) {
-    return new SourceExpr(
-        id(), new SourceExpr.If(cases, elseBody == null ? Opt.none() : Opt.some(elseBody)));
+  public SourceExpr if_(TList<SourceExpr.IfBranch> cases, Opt<SourceExpr> elseBody) {
+    return new SourceExpr(id(), new SourceExpr.If(cases, elseBody));
   }
 
   public SourceExpr importExpr(SourceExpr spec) {
@@ -88,20 +85,24 @@ public class ModuleBuilder {
     return new SourceExpr(id(), new SourceExpr.Labeled(label, inner));
   }
 
-  public SourceExpr return_(@Nullable String label, @Nullable SourceExpr value) {
-    return new SourceExpr(
-        id(),
-        new SourceExpr.Return(
-            label == null ? Opt.none() : Opt.some(label),
-            value == null ? Opt.none() : Opt.some(value)));
+  public SourceExpr return_(Opt<String> label, Opt<SourceExpr> value) {
+    return new SourceExpr(id(), new SourceExpr.Return(label, value));
   }
 
   public SourceExpr return_(SourceExpr value) {
-    return return_(null, value);
+    return return_(Opt.none(), Opt.some(value));
+  }
+
+  public SourceExpr return_(String label, SourceExpr value) {
+    return return_(Opt.some(label), Opt.some(value));
+  }
+
+  public SourceExpr returnLabel(String label) {
+    return return_(Opt.some(label), Opt.none());
   }
 
   public SourceExpr returnEmpty() {
-    return return_(null, null);
+    return return_(Opt.none(), Opt.none());
   }
 
   public SourceExpr lower(SourceExpr expr) {
@@ -112,11 +113,8 @@ public class ModuleBuilder {
       SourceExpr base,
       SourceExpr elementKey,
       TList<SourceExpr.MatchBranch> cases,
-      @Nullable SourceExpr fallback) {
-    return new SourceExpr(
-        id(),
-        new SourceExpr.Match(
-            base, elementKey, cases, fallback == null ? Opt.none() : Opt.some(fallback)));
+      Opt<SourceExpr> fallback) {
+    return new SourceExpr(id(), new SourceExpr.Match(base, elementKey, cases, fallback));
   }
 
   public SourceExpr operatorBinary(BinaryOperator op, SourceExpr base, SourceExpr reference) {
@@ -224,15 +222,8 @@ public class ModuleBuilder {
   }
 
   public SourceExpr tryExpr(
-      SourceExpr body,
-      SourceExpr.@Nullable TryCatch catchClause,
-      @Nullable SourceExpr finallyBlock) {
-    return new SourceExpr(
-        id(),
-        new SourceExpr.Try(
-            body,
-            catchClause == null ? Opt.none() : Opt.some(catchClause),
-            finallyBlock == null ? Opt.none() : Opt.some(finallyBlock)));
+      SourceExpr body, Opt<SourceExpr.TryCatch> catchClause, Opt<SourceExpr> finallyBlock) {
+    return new SourceExpr(id(), new SourceExpr.Try(body, catchClause, finallyBlock));
   }
 
   public SourceExpr tuple(TList<SourceExpr> values) {

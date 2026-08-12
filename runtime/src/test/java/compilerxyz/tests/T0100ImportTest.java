@@ -35,7 +35,7 @@ public final class T0100ImportTest {
             mb.call(mb.log(), mb.importExpr(mb.str("other")))));
     var gxa = Helpers.newGxWithArtifacts(modules);
     var res = Compile.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?,?> o -> true; case Result.Err<?,?> e -> false; }, () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
@@ -258,7 +258,7 @@ public final class T0100ImportTest {
                         mb.tupleOf())))));
     var gxa = Helpers.newGxWithArtifacts(modules);
     var res = Compile.compile(gxa.gx(), new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?,?> o -> true; case Result.Err<?,?> e -> false; }, () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
@@ -471,7 +471,7 @@ public final class T0100ImportTest {
                     mb.call(mb.scopeUse("func_a"), mb.literalNull())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
+    assertTrue(switch (res) { case Result.Ok<?,?> o -> true; case Result.Err<?,?> e -> false; }, () -> "compile failed: " + res);
     @SuppressWarnings("unchecked")
     var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     assertEquals(1, ok.logs().size());
@@ -488,6 +488,6 @@ public final class T0100ImportTest {
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        res instanceof Result.Err<?, ?>, () -> "expected import cycle error, got: " + res);
+        switch (res) { case Result.Ok<?,?> o -> false; case Result.Err<?,?> e -> true; }, () -> "expected import cycle error, got: " + res);
   }
 }

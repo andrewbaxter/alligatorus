@@ -45,6 +45,8 @@ import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStringConst;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6144L)
 public record TypeStringConst()
@@ -60,8 +62,8 @@ public record TypeStringConst()
 
 
   @Override
-  public compilerxyz.eval.dynamic.JavaDataDescriptor aspectConsumeDynamicJvmClass(compilerxyz.eval.ExprContext xx) {
-    return compilerxyz.eval.dynamic.JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -104,7 +106,7 @@ public record TypeStringConst()
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           JsonValue data;
-          if (self instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+          if (self instanceof ValueObjectConst v
               && v.data() instanceof String s) {
             data = new JsonValueString(s);
           } else if (self instanceof TypeStringConst) {
@@ -122,7 +124,7 @@ public record TypeStringConst()
           return switch (data) {
             case JsonValueNull ignored -> EResult.ok(new TypeStringConst());
             case JsonValueString s -> EResult.ok(
-                new compilerxyz.eval.value.object_.ValueObjectConst(new TypeStringConst(), s.value()));
+                new ValueObjectConst(new TypeStringConst(), s.value()));
             default -> EResult.err(
                 loc, "TypeStringConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
           };
@@ -131,16 +133,16 @@ public record TypeStringConst()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+    if (cv.value().optIsSome()) {
+      return EResult.ok(new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
     }
     return EResult.err(loc, "TypeStringConst::bind: CodeValue has no compile-time value");
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some
-        && some.value() instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (cv.value().optIsSome()
+        && cv.value().optUnwrap() instanceof ValueObjectConst v
         && v.data() instanceof String s) {
       return EResult.ok(JavaBytecodeUtils.literalString(loc, s));
     }
@@ -169,7 +171,7 @@ public record TypeStringConst()
 
   @Override
   public String aspectStringConstGet(Value value) {
-    if (value instanceof compilerxyz.eval.value.object_.ValueObjectConst v
+    if (value instanceof ValueObjectConst v
         && v.data() instanceof String s) return s;
     throw new IllegalArgumentException(
         "TypeStringConst::get: expected string ValueObjectConst, got " + value.getClass());
@@ -182,37 +184,37 @@ public record TypeStringConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.Code> aspectDropDynamicLightDropDynamicLight(
-      compilerxyz.eval.ExprContext xx,
-      compilerxyz.eval.QExprId loc,
-      compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+      ExprContext xx,
+      QExprId loc,
+      CodeValue cv) {
     return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_STRING_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

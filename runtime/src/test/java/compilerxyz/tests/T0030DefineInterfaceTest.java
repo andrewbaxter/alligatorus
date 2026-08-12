@@ -1,7 +1,6 @@
 package compilerxyz.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
@@ -231,11 +230,13 @@ public final class T0030DefineInterfaceTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
-    assertEquals(1, ok.logs().size());
-    assertEquals("HELLO", ok.logs().get(0).message());
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> ok = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
+    }
+    assertEquals(1, ok.value().logs().size());
+    assertEquals("HELLO", ok.value().logs().get(0).message());
   }
 
   @Test
@@ -485,11 +486,13 @@ public final class T0030DefineInterfaceTest {
                     mb.call(mb.scopeUse("make_upper"), mb.str("hello"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    @SuppressWarnings("unchecked")
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
-    assertEquals(1, ok.logs().size());
-    assertEquals("HELLO", ok.logs().get(0).message());
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> ok = o;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
+    }
+    assertEquals(1, ok.value().logs().size());
+    assertEquals("HELLO", ok.value().logs().get(0).message());
   }
 
   @Test
@@ -552,6 +555,9 @@ public final class T0030DefineInterfaceTest {
                             mb.field(mb.scopeUse("ndr"), mb.str("new"))))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Err<?, ?>, () -> "expected compile error but got: " + res);
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> throw new AssertionError("expected compile error but got: " + res);
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {}
+    }
   }
 }

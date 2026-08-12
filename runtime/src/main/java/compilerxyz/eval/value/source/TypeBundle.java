@@ -28,6 +28,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6161L)
 public record TypeBundle(SourceSpecAbsolute.Remote base)
@@ -56,13 +57,17 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
-    if (!(key.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, "bundle: field key has no compile-time value");
+    Opt.Some<Value> keySome;
+    switch (key.value()) {
+      case Opt.Some<Value> s -> keySome = s;
+      case Opt.None<Value> n -> { return EResult.err(loc, "bundle: field key has no compile-time value"); }
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
-    if (ckOpt.isEmpty()) return EResult.errs(erb.errors());
-    if (!(ckOpt.get() instanceof ConstKey.Str s)) {
-      return EResult.err(loc, "bundle: field key must be a string");
+    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+    ConstKey.Str s;
+    switch (ckOpt.optUnwrap()) {
+      case ConstKey.Str str -> s = str;
+      case ConstKey.Uint u -> { return EResult.err(loc, "bundle: field key must be a string"); }
     }
     var subSpec = new SourceSpecAbsolute.Remote(base.baseUrl(), base.hash(), s.value() + ".at");
     return ImportRun.importAbsolute(xx, loc, subSpec);
@@ -80,10 +85,10 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) {
-      return EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
-    }
-    return EResult.err(loc, "TypeBundle::bind: CodeValue has no compile-time value");
+    return switch (cv.value()) {
+      case Opt.Some<Value> some -> EResult.ok(new BindResult(cv.code(), new BindingValue(some.value())));
+      case Opt.None<Value> none -> EResult.err(loc, "TypeBundle::bind: CodeValue has no compile-time value");
+    };
   }
 
   @Override
@@ -98,7 +103,7 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

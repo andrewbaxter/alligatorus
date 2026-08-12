@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 
 public final class TMap<K, V> extends AbstractMap<K, V> {
   private final HashMap<K, V> backing;
@@ -35,7 +34,7 @@ public final class TMap<K, V> extends AbstractMap<K, V> {
     return Opt.some(v);
   }
 
-  public @Nullable V getOrNull(K key) {
+  public V getOrNull(K key) {
     return backing.get(key);
   }
 
@@ -56,7 +55,7 @@ public final class TMap<K, V> extends AbstractMap<K, V> {
   }
 
   @Override
-  public @Nullable V put(K key, V value) {
+  public V put(K key, V value) {
     return backing.put(key, value);
   }
 

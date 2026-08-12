@@ -28,6 +28,30 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
+import compilerxyz.eval.value.byte_.TypeByteConst;
+import compilerxyz.eval.value.byte_.TypeByteDynamic;
+import compilerxyz.eval.value.double_.TypeDoubleConst;
+import compilerxyz.eval.value.double_.TypeDoubleDynamic;
+import compilerxyz.eval.value.float_.TypeFloatConst;
+import compilerxyz.eval.value.float_.TypeFloatDynamic;
+import compilerxyz.eval.value.int_.TypeIntConst;
+import compilerxyz.eval.value.int_.TypeIntDynamic;
+import compilerxyz.eval.value.long_.TypeLongConst;
+import compilerxyz.eval.value.long_.TypeLongDynamic;
+import compilerxyz.eval.value.short_.TypeShortConst;
+import compilerxyz.eval.value.short_.TypeShortDynamic;
+import compilerxyz.eval.value.ubyte_.TypeUbyteConst;
+import compilerxyz.eval.value.ubyte_.TypeUbyteDynamic;
+import compilerxyz.eval.value.uint_.TypeUintConst;
+import compilerxyz.eval.value.uint_.TypeUintDynamic;
+import compilerxyz.eval.value.ulong_.TypeUlongConst;
+import compilerxyz.eval.value.ulong_.TypeUlongDynamic;
+import compilerxyz.eval.value.ushort_.TypeUshortConst;
+import compilerxyz.eval.value.ushort_.TypeUshortDynamic;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectInt;
+import compilerxyz.gen.AspectNumericConst;
+import compilerxyz.gen.AspectNumericDynamic;
 
 /**
  * Central operator/cast machinery shared by every numeric type family. A type's operator aspects
@@ -91,31 +115,31 @@ public final class Numerics {
 
   public static Type constType(NumericKind k) {
     return switch (k) {
-      case BYTE -> new compilerxyz.eval.value.byte_.TypeByteConst();
-      case SHORT -> new compilerxyz.eval.value.short_.TypeShortConst();
-      case INT -> new compilerxyz.eval.value.int_.TypeIntConst();
-      case LONG -> new compilerxyz.eval.value.long_.TypeLongConst();
-      case FLOAT -> new compilerxyz.eval.value.float_.TypeFloatConst();
-      case DOUBLE -> new compilerxyz.eval.value.double_.TypeDoubleConst();
-      case UBYTE -> new compilerxyz.eval.value.ubyte_.TypeUbyteConst();
-      case USHORT -> new compilerxyz.eval.value.ushort_.TypeUshortConst();
-      case UINT -> new compilerxyz.eval.value.uint_.TypeUintConst();
-      case ULONG -> new compilerxyz.eval.value.ulong_.TypeUlongConst();
+      case BYTE -> new TypeByteConst();
+      case SHORT -> new TypeShortConst();
+      case INT -> new TypeIntConst();
+      case LONG -> new TypeLongConst();
+      case FLOAT -> new TypeFloatConst();
+      case DOUBLE -> new TypeDoubleConst();
+      case UBYTE -> new TypeUbyteConst();
+      case USHORT -> new TypeUshortConst();
+      case UINT -> new TypeUintConst();
+      case ULONG -> new TypeUlongConst();
     };
   }
 
   public static Type dynamicType(NumericKind k) {
     return switch (k) {
-      case BYTE -> new compilerxyz.eval.value.byte_.TypeByteDynamic();
-      case SHORT -> new compilerxyz.eval.value.short_.TypeShortDynamic();
-      case INT -> new compilerxyz.eval.value.int_.TypeIntDynamic();
-      case LONG -> new compilerxyz.eval.value.long_.TypeLongDynamic();
-      case FLOAT -> new compilerxyz.eval.value.float_.TypeFloatDynamic();
-      case DOUBLE -> new compilerxyz.eval.value.double_.TypeDoubleDynamic();
-      case UBYTE -> new compilerxyz.eval.value.ubyte_.TypeUbyteDynamic();
-      case USHORT -> new compilerxyz.eval.value.ushort_.TypeUshortDynamic();
-      case UINT -> new compilerxyz.eval.value.uint_.TypeUintDynamic();
-      case ULONG -> new compilerxyz.eval.value.ulong_.TypeUlongDynamic();
+      case BYTE -> new TypeByteDynamic();
+      case SHORT -> new TypeShortDynamic();
+      case INT -> new TypeIntDynamic();
+      case LONG -> new TypeLongDynamic();
+      case FLOAT -> new TypeFloatDynamic();
+      case DOUBLE -> new TypeDoubleDynamic();
+      case UBYTE -> new TypeUbyteDynamic();
+      case USHORT -> new TypeUshortDynamic();
+      case UINT -> new TypeUintDynamic();
+      case ULONG -> new TypeUlongDynamic();
     };
   }
 
@@ -141,26 +165,20 @@ public final class Numerics {
 
   private static Opt<Operand> classify(ExprContext xx, Value v) {
     var t = v.valueType();
-    if (GenAspectNumericConst.getMaybe(xx, t) instanceof Opt.Some<compilerxyz.gen.AspectNumericConst> c) {
-      return Opt.some(new Operand(c.value().aspectNumericConstKind(), true, v));
+    var constOpt = GenAspectNumericConst.getMaybe(xx, t);
+    if (constOpt.optIsSome()) {
+      return Opt.some(new Operand(constOpt.optUnwrap().aspectNumericConstKind(), true, v));
     }
-    if (GenAspectNumericDynamic.getMaybe(xx, t)
-        instanceof Opt.Some<compilerxyz.gen.AspectNumericDynamic> d) {
-      return Opt.some(new Operand(d.value().aspectNumericDynamicKind(), false, v));
+    var dynOpt = GenAspectNumericDynamic.getMaybe(xx, t);
+    if (dynOpt.optIsSome()) {
+      return Opt.some(new Operand(dynOpt.optUnwrap().aspectNumericDynamicKind(), false, v));
     }
-    // Fallback: any type that can yield an integral value (AspectInt) participates as a long
-    // constant. Lets non-primitive integral-like types (e.g. source-defined wrappers) take part in
-    // numeric operators via their long representation.
-    if (compilerxyz.gen.GenAspectInt.getMaybe(xx, t)
-        instanceof Opt.Some<compilerxyz.gen.AspectInt>) {
+    if (compilerxyz.gen.GenAspectInt.getMaybe(xx, t).optIsSome()) {
       return Opt.some(new Operand(NumericKind.LONG, true, v));
     }
-    // Fallback: a dynamic value whose consumed JVM representation is a numeric primitive (e.g. a
-    // source-defined wrapper that delegates its consume to a numeric type) participates by that
-    // primitive kind.
-    if (GenAspectConsumeDynamic.getMaybe(xx, t)
-        instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> cd) {
-      var desc = cd.value().aspectConsumeDynamicJvmClass(xx).value();
+    var cdOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
+    if (cdOpt.optIsSome()) {
+      var desc = cdOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx).value();
       if (!desc.isEmpty()) {
         NumericKind k =
             switch (desc.charAt(0)) {
@@ -180,18 +198,18 @@ public final class Numerics {
 
   private static Number constNumber(ExprContext xx, Value v) {
     var a = GenAspectNumericConst.getMaybe(xx, v.valueType());
-    if (a instanceof Opt.Some<compilerxyz.gen.AspectNumericConst> some) {
-      return some.value().aspectNumericConstGet(v);
+    if (a.optIsSome()) {
+      return a.optUnwrap().aspectNumericConstGet(v);
     }
     var i = compilerxyz.gen.GenAspectInt.getMaybe(xx, v.valueType());
-    if (i instanceof Opt.Some<compilerxyz.gen.AspectInt> some) {
-      return some.value().aspectIntGet(v);
+    if (i.optIsSome()) {
+      return i.optUnwrap().aspectIntGet(v);
     }
     throw new IllegalStateException("Numerics::constNumber: value is not a numeric constant");
   }
 
   private static Opt<Value> valueOf(CodeValue cv) {
-    if (cv.value() instanceof Opt.Some<Value> some) return Opt.some(some.value());
+    if (cv.value().optIsSome()) return cv.value();
     return Opt.none();
   }
 
@@ -420,13 +438,13 @@ public final class Numerics {
   }
 
   public static Opt<NumericKind> kindOf(ExprContext xx, Type type) {
-    if (GenAspectNumericConst.getMaybe(xx, type)
-        instanceof Opt.Some<compilerxyz.gen.AspectNumericConst> c) {
-      return Opt.some(c.value().aspectNumericConstKind());
+    var cOpt = GenAspectNumericConst.getMaybe(xx, type);
+    if (cOpt.optIsSome()) {
+      return Opt.some(cOpt.optUnwrap().aspectNumericConstKind());
     }
-    if (GenAspectNumericDynamic.getMaybe(xx, type)
-        instanceof Opt.Some<compilerxyz.gen.AspectNumericDynamic> d) {
-      return Opt.some(d.value().aspectNumericDynamicKind());
+    var dOpt = GenAspectNumericDynamic.getMaybe(xx, type);
+    if (dOpt.optIsSome()) {
+      return Opt.some(dOpt.optUnwrap().aspectNumericDynamicKind());
     }
     return Opt.none();
   }
@@ -549,16 +567,16 @@ public final class Numerics {
 
   /** Prepend any carried dynamic side-effect code a (possibly-const) operand holds. */
   private static void addCarried(JavaBytecodeSequence seq, CodeValue cv) {
-    var carried = cv.code().dynamic();
+    var carried = cv.code().codeDynamic();
     if (carried != null) seq.add(carried);
   }
 
   private static EResult<CodeDynamic> consume(ExprContext xx, QExprId loc, CodeValue cv) {
     var vOpt = valueOf(cv);
-    var type = ((Opt.Some<Value>) vOpt).value().valueType();
-    if (GenAspectConsumeDynamic.getMaybe(xx, type)
-        instanceof Opt.Some<compilerxyz.gen.AspectConsumeDynamic> some) {
-      return some.value().aspectConsumeDynamicToDynamic(xx, loc, cv);
+    var type = vOpt.optUnwrap().valueType();
+    var cdOpt = GenAspectConsumeDynamic.getMaybe(xx, type);
+    if (cdOpt.optIsSome()) {
+      return cdOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
     }
     return EResult.err(loc, "Numerics::consume: dynamic operand is not consumable");
   }

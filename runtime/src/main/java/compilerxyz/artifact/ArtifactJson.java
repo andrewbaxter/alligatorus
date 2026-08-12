@@ -7,6 +7,8 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueArray;
+import compilerxyz.safejson.JsonValueBoolean;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
@@ -27,8 +29,15 @@ public final class ArtifactJson {
   }
 
   public static EResult<Artifact> decodeArtifact(QExprId loc, JsonValue v) {
-    if (!(v instanceof JsonValueObject obj) || obj.entries().size() != 1) {
-      return EResult.err(loc, "decodeArtifact: expected tagged object");
+    JsonValueObject obj;
+    switch (v) {
+      case JsonValueObject o when o.entries().size() == 1 -> obj = o;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifact: expected tagged object"); }
     }
     var entry = obj.entries().entrySet().iterator().next();
     return switch (entry.getKey()) {
@@ -54,8 +63,14 @@ public final class ArtifactJson {
   }
 
   public static EResult<ArtifactBody> decodeArtifactBody(QExprId loc, JsonValue v) {
-    if (!(v instanceof JsonValueObject obj)) {
-      return EResult.err(loc, "decodeArtifactBody: expected object");
+    JsonValueObject obj;
+    switch (v) {
+      case JsonValueObject o -> obj = o;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactBody: expected object"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactBody: expected object"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactBody: expected object"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactBody: expected object"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactBody: expected object"); }
     }
     var data = obj.entries().get("data");
     var exporterJson = obj.entries().get("exporter");
@@ -80,8 +95,15 @@ public final class ArtifactJson {
 
   public static EResult<ArtifactBodyExporter> decodeArtifactBodyExporter(
       QExprId loc, JsonValue v) {
-    if (!(v instanceof JsonValueObject obj) || obj.entries().size() != 1) {
-      return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object");
+    JsonValueObject obj;
+    switch (v) {
+      case JsonValueObject o when o.entries().size() == 1 -> obj = o;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
     }
     var entry = obj.entries().entrySet().iterator().next();
     return switch (entry.getKey()) {
@@ -111,14 +133,60 @@ public final class ArtifactJson {
   }
 
   public static EResult<ArtifactIdSource> decodeArtifactIdSource(QExprId loc, JsonValue v) {
-    if (!(v instanceof JsonValueObject obj)) {
-      return EResult.err(loc, "decodeArtifactIdSource: expected object");
+    JsonValueObject obj;
+    switch (v) {
+      case JsonValueObject o -> obj = o;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactIdSource: expected object"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactIdSource: expected object"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactIdSource: expected object"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactIdSource: expected object"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactIdSource: expected object"); }
     }
-    if (!(obj.entries().get("compile_id") instanceof JsonValueObject ci
-        && obj.entries().get("index") instanceof JsonValueNumber index
-        && ci.entries().get("import_state") instanceof JsonValueNumber is
-        && ci.entries().get("source") instanceof JsonValueNumber src)) {
+    var ciJson = obj.entries().get("compile_id");
+    var indexJson = obj.entries().get("index");
+    if (ciJson == null || indexJson == null) {
       return EResult.err(loc, "decodeArtifactIdSource: malformed");
+    }
+    JsonValueObject ci;
+    switch (ciJson) {
+      case JsonValueObject o -> ci = o;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+    }
+    JsonValueNumber index;
+    switch (indexJson) {
+      case JsonValueNumber n -> index = n;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+    }
+    var isJson = ci.entries().get("import_state");
+    var srcJson = ci.entries().get("source");
+    if (isJson == null || srcJson == null) {
+      return EResult.err(loc, "decodeArtifactIdSource: malformed");
+    }
+    JsonValueNumber is;
+    switch (isJson) {
+      case JsonValueNumber n -> is = n;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+    }
+    JsonValueNumber src;
+    switch (srcJson) {
+      case JsonValueNumber n -> src = n;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactIdSource: malformed"); }
     }
     return EResult.ok(
         new ArtifactIdSource(
@@ -134,8 +202,14 @@ public final class ArtifactJson {
   }
 
   public static EResult<TList<Artifact>> decodeArtifactList(QExprId loc, JsonValue v) {
-    if (!(v instanceof JsonValueArray arr)) {
-      return EResult.err(loc, "decodeArtifactList: expected array");
+    JsonValueArray arr;
+    switch (v) {
+      case JsonValueArray a -> arr = a;
+      case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactList: expected array"); }
+      case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactList: expected array"); }
+      case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactList: expected array"); }
+      case JsonValueString s -> { return EResult.err(loc, "decodeArtifactList: expected array"); }
+      case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactList: expected array"); }
     }
     var out = new TList<Artifact>(arr.elements().size());
     for (var e : arr.elements()) {
@@ -147,8 +221,14 @@ public final class ArtifactJson {
   }
 
   public static EResult<String> decodeString(QExprId loc, JsonValue v) {
-    if (v instanceof JsonValueString s) return EResult.ok(s.value());
-    return EResult.err(loc, "decodeString: expected string");
+    return switch (v) {
+      case JsonValueString s -> EResult.ok(s.value());
+      case JsonValueNull n -> EResult.err(loc, "decodeString: expected string");
+      case JsonValueBoolean b -> EResult.err(loc, "decodeString: expected string");
+      case JsonValueNumber n -> EResult.err(loc, "decodeString: expected string");
+      case JsonValueArray a -> EResult.err(loc, "decodeString: expected string");
+      case JsonValueObject o -> EResult.err(loc, "decodeString: expected string");
+    };
   }
 
   public static JsonValue encodeString(String s) {
@@ -162,7 +242,13 @@ public final class ArtifactJson {
   }
 
   public static Opt<JsonValueObject> asObject(JsonValue v) {
-    if (v instanceof JsonValueObject o) return Opt.some(o);
-    return Opt.none();
+    return switch (v) {
+      case JsonValueObject o -> Opt.some(o);
+      case JsonValueNull n -> Opt.none();
+      case JsonValueBoolean b -> Opt.none();
+      case JsonValueNumber n -> Opt.none();
+      case JsonValueString s -> Opt.none();
+      case JsonValueArray a -> Opt.none();
+    };
   }
 }

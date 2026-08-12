@@ -66,15 +66,19 @@ public record TypeMapConstructorConst()
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (!(argument.value() instanceof Opt.Some<Value> argSome)) {
-      return EResult.err(
-          loc, "TypeMapConstructorConst::call: argument must have a compile-time value");
+    Opt.Some<Value> argSome;
+    switch (argument.value()) {
+      case Opt.Some<Value> s -> argSome = s;
+      case Opt.None<Value> n -> { return EResult.err(
+          loc, "TypeMapConstructorConst::call: argument must have a compile-time value"); }
     }
     var argValue = argSome.value();
     var argMeta = argValue.valueType();
     var aspectTupleOpt = GenAspectTuple.getMaybe(xx, argMeta);
-    if (!(aspectTupleOpt instanceof Opt.Some<AspectTuple> tupleSome)) {
-      return EResult.err(loc, "map() requires a tuple of (key_type, value_type)");
+    Opt.Some<AspectTuple> tupleSome;
+    switch (aspectTupleOpt) {
+      case Opt.Some<AspectTuple> s -> tupleSome = s;
+      case Opt.None<AspectTuple> n -> { return EResult.err(loc, "map() requires a tuple of (key_type, value_type)"); }
     }
     var elements = tupleSome.value().aspectTupleTakeElements(xx, loc, argValue);
     if (elements.size() != 2) {
@@ -88,12 +92,16 @@ public record TypeMapConstructorConst()
     var valueRes = elements.get(1);
     if (valueRes.hasErrors()) return valueRes.reerr();
     var valueCv = valueRes.requireValue("TypeMapConstructorConst::call value element");
-    if (!(keyCv.value() instanceof Opt.Some<Value> keySome)) {
-      return EResult.err(loc, "TypeMapConstructorConst::call: key slot has no compile-time value");
+    Opt.Some<Value> keySome;
+    switch (keyCv.value()) {
+      case Opt.Some<Value> s -> keySome = s;
+      case Opt.None<Value> n -> { return EResult.err(loc, "TypeMapConstructorConst::call: key slot has no compile-time value"); }
     }
-    if (!(valueCv.value() instanceof Opt.Some<Value> valueSome)) {
-      return EResult.err(
-          loc, "TypeMapConstructorConst::call: value slot has no compile-time value");
+    Opt.Some<Value> valueSome;
+    switch (valueCv.value()) {
+      case Opt.Some<Value> s -> valueSome = s;
+      case Opt.None<Value> n -> { return EResult.err(
+          loc, "TypeMapConstructorConst::call: value slot has no compile-time value"); }
     }
     var keyValue = keySome.value();
     var valueValue = valueSome.value();
@@ -109,7 +117,7 @@ public record TypeMapConstructorConst()
     valueType = compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType);
     Type mapType = new TypeMapDynamic(keyType, valueType);
     return EResult.ok(
-        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), mapType))));
+        new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), mapType))));
   }
 
   @Override
@@ -129,28 +137,28 @@ public record TypeMapConstructorConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new compilerxyz.eval.value.object_.ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
-  public boolean typeIsEqual(compilerxyz.eval.ExprContext xx, compilerxyz.eval.Type other) {
+  public boolean typeIsEqual(ExprContext xx, Type other) {
     return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_MAP_CONSTRUCTOR_CONST_IDENTITY).optIsSome();
   }
 
   @Override
-  public boolean typeCanCastFrom(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type sourceType) {
+  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
     return false;
   }
   @Override
-  public boolean typeCanCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.Type destType) {
+  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.eval.CodeValue> typeCastTo(compilerxyz.eval.ExprContext xx, compilerxyz.eval.QExprId loc, compilerxyz.eval.CodeValue cv, compilerxyz.eval.Type destType) {
+  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

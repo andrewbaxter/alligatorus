@@ -7,6 +7,7 @@ import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Result;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 import compilerxyz.util.TMap;
@@ -30,7 +31,7 @@ public final class T0050IntsTest {
                             mb.set(
                                 mb.scopeUse("x"),
                                 mb.operatorAdd(mb.scopeUse("x"), mb.num(7.0))))),
-                    null),
+                    Opt.none()),
                 mb.call(
                     mb.log(),
                     mb.call(
@@ -38,8 +39,12 @@ public final class T0050IntsTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok0 -> resOk = ok0;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + err); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("11", ok.logs().get(0).message());
   }
@@ -83,7 +88,7 @@ public final class T0050IntsTest {
                                                                     mb.operatorAdd(
                                                                         mb.scopeUse("arg"),
                                                                         mb.num(7.0))))),
-                                                        null),
+                                                        Opt.none()),
                                                     mb.return_(mb.scopeUse("arg")))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.field(mb.scopeUse("builder"), mb.str("func")))))),
@@ -96,8 +101,12 @@ public final class T0050IntsTest {
                         mb.tupleOf())))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(res instanceof Result.Ok<?, ?>, () -> "compile failed: " + res);
-    var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
+    Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+    switch (res) {
+      case Result.Ok<Compile.CompileResult, TList<ExprErr>> ok0 -> resOk = ok0;
+      case Result.Err<Compile.CompileResult, TList<ExprErr>> err -> { assertTrue(false, () -> "compile failed: " + err); return; }
+    }
+    var ok = resOk.value();
     assertEquals(1, ok.logs().size());
     assertEquals("11", ok.logs().get(0).message());
   }

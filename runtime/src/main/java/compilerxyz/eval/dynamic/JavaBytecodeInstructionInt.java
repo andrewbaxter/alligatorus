@@ -8,7 +8,7 @@ public class JavaBytecodeInstructionInt implements JavaBytecodeInstruction {
   }
 
   @Override
-  public void dispatchMore(MoreDispatcher moreDispatcher) {
-  moreDispatcher.handleInt(this);
+  public void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher) {
+  moreDispatcher.moreDispatcherHandleInt(this);
   }
 }

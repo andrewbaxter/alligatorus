@@ -10,11 +10,18 @@ import compilerxyz.gen.Value;
 public record CodeValue(Code code, EvalOutcome outcome) {
 
   public Opt<Value> value() {
-    if (outcome instanceof EvalOutcome.HasValue h) return Opt.some(h.value());
-    return Opt.none();
+    return switch (outcome) {
+      case EvalOutcome.HasValue h -> Opt.some(h.value());
+      case EvalOutcome.ControlEnded c -> Opt.none();
+      case EvalOutcome.NoValue n -> Opt.none();
+    };
   }
 
   public boolean controlEnded() {
-    return outcome instanceof EvalOutcome.ControlEnded;
+    return switch (outcome) {
+      case EvalOutcome.ControlEnded c -> true;
+      case EvalOutcome.HasValue h -> false;
+      case EvalOutcome.NoValue n -> false;
+    };
   }
 }
