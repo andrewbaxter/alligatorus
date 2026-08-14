@@ -12,7 +12,17 @@ public final class JsonValues {
 
   public static JsonValue toValue(Object object) {
     try {
-      var serialized = Json.serialize(object, Json.Style.COMPACT);
+      var _sw = new StringWriter();
+      var _jw = new JsonWriter(_sw);
+      _jw.setSerializeNulls(true);
+      _jw.setIndent("");
+      if (object == null) {
+        _jw.nullValue();
+      } else {
+        Json.encodeValue(_jw, object, Json.Style.COMPACT);
+      }
+      _jw.close();
+      var serialized = _sw.toString();
       var reader = new JsonReader(new StringReader(serialized));
       return JsonValue.safeJsonAdapter.safeJsonAdapterDeserialize(reader, Json.FieldPath.root());
     } catch (IOException e) {

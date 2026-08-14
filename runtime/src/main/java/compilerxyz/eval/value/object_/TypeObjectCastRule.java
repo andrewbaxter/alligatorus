@@ -49,7 +49,27 @@ public sealed interface TypeObjectCastRule {
     @Override
     public EResult<CodeValue> typeObjectCastRuleApply(
         ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return emitRuntimeCall(xx, source, loc, cv, destType, helper);
+      var _ercSourceCode = cv.code().codeDynamic();
+      if (_ercSourceCode == null) {
+        return EResult.err(loc, "cast " + source.typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
+      }
+      var _ercSeq = new JavaBytecodeSequence();
+      if (helper.needsExprContext) {
+        _ercSeq.add(JavaBytecodeUtils.accessStaticField(loc,
+            JavaInternalName.of(xx.vx.evalRootInternalName),
+            EvalRootEmitter.EXPR_CONTEXT_FIELD,
+            EvalRootEmitter.DESC_EXPR_CONTEXT));
+      }
+      _ercSeq.add(_ercSourceCode);
+      _ercSeq.add(JavaBytecodeUtils.callStaticMethod(loc, helper.targetClass, helper.methodName, helper.descriptor));
+      var _ercRetDesc = helper.descriptor.value();
+      var _ercRetStart = _ercRetDesc.indexOf(')') + 1;
+      if (_ercRetDesc.charAt(_ercRetStart) == 'L' && !_ercRetDesc.substring(_ercRetStart).equals("Ljava/lang/Object;")) {
+        _ercSeq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(
+            JavaInternalName.of(_ercRetDesc.substring(_ercRetStart + 1, _ercRetDesc.length() - 1)))));
+      }
+      var _ercCall = new CodeDynamic(loc, _ercSeq);
+      return EResult.ok(new CodeValue(Code.of(loc, _ercCall), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
   }
 
@@ -104,50 +124,4 @@ public sealed interface TypeObjectCastRule {
       JavaMethodDescriptor descriptor,
       boolean needsExprContext) {}
 
-  private static EResult<CodeValue> emitRuntimeCall(
-      ExprContext xx,
-      TypeObjectDynamic source,
-      QExprId loc,
-      CodeValue cv,
-      Type destType,
-      DynRuntimeHelper helper) {
-    var sourceCode = cv.code().codeDynamic();
-    if (sourceCode == null) {
-      return EResult.err(
-          loc,
-          "cast "
-              + source.typeDesc()
-              + " → "
-              + destType.typeDesc()
-              + ": source has no runtime code");
-    }
-    var seq = new JavaBytecodeSequence();
-    if (helper.needsExprContext) {
-      seq.add(
-          JavaBytecodeUtils.accessStaticField(
-              loc,
-              JavaInternalName.of(xx.vx.evalRootInternalName),
-              EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              EvalRootEmitter.DESC_EXPR_CONTEXT));
-    }
-    seq.add(sourceCode);
-    seq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc,
-            helper.targetClass,
-            helper.methodName,
-            helper.descriptor));
-    var retDesc = helper.descriptor.value();
-    var retStart = retDesc.indexOf(')') + 1;
-    if (retDesc.charAt(retStart) == 'L'
-        && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
-      seq.add(
-          JavaBytecodeUtils.cast(
-              loc, JavaDataDescriptor.fromInternalName(
-                  JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
-    }
-    var call = new CodeDynamic(loc, seq);
-    return EResult.ok(
-        new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
-  }
 }

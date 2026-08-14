@@ -31,27 +31,6 @@ public class JavaMethodDescriptor {
     return fromParts(returnDescriptor, TList.of(argDescriptors));
   }
 
-  public TList<JavaDataDescriptor> parameterDescriptors() {
-    var out = new TList<JavaDataDescriptor>();
-    if (value.isEmpty() || value.charAt(0) != '(') {
-      throw new IllegalStateException("JavaMethodDescriptor missing '(': " + value);
-    }
-    int i = 1;
-    while (i < value.length() && value.charAt(i) != ')') {
-      int start = i;
-      while (i < value.length() && value.charAt(i) == '[') i++;
-      char c = value.charAt(i);
-      if (c == 'L') {
-        while (i < value.length() && value.charAt(i) != ';') i++;
-        i++;
-      } else {
-        i++;
-      }
-      out.add(JavaDataDescriptor.create(value.substring(start, i)));
-    }
-    return out;
-  }
-
   @Override
   public String toString() {
     return value;

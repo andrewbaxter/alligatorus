@@ -26,7 +26,11 @@ public final class SourceModuleToModule {
     var loc = new QExprId(sourceId, e.id().value());
     var variant =
         switch (e.variant()) {
-          case SourceExpr.Literal lit -> new Expr.Literal(literalToLitValue(lit.value()));
+          case SourceExpr.Literal lit -> new Expr.Literal(switch (lit.value()) {
+            case SourceLiteral.Null n -> Expr.LitValue.shared(new ValueObjectConst(new TypeNullConst(), null));
+            case SourceLiteral.Str s -> Expr.LitValue.shared(new ValueObjectConst(new TypeStringConst(), s.value()));
+            case SourceLiteral.Number n -> Expr.LitValue.shared(new ValueObjectConst(new TypeDoubleConst(), n.value()));
+          });
           case SourceExpr.ScopeUse u ->
               new Expr.ScopeUse(sourceExprToExpr(sourceId, u.key()));
           case SourceExpr.Call c ->
@@ -129,17 +133,6 @@ public final class SourceModuleToModule {
           }
         };
     return new Expr(loc, variant);
-  }
-
-  private static Expr.LitValue literalToLitValue(SourceLiteral literal) {
-    return switch (literal) {
-      case SourceLiteral.Null n -> Expr.LitValue.shared(
-          new ValueObjectConst(new TypeNullConst(), null));
-      case SourceLiteral.Str s -> Expr.LitValue.shared(
-          new ValueObjectConst(new TypeStringConst(), s.value()));
-      case SourceLiteral.Number n -> Expr.LitValue.shared(
-          new ValueObjectConst(new TypeDoubleConst(), n.value()));
-    };
   }
 
   private static Opt<Expr> mapOpt(SourceId sourceId, Opt<SourceExpr> opt) {

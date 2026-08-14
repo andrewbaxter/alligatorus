@@ -110,6 +110,11 @@ public record TypeEResultDynamic(Type elementType)
   }
 
   @Override
+  public EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
+    return EResult.ok(null);
+  }
+
+  @Override
   public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
     // Stack: [eresult] -> [boolean]. Variant 0 = ok (no errors), 1 = errs.
     var seq = new JavaBytecodeSequence();

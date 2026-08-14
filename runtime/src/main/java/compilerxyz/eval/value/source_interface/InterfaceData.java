@@ -22,6 +22,8 @@ import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6005L)
 public final class InterfaceData {
@@ -82,9 +84,43 @@ public final class InterfaceData {
       return EResult.err(
           loc, "InterfaceData.finish: setId is null for user-declared interface '" + name + "'");
     }
-    var emitted = SourceInterfaceEmitter.emit(setId.optUnwrap(), interfaceIndex, this);
-    compiledBinaryName = emitted.binaryName();
-    compiledBytecode = Opt.some(emitted.bytecode());
+    var _sieBinaryName = SourceInterfaceEmitter.binaryNameFor(setId.optUnwrap(), interfaceIndex);
+    var _sieInternalName = _sieBinaryName.replace('.', '/');
+    var _sieCw =
+        new ClassWriter(
+            ClassWriter.COMPUTE_FRAMES
+                | ClassWriter.COMPUTE_MAXS);
+    _sieCw.visit(
+        Opcodes.V11,
+        Opcodes.ACC_PUBLIC
+            | Opcodes.ACC_INTERFACE
+            | Opcodes.ACC_ABSTRACT,
+        _sieInternalName,
+        null,
+        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT.value(),
+        null);
+    for (var _sieMethod : methods) {
+      if (_sieMethod.argType == null) {
+        throw new IllegalStateException(
+            "SourceInterfaceEmitter.emit: method '"
+                + _sieMethod.name
+                + "' has no arg type (finish ordering violation)");
+      }
+      _sieCw
+          .visitMethod(
+              Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
+              _sieMethod.name,
+              JavaMethodDescriptor.fromParts(
+                      compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
+                      compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)
+                  .value(),
+              null,
+              null)
+          .visitEnd();
+    }
+    _sieCw.visitEnd();
+    compiledBinaryName = _sieBinaryName;
+    compiledBytecode = Opt.some(_sieCw.toByteArray());
     return EResult.ok(null);
   }
 

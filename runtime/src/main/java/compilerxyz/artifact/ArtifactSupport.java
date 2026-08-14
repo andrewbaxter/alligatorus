@@ -24,25 +24,6 @@ public final class ArtifactSupport {
         "Value " + v.getClass().getName() + " does not implement ExporterAny");
   }
 
-  public static EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc, Value v) {
-    var errors = new TList<ExprErr>();
-    var t = v.valueType();
-    var asp = GenAspectArtifact.get(xx, loc, t);
-    if (asp.hasErrors()) {
-      asp.drainInto(errors);
-      return errsOrEmpty(errors);
-    }
-    var aspVal = asp.requireValue("ArtifactSupport::exportArtifact aspect");
-    var exporter = aspVal.aspectArtifactExporter();
-    var art = exporter.artifactExporterExport(xx, loc, valueAsExporterAny(v));
-    if (art.hasErrors()) {
-      art.drainInto(errors);
-      return errsOrEmpty(errors);
-    }
-    var artVal = art.requireValue("ArtifactSupport::exportArtifact artifact");
-    return EResult.ok(artVal);
-  }
-
   public static EResult<ArtifactExporter> exporterAnyToArtifactExporter(
       ExprContext xx, QExprId loc, ExporterAny exporterAny) {
     if (exporterAny instanceof ExporterRoot er) {

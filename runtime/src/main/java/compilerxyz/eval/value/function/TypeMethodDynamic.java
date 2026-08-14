@@ -131,7 +131,26 @@ public record TypeMethodDynamic(
               compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
     var args = argsDynRes.requireValue("TypeMethodDynamic::call args");
-    var paramDescs = descriptor.parameterDescriptors();
+    var paramDescs = new TList<JavaDataDescriptor>();
+    {
+      var _pd = descriptor.value();
+      if (_pd.isEmpty() || _pd.charAt(0) != '(') {
+        throw new IllegalStateException("JavaMethodDescriptor missing '(': " + _pd);
+      }
+      int _pdi = 1;
+      while (_pdi < _pd.length() && _pd.charAt(_pdi) != ')') {
+        int _pdStart = _pdi;
+        while (_pdi < _pd.length() && _pd.charAt(_pdi) == '[') _pdi++;
+        char _pdc = _pd.charAt(_pdi);
+        if (_pdc == 'L') {
+          while (_pdi < _pd.length() && _pd.charAt(_pdi) != ';') _pdi++;
+          _pdi++;
+        } else {
+          _pdi++;
+        }
+        paramDescs.add(JavaDataDescriptor.create(_pd.substring(_pdStart, _pdi)));
+      }
+    }
     var paramOffset = needsExprContext ? 1 : 0;
     for (int i = 0; i < args.size(); i++) {
       seq.add(args.get(i));

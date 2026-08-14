@@ -20,8 +20,13 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.Binding;
+import compilerxyz.eval.NumericKind;
+import compilerxyz.gen.AspectListConst;
+import compilerxyz.gen.AspectNumericConst;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectListConst;
+import compilerxyz.gen.GenAspectNumericConst;
 import compilerxyz.gen.Value;
 import compilerxyz.syntax.HashValue;
 import compilerxyz.util.Opt;
@@ -52,9 +57,26 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var argRes = SourceSpecs.argValue(loc, argument, "source.sha256");
     if (argRes.hasErrors()) return argRes.reerr();
-    var bytesRes = SourceSpecs.constBytes(xx, loc, argRes.requireValue("source.sha256 arg"), "source.sha256");
-    if (bytesRes.hasErrors()) return bytesRes.reerr();
-    var bytes = bytesRes.requireValue("source.sha256 bytes");
+    var _cbVal = argRes.requireValue("source.sha256 arg");
+    Opt.Some<AspectListConst> _cbListSome;
+    switch (GenAspectListConst.getMaybe(xx, _cbVal.valueType())) {
+      case Opt.Some<AspectListConst> s -> _cbListSome = s;
+      case Opt.None<AspectListConst> n -> { return EResult.err(loc, "source.sha256: expected a const list of bytes"); }
+    }
+    var _cbElements = _cbListSome.value().aspectListConstElements(_cbVal);
+    var bytes = new byte[_cbElements.size()];
+    for (var _cbI = 0; _cbI < _cbElements.size(); _cbI++) {
+      var _cbElem = _cbElements.get(_cbI);
+      Opt.Some<AspectNumericConst> _cbByteSome;
+      switch (GenAspectNumericConst.getMaybe(xx, _cbElem.valueType())) {
+        case Opt.Some<AspectNumericConst> s -> _cbByteSome = s;
+        case Opt.None<AspectNumericConst> n -> { return EResult.err(loc, "source.sha256: list element is not a byte"); }
+      }
+      if (_cbByteSome.value().aspectNumericConstKind() != NumericKind.BYTE) {
+        return EResult.err(loc, "source.sha256: list element is not a byte");
+      }
+      bytes[_cbI] = _cbByteSome.value().aspectNumericConstGet(_cbElem).byteValue();
+    }
     if (bytes.length != 32) {
       return EResult.err(loc, "source.sha256: expected 32 bytes, got " + bytes.length);
     }

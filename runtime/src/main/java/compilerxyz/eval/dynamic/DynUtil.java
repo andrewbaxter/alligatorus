@@ -212,66 +212,6 @@ public final class DynUtil {
         return EResult.ok(Opt.some(new TargetBindSub(dyn, vtype)));
     }
 
-    /**
-     * Destructuring drop for stack-allocated composite (record/tuple-like) types.
-     * The base sits on the JVM stack (source is {@code Source.Expr}). For each
-     * child field whose type has {@code AspectDropDynamic} we emit
-     * {@code DUP, <field-access>, <child-drop>} then finish with a single {@code POP}
-     * to discard the base object reference. If no child needs a drop or the
-     * source isn't stack-rooted the emission collapses to {@link #dropDefault}.
-     *
-     * @param children the destructured child accesses in emission order; each
-     *                 entry pairs the child type (queried for AspectDropDynamic)
-     *                 with the bytecode that pops the DUP'd base and pushes the
-     *                 child value.
-     */
-    public static EResult<Code> dropDestructiveComposite(
-            ExprContext xx, QExprId loc, ValueDynamicSource source, TList<DropChild> children) {
-        boolean stackRooted = isStackRooted(source);
-        TList<CodeDynamic> childDrops = new TList<>();
-        for (var child : children) {
-            var childDropOpt = compilerxyz.gen.GenAspectDropDynamic.getMaybe(xx, child.childType());
-            if (childDropOpt.optIsNone()) {
-                continue;
-            }
-            var seq = new JavaBytecodeSequence();
-            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
-            seq.add(child.access());
-            var childDesc = CompositeClassEmitter.slotDescriptor(xx, child.childType()).value();
-            var childWidth = childDesc.equals("J") || childDesc.equals("D") ? 2 : 1;
-            var childCv =
-                    new CodeValue(
-                            Code.of(loc, new CodeDynamic(loc, seq)),
-                            EvalOutcome.ofValue(
-                                    ValueDynamic.stack(child.childType(), childWidth)));
-            var childDropRes = childDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
-            if (childDropRes.hasErrors()) {
-                return childDropRes.reerr();
-            }
-            var childDropCode = childDropRes.requireValue("dropDestructiveComposite child drop");
-            var childDyn = childDropCode.codeDynamic();
-            if (childDyn != null) {
-                childDrops.add(childDyn);
-            }
-        }
-        if (childDrops.isEmpty()) {
-            return EResult.ok(source.valueDynamicSourceDrop(loc));
-        }
-        var out = new JavaBytecodeSequence();
-        if (!stackRooted) {
-            out.add(source.valueDynamicSourceRealize(xx, loc));
-        }
-        for (var d : childDrops) out.add(d);
-        out.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, out)));
-    }
-
-    /**
-     * A child entry for {@link #dropDestructiveComposite}. {@code access} is
-     * bytecode that consumes a base object reference from the stack and pushes
-     * the corresponding child value; typical shape: {@code GETFIELD} or
-     * {@code INVOKEINTERFACE} on a getter.
-     */
     public record DropChild(Type childType, CodeDynamic access) {}
 
     public static EResult<Code> dropDefault(ExprContext xx, QExprId loc, CodeValue cv) {

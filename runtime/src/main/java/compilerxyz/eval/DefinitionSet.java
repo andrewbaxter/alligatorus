@@ -9,8 +9,23 @@ import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.definition_set.ArtifactDataDefSet;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
+import compilerxyz.eval.dynamic.EmitCtx;
+import compilerxyz.eval.dynamic.EvalRootEmitter;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.dynamic.Prefixes;
+import compilerxyz.eval.dynamic.TargetDynamic;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
@@ -123,14 +138,146 @@ public final class DefinitionSet implements ExporterAny {
     if (specs.isEmpty()) {
       return Opt.none();
     }
-    var emitted = DefSetFunctionsEmitter.emit(defSetId, specs);
+    var _dsfBinaryName = DefSetFunctionsEmitter.functionsBinaryName(defSetId);
+    var _dsfInternalName = DefSetFunctionsEmitter.functionsInternalName(defSetId);
+    var _dsfCw =
+        new ClassWriter(
+            ClassWriter.COMPUTE_FRAMES
+                | ClassWriter.COMPUTE_MAXS) {
+          @Override
+          protected String getCommonSuperClass(String type1, String type2) {
+            return JvmConstants.INTNAME_OBJECT.value();
+          }
+        };
+    _dsfCw.visit(
+        Opcodes.V11,
+        Opcodes.ACC_PUBLIC
+            | Opcodes.ACC_FINAL
+            | Opcodes.ACC_SUPER,
+        _dsfInternalName,
+        null,
+        JvmConstants.INTNAME_OBJECT.value(),
+        null);
+    var _dsfFieldDescriptors =
+        new TOrderedMap<String, JavaDataDescriptor>();
+    var _dsfStaticFieldValues = new TOrderedMap<String, Object>();
+    for (var _dsfSpec : specs) {
+      var _dsfPrefix = DefSetFunctionsEmitter.functionFieldPrefix(_dsfSpec.funcIdx());
+      for (int _dsfI = 0; _dsfI < _dsfSpec.externals().size(); _dsfI++) {
+        var _dsfEntry = _dsfSpec.externals().get(_dsfI);
+        var _dsfName =
+            _dsfPrefix + Prefixes.EXTERNAL_PREFIX + _dsfI;
+        var _dsfExternal = _dsfEntry.external();
+        var _dsfDesc =
+            JavaDataDescriptor.fromClass(
+                _dsfExternal.externalHostClass());
+        var _dsfPrev = _dsfFieldDescriptors.put(_dsfName, _dsfDesc);
+        if (_dsfPrev != null && !_dsfPrev.value().equals(_dsfDesc.value())) {
+          throw new AssertionError(
+              "DefSetFunctionsEmitter::emit: descriptor conflict for " + _dsfName);
+        }
+        _dsfStaticFieldValues.put(_dsfName, _dsfExternal.externalHostValue());
+      }
+    }
+    for (var _dsfFdEntry : _dsfFieldDescriptors.entrySet()) {
+      _dsfCw
+          .visitField(
+              Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+              _dsfFdEntry.getKey(),
+              _dsfFdEntry.getValue().value(),
+              null,
+              null)
+          .visitEnd();
+    }
+    _dsfCw
+        .visitField(
+            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+            EvalRootEmitter.EXPR_CONTEXT_FIELD,
+            EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
+            null,
+            null)
+        .visitEnd();
+    for (var _dsfSpec : specs) {
+      var _efmMethodName =
+          DefSetFunctionsEmitter.functionMethodName(_dsfSpec.funcIdx());
+      var _efmPrefix = DefSetFunctionsEmitter.functionFieldPrefix(_dsfSpec.funcIdx());
+      var _efmArgDescs =
+          new TList<JavaDataDescriptor>(_dsfSpec.argSlots().size());
+      for (var _efmS : _dsfSpec.argSlots()) _efmArgDescs.add(_efmS.jvmDesc());
+      var _efmMv =
+          _dsfCw.visitMethod(
+              Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+              _efmMethodName,
+              JavaMethodDescriptor.fromParts(
+                      _dsfSpec.retDesc(), _efmArgDescs)
+                  .value(),
+              null,
+              null);
+      var _efmTarget =
+          new TargetDynamic(new Counter());
+      int _efmReservedLocals = 0;
+      for (var _efmSlot : _dsfSpec.argSlots()) {
+        var _efmSlotDesc = _efmSlot.jvmDesc().value();
+        _efmReservedLocals +=
+            (_efmSlotDesc.equals("D") || _efmSlotDesc.equals("J")) ? 2 : 1;
+      }
+      var _efmCtx =
+          new EmitCtx(
+              _dsfInternalName, Math.max(1, _efmReservedLocals), _efmPrefix);
+      var _efmLoc = CodeLoc.Infallible.INSTANCE;
+      var _efmSeq = JavaBytecodeUtils.seq();
+      var _efmOwnerInternal =
+          JavaInternalName.of(_dsfInternalName);
+      for (int _efmI = 0; _efmI < _dsfSpec.externals().size(); _efmI++) {
+        var _efmEntry = _dsfSpec.externals().get(_efmI);
+        var _efmFieldName =
+            _efmPrefix + Prefixes.EXTERNAL_PREFIX + _efmI;
+        var _efmFieldDesc =
+            JavaDataDescriptor.fromClass(
+                _efmEntry.external().externalHostClass());
+        _efmSeq.add(
+            JavaBytecodeUtils.accessStaticField(
+                _efmLoc, _efmOwnerInternal, _efmFieldName, _efmFieldDesc));
+        _efmSeq.add(
+            new CodeDynamic(
+                _efmLoc,
+                new JavaBytecodeStoreLoad(
+                    Opcodes.ASTORE, _efmEntry.key())));
+      }
+      _efmTarget.emit(_efmSeq, _efmCtx, _dsfSpec.bodyCode());
+      int _efmRetOpcode =
+          switch (_dsfSpec.retDesc().value()) {
+            case "V" -> Opcodes.RETURN;
+            case "I", "Z", "B", "S", "C" -> Opcodes.IRETURN;
+            case "J" -> Opcodes.LRETURN;
+            case "F" -> Opcodes.FRETURN;
+            case "D" -> Opcodes.DRETURN;
+            default -> Opcodes.ARETURN;
+          };
+      _efmSeq.add(JavaBytecodeUtils.inst(_efmLoc, _efmRetOpcode));
+      var _efmInitialSlots =
+          new TList<JavaBytecodeSequence.InitialSlot>();
+      for (var _efmSlot : _dsfSpec.argSlots()) {
+        var _efmSlotDesc = _efmSlot.jvmDesc().value();
+        boolean _efmIsWide = _efmSlotDesc.equals("D") || _efmSlotDesc.equals("J");
+        _efmInitialSlots.add(
+            new JavaBytecodeSequence.InitialSlot(
+                _efmSlot.id().key(), _efmIsWide));
+      }
+      JavaBytecodeUtils.renderMethodTyped(
+          _efmSeq, _efmMv, _efmInitialSlots);
+    }
+    _dsfCw.visitEnd();
+    var _dsfEmitted =
+        new DefSetFunctionsEmitter.EmittedFunctions(
+            _dsfBinaryName, _dsfInternalName, _dsfCw.toByteArray(), _dsfStaticFieldValues);
     for (var func : contributors) {
-      func.compiledClassName = Opt.some(emitted.binaryName());
-      func.compiledBytecode = Opt.some(emitted.bytecode());
-      func.compiledStaticFieldValues = Opt.some(emitted.staticFieldValues());
+      func.compiledClassName = Opt.some(_dsfEmitted.binaryName());
+      func.compiledBytecode = Opt.some(_dsfEmitted.bytecode());
+      func.compiledStaticFieldValues = Opt.some(_dsfEmitted.staticFieldValues());
       func.functionSpec = Opt.none();
     }
-    return Opt.some(emitted);
+    return Opt.some(_dsfEmitted);
   }
 
   @Override

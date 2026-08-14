@@ -45,7 +45,10 @@ import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.eval.dynamic.CompositeClassEmitter;
+import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.DynUtil.DropChild;
+import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6123L)
@@ -101,7 +104,31 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         new DropChild(
             valueType,
             JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
-    return compilerxyz.eval.dynamic.DynUtil.dropDestructiveComposite(xx, loc, vd.source(), children);
+    var _ddcSource = vd.source();
+    boolean _ddcStackRooted = DynUtil.isStackRooted(_ddcSource);
+    var _ddcChildDrops = new TList<CodeDynamic>();
+    for (var _ddcChild : children) {
+      var _ddcDropOpt = GenAspectDropDynamic.getMaybe(xx, _ddcChild.childType());
+      if (_ddcDropOpt.optIsNone()) continue;
+      var _ddcSeq = new JavaBytecodeSequence();
+      _ddcSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      _ddcSeq.add(_ddcChild.access());
+      var _ddcChildDesc = CompositeClassEmitter.slotDescriptor(xx, _ddcChild.childType()).value();
+      var _ddcChildWidth = _ddcChildDesc.equals("J") || _ddcChildDesc.equals("D") ? 2 : 1;
+      var _ddcChildCv = new CodeValue(
+          Code.of(loc, new CodeDynamic(loc, _ddcSeq)),
+          EvalOutcome.ofValue(ValueDynamic.stack(_ddcChild.childType(), _ddcChildWidth)));
+      var _ddcChildDropRes = _ddcDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _ddcChildCv);
+      if (_ddcChildDropRes.hasErrors()) return _ddcChildDropRes.reerr();
+      var _ddcChildDyn = _ddcChildDropRes.requireValue("dropDestructiveComposite child drop").codeDynamic();
+      if (_ddcChildDyn != null) _ddcChildDrops.add(_ddcChildDyn);
+    }
+    if (_ddcChildDrops.isEmpty()) return EResult.ok(_ddcSource.valueDynamicSourceDrop(loc));
+    var _ddcOut = new JavaBytecodeSequence();
+    if (!_ddcStackRooted) _ddcOut.add(_ddcSource.valueDynamicSourceRealize(xx, loc));
+    for (var _ddcD : _ddcChildDrops) _ddcOut.add(_ddcD);
+    _ddcOut.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+    return EResult.ok(Code.of(loc, new CodeDynamic(loc, _ddcOut)));
   }
 
   @Override

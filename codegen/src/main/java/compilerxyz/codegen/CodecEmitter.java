@@ -44,8 +44,19 @@ final class CodecEmitter {
   private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
-  private static final ClassName ARTIFACT_CODECS =
-      ClassName.get("compilerxyz.artifact", "ArtifactCodecs");
+  private static final String ARTIFACT_CODECS_REF = "compilerxyz.artifact.ArtifactCodecs";
+  private static final String[][] HAND_CODED_ENTRIES = {
+    {"compilerxyz.safejson.JsonValue", ARTIFACT_CODECS_REF + ".JSON_VALUE"},
+    {"compilerxyz.artifact.Artifact", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE"},
+    {"compilerxyz.artifact.Artifact.Body", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE_BODY"},
+    {"compilerxyz.artifact.Artifact.Ref", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE_REF"},
+    {"compilerxyz.artifact.ArtifactBody", ARTIFACT_CODECS_REF + ".ArtifactBodyCodec.INSTANCE"},
+    {"compilerxyz.artifact.ArtifactBodyExporter", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE"},
+    {"compilerxyz.artifact.ArtifactBodyExporter.Body", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_BODY"},
+    {"compilerxyz.artifact.ArtifactBodyExporter.Root", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_ROOT"},
+    {"compilerxyz.artifact.ArtifactBodyExporter.SourceRef", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF"},
+    {"compilerxyz.artifact.ArtifactIdSource", ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec.INSTANCE"},
+  };
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
     for (var c : info.components) {
       resolveType(c.type, ctxQname, index);
@@ -693,7 +704,12 @@ final class CodecEmitter {
           "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
           q, OPT, codecOfT, codecRef(q));
     }
-    lookup.addStatement("return $T.lookup(clazz)", ARTIFACT_CODECS);
+    for (var entry : HAND_CODED_ENTRIES) {
+      lookup.addStatement(
+          "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
+          entry[0], OPT, codecOfT, entry[1]);
+    }
+    lookup.addStatement("return $T.none()", OPT);
 
     var cls =
         TypeSpec.classBuilder("Codecs")

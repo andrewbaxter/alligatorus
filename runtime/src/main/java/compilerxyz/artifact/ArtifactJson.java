@@ -57,7 +57,15 @@ public final class ArtifactJson {
   public static JsonValue encodeArtifactBody(ArtifactBody body) {
     var m = new TOrderedMap<String, JsonValue>();
     m.put("data", body.data());
-    m.put("exporter", encodeArtifactBodyExporter(body.exporter()));
+    var exporterM = new TOrderedMap<String, JsonValue>();
+    switch (body.exporter()) {
+      case ArtifactBodyExporter.Body b -> exporterM.put("body", encodeArtifactBody(b.inner()));
+      case ArtifactBodyExporter.Root r ->
+          exporterM.put("root", new JsonValueObject(new TOrderedMap<>()));
+      case ArtifactBodyExporter.SourceRef sr ->
+          exporterM.put("source_ref", encodeArtifactIdSource(sr.id()));
+    }
+    m.put("exporter", new JsonValueObject(exporterM));
     return new JsonValueObject(m);
   }
 
@@ -76,27 +84,9 @@ public final class ArtifactJson {
     if (data == null || exporterJson == null) {
       return EResult.err(loc, "decodeArtifactBody: missing data/exporter");
     }
-    var exp = decodeArtifactBodyExporter(loc, exporterJson);
-    if (exp.hasErrors()) return exp.reerr();
-    return EResult.ok(new ArtifactBody(data, exp.requireValue("ArtifactJson::decodeArtifactBody exporter")));
-  }
-
-  public static JsonValue encodeArtifactBodyExporter(ArtifactBodyExporter ex) {
-    var m = new TOrderedMap<String, JsonValue>();
-    switch (ex) {
-      case ArtifactBodyExporter.Body b -> m.put("body", encodeArtifactBody(b.inner()));
-      case ArtifactBodyExporter.Root r ->
-          m.put("root", new JsonValueObject(new TOrderedMap<>()));
-      case ArtifactBodyExporter.SourceRef sr -> m.put("source_ref", encodeArtifactIdSource(sr.id()));
-    }
-    return new JsonValueObject(m);
-  }
-
-  public static EResult<ArtifactBodyExporter> decodeArtifactBodyExporter(
-      QExprId loc, JsonValue v) {
-    JsonValueObject obj;
-    switch (v) {
-      case JsonValueObject o when o.entries().size() == 1 -> obj = o;
+    JsonValueObject exporterObj;
+    switch (exporterJson) {
+      case JsonValueObject o when o.entries().size() == 1 -> exporterObj = o;
       case JsonValueNull n -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
       case JsonValueBoolean b -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
       case JsonValueNumber n -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
@@ -104,21 +94,23 @@ public final class ArtifactJson {
       case JsonValueArray a -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
       case JsonValueObject o -> { return EResult.err(loc, "decodeArtifactBodyExporter: expected tagged object"); }
     }
-    var entry = obj.entries().entrySet().iterator().next();
-    return switch (entry.getKey()) {
+    var exporterEntry = exporterObj.entries().entrySet().iterator().next();
+    var exp = switch (exporterEntry.getKey()) {
       case "body" -> {
-        var inner = decodeArtifactBody(loc, entry.getValue());
-        if (inner.hasErrors()) yield inner.reerr();
+        var inner = decodeArtifactBody(loc, exporterEntry.getValue());
+        if (inner.hasErrors()) yield inner.<ArtifactBodyExporter>reerr();
         yield EResult.ok(new ArtifactBodyExporter.Body(inner.requireValue("ArtifactJson::decodeArtifactBodyExporter body")));
       }
-      case "root" -> EResult.ok(new ArtifactBodyExporter.Root());
+      case "root" -> EResult.<ArtifactBodyExporter>ok(new ArtifactBodyExporter.Root());
       case "source_ref" -> {
-        var inner = decodeArtifactIdSource(loc, entry.getValue());
-        if (inner.hasErrors()) yield inner.reerr();
+        var inner = decodeArtifactIdSource(loc, exporterEntry.getValue());
+        if (inner.hasErrors()) yield inner.<ArtifactBodyExporter>reerr();
         yield EResult.ok(new ArtifactBodyExporter.SourceRef(inner.requireValue("ArtifactJson::decodeArtifactBodyExporter source_ref")));
       }
-      default -> EResult.err(loc, "decodeArtifactBodyExporter: unknown tag " + entry.getKey());
+      default -> EResult.<ArtifactBodyExporter>err(loc, "decodeArtifactBodyExporter: unknown tag " + exporterEntry.getKey());
     };
+    if (exp.hasErrors()) return exp.reerr();
+    return EResult.ok(new ArtifactBody(data, exp.requireValue("ArtifactJson::decodeArtifactBody exporter")));
   }
 
   public static JsonValue encodeArtifactIdSource(ArtifactIdSource id) {

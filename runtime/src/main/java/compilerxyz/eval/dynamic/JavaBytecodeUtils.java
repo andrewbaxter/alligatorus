@@ -219,21 +219,6 @@ public class JavaBytecodeUtils {
     return callStaticMethod(lc(loc), ref.owner, ref.name, ref.descriptor);
   }
 
-  public static CodeDynamic callStaticMethodReflect(QExprId loc, Class<?> klass, String method) {
-    for (var method1 : klass.getMethods()) {
-      if (!method.equals(method1.getName())) continue;
-      var ret = JavaDataDescriptor.fromClass(method1.getReturnType());
-      var args = new TList<JavaDataDescriptor>();
-      for (var p : method1.getParameters()) args.add(JavaDataDescriptor.fromClass(p.getType()));
-      return callStaticMethod(
-          lc(loc),
-          qualifiedNameFromClass(klass).asInternalName(),
-          method,
-          JavaMethodDescriptor.fromParts(ret, args));
-    }
-    throw new AssertionError("No such method: " + klass.getName() + "." + method);
-  }
-
   // ------------------- type ops -------------------
 
   private static CodeDynamic typeInsn(CodeLoc loc, int opcode, JavaInternalName klass) {
@@ -280,25 +265,22 @@ public class JavaBytecodeUtils {
     return new CodeDynamic(lc, code);
   }
 
-  public static CodeDynamic buildObjectArray(CodeLoc loc, TList<CodeDynamic> elements) {
-    var seq = new JavaBytecodeSequence();
-    seq.add(literalIntShortByte(loc, elements.size()));
-    seq.add(
+  public static CodeDynamic buildObjectArray(QExprId loc, TList<CodeDynamic> elements) {
+    var _boaLoc = lc(loc);
+    var _boaSeq = new JavaBytecodeSequence();
+    _boaSeq.add(literalIntShortByte(_boaLoc, elements.size()));
+    _boaSeq.add(
         wrapObj(
-            loc,
+            _boaLoc,
             new TypeInsnNode(
                 org.objectweb.asm.Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
-    for (int i = 0; i < elements.size(); i++) {
-      seq.add(inst(loc, DUP));
-      seq.add(literalIntShortByte(loc, i));
-      seq.add(elements.get(i));
-      seq.add(inst(loc, org.objectweb.asm.Opcodes.AASTORE));
+    for (int _boaI = 0; _boaI < elements.size(); _boaI++) {
+      _boaSeq.add(inst(_boaLoc, DUP));
+      _boaSeq.add(literalIntShortByte(_boaLoc, _boaI));
+      _boaSeq.add(elements.get(_boaI));
+      _boaSeq.add(inst(_boaLoc, org.objectweb.asm.Opcodes.AASTORE));
     }
-    return new CodeDynamic(loc, seq);
-  }
-
-  public static CodeDynamic buildObjectArray(QExprId loc, TList<CodeDynamic> elements) {
-    return buildObjectArray(lc(loc), elements);
+    return new CodeDynamic(_boaLoc, _boaSeq);
   }
 
   // ------------------- fragment instantiation -------------------
@@ -361,59 +343,46 @@ public class JavaBytecodeUtils {
       TMap<Label, Label> labelMap,
       java.util.Map<LabelNode, LabelNode> labelNodeMap,
       TMap<JumpKey, JumpKey> keyMap) {
-    return new CodeDynamic(
-        cd.loc(), freshenBytecode(cd.code(), labelMap, labelNodeMap, keyMap));
+    var _fbBc = cd.code();
+    JavaBytecode _fbResult;
+    if (_fbBc instanceof CodeDynamic _fbCd) {
+      _fbResult = freshenCode(_fbCd, labelMap, labelNodeMap, keyMap);
+    } else if (_fbBc instanceof JavaBytecodeSequence _fbSeq) {
+      var _fbOut = new JavaBytecodeSequence();
+      for (var _fbC : _fbSeq.children) _fbOut.add(freshenCode(_fbC, labelMap, labelNodeMap, keyMap));
+      _fbResult = _fbOut;
+    } else if (_fbBc instanceof JavaBytecodeInstructionObj _fbObj) {
+      _fbResult = new JavaBytecodeInstructionObj(_fbObj.node.clone(labelNodeMap));
+    } else if (_fbBc instanceof JavaBytecodeInstructionInt) {
+      _fbResult = _fbBc;
+    } else if (_fbBc instanceof JavaBytecodeInstructionTryCatch _fbTc) {
+      _fbResult = new JavaBytecodeInstructionTryCatch(
+          freshenLabel(_fbTc.start, labelMap),
+          freshenLabel(_fbTc.end, labelMap),
+          freshenLabel(_fbTc.handler, labelMap),
+          _fbTc.excType);
+    } else if (_fbBc instanceof JavaBytecodeStoreLoad) {
+      _fbResult = _fbBc;
+    } else if (_fbBc instanceof JavaBytecodeLand _fbLand) {
+      var _fbNk = keyMap.getOrNull(_fbLand.jumpKey);
+      _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeLand(_fbNk);
+    } else if (_fbBc instanceof JavaBytecodeJump _fbJump) {
+      var _fbNk = keyMap.getOrNull(_fbJump.jumpKey);
+      _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeJump(_fbNk);
+    } else if (_fbBc instanceof JavaBytecodeGuarded _fbGuarded) {
+      var _fbNk = keyMap.getOrNull(_fbGuarded.dest);
+      _fbResult = new JavaBytecodeGuarded(
+          _fbNk == null ? _fbGuarded.dest : _fbNk,
+          freshenCode(_fbGuarded.inner, labelMap, labelNodeMap, keyMap));
+    } else {
+      throw new AssertionError("freshen: unsupported bytecode node " + _fbBc.getClass());
+    }
+    return new CodeDynamic(cd.loc(), _fbResult);
   }
 
   private static Label freshenLabel(Label l, TMap<Label, Label> labelMap) {
     var mapped = labelMap.getOrNull(l);
     return mapped == null ? l : mapped;
-  }
-
-  private static JavaBytecode freshenBytecode(
-      JavaBytecode bc,
-      TMap<Label, Label> labelMap,
-      java.util.Map<LabelNode, LabelNode> labelNodeMap,
-      TMap<JumpKey, JumpKey> keyMap) {
-    if (bc instanceof CodeDynamic cd) {
-      return freshenCode(cd, labelMap, labelNodeMap, keyMap);
-    }
-    if (bc instanceof JavaBytecodeSequence seq) {
-      var out = new JavaBytecodeSequence();
-      for (var c : seq.children) out.add(freshenCode(c, labelMap, labelNodeMap, keyMap));
-      return out;
-    }
-    if (bc instanceof JavaBytecodeInstructionObj obj) {
-      return new JavaBytecodeInstructionObj(obj.node.clone(labelNodeMap));
-    }
-    if (bc instanceof JavaBytecodeInstructionInt) {
-      return bc;
-    }
-    if (bc instanceof JavaBytecodeInstructionTryCatch tc) {
-      return new JavaBytecodeInstructionTryCatch(
-          freshenLabel(tc.start, labelMap),
-          freshenLabel(tc.end, labelMap),
-          freshenLabel(tc.handler, labelMap),
-          tc.excType);
-    }
-    if (bc instanceof JavaBytecodeStoreLoad) {
-      return bc;
-    }
-    if (bc instanceof JavaBytecodeLand land) {
-      var nk = keyMap.getOrNull(land.jumpKey);
-      return nk == null ? bc : new JavaBytecodeLand(nk);
-    }
-    if (bc instanceof JavaBytecodeJump jump) {
-      var nk = keyMap.getOrNull(jump.jumpKey);
-      return nk == null ? bc : new JavaBytecodeJump(nk);
-    }
-    if (bc instanceof JavaBytecodeGuarded guarded) {
-      var nk = keyMap.getOrNull(guarded.dest);
-      return new JavaBytecodeGuarded(
-          nk == null ? guarded.dest : nk,
-          freshenCode(guarded.inner, labelMap, labelNodeMap, keyMap));
-    }
-    throw new AssertionError("freshen: unsupported bytecode node " + bc.getClass());
   }
 
   // ------------------- misc -------------------
@@ -422,7 +391,9 @@ public class JavaBytecodeUtils {
       JavaBytecodeSequence seq,
       MethodVisitor mv,
       TList<JavaBytecodeBindingKey> initialIndexes) {
-    seq.render(mv, initialIndexes);
+    var _rSlots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
+    for (var _rK : initialIndexes) _rSlots.add(new JavaBytecodeSequence.InitialSlot(_rK));
+    seq.renderInternal(mv, initialIndexes, _rSlots);
     mv.visitMaxs(0, 0);
     mv.visitEnd();
   }
@@ -431,27 +402,11 @@ public class JavaBytecodeUtils {
       JavaBytecodeSequence seq,
       MethodVisitor mv,
       TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
-    seq.renderTyped(mv, initialSlots);
+    var _rtNarrowKeys = new TList<JavaBytecodeBindingKey>();
+    for (var _rtS : initialSlots) _rtNarrowKeys.add(_rtS.key());
+    seq.renderInternal(mv, _rtNarrowKeys, initialSlots);
     mv.visitMaxs(0, 0);
     mv.visitEnd();
-  }
-
-  public static JavaQualifiedName qualifiedNameFromClass(Class<?> klass) {
-    var value = new TList<String>();
-    Class<?> prevAt = klass;
-    Class<?> at = klass.getNestHost();
-    while (true) {
-      value.add(at.getSimpleName());
-      if (at == prevAt) {
-        value.removeLast();
-        value.add(at.getCanonicalName());
-        break;
-      }
-      prevAt = at;
-      at = at.getNestHost();
-    }
-    java.util.Collections.reverse(value);
-    return new JavaQualifiedName(value);
   }
 
   public static JavaBytecodeSequence seq() {

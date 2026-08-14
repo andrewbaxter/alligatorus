@@ -68,23 +68,6 @@ public final class Json {
     return codecOpt.optUnwrap().codecDecode(reader, path);
   }
 
-  public static <T> String serialize(T object, Style style) throws IOException {
-    var stringWriter = new StringWriter();
-    var writer = new JsonWriter(stringWriter);
-    writer.setSerializeNulls(true);
-    switch (style) {
-      case COMPACT, CANONICAL -> writer.setIndent("");
-      case PRETTY -> writer.setIndent("  ");
-    }
-    if (object == null) {
-      writer.nullValue();
-    } else {
-      encodeValue(writer, object, style);
-    }
-    writer.close();
-    return stringWriter.toString();
-  }
-
   public static <T> T deserialize(Class<T> clazz, String json) throws IOException {
     var reader = new JsonReader(new StringReader(json));
     var path = FieldPath.root();
@@ -100,85 +83,69 @@ public final class Json {
       if (value == Math.floor(value) && Math.abs(value) < (1L << 53)) {
         writer.value((long) value);
       } else {
-        writer.jsonValue(doubleToEs6(value));
+        double _d = value;
+        boolean _negative = _d < 0;
+        if (_negative) _d = -_d;
+        String _originalString = Double.toString(_d);
+        int _eIdx = _originalString.indexOf('E');
+        String _intPart, _fracPart;
+        int _exponentValue;
+        if (_eIdx >= 0) {
+          _exponentValue = Integer.parseInt(_originalString.substring(_eIdx + 1));
+          String _mantissa = _originalString.substring(0, _eIdx);
+          int _dotIdx = _mantissa.indexOf('.');
+          if (_dotIdx >= 0) {
+            _intPart = _mantissa.substring(0, _dotIdx);
+            _fracPart = _mantissa.substring(_dotIdx + 1);
+          } else {
+            _intPart = _mantissa;
+            _fracPart = "";
+          }
+        } else {
+          _exponentValue = 0;
+          int _dotIdx = _originalString.indexOf('.');
+          if (_dotIdx >= 0) {
+            _intPart = _originalString.substring(0, _dotIdx);
+            _fracPart = _originalString.substring(_dotIdx + 1);
+          } else {
+            _intPart = _originalString;
+            _fracPart = "";
+          }
+        }
+        String _allDigits = _intPart + _fracPart;
+        int _k = _allDigits.length();
+        while (_k > 1 && _allDigits.charAt(_k - 1) == '0') _k--;
+        String _digits = _allDigits.substring(0, _k);
+        int _digitsBeforeDecimal = _intPart.length() + _exponentValue;
+        var _sb = new StringBuilder();
+        if (_negative) _sb.append('-');
+        if (_k <= _digitsBeforeDecimal && _digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
+          _sb.append(_digits);
+          _sb.append("0".repeat(_digitsBeforeDecimal - _k));
+        } else if (0 < _digitsBeforeDecimal && _digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
+          _sb.append(_digits, 0, _digitsBeforeDecimal);
+          _sb.append('.');
+          _sb.append(_digits, _digitsBeforeDecimal, _k);
+        } else if (-6 < _digitsBeforeDecimal && _digitsBeforeDecimal <= 0) {
+          _sb.append("0.");
+          _sb.append("0".repeat(-_digitsBeforeDecimal));
+          _sb.append(_digits);
+        } else {
+          _sb.append(_digits.charAt(0));
+          if (_k > 1) {
+            _sb.append('.');
+            _sb.append(_digits, 1, _k);
+          }
+          int _exp = _digitsBeforeDecimal - 1;
+          _sb.append('e');
+          if (_exp > 0) _sb.append('+');
+          _sb.append(_exp);
+        }
+        writer.jsonValue(_sb.toString());
       }
     } else {
       writer.value(value);
     }
-  }
-
-  static String doubleToEs6(double value) {
-    boolean negative = value < 0;
-    if (negative) value = -value;
-
-    String originalString = Double.toString(value);
-
-    int eIdx = originalString.indexOf('E');
-    String intPart, fracPart;
-    int exponentValue;
-
-    if (eIdx >= 0) {
-      exponentValue = Integer.parseInt(originalString.substring(eIdx + 1));
-      String mantissa = originalString.substring(0, eIdx);
-      int dotIdx = mantissa.indexOf('.');
-      if (dotIdx >= 0) {
-        intPart = mantissa.substring(0, dotIdx);
-        fracPart = mantissa.substring(dotIdx + 1);
-      } else {
-        intPart = mantissa;
-        fracPart = "";
-      }
-    } else {
-      exponentValue = 0;
-      int dotIdx = originalString.indexOf('.');
-      if (dotIdx >= 0) {
-        intPart = originalString.substring(0, dotIdx);
-        fracPart = originalString.substring(dotIdx + 1);
-      } else {
-        intPart = originalString;
-        fracPart = "";
-      }
-    }
-
-    String allDigits = intPart + fracPart;
-
-    int k = allDigits.length();
-    while (k > 1 && allDigits.charAt(k - 1) == '0') k--;
-    String digits = allDigits.substring(0, k);
-
-    int digitsBeforeDecimal = intPart.length() + exponentValue;
-
-    var result = new StringBuilder();
-    if (negative) result.append('-');
-
-    if (k <= digitsBeforeDecimal && digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
-
-      result.append(digits);
-      result.append("0".repeat(digitsBeforeDecimal - k));
-    } else if (0 < digitsBeforeDecimal && digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
-
-      result.append(digits, 0, digitsBeforeDecimal);
-      result.append('.');
-      result.append(digits, digitsBeforeDecimal, k);
-    } else if (-6 < digitsBeforeDecimal && digitsBeforeDecimal <= 0) {
-
-      result.append("0.");
-      result.append("0".repeat(-digitsBeforeDecimal));
-      result.append(digits);
-    } else {
-
-      result.append(digits.charAt(0));
-      if (k > 1) {
-        result.append('.');
-        result.append(digits, 1, k);
-      }
-      int exp = digitsBeforeDecimal - 1;
-      result.append('e');
-      if (exp > 0) result.append('+');
-      result.append(exp);
-    }
-
-    return result.toString();
   }
 
   public static class SafeJsonException extends RuntimeException {
@@ -210,10 +177,6 @@ public final class Json {
 
     public FieldPath index(int index) {
       return new FieldPath("[" + index + "]", Opt.some(this));
-    }
-
-    public FieldPath key(String key) {
-      return new FieldPath("[\"" + key + "\"]", Opt.some(this));
     }
 
     @Override

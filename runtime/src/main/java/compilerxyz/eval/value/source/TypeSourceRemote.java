@@ -22,9 +22,12 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.eval.value.tuple.Tuple;
+import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.gen.Value;
 import compilerxyz.syntax.HashValue;
 import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 
 @BuiltinPath("source.remote")
 @BuiltinLight(uniqueId = 6158L)
@@ -52,9 +55,27 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var argRes = SourceSpecs.argValue(loc, argument, "source.remote");
     if (argRes.hasErrors()) return argRes.reerr();
-    var tupleRes = SourceSpecs.constTuple(loc, argRes.requireValue("source.remote arg"), "source.remote");
-    if (tupleRes.hasErrors()) return tupleRes.reerr();
-    var elements = tupleRes.requireValue("source.remote tuple");
+    var _ctVal = argRes.requireValue("source.remote arg");
+    if (!(_ctVal instanceof Tuple _ctTuple) || _ctTuple.base().optIsSome()) {
+      return EResult.err(loc, "source.remote: expected a const tuple");
+    }
+    var elements = new TList<Value>(_ctTuple.elements().size());
+    for (var _ctElem : _ctTuple.elements()) {
+      TupleElement.EvalRes _ctEr;
+      switch (_ctElem) {
+        case TupleElement.EvalRes e -> _ctEr = e;
+        case TupleElement.Dynamic d -> { return EResult.err(loc, "source.remote: tuple element is not const"); }
+      }
+      var _ctRes = _ctEr.result();
+      if (_ctRes.hasErrors()) return _ctRes.reerr();
+      var _ctCv = _ctRes.requireValue("source.remote tuple element");
+      Opt.Some<Value> _ctSome;
+      switch (_ctCv.value()) {
+        case Opt.Some<Value> s -> _ctSome = s;
+        case Opt.None<Value> n -> { return EResult.err(loc, "source.remote: tuple element has no value"); }
+      }
+      elements.add(_ctSome.value());
+    }
     if (elements.size() != 2) {
       return EResult.err(loc, "source.remote: expected (url, hash), got " + elements.size() + " arguments");
     }

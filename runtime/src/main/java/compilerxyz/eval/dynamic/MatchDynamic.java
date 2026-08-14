@@ -18,9 +18,7 @@ import compilerxyz.eval.Type;
 public interface MatchDynamic {
 
   /** Called once before the branch chain; e.g. register the owning definition set. */
-  default EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
-    return EResult.ok(null);
-  }
+  EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc);
 
   /** Stack: {@code [base] -> [boolean]} — is the base the variant at {@code variantIndex}? */
   EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex);

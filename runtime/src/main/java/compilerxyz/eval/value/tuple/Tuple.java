@@ -175,7 +175,8 @@ public final class Tuple
         if (isAccessed) return EResult.err(loc, "Tuple element " + i + " evaluated to error");
         continue;
       }
-      if (er.isUnreachable()) {
+      var _erCv = res.valueOrNull();
+      if (!res.hasErrors() && _erCv.optIsSome() && _erCv.optUnwrap().value().optIsNone()) {
         return EResult.err(
             loc,
             "Tuple element " + i + " does not fall through (contains an unreachable"
@@ -859,7 +860,7 @@ public final class Tuple
         }
         scopeFields.add(new TupleScopeField.Dynamic(d.type()));
       }
-      var subRes = base.optUnwrap().tupleBaseBindSub(xx, loc, carry, tupleType);
+      var subRes = xx.target.targetCodeToBindSub(loc, carry, tupleType);
       if (subRes.hasErrors()) {
         return subRes.reerr();
       }
@@ -1006,7 +1007,9 @@ public final class Tuple
           "Tuple::toDynamic: expected Tuple value, got " + someValue.getClass());
     }
     if (tuple.base.optIsSome()) {
-      return tuple.base.optUnwrap().tupleBaseToDynamic(loc, carry);
+      var _tbDyn = carry.codeDynamic();
+      if (_tbDyn == null) return EResult.err(loc, "TupleBaseDynamic::toDynamic: carry has no dynamic code");
+      return EResult.ok(_tbDyn);
     }
     var types = new TList<Type>(elements.size());
     for (var e : elements) {

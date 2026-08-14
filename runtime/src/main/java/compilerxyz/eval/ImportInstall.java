@@ -29,28 +29,16 @@ public final class ImportInstall {
     if (!xx.vx.ix.installedDefSets.add(set.defSetId)) {
       return EResult.ok(loader);
     }
-    var installResult = installCompiledArtifacts(xx, loc, set, loader);
-    if (installResult.hasErrors()) {
-      return installResult.reerr();
-    }
-    return EResult.ok(loader);
-  }
-
-  private static EResult<Void> installCompiledArtifacts(
-      ExprContext xx, QExprId loc, DefinitionSet set, DefinitionSetClassLoader loader) {
-
     if (!set.finished) {
       return EResult.err(
           loc,
           "DefinitionSet not finished — call d.finish() in source before using this definition set");
     }
-
     for (var iface : set.interfaces) {
       if (iface.compiledBytecode.optIsSome() && iface.compiledBinaryName != null) {
         loader.registerClass(iface.compiledBinaryName, iface.compiledBytecode.optUnwrap());
       }
     }
-
     for (long objIdx = 0; objIdx < set.objects.size(); objIdx++) {
       var obj = set.objects.get((int) objIdx);
       if (obj.underlyingType.optIsNone()) {
@@ -72,7 +60,6 @@ public final class ImportInstall {
         }
       }
     }
-
     for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
       var union = set.unions.get((int) unionIdx);
       if (union.compiledBaseBinaryName.optIsSome() && union.compiledBaseBytecode != null) {
@@ -86,7 +73,6 @@ public final class ImportInstall {
         }
       }
     }
-
     var emittedFuncsOpt = set.finishFunctions();
     if (emittedFuncsOpt.optIsSome()) {
       var emittedFuncs = emittedFuncsOpt.optUnwrap();
@@ -102,31 +88,30 @@ public final class ImportInstall {
             "Functions class " + emittedFuncs.binaryName() + " failed to load", e);
       }
     } else if (!set.functions.isEmpty()) {
-
-      String binaryName = null;
-      byte[] bytecode = null;
+      String icaBinaryName = null;
+      byte[] icaBytecode = null;
       var mergedStaticFields = new TOrderedMap<String, Object>();
       for (var func : set.functions) {
         if (func.compiledClassName.optIsNone() || func.compiledBytecode.optIsNone()) {
           continue;
         }
-        if (binaryName == null) {
-          binaryName = func.compiledClassName.optUnwrap();
-          bytecode = func.compiledBytecode.optUnwrap();
+        if (icaBinaryName == null) {
+          icaBinaryName = func.compiledClassName.optUnwrap();
+          icaBytecode = func.compiledBytecode.optUnwrap();
         }
         if (func.compiledStaticFieldValues.optIsSome()) {
           mergedStaticFields.putAll(func.compiledStaticFieldValues.optUnwrap());
         }
       }
-      if (binaryName != null) {
-        loader.registerClass(binaryName, bytecode);
+      if (icaBinaryName != null) {
+        loader.registerClass(icaBinaryName, icaBytecode);
         mergedStaticFields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
-        loader.registerExternals(binaryName, mergedStaticFields);
+        loader.registerExternals(icaBinaryName, mergedStaticFields);
         try {
-          Class.forName(binaryName, true, loader);
+          Class.forName(icaBinaryName, true, loader);
         } catch (ClassNotFoundException e) {
           throw new AssertionError(
-              "Imported Functions class " + binaryName + " failed to load", e);
+              "Imported Functions class " + icaBinaryName + " failed to load", e);
         }
       }
     }
@@ -145,7 +130,6 @@ public final class ImportInstall {
         continue;
       }
     }
-
     for (var obj : set.objects) {
       for (var method : obj.methods) {
         if (method.compiledClassName.optIsNone() || method.compiledBytecode.optIsNone()) {
@@ -190,7 +174,7 @@ public final class ImportInstall {
         }
       }
     }
-    return EResult.ok(null);
+    return EResult.ok(loader);
   }
 
 }

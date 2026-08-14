@@ -11,8 +11,10 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ImportRun;
 import compilerxyz.eval.QExprId;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
@@ -28,7 +30,6 @@ import compilerxyz.gen.Value;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6161L)
 public record TypeBundle(SourceSpecAbsolute.Remote base)
@@ -70,7 +71,24 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
       case ConstKey.Uint u -> { return EResult.err(loc, "bundle: field key must be a string"); }
     }
     var subSpec = new SourceSpecAbsolute.Remote(base.baseUrl(), base.hash(), s.value() + ".at");
-    return ImportRun.importAbsolute(xx, loc, subSpec);
+    var _outcomeRes = ImportRun.compileAbsolute(xx, loc, subSpec);
+    if (_outcomeRes.hasErrors()) return _outcomeRes.reerr();
+    var _outcome = _outcomeRes.requireValue("importAbsolute");
+    return switch (_outcome) {
+      case ImportRun.SpecOutcome.BundleOut b ->
+          EResult.ok(
+              new CodeValue(
+                  Code.none(loc),
+                  EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeBundle(b.base())))));
+      case ImportRun.SpecOutcome.ModuleOut m -> {
+        switch (m.abs()) {
+          case SourceSpecAbsolute.Local ignored -> xx.vx.ix.localDependencies.add(m.compileId());
+          case SourceSpecAbsolute.Virtual v -> {}
+          case SourceSpecAbsolute.Remote r -> {}
+        }
+        yield ImportRun.materialize(xx, loc, m.res());
+      }
+    };
   }
 
   @Override

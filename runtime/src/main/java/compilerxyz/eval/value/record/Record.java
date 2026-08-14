@@ -55,6 +55,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.Target;
 import compilerxyz.gen.BindResult;
@@ -190,7 +191,8 @@ public final class Record
         }
         continue;
       }
-      if (er.isUnreachable()) {
+      var _erCv = res.valueOrNull();
+      if (!res.hasErrors() && _erCv.optIsSome() && _erCv.optUnwrap().value().optIsNone()) {
         return EResult.err(
             loc,
             "Field '" + k.constKeyToCanonical() + "' does not fall through (contains an unreachable"
@@ -779,7 +781,7 @@ public final class Record
         }
         scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(d.type()));
       }
-      var subRes = base.optUnwrap().recordBaseBindSub(xx, loc, carry, recordType);
+      var subRes = xx.target.targetCodeToBindSub(loc, carry, recordType);
       if (subRes.hasErrors()) {
         return subRes.reerr();
       }
@@ -1166,7 +1168,9 @@ public final class Record
           "Record::toDynamic: expected Record value, got " + cv.value().optUnwrap().getClass());
     }
     if (record.base.optIsSome()) {
-      return record.base.optUnwrap().recordBaseToDynamic(loc, carry);
+      var _rbDyn = carry.codeDynamic();
+      if (_rbDyn == null) return EResult.err(loc, "RecordBaseDynamic::toDynamic: carry has no dynamic code");
+      return EResult.ok(_rbDyn);
     }
     TList<ExprErr> errors = null;
     record LoweredField(ConstKey key, String desc, Type type, CodeDynamic code) {}
@@ -1457,8 +1461,23 @@ public final class Record
       }
       var callSeq = new JavaBytecodeSequence();
       callSeq.add(JavaBytecodeUtils.buildObjectArray(loc, elems));
-      callSeq.add(
-          JavaBytecodeUtils.callStaticMethodReflect(loc, Record.class, "newDynamic"));
+      CodeDynamic _csm;
+      csmBlock: {
+        for (var _m1 : Record.class.getMethods()) {
+          if (!"newDynamic".equals(_m1.getName())) continue;
+          var _ret = JavaDataDescriptor.fromClass(_m1.getReturnType());
+          var _args = new TList<JavaDataDescriptor>();
+          for (var _p : _m1.getParameters()) _args.add(JavaDataDescriptor.fromClass(_p.getType()));
+          _csm = JavaBytecodeUtils.callStaticMethod(
+              loc,
+              JavaInternalName.of(Record.class.getName().replace('.', '/')),
+              "newDynamic",
+              JavaMethodDescriptor.fromParts(_ret, _args));
+          break csmBlock;
+        }
+        throw new AssertionError("No such method: " + Record.class.getName() + ".newDynamic");
+      }
+      callSeq.add(_csm);
       var stackValue = ValueDynamic.stack(destType, 1);
       var withCarry =
           DynUtil.wrapWithCarry(loc, cv.code(), new CodeDynamic(loc, callSeq));

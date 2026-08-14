@@ -30,10 +30,6 @@ public final class CompositeClassEmitter {
       return descriptors.length;
     }
 
-    String descriptor(int slotIndex) {
-      return descriptors[slotIndex];
-    }
-
     @Override
     public boolean equals(Object o) {
       if (!(o instanceof StructuralKey other)) return false;
@@ -56,88 +52,6 @@ public final class CompositeClassEmitter {
     return "_" + slotIndex;
   }
 
-  public static String binaryNameFor(StructuralKey key) {
-    var sb = new StringBuilder(BINARY_NAME_PREFIX);
-    sb.append(key.arity());
-    for (int i = 0; i < key.arity(); i++) {
-      sb.append("#x");
-      var d = key.descriptor(i);
-      for (int j = 0; j < d.length(); j++) {
-        char c = d.charAt(j);
-        switch (c) {
-          case '#' -> sb.append("##");
-          case '/' -> sb.append("#s");
-          case ';' -> sb.append("#e");
-          case '[' -> sb.append("#a");
-          default -> sb.append(c);
-        }
-      }
-    }
-    return sb.toString();
-  }
-
-  public static TList<JavaDataDescriptor> decodeBinaryName(String binaryName) {
-    if (!binaryName.startsWith(BINARY_NAME_PREFIX)) {
-      throw new IllegalArgumentException(
-          "CompositeClassEmitter::decodeBinaryName: not a composite binary name: " + binaryName);
-    }
-    var rest = binaryName.substring(BINARY_NAME_PREFIX.length());
-    int i = 0;
-    while (i < rest.length() && Character.isDigit(rest.charAt(i))) i++;
-    if (i == 0) {
-      throw new IllegalArgumentException(
-          "CompositeClassEmitter::decodeBinaryName: missing arity: " + binaryName);
-    }
-    var arity = Integer.parseInt(rest.substring(0, i));
-    var out = new TList<JavaDataDescriptor>(arity);
-    StringBuilder current = null;
-    while (i < rest.length()) {
-      char c = rest.charAt(i);
-      if (c == '#') {
-        i++;
-        if (i >= rest.length()) {
-          throw new IllegalArgumentException(
-              "CompositeClassEmitter::decodeBinaryName: dangling escape: " + binaryName);
-        }
-        char e = rest.charAt(i);
-        switch (e) {
-          case 'x' -> {
-            if (current != null) out.add(JavaDataDescriptor.create(current.toString()));
-            current = new StringBuilder();
-          }
-          case '#' -> current.append('#');
-          case 's' -> current.append('/');
-          case 'e' -> current.append(';');
-          case 'a' -> current.append('[');
-          default ->
-              throw new IllegalArgumentException(
-                  "CompositeClassEmitter::decodeBinaryName: unknown escape #"
-                      + e
-                      + " in "
-                      + binaryName);
-        }
-      } else {
-        if (current == null) {
-          throw new IllegalArgumentException(
-              "CompositeClassEmitter::decodeBinaryName: descriptor before first slot marker: "
-                  + binaryName);
-        }
-        current.append(c);
-      }
-      i++;
-    }
-    if (current != null) out.add(JavaDataDescriptor.create(current.toString()));
-    if (out.size() != arity) {
-      throw new IllegalArgumentException(
-          "CompositeClassEmitter::decodeBinaryName: arity "
-              + arity
-              + " does not match "
-              + out.size()
-              + " slots: "
-              + binaryName);
-    }
-    return out;
-  }
 
   public static JavaMethodDescriptor constructorDesc(ExprContext xx, TList<Type> sortedTypes) {
     var args = new TList<JavaDataDescriptor>(sortedTypes.size());
@@ -175,7 +89,23 @@ public final class CompositeClassEmitter {
               new compilerxyz.util.TList<>()));
     }
     var loader = xx.vx.ix.classLoader.optUnwrap();
-    var binaryName = binaryNameFor(key);
+    var _bnfSb = new StringBuilder(BINARY_NAME_PREFIX);
+    _bnfSb.append(key.arity());
+    for (int _bnfI = 0; _bnfI < key.arity(); _bnfI++) {
+      _bnfSb.append("#x");
+      var _bnfD = key.descriptors[_bnfI];
+      for (int _bnfJ = 0; _bnfJ < _bnfD.length(); _bnfJ++) {
+        char _bnfC = _bnfD.charAt(_bnfJ);
+        switch (_bnfC) {
+          case '#' -> _bnfSb.append("##");
+          case '/' -> _bnfSb.append("#s");
+          case ';' -> _bnfSb.append("#e");
+          case '[' -> _bnfSb.append("#a");
+          default -> _bnfSb.append(_bnfC);
+        }
+      }
+    }
+    var binaryName = _bnfSb.toString();
     var bytecode = emitBytecode(binaryName, slotDescs);
     loader.registerClass(binaryName, bytecode);
     Class<?> defined;
@@ -234,7 +164,20 @@ public final class CompositeClassEmitter {
     int localSlot = 1;
     for (int i = 0; i < slotDescs.size(); i++) {
       var desc = slotDescs.get(i);
-      int loadOp = loadOpcodeFor(desc);
+      int loadOp;
+      {
+        var _lofV = desc.value();
+        loadOp =
+            (_lofV.isEmpty())
+                ? Opcodes.ALOAD
+                : switch (_lofV.charAt(0)) {
+                  case 'D' -> Opcodes.DLOAD;
+                  case 'J' -> Opcodes.LLOAD;
+                  case 'F' -> Opcodes.FLOAD;
+                  case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.ILOAD;
+                  default -> Opcodes.ALOAD;
+                };
+      }
       seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
       seq.add(JavaBytecodeUtils.varInsn(loc, loadOp, localSlot));
       seq.add(JavaBytecodeUtils.setField(loc, ownName, slotFieldName(i), desc));
@@ -245,18 +188,6 @@ public final class CompositeClassEmitter {
 
     cw.visitEnd();
     return cw.toByteArray();
-  }
-
-  private static int loadOpcodeFor(JavaDataDescriptor desc) {
-    var v = desc.value();
-    if (v.isEmpty()) return Opcodes.ALOAD;
-    return switch (v.charAt(0)) {
-      case 'D' -> Opcodes.DLOAD;
-      case 'J' -> Opcodes.LLOAD;
-      case 'F' -> Opcodes.FLOAD;
-      case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.ILOAD;
-      default -> Opcodes.ALOAD;
-    };
   }
 
 }

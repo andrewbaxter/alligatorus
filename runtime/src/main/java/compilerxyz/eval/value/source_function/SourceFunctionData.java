@@ -218,9 +218,17 @@ public final class SourceFunctionData {
     var captured = innerVx.externals;
     capturedExternals.addAll(captured);
 
-    var retDescRes = jvmDescForRes(xx, rootLoc, retT);
-    if (retDescRes.hasErrors()) return retDescRes.reerr();
-    var retDesc = retDescRes.requireValue("SourceFunctionData::finish retDesc");
+    JavaDataDescriptor retDesc;
+    if (retT.optIsNone()) {
+      retDesc = JavaDataDescriptor.DESC_VOID;
+    } else {
+      var _rdConsume = GenAspectConsumeDynamic.getMaybe(xx, retT.optUnwrap());
+      if (_rdConsume.optIsSome()) {
+        retDesc = _rdConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
+      } else {
+        retDesc = JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+      }
+    }
     functionSpec =
         Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
             funcIdx, argSlots, retDesc, bodyCode, TList.from(captured)));
@@ -235,20 +243,6 @@ public final class SourceFunctionData {
     }
     return JavaDataDescriptor.fromInternalName(
         compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
-  }
-
-  private static EResult<JavaDataDescriptor> jvmDescForRes(
-      ExprContext xx, QExprId loc, Opt<Type> t) {
-    if (t.optIsNone()) {
-      return EResult.ok(JavaDataDescriptor.DESC_VOID);
-    }
-    var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t.optUnwrap());
-    if (consumeOpt.optIsSome()) {
-      return EResult.ok(consumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx));
-    }
-    return EResult.ok(
-        JavaDataDescriptor.fromInternalName(
-            compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT));
   }
 
 }

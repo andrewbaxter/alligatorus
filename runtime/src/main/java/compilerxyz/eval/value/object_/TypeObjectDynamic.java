@@ -70,6 +70,7 @@ import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueArray;
@@ -169,9 +170,32 @@ public record TypeObjectDynamic(
       case ObjectAspectSource.FromInterfaceData ignored -> throw new IllegalStateException(
           typeDesc() + "::getInterfaceData: missing static aspect source");
     }
-    var kind =
-        compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry.kindForAspectId(
-            staticSrc2.id());
+    var kind = switch (staticSrc2.id()) {
+      case Unique.Source s -> Opt.<BuiltinInterfaceKind>none();
+      case Unique.Builtin b -> {
+        long _v = b.id();
+        if (_v == 1015L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD);
+        if (_v == 1037L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC);
+        if (_v == 1039L) yield Opt.some(BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC);
+        if (_v == 1017L) yield Opt.some(BuiltinInterfaceKind.ASPECT_SET);
+        if (_v == 1018L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_ADD);
+        if (_v == 1042L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_MOD);
+        if (_v == 1022L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND);
+        if (_v == 1023L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC);
+        if (_v == 1024L) yield Opt.some(BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC);
+        if (_v == 1032L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC);
+        if (_v == 1035L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT);
+        if (_v == 1021L) yield Opt.some(BuiltinInterfaceKind.ASPECT_INITIAL_BIND);
+        if (_v == 1026L) yield Opt.some(BuiltinInterfaceKind.ASPECT_LIFT);
+        if (_v == 1116L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FUNCTION);
+        if (_v == 2001L) yield Opt.some(BuiltinInterfaceKind.VALUE);
+        if (_v == 2002L || _v == 6006L) yield Opt.some(BuiltinInterfaceKind.TYPE);
+        if (_v == 2005L) yield Opt.some(BuiltinInterfaceKind.BINDING);
+        if (_v == 2006L) yield Opt.some(BuiltinInterfaceKind.TARGET);
+        if (_v == 2007L) yield Opt.some(BuiltinInterfaceKind.CODE_DYN);
+        yield Opt.<BuiltinInterfaceKind>none();
+      }
+    };
     var data = new InterfaceData(null, staticSrc2.identity(), kind);
     data.aspectId = Opt.some(staticSrc2.id());
     data.isAspect = !staticSrc2.identity().equals(staticSrc2.id());
@@ -545,26 +569,25 @@ public record TypeObjectDynamic(
   }
 
   private static final class SelfConstType {
-    static final TypeObjectConst INSTANCE = build();
-
-    private static TypeObjectConst build() {
-      var trivialIdentityAspects = new TList<Unique>();
-      trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
-      var castRules = new TList<TypeObjectCastRule>();
-      castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
-      castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
+    static final TypeObjectConst INSTANCE;
+    static {
+      var _trivialIdentityAspects = new TList<Unique>();
+      _trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
+      var _castRules = new TList<TypeObjectCastRule>();
+      _castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
+      _castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
           compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
           JavaInternalName.fromClass(TypeObjectDynamic.class),
           "getInterfaceData",
           compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromClass(InterfaceData.class),
               TList.of())));
-      var meta = new TypeObjectMeta("type_object_dynamic",
-          trivialIdentityAspects,
-          castRules,
+      var _meta = new TypeObjectMeta("type_object_dynamic",
+          _trivialIdentityAspects,
+          _castRules,
           new TList<TypeObjectCastFromRule>(),
           Opt.<ObjectAspectSource>none());
-      return new TypeObjectConst(meta, Type.class, Opt.<Type>none(), Opt.<ExporterRoot>none());
+      INSTANCE = new TypeObjectConst(_meta, Type.class, Opt.<Type>none(), Opt.<ExporterRoot>none());
     }
   }
 

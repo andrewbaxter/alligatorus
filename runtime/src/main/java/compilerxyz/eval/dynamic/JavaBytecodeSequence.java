@@ -57,21 +57,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
     }
 
-    public TMap<Integer, QExprId> renderTyped(
-            MethodVisitor out, TList<InitialSlot> initialSlots) {
-        var narrowKeys = new TList<JavaBytecodeBindingKey>();
-        for (var s : initialSlots) narrowKeys.add(s.key());
-        return renderInternal(out, narrowKeys, initialSlots);
-    }
-
-    public TMap<Integer, QExprId> render(
-            MethodVisitor out, TList<JavaBytecodeBindingKey> initialIndexes) {
-        var slots = new TList<InitialSlot>(initialIndexes.size());
-        for (var k : initialIndexes) slots.add(new InitialSlot(k));
-        return renderInternal(out, initialIndexes, slots);
-    }
-
-    private TMap<Integer, QExprId> renderInternal(
+    TMap<Integer, QExprId> renderInternal(
             MethodVisitor out,
             TList<JavaBytecodeBindingKey> initialIndexes,
             TList<InitialSlot> initialSlotWidths) {

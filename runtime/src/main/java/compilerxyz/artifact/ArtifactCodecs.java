@@ -8,7 +8,6 @@ import compilerxyz.safejson.Json.DeserializationException;
 import compilerxyz.safejson.Json.FieldPath;
 import compilerxyz.safejson.Json.Style;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -19,7 +18,7 @@ import compilerxyz.eval.SourceId;
 public final class ArtifactCodecs {
   private ArtifactCodecs() {}
 
-  private static final Codec<JsonValue> JSON_VALUE = new Codec<>() {
+  public static final Codec<JsonValue> JSON_VALUE = new Codec<>() {
     @Override
     public void codecEncode(JsonWriter writer, JsonValue value, Style style) throws IOException {
       JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value, style);
@@ -31,28 +30,9 @@ public final class ArtifactCodecs {
     }
   };
 
-  @SuppressWarnings("unchecked")
-  public static <T> Opt<Codec<T>> lookup(Class<T> clazz) {
-    if (clazz == JsonValue.class) return Opt.some((Codec<T>) (Codec<?>) JSON_VALUE);
-    if (clazz == Artifact.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE);
-    if (clazz == Artifact.Body.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_BODY);
-    if (clazz == Artifact.Ref.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactCodec.INSTANCE_REF);
-    if (clazz == ArtifactBody.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyCodec.INSTANCE);
-    if (clazz == ArtifactBodyExporter.class)
-      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE);
-    if (clazz == ArtifactBodyExporter.Body.class)
-      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_BODY);
-    if (clazz == ArtifactBodyExporter.Root.class)
-      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_ROOT);
-    if (clazz == ArtifactBodyExporter.SourceRef.class)
-      return Opt.some((Codec<T>) (Codec<?>) ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF);
-    if (clazz == ArtifactIdSource.class) return Opt.some((Codec<T>) (Codec<?>) ArtifactIdSourceCodec.INSTANCE);
-    return Opt.none();
-  }
-
-  static final class ArtifactCodec implements Codec<Artifact> {
-    static final ArtifactCodec INSTANCE = new ArtifactCodec();
-    static final Codec<Artifact.Body> INSTANCE_BODY =
+  public static final class ArtifactCodec implements Codec<Artifact> {
+    public static final ArtifactCodec INSTANCE = new ArtifactCodec();
+    public static final Codec<Artifact.Body> INSTANCE_BODY =
         new Codec<>() {
           @Override
           public void codecEncode(JsonWriter writer, Artifact.Body value, Style style)
@@ -65,7 +45,7 @@ public final class ArtifactCodecs {
             return (Artifact.Body) INSTANCE.codecDecode(reader, path);
           }
         };
-    static final Codec<Artifact.Ref> INSTANCE_REF =
+    public static final Codec<Artifact.Ref> INSTANCE_REF =
         new Codec<>() {
           @Override
           public void codecEncode(JsonWriter writer, Artifact.Ref value, Style style)
@@ -121,8 +101,8 @@ public final class ArtifactCodecs {
     }
   }
 
-  static final class ArtifactBodyCodec implements Codec<ArtifactBody> {
-    static final ArtifactBodyCodec INSTANCE = new ArtifactBodyCodec();
+  public static final class ArtifactBodyCodec implements Codec<ArtifactBody> {
+    public static final ArtifactBodyCodec INSTANCE = new ArtifactBodyCodec();
 
     @Override
     public void codecEncode(JsonWriter writer, ArtifactBody value, Style style) throws IOException {
@@ -198,9 +178,9 @@ public final class ArtifactCodecs {
     }
   }
 
-  static final class ArtifactBodyExporterCodec implements Codec<ArtifactBodyExporter> {
-    static final ArtifactBodyExporterCodec INSTANCE = new ArtifactBodyExporterCodec();
-    static final Codec<ArtifactBodyExporter.Body> INSTANCE_BODY =
+  public static final class ArtifactBodyExporterCodec implements Codec<ArtifactBodyExporter> {
+    public static final ArtifactBodyExporterCodec INSTANCE = new ArtifactBodyExporterCodec();
+    public static final Codec<ArtifactBodyExporter.Body> INSTANCE_BODY =
         new Codec<>() {
           @Override
           public void codecEncode(JsonWriter writer, ArtifactBodyExporter.Body value, Style style)
@@ -214,7 +194,7 @@ public final class ArtifactCodecs {
             return (ArtifactBodyExporter.Body) INSTANCE.codecDecode(reader, path);
           }
         };
-    static final Codec<ArtifactBodyExporter.Root> INSTANCE_ROOT =
+    public static final Codec<ArtifactBodyExporter.Root> INSTANCE_ROOT =
         new Codec<>() {
           @Override
           public void codecEncode(JsonWriter writer, ArtifactBodyExporter.Root value, Style style)
@@ -228,7 +208,7 @@ public final class ArtifactCodecs {
             return (ArtifactBodyExporter.Root) INSTANCE.codecDecode(reader, path);
           }
         };
-    static final Codec<ArtifactBodyExporter.SourceRef> INSTANCE_SOURCE_REF =
+    public static final Codec<ArtifactBodyExporter.SourceRef> INSTANCE_SOURCE_REF =
         new Codec<>() {
           @Override
           public void codecEncode(JsonWriter writer, ArtifactBodyExporter.SourceRef value, Style style)
@@ -307,8 +287,8 @@ public final class ArtifactCodecs {
     }
   }
 
-  static final class ArtifactIdSourceCodec implements Codec<ArtifactIdSource> {
-    static final ArtifactIdSourceCodec INSTANCE = new ArtifactIdSourceCodec();
+  public static final class ArtifactIdSourceCodec implements Codec<ArtifactIdSource> {
+    public static final ArtifactIdSourceCodec INSTANCE = new ArtifactIdSourceCodec();
 
     @Override
     public void codecEncode(JsonWriter writer, ArtifactIdSource value, Style style) throws IOException {

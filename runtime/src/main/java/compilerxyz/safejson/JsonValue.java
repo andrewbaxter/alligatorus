@@ -79,7 +79,7 @@ class ValueAdapter implements Json.SafeJsonAdapter<JsonValue> {
         var entries = new TOrderedMap<String, JsonValue>();
         while (reader.hasNext()) {
           var key = reader.nextName();
-          entries.put(key, safeJsonAdapterDeserialize(reader, path.key(key)));
+          entries.put(key, safeJsonAdapterDeserialize(reader, path.field("[\"" + key + "\"]")));
         }
         reader.endObject();
         yield new JsonValueObject(entries);
