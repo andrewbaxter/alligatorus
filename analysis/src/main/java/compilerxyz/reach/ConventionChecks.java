@@ -13,6 +13,7 @@ import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtInterface;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtSealable;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtTypeReference;
@@ -46,11 +47,40 @@ public final class ConventionChecks {
 
   public List<Finding> run(CtModel model) {
     for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
-      if (t instanceof CtInterface<?> iface) checkInterfaceMethodNames(iface);
+      if (t instanceof CtInterface<?> iface) {
+        String _cimName = iface.getSimpleName();
+        if (!_cimName.isEmpty()) {
+          String _cimPrefix = Character.toLowerCase(_cimName.charAt(0)) + _cimName.substring(1);
+          for (CtMethod<?> _cimM : iface.getMethods()) {
+            if (_cimM.hasModifier(ModifierKind.STATIC) || _cimM.hasModifier(ModifierKind.PRIVATE)) continue;
+            if (OBJECT_METHODS.contains(_cimM.getSimpleName())) continue;
+            if (!_cimM.getTopDefinitions().isEmpty()) continue;
+            if (_cimM.getSimpleName().startsWith(_cimPrefix)) continue;
+            report(
+                "InterfaceMethodNamePrefix",
+                _cimM,
+                "Method '" + _cimM.getSimpleName() + "' in interface '" + _cimName
+                    + "' should be prefixed with '" + _cimPrefix + "'.");
+          }
+        }
+      }
     }
     for (CtBinaryOperator<?> op : model.getElements(new TypeFilter<>(CtBinaryOperator.class))) {
       if (op.getKind() == BinaryOperatorKind.INSTANCEOF && !op.isImplicit()) {
-        checkInstanceofOnSealed(op);
+        CtTypeReference<?> _cisOperandType = op.getLeftHandOperand().getType();
+        if (_cisOperandType != null) {
+          CtType<?> _cisDecl = _cisOperandType.getTypeDeclaration();
+          if (_cisDecl != null) {
+            boolean _cisSealed = _cisDecl instanceof CtSealable _s && !_s.getPermittedTypes().isEmpty();
+            if (_cisSealed) {
+              report(
+                  "NoInstanceofOnSealed",
+                  op,
+                  "'" + _cisOperandType.getSimpleName()
+                      + "' is sealed; discriminate it with an exhaustive switch instead of instanceof.");
+            }
+          }
+        }
       }
     }
     for (CtAnnotation<?> a : model.getElements(new TypeFilter<>(CtAnnotation.class))) {
@@ -62,81 +92,52 @@ public final class ConventionChecks {
     }
     for (CtTypeReference<?> tr : model.getElements(new TypeFilter<>(CtTypeReference.class))) {
       if (tr.isImplicit()) continue;
-      // Flag Optional only where it is explicitly written (a declared type), not var-inferred, so
-      // findings point at the API surface (method returns/fields) rather than every propagated local.
+      String _ssTrSnippet;
+      {
+        var _ssTrPos = tr.getPosition();
+        if (_ssTrPos == null || !_ssTrPos.isValidPosition() || _ssTrPos.getCompilationUnit() == null) {
+          _ssTrSnippet = "";
+        } else {
+          String _ssTrSrc = _ssTrPos.getCompilationUnit().getOriginalSourceCode();
+          int _ssTrStart = _ssTrPos.getSourceStart();
+          int _ssTrEnd = _ssTrPos.getSourceEnd();
+          _ssTrSnippet = (_ssTrSrc == null || _ssTrStart < 0 || _ssTrEnd < _ssTrStart
+              || _ssTrEnd >= _ssTrSrc.length())
+              ? "" : _ssTrSrc.substring(_ssTrStart, _ssTrEnd + 1).trim();
+        }
+      }
       if (JDK_OPTIONAL.contains(tr.getQualifiedName())
           && tr.getRoleInParent() == CtRole.TYPE
-          && sourceSnippet(tr).contains("Optional")) {
+          && _ssTrSnippet.contains("Optional")) {
         report("AvoidJdkOptional", tr, "Use compilerxyz.util.Opt instead of java.util.Optional.");
       }
-      checkUnnecessaryFqn(tr);
+      {
+        var _fqnPos = tr.getPosition();
+        if (_fqnPos != null && _fqnPos.isValidPosition() && _fqnPos.getCompilationUnit() != null) {
+          if (tr.getParent(spoon.reflect.declaration.CtImport.class) == null) {
+            String _fqnFile = _fqnPos.getFile() != null ? _fqnPos.getFile().getName() : "";
+            if (!_fqnFile.equals("module-info.java")) {
+              String _fqnSrc = _fqnPos.getCompilationUnit().getOriginalSourceCode();
+              int _fqnStart = _fqnPos.getSourceStart();
+              int _fqnEnd = _fqnPos.getSourceEnd();
+              if (_fqnSrc != null && _fqnStart >= 0 && _fqnEnd >= _fqnStart && _fqnEnd < _fqnSrc.length()) {
+                String _fqnSnippet = _fqnSrc.substring(_fqnStart, _fqnEnd + 1).trim();
+                if (_fqnSnippet.contains(".") && FQN.matcher(_fqnSnippet).matches()) {
+                  String _fqnQn = tr.getQualifiedName();
+                  if (_fqnQn != null && _fqnSnippet.equals(_fqnQn.replace('$', '.'))) {
+                    report(
+                        "UnnecessaryFullyQualifiedName",
+                        tr,
+                        "Import '" + _fqnSnippet + "' and use its simple name (unless ambiguous).");
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
     return findings;
-  }
-
-  private static String sourceSnippet(CtElement e) {
-    var pos = e.getPosition();
-    if (pos == null || !pos.isValidPosition() || pos.getCompilationUnit() == null) return "";
-    String src = pos.getCompilationUnit().getOriginalSourceCode();
-    int start = pos.getSourceStart();
-    int end = pos.getSourceEnd();
-    if (src == null || start < 0 || end < start || end >= src.length()) return "";
-    return src.substring(start, end + 1).trim();
-  }
-
-  private void checkInterfaceMethodNames(CtInterface<?> iface) {
-    String name = iface.getSimpleName();
-    if (name.isEmpty()) return;
-    String prefix = Character.toLowerCase(name.charAt(0)) + name.substring(1);
-    for (CtMethod<?> m : iface.getMethods()) {
-      if (m.hasModifier(ModifierKind.STATIC) || m.hasModifier(ModifierKind.PRIVATE)) continue;
-      if (OBJECT_METHODS.contains(m.getSimpleName())) continue;
-      if (!m.getTopDefinitions().isEmpty()) continue; // overrides a super-interface method
-      if (m.getSimpleName().startsWith(prefix)) continue;
-      report(
-          "InterfaceMethodNamePrefix",
-          m,
-          "Method '" + m.getSimpleName() + "' in interface '" + name + "' should be prefixed with '"
-              + prefix + "'.");
-    }
-  }
-
-  private void checkInstanceofOnSealed(CtBinaryOperator<?> op) {
-    CtTypeReference<?> operandType = op.getLeftHandOperand().getType();
-    if (operandType == null) return;
-    CtType<?> decl = operandType.getTypeDeclaration();
-    if (decl == null) return;
-    boolean sealed =
-        decl instanceof spoon.reflect.declaration.CtSealable s && !s.getPermittedTypes().isEmpty();
-    if (sealed) {
-      report(
-          "NoInstanceofOnSealed",
-          op,
-          "'" + operandType.getSimpleName()
-              + "' is sealed; discriminate it with an exhaustive switch instead of instanceof.");
-    }
-  }
-
-  private void checkUnnecessaryFqn(CtTypeReference<?> tr) {
-    var pos = tr.getPosition();
-    if (pos == null || !pos.isValidPosition() || pos.getCompilationUnit() == null) return;
-    if (tr.getParent(spoon.reflect.declaration.CtImport.class) != null) return;
-    String file = pos.getFile() != null ? pos.getFile().getName() : "";
-    if (file.equals("module-info.java")) return;
-    String src = pos.getCompilationUnit().getOriginalSourceCode();
-    int start = pos.getSourceStart();
-    int end = pos.getSourceEnd();
-    if (src == null || start < 0 || end < start || end >= src.length()) return;
-    String snippet = src.substring(start, end + 1).trim();
-    if (!snippet.contains(".") || !FQN.matcher(snippet).matches()) return;
-    // Only flag when the source actually wrote the fully-qualified name (snippet equals the type's
-    // qualified name), not merely a member access that happens to look dotted.
-    String qn = tr.getQualifiedName();
-    if (qn == null || !snippet.equals(qn.replace('$', '.'))) return;
-    report(
-        "UnnecessaryFullyQualifiedName",
-        tr,
-        "Import '" + snippet + "' and use its simple name (unless ambiguous).");
   }
 
   private void report(String check, CtElement e, String message) {

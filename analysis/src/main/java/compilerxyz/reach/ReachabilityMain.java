@@ -26,6 +26,7 @@ import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtRecord;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeMember;
 import spoon.reflect.declaration.ModifierKind;
@@ -163,7 +164,10 @@ public final class ReachabilityMain {
           }
         }
       }
-      addReferencedTypesOf(ex);
+      for (CtTypeReference<?> _artTr : ex.getElements(new TypeFilter<>(CtTypeReference.class))) {
+        String _artQn = _artTr.getQualifiedName();
+        if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
+      }
       for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
         onCall(inv.getExecutable(), inv.getArguments().size(), work);
       }
@@ -181,7 +185,110 @@ public final class ReachabilityMain {
         }
       }
     }
-    return report(types);
+
+    // A live type (has a reachable method or is a builtin root) keeps every type it names —
+    // superclass, implemented (marker) interfaces, field types — alive as a referenced type.
+    for (CtType<?> t : types) {
+      boolean live =
+          executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
+      if (live) {
+        for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
+          String qn = tr.getQualifiedName();
+          if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
+        }
+      }
+    }
+
+    List<String> deadClasses = new ArrayList<>();
+    List<String> deadMethods = new ArrayList<>();
+    List<String> singleUseMethods = new ArrayList<>();
+    List<String> singleUseFields = new ArrayList<>();
+
+    for (CtType<?> t : types) {
+      String qn = t.getQualifiedName();
+      List<CtExecutable<?>> execs = executablesOf(t);
+      boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
+      boolean rooted = isGeneratedType(t) || hasSuppressUnused(t);
+      boolean isAnnotation = t.isAnnotationType();
+      if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
+        deadClasses.add(qn);
+        continue;
+      }
+      for (CtExecutable<?> ex : execs) {
+        if (!(ex instanceof CtMethod<?> m)) continue;
+        String k = key(ex);
+        boolean concrete = m.getBody() != null;
+        boolean _iam = false;
+        iamCheck: try {
+          for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
+            if (_iamTop != m && _iamTop.isAbstract()) { _iam = true; break iamCheck; }
+          }
+        } catch (RuntimeException ignored) {}
+        boolean inlinable =
+            !isRoot(ex)
+                && !rooted
+                && m.getBody() != null
+                && !overridesExternal(m)
+                && !_iam
+                && !isRecordAccessor(t, m)
+                && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
+        if (!reachable.contains(k)
+            && concrete
+            && !rooted
+            && !isRoot(ex)
+            && !m.getSimpleName().equals("main")
+            && !overridesExternal(m)
+            && !isRecordAccessor(t, m)) {
+          deadMethods.add(qn + "#" + sig(ex));
+        }
+        if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
+          singleUseMethods.add(qn + "#" + sig(ex));
+        }
+      }
+      boolean recordOrEnum = t.isEnum() || (t instanceof CtRecord);
+      if (!recordOrEnum) {
+        for (CtField<?> f : t.getFields()) {
+          if (f.getModifiers().contains(ModifierKind.PRIVATE)
+              && !f.getModifiers().contains(ModifierKind.FINAL)
+              && !f.getModifiers().contains(ModifierKind.VOLATILE)
+              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+              && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
+            singleUseFields.add(qn + "#" + f.getSimpleName());
+          }
+        }
+      }
+    }
+
+    deadClasses.sort(Comparator.naturalOrder());
+    deadMethods.sort(Comparator.naturalOrder());
+    singleUseMethods.sort(Comparator.naturalOrder());
+    singleUseFields.sort(Comparator.naturalOrder());
+
+    StringBuilder out = new StringBuilder();
+    line(out, "=== Reachability / single-use analysis (Spoon, source-level) ===");
+    line(out, "types: " + types.size());
+    line(out, "");
+    section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
+    section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
+    section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
+    section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
+    int total = deadClasses.size() + deadMethods.size() + singleUseMethods.size() + singleUseFields.size();
+    line(
+        out,
+        String.format(
+            "TOT:  dead classes=%d  dead methods=%d  single-use methods=%d  single-use fields=%d",
+            deadClasses.size(), deadMethods.size(), singleUseMethods.size(), singleUseFields.size()));
+
+    System.out.print(out);
+    try {
+      Path reportPath = Path.of("analysis/target/reachability-report.txt");
+      Files.createDirectories(reportPath.getParent());
+      Files.writeString(reportPath, out.toString());
+      System.out.println("(report written to " + reportPath + ")");
+    } catch (IOException e) {
+      // best-effort
+    }
+    return total;
   }
 
   private void onCall(CtExecutableReference<?> ref, int actualArity, Deque<String> work) {
@@ -259,165 +366,20 @@ public final class ReachabilityMain {
     return false;
   }
 
-  private void addReferencedTypesOf(CtExecutable<?> ex) {
-    for (CtTypeReference<?> tr : ex.getElements(new TypeFilter<>(CtTypeReference.class))) {
-      String qn = tr.getQualifiedName();
-      if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
-    }
-  }
-
   private boolean isRoot(CtExecutable<?> ex) {
-    if (hasAnnotation(ex, JUNIT) || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
-    if (hasSuppressUnusedAnnotation(ex)) return true;
-    return ex instanceof CtMethod<?> m
-        && m.getSimpleName().equals("main")
-        && m.getModifiers().contains(ModifierKind.STATIC)
-        && m.getParameters().size() == 1;
-  }
-
-  private static boolean hasSuppressUnusedAnnotation(CtExecutable<?> ex) {
-    return ex.getAnnotations().stream()
+    if (ex.getAnnotations().stream()
+        .anyMatch(a -> JUNIT.contains(a.getAnnotationType().getSimpleName()))
+        || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
+    if (ex.getAnnotations().stream()
         .filter(a -> "SuppressWarnings".equals(a.getAnnotationType().getSimpleName()))
         .anyMatch(a -> {
           var v = a.getValues().get("value");
           return v != null && v.toString().contains("unused");
-        });
-  }
-
-  // ---- reporting ----
-
-  private int report(List<CtType<?>> types) {
-    // A live type (has a reachable method or is a builtin root) keeps every type it names —
-    // superclass, implemented (marker) interfaces, field types — alive as a referenced type.
-    for (CtType<?> t : types) {
-      boolean live =
-          executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)))
-              ;
-      if (live) {
-        for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
-          String qn = tr.getQualifiedName();
-          if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
-        }
-      }
-    }
-
-    List<String> deadClasses = new ArrayList<>();
-    List<String> deadMethods = new ArrayList<>();
-    List<String> singleUseMethods = new ArrayList<>();
-    List<String> singleUseFields = new ArrayList<>();
-
-    for (CtType<?> t : types) {
-      String qn = t.getQualifiedName();
-      List<CtExecutable<?>> execs = executablesOf(t);
-      boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = isGeneratedType(t) || hasSuppressUnused(t);
-      boolean isAnnotation = t.isAnnotationType();
-      if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
-        deadClasses.add(qn);
-        continue;
-      }
-      for (CtExecutable<?> ex : execs) {
-        if (!(ex instanceof CtMethod<?> m)) continue;
-        String k = key(ex);
-        boolean concrete = m.getBody() != null;
-        boolean inlinable =
-            !isRoot(ex)
-                && !rooted
-                && m.getBody() != null
-                && !overridesExternal(m)
-                && !implementsAbstractMethod(m)
-                && !isRecordAccessor(t, m);
-        if (!reachable.contains(k)
-            && concrete
-            && !rooted
-            && !isRoot(ex)
-            && !m.getSimpleName().equals("main")
-            && !overridesExternal(m)
-            && !isRecordAccessor(t, m)) {
-          deadMethods.add(qn + "#" + sig(ex));
-        }
-        if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
-          singleUseMethods.add(qn + "#" + sig(ex));
-        }
-      }
-      boolean recordOrEnum = t.isEnum() || (t instanceof spoon.reflect.declaration.CtRecord);
-      if (!recordOrEnum) {
-        for (CtField<?> f : t.getFields()) {
-          if (f.getModifiers().contains(ModifierKind.PRIVATE)
-              && !f.getModifiers().contains(ModifierKind.FINAL)
-              && !f.getModifiers().contains(ModifierKind.VOLATILE)
-              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
-              && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
-            singleUseFields.add(qn + "#" + f.getSimpleName());
-          }
-        }
-      }
-    }
-
-    deadClasses.sort(Comparator.naturalOrder());
-    deadMethods.sort(Comparator.naturalOrder());
-    singleUseMethods.sort(Comparator.naturalOrder());
-    singleUseFields.sort(Comparator.naturalOrder());
-
-    StringBuilder out = new StringBuilder();
-    line(out, "=== Reachability / single-use analysis (Spoon, source-level) ===");
-    line(out, "types: " + types.size());
-    line(out, "");
-    section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
-    section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
-    section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
-    section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
-    int total = deadClasses.size() + deadMethods.size() + singleUseMethods.size() + singleUseFields.size();
-    line(
-        out,
-        String.format(
-            "TOT:  dead classes=%d  dead methods=%d  single-use methods=%d  single-use fields=%d",
-            deadClasses.size(), deadMethods.size(), singleUseMethods.size(), singleUseFields.size()));
-
-    System.out.print(out);
-    try {
-      Path report = Path.of("analysis/target/reachability-report.txt");
-      Files.createDirectories(report.getParent());
-      Files.writeString(report, out.toString());
-      System.out.println("(report written to " + report + ")");
-    } catch (IOException e) {
-      // best-effort
-    }
-    return total;
-  }
-
-  private boolean isGeneratedType(CtType<?> t) {
-    var pos = t.getPosition();
-    if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
-    return generatedFiles.contains(pos.getFile().getAbsolutePath());
-  }
-
-  private static boolean implementsAbstractMethod(CtMethod<?> m) {
-    try {
-      for (CtMethod<?> top : m.getTopDefinitions()) {
-        if (top != m && top.isAbstract()) return true;
-      }
-    } catch (RuntimeException ignored) {
-      return false;
-    }
-    return false;
-  }
-
-  private boolean overridesExternal(CtMethod<?> m) {
-    try {
-      for (CtMethod<?> top : m.getTopDefinitions()) {
-        CtType<?> dt = top.getDeclaringType();
-        if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
-          return true; // declared in a type not in our source model (JDK/library)
-        }
-      }
-    } catch (RuntimeException e) {
-      return true;
-    }
-    // Also treat overrides of Object methods as external.
-    String n = m.getSimpleName();
-    return (n.equals("equals") || n.equals("hashCode") || n.equals("toString"))
-        && m.getModifiers().contains(ModifierKind.PUBLIC);
+        })) return true;
+    return ex instanceof CtMethod<?> m
+        && m.getSimpleName().equals("main")
+        && m.getModifiers().contains(ModifierKind.STATIC)
+        && m.getParameters().size() == 1;
   }
 
   // ---- helpers ----
@@ -476,18 +438,13 @@ public final class ReachabilityMain {
     return qualifiedName == null ? "?" : qualifiedName;
   }
 
-  private static boolean hasAnnotation(CtExecutable<?> ex, Set<String> simpleNames) {
-    return ex.getAnnotations().stream()
-        .anyMatch(a -> simpleNames.contains(a.getAnnotationType().getSimpleName()));
-  }
-
   private static boolean hasAnnotationNamed(CtExecutable<?> ex, String simpleName) {
     return ex.getAnnotations().stream()
         .anyMatch(a -> a.getAnnotationType().getSimpleName().equals(simpleName));
   }
 
   private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {
-    if (!(t instanceof spoon.reflect.declaration.CtRecord rec)) return false;
+    if (!(t instanceof CtRecord rec)) return false;
     if (!m.getParameters().isEmpty()) return false;
     return rec.getRecordComponents().stream()
         .anyMatch(rc -> rc.getSimpleName().equals(m.getSimpleName()));
@@ -500,6 +457,29 @@ public final class ReachabilityMain {
           var v = a.getValues().get("value");
           return v != null && v.toString().contains("unused");
         });
+  }
+
+  private boolean isGeneratedType(CtType<?> t) {
+    var pos = t.getPosition();
+    if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
+    return generatedFiles.contains(pos.getFile().getAbsolutePath());
+  }
+
+  private boolean overridesExternal(CtMethod<?> m) {
+    try {
+      for (CtMethod<?> top : m.getTopDefinitions()) {
+        CtType<?> dt = top.getDeclaringType();
+        if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
+          return true; // declared in a type not in our source model (JDK/library)
+        }
+      }
+    } catch (RuntimeException e) {
+      return true;
+    }
+    // Also treat overrides of Object methods as external.
+    String n = m.getSimpleName();
+    return (n.equals("equals") || n.equals("hashCode") || n.equals("toString"))
+        && m.getModifiers().contains(ModifierKind.PUBLIC);
   }
 
   private static void section(StringBuilder out, String title, List<String> items) {
