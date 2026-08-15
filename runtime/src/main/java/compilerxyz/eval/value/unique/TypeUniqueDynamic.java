@@ -324,32 +324,23 @@ public record TypeUniqueDynamic()
     if (refAspRes.hasErrors()) return refAspRes.reerr();
     var refDyn = refAspRes.requireValue("TypeUniqueDynamic::eq ref aspect").aspectConsumeDynamicToDynamic(xx, loc, reference);
     if (refDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: reference lowering failed");
-    var call =
-        emitUniqueEqCall(
-            loc,
-            xx.vx,
-            baseDyn.requireValue("TypeUniqueDynamic::eq base dynamic"),
-            refDyn.requireValue("TypeUniqueDynamic::eq reference dynamic"));
+    var _eueBase = baseDyn.requireValue("TypeUniqueDynamic::eq base dynamic");
+    var _eueRef = refDyn.requireValue("TypeUniqueDynamic::eq reference dynamic");
+    var _eueSeq = new JavaBytecodeSequence();
+    _eueSeq.add(_eueBase);
+    _eueSeq.add(_eueRef);
+    _eueSeq.add(JavaBytecodeUtils.callMethod(
+        loc,
+        JavaInternalName.fromClass(Object.class),
+        "equals",
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.DESC_BOOL,
+            TList.of(JavaDataDescriptor.fromClass(Object.class)))));
+    var call = new CodeDynamic(loc, _eueSeq);
     return EResult.ok(
         new CodeValue(
             Code.of(loc, call),
             EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
-  }
-
-  private static CodeDynamic emitUniqueEqCall(
-      QExprId loc, EvalContext vx, CodeDynamic base, CodeDynamic reference) {
-    var seq = new JavaBytecodeSequence();
-    seq.add(base);
-    seq.add(reference);
-    seq.add(
-        JavaBytecodeUtils.callMethod(
-            loc,
-            JavaInternalName.fromClass(Object.class),
-            "equals",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.DESC_BOOL,
-                TList.of(JavaDataDescriptor.fromClass(Object.class)))));
-    return new CodeDynamic(loc, seq);
   }
 
   private static Opt<Unique> extractUnique(CodeValue cv) {

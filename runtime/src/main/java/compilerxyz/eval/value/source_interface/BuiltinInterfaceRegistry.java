@@ -1,7 +1,13 @@
 package compilerxyz.eval.value.source_interface;
 
+import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.Unique;
+import compilerxyz.eval.value.function.TypeMethodDynamic;
+import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.eval.value.record.Record;
+import compilerxyz.util.Opt;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class BuiltinInterfaceRegistry {
@@ -33,7 +39,76 @@ public final class BuiltinInterfaceRegistry {
         case TARGET -> compilerxyz.gen.GenTarget.dynamicType();
         case CODE_DYN -> compilerxyz.gen.GenCodeDyn.dynamicType();
       };
-      return ((TypeObjectDynamic) t).getInterfaceData();
+      var _tod = (TypeObjectDynamic) t;
+      if (_tod.interfaceRepresented().optIsNone()) {
+        throw new IllegalStateException(
+            _tod.typeDesc() + "::getInterfaceData: does not represent an interface");
+      }
+      var irValue = _tod.interfaceRepresented().optUnwrap();
+      var aspSrcOpt2 = _tod.aspectSource();
+      if (aspSrcOpt2.optIsNone()) {
+        throw new IllegalStateException(
+            _tod.typeDesc() + "::getInterfaceData: missing static aspect source");
+      }
+      ObjectAspectSource.Static staticSrc2;
+      switch (aspSrcOpt2.optUnwrap()) {
+        case ObjectAspectSource.Static s -> staticSrc2 = s;
+        case ObjectAspectSource.FromInterfaceData ignored -> throw new IllegalStateException(
+            _tod.typeDesc() + "::getInterfaceData: missing static aspect source");
+      }
+      var kind2 = switch (staticSrc2.id()) {
+        case Unique.Source s -> Opt.<BuiltinInterfaceKind>none();
+        case Unique.Builtin b -> {
+          long _v = b.id();
+          if (_v == 1015L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD);
+          if (_v == 1037L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC);
+          if (_v == 1039L) yield Opt.some(BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC);
+          if (_v == 1017L) yield Opt.some(BuiltinInterfaceKind.ASPECT_SET);
+          if (_v == 1018L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_ADD);
+          if (_v == 1042L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_MOD);
+          if (_v == 1022L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND);
+          if (_v == 1023L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC);
+          if (_v == 1024L) yield Opt.some(BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC);
+          if (_v == 1032L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC);
+          if (_v == 1035L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT);
+          if (_v == 1021L) yield Opt.some(BuiltinInterfaceKind.ASPECT_INITIAL_BIND);
+          if (_v == 1026L) yield Opt.some(BuiltinInterfaceKind.ASPECT_LIFT);
+          if (_v == 1116L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FUNCTION);
+          if (_v == 2001L) yield Opt.some(BuiltinInterfaceKind.VALUE);
+          if (_v == 2002L || _v == 6006L) yield Opt.some(BuiltinInterfaceKind.TYPE);
+          if (_v == 2005L) yield Opt.some(BuiltinInterfaceKind.BINDING);
+          if (_v == 2006L) yield Opt.some(BuiltinInterfaceKind.TARGET);
+          if (_v == 2007L) yield Opt.some(BuiltinInterfaceKind.CODE_DYN);
+          yield Opt.<BuiltinInterfaceKind>none();
+        }
+      };
+      var data = new InterfaceData(null, staticSrc2.identity(), kind2);
+      data.aspectId = Opt.some(staticSrc2.id());
+      data.isAspect = !staticSrc2.identity().equals(staticSrc2.id());
+      data.description = Opt.some(_tod.typeDesc());
+      data.compiledBinaryName = irValue.value().replace('/', '.');
+      for (var m : _tod.methods()) {
+        if (!(m.funcType() instanceof TypeMethodDynamic mt)) {
+          throw new IllegalStateException(
+              _tod.typeDesc() + "::getInterfaceData: method " + m.langName()
+                  + " funcType is not TypeMethodDynamic");
+        }
+        var md = new InterfaceMethodData(m.langName());
+        md.argType = mt.arg();
+        md.retType = mt.ret();
+        md.hostMethodName = compilerxyz.util.Opt.some(mt.methodName());
+        md.hostMethodDescriptor = compilerxyz.util.Opt.some(mt.descriptor());
+        if (mt.arg() instanceof Record rec) {
+          for (var key : rec.fields().keySet()) {
+            switch (key) {
+              case ConstKey.Str s -> md.dataFieldNames.add(s.value());
+              case ConstKey.Uint u -> md.dataFieldNames.add(key.constKeyToCanonical());
+            }
+          }
+        }
+        data.methods.add(md);
+      }
+      return data;
     });
   }
 

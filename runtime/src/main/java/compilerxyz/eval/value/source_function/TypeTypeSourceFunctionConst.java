@@ -40,6 +40,7 @@ import org.jspecify.annotations.Nullable;
 public final class TypeTypeSourceFunctionConst {
   private TypeTypeSourceFunctionConst() {}
 
+  @SuppressWarnings("unused")
   public static Type dynamicType() {
     return Holder.INSTANCE;
   }

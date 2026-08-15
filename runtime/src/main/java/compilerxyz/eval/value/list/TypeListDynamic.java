@@ -91,12 +91,6 @@ public final class TypeListDynamic
     this.elementType = elementType;
   }
 
-  public Type elementType() {
-    return elementType;
-  }
-
-
-
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));

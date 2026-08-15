@@ -94,11 +94,6 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     return data;
   }
 
-  public static Type fromInterfaceData(
-      ExprContext xx, InterfaceData data) {
-    return new TypeSourceInterfaceDynamic(data);
-  }
-
   public static Type dynamicType() {
     return TypeTypeSourceInterfaceDynamic.GENERIC;
   }

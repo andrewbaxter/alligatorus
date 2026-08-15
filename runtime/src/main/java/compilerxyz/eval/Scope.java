@@ -34,21 +34,6 @@ public final class Scope {
     this.vx = vx;
   }
 
-  /** Number of binding entries (level kinds other than Entry are not counted). */
-  public int depth() {
-    int n = 0;
-    for (var level : levels) {
-      n += switch (level) {
-        case ScopeLevel.Entry e -> 1;
-        case ScopeLevel.Temp t -> 0;
-        case ScopeLevel.Labeled l -> 0;
-        case ScopeLevel.Catch c -> 0;
-        case ScopeLevel.Finally f -> 0;
-      };
-    }
-    return n;
-  }
-
   /** Total level count, all kinds. Constructs snapshot this to pop back to. */
   public int levelCount() {
     return levels.size();
@@ -57,21 +42,6 @@ public final class Scope {
   public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
     var id = vx.dropStateCounter.next();
     var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id);
-    levels.add(entry);
-    return entry;
-  }
-
-  public ScopeLevel.Entry push(Binding binding) {
-    var id = vx.dropStateCounter.next();
-    var entry = new ScopeLevel.Entry(Opt.<ConstKey>none(), binding, false, id, id);
-    levels.add(entry);
-    return entry;
-  }
-
-  /** Push a synthetic operand-stack cleanup entry (trampoline-only; see Entry.stackOnly). */
-  public ScopeLevel.Entry pushStackCleanup(Binding binding) {
-    var id = vx.dropStateCounter.next();
-    var entry = new ScopeLevel.Entry(Opt.<ConstKey>none(), binding, true, id, id);
     levels.add(entry);
     return entry;
   }
@@ -88,59 +58,11 @@ public final class Scope {
     return level;
   }
 
-  public ScopeLevel.Catch pushCatch(JumpKey handler) {
-    var level = new ScopeLevel.Catch(handler);
-    levels.add(level);
-    return level;
-  }
-
-  public ScopeLevel.Finally pushFinally() {
-    var level = new ScopeLevel.Finally();
-    levels.add(level);
-    return level;
-  }
-
-  public ScopeLevel.Temp pushTemp(Binding binding) {
-    var id = vx.dropStateCounter.next();
-    var level = new ScopeLevel.Temp(binding, id, id);
-    levels.add(level);
-    return level;
-  }
-
-
-  /** Pop the topmost level; it must be the given one. */
-  public void pop(ScopeLevel expected) {
-    var top = levels.remove(levels.size() - 1);
-    if (top != expected) {
-      throw new AssertionError("Scope.pop: top level is not the expected level");
-    }
-  }
-
   /** Pop levels until {@link #levelCount()} is {@code targetCount}. */
   public void popToLevelCount(int targetCount) {
     while (levels.size() > targetCount) {
       levels.remove(levels.size() - 1);
     }
-  }
-
-  public Binding lookup(ConstKey name) {
-    var entry = lookupEntry(name);
-    return entry == null ? null : entry.binding;
-  }
-
-  public ScopeLevel.Entry lookupEntry(ConstKey name) {
-    for (int i = levels.size() - 1; i >= 0; i--) {
-      switch (levels.get(i)) {
-        case ScopeLevel.Entry entry -> {
-          if (entry.name.optIsSome() && entry.name.optUnwrap().equals(name)) return entry;
-        }
-        case ScopeLevel.Temp t -> {}
-        case ScopeLevel.Labeled l -> {}
-        case ScopeLevel.Catch c -> {}
-        case ScopeLevel.Finally f -> {}
-      }
-    }
-    return null;
   }
 
   /**
@@ -251,13 +173,8 @@ public final class Scope {
    */
   public void adopt(Scope other) {
     if (other != this) {
-      replace(other);
+      levels.clear();
+      levels.addAll(other.levels);
     }
-  }
-
-  /** Replace this scope's contents with {@code other}'s. */
-  public void replace(Scope other) {
-    levels.clear();
-    levels.addAll(other.levels);
   }
 }

@@ -141,7 +141,14 @@ public record TypeBoolConst()
         && v.data() instanceof Boolean bv) {
       var seq = new JavaBytecodeSequence();
       seq.add(JavaBytecodeUtils.literalBool(loc, bv));
-      seq.add(boxBoolean(loc));
+      seq.add(JavaBytecodeUtils.callStaticMethod(
+          loc,
+          compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class),
+          "valueOf",
+          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+              JavaDataDescriptor.fromInternalName(
+                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class)),
+              compilerxyz.util.TList.of(JavaDataDescriptor.DESC_BOOL))));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
     return EResult.err(loc, "TypeBoolConst::toDynamic: expected bool ValueObjectConst");
@@ -195,14 +202,4 @@ public record TypeBoolConst()
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
-  private static CodeDynamic boxBoolean(QExprId loc) {
-    return JavaBytecodeUtils.callStaticMethod(
-        loc,
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class),
-        "valueOf",
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromInternalName(
-                compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class)),
-            compilerxyz.util.TList.of(JavaDataDescriptor.DESC_BOOL)));
-  }
 }

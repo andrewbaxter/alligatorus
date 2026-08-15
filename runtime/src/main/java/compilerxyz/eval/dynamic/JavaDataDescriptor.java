@@ -48,10 +48,6 @@ public class JavaDataDescriptor {
         return fromJVMName(name);
     }
 
-    public static JavaDataDescriptor fromObjectClass(Class<?> klass) {
-        return fromJVMName(JavaInternalName.fromClass(klass));
-    }
-
     public static JavaDataDescriptor fromClass(Class<?> t) {
         if (t == int.class) return DESC_INT;
         if (t == byte.class) return DESC_BYTE;
@@ -64,11 +60,7 @@ public class JavaDataDescriptor {
         if (t == void.class) return DESC_VOID;
         if (t.isPrimitive()) throw new AssertionError("Unknown primitive: " + t);
         if (t.isArray()) return new JavaDataDescriptor("[" + fromClass(t.getComponentType()).value);
-        return fromObjectClass(t);
-    }
-
-    public JavaDataDescriptor array() {
-        return new JavaDataDescriptor("[" + value);
+        return fromJVMName(JavaInternalName.fromClass(t));
     }
 
     @Override

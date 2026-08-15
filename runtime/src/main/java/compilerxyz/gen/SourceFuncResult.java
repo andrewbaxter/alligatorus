@@ -21,10 +21,6 @@ public final class SourceFuncResult {
         return GenObjectTypes.sourceFuncResult();
     }
 
-    public TypeSourceFunctionConst get_ref() {
-        return this.func;
-    }
-
     public void set_description(ExprContext xx, String description) {
         if (this.func.data().description.optIsSome()) {
             throw new IllegalStateException("Function already has a description");

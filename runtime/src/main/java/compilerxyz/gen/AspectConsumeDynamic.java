@@ -20,19 +20,4 @@ public interface AspectConsumeDynamic extends Aspect {
 
   JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx);
 
-  default CodeValue aspectConsumeDynamicReturn(ExprContext xx, QExprId loc, CodeValue cv) {
-    var valueOpt = cv.value();
-    if (valueOpt.optIsNone() || !(valueOpt.optUnwrap() instanceof ValueDynamic vd)) {
-      return cv;
-    }
-    var desc = aspectConsumeDynamicJvmClass(xx).value();
-    var width = desc.equals("J") || desc.equals("D") ? 2 : 1;
-    return switch (vd.source()) {
-      case ValueDynamicSource.Expr ignored -> cv;
-      case ValueDynamicSource.Binding ignored ->
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(vd.type_(), width)));
-      case ValueDynamicSource.Field ignored ->
-          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(vd.type_(), width)));
-    };
-  }
 }

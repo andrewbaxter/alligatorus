@@ -36,8 +36,4 @@ public final class ExprContext {
     this.currentExceptionType = currentExceptionType;
   }
 
-  public ExprContext withExceptionType(Opt<Type> newExceptionType) {
-    return new ExprContext(scope, target, vx, importState, newExceptionType);
-  }
-
 }

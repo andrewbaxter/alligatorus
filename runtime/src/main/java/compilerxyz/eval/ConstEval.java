@@ -109,7 +109,21 @@ public final class ConstEval {
         var keyConstOpt = erb.mustRes(keyConstRes);
         if (keyConstOpt.optIsNone()) yield EResult.errs(erb.errors());
         var ck = keyConstOpt.optUnwrap();
-        var found = xx.scope.lookupEntry(ck);
+        ScopeLevel.Entry found = null;
+        lookupEntryLoop:
+        for (int i = xx.scope.levels.size() - 1; i >= 0; i--) {
+          switch (xx.scope.levels.get(i)) {
+            case ScopeLevel.Entry entry -> {
+              if (entry.name.optIsSome() && entry.name.optUnwrap().equals(ck)) {
+                found = entry; break lookupEntryLoop;
+              }
+            }
+            case ScopeLevel.Temp t -> {}
+            case ScopeLevel.Labeled l -> {}
+            case ScopeLevel.Catch c -> {}
+            case ScopeLevel.Finally f -> {}
+          }
+        }
         if (found == null) {
           erb.errPush("No bound value with id [" + ck + "]");
           yield EResult.errs(erb.errors());
@@ -607,7 +621,9 @@ public final class ConstEval {
               elemBindRes.requireValue("Foreach: AspectElementUseDynamicBind")
                   .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
           var bodyScope = xx.scope.fork();
-          var iterEntry = bodyScope.pushStackCleanup(new BindingIteratorStack());
+          var _pscId = bodyScope.vx.dropStateCounter.next();
+          var iterEntry = new ScopeLevel.Entry(Opt.<ConstKey>none(), new BindingIteratorStack(), true, _pscId, _pscId);
+          bodyScope.levels.add(iterEntry);
           var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
           var bodyXx = new ExprContext(
               bodyScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
@@ -987,13 +1003,15 @@ public final class ConstEval {
         }
         ScopeLevel.Finally finallyLevel = null;
         if (e.finallyBlock().optIsSome()) {
-          finallyLevel = xx.scope.pushFinally();
+          finallyLevel = new ScopeLevel.Finally();
+          xx.scope.levels.add(finallyLevel);
         }
         ScopeLevel.Catch catchLevel = null;
         JumpKey handlerKey = null;
         if (e.catchClause().optIsSome()) {
           handlerKey = new JumpKey();
-          catchLevel = xx.scope.pushCatch(handlerKey);
+          catchLevel = new ScopeLevel.Catch(handlerKey);
+          xx.scope.levels.add(catchLevel);
         }
         var bodyXx = new ExprContext(
             xx.scope.fork(), xx.target, xx.vx, xx.importState, bodyExcType);

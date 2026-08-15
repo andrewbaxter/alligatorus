@@ -36,6 +36,7 @@ import compilerxyz.gen.TupleBindSlot;
 import compilerxyz.gen.TargetCase;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.expr.TypeExprStagedPlaceholder;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.safejson.JsonValue;
@@ -146,7 +147,20 @@ public final class TargetDynamic implements Target {
     if (consumeOpt.optIsNone()) {
       return cv;
     }
-    return consumeOpt.optUnwrap().aspectConsumeDynamicReturn(xx, loc, cv);
+    var _acrConsume = consumeOpt.optUnwrap();
+    var _acrValueOpt = cv.value();
+    if (_acrValueOpt.optIsNone() || !(_acrValueOpt.optUnwrap() instanceof ValueDynamic _acrVd)) {
+      return cv;
+    }
+    var _acrDesc = _acrConsume.aspectConsumeDynamicJvmClass(xx).value();
+    var _acrWidth = _acrDesc.equals("J") || _acrDesc.equals("D") ? 2 : 1;
+    return switch (_acrVd.source()) {
+      case ValueDynamicSource.Expr ignored -> cv;
+      case ValueDynamicSource.Binding ignored ->
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(_acrVd.type_(), _acrWidth)));
+      case ValueDynamicSource.Field ignored ->
+          new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(_acrVd.type_(), _acrWidth)));
+    };
   }
 
   @Override

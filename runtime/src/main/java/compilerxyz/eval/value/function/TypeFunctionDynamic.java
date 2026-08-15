@@ -74,10 +74,6 @@ public record TypeFunctionDynamic(
     return FunctionParam.argType(params);
   }
 
-  public EResult<JavaMethodDescriptor> descriptor(ExprContext xx, QExprId loc) {
-    return descriptorFor(xx, loc, arg(), ret, needsExprContext);
-  }
-
   public static EResult<JavaMethodDescriptor> descriptorFor(
       ExprContext xx, QExprId loc, Type arg, Opt<Type> ret, boolean needsExprContext) {
     var argDescs = new TList<JavaDataDescriptor>();
@@ -147,22 +143,6 @@ public record TypeFunctionDynamic(
             .aspectConsumeDynamicJvmClass(xx));
   }
 
-  public EResult<CodeDynamic> emitInvocation(
-      ExprContext xx,
-      QExprId loc,
-      compilerxyz.util.TList<CodeDynamic> args) {
-    var descRes = descriptor(xx, loc);
-    if (descRes.hasErrors()) return descRes.reerr();
-    return emitStaticInvocation(
-        xx,
-        loc,
-        klass,
-        methodName,
-        descRes.requireValue("TypeFunctionDynamic::emit desc"),
-        needsExprContext,
-        args);
-  }
-
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
@@ -209,7 +189,16 @@ public record TypeFunctionDynamic(
     for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
       argList.add(c);
     }
-    var invocationRes = emitInvocation(xx, loc, argList);
+    var descRes = descriptorFor(xx, loc, arg(), ret, needsExprContext);
+    if (descRes.hasErrors()) return descRes.reerr();
+    var invocationRes = emitStaticInvocation(
+        xx,
+        loc,
+        klass,
+        methodName,
+        descRes.requireValue("TypeFunctionDynamic::emit desc"),
+        needsExprContext,
+        argList);
     if (invocationRes.hasErrors()) return invocationRes.reerr();
     var invocation = invocationRes.requireValue("TypeFunctionDynamic::call invocation");
     if (ret.optIsNone()) {

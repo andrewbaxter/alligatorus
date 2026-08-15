@@ -101,12 +101,6 @@ public final class TypeMapDynamic
     this.valueType = valueType;
   }
 
-  public Type keyType() {
-    return keyType;
-  }
-
-
-
   @Override
   public String typeDesc() {
     return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";

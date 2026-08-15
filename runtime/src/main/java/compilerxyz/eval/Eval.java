@@ -33,7 +33,7 @@ public final class Eval {
    * out of the hands of target authors, since targets can be user-defined.
    */
   public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dropXx = xx.withExceptionType(Opt.none());
+    var dropXx = new ExprContext(xx.scope, xx.target, xx.vx, xx.importState, Opt.none());
     return dropXx.target.targetDrop(dropXx, loc, cv);
   }
 

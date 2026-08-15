@@ -23,10 +23,6 @@ public final class SourceInterfaceResult {
         return GenObjectTypes.sourceInterfaceResult();
     }
 
-    public InterfaceData get_ref() {
-        return this.type_.getInterfaceData();
-    }
-
     public void set_description(ExprContext xx, String description) {
         var ifaceData = this.type_.getInterfaceData();
         if (ifaceData.description.optIsSome()) {

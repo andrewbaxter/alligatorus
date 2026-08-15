@@ -56,7 +56,7 @@ public record TypeSourceRemote() implements Type, AspectFunction, AspectInitialB
     var argRes = SourceSpecs.argValue(loc, argument, "source.remote");
     if (argRes.hasErrors()) return argRes.reerr();
     var _ctVal = argRes.requireValue("source.remote arg");
-    if (!(_ctVal instanceof Tuple _ctTuple) || _ctTuple.base().optIsSome()) {
+    if (!(_ctVal instanceof Tuple _ctTuple) || _ctTuple.base.optIsSome()) {
       return EResult.err(loc, "source.remote: expected a const tuple");
     }
     var elements = new TList<Value>(_ctTuple.elements().size());

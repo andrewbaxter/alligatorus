@@ -97,15 +97,11 @@ public record TypeEResultDynamic(Type elementType)
     return Opt.none();
   }
 
-  private static Type errsPayloadType() {
-    return new TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
-  }
-
   @Override
   public TList<Variant> aspectUnionVariants() {
     var out = new TList<Variant>();
     out.add(new Variant(new ConstKey.Str("ok"), "ok", elementType));
-    out.add(new Variant(new ConstKey.Str("errs"), "errs", errsPayloadType()));
+    out.add(new Variant(new ConstKey.Str("errs"), "errs", new TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType())));
     return out;
   }
 

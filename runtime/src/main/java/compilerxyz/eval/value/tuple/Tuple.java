@@ -118,10 +118,6 @@ public final class Tuple
     this.elements = elements;
   }
 
-  public Opt<TupleBaseDynamic> base() {
-    return base;
-  }
-
   public TList<TupleElement> elements() {
     return elements;
   }
@@ -146,242 +142,168 @@ public final class Tuple
           "Tuple::accessOrIndex: value is not a Tuple, got " + selfValue.optUnwrap().getClass());
     }
     return switch (tuple.base) {
-      case Opt.None<TupleBaseDynamic> n -> accessOrIndexSourceless(xx, loc, tuple, accessIndex);
-      case Opt.Some<TupleBaseDynamic> s ->
-          accessOrIndexSourced(xx, loc, tuple, s.value().source(), accessIndex);
-    };
-  }
-
-  private EResult<CodeValue> accessOrIndexSourceless(
-      ExprContext xx, QExprId loc, Tuple tuple, Opt<Integer> accessIndex) {
-    var seq = new JavaBytecodeSequence();
-    CodeValue accessedCv = null;
-    Type accessedType = null;
-    CodeDynamic accessedPushDyn = null;
-    for (int i = tuple.elements.size() - 1; i >= 0; i--) {
-      boolean isAccessed =
-          accessIndex.optIsSome() && accessIndex.optUnwrap() == i;
-      var e = tuple.elements.get(i);
-      TupleElement.EvalRes er;
-      switch (e) {
-        case TupleElement.EvalRes r -> er = r;
-        case TupleElement.Dynamic d -> throw new IllegalStateException(
-            "Tuple::accessOrIndexSourceless: element " + i
-                + " is not EvalRes; sourceless value tuple cannot carry a"
-                + " TupleElement.Dynamic entry");
-      }
-      var res = er.result();
-      if (res.hasErrors()) {
-        if (isAccessed) return EResult.err(loc, "Tuple element " + i + " evaluated to error");
-        continue;
-      }
-      var _erCv = res.valueOrNull();
-      if (!res.hasErrors() && _erCv.optIsSome() && _erCv.optUnwrap().value().optIsNone()) {
-        return EResult.err(
-            loc,
-            "Tuple element " + i + " does not fall through (contains an unreachable"
-                + " control jump like throw/panic); this expression is not valid in a"
-                + " tuple element position");
-      }
-      var elemCv = res.requireValue("Tuple::accessOrIndexSourceless element");
-      var elemDyn = elemCv.code().codeDynamic();
-      var elemSome = (Opt.Some<Value>) elemCv.value();
-      Type elemType = elemSome.value().valueType();
-      if (isAccessed) {
-        var useConstOpt = GenAspectElementUseConst.getMaybe(xx, elemType);
-        if (useConstOpt.optIsSome()) {
-          var useRes = useConstOpt.optUnwrap().aspectElementUseConstElementUseConst(xx, loc, elemCv);
-          if (useRes.hasErrors()) return useRes.reerr();
-          accessedCv = useRes.requireValue("Tuple::accessOrIndexSourceless useConst");
-          continue;
+      case Opt.None<TupleBaseDynamic> n -> {
+        var seq = new JavaBytecodeSequence();
+        CodeValue accessedCv = null;
+        Type accessedType = null;
+        CodeDynamic accessedPushDyn = null;
+        for (int i = tuple.elements.size() - 1; i >= 0; i--) {
+          boolean isAccessed = accessIndex.optIsSome() && accessIndex.optUnwrap() == i;
+          var e = tuple.elements.get(i);
+          TupleElement.EvalRes er;
+          switch (e) {
+            case TupleElement.EvalRes r -> er = r;
+            case TupleElement.Dynamic d -> throw new IllegalStateException(
+                "Tuple::accessOrIndexSourceless: element " + i
+                    + " is not EvalRes; sourceless value tuple cannot carry a"
+                    + " TupleElement.Dynamic entry");
+          }
+          var res = er.result();
+          if (res.hasErrors()) {
+            if (isAccessed) yield EResult.err(loc, "Tuple element " + i + " evaluated to error");
+            continue;
+          }
+          var _erCv = res.valueOrNull();
+          if (!res.hasErrors() && _erCv.optIsSome() && _erCv.optUnwrap().value().optIsNone()) {
+            yield EResult.err(
+                loc,
+                "Tuple element " + i + " does not fall through (contains an unreachable"
+                    + " control jump like throw/panic); this expression is not valid in a"
+                    + " tuple element position");
+          }
+          var elemCv = res.requireValue("Tuple::accessOrIndexSourceless element");
+          var elemDyn = elemCv.code().codeDynamic();
+          var elemSome = (Opt.Some<Value>) elemCv.value();
+          Type elemType = elemSome.value().valueType();
+          if (isAccessed) {
+            var useConstOpt = GenAspectElementUseConst.getMaybe(xx, elemType);
+            if (useConstOpt.optIsSome()) {
+              var useRes = useConstOpt.optUnwrap().aspectElementUseConstElementUseConst(xx, loc, elemCv);
+              if (useRes.hasErrors()) yield useRes.reerr();
+              accessedCv = useRes.requireValue("Tuple::accessOrIndexSourceless useConst");
+              continue;
+            }
+            if (elemDyn == null) { accessedCv = elemCv; continue; }
+            if (!(elemSome.value() instanceof ValueDynamic)) { accessedCv = elemCv; continue; }
+            accessedPushDyn = elemDyn;
+            accessedType = elemType;
+            continue;
+          }
+          if (elemDyn != null) seq.add(elemDyn);
+          var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, elemType);
+          if (fullDropOpt.optIsSome()) {
+            var dropRes = fullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, elemCv);
+            if (dropRes.hasErrors()) yield dropRes.reerr();
+            var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless drop").codeDynamic();
+            if (dropDyn != null) seq.add(dropDyn);
+            continue;
+          }
+          var lightDropOpt = GenAspectDropDynamicLight.getMaybe(xx, elemType);
+          if (lightDropOpt.optIsSome()) {
+            var dropRes = lightDropOpt.optUnwrap().aspectDropDynamicLightDropDynamicLight(xx, loc, elemCv);
+            if (dropRes.hasErrors()) yield dropRes.reerr();
+            var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless light drop").codeDynamic();
+            if (dropDyn != null) seq.add(dropDyn);
+            continue;
+          }
+          yield EResult.err(
+              loc,
+              "Sourceless tuple element " + i + " type '" + elemType.typeDesc()
+                  + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
         }
-        if (elemDyn == null) {
-          accessedCv = elemCv;
-          continue;
-        }
-        if (!(elemSome.value() instanceof ValueDynamic)) {
-          accessedCv = elemCv;
-          continue;
-        }
-        accessedPushDyn = elemDyn;
-        accessedType = elemType;
-        continue;
-      }
-      if (elemDyn != null) seq.add(elemDyn);
-      var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, elemType);
-      if (fullDropOpt.optIsSome()) {
-        var dropRes = fullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, elemCv);
-        if (dropRes.hasErrors()) return dropRes.reerr();
-        var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless drop").codeDynamic();
-        if (dropDyn != null) seq.add(dropDyn);
-        continue;
-      }
-      var lightDropOpt = GenAspectDropDynamicLight.getMaybe(xx, elemType);
-      if (lightDropOpt.optIsSome()) {
-        var dropRes = lightDropOpt.optUnwrap().aspectDropDynamicLightDropDynamicLight(xx, loc, elemCv);
-        if (dropRes.hasErrors()) return dropRes.reerr();
-        var dropDyn = dropRes.requireValue("Tuple::accessOrIndexSourceless light drop").codeDynamic();
-        if (dropDyn != null) seq.add(dropDyn);
-        continue;
-      }
-      return EResult.err(
-          loc,
-          "Sourceless tuple element " + i + " type '" + elemType.typeDesc()
-              + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
-    }
-    if (accessIndex.optIsSome()) {
-      if (accessedCv != null) {
-        var accessedDyn = accessedCv.code().codeDynamic();
-        if (accessedDyn != null) seq.add(accessedDyn);
-        if (seq.children.isEmpty()) {
-          return EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
-        }
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
-      }
-      if (accessedPushDyn != null) {
-        seq.add(accessedPushDyn);
-        return EResult.ok(
-            new CodeValue(
+        if (accessIndex.optIsSome()) {
+          if (accessedCv != null) {
+            var accessedDyn = accessedCv.code().codeDynamic();
+            if (accessedDyn != null) seq.add(accessedDyn);
+            if (seq.children.isEmpty()) yield EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
+            yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
+          }
+          if (accessedPushDyn != null) {
+            seq.add(accessedPushDyn);
+            yield EResult.ok(new CodeValue(
                 Code.of(loc, new CodeDynamic(loc, seq)),
                 EvalOutcome.ofValue(ValueDynamic.stack(accessedType, 1))));
-      }
-      return EResult.err(loc, "Tuple element " + accessIndex.optUnwrap() + " not found");
-    }
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
-  }
-
-  private EResult<CodeValue> accessOrIndexSourced(
-      ExprContext xx,
-      QExprId loc,
-      Tuple tuple,
-      ValueDynamicSource baseSource,
-      Opt<Integer> accessIndex) {
-    var dynamicTypes = new TList<Type>();
-    var dynamicIndexOfElement = new TList<Integer>(tuple.elements.size());
-    for (int i = 0; i < tuple.elements.size(); i++) {
-      var e = tuple.elements.get(i);
-      switch (e) {
-        case TupleElement.Dynamic d -> {
-          dynamicIndexOfElement.add(dynamicTypes.size());
-          dynamicTypes.add(d.type());
+          }
+          yield EResult.err(loc, "Tuple element " + accessIndex.optUnwrap() + " not found");
         }
-        case TupleElement.EvalRes r -> dynamicIndexOfElement.add(-1);
+        yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
       }
-    }
-    var slotInfo = sortTupleSlots(xx, dynamicTypes);
-    var sortedTypes = slotInfo.sortedTypes();
-    var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
-    return switch (accessIndex) {
-      case Opt.None<Integer> n ->
-          dropSourced(xx, loc, tuple, dynamicTypes, dynamicIndexOfElement, slotInfo, klass, baseSource);
-      case Opt.Some<Integer> s ->
-          indexSourced(
-              xx, loc, tuple, dynamicTypes, dynamicIndexOfElement, slotInfo, klass, baseSource,
-              s.value());
+      case Opt.Some<TupleBaseDynamic> s -> {
+        var baseSource = s.value().source();
+        var dynamicTypes = new TList<Type>();
+        var dynamicIndexOfElement = new TList<Integer>(tuple.elements.size());
+        for (int i = 0; i < tuple.elements.size(); i++) {
+          var e = tuple.elements.get(i);
+          switch (e) {
+            case TupleElement.Dynamic d -> { dynamicIndexOfElement.add(dynamicTypes.size()); dynamicTypes.add(d.type()); }
+            case TupleElement.EvalRes r -> dynamicIndexOfElement.add(-1);
+          }
+        }
+        var slotInfo = sortTupleSlots(xx, dynamicTypes);
+        var sortedTypes = slotInfo.sortedTypes();
+        var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
+        if (accessIndex.optIsNone()) {
+          var out = new JavaBytecodeSequence();
+          out.add(baseSource.valueDynamicSourceRealize(xx, loc));
+          for (int i = tuple.elements.size() - 1; i >= 0; i--) {
+            int dynIdx = dynamicIndexOfElement.get(i);
+            if (dynIdx < 0) continue;
+            var t = dynamicTypes.get(dynIdx);
+            int slotIdx = slotInfo.slotOfKey().get(dynIdx);
+            var _tcFullDropOpt = GenAspectDropDynamic.getMaybe(xx, t);
+            if (_tcFullDropOpt.optIsSome()) {
+              var _tcSeq = new JavaBytecodeSequence();
+              _tcSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+              _tcSeq.add(JavaBytecodeUtils.accessField(
+                  loc, klass,
+                  CompositeClassEmitter.slotFieldName(slotIdx),
+                  CompositeClassEmitter.slotDescriptor(xx, t)));
+              var _tcChildCv = new CodeValue(
+                  Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
+                  EvalOutcome.ofValue(ValueDynamic.stack(t, 1)));
+              var _tcDropRes = _tcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _tcChildCv);
+              if (_tcDropRes.hasErrors()) yield _tcDropRes.reerr();
+              var _tcD = _tcDropRes.requireValue("Tuple::tupleChildDropCode drop").codeDynamic();
+              if (_tcD != null) _tcSeq.add(_tcD);
+              out.add(new CodeDynamic(loc, _tcSeq));
+            } else if (GenAspectDropDynamicLight.getMaybe(xx, t).optIsNone()) {
+              yield EResult.err(
+                  loc,
+                  "Tuple element " + i + " type '" + t.typeDesc()
+                      + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
+            }
+          }
+          out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+          yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
+        } else {
+          int accessedIdx = accessIndex.optUnwrap();
+          if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
+            yield EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
+          }
+          int _isDynIdx = dynamicIndexOfElement.get(accessedIdx);
+          if (_isDynIdx < 0) {
+            throw new IllegalStateException(
+                "Tuple::indexSourced: element index " + accessedIdx
+                    + " is a scope-bound (non-dynamic) element; access should be routed elsewhere");
+          }
+          var accessedType = dynamicTypes.get(_isDynIdx);
+          int accessedSlot = slotInfo.slotOfKey().get(_isDynIdx);
+          var useDynOpt = compilerxyz.gen.GenAspectElementUseDynamic.getMaybe(xx, accessedType);
+          if (useDynOpt.optIsNone()) {
+            yield EResult.err(
+                loc,
+                "Tuple element " + accessedIdx + " type (" + accessedType.typeDesc()
+                    + ") does not implement AspectElementUseDynamic");
+          }
+          var childSource = new ValueDynamicSource.Field(
+              baseSource, klass,
+              CompositeClassEmitter.slotFieldName(accessedSlot),
+              CompositeClassEmitter.slotDescriptor(xx, accessedType));
+          yield useDynOpt.optUnwrap()
+              .aspectElementUseDynamicElementUseDynamic(xx, loc, childSource, Code.none(loc));
+        }
+      }
     };
-  }
-
-  private EResult<CodeValue> dropSourced(
-      ExprContext xx,
-      QExprId loc,
-      Tuple tuple,
-      TList<Type> dynamicTypes,
-      TList<Integer> dynamicIndexOfElement,
-      CompositeSlotSort.Result<Integer> slotInfo,
-      JavaInternalName klass,
-      ValueDynamicSource baseSource) {
-    var out = new JavaBytecodeSequence();
-    out.add(baseSource.valueDynamicSourceRealize(xx, loc));
-    for (int i = tuple.elements.size() - 1; i >= 0; i--) {
-      int dynIdx = dynamicIndexOfElement.get(i);
-      if (dynIdx < 0) continue;
-      var t = dynamicTypes.get(dynIdx);
-      int slotIdx = slotInfo.slotOfKey().get(dynIdx);
-      var siblingDropRes = tupleChildDropCode(xx, loc, klass, slotIdx, t, i);
-      if (siblingDropRes.hasErrors()) return siblingDropRes.reerr();
-      var siblingDrop = siblingDropRes.requireValue("Tuple::emitSiblingDrops tupleChildDropCode");
-      if (siblingDrop.optIsSome()) out.add(siblingDrop.optUnwrap());
-    }
-    out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
-  }
-
-  private EResult<CodeValue> indexSourced(
-      ExprContext xx,
-      QExprId loc,
-      Tuple tuple,
-      TList<Type> dynamicTypes,
-      TList<Integer> dynamicIndexOfElement,
-      CompositeSlotSort.Result<Integer> slotInfo,
-      JavaInternalName klass,
-      ValueDynamicSource baseSource,
-      int accessedIdx) {
-    if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
-      return EResult.err(loc, "Tuple element index " + accessedIdx + " out of range");
-    }
-    int dynIdx = dynamicIndexOfElement.get(accessedIdx);
-    if (dynIdx < 0) {
-      throw new IllegalStateException(
-          "Tuple::indexSourced: element index " + accessedIdx
-              + " is a scope-bound (non-dynamic) element; access should be routed elsewhere");
-    }
-    var accessedType = dynamicTypes.get(dynIdx);
-    int accessedSlot = slotInfo.slotOfKey().get(dynIdx);
-    var useDynOpt = compilerxyz.gen.GenAspectElementUseDynamic.getMaybe(xx, accessedType);
-    if (useDynOpt.optIsNone()) {
-      return EResult.err(
-          loc,
-          "Tuple element "
-              + accessedIdx
-              + " type ("
-              + accessedType.typeDesc()
-              + ") does not implement AspectElementUseDynamic");
-    }
-    var childSource =
-        new ValueDynamicSource.Field(
-            baseSource,
-            klass,
-            CompositeClassEmitter.slotFieldName(accessedSlot),
-            CompositeClassEmitter.slotDescriptor(xx, accessedType));
-    return useDynOpt.optUnwrap()
-        .aspectElementUseDynamicElementUseDynamic(xx, loc, childSource, Code.none(loc));
-  }
-
-  /**
-   * Emit sibling-drop bytecode for one tuple element. Returns Ok(some(...)) with a
-   * non-light drop; Ok(none()) for light-only elements (GC handles them); Err if the
-   * element type has neither drop aspect.
-   */
-  private EResult<Opt<CodeDynamic>> tupleChildDropCode(
-      ExprContext xx, QExprId loc, JavaInternalName klass, int slotIdx, Type childType,
-      int elementIndex) {
-    var fullDropOpt = GenAspectDropDynamic.getMaybe(xx, childType);
-    if (fullDropOpt.optIsSome()) {
-      var seq = new JavaBytecodeSequence();
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-      seq.add(
-          JavaBytecodeUtils.accessField(
-              loc,
-              klass,
-              CompositeClassEmitter.slotFieldName(slotIdx),
-              CompositeClassEmitter.slotDescriptor(xx, childType)));
-      var childCv =
-          new CodeValue(
-              Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-              EvalOutcome.ofValue(ValueDynamic.stack(childType, 1)));
-      var res = fullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, childCv);
-      if (res.hasErrors()) return res.reerr();
-      var d = res.requireValue("Tuple::tupleChildDropCode drop").codeDynamic();
-      if (d != null) seq.add(d);
-      return EResult.ok(Opt.some(new CodeDynamic(loc, seq)));
-    }
-    if (GenAspectDropDynamicLight.getMaybe(xx, childType).optIsSome()) {
-      return EResult.ok(Opt.none());
-    }
-    return EResult.err(
-        loc,
-        "Tuple element " + elementIndex + " type '" + childType.typeDesc()
-            + "' has neither AspectDropDynamic nor AspectDropDynamicLight");
   }
 
   private static CompositeSlotSort.Result<Integer> sortTupleSlots(
@@ -818,27 +740,6 @@ public final class Tuple
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    var subRes = bindSub(xx, loc, cv);
-    if (subRes.hasErrors()) {
-      return subRes.reerr();
-    }
-    var sub = subRes.requireValue("Tuple::bind bindSub");
-    if (sub.targetSub().optIsSome()) {
-      var bound = xx.target.targetBind(xx, loc, sub.targetSub().optUnwrap());
-      return EResult.ok(
-          new BindResult(
-              Code.of(loc, bound.code()),
-              new BindingTuple(sub.scopeFields(), Opt.some(bound.id()))));
-    }
-    return EResult.ok(
-        new BindResult(
-            Code.none(loc), new BindingTuple(sub.scopeFields(), Opt.none())));
-  }
-
-  private record BindSub(
-      TList<TupleScopeField> scopeFields, Opt<TargetBindSub> targetSub) {}
-
-  private EResult<BindSub> bindSub(ExprContext xx, QExprId loc, CodeValue cv) {
     if (cv.value().optIsNone()) {
       throw new IllegalStateException("Tuple::bindSub: CodeValue has no value");
     }
@@ -861,11 +762,10 @@ public final class Tuple
         scopeFields.add(new TupleScopeField.Dynamic(d.type()));
       }
       var subRes = xx.target.targetCodeToBindSub(loc, carry, tupleType);
-      if (subRes.hasErrors()) {
-        return subRes.reerr();
-      }
+      if (subRes.hasErrors()) return subRes.reerr();
       var sub = subRes.requireValue("Tuple::bindSub base.bindSub");
-      return EResult.ok(new BindSub(scopeFields, Opt.some(sub)));
+      var bound = xx.target.targetBind(xx, loc, sub);
+      return EResult.ok(new BindResult(Code.of(loc, bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
     }
 
     TList<ExprErr> errors = null;
@@ -877,85 +777,51 @@ public final class Tuple
       switch (elem) {
         case TupleElement.Dynamic d -> {
           if (errors == null) errors = new TList<>();
-          errors.add(
-              new ExprErr(
-                  loc,
-                  TList.of(
-                      new ExprSubErr.Opaque(
-                          "Tuple element " + i
-                              + " is dynamic-only, cannot bind directly"))));
+          errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque("Tuple element " + i + " is dynamic-only, cannot bind directly"))));
         }
         case TupleElement.EvalRes elemRes -> {
           var inner = elemRes.result();
-          if (inner.hasErrors()) {
-            if (errors == null) errors = new TList<>();
-            inner.drainInto(errors);
-            continue;
-          }
+          if (inner.hasErrors()) { if (errors == null) errors = new TList<>(); inner.drainInto(errors); continue; }
           var elemCv = inner.requireValue("Tuple::bindSub element value");
           if (elemCv.value().optIsSome()) {
             var elemType = elemCv.value().optUnwrap().valueType();
             var boxedType = DynUtil.substituteBoxed(xx, elemType);
             if (!boxedType.typeIsEqual(xx, elemType)) {
               var boxedRes = boxedType.typeCastFrom(xx, loc, elemCv);
-              if (boxedRes.hasErrors()) {
-                if (errors == null) errors = new TList<>();
-                boxedRes.drainInto(errors);
-                continue;
-              }
+              if (boxedRes.hasErrors()) { if (errors == null) errors = new TList<>(); boxedRes.drainInto(errors); continue; }
               elemCv = boxedRes.requireValue("Tuple::bindSub boxed element");
             }
           }
           var savedValue = elemCv.outcome();
           var subRes = xx.target.targetMaybeBindSub(xx, loc, elemCv);
-          if (subRes.hasErrors()) {
-            if (errors == null) errors = new TList<>();
-            subRes.drainInto(errors);
-            continue;
-          }
+          if (subRes.hasErrors()) { if (errors == null) errors = new TList<>(); subRes.drainInto(errors); continue; }
           var subOpt = subRes.requireValue("Tuple::bindSub targetMaybeBindSub");
           if (subOpt.optIsSome()) {
             hasTarget = true;
             bindResults.add(new ElemBindResult(Opt.some(subOpt.optUnwrap()), Opt.none()));
           } else {
-            bindResults.add(
-                new ElemBindResult(
-                    Opt.none(), Opt.some(new CodeValue(Code.none(loc), savedValue))));
+            bindResults.add(new ElemBindResult(Opt.none(), Opt.some(new CodeValue(Code.none(loc), savedValue))));
           }
         }
       }
     }
-    if (errors != null && !errors.isEmpty()) {
-      return EResult.errs(errors);
-    }
+    if (errors != null && !errors.isEmpty()) return EResult.errs(errors);
     if (!hasTarget) {
       var scopeFields = new TList<TupleScopeField>(bindResults.size());
       for (var br : bindResults) {
-        if (br.constCv().optIsNone()) {
-          throw new IllegalStateException(
-              "Tuple::bindSub: !has_target but bindResults contains a target sub");
-        }
+        if (br.constCv().optIsNone()) throw new IllegalStateException("Tuple::bindSub: !has_target but bindResults contains a target sub");
         var elemCv = br.constCv().optUnwrap();
-        if (elemCv.value().optIsNone()) {
-          throw new IllegalStateException(
-              "Tuple::bindSub: const element CodeValue has no value");
-        }
+        if (elemCv.value().optIsNone()) throw new IllegalStateException("Tuple::bindSub: const element CodeValue has no value");
         var elemType = elemCv.value().optUnwrap().valueType();
         var bindRes = GenAspectBind.get(xx, loc, elemType);
-        if (bindRes.hasErrors()) {
-          scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
-          continue;
-        }
+        if (bindRes.hasErrors()) { scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap())); continue; }
         var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
         var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
-        if (elemBindRes.hasErrors()) {
-          scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap()));
-          continue;
-        }
+        if (elemBindRes.hasErrors()) { scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap())); continue; }
         var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
         scopeFields.add(new TupleScopeField.Scope(elemBind.binding()));
       }
-      return EResult.ok(new BindSub(scopeFields, Opt.none()));
+      return EResult.ok(new BindResult(Code.none(loc), new BindingTuple(scopeFields, Opt.none())));
     }
     var scopeFields = new TList<TupleScopeField>(bindResults.size());
     var targetSlots = new TList<TupleBindSlot>(bindResults.size());
@@ -966,22 +832,13 @@ public final class Tuple
         targetSlots.add(new TupleBindSlot(targetSome));
       } else if (br.constCv().optIsSome()) {
         var elemCv = br.constCv().optUnwrap();
-        if (elemCv.value().optIsNone()) {
-          throw new IllegalStateException(
-              "Tuple::bindSub: const element CodeValue has no value");
-        }
+        if (elemCv.value().optIsNone()) throw new IllegalStateException("Tuple::bindSub: const element CodeValue has no value");
         var elemType = elemCv.value().optUnwrap().valueType();
         var bindRes = GenAspectBind.get(xx, loc, elemType);
-        if (bindRes.hasErrors()) {
-          scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
-          continue;
-        }
+        if (bindRes.hasErrors()) { scopeFields.add(new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap())); continue; }
         var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
         var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
-        if (elemBindRes.hasErrors()) {
-          scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap()));
-          continue;
-        }
+        if (elemBindRes.hasErrors()) { scopeFields.add(new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap())); continue; }
         var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
         scopeFields.add(new TupleScopeField.Scope(elemBind.binding()));
       } else {
@@ -989,7 +846,8 @@ public final class Tuple
       }
     }
     var combined = xx.target.targetBindSubTuple(xx, loc, carry, targetSlots);
-    return EResult.ok(new BindSub(scopeFields, Opt.some(combined)));
+    var bound = xx.target.targetBind(xx, loc, combined);
+    return EResult.ok(new BindResult(Code.of(loc, bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
   }
 
   @Override

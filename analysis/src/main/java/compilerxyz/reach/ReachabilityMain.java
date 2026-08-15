@@ -16,9 +16,11 @@ import java.util.stream.Collectors;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
+import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldRead;
 import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtNewClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtExecutable;
@@ -52,8 +54,6 @@ public final class ReachabilityMain {
       Set.of(
           "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
           "BeforeEach", "AfterEach", "BeforeAll", "AfterAll");
-  private static final Set<String> BUILTIN =
-      Set.of("BuiltinPath", "BuiltinFull", "BuiltinLight", "BuiltinPushStruct");
   private static final String CODEGEN_DESCRIPTOR = "CodegenDescriptor";
 
   private final Map<String, CtExecutable<?>> execByKey = new HashMap<>();
@@ -90,9 +90,53 @@ public final class ReachabilityMain {
     // Seed roots.
     Deque<String> work = new ArrayDeque<>();
     for (CtType<?> t : types) {
-      boolean rootedType = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t) || hasSuppressUnused(t);
+      boolean rootedType = isGeneratedType(t) || hasSuppressUnused(t);
       for (CtExecutable<?> ex : executablesOf(t)) {
         if (rootedType || isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
+          String k = key(ex);
+          if (reachable.add(k)) work.add(k);
+        }
+      }
+    }
+    // Root methods registered as TypeMethodDynamic targets.
+    // TypeMethodDynamic invokes Java methods by string name via ASM bytecode, invisible to CHA.
+    // Scan all TypeMethodDynamic constructor calls, extract the methodName string (arg index 4),
+    // and root every in-model method with that name so they don't appear as dead or single-use.
+    Set<String> dynMethodNames = new HashSet<>();
+    for (CtType<?> t : types) {
+      for (CtConstructorCall<?> cc : t.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+        if (!"TypeMethodDynamic".equals(cc.getType().getSimpleName())) continue;
+        List<CtExpression<?>> args = cc.getArguments();
+        if (args.size() > 4 && args.get(4) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+          dynMethodNames.add(n);
+        }
+      }
+    }
+    // Also root methods called via callStaticMethod/callStaticInterfaceMethod with literal names.
+    // These emit direct bytecodes to call static methods by name, invisible to CHA.
+    // The method name is at arg index 2: (CodeLoc, JavaInternalName, String methodName, ...).
+    for (CtType<?> t : types) {
+      for (CtInvocation<?> inv : t.getElements(new TypeFilter<>(CtInvocation.class))) {
+        String invName = inv.getExecutable().getSimpleName();
+        if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
+        List<CtExpression<?>> args = inv.getArguments();
+        if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+          dynMethodNames.add(n);
+        }
+      }
+    }
+    for (CtType<?> t : types) {
+      for (CtExecutable<?> ex : executablesOf(t)) {
+        if (ex instanceof CtMethod<?> m && dynMethodNames.contains(m.getSimpleName())) {
+          String k = key(ex);
+          if (reachable.add(k)) work.add(k);
+        }
+      }
+    }
+    // Root methods annotated with @BuiltinPath (called via builtin registration, invisible to CHA).
+    for (CtType<?> t : types) {
+      for (CtExecutable<?> ex : executablesOf(t)) {
+        if (hasAnnotationNamed(ex, "BuiltinPath")) {
           String k = key(ex);
           if (reachable.add(k)) work.add(k);
         }
@@ -224,7 +268,6 @@ public final class ReachabilityMain {
 
   private boolean isRoot(CtExecutable<?> ex) {
     if (hasAnnotation(ex, JUNIT) || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
-    if (hasAnnotation(ex, BUILTIN)) return true;
     if (hasSuppressUnusedAnnotation(ex)) return true;
     return ex instanceof CtMethod<?> m
         && m.getSimpleName().equals("main")
@@ -249,7 +292,7 @@ public final class ReachabilityMain {
     for (CtType<?> t : types) {
       boolean live =
           executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)))
-              || hasAnyAnnotation(t, BUILTIN);
+              ;
       if (live) {
         for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
           String qn = tr.getQualifiedName();
@@ -267,7 +310,7 @@ public final class ReachabilityMain {
       String qn = t.getQualifiedName();
       List<CtExecutable<?>> execs = executablesOf(t);
       boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = hasAnyAnnotation(t, BUILTIN) || isGeneratedType(t) || hasSuppressUnused(t);
+      boolean rooted = isGeneratedType(t) || hasSuppressUnused(t);
       boolean isAnnotation = t.isAnnotationType();
       if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
         deadClasses.add(qn);
@@ -441,11 +484,6 @@ public final class ReachabilityMain {
   private static boolean hasAnnotationNamed(CtExecutable<?> ex, String simpleName) {
     return ex.getAnnotations().stream()
         .anyMatch(a -> a.getAnnotationType().getSimpleName().equals(simpleName));
-  }
-
-  private static boolean hasAnyAnnotation(CtType<?> t, Set<String> simpleNames) {
-    return t.getAnnotations().stream()
-        .anyMatch(a -> simpleNames.contains(a.getAnnotationType().getSimpleName()));
   }
 
   private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {

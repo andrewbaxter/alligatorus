@@ -72,58 +72,6 @@ public final class InterfaceData {
     this.methods = new TList<>();
   }
 
-  public EResult<Void> finish(QExprId loc, long interfaceIndex) {
-    var name = description.optUnwrapOr("(unnamed)");
-    if (builtinKind.optIsSome()) {
-      return EResult.ok(null);
-    }
-    if (compiledBytecode.optIsSome()) {
-      return EResult.ok(null);
-    }
-    if (setId.optIsNone()) {
-      return EResult.err(
-          loc, "InterfaceData.finish: setId is null for user-declared interface '" + name + "'");
-    }
-    var _sieBinaryName = SourceInterfaceEmitter.binaryNameFor(setId.optUnwrap(), interfaceIndex);
-    var _sieInternalName = _sieBinaryName.replace('.', '/');
-    var _sieCw =
-        new ClassWriter(
-            ClassWriter.COMPUTE_FRAMES
-                | ClassWriter.COMPUTE_MAXS);
-    _sieCw.visit(
-        Opcodes.V11,
-        Opcodes.ACC_PUBLIC
-            | Opcodes.ACC_INTERFACE
-            | Opcodes.ACC_ABSTRACT,
-        _sieInternalName,
-        null,
-        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT.value(),
-        null);
-    for (var _sieMethod : methods) {
-      if (_sieMethod.argType == null) {
-        throw new IllegalStateException(
-            "SourceInterfaceEmitter.emit: method '"
-                + _sieMethod.name
-                + "' has no arg type (finish ordering violation)");
-      }
-      _sieCw
-          .visitMethod(
-              Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
-              _sieMethod.name,
-              JavaMethodDescriptor.fromParts(
-                      compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
-                      compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)
-                  .value(),
-              null,
-              null)
-          .visitEnd();
-    }
-    _sieCw.visitEnd();
-    compiledBinaryName = _sieBinaryName;
-    compiledBytecode = Opt.some(_sieCw.toByteArray());
-    return EResult.ok(null);
-  }
-
   public void initSetReflectively(DefinitionSet set) {
     try {
       var f = InterfaceData.class.getDeclaredField("set");

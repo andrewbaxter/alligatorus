@@ -38,6 +38,8 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
@@ -67,10 +69,6 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.eval.TypeAspect;
 import compilerxyz.eval.value.ValueDynamicSource;
-import compilerxyz.eval.value.function.TypeMethodDynamic;
-import compilerxyz.eval.value.record.Record;
-import compilerxyz.eval.value.source_interface.InterfaceMethodData;
-import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueArray;
@@ -152,79 +150,6 @@ public record TypeObjectDynamic(
     }
     return staticSrc.id();
   }
-
-  public InterfaceData getInterfaceData() {
-    if (interfaceRepresented.optIsNone()) {
-      throw new IllegalStateException(
-          typeDesc() + "::getInterfaceData: does not represent an interface");
-    }
-    var irValue = interfaceRepresented.optUnwrap();
-    var aspSrcOpt2 = aspectSource();
-    if (aspSrcOpt2.optIsNone()) {
-      throw new IllegalStateException(
-          typeDesc() + "::getInterfaceData: missing static aspect source");
-    }
-    ObjectAspectSource.Static staticSrc2;
-    switch (aspSrcOpt2.optUnwrap()) {
-      case ObjectAspectSource.Static s -> staticSrc2 = s;
-      case ObjectAspectSource.FromInterfaceData ignored -> throw new IllegalStateException(
-          typeDesc() + "::getInterfaceData: missing static aspect source");
-    }
-    var kind = switch (staticSrc2.id()) {
-      case Unique.Source s -> Opt.<BuiltinInterfaceKind>none();
-      case Unique.Builtin b -> {
-        long _v = b.id();
-        if (_v == 1015L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD);
-        if (_v == 1037L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC);
-        if (_v == 1039L) yield Opt.some(BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC);
-        if (_v == 1017L) yield Opt.some(BuiltinInterfaceKind.ASPECT_SET);
-        if (_v == 1018L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_ADD);
-        if (_v == 1042L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_MOD);
-        if (_v == 1022L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND);
-        if (_v == 1023L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC);
-        if (_v == 1024L) yield Opt.some(BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC);
-        if (_v == 1032L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC);
-        if (_v == 1035L) yield Opt.some(BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT);
-        if (_v == 1021L) yield Opt.some(BuiltinInterfaceKind.ASPECT_INITIAL_BIND);
-        if (_v == 1026L) yield Opt.some(BuiltinInterfaceKind.ASPECT_LIFT);
-        if (_v == 1116L) yield Opt.some(BuiltinInterfaceKind.ASPECT_FUNCTION);
-        if (_v == 2001L) yield Opt.some(BuiltinInterfaceKind.VALUE);
-        if (_v == 2002L || _v == 6006L) yield Opt.some(BuiltinInterfaceKind.TYPE);
-        if (_v == 2005L) yield Opt.some(BuiltinInterfaceKind.BINDING);
-        if (_v == 2006L) yield Opt.some(BuiltinInterfaceKind.TARGET);
-        if (_v == 2007L) yield Opt.some(BuiltinInterfaceKind.CODE_DYN);
-        yield Opt.<BuiltinInterfaceKind>none();
-      }
-    };
-    var data = new InterfaceData(null, staticSrc2.identity(), kind);
-    data.aspectId = Opt.some(staticSrc2.id());
-    data.isAspect = !staticSrc2.identity().equals(staticSrc2.id());
-    data.description = Opt.some(typeDesc());
-    data.compiledBinaryName = irValue.value().replace('/', '.');
-    for (var m : methods) {
-      if (!(m.funcType() instanceof TypeMethodDynamic mt)) {
-        throw new IllegalStateException(
-            typeDesc() + "::getInterfaceData: method " + m.langName()
-                + " funcType is not TypeMethodDynamic");
-      }
-      var md = new InterfaceMethodData(m.langName());
-      md.argType = mt.arg();
-      md.retType = mt.ret();
-      md.hostMethodName = compilerxyz.util.Opt.some(mt.methodName());
-      md.hostMethodDescriptor = compilerxyz.util.Opt.some(mt.descriptor());
-      if (mt.arg() instanceof Record rec) {
-        for (var key : rec.fields().keySet()) {
-          switch (key) {
-            case ConstKey.Str s -> md.dataFieldNames.add(s.value());
-            case ConstKey.Uint u -> md.dataFieldNames.add(key.constKeyToCanonical());
-          }
-        }
-      }
-      data.methods.add(md);
-    }
-    return data;
-  }
-
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
@@ -557,6 +482,46 @@ public record TypeObjectDynamic(
   public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
     var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<Type>none(), Opt.<ExporterRoot>none());
     return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue.optUnwrap()));
+  }
+
+  @SuppressWarnings("unused")
+  public InterfaceData getInterfaceData() {
+    var aspSrcOpt = aspectSource();
+    if (aspSrcOpt.optIsNone()) {
+      throw new IllegalStateException(typeDesc() + "::getInterfaceData: missing aspect source");
+    }
+    ObjectAspectSource.Static staticSrc;
+    switch (aspSrcOpt.optUnwrap()) {
+      case ObjectAspectSource.Static s -> staticSrc = s;
+      case ObjectAspectSource.FromInterfaceData ignored ->
+          throw new IllegalStateException(typeDesc() + "::getInterfaceData: missing static aspect source");
+    }
+    long _v = switch (staticSrc.id()) {
+      case Unique.Builtin b -> b.id();
+      case Unique.Source s -> throw new IllegalStateException(typeDesc() + "::getInterfaceData: not a builtin interface");
+    };
+    BuiltinInterfaceKind kind;
+    if (_v == 1015L) kind = BuiltinInterfaceKind.ASPECT_FIELD;
+    else if (_v == 1037L) kind = BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC;
+    else if (_v == 1039L) kind = BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC;
+    else if (_v == 1017L) kind = BuiltinInterfaceKind.ASPECT_SET;
+    else if (_v == 1018L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_ADD;
+    else if (_v == 1042L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_MOD;
+    else if (_v == 1022L) kind = BuiltinInterfaceKind.ASPECT_BIND;
+    else if (_v == 1023L) kind = BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC;
+    else if (_v == 1024L) kind = BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC;
+    else if (_v == 1032L) kind = BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC;
+    else if (_v == 1035L) kind = BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT;
+    else if (_v == 1021L) kind = BuiltinInterfaceKind.ASPECT_INITIAL_BIND;
+    else if (_v == 1026L) kind = BuiltinInterfaceKind.ASPECT_LIFT;
+    else if (_v == 1116L) kind = BuiltinInterfaceKind.ASPECT_FUNCTION;
+    else if (_v == 2001L) kind = BuiltinInterfaceKind.VALUE;
+    else if (_v == 2002L || _v == 6006L) kind = BuiltinInterfaceKind.TYPE;
+    else if (_v == 2005L) kind = BuiltinInterfaceKind.BINDING;
+    else if (_v == 2006L) kind = BuiltinInterfaceKind.TARGET;
+    else if (_v == 2007L) kind = BuiltinInterfaceKind.CODE_DYN;
+    else throw new IllegalStateException(typeDesc() + "::getInterfaceData: unrecognized builtin id " + _v);
+    return BuiltinInterfaceRegistry.resolve(kind);
   }
 
   /**

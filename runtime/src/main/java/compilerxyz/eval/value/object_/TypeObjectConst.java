@@ -99,15 +99,6 @@ public record TypeObjectConst(
         AspectLift,
         AspectType {
 
-  public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix, ExporterRoot exporter) {
-    var toc = metaOf(hostClass, descSuffix);
-    return new TypeObjectConst(
-        toc.meta(),
-        toc.externalHostClass(),
-        toc.deferDynamic(),
-        Opt.some(exporter));
-  }
-
   public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix) {
     var trivialIdentityAspects = new TList<Unique>();
     trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
@@ -123,10 +114,6 @@ public record TypeObjectConst(
 
   public String typeDesc() {
     return meta.typeDesc();
-  }
-
-  public TList<Unique> trivialIdentityAspects() {
-    return meta.trivialIdentityAspects();
   }
 
   public TList<TypeObjectCastRule> castRules() {
@@ -187,7 +174,7 @@ public record TypeObjectConst(
     if (aspectSource().optIsSome() && key.equals(GenAspectAspect.AspectId)) {
       return Opt.some(this);
     }
-    for (var idAspect : trivialIdentityAspects()) {
+    for (var idAspect : meta.trivialIdentityAspects()) {
       if (key.equals(idAspect)) return Opt.some(this);
     }
     return Opt.none();
@@ -445,46 +432,6 @@ public record TypeObjectConst(
     }
     throw new IllegalArgumentException(
         typeDesc() + "::type_: expected Type or ValueObjectConst, got " + value.getClass());
-  }
-
-  private EResult<CodeValue> deferField(
-      ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    if (deferDynamic.optIsNone()) {
-      return EResult.err(loc, typeDesc() + "::field: no deferDynamic configured");
-    }
-    var target = deferDynamic.optUnwrap();
-    var dyn = materializeAsDynamic(xx, loc, self);
-    if (dyn.hasErrors()) return dyn.reerr();
-    var asp = GenAspectField.get(xx, loc, target);
-    if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc() + "::field target AspectField")
-        .aspectFieldField(xx, loc, dyn.requireValue(typeDesc() + "::field dyn self"), key);
-  }
-
-  private EResult<CodeValue> deferCall(
-      ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    if (deferDynamic.optIsNone()) {
-      return EResult.err(loc, typeDesc() + "::call: no deferDynamic configured");
-    }
-    var target = deferDynamic.optUnwrap();
-    var dyn = materializeAsDynamic(xx, loc, self);
-    if (dyn.hasErrors()) return dyn.reerr();
-    var asp = GenAspectFunction.get(xx, loc, target);
-    if (asp.hasErrors()) return asp.reerr();
-    return asp.requireValue(typeDesc() + "::call target AspectFunction")
-        .aspectFunctionCall(xx, loc, dyn.requireValue(typeDesc() + "::call dyn self"), argument);
-  }
-
-  private EResult<CodeValue> materializeAsDynamic(ExprContext xx, QExprId loc, CodeValue self) {
-    var dynRes = aspectConsumeDynamicToDynamic(xx, loc, self);
-    if (dynRes.hasErrors()) return dynRes.reerr();
-    var dyn = dynRes.requireValue(typeDesc() + "::materializeAsDynamic");
-    var target =
-        deferDynamic.optIsSome()
-            ? deferDynamic.optUnwrap()
-            : this;
-    return EResult.ok(
-        new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(ValueDynamic.stack(target, 1))));
   }
 
   @Override
