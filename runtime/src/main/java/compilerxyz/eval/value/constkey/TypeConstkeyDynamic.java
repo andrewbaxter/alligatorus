@@ -41,6 +41,11 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectStackValueDynamic;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.util.TList;
 
 @BuiltinFull(uniqueId = 6015L)
 @BuiltinPath("types.constkey")
@@ -75,8 +80,8 @@ public record TypeConstkeyDynamic()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectStackValueDynamic.AspectId)) {
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -125,10 +130,10 @@ public record TypeConstkeyDynamic()
     }
     var s = stringConstOpt.optUnwrap().aspectStringConstGet(sourceValue);
     var strInternal =
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(ConstKey.Str.class);
+        JavaInternalName.fromClass(ConstKey.Str.class);
     var ctorDesc =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
-            compilerxyz.util.TList.of(
+        JavaMethodDescriptor.fromConstructorParts(
+            TList.of(
                 JavaDataDescriptor.fromClass(String.class)));
     var seq = new JavaBytecodeSequence();
     seq.add(JavaBytecodeUtils.newInstance(loc, strInternal));
@@ -152,11 +157,11 @@ public record TypeConstkeyDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -164,7 +169,7 @@ public record TypeConstkeyDynamic()
     return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY).optIsSome();
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY).optIsSome()) {
       return EResult.ok(cv);
     }

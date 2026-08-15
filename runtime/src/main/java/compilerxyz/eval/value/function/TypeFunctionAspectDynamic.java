@@ -43,6 +43,10 @@ import compilerxyz.eval.TypeAspect;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.gen.AspectTuple;
+import compilerxyz.eval.Eval;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.gen.GenType;
 
 @BuiltinPath("eval.aspect_lookup")
 @BuiltinLight(uniqueId = 6108L)
@@ -87,7 +91,7 @@ public record TypeFunctionAspectDynamic()
     }
     var argVal = argument.value().optUnwrap();
     var argType = argVal.valueType();
-    var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+    var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
     if (tupleOpt.optIsNone()) {
       return EResult.err(loc, "aspect_lookup: expected 3-tuple arg (subject, aspect_type, xx)");
     }
@@ -125,14 +129,14 @@ public record TypeFunctionAspectDynamic()
     }
     var auq = aspTa.typeAspectId();
 
-    var anyDyn = compilerxyz.gen.GenType.dynamicType();
+    var anyDyn = GenType.dynamicType();
     var subjectConvertedRes =
-        compilerxyz.eval.Eval.typecheckConvert(xx, loc, anyDyn, subjectCv);
+        Eval.typecheckConvert(xx, loc, anyDyn, subjectCv);
     if (subjectConvertedRes.hasErrors()) return subjectConvertedRes.reerr();
     var subjectConverted =
         subjectConvertedRes.requireValue("aspect_lookup subject convert");
     var subjectConsumeRes =
-        compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, anyDyn);
+        GenAspectConsumeDynamic.get(xx, loc, anyDyn);
     if (subjectConsumeRes.hasErrors()) return subjectConsumeRes.reerr();
     var subjectDynRes =
         subjectConsumeRes
@@ -161,7 +165,7 @@ public record TypeFunctionAspectDynamic()
         new CodeValue(
             Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
             EvalOutcome.ofValue(
-                compilerxyz.eval.value.ValueDynamic.stack(new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, aspTa)), 1))));
+                ValueDynamic.stack(new TypeOptionDynamic(DynUtil.substituteBoxed(xx, aspTa)), 1))));
   }
 
   @Override
@@ -185,7 +189,7 @@ public record TypeFunctionAspectDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -202,7 +206,7 @@ public record TypeFunctionAspectDynamic()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

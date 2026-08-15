@@ -21,7 +21,7 @@ public final class SourceObjectMethodResult {
     }
 
     public void impl(
-        ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret, StagedExprCell implBody) {
+        ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
         if (this.method.argType.optIsSome()) {
             throw new IllegalStateException("Method already has an arg type");
         }

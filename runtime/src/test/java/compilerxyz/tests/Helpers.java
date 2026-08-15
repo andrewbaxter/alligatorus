@@ -35,6 +35,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.util.Textifier;
 import org.objectweb.asm.util.TraceClassVisitor;
+import compilerxyz.langhelp.Compile;
+import compilerxyz.util.Opt;
+import java.util.function.Supplier;
 
 public final class Helpers {
   private Helpers() {}
@@ -85,10 +88,26 @@ public final class Helpers {
                 case JsonValueNull ignored -> v;
                 case JsonValueBoolean ignored -> v;
                 case JsonValueArray ignored -> jsonRedacted(v);
-                case JsonValueObject inner ->
-                    k.equals("artifact_external_key") && inner.entries().getOrNull("id") != null
-                        ? jsonObj(jsonField("id", jsonStr("KEY")))
-                        : jsonRedacted(v);
+                case JsonValueObject inner -> {
+                  if (k.equals("artifact_external_key") && inner.entries().getOrNull("id") != null) {
+                    yield jsonObj(jsonField("id", jsonStr("KEY")));
+                  }
+                  var some = inner.entries().getOrNull("some");
+                  boolean someIsString =
+                      some != null
+                          && switch (some) {
+                            case JsonValueString ignored2 -> true;
+                            case JsonValueNumber ignored2 -> false;
+                            case JsonValueNull ignored2 -> false;
+                            case JsonValueBoolean ignored2 -> false;
+                            case JsonValueArray ignored2 -> false;
+                            case JsonValueObject ignored2 -> false;
+                          };
+                  if (k.equals("compiled_bytecode") && someIsString) {
+                    yield jsonObj(jsonField("some", jsonStr("BYTECODE")));
+                  }
+                  yield jsonRedacted(v);
+                }
               };
           out.put(k, redacted);
         }
@@ -138,12 +157,12 @@ public final class Helpers {
     var gx = newGx(modules);
     gx.captureBytecode = true;
     var res =
-        compilerxyz.langhelp.Compile.compile(
+        Compile.compile(
             gx, new Virtual("main"));
-    Result.Ok<CompileResult, compilerxyz.util.TList<ExprErr>> ok;
+    Result.Ok<CompileResult, TList<ExprErr>> ok;
     switch (res) {
-      case Result.Ok<CompileResult, compilerxyz.util.TList<ExprErr>> o -> ok = o;
-      case Result.Err<CompileResult, compilerxyz.util.TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
+      case Result.Ok<CompileResult, TList<ExprErr>> o -> ok = o;
+      case Result.Err<CompileResult, TList<ExprErr>> e -> throw new AssertionError("compile failed: " + res);
     }
     return ok.value();
   }
@@ -174,7 +193,7 @@ public final class Helpers {
       sources.put(
           entry.getKey(),
           new Sources.SourceResolved.Module(
-              new SourceId(i), entry.getValue(), compilerxyz.util.Opt.none()));
+              new SourceId(i), entry.getValue(), Opt.none()));
       i++;
     }
     var artifacts = new TestArtifacts();
@@ -225,7 +244,7 @@ public final class Helpers {
 
     @Override
     public CompileRes compilesGetOrCompute(
-        CompileId id, java.util.function.Supplier<Compiles.CompileProduct> compute) {
+        CompileId id, Supplier<Compiles.CompileProduct> compute) {
       Entry e;
       mapLock.lock();
       try {

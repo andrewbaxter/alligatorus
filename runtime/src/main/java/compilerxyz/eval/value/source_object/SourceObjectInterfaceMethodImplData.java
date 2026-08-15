@@ -36,6 +36,7 @@ import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
 import compilerxyz.eval.value.record.RecordField.Dynamic;
 import compilerxyz.gen.AspectTuple;
+import compilerxyz.eval.dynamic.SourceObjectEmitter;
 
 public final class SourceObjectInterfaceMethodImplData {
   public final int interfaceMethodIndex;
@@ -92,7 +93,7 @@ public final class SourceObjectInterfaceMethodImplData {
           "SourceObjectInterfaceMethodImplData::finish: dtData not in its owning set");
     }
     innerVx.evalRootInternalName =
-        compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), objectIndex);
+        SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), objectIndex);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
     innerBindingId = Opt.some(selfId);
@@ -117,7 +118,7 @@ public final class SourceObjectInterfaceMethodImplData {
       throw new AssertionError("Interface method '" + ifaceMethod.name + "' missing arg_type");
     }
     var dataFieldNames = ifaceMethod.dataFieldNames;
-    var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, methodArgType);
+    var tupleOpt = GenAspectTuple.getMaybe(xx, methodArgType);
     TList<Type> paramTypes;
     var argParamIds = new TList<BindingId.Local>();
     if (methodArgType instanceof Record rec) {

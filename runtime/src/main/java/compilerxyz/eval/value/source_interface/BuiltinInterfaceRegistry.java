@@ -9,6 +9,25 @@ import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.util.Opt;
 import java.util.concurrent.ConcurrentHashMap;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenAspectDropDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectElementUseDynamic;
+import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.gen.GenAspectFunction;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenAspectOperatorAdd;
+import compilerxyz.gen.GenAspectOperatorMod;
+import compilerxyz.gen.GenAspectSet;
+import compilerxyz.gen.GenBinding;
+import compilerxyz.gen.GenCodeDyn;
+import compilerxyz.gen.GenTarget;
+import compilerxyz.gen.GenType;
+import compilerxyz.gen.GenValue;
 
 public final class BuiltinInterfaceRegistry {
   private static final ConcurrentHashMap<BuiltinInterfaceKind, InterfaceData> CACHE =
@@ -19,25 +38,25 @@ public final class BuiltinInterfaceRegistry {
   public static InterfaceData resolve(BuiltinInterfaceKind kind) {
     return CACHE.computeIfAbsent(kind, k -> {
       Type t = switch (k) {
-        case VALUE -> compilerxyz.gen.GenValue.dynamicType();
-        case TYPE -> compilerxyz.gen.GenType.dynamicType();
-        case ASPECT_FUNCTION -> compilerxyz.gen.GenAspectFunction.dynamicType();
-        case ASPECT_FIELD -> compilerxyz.gen.GenAspectField.dynamicType();
-        case ASPECT_FIELD_USE_DYNAMIC -> compilerxyz.gen.GenAspectFieldUseDynamic.dynamicType();
-        case ASPECT_ELEMENT_USE_DYNAMIC -> compilerxyz.gen.GenAspectElementUseDynamic.dynamicType();
-        case ASPECT_DROP_DYNAMIC -> compilerxyz.gen.GenAspectDropDynamic.dynamicType();
-        case ASPECT_CONSUME_DYNAMIC -> compilerxyz.gen.GenAspectConsumeDynamic.dynamicType();
-        case ASPECT_BIND_DYNAMIC -> compilerxyz.gen.GenAspectBindDynamic.dynamicType();
-        case ASPECT_BIND -> compilerxyz.gen.GenAspectBind.dynamicType();
-        case ASPECT_DROP_DYNAMIC_LIGHT -> compilerxyz.gen.GenAspectDropDynamicLight.dynamicType();
-        case ASPECT_INITIAL_BIND -> compilerxyz.gen.GenAspectInitialBind.dynamicType();
-        case ASPECT_LIFT -> compilerxyz.gen.GenAspectLift.dynamicType();
-        case ASPECT_SET -> compilerxyz.gen.GenAspectSet.dynamicType();
-        case ASPECT_OPERATOR_ADD -> compilerxyz.gen.GenAspectOperatorAdd.dynamicType();
-        case ASPECT_OPERATOR_MOD -> compilerxyz.gen.GenAspectOperatorMod.dynamicType();
-        case BINDING -> compilerxyz.gen.GenBinding.dynamicType();
-        case TARGET -> compilerxyz.gen.GenTarget.dynamicType();
-        case CODE_DYN -> compilerxyz.gen.GenCodeDyn.dynamicType();
+        case VALUE -> GenValue.dynamicType();
+        case TYPE -> GenType.dynamicType();
+        case ASPECT_FUNCTION -> GenAspectFunction.dynamicType();
+        case ASPECT_FIELD -> GenAspectField.dynamicType();
+        case ASPECT_FIELD_USE_DYNAMIC -> GenAspectFieldUseDynamic.dynamicType();
+        case ASPECT_ELEMENT_USE_DYNAMIC -> GenAspectElementUseDynamic.dynamicType();
+        case ASPECT_DROP_DYNAMIC -> GenAspectDropDynamic.dynamicType();
+        case ASPECT_CONSUME_DYNAMIC -> GenAspectConsumeDynamic.dynamicType();
+        case ASPECT_BIND_DYNAMIC -> GenAspectBindDynamic.dynamicType();
+        case ASPECT_BIND -> GenAspectBind.dynamicType();
+        case ASPECT_DROP_DYNAMIC_LIGHT -> GenAspectDropDynamicLight.dynamicType();
+        case ASPECT_INITIAL_BIND -> GenAspectInitialBind.dynamicType();
+        case ASPECT_LIFT -> GenAspectLift.dynamicType();
+        case ASPECT_SET -> GenAspectSet.dynamicType();
+        case ASPECT_OPERATOR_ADD -> GenAspectOperatorAdd.dynamicType();
+        case ASPECT_OPERATOR_MOD -> GenAspectOperatorMod.dynamicType();
+        case BINDING -> GenBinding.dynamicType();
+        case TARGET -> GenTarget.dynamicType();
+        case CODE_DYN -> GenCodeDyn.dynamicType();
       };
       var _tod = (TypeObjectDynamic) t;
       if (_tod.interfaceRepresented().optIsNone()) {
@@ -96,8 +115,8 @@ public final class BuiltinInterfaceRegistry {
         var md = new InterfaceMethodData(m.langName());
         md.argType = mt.arg();
         md.retType = mt.ret();
-        md.hostMethodName = compilerxyz.util.Opt.some(mt.methodName());
-        md.hostMethodDescriptor = compilerxyz.util.Opt.some(mt.descriptor());
+        md.hostMethodName = Opt.some(mt.methodName());
+        md.hostMethodDescriptor = Opt.some(mt.descriptor());
         if (mt.arg() instanceof Record rec) {
           for (var key : rec.fields().keySet()) {
             switch (key) {

@@ -7,19 +7,22 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.type.Type;
+import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
+import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
 /**
- * Scans runtime source for static methods annotated {@code @CodegenDescriptor} and produces one
- * entry per method (owner, generated constant name, method name, resolved return/param types), from
- * which {@link CodegenDescriptorGen} generates {@code JavaStaticMethodRef} constants.
+ * Scans runtime source for methods annotated {@code @CodegenDescriptor} and produces one entry per
+ * method (owner, generated constant name, method name, resolved return/param types, staticness),
+ * from which {@link CodegenDescriptorGen} generates {@code JavaStaticMethodRef} /
+ * {@code JavaVirtualMethodRef} constants.
  */
 public final class CodegenDescriptorScanner {
   private CodegenDescriptorScanner() {}
@@ -34,7 +37,9 @@ public final class CodegenDescriptorScanner {
       String constantName,
       String methodName,
       TypeName returnType,
-      TList<TypeName> paramTypes) {}
+      TList<TypeName> paramTypes,
+      boolean isStatic,
+      boolean ownerIsInterface) {}
 
   public static TList<Entry> scanRoot(Path runtimeSourceRoot) throws IOException {
     var out = new TList<Entry>();
@@ -67,18 +72,54 @@ public final class CodegenDescriptorScanner {
       TList<Entry> out) {
     var simple = t.getNameAsString();
     if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration) {
+      boolean ownerIsInterface =
+          t instanceof ClassOrInterfaceDeclaration ci && ci.isInterface();
+      var owner =
+          enclosing.isEmpty() ? ClassName.get(pkg, simple) : ClassName.get(pkg, enclosing, simple);
+      var classTypeParams = new TSet<String>();
+      if (t instanceof ClassOrInterfaceDeclaration ci) {
+        for (var tp : ci.getTypeParameters()) classTypeParams.add(tp.getNameAsString());
+      }
+      if (t instanceof RecordDeclaration rd) {
+        for (var tp : rd.getTypeParameters()) classTypeParams.add(tp.getNameAsString());
+        // A METHOD-targeted annotation on a record component applies to the implicit accessor.
+        for (var component : rd.getParameters()) {
+          if (component.getAnnotations().stream()
+              .noneMatch(a -> a.getNameAsString().equals("CodegenDescriptor"))) {
+            continue;
+          }
+          out.add(
+              new Entry(
+                  owner,
+                  screamingSnake(simple) + "_" + screamingSnake(component.getNameAsString()),
+                  component.getNameAsString(),
+                  typeNameOf(component.getType(), imports, pkg, classTypeParams),
+                  TList.of(),
+                  false,
+                  false));
+        }
+      }
       for (var m : t.getMethods()) {
         if (!isAnnotated(m)) continue;
-        var owner =
-            enclosing.isEmpty() ? ClassName.get(pkg, simple) : ClassName.get(pkg, enclosing, simple);
-        var returnType = typeNameOf(m.getType(), imports, pkg);
+        var typeParams = new TSet<String>();
+        typeParams.addAll(classTypeParams);
+        for (var tp : m.getTypeParameters()) typeParams.add(tp.getNameAsString());
+        var returnType = typeNameOf(m.getType(), imports, pkg, typeParams);
         var paramTypes = new TList<TypeName>();
         for (var p : m.getParameters()) {
-          paramTypes.add(typeNameOf(p.getType(), imports, pkg));
+          paramTypes.add(typeNameOf(p.getType(), imports, pkg, typeParams));
         }
         var constantName =
             screamingSnake(simple) + "_" + screamingSnake(m.getNameAsString());
-        out.add(new Entry(owner, constantName, m.getNameAsString(), returnType, paramTypes));
+        out.add(
+            new Entry(
+                owner,
+                constantName,
+                m.getNameAsString(),
+                returnType,
+                paramTypes,
+                m.isStatic(),
+                ownerIsInterface));
       }
     }
     for (var member : t.getMembers()) {
@@ -94,7 +135,8 @@ public final class CodegenDescriptorScanner {
         .anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
   }
 
-  private static TypeName typeNameOf(Type t, TMap<String, String> imports, String pkg) {
+  private static TypeName typeNameOf(
+      Type t, TMap<String, String> imports, String pkg, TSet<String> typeParams) {
     if (t.isVoidType()) return TypeName.VOID;
     if (t.isPrimitiveType()) {
       return switch (t.asPrimitiveType().asString()) {
@@ -109,8 +151,14 @@ public final class CodegenDescriptorScanner {
         default -> throw new IllegalStateException("Unsupported primitive: " + t);
       };
     }
+    if (t.isArrayType()) {
+      return ArrayTypeName.of(
+          typeNameOf(t.asArrayType().getComponentType(), imports, pkg, typeParams));
+    }
     if (t.isClassOrInterfaceType()) {
       var name = t.asClassOrInterfaceType().getNameAsString();
+      // Unbounded type variables erase to Object in the JVM descriptor.
+      if (typeParams.contains(name)) return ClassName.get(Object.class);
       return ClassName.bestGuess(resolve(name, imports, pkg));
     }
     throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);

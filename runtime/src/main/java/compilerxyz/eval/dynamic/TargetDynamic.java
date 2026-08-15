@@ -57,6 +57,7 @@ import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
@@ -72,6 +73,8 @@ import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleBaseDynamic;
 import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.util.TOrderedMap;
+import java.util.Comparator;
 
 public final class TargetDynamic implements Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
@@ -411,7 +414,7 @@ public final class TargetDynamic implements Target {
     }
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
-          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+          Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     var finalType =
@@ -533,7 +536,7 @@ public final class TargetDynamic implements Target {
     seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
-          compilerxyz.eval.Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+          Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
     var finalType =
         resultType == null ? (Type) new TypeNullDynamic() : resultType;
@@ -638,18 +641,7 @@ public final class TargetDynamic implements Target {
     stageSeq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
     stageSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
     stageSeq.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
-    stageSeq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc,
-            JavaInternalName.fromClass(DynRuntime.class),
-            "stage",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromClass(StagedExprCell.class),
-                TList.of(
-                    JavaDataDescriptor.fromClass(ExprContext.class),
-                    JavaDataDescriptor.fromClass(StagedExprCell.class),
-                    JavaDataDescriptor.DESC_INT,
-                    JavaDataDescriptor.fromClass(Object[].class)))));
+    stageSeq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.DYN_RUNTIME_STAGE));
     var stageCall = new CodeDynamic(loc, stageSeq);
     var resultValue =
         ValueDynamic.stack(new TypeExprStagedPlaceholder(), 1);
@@ -677,7 +669,7 @@ public final class TargetDynamic implements Target {
           "Target::maybeBindSub: CodeValue has no value; Rust unwraps unconditionally");
     }
     var vtype = cv.value().optUnwrap().valueType();
-    var bindDynOpt = compilerxyz.gen.GenAspectBindDynamic.getMaybe(xx, vtype);
+    var bindDynOpt = GenAspectBindDynamic.getMaybe(xx, vtype);
     if (bindDynOpt.optIsNone()) {
       return EResult.ok(Opt.none());
     }
@@ -697,11 +689,11 @@ public final class TargetDynamic implements Target {
   @Override
   public TargetBindSub targetBindSubRecord(
       ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields) {
-    var entries = new compilerxyz.util.TOrderedMap<ConstKey, TargetBindSub>();
+    var entries = new TOrderedMap<ConstKey, TargetBindSub>();
     for (var f : fields) entries.put(f.key(), f.sub());
     var sortedSubs = sortBindSubs(xx, entries, ConstKey.CANONICAL_ORDER);
     var dynamicFields =
-        new compilerxyz.util.TOrderedMap<ConstKey, RecordField>();
+        new TOrderedMap<ConstKey, RecordField>();
     for (var f : fields) {
       dynamicFields.put(
           f.key(), new RecordField.Dynamic(f.sub().type()));
@@ -715,7 +707,7 @@ public final class TargetDynamic implements Target {
   @Override
   public TargetBindSub targetBindSubTuple(
       ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots) {
-    var entries = new compilerxyz.util.TOrderedMap<Integer, TargetBindSub>();
+    var entries = new TOrderedMap<Integer, TargetBindSub>();
     for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub());
     var sortedSubs = sortBindSubs(xx, entries, Integer::compare);
     var dynamicElements =
@@ -772,7 +764,6 @@ public final class TargetDynamic implements Target {
     return EResult.ok(Opt.some(Code.of(loc, new CodeDynamic(loc, seq))));
   }
 
-  @SuppressWarnings("unused")
   @Override
   public EResult<Code> targetFresh(QExprId loc, Code code) {
     var dyn = code.codeDynamic();
@@ -782,9 +773,9 @@ public final class TargetDynamic implements Target {
 
   private static <K> TList<TargetBindSub> sortBindSubs(
       ExprContext xx,
-      compilerxyz.util.TOrderedMap<K, TargetBindSub> entries,
-      java.util.Comparator<K> tiebreaker) {
-    var typeEntries = new compilerxyz.util.TOrderedMap<K, Type>();
+      TOrderedMap<K, TargetBindSub> entries,
+      Comparator<K> tiebreaker) {
+    var typeEntries = new TOrderedMap<K, Type>();
     for (var e : entries.entrySet()) typeEntries.put(e.getKey(), e.getValue().type());
     var sort = CompositeSlotSort.sort(xx, typeEntries, tiebreaker);
     var out = new TList<TargetBindSub>(entries.size());

@@ -43,6 +43,8 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.EvalRootEmitter;
+import compilerxyz.eval.dynamic.JvmConstants;
 
 @BuiltinLight(uniqueId = 6112L)
 public record TypeMethodDynamic(
@@ -77,7 +79,7 @@ public record TypeMethodDynamic(
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+        JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -109,15 +111,15 @@ public record TypeMethodDynamic(
       return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
     }
     var argType = arg();
-    compilerxyz.eval.EResult<compilerxyz.util.TList<CodeDynamic>> argsDynRes;
-    if (compilerxyz.eval.dynamic.DynUtil.zeroArgSignature(xx, argType)) {
-      argsDynRes = compilerxyz.eval.EResult.ok(new compilerxyz.util.TList<>());
+    EResult<TList<CodeDynamic>> argsDynRes;
+    if (DynUtil.zeroArgSignature(xx, argType)) {
+      argsDynRes = EResult.ok(new TList<>());
     } else {
       var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
       if (convertedRes.hasErrors()) return convertedRes.reerr();
       var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
       argsDynRes =
-          compilerxyz.eval.dynamic.DynUtil.destructurePositional(xx, loc, argType, converted);
+          DynUtil.destructurePositional(xx, loc, argType, converted);
       if (argsDynRes.hasErrors()) return argsDynRes.reerr();
     }
     var seq = new JavaBytecodeSequence();
@@ -127,8 +129,8 @@ public record TypeMethodDynamic(
           JavaBytecodeUtils.accessStaticField(
               loc,
               JavaInternalName.of(xx.vx.evalRootInternalName),
-              compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              compilerxyz.eval.dynamic.EvalRootEmitter.DESC_EXPR_CONTEXT));
+              EvalRootEmitter.EXPR_CONTEXT_FIELD,
+              EvalRootEmitter.DESC_EXPR_CONTEXT));
     }
     var args = argsDynRes.requireValue("TypeMethodDynamic::call args");
     var paramDescs = new TList<JavaDataDescriptor>();
@@ -213,15 +215,15 @@ public record TypeMethodDynamic(
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -239,7 +241,7 @@ public record TypeMethodDynamic(
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -116,6 +116,7 @@ import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6184L)
 @BuiltinPath("types.ushort")
@@ -265,7 +266,7 @@ public record TypeUshortDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var d = compilerxyz.util.MustCast.mustCast(Short.class, externalHostValue.optUnwrap());
+    var d = MustCast.mustCast(Short.class, externalHostValue.optUnwrap());
     return EResult.ok(new ValueObjectConst(new TypeUshortConst(), d));
   }
 

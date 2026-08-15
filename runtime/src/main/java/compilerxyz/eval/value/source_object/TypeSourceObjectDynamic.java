@@ -59,6 +59,7 @@ import compilerxyz.gen.AspectType;
 import compilerxyz.gen.Binding;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.gen.GenAspect;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -480,14 +481,8 @@ public final class TypeSourceObjectDynamic
           var wrapSeq = new JavaBytecodeSequence();
           wrapSeq.add(codeSource);
           wrapSeq.add(
-              JavaBytecodeUtils.callStaticInterfaceMethod(
-                  new CodeLoc.Some(loc),
-                  JavaInternalName.fromClass(Code.class),
-                  "target",
-                  JavaMethodDescriptor.fromParts(
-                      JavaDataDescriptor.fromClass(Code.class),
-                      TList.of(
-                          JavaDataDescriptor.fromClass(TargetCode.class)))));
+              JavaBytecodeUtils.callStaticMethod(
+                  new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET));
           return EResult.ok(
               new CodeValue(
                   Code.of(
@@ -612,14 +607,8 @@ public final class TypeSourceObjectDynamic
     var unwrapSeq = new JavaBytecodeSequence();
     unwrapSeq.add(codeSource);
     unwrapSeq.add(
-        JavaBytecodeUtils.callStaticInterfaceMethod(
-            new CodeLoc.Some(loc),
-            JavaInternalName.fromClass(Code.class),
-            "targetImpl",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromClass(TargetCode.class),
-                TList.of(
-                    JavaDataDescriptor.fromClass(Code.class)))));
+        JavaBytecodeUtils.callStaticMethod(
+            new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET_IMPL));
     unwrapSeq.add(
         JavaBytecodeUtils.wrapObj(
             new CodeLoc.Some(loc),

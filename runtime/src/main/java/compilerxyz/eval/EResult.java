@@ -1,5 +1,6 @@
 package compilerxyz.eval;
 
+import compilerxyz.annotations.CodegenDescriptor;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
@@ -34,6 +35,7 @@ public final class EResult<T> {
     return value;
   }
 
+  @CodegenDescriptor
   public T requireValue(String context) {
     if (value.optIsNone()) {
       if (errors.optIsSome() && !errors.optUnwrap().isEmpty()) {
@@ -45,10 +47,12 @@ public final class EResult<T> {
     return value.optUnwrap();
   }
 
+  @CodegenDescriptor
   public Opt<TList<ExprErr>> errorsOrNull() {
     return errors;
   }
 
+  @CodegenDescriptor
   public boolean hasErrors() {
     return errors.optIsSome() && !errors.optUnwrap().isEmpty();
   }

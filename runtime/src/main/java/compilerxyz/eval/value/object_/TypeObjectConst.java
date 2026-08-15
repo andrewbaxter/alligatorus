@@ -64,6 +64,10 @@ import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.TargetBindSub;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.eval.Eval;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.gen.GenType;
+import compilerxyz.util.Result;
 
 /**
  * Compile-time-only sibling to {@link TypeObjectDynamic}. Values of a
@@ -101,9 +105,9 @@ public record TypeObjectConst(
 
   public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix) {
     var trivialIdentityAspects = new TList<Unique>();
-    trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
+    trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
-    castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
+    castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
     var meta = new TypeObjectMeta("type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
     return new TypeObjectConst(
         meta,
@@ -157,7 +161,7 @@ public record TypeObjectConst(
       return Opt.some(this);
     }
     if (key.equals(GenAspectBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -165,11 +169,11 @@ public record TypeObjectConst(
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectLift.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)) {
+        || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectPostDeserialize.AspectId)) {
-      return Opt.some(compilerxyz.eval.aspect.PostDeserializeIdentity.INSTANCE);
+    if (key.equals(GenAspectPostDeserialize.AspectId)) {
+      return Opt.some(PostDeserializeIdentity.INSTANCE);
     }
     if (aspectSource().optIsSome() && key.equals(GenAspectAspect.AspectId)) {
       return Opt.some(this);
@@ -347,10 +351,10 @@ public record TypeObjectConst(
     if (innerRes.hasErrors()) return innerRes.reerr();
     var inner = innerRes.requireValue(typeDesc() + "::field inner");
     if (key.value().optIsSome()) {
-      var ckRes = compilerxyz.eval.Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+      var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
       switch (ckRes) {
-        case compilerxyz.util.Result.Ok<ConstKey, String> ok -> {
-          if (compilerxyz.gen.GenType.Holder.INSTANCE.aspectFieldTypeOpt(xx, ok.value()).optIsSome()) {
+        case Result.Ok<ConstKey, String> ok -> {
+          if (GenType.Holder.INSTANCE.aspectFieldTypeOpt(xx, ok.value()).optIsSome()) {
             CodeValue selfLifted = self;
             if (self.code().codeIsNone()) {
               var liftRes = aspectConsumeDynamicToDynamic(xx, loc, self);
@@ -360,10 +364,10 @@ public record TypeObjectConst(
                       Code.of(loc, liftRes.requireValue(typeDesc() + "::field lift")),
                       self.outcome());
             }
-            return compilerxyz.gen.GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
+            return GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
           }
         }
-        case compilerxyz.util.Result.Err<ConstKey, String> ignored -> {}
+        case Result.Err<ConstKey, String> ignored -> {}
       }
     }
     var asp = GenAspectField.get(xx, loc, inner);

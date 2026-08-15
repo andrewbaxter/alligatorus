@@ -14,6 +14,6 @@ public record ArtifactDataSourceUnion(
     TList<ArtifactDataSourceUnionVariant> variants,
     Opt<String> compiledBaseBinaryName,
     Opt<TList<String>> compiledVariantBinaryNames,
-    byte @org.jspecify.annotations.Nullable [] compiledBaseBytecode,
+    Opt<byte[]> compiledBaseBytecode,
     Opt<TList<byte[]>> compiledVariantBytecode)
     implements SafeJsonSerializable {}

@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.stream.Stream;
 import compilerxyz.util.Opt;
+import com.github.javaparser.ast.nodeTypes.NodeWithImplements;
 
 public final class CodecsGen {
   private CodecsGen() {}
@@ -314,7 +315,7 @@ public final class CodecsGen {
     }
 
     private boolean checkMarker(
-        com.github.javaparser.ast.nodeTypes.NodeWithImplements<?> nwi,
+        NodeWithImplements<?> nwi,
         TMap<String, String> importMap,
         String pkg) {
       for (var iface : nwi.getImplementedTypes()) {

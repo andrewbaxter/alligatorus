@@ -35,6 +35,8 @@ import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.eval.value.list.TypeListDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.GenExprErr;
+import compilerxyz.gen.GenQExprId;
 
 @BuiltinLight(uniqueId = 6106L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
@@ -78,11 +80,11 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
     var erb = new Erb(loc);
-    Type resultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
+    Type resultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, elementType));
     if (kind == Kind.OK) {
       var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
       if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
-      var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, elementType);
+      var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (consumeRes.hasErrors()) return consumeRes.reerr();
       var innerJsRes =
           consumeRes
@@ -105,10 +107,10 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     }
     if (kind == Kind.ERRS) {
       var errsArgType =
-          new TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType());
+          new TypeListDynamic(GenExprErr.dynamicType());
       var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
       if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
-      var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, errsArgType);
+      var consumeRes = GenAspectConsumeDynamic.get(xx, loc, errsArgType);
       if (consumeRes.hasErrors()) return consumeRes.reerr();
       var listJsRes =
           consumeRes
@@ -135,7 +137,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
         new Tuple(
             Opt.none(),
             TList.of(
-                new TupleElement.Dynamic(compilerxyz.gen.GenQExprId.dynamicType()),
+                new TupleElement.Dynamic(GenQExprId.dynamicType()),
                 new TupleElement.Dynamic(new TypeStringDynamic())));
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
     if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -183,7 +185,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -201,7 +203,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -10,6 +10,7 @@ import compilerxyz.util.Opt;
 import java.lang.Boolean;
 import java.lang.IllegalStateException;
 import java.lang.String;
+import compilerxyz.eval.dynamic.DynRuntime;
 
 @BuiltinPushStruct
 public final class SourceInterfaceResult {
@@ -42,7 +43,7 @@ public final class SourceInterfaceResult {
         var data = this.type_.getInterfaceData();
         data.isAspect = isAspect;
         if (isAspect && data.aspectId.optIsNone()) {
-            data.aspectId = Opt.some(compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx));
+            data.aspectId = Opt.some(DynRuntime.freshUnique(xx));
         }
     }
 }

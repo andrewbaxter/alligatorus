@@ -93,6 +93,7 @@
                                 <argument>compilerxyz.codegen.GenMain</argument>
                                 <argument>${project.build.directory}/generated-sources/codegen</argument>
                                 <argument>${project.basedir}/src/main/java</argument>
+                                <argument>${project.basedir}/../util/src/main/java</argument>
                             </arguments>
                         </configuration>
                     </execution>

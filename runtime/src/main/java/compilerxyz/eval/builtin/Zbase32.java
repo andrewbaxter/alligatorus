@@ -1,5 +1,6 @@
 package compilerxyz.eval.builtin;
 
+import compilerxyz.annotations.CodegenDescriptor;
 import compilerxyz.util.TList;
 import java.io.ByteArrayOutputStream;
 
@@ -51,7 +52,7 @@ public final class Zbase32 {
     return sb.toString();
   }
 
-  @SuppressWarnings("unused")
+  @CodegenDescriptor
   public static TList<Byte> decodeToList(String encoded) {
     var bytes = decode(encoded);
     var list = new TList<Byte>(bytes.length);

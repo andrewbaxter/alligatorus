@@ -69,6 +69,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 
 @BuiltinPath("types.bool")
 @BuiltinLight(uniqueId = 6103L)
@@ -119,7 +120,7 @@ public record TypeBoolDynamic()
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
@@ -267,11 +268,11 @@ public record TypeBoolDynamic()
       };
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
 

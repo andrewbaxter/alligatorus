@@ -49,6 +49,7 @@ import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
 
 @BuiltinLight(uniqueId = 6177L)
 public record TypeDoubleDynamicBox()
@@ -73,7 +74,7 @@ public record TypeDoubleDynamicBox()
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Double.class));
+        JavaInternalName.fromClass(Double.class));
   }
 
   @Override

@@ -97,7 +97,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -132,7 +132,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     return true;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     var destOpt =
         AspectLookup.getMaybe(xx, destType, GenTrivialIdentityAspects.RECORD_IDENTITY, Record.class);
     if (destOpt.optIsNone()) {
@@ -160,7 +160,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
             cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), convertedFields))));
   }
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return Value.super.artifactableExportArtifact(xx, loc);
   }

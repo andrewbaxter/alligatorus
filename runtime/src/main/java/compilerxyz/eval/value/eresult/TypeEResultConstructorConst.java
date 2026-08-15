@@ -30,6 +30,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
+import compilerxyz.eval.dynamic.DynUtil;
 
 @BuiltinPath("types.eresult")
 @BuiltinLight(uniqueId = 6105L)
@@ -75,7 +76,7 @@ public record TypeEResultConstructorConst()
         aspectTypeRes
             .requireValue("TypeEResultConstructorConst::call AspectType")
             .aspectTypeType(argValue);
-    Type eresultType = new TypeEResultDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
+    Type eresultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, elementType));
     return EResult.ok(new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), eresultType))));
   }
 
@@ -100,7 +101,7 @@ public record TypeEResultConstructorConst()
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -117,7 +118,7 @@ public record TypeEResultConstructorConst()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

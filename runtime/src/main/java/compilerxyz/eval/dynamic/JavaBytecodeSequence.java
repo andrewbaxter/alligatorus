@@ -95,7 +95,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
             var destRuns = new DestRuns();
             @SuppressWarnings("unchecked")
             Function<CodeDynamic, Iterator<CodeDynamic>>[] flattenStepRef = new Function[1];
-            java.util.function.Function<CodeDynamic, Iterator<CodeDynamic>> flattenStep =
+            Function<CodeDynamic, Iterator<CodeDynamic>> flattenStep =
                     cd -> {
                         switch (cd.loc()) {
                           case CodeLoc.Some some -> {

@@ -37,6 +37,7 @@ import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder;
 import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
 
 public final class SourceFunctionData {
   public final ArtifactIdHolder artifactIdCell =
@@ -117,7 +118,7 @@ public final class SourceFunctionData {
 
     var innerVx = new EvalContext(xx.vx.ix);
     innerVx.evalRootInternalName =
-        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
+        DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
 
     var bodyScope = new Scope(innerVx);
@@ -142,7 +143,7 @@ public final class SourceFunctionData {
       bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
     } else if (recordOpt.optIsSome()) {
       var fieldTypes = recordOpt.optUnwrap().aspectRecordFieldTypes();
-      var fields = new compilerxyz.util.TOrderedMap<ConstKey, ArgumentEntry>();
+      var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
       for (var entry : fieldTypes.entrySet()) {
         var et = entry.getValue();
         var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
@@ -226,7 +227,7 @@ public final class SourceFunctionData {
       if (_rdConsume.optIsSome()) {
         retDesc = _rdConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       } else {
-        retDesc = JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+        retDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
       }
     }
     functionSpec =
@@ -242,7 +243,7 @@ public final class SourceFunctionData {
       return consumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
     }
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+        JvmConstants.INTNAME_OBJECT);
   }
 
 }

@@ -61,6 +61,8 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.null_.TypeNullConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 
 @BuiltinPath("types.null")
 @BuiltinLight(uniqueId = 6128L)
@@ -81,7 +83,7 @@ public record TypeNullDynamic()
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -100,7 +102,7 @@ public record TypeNullDynamic()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectNull.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
@@ -237,11 +239,11 @@ public record TypeNullDynamic()
       };
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
 

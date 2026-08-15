@@ -38,13 +38,17 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.gen.GenType;
 
 @BuiltinLight(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
 
@@ -103,7 +107,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.optUnwrap();
-    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -120,16 +124,16 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
           "TypeSourceObjectNewDynamic::call: source object not registered in its owning def-set");
     }
     var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, objectIndex);
-    var klass = compilerxyz.eval.dynamic.JavaInternalName.of(objInternalName);
+    var klass = JavaInternalName.of(objInternalName);
     var underlyingDesc =
         consumeRes
             .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
             .aspectConsumeDynamicJvmClass(xx);
     var ctorDesc =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromConstructorParts(
+        JavaMethodDescriptor.fromConstructorParts(
             TList.of(underlyingDesc));
     var newInstance =
-        compilerxyz.eval.dynamic.JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
+        JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
     return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newInstance, resultType, 1));
   }
 
@@ -175,7 +179,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -193,7 +197,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

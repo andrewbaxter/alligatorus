@@ -39,6 +39,7 @@ import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectField;
@@ -53,6 +54,12 @@ import compilerxyz.eval.value.list.TypeListDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectUnion.Variant;
 import compilerxyz.gen.AspectUnion;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectUnion;
+import compilerxyz.gen.GenExprErr;
 
 @BuiltinFull(uniqueId = 6017L)
 public record TypeEResultDynamic(Type elementType)
@@ -89,9 +96,9 @@ public record TypeEResultDynamic(Type elementType)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectUnion.AspectId)) {
+        || key.equals(GenAspectUnion.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
@@ -101,7 +108,7 @@ public record TypeEResultDynamic(Type elementType)
   public TList<Variant> aspectUnionVariants() {
     var out = new TList<Variant>();
     out.add(new Variant(new ConstKey.Str("ok"), "ok", elementType));
-    out.add(new Variant(new ConstKey.Str("errs"), "errs", new TypeListDynamic(compilerxyz.gen.GenExprErr.dynamicType())));
+    out.add(new Variant(new ConstKey.Str("errs"), "errs", new TypeListDynamic(GenExprErr.dynamicType())));
     return out;
   }
 
@@ -114,19 +121,14 @@ public record TypeEResultDynamic(Type elementType)
   public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
     // Stack: [eresult] -> [boolean]. Variant 0 = ok (no errors), 1 = errs.
     var seq = new JavaBytecodeSequence();
-    seq.add(
-        compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-            loc,
-            JavaInternalName.fromClass(EResult.class),
-            "hasErrors",
-            compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL)));
+    seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
     if (variantIndex == 0) {
       // ok = !hasErrors
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(
+          JavaBytecodeUtils.inst(
               loc, org.objectweb.asm.Opcodes.ICONST_1));
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
+          JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
     }
     return EResult.ok(new CodeDynamic(loc, seq));
   }
@@ -138,16 +140,9 @@ public record TypeEResultDynamic(Type elementType)
     var seq = new JavaBytecodeSequence();
     if (variantIndex == 0) {
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.literalString(
+          JavaBytecodeUtils.literalString(
               new Some(loc), "eresult match ok"));
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "requireValue",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
-                  JavaDataDescriptor.fromClass(String.class))));
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE));
       var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
       var elemDesc =
@@ -155,26 +150,13 @@ public record TypeEResultDynamic(Type elementType)
               .requireValue("TypeEResultDynamic::matchExtract ok consume")
               .aspectConsumeDynamicJvmClass(xx);
       if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-        seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
       }
     } else {
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_ERRORS_OR_NULL));
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.OPT_OPT_UNWRAP));
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "errorsOrNull",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.fromClass(compilerxyz.util.Opt.class)))));
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callInterfaceMethod(
-              loc,
-              JavaInternalName.fromClass(compilerxyz.util.Opt.class),
-              "optUnwrap",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromClass(Object.class))));
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+          JavaBytecodeUtils.cast(
               loc,
               JavaDataDescriptor.fromInternalName(
                   JavaInternalName.fromClass(compilerxyz.util.TList.class))));
@@ -200,7 +182,7 @@ public record TypeEResultDynamic(Type elementType)
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   private sealed interface FieldSpec {
@@ -254,18 +236,12 @@ public record TypeEResultDynamic(Type elementType)
       }
       var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "hasErrors",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.DESC_BOOL)));
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new Some(loc), seq)),
               EvalOutcome.ofValue(
-                  compilerxyz.eval.value.ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+                  ValueDynamic.stack(new TypeBoolDynamic(), 1))));
     }
     if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
       var selfDyn = self.code().codeDynamic();
@@ -275,27 +251,20 @@ public record TypeEResultDynamic(Type elementType)
       var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.literalString(
+          JavaBytecodeUtils.literalString(
               new Some(loc), "eresult.value"));
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "requireValue",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT,
-                  JavaDataDescriptor.fromClass(String.class))));
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE));
       var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
       var elemDesc = elemConsumeRes.requireValue("TypeEResultDynamic::field value AspectConsumeDynamic")
           .aspectConsumeDynamicJvmClass(xx);
       if (elemDesc.value().startsWith("L")
           && !elemDesc.value().equals("Ljava/lang/Object;")) {
-        seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
       }
       return EResult.ok(new CodeValue(
           Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-          EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(elementType, 1))));
+          EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
     }
     var spec = fieldSpecs().getOrNull(ck);
     if (spec == null) {
@@ -356,7 +325,7 @@ public record TypeEResultDynamic(Type elementType)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 

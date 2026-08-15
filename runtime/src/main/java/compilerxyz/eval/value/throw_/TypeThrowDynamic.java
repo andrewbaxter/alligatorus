@@ -39,6 +39,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.eval.JumpKey;
 import compilerxyz.eval.dynamic.JavaBytecodeGuarded;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.ScopeChains;
 
 @BuiltinPath("throw")
 @BuiltinLight(uniqueId = 6146L)
@@ -78,7 +79,7 @@ public record TypeThrowDynamic()
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.optUnwrap();
-    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, excType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, excType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var valueDynRes =
         consumeRes
@@ -100,7 +101,7 @@ public record TypeThrowDynamic()
     var throwCode = new CodeDynamic(loc, seq);
     // The throw is a routed site like any throwing call: it jumps into the
     // enclosing drop/finally chain when one is live.
-    var destRes = compilerxyz.eval.ScopeChains.excDest(xx, loc);
+    var destRes = ScopeChains.excDest(xx, loc);
     if (destRes.hasErrors()) return destRes.reerr();
     var dest = destRes.requireValue("throw exc dest");
     Code outCode;
@@ -138,7 +139,7 @@ public record TypeThrowDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -155,7 +156,7 @@ public record TypeThrowDynamic()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

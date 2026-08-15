@@ -5,6 +5,8 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.eval.aspect.AspectLookup;
 
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.annotations.CodegenDescriptor;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.eval.EvalOutcome;
 
 import compilerxyz.artifact.Artifact;
@@ -53,7 +55,6 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStackValueDynamic;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectArtifact;
@@ -77,6 +78,10 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.gen.GenDynamicTypes;
+import compilerxyz.util.MustCast;
+import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
 @BuiltinLight(uniqueId = 6130L)
@@ -163,7 +168,7 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   public static final ExporterRootDelegate DELEGATE =
@@ -173,7 +178,7 @@ public record TypeObjectDynamic(
             ExprContext xx,
             QExprId loc,
             ExporterAny self,
-            java.util.function.Function<JsonValue, ArtifactBody> makeBody) {
+            Function<JsonValue, ArtifactBody> makeBody) {
           if (!(self instanceof TypeObjectDynamic obj)) {
             return EResult.err(
                 loc,
@@ -202,14 +207,14 @@ public record TypeObjectDynamic(
             case JsonValueArray ignored -> { return EResult.err(loc, "TypeObjectDynamic::import: expected host class name string, got " + data); }
             case JsonValueObject ignored -> { return EResult.err(loc, "TypeObjectDynamic::import: expected host class name string, got " + data); }
           }
-          var found = compilerxyz.gen.GenDynamicTypes.byClassName(s.value());
+          var found = GenDynamicTypes.byClassName(s.value());
           if (found.optIsNone()) {
             return EResult.err(
                 loc,
                 "TypeObjectDynamic::import: no registered dynamic type for host class "
                     + s.value());
           }
-          return EResult.ok(compilerxyz.util.MustCast.mustCast(ExporterAny.class, found.optUnwrap()));
+          return EResult.ok(MustCast.mustCast(ExporterAny.class, found.optUnwrap()));
         }
       };
 
@@ -226,7 +231,7 @@ public record TypeObjectDynamic(
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+        || key.equals(GenAspectFieldUseDynamic.AspectId)) {
       return Opt.some(this);
     }
     if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(GenAspectField.AspectId)) {
@@ -250,15 +255,15 @@ public record TypeObjectDynamic(
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
       ValueDynamicSource source) {
-    return compilerxyz.eval.EResult.ok(
+    return EResult.ok(
         new CodeValue(
-            compilerxyz.eval.Code.of(
-                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
-            compilerxyz.eval.EvalOutcome.ofValue(
+            Code.of(
+                loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(
                 new ValueDynamic(source, this))));
   }
 
@@ -315,7 +320,7 @@ public record TypeObjectDynamic(
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     if (interfaceRepresented.optIsSome()
-        && destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
             .optIsSome()) {
       return true;
     }
@@ -331,7 +336,7 @@ public record TypeObjectDynamic(
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     if (interfaceRepresented.optIsSome()
-        && destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
             .optIsSome()) {
       var sourceCode = cv.code().codeDynamic();
       if (sourceCode == null) {
@@ -343,11 +348,7 @@ public record TypeObjectDynamic(
       seq.add(sourceCode);
       seq.add(
           JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(TypeObjectDynamic.class),
-              "getInterfaceData",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromClass(InterfaceData.class), TList.of())));
+              loc, GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
       var call = new CodeDynamic(loc, seq);
       return EResult.ok(
           new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
@@ -484,7 +485,7 @@ public record TypeObjectDynamic(
     return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue.optUnwrap()));
   }
 
-  @SuppressWarnings("unused")
+  @CodegenDescriptor
   public InterfaceData getInterfaceData() {
     var aspSrcOpt = aspectSource();
     if (aspSrcOpt.optIsNone()) {
@@ -537,16 +538,12 @@ public record TypeObjectDynamic(
     static final TypeObjectConst INSTANCE;
     static {
       var _trivialIdentityAspects = new TList<Unique>();
-      _trivialIdentityAspects.add(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY);
+      _trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
       var _castRules = new TList<TypeObjectCastRule>();
-      _castRules.add(new TypeObjectCastRule.RestampToIdentity(compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY));
+      _castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
       _castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
-          compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
-          JavaInternalName.fromClass(TypeObjectDynamic.class),
-          "getInterfaceData",
-          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-              JavaDataDescriptor.fromClass(InterfaceData.class),
-              TList.of())));
+          GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
+          GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
       var _meta = new TypeObjectMeta("type_object_dynamic",
           _trivialIdentityAspects,
           _castRules,

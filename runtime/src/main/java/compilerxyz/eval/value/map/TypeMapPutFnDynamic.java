@@ -58,7 +58,7 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
       return Opt.some(this);
     }
     if (key.equals(GenAspectFunction.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectConsumeDynamic.AspectId)) {
+        || key.equals(GenAspectConsumeDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();

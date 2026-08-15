@@ -56,6 +56,10 @@ import com.google.gson.stream.JsonWriter;
 import java.io.StringWriter;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.zip.ZipEntry;
+import java.nio.charset.StandardCharsets;
+import java.sql.Types;
+import java.util.Arrays;
+import java.util.HexFormat;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
   private static final int SCHEMA_VERSION = 2;
@@ -347,7 +351,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
           if (isZip) return Result.ok(new SourceResolved.Bundle(r));
           SourceModule module;
           try {
-            module = Json.deserialize(SourceModule.class, new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
+            module = Json.deserialize(SourceModule.class, new String(bytes, StandardCharsets.UTF_8));
           } catch (IOException | RuntimeException e) {
             return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
           }
@@ -376,7 +380,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
         SourceModule module;
         try {
-          module = Json.deserialize(SourceModule.class, new String(entryBytes, java.nio.charset.StandardCharsets.UTF_8));
+          module = Json.deserialize(SourceModule.class, new String(entryBytes, StandardCharsets.UTF_8));
         } catch (IOException | RuntimeException e) {
           return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
         }
@@ -395,10 +399,10 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
     switch (hash) {
       case HashValue.Sha256 expected -> {
-        if (!java.util.Arrays.equals(actual, expected.digest())) {
+        if (!Arrays.equals(actual, expected.digest())) {
           return Result.err(
               "remote hash mismatch for " + url + ": expected " + hash.hashValueHashKey()
-                  + ", got sha256:" + java.util.HexFormat.of().formatHex(actual));
+                  + ", got sha256:" + HexFormat.of().formatHex(actual));
         }
       }
     }
@@ -683,8 +687,8 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                   ps.setString(4, localMeta.path());
                   ps.setLong(5, localMeta.timestampMs());
                 } else {
-                  ps.setNull(4, java.sql.Types.VARCHAR);
-                  ps.setNull(5, java.sql.Types.INTEGER);
+                  ps.setNull(4, Types.VARCHAR);
+                  ps.setNull(5, Types.INTEGER);
                 }
                 // encodeCompileIds inlined
                 {

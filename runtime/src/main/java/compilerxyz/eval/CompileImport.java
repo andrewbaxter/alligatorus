@@ -40,6 +40,8 @@ import compilerxyz.artifact.ArtifactBodyExporter;
 import compilerxyz.safejson.JsonValueNull;
 import java.util.ArrayDeque;
 import static compilerxyz.util.MustCast.mustCast;
+import compilerxyz.eval.dynamic.CodeLoc;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 
 public final class CompileImport {
   private CompileImport() {}
@@ -248,7 +250,7 @@ public final class CompileImport {
             _ereCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                 _ereFieldEntry.getKey(), _ereFieldEntry.getValue().value(), null, null).visitEnd();
           }
-          var _ereMdescRun = compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+          var _ereMdescRun = JavaMethodDescriptor.fromParts(
               JvmConstants.DESC_OBJECT, TList.of());
           var _ereMv = _ereCw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
               "run", _ereMdescRun.value(), null, null);
@@ -258,15 +260,15 @@ public final class CompileImport {
           for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
             var _ereEntry = evalVx.externals.get(_ereI);
             _ereSeq.add(JavaBytecodeUtils.accessStaticField(
-                compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE,
+                CodeLoc.Infallible.INSTANCE,
                 _ereOwnerInternal, _ereExternalFieldNames.get(_ereI), _ereExternalFieldDescs.get(_ereI)));
             _ereSeq.add(new CodeDynamic(
-                compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE,
+                CodeLoc.Infallible.INSTANCE,
                 new JavaBytecodeStoreLoad(Opcodes.ASTORE, _ereEntry.key())));
           }
           evalTarget.emit(_ereSeq, _ereCtx, stage1Code.optUnwrap());
           _ereSeq.add(JavaBytecodeUtils.inst(
-              compilerxyz.eval.dynamic.CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
+              CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
           JavaBytecodeUtils.renderMethod(_ereSeq, _ereMv, TList.of());
           _ereCw.visitEnd();
           var _ereBytecode = _ereCw.toByteArray();

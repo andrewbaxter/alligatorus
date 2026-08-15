@@ -41,6 +41,7 @@ import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
@@ -68,6 +69,14 @@ import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.gen.AspectSet;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.gen.GenAspectSet;
+import compilerxyz.util.Result;
 
 @BuiltinFull(uniqueId = 6008L)
 public final class TypeOptionDynamic
@@ -106,7 +115,7 @@ public final class TypeOptionDynamic
     // for none) — never bare nullable values — so Opt<Opt<X>> is
     // unambiguous. The runtime data type is Opt, not Object.
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.util.Opt.class));
+        JavaInternalName.fromClass(compilerxyz.util.Opt.class));
   }
 
   @Override
@@ -126,39 +135,39 @@ public final class TypeOptionDynamic
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectSet.AspectId)) {
+    if (key.equals(GenAspectSet.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+    if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
       return Opt.some(this);
     }
     return Opt.none();
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
       ValueDynamicSource source) {
-    return compilerxyz.eval.EResult.ok(
+    return EResult.ok(
         new CodeValue(
             Code.of(
-                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
-            compilerxyz.eval.EvalOutcome.ofValue(
+                loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(
                 new ValueDynamic(source, this))));
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> aspectSetSet(
+  public EResult<CodeValue> aspectSetSet(
       ExprContext xx,
       QExprId loc,
       CodeValue base,
       CodeValue value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicSet(xx, loc, base, value);
+    return DynUtil.dynamicSet(xx, loc, base, value);
   }
 
   @Override
@@ -247,11 +256,11 @@ public final class TypeOptionDynamic
                 try {
                   body = JsonValues.fromValue(ArtifactOptionType.class, raw);
                 } catch (RuntimeException e) {
-                  return new compilerxyz.util.Result.Err<>(
+                  return new Result.Err<>(
                       "TypeOptionDynamic data: failed to parse ArtifactOptionType: "
                           + e.getMessage());
                 }
-                return new compilerxyz.util.Result.Ok<>(body);
+                return new Result.Ok<>(body);
               },
               (body) -> {
                 var holder = new ExporterAny[] {null};
@@ -288,7 +297,7 @@ public final class TypeOptionDynamic
                       out.artifactIdCell.set(idValue);
                       holder[0] = out;
                     };
-                return new compilerxyz.util.Result.Ok<>(
+                return new Result.Ok<>(
                     new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
               });
         }
@@ -336,17 +345,11 @@ public final class TypeOptionDynamic
       var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(
+          JavaBytecodeUtils.cast(
               loc,
               JavaDataDescriptor.fromInternalName(
-                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class))));
-      seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.callMethod(
-              loc,
-              compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class),
-              "value",
-              compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-                  compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT)));
+                  JavaInternalName.fromClass(Opt.Some.class))));
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.SOME_VALUE));
       var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
       if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
       var elemDesc =
@@ -354,7 +357,7 @@ public final class TypeOptionDynamic
               .requireValue("TypeOptionDynamic::field value AspectConsumeDynamic")
               .aspectConsumeDynamicJvmClass(xx);
       if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-        seq.add(compilerxyz.eval.dynamic.JavaBytecodeUtils.cast(loc, elemDesc));
+        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
       }
       return EResult.ok(
           new CodeValue(
@@ -369,8 +372,8 @@ public final class TypeOptionDynamic
       var seq = new JavaBytecodeSequence();
       seq.add(selfDyn);
       seq.add(
-          compilerxyz.eval.dynamic.JavaBytecodeUtils.instanceOf(
-              loc, compilerxyz.eval.dynamic.JavaInternalName.fromClass(Opt.Some.class)));
+          JavaBytecodeUtils.instanceOf(
+              loc, JavaInternalName.fromClass(Opt.Some.class)));
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(new Some(loc), seq)),
@@ -442,11 +445,11 @@ public final class TypeOptionDynamic
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -454,7 +457,7 @@ public final class TypeOptionDynamic
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 

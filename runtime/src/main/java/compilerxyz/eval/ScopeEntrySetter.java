@@ -18,7 +18,6 @@ public final class ScopeEntrySetter implements BindingSetter {
     this.entry = entry;
   }
 
-  @SuppressWarnings("unused")
   @Override
   public boolean bindingSetterSet(
       ExprContext xx, QExprId loc, Binding newBinding, boolean dropModified) {

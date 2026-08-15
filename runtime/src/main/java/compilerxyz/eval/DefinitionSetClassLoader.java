@@ -7,6 +7,7 @@ import compilerxyz.util.TOrderedMap;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import compilerxyz.langhelp.GlobalContext;
+import compilerxyz.eval.dynamic.CompositeClassEmitter;
 
 public final class DefinitionSetClassLoader extends ClassLoader {
 
@@ -67,9 +68,9 @@ public final class DefinitionSetClassLoader extends ClassLoader {
       }
       return defined;
     }
-    if (name.startsWith(compilerxyz.eval.dynamic.CompositeClassEmitter.BINARY_NAME_PREFIX)) {
+    if (name.startsWith(CompositeClassEmitter.BINARY_NAME_PREFIX)) {
       var _dbnRest =
-          name.substring(compilerxyz.eval.dynamic.CompositeClassEmitter.BINARY_NAME_PREFIX.length());
+          name.substring(CompositeClassEmitter.BINARY_NAME_PREFIX.length());
       int _dbnI = 0;
       while (_dbnI < _dbnRest.length() && Character.isDigit(_dbnRest.charAt(_dbnI))) _dbnI++;
       if (_dbnI == 0) {
@@ -130,7 +131,7 @@ public final class DefinitionSetClassLoader extends ClassLoader {
                 + name);
       }
       var composite =
-          compilerxyz.eval.dynamic.CompositeClassEmitter.emitBytecode(name, _dbnSlotDescs);
+          CompositeClassEmitter.emitBytecode(name, _dbnSlotDescs);
       return defineClass(name, composite, 0, composite.length);
     }
     for (var dep : dependencyLoaders) {

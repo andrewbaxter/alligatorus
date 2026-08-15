@@ -3,6 +3,7 @@ package compilerxyz.eval.dynamic;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.TargetCode;
 import compilerxyz.eval.Type;
+import compilerxyz.gen.GenType;
 
 public record CodeDynamic(CodeLoc loc, JavaBytecode code) implements TargetCode, JavaBytecode {
   public CodeDynamic(QExprId qExprId, JavaBytecode code) {
@@ -10,7 +11,7 @@ public record CodeDynamic(CodeLoc loc, JavaBytecode code) implements TargetCode,
   }
 
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
   @Override

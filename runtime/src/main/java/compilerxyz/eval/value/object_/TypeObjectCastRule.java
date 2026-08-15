@@ -9,15 +9,12 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JavaVirtualMethodRef;
 import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
 
 public sealed interface TypeObjectCastRule {
 
@@ -39,50 +36,12 @@ public sealed interface TypeObjectCastRule {
     }
   }
 
-  record CallByDestIdentity(Unique identity, DynRuntimeHelper helper)
-      implements TypeObjectCastRule {
-    @Override
-    public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
-      return destType.typeAspect(xx, identity).optIsSome();
-    }
-
-    @Override
-    public EResult<CodeValue> typeObjectCastRuleApply(
-        ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      var _ercSourceCode = cv.code().codeDynamic();
-      if (_ercSourceCode == null) {
-        return EResult.err(loc, "cast " + source.typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
-      }
-      var _ercSeq = new JavaBytecodeSequence();
-      if (helper.needsExprContext) {
-        _ercSeq.add(JavaBytecodeUtils.accessStaticField(loc,
-            JavaInternalName.of(xx.vx.evalRootInternalName),
-            EvalRootEmitter.EXPR_CONTEXT_FIELD,
-            EvalRootEmitter.DESC_EXPR_CONTEXT));
-      }
-      _ercSeq.add(_ercSourceCode);
-      _ercSeq.add(JavaBytecodeUtils.callStaticMethod(loc, helper.targetClass, helper.methodName, helper.descriptor));
-      var _ercRetDesc = helper.descriptor.value();
-      var _ercRetStart = _ercRetDesc.indexOf(')') + 1;
-      if (_ercRetDesc.charAt(_ercRetStart) == 'L' && !_ercRetDesc.substring(_ercRetStart).equals("Ljava/lang/Object;")) {
-        _ercSeq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(
-            JavaInternalName.of(_ercRetDesc.substring(_ercRetStart + 1, _ercRetDesc.length() - 1)))));
-      }
-      var _ercCall = new CodeDynamic(loc, _ercSeq);
-      return EResult.ok(new CodeValue(Code.of(loc, _ercCall), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
-    }
-  }
-
   /**
    * Casts by calling an instance method via INVOKEVIRTUAL on the source runtime value.
    * The method is expected to return a value assignable to destType (typically) or to
    * throw at runtime if the specific source instance cannot produce one.
    */
-  record InvokeVirtualByDestIdentity(
-      Unique identity,
-      JavaInternalName ownerClass,
-      String methodName,
-      JavaMethodDescriptor descriptor)
+  record InvokeVirtualByDestIdentity(Unique identity, JavaVirtualMethodRef method)
       implements TypeObjectCastRule {
     @Override
     public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
@@ -101,9 +60,9 @@ public sealed interface TypeObjectCastRule {
       }
       var seq = new JavaBytecodeSequence();
       seq.add(sourceCode);
-      seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(ownerClass)));
-      seq.add(JavaBytecodeUtils.callMethod(loc, ownerClass, methodName, descriptor));
-      var retDesc = descriptor.value();
+      seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(method.owner)));
+      seq.add(JavaBytecodeUtils.callMethod(loc, method));
+      var retDesc = method.descriptor.value;
       var retStart = retDesc.indexOf(')') + 1;
       if (retDesc.charAt(retStart) == 'L'
           && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
@@ -117,11 +76,5 @@ public sealed interface TypeObjectCastRule {
           new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
   }
-
-  record DynRuntimeHelper(
-      JavaInternalName targetClass,
-      String methodName,
-      JavaMethodDescriptor descriptor,
-      boolean needsExprContext) {}
 
 }

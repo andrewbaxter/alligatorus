@@ -24,6 +24,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
+import compilerxyz.eval.dynamic.JvmSort;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
   @Override
@@ -34,7 +35,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
           new CodeDynamic(
               new CodeLoc.Some(loc),
               new JavaBytecodeStoreLoad(
-                  compilerxyz.eval.dynamic.JvmSort.loadOpcode(xx, type_), local.key()));
+                  JvmSort.loadOpcode(xx, type_), local.key()));
     };
     Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
     return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));

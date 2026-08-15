@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import java.util.Map;
 
 /**
  * Scans runtime source for {@code @BuiltinPath} on TYPE declarations (type leaves)
@@ -129,7 +131,7 @@ public final class BuiltinPathScanner {
   }
 
   private static Opt<AnnotationExpr> findBuiltinPath(
-      com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
+      NodeWithAnnotations<?> node) {
     for (var a : node.getAnnotations()) {
       var n = a.getNameAsString();
       if (n.equals("BuiltinPath") || n.equals("compilerxyz.annotations.BuiltinPath")) {
@@ -140,7 +142,7 @@ public final class BuiltinPathScanner {
   }
 
   private static Opt<String> pathFromAnnotation(
-      com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
+      NodeWithAnnotations<?> node) {
     var opt = findBuiltinPath(node);
     if (opt.optIsNone()) return Opt.none();
     var ann = opt.optUnwrap();
@@ -162,7 +164,7 @@ public final class BuiltinPathScanner {
   }
 
   private static long scopeIdFromAnnotation(
-      com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node) {
+      NodeWithAnnotations<?> node) {
     var opt = findBuiltinPath(node);
     if (opt.optIsNone()) return 0L;
     var ann = opt.optUnwrap();
@@ -190,7 +192,7 @@ public final class BuiltinPathScanner {
 
   // === type resolution (mirrors JavaAspectExtractor conventions) ===
 
-  private static final java.util.Map<String, ClassName> COMPOSITE_WRAPPERS = java.util.Map.of(
+  private static final Map<String, ClassName> COMPOSITE_WRAPPERS = Map.of(
       "compilerxyz.eval.EResult",
           ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"),
       "compilerxyz.util.Opt",
@@ -202,7 +204,7 @@ public final class BuiltinPathScanner {
       "compilerxyz.util.TOrderedMap",
           ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
 
-  private static final java.util.Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = java.util.Map.of(
+  private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = Map.of(
       "java.lang.String",
           ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
       "compilerxyz.eval.Unique",

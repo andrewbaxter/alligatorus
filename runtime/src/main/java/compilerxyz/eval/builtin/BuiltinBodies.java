@@ -33,6 +33,8 @@ import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
 import java.io.IOException;
 import java.io.StringWriter;
+import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.util.Result;
 
 public final class BuiltinBodies {
   private BuiltinBodies() {}
@@ -139,9 +141,9 @@ public final class BuiltinBodies {
   public static ConstKey extractConstkey(ExprContext xx, QExprId loc, Value value) {
     var res = Eval.extractConstKey(xx, loc, value);
     return switch (res) {
-      case compilerxyz.util.Result.Err<ConstKey, String> err ->
+      case Result.Err<ConstKey, String> err ->
           throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
-      case compilerxyz.util.Result.Ok<ConstKey, String> ok -> ok.value();
+      case Result.Ok<ConstKey, String> ok -> ok.value();
     };
   }
 
@@ -152,7 +154,7 @@ public final class BuiltinBodies {
 
   @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
   public static Unique freshUnique(ExprContext xx) {
-    return compilerxyz.eval.dynamic.DynRuntime.freshUnique(xx);
+    return DynRuntime.freshUnique(xx);
   }
 
 }

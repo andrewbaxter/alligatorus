@@ -27,6 +27,8 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.TypeObjectConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JvmConstants;
 
 @BuiltinLight(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder()
@@ -35,7 +37,7 @@ public record TypeExprStagedPlaceholder()
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -103,15 +105,15 @@ public record TypeExprStagedPlaceholder()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -128,12 +130,12 @@ public record TypeExprStagedPlaceholder()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return Value.super.artifactableExportArtifact(xx, loc);
   }

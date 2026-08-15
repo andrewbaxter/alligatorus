@@ -59,6 +59,9 @@ import compilerxyz.gen.GenAspectUnion;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenType;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6141L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
@@ -77,7 +80,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -126,7 +129,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          var uc = compilerxyz.util.MustCast.mustCast(TypeTypeSourceUnionConst.class, self);
+          var uc = MustCast.mustCast(TypeTypeSourceUnionConst.class, self);
           var tu = uc.type_;
           var set = tu.set;
           if (set == null) {
@@ -210,7 +213,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                 tu.compiledVariantBytecode = body.compiledVariantBytecode();
                 for (var v : body.variants()) {
                   tu.variants.add(
-                      new SourceUnionVariant(v.tag(), v.jsTag(), compilerxyz.gen.GenType.dynamicType()));
+                      new SourceUnionVariant(v.tag(), v.jsTag(), GenType.dynamicType()));
                 }
                 var imported = new ImportedSourceUnionConst(tu);
                 var deps = new TList<Artifact>();
@@ -310,15 +313,15 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -336,7 +339,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

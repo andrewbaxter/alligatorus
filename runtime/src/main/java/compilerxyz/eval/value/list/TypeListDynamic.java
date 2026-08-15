@@ -64,6 +64,11 @@ import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.gen.AspectDynamicConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectFieldUseDynamic;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenAspectDynamicConst;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6117L)
 public final class TypeListDynamic
@@ -97,15 +102,15 @@ public final class TypeListDynamic
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
       ExprContext xx,
       QExprId loc,
       ValueDynamicSource source) {
-    return compilerxyz.eval.EResult.ok(
+    return EResult.ok(
         new CodeValue(
-            compilerxyz.eval.Code.of(
-                loc, compilerxyz.eval.dynamic.DynUtil.renderSource(xx, loc, source)),
-            compilerxyz.eval.EvalOutcome.ofValue(
+            Code.of(
+                loc, DynUtil.renderSource(xx, loc, source)),
+            EvalOutcome.ofValue(
                 new ValueDynamic(source, this))));
   }
 
@@ -126,17 +131,17 @@ public final class TypeListDynamic
           ? Opt.some(this)
           : Opt.none();
     }
-    if (key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)) {
+    if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectDynamicConst.AspectId)
+    if (key.equals(GenAspectDynamicConst.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectIterable.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
@@ -266,7 +271,7 @@ public final class TypeListDynamic
     setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
     var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    var localBinding = compilerxyz.util.MustCast.mustCast(BindingId.Local.class, elementScopeId);
+    var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
 
     var elementDecode = elementDecodeCast(xx, loc);
     Code bodyCode;
@@ -298,7 +303,7 @@ public final class TypeListDynamic
     if (elemConsumeOpt.optIsSome()) {
       var elemDesc = elemConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       var d = elemDesc.value();
-      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+      if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
         if (c == 'L' || c == '[') {
           decodeSeq.add(JavaBytecodeUtils.cast(loc, elemDesc));

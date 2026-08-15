@@ -36,6 +36,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
 
 @BuiltinLight(uniqueId = 6125L)
 public record TypeMapNewDynamic(Type keyType, Type valueType)
@@ -66,7 +67,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var instanceType = new TypeMapDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, keyType), compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, valueType));
+    var instanceType = new TypeMapDynamic(DynUtil.substituteBoxed(xx, keyType), DynUtil.substituteBoxed(xx, valueType));
     if (argument.value().optIsNone()) {
       return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
     }
@@ -120,7 +121,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -138,7 +139,7 @@ public record TypeMapNewDynamic(Type keyType, Type valueType)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

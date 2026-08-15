@@ -55,7 +55,7 @@ public final class DynUtil {
 
     public static EResult<TList<ArgSignatureSlot>> argSignatureSlots(
             ExprContext xx, QExprId loc, Type argType) {
-        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+        var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
             var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
             var out = new TList<ArgSignatureSlot>(elemTypes.size());
@@ -67,7 +67,7 @@ public final class DynUtil {
             }
             return EResult.ok(out);
         }
-        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
+        var recordOpt = GenAspectRecord.getMaybe(xx, argType);
         if (recordOpt.optIsSome()) {
             var fieldTypes = recordOpt.optUnwrap().aspectRecordFieldTypes();
             var out = new TList<ArgSignatureSlot>(fieldTypes.size());
@@ -149,7 +149,7 @@ public final class DynUtil {
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         return new CodeValue(
-            compilerxyz.eval.Code.of(loc, new CodeDynamic(loc, seq)),
+            Code.of(loc, new CodeDynamic(loc, seq)),
             EvalOutcome.NO_VALUE);
     }
 
@@ -249,7 +249,7 @@ public final class DynUtil {
      * through Object-shaped runtime containers.
      */
     public static Type substituteBoxed(ExprContext xx, Type type) {
-        return switch (compilerxyz.gen.GenAspectDynamicBoxed.getMaybe(xx, type)) {
+        return switch (GenAspectDynamicBoxed.getMaybe(xx, type)) {
             case Opt.Some<AspectDynamicBoxed> boxedSome ->
                 boxedSome.value().aspectDynamicBoxedBoxedForm();
             case Opt.None<AspectDynamicBoxed> n -> type;
@@ -357,7 +357,7 @@ public final class DynUtil {
      * singleton list. Used at call sites whose JVM descriptor takes destructured positional args.
      */
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {
-        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+        var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
             return tupleOpt.optUnwrap().aspectTupleElementTypes().isEmpty();
         }
@@ -366,7 +366,7 @@ public final class DynUtil {
 
     public static EResult<TList<CodeDynamic>> destructurePositional(
             ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
-        var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argType);
+        var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
             if (converted.value().optIsNone()) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");
@@ -379,7 +379,7 @@ public final class DynUtil {
             }
             return destructureFromElements(xx, loc, elementTypes, elemCvs);
         }
-        var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argType);
+        var recordOpt = GenAspectRecord.getMaybe(xx, argType);
         if (recordOpt.optIsSome()) {
             if (converted.value().optIsNone()) {
                 return EResult.err(loc, "DynUtil::destructurePositional: arg has no compile-time value");

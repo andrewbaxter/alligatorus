@@ -5,6 +5,6 @@ import compilerxyz.eval.Type;
 
 public record IfBranch(CodeValue condition, CodeValue body) {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 }

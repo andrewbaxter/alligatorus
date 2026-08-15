@@ -50,6 +50,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 
 @BuiltinLight(uniqueId = 6104L)
 public record TypeBoolDynamicBox()
@@ -73,7 +74,7 @@ public record TypeBoolDynamicBox()
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class));
+        JavaInternalName.fromClass(Boolean.class));
   }
 
   @Override
@@ -95,7 +96,7 @@ public record TypeBoolDynamicBox()
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)) {
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)) {
       return Opt.some(this);
     }
     if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -189,11 +190,11 @@ public record TypeBoolDynamicBox()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
 

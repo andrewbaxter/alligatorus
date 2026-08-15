@@ -90,6 +90,9 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import java.lang.reflect.Field;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6134L)
 public final class Record
@@ -144,7 +147,7 @@ public final class Record
     if (selfCv.value().optIsNone()) {
       throw new IllegalStateException("Record::accessOrDrop: CodeValue has no value");
     }
-    var record = compilerxyz.util.MustCast.mustCast(Record.class, selfCv.value().optUnwrap());
+    var record = MustCast.mustCast(Record.class, selfCv.value().optUnwrap());
     return switch (record.base) {
       case Opt.None<RecordBaseDynamic> n -> {
         var seq = new JavaBytecodeSequence();
@@ -210,7 +213,7 @@ public final class Record
             if (dropDyn != null) seq.add(dropDyn);
             continue;
           }
-          var lightDropOpt = compilerxyz.gen.GenAspectDropDynamicLight.getMaybe(xx, fieldType);
+          var lightDropOpt = GenAspectDropDynamicLight.getMaybe(xx, fieldType);
           if (lightDropOpt.optIsSome()) {
             var dropRes = lightDropOpt.optUnwrap().aspectDropDynamicLightDropDynamicLight(xx, loc, fieldCv);
             if (dropRes.hasErrors()) yield dropRes.reerr();
@@ -281,7 +284,7 @@ public final class Record
               var _cfdcD = _cfdcDropRes.requireValue("Record::childFullDropCode drop").codeDynamic();
               if (_cfdcD != null) _cfdcSeq.add(_cfdcD);
               out.add(new CodeDynamic(loc, _cfdcSeq));
-            } else if (compilerxyz.gen.GenAspectDropDynamicLight.getMaybe(xx, t).optIsNone()) {
+            } else if (GenAspectDropDynamicLight.getMaybe(xx, t).optIsNone()) {
               yield EResult.err(
                   loc,
                   "Record field '" + k.constKeyToCanonical() + "' type '" + t.typeDesc()
@@ -427,7 +430,7 @@ public final class Record
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectRecord.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
@@ -939,7 +942,7 @@ public final class Record
       var srcFieldCv =
           new CodeValue(
               Code.of(loc, loadDyn),
-              EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(srcFieldType, 1)));
+              EvalOutcome.ofValue(ValueDynamic.stack(srcFieldType, 1)));
       var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destType, srcFieldCv));
       if (convOpt.optIsNone()) {
         return EResult.errs(erb.errors());
@@ -1145,7 +1148,7 @@ public final class Record
     public record Entry(ConstKey key, AspectLift lift, Type type) {}
 
     private final TList<Entry> entryLifts;
-    private volatile Field @org.jspecify.annotations.Nullable [] cachedFields;
+    private volatile Opt<Field[]> cachedFields = Opt.none();
 
     public RecordLift(ExprContext xx, TList<Entry> entryLifts) {
       var sorted = new TList<Entry>(entryLifts.size());
@@ -1180,7 +1183,7 @@ public final class Record
                     : externalHostValue.optUnwrap().getClass().getName()));
       }
       var rawHostValue = externalHostValue.optUnwrap();
-      var fields = cachedFields;
+      var fields = cachedFields.optUnwrapOr(null);
       if (fields == null) {
         fields = new Field[entryLifts.size()];
         for (int i = 0; i < fields.length; i++) {
@@ -1194,7 +1197,7 @@ public final class Record
                 e);
           }
         }
-        cachedFields = fields;
+        cachedFields = Opt.some(fields);
       }
       var out = new TOrderedMap<ConstKey, RecordField>();
       TList<ExprErr> errors = null;
@@ -1251,11 +1254,11 @@ public final class Record
   }
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
+    return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType.typeAspect(xx, compilerxyz.gen.GenAspectStackValueDynamic.AspectId).optIsSome()) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+    if (destType.typeAspect(xx, GenAspectStackValueDynamic.AspectId).optIsSome()) {
       if (cv.value().optIsNone()) {
         return EResult.err(loc, "Record::typeCastTo: CodeValue has no value");
       }
@@ -1362,7 +1365,7 @@ public final class Record
   }
 
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return Value.super.artifactableExportArtifact(xx, loc);
   }

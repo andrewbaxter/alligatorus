@@ -5,6 +5,8 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.Value;
 import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.gen.GenType;
+import compilerxyz.util.Opt;
 
 public record ValueObjectConst(Type type, Object data) implements Value, ExporterAny {
   @Override
@@ -19,12 +21,12 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
    * their own {@code TypeTypeSource…} type-of-type at the wrap site instead.
    */
   public static Type plainTypeType() {
-    var td = (TypeObjectDynamic) compilerxyz.gen.GenType.dynamicType();
+    var td = (TypeObjectDynamic) GenType.dynamicType();
     return new TypeObjectConst(
         td.meta(),
         td.hostClass(),
-        compilerxyz.util.Opt.<Type>none(),
-        compilerxyz.util.Opt.<ExporterRoot>none());
+        Opt.<Type>none(),
+        Opt.<ExporterRoot>none());
   }
 
 

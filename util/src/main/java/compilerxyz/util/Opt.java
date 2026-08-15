@@ -1,15 +1,17 @@
 package compilerxyz.util;
 
+import compilerxyz.annotations.CodegenDescriptor;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 public sealed interface Opt<T> {
-  record Some<T>(T value) implements Opt<T> {}
+  record Some<T>(@CodegenDescriptor T value) implements Opt<T> {}
 
   record None<T>() implements Opt<T> {
     private static final None<?> INSTANCE = new None<>();
   }
 
+  @CodegenDescriptor
   @SuppressWarnings("unchecked")
   static <T> Opt<T> none() {
     return (Opt<T>) None.INSTANCE;
@@ -37,6 +39,7 @@ public sealed interface Opt<T> {
     };
   }
 
+  @CodegenDescriptor
   default T optUnwrap() {
     return switch (this) {
       case Some<T> s -> s.value();

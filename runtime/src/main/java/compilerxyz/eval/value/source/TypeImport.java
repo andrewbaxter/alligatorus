@@ -175,7 +175,7 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

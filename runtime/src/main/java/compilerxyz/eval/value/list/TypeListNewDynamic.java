@@ -39,6 +39,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
 
 @BuiltinLight(uniqueId = 6119L)
 public record TypeListNewDynamic(Type elementType)
@@ -104,7 +105,7 @@ public record TypeListNewDynamic(Type elementType)
       if (dynRes.hasErrors()) return dynRes.reerr();
       dynamicElements.add(dynRes.requireValue("toDynamic"));
     }
-    Type instanceType = new TypeListDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
+    Type instanceType = new TypeListDynamic(DynUtil.substituteBoxed(xx, elementType));
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, instanceType);
     if (retStackRes.hasErrors()) {
       return retStackRes.reerr();
@@ -153,7 +154,7 @@ public record TypeListNewDynamic(Type elementType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -171,7 +172,7 @@ public record TypeListNewDynamic(Type elementType)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

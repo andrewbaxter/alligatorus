@@ -34,13 +34,11 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
-import org.jspecify.annotations.Nullable;
 
 @BuiltinLight(uniqueId = 6135L)
 public final class TypeTypeSourceFunctionConst {
   private TypeTypeSourceFunctionConst() {}
 
-  @SuppressWarnings("unused")
   public static Type dynamicType() {
     return Holder.INSTANCE;
   }

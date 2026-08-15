@@ -37,7 +37,6 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectLift;
-import org.jspecify.annotations.Nullable;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.util.Opt;
 import java.util.function.Function;
@@ -48,6 +47,7 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
 
 @BuiltinLight(uniqueId = 6140L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
@@ -120,7 +120,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   @Override
   public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   private static Artifact nullArtifact() {
@@ -250,7 +250,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -268,7 +268,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

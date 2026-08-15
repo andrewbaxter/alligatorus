@@ -64,6 +64,9 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.TargetBindSub;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 
 @BuiltinFull(uniqueId = 6013L)
 @BuiltinPath("types.expr")
@@ -85,7 +88,7 @@ public record TypeExpr()
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(compilerxyz.eval.expr.StagedExprCell.class));
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(compilerxyz.eval.expr.StagedExprCell.class));
   }
 
   @Override
@@ -104,11 +107,11 @@ public record TypeExpr()
     if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
         || key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectBindDynamic.AspectId)
+        || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
@@ -231,10 +234,10 @@ public record TypeExpr()
   }
 
   @Override
-  public compilerxyz.eval.EResult<compilerxyz.util.Opt<TargetBindSub>>
+  public EResult<Opt<TargetBindSub>>
       aspectBindDynamicBindDynamic(
           ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
   }
 
   @Override
@@ -253,11 +256,11 @@ public record TypeExpr()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
@@ -265,12 +268,12 @@ public record TypeExpr()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return Value.super.artifactableExportArtifact(xx, loc);
   }

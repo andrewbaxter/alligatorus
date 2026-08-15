@@ -39,11 +39,13 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.AspectLift;
+import compilerxyz.gen.GenAspectLift;
 
 /**
  * The type-of-type for {@link TypeSourceInterfaceDynamic}: the {@code Type}
@@ -96,7 +98,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
     if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
         || key.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)
-        || key.equals(compilerxyz.gen.GenAspectLift.AspectId)
+        || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -136,11 +138,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
       seq.add(sourceCode);
       seq.add(
           JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(TypeSourceInterfaceDynamic.class),
-              "getInterfaceData",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromClass(InterfaceData.class), TList.of())));
+              loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, seq)),
@@ -229,7 +227,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

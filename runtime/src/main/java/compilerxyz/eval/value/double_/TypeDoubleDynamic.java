@@ -116,6 +116,7 @@ import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6175L)
 @BuiltinPath("types.double")
@@ -265,7 +266,7 @@ public record TypeDoubleDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var d = compilerxyz.util.MustCast.mustCast(Double.class, externalHostValue.optUnwrap());
+    var d = MustCast.mustCast(Double.class, externalHostValue.optUnwrap());
     return EResult.ok(new ValueObjectConst(new TypeDoubleConst(), d));
   }
 

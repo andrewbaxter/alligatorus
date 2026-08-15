@@ -36,6 +36,7 @@ import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.eval.value.ValueDynamic;
 
 @BuiltinPath("must_reinterpret")
 @BuiltinLight(uniqueId = 6111L)
@@ -143,7 +144,7 @@ public record TypeFunctionMustReinterpretConst()
     return EResult.ok(
         new CodeValue(
             Code.of(loc, out),
-            EvalOutcome.ofValue(compilerxyz.eval.value.ValueDynamic.stack(targetType, 1))));
+            EvalOutcome.ofValue(ValueDynamic.stack(targetType, 1))));
   }
 
   @Override
@@ -163,7 +164,7 @@ public record TypeFunctionMustReinterpretConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

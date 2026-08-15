@@ -37,6 +37,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenAspectStringDynamic;
 import compilerxyz.gen.Value;
@@ -106,14 +107,7 @@ public record TypeZbase32Decode()
       if (argDynRes.hasErrors()) return argDynRes.reerr();
       var seq = new JavaBytecodeSequence();
       seq.add(argDynRes.requireValue("zbase32.decode arg dynamic"));
-      seq.add(
-          JavaBytecodeUtils.callStaticMethod(
-              loc,
-              JavaInternalName.fromClass(Zbase32.class),
-              "decodeToList",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class)),
-                  TList.of(JavaDataDescriptor.fromClass(String.class)))));
+      seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_LIST));
       var listType = new TypeListDynamic(new TypeByteDynamicBox());
       return EResult.ok(
           new CodeValue(
@@ -140,7 +134,7 @@ public record TypeZbase32Decode()
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(compilerxyz.eval.value.object_.ValueObjectConst.plainTypeType(), this));
+    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
   }
 
   @Override

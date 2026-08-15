@@ -11,6 +11,8 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
 import compilerxyz.util.TOrderedSet;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.util.Opt;
 
 public final class SourceObjectEmitter {
   private SourceObjectEmitter() {}
@@ -126,9 +128,9 @@ public final class SourceObjectEmitter {
           "SourceObjectEmitter.interfaceMethodMethodDescriptor: missing compiledArgParamTypes");
     }
     for (var argType : m.compiledArgParamTypes.optUnwrap()) {
-      var argConsume = switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, argType)) {
-        case compilerxyz.util.Opt.Some<AspectConsumeDynamic> s -> s.value();
-        case compilerxyz.util.Opt.None<AspectConsumeDynamic> n ->
+      var argConsume = switch (GenAspectConsumeDynamic.getMaybe(xx, argType)) {
+        case Opt.Some<AspectConsumeDynamic> s -> s.value();
+        case Opt.None<AspectConsumeDynamic> n ->
             throw new IllegalStateException(
                 "SourceObjectEmitter.interfaceMethodMethodDescriptor: argParamType "
                     + argType.typeDesc() + " does not implement AspectConsumeDynamic");

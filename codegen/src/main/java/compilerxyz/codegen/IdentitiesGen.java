@@ -10,6 +10,8 @@ import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
+import com.squareup.javapoet.MethodSpec;
+import java.util.Locale;
 
 public final class IdentitiesGen {
   private IdentitiesGen() {}
@@ -45,7 +47,7 @@ public final class IdentitiesGen {
                       .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
     cls.addMethod(
-        com.squareup.javapoet.MethodSpec.constructorBuilder()
+        MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PRIVATE)
             .build());
 
@@ -68,6 +70,6 @@ public final class IdentitiesGen {
   private static String constantName(String snake) {
     var s = snake;
     if (s.endsWith("_identity")) s = s.substring(0, s.length() - "_identity".length());
-    return s.toUpperCase(java.util.Locale.ROOT) + "_IDENTITY";
+    return s.toUpperCase(Locale.ROOT) + "_IDENTITY";
   }
 }

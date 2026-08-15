@@ -49,6 +49,6 @@ public final class SourceFuncResult {
         if (this.func.data().exceptionType.optIsSome()) {
             throw new IllegalStateException("Function already has an exception type");
         }
-        this.func.data().exceptionType = compilerxyz.util.Opt.some(exceptionType);
+        this.func.data().exceptionType = Opt.some(exceptionType);
     }
 }

@@ -67,6 +67,8 @@ import compilerxyz.eval.ExprSubErr.Opaque;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6138L)
 public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
@@ -84,7 +86,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -143,7 +145,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
    * distinct from {@link #aspectArtifactExporter()} which is the value-of-TTOSC path.
    */
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return ExporterRoot.SOURCE_OBJECT_CONST.artifactExporterExport(xx, loc, this);
   }
@@ -209,7 +211,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         errors.add(
                             new ExprErr(
                                 loc,
-                                compilerxyz.util.TList.of(
+                                TList.of(
                                     new Opaque(
                                         "TypeTypeSourceObjectConst::exporterExport: object '"
                                             + dt.name.optUnwrapOr("(unnamed)")
@@ -221,7 +223,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       if (m.compiledBodyCode.optIsNone() && m.compiledClassName.optIsNone()) {
                         var objectIndex = dt.set.objects.indexOf(dt);
                         var objInternalName =
-                            compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(
+                            SourceObjectEmitter.internalNameFor(
                                 dt.setId.optUnwrap(), objectIndex);
                         var finishRes =
                             m.finish(
@@ -237,7 +239,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         errors.add(
                             new ExprErr(
                                 loc,
-                                compilerxyz.util.TList.of(
+                                TList.of(
                                     new Opaque(
                                         "TypeTypeSourceObjectConst::exporterExport: object method '"
                                             + m.name
@@ -269,7 +271,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           extRes.valueOrNull() != null
                               ? extRes.requireValue(
                                   "TypeTypeSourceObjectConst::exporterExport method externals")
-                              : compilerxyz.util.TList.<ArtifactExternal>of();
+                              : TList.<ArtifactExternal>of();
                       methods.add(
                           new ArtifactDataDefSetMethod(
                               m.name,
@@ -304,7 +306,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                           errors.add(
                               new ExprErr(
                                   loc,
-                                  compilerxyz.util.TList.of(
+                                  TList.of(
                                       new Opaque(
                                           "TypeTypeSourceObjectConst::exporterExport: iface method impl (idx="
                                               + mi.interfaceMethodIndex
@@ -318,7 +320,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                             extRes.valueOrNull() != null
                                 ? extRes.requireValue(
                                     "TypeTypeSourceObjectConst::exporterExport iface method ext")
-                                : compilerxyz.util.TList.<ArtifactExternal>of();
+                                : TList.<ArtifactExternal>of();
                         methodImpls.add(
                             new ArtifactDataDefSetInterfaceMethodImpl(
                                 mi.interfaceMethodIndex,
@@ -333,7 +335,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       errors.add(
                           new ExprErr(
                               loc,
-                              compilerxyz.util.TList.of(
+                              TList.of(
                                   new Opaque(
                                       "TypeTypeSourceObjectConst::exporterExport: object '"
                                           + dt.name.optUnwrapOr("(unnamed)")
@@ -350,7 +352,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                             methods,
                             ifaceImpls,
                             dt.compiledBinaryName,
-                            dt.compiledBytecode.optUnwrapOr(null));
+                            dt.compiledBytecode);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
           if (errors.isEmpty()) {
@@ -395,7 +397,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                     Opt.some(body.defSetId()), body.name(), body.identity());
                 dt.artifactIdCell.set(idValue);
                 dt.compiledBinaryName = body.compiledBinaryName();
-                dt.compiledBytecode = Opt.ofNullable(body.compiledBytecode());
+                dt.compiledBytecode = body.compiledBytecode();
                 for (var m : body.methods()) {
                   var md = new SourceDataMethodData(m.name());
                   md.methodIdx = dt.methods.size();
@@ -445,7 +447,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeTypeSourceObjectConst::finalizer defSet artifact");
-                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
+                      var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                       dt.initSetReflectively(set);
                       dt.setId = Opt.some(set.defSetId);
                       var underlyingRes =
@@ -525,7 +527,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         dt.interfaceImpls.add(implData);
                       }
                       dt.compiledStaticFieldValues =
-                          Opt.some(compilerxyz.eval.dynamic.SourceObjectEmitter.rebuildStaticFieldValues(dt));
+                          Opt.some(SourceObjectEmitter.rebuildStaticFieldValues(dt));
                     };
                 return new Result.Ok<>(
                     new ArtifactSupport.ImportIndependentResult(imported, deps, fin));
@@ -606,15 +608,15 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -632,7 +634,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

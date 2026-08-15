@@ -30,26 +30,34 @@ is excluded via source-root origin):
 |-------|-----------|
 | `InterfaceMethodNamePrefix` | Interface methods are prefixed with the lowerCamelCase interface name (`Value.valueType()`). |
 | `NoInstanceofOnSealed` | Discriminate a sealed type with an exhaustive `switch`, not `instanceof`. |
-| `NoNullableType` | No `@Nullable`; model optional values with `Opt<T>`. |
+| `NoNullableType` | No Nullable annotation in any form (checked by source text — Spoon drops type-use annotations on array types from the model); model optional values with `Opt<T>`. |
 | `AvoidJdkOptional` | Use `Opt` instead of an explicitly-written `java.util.Optional`. |
-| `UnnecessaryFullyQualifiedName` | Import types and use simple names (unless ambiguous). |
+| `UnnecessaryFullyQualifiedName` | Import types and use simple names. Covers declared types (including generic/array forms) and fully-qualified static-call/constant receivers (detected via targeted-expression positions — noClasspath Spoon gives the receiver's type references no positions). A simple name bound to more than one qualified name in a file is ambiguous and not flagged. |
 
 To add a check: add a method to `ConventionChecks.run(CtModel)` that emits `Finding`s.
 
 ## 2. Reachability + single-use (`ReachabilityMain`)
 
 Class-hierarchy reachability over the same Spoon model. Roots are `main` methods, JUnit tests,
-`@Builtin*`-annotated types, and `@CodegenDescriptor`-annotated methods. Because it is source-level,
-generics are not erased, constant references are visible, and implemented interfaces are in the model.
+`@CodegenDescriptor` methods, and everything generated code references. `@Builtin*` annotations are
+**not** roots themselves: they drive codegen, and the generated registrations
+(`TypeMethodDynamic`/`TypeFunctionDynamic`/`callStaticMethod` name literals in generated code) and
+direct `Gen*` calls root the actually-used members — an annotated-but-unregistered member surfaces
+as dead. `@SuppressWarnings` is never consulted. The analysis is fail-closed: Spoon model errors
+propagate instead of silently rooting.
 
-Reports unreachable classes/methods (#1) and single-use private/static methods and private fields (#2).
+Reports unreachable classes/methods (#1) and single-use private/static methods and private fields
+(#2). Methods referenced from generated code are exempt from single-use — the generated reference
+is the annotation-driven root, and nothing can be inlined into code that is regenerated every
+build.
 
 The two dynamic-dispatch patterns that used to cause false positives are now static and traceable:
 
-- **Emitted-into-target calls** — helpers the compiler emits (e.g. `NumericFormat.formatInt`) are
-  marked `@CodegenDescriptor`; codegen generates `compilerxyz.gen.GenCodegenDescriptors`
-  (`JavaStaticMethodRef`) constants that emit sites reference by name. The annotation roots the method;
-  an unused generated constant is flagged as dead.
+- **Emitted-into-target calls** — helpers the compiler emits (e.g. `NumericFormat.formatInt`,
+  `TypeObjectDynamic.getInterfaceData`) are marked `@CodegenDescriptor`; codegen generates
+  `compilerxyz.gen.GenCodegenDescriptors` constants (`JavaStaticMethodRef` for static methods,
+  `JavaVirtualMethodRef` for instance methods) that emit sites reference by name. The annotation
+  roots the method; an unused generated constant is flagged as dead.
 - **JSON dispatch** — no runtime `Class → Codec` registry or reflection; `CodecsGen` emits a static
   `compilerxyz.gen.codec.Codecs.lookup` (class-literal dispatch) that `Json` calls directly.
 

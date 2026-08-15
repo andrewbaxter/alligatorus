@@ -34,10 +34,12 @@ import compilerxyz.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.gen.AspectRecord;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.gen.Binding;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.gen.GenType;
 
 public final class SourceDataMethodData {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
   public final String name;
@@ -102,12 +104,12 @@ public final class SourceDataMethodData {
     TList<BindingId.Local> argSlotIds = null;
     if (argType.optIsSome()) {
       var argT = argType.optUnwrap();
-      var slotsRes = compilerxyz.eval.dynamic.DynUtil.argSignatureSlots(xx, rootLoc, argT);
+      var slotsRes = DynUtil.argSignatureSlots(xx, rootLoc, argT);
       if (slotsRes.hasErrors()) return slotsRes.reerr();
       argSlots = slotsRes.requireValue("SourceDataMethodData::finish argSignatureSlots");
       argSlotIds = new TList<>(argSlots.size());
-      var tupleOpt = compilerxyz.gen.GenAspectTuple.getMaybe(xx, argT);
-      var recordOpt = compilerxyz.gen.GenAspectRecord.getMaybe(xx, argT);
+      var tupleOpt = GenAspectTuple.getMaybe(xx, argT);
+      var recordOpt = GenAspectRecord.getMaybe(xx, argT);
       if (tupleOpt.optIsSome()) {
         var elemBindings = new TList<Binding>(argSlots.size());
         for (var slot : argSlots) {

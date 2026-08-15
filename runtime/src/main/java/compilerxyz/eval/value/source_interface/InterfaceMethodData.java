@@ -4,10 +4,11 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.gen.GenType;
 
 public final class InterfaceMethodData {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
   public final String name;

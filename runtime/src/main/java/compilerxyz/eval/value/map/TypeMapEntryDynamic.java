@@ -50,6 +50,7 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.DynUtil.DropChild;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.JvmConstants;
 
 @BuiltinLight(uniqueId = 6123L)
 public record TypeMapEntryDynamic(Type keyType, Type valueType)
@@ -75,7 +76,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicDrop(
+  public EResult<Code> aspectDropDynamicDrop(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
@@ -95,7 +96,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         JavaMethodDescriptor.fromParts(
             JavaDataDescriptor.fromClass(Object.class), TList.of());
     var children =
-        new compilerxyz.util.TList<DropChild>(2);
+        new TList<DropChild>(2);
     children.add(
         new DropChild(
             keyType,
@@ -133,7 +134,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JavaInternalName.fromClass(Map.Entry.class));
+    return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.Entry.class));
   }
 
   @Override
@@ -192,7 +193,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     if (fieldConsumeOpt.optIsSome()) {
       var fieldDesc = fieldConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
       var d = fieldDesc.value();
-      if (!d.equals(compilerxyz.eval.dynamic.JvmConstants.DESC_OBJECT.value())) {
+      if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
         char c = d.charAt(0);
         if (c == 'L' || c == '[') {
           seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
@@ -247,7 +248,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -265,7 +266,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

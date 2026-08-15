@@ -19,7 +19,7 @@ public final class SourceInterfaceMethodResult {
         return GenObjectTypes.sourceInterfaceMethodResult();
     }
 
-    public void impl(ExprContext xx, Type arg, compilerxyz.util.Opt<Type> ret) {
+    public void impl(ExprContext xx, Type arg, Opt<Type> ret) {
         if (this.method.argType != null) {
             throw new IllegalStateException("Interface method already has an arg type");
         }

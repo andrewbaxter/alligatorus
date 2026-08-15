@@ -17,6 +17,7 @@ import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import java.lang.String;
 import compilerxyz.eval.dynamic.DynCompileErrors;
+import compilerxyz.util.TList;
 
 @BuiltinPushStruct
 public final class DefinitionSetBuilder {
@@ -67,7 +68,7 @@ public final class DefinitionSetBuilder {
         if (_r.hasErrors()) {
             var _errs = _r.errorsOrNull();
             throw new DynCompileErrors(
-                _errs.optUnwrapOr(new compilerxyz.util.TList<>()));
+                _errs.optUnwrapOr(new TList<>()));
         }
     }
 }

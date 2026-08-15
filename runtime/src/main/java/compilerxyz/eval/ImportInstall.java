@@ -4,6 +4,7 @@ import compilerxyz.eval.dynamic.Prefixes;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
+import compilerxyz.eval.dynamic.EvalRootEmitter;
 
 public final class ImportInstall {
   private ImportInstall() {}
@@ -55,15 +56,16 @@ public final class ImportInstall {
         if (obj.compiledStaticFieldValues.optIsSome()) {
           var fields = new TOrderedMap<String, Object>();
           fields.putAll(obj.compiledStaticFieldValues.optUnwrap());
-          fields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+          fields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
           loader.registerExternals(binaryName, fields);
         }
       }
     }
     for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
       var union = set.unions.get((int) unionIdx);
-      if (union.compiledBaseBinaryName.optIsSome() && union.compiledBaseBytecode != null) {
-        loader.registerClass(union.compiledBaseBinaryName.optUnwrap(), union.compiledBaseBytecode);
+      if (union.compiledBaseBinaryName.optIsSome() && union.compiledBaseBytecode.optIsSome()) {
+        loader.registerClass(
+            union.compiledBaseBinaryName.optUnwrap(), union.compiledBaseBytecode.optUnwrap());
         if (union.compiledVariantBinaryNames.optIsSome() && union.compiledVariantBytecode.optIsSome()) {
           var variantNames = union.compiledVariantBinaryNames.optUnwrap();
           var variantBytes = union.compiledVariantBytecode.optUnwrap();
@@ -79,7 +81,7 @@ public final class ImportInstall {
       loader.registerClass(emittedFuncs.binaryName(), emittedFuncs.bytecode());
       var funcStaticFields = new TOrderedMap<String, Object>();
       funcStaticFields.putAll(emittedFuncs.staticFieldValues());
-      funcStaticFields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+      funcStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
       loader.registerExternals(emittedFuncs.binaryName(), funcStaticFields);
       try {
         Class.forName(emittedFuncs.binaryName(), true, loader);
@@ -105,7 +107,7 @@ public final class ImportInstall {
       }
       if (icaBinaryName != null) {
         loader.registerClass(icaBinaryName, icaBytecode);
-        mergedStaticFields.put(compilerxyz.eval.dynamic.EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
+        mergedStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, xx);
         loader.registerExternals(icaBinaryName, mergedStaticFields);
         try {
           Class.forName(icaBinaryName, true, loader);

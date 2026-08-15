@@ -2,10 +2,12 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.dynamic.DynRuntime;
+import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.util.Opt;
+import static compilerxyz.util.MustCast.mustCast;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData;
@@ -15,6 +17,7 @@ import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import java.lang.IllegalStateException;
 import java.lang.Object;
 import java.lang.String;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @BuiltinPushStruct
@@ -55,7 +58,22 @@ public final class SourceObjectBuilder {
     }
 
     public void impl_interface(ExprContext xx, InterfaceData ifaceRef, Map<Object, Object> record) {
-        var recordMap = DynRuntime.recordToConstKeyExprMap(record);
+        var recordMap = new LinkedHashMap<ConstKey, Expr>();
+        for (var entry : record.entrySet()) {
+            var ckey = mustCast(ConstKey.class, entry.getKey());
+            var v = entry.getValue();
+            Expr expr;
+            if (v instanceof Expr e) {
+                expr = e;
+            } else if (v instanceof StagedExprCell cell) {
+                expr = mustCast(Expr.class, cell.value());
+            } else {
+                throw new IllegalStateException(
+                        "impl_interface: expected Expr or StagedExprCell value, got "
+                                + (v == null ? "null" : v.getClass()));
+            }
+            recordMap.put(ckey, expr);
+        }
         var dtData = this.type_;
         var impl = new SourceObjectInterfaceImplData(ifaceRef);
         impl.implIdx = dtData.interfaceImpls.size();

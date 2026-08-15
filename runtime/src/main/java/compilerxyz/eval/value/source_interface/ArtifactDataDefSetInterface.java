@@ -16,6 +16,6 @@ public record ArtifactDataDefSetInterface(
     Opt<Unique> aspectId,
     Opt<BuiltinInterfaceKind> builtinKind,
     String compiledBinaryName,
-    byte @org.jspecify.annotations.Nullable [] compiledBytecode,
+    Opt<byte[]> compiledBytecode,
     TList<ArtifactDataDefSetInterfaceMethodData> methods)
     implements SafeJsonSerializable {}

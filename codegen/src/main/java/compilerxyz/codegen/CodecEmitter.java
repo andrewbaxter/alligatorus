@@ -20,6 +20,7 @@ import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedSet;
 import java.io.IOException;
 import javax.lang.model.element.Modifier;
+import java.util.Arrays;
 
 final class CodecEmitter {
   private CodecEmitter() {}
@@ -645,7 +646,7 @@ final class CodecEmitter {
     var pkg = qname.substring(0, lastDot);
     var rest = qname.substring(lastDot + 1);
     var parts = rest.split("\\.");
-    return ClassName.get(pkg, parts[0], java.util.Arrays.copyOfRange(parts, 1, parts.length));
+    return ClassName.get(pkg, parts[0], Arrays.copyOfRange(parts, 1, parts.length));
   }
 
   static String simpleNameOf(String qname) {

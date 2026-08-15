@@ -12,8 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
-import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExpression;
@@ -33,15 +31,18 @@ import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
+import java.util.LinkedHashSet;
+import spoon.reflect.declaration.CtClass;
 
 /**
  * Whole-program dead-code (#1) and single-use (#2) analysis over the source model (Spoon). Returns
  * the total finding count; AnalysisMain adds it to the combined total and fails the build if
  * nonzero. Because this is source-level, generics are not erased, references to compile-time
  * constants are visible, and implemented interfaces are in the model — so classes used only those
- * ways are not false positives. Roots are main methods, JUnit tests, and
- * {@code @Builtin*}/{@code @CodegenDescriptor} members (dynamically dispatched or
- * emitted-into-target entrypoints).
+ * ways are not false positives. Roots are main methods, JUnit tests,
+ * {@code @CodegenDescriptor} methods, and everything generated code references — {@code @Builtin*}
+ * annotations are not roots themselves; they drive codegen, and the generated
+ * registrations/references root the actually-used members.
  */
 public final class ReachabilityMain {
 
@@ -64,8 +65,9 @@ public final class ReachabilityMain {
   private final Map<String, Integer> fieldReads = new HashMap<>();
   private final Map<String, Integer> fieldWrites = new HashMap<>();
   private final Set<String> referencedTypes = new HashSet<>();
+  private final Set<String> genReferenced = new HashSet<>();
 
-  public int run(CtModel model) {
+  public int run(CtModel model) throws IOException {
     // Exclude codegen: it uses external library types (JavaPoet, JavaParser, Palantir) that
     // noClasspath mode cannot resolve, producing systematic false positives in the call graph.
     // Convention checks still run on codegen via ConventionChecks; reachability focuses on runtime.
@@ -91,7 +93,7 @@ public final class ReachabilityMain {
     // Seed roots.
     Deque<String> work = new ArrayDeque<>();
     for (CtType<?> t : types) {
-      boolean rootedType = isGeneratedType(t) || hasSuppressUnused(t);
+      boolean rootedType = isGeneratedType(t);
       for (CtExecutable<?> ex : executablesOf(t)) {
         if (rootedType || isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
           String k = key(ex);
@@ -99,24 +101,32 @@ public final class ReachabilityMain {
         }
       }
     }
-    // Root methods registered as TypeMethodDynamic targets.
-    // TypeMethodDynamic invokes Java methods by string name via ASM bytecode, invisible to CHA.
-    // Scan all TypeMethodDynamic constructor calls, extract the methodName string (arg index 4),
-    // and root every in-model method with that name so they don't appear as dead or single-use.
+    // Root methods registered as dynamic-dispatch targets. TypeMethodDynamic (name at arg index 4)
+    // and TypeFunctionDynamic (name at arg index 3) invoke Java methods by string name via ASM
+    // bytecode, invisible to CHA; callStaticMethod/callStaticInterfaceMethod (name at arg index 2)
+    // emit direct bytecodes the same way. The registrations live mostly in generated code —
+    // @Builtin* annotations drive codegen, and these generated references root the actually-used
+    // members. Registration-referenced methods are also exempt from single-use (the reference is
+    // dynamic dispatch, not an inlinable call site).
     Set<String> dynMethodNames = new HashSet<>();
     for (CtType<?> t : types) {
       for (CtConstructorCall<?> cc : t.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-        if (!"TypeMethodDynamic".equals(cc.getType().getSimpleName())) continue;
+        String ctorType = cc.getType().getSimpleName();
+        int nameIdx;
+        switch (ctorType) {
+          case "TypeMethodDynamic" -> nameIdx = 4;
+          case "TypeFunctionDynamic" -> nameIdx = 3;
+          default -> {
+            continue;
+          }
+        }
         List<CtExpression<?>> args = cc.getArguments();
-        if (args.size() > 4 && args.get(4) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+        if (args.size() > nameIdx
+            && args.get(nameIdx) instanceof CtLiteral<?> lit
+            && lit.getValue() instanceof String n) {
           dynMethodNames.add(n);
         }
       }
-    }
-    // Also root methods called via callStaticMethod/callStaticInterfaceMethod with literal names.
-    // These emit direct bytecodes to call static methods by name, invisible to CHA.
-    // The method name is at arg index 2: (CodeLoc, JavaInternalName, String methodName, ...).
-    for (CtType<?> t : types) {
       for (CtInvocation<?> inv : t.getElements(new TypeFilter<>(CtInvocation.class))) {
         String invName = inv.getExecutable().getSimpleName();
         if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
@@ -130,25 +140,23 @@ public final class ReachabilityMain {
       for (CtExecutable<?> ex : executablesOf(t)) {
         if (ex instanceof CtMethod<?> m && dynMethodNames.contains(m.getSimpleName())) {
           String k = key(ex);
+          genReferenced.add(k);
           if (reachable.add(k)) work.add(k);
         }
       }
     }
-    // Root methods annotated with @BuiltinPath (called via builtin registration, invisible to CHA).
-    for (CtType<?> t : types) {
-      for (CtExecutable<?> ex : executablesOf(t)) {
-        if (hasAnnotationNamed(ex, "BuiltinPath")) {
-          String k = key(ex);
-          if (reachable.add(k)) work.add(k);
-        }
-      }
-    }
-    // Fixpoint.
+    // Fixpoint. Calls made from generated code mark their target genReferenced: the generated
+    // reference is the annotation-driven root, and the target cannot be inlined into code that is
+    // regenerated every build, so it is exempt from single-use.
     Set<String> fieldInitDone = new HashSet<>();
     while (!work.isEmpty()) {
       String workKey = work.poll();
       CtExecutable<?> ex = execByKey.get(workKey);
       if (ex == null) continue;
+      boolean fromGenerated =
+          ex instanceof CtTypeMember exTm
+              && exTm.getDeclaringType() != null
+              && isGeneratedType(exTm.getDeclaringType());
       if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
         String tn = tm.getDeclaringType().getQualifiedName();
         if (fieldInitDone.add(tn)) {
@@ -156,10 +164,10 @@ public final class ReachabilityMain {
             var init = f.getDefaultExpression();
             if (init == null) continue;
             for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
-              onCall(inv.getExecutable(), inv.getArguments().size(), work);
+              onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
             }
             for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-              onCall(cc.getExecutable(), cc.getArguments().size(), work);
+              onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
             }
           }
         }
@@ -169,10 +177,10 @@ public final class ReachabilityMain {
         if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
       }
       for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
-        onCall(inv.getExecutable(), inv.getArguments().size(), work);
+        onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
       }
       for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-        onCall(cc.getExecutable(), cc.getArguments().size(), work);
+        onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
       }
       for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
         if (fr.getVariable() != null) {
@@ -208,7 +216,7 @@ public final class ReachabilityMain {
       String qn = t.getQualifiedName();
       List<CtExecutable<?>> execs = executablesOf(t);
       boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = isGeneratedType(t) || hasSuppressUnused(t);
+      boolean rooted = isGeneratedType(t);
       boolean isAnnotation = t.isAnnotationType();
       if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
         deadClasses.add(qn);
@@ -219,11 +227,12 @@ public final class ReachabilityMain {
         String k = key(ex);
         boolean concrete = m.getBody() != null;
         boolean _iam = false;
-        iamCheck: try {
-          for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
-            if (_iamTop != m && _iamTop.isAbstract()) { _iam = true; break iamCheck; }
+        for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
+          if (_iamTop != m && _iamTop.isAbstract()) {
+            _iam = true;
+            break;
           }
-        } catch (RuntimeException ignored) {}
+        }
         boolean inlinable =
             !isRoot(ex)
                 && !rooted
@@ -241,7 +250,10 @@ public final class ReachabilityMain {
             && !isRecordAccessor(t, m)) {
           deadMethods.add(qn + "#" + sig(ex));
         }
-        if (inlinable && reachable.contains(k) && callCounts.getOrDefault(k, 0) == 1) {
+        if (inlinable
+            && reachable.contains(k)
+            && !genReferenced.contains(k)
+            && callCounts.getOrDefault(k, 0) == 1) {
           singleUseMethods.add(qn + "#" + sig(ex));
         }
       }
@@ -280,23 +292,21 @@ public final class ReachabilityMain {
             deadClasses.size(), deadMethods.size(), singleUseMethods.size(), singleUseFields.size()));
 
     System.out.print(out);
-    try {
-      Path reportPath = Path.of("analysis/target/reachability-report.txt");
-      Files.createDirectories(reportPath.getParent());
-      Files.writeString(reportPath, out.toString());
-      System.out.println("(report written to " + reportPath + ")");
-    } catch (IOException e) {
-      // best-effort
-    }
+    Path reportPath = Path.of("analysis/target/reachability-report.txt");
+    Files.createDirectories(reportPath.getParent());
+    Files.writeString(reportPath, out.toString());
+    System.out.println("(report written to " + reportPath + ")");
     return total;
   }
 
-  private void onCall(CtExecutableReference<?> ref, int actualArity, Deque<String> work) {
+  private void onCall(
+      CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
     if (ref == null) return;
     CtExecutable<?> decl = ref.getExecutableDeclaration();
     if (decl != null) {
       String dk = key(decl);
       callCounts.merge(dk, 1, Integer::sum);
+      if (fromGenerated) genReferenced.add(dk);
       // Mark the directly-resolved declaration reachable; this handles generic/varargs calls where
       // the arity-based fallback below may compute the wrong arity from the reference.
       if (reachable.add(dk)) work.add(dk);
@@ -308,16 +318,14 @@ public final class ReachabilityMain {
     int refArity = ref.getParameters().size();
     // Prefer the actual call-site arity; fall back to the reference arity when they differ.
     // Also try varargs methods (1 varargs param handles any call arity).
-    Set<Integer> arities = new java.util.LinkedHashSet<>();
+    Set<Integer> arities = new LinkedHashSet<>();
     arities.add(actualArity);
     if (refArity != actualArity) arities.add(refArity);
     for (int arity : arities) {
       for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
         CtExecutable<?> cex = execByKey.get(cand);
         if (cex == null) continue;
-        boolean direct = isDirect(ref, cex);
-        boolean sub = !direct && refDecl != null && subtypeOf(cex, refDecl);
-        if (refDecl == null || direct || sub) {
+        if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
           if (reachable.add(cand)) work.add(cand);
         }
       }
@@ -331,7 +339,7 @@ public final class ReachabilityMain {
             !cex.getParameters().isEmpty()
                 && cex.getParameters().get(cex.getParameters().size() - 1).isVarArgs();
         if (!isVarargs) continue;
-        if (refDecl == null || isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+        if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
           if (reachable.add(cand)) work.add(cand);
         }
       }
@@ -344,38 +352,19 @@ public final class ReachabilityMain {
   }
 
   private boolean subtypeOf(CtExecutable<?> cex, CtTypeReference<?> superRef) {
+    if (superRef == null) return false;
     if (!(cex instanceof CtTypeMember tm) || tm.getDeclaringType() == null) return false;
-    try {
-      CtTypeReference<?> ct = tm.getDeclaringType().getReference();
-      if (ct.isSubtypeOf(superRef)) return true;
-    } catch (RuntimeException ignored) {
-    }
-    String sn = superRef.getSimpleName();
-    if (sn == null) return false;
-    CtType<?> dt = tm.getDeclaringType();
-    String dn = dt.getSimpleName();
-    if (dn != null && dn.equals(sn)) return true;
-    try {
-      for (CtTypeReference<?> iface : dt.getSuperInterfaces()) {
-        if (sn.equals(iface.getSimpleName())) return true;
-      }
-      CtTypeReference<?> superClass = dt.getSuperclass();
-      if (superClass != null && sn.equals(superClass.getSimpleName())) return true;
-    } catch (RuntimeException ignored) {
-    }
-    return false;
+    return tm.getDeclaringType().getReference().isSubtypeOf(superRef);
   }
 
   private boolean isRoot(CtExecutable<?> ex) {
     if (ex.getAnnotations().stream()
-        .anyMatch(a -> JUNIT.contains(a.getAnnotationType().getSimpleName()))
-        || hasAnnotationNamed(ex, CODEGEN_DESCRIPTOR)) return true;
-    if (ex.getAnnotations().stream()
-        .filter(a -> "SuppressWarnings".equals(a.getAnnotationType().getSimpleName()))
-        .anyMatch(a -> {
-          var v = a.getValues().get("value");
-          return v != null && v.toString().contains("unused");
-        })) return true;
+        .anyMatch(
+            a ->
+                JUNIT.contains(a.getAnnotationType().getSimpleName())
+                    || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
+      return true;
+    }
     return ex instanceof CtMethod<?> m
         && m.getSimpleName().equals("main")
         && m.getModifiers().contains(ModifierKind.STATIC)
@@ -405,7 +394,7 @@ public final class ReachabilityMain {
   private static List<CtExecutable<?>> executablesOf(CtType<?> t) {
     List<CtExecutable<?>> out = new ArrayList<>();
     for (CtMethod<?> m : t.getMethods()) out.add(m);
-    if (t instanceof spoon.reflect.declaration.CtClass<?> c) {
+    if (t instanceof CtClass<?> c) {
       for (CtConstructor<?> ctor : c.getConstructors()) out.add(ctor);
     }
     return out;
@@ -438,25 +427,11 @@ public final class ReachabilityMain {
     return qualifiedName == null ? "?" : qualifiedName;
   }
 
-  private static boolean hasAnnotationNamed(CtExecutable<?> ex, String simpleName) {
-    return ex.getAnnotations().stream()
-        .anyMatch(a -> a.getAnnotationType().getSimpleName().equals(simpleName));
-  }
-
   private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {
     if (!(t instanceof CtRecord rec)) return false;
     if (!m.getParameters().isEmpty()) return false;
     return rec.getRecordComponents().stream()
         .anyMatch(rc -> rc.getSimpleName().equals(m.getSimpleName()));
-  }
-
-  private static boolean hasSuppressUnused(CtType<?> t) {
-    return t.getAnnotations().stream()
-        .filter(a -> "SuppressWarnings".equals(a.getAnnotationType().getSimpleName()))
-        .anyMatch(a -> {
-          var v = a.getValues().get("value");
-          return v != null && v.toString().contains("unused");
-        });
   }
 
   private boolean isGeneratedType(CtType<?> t) {
@@ -466,15 +441,11 @@ public final class ReachabilityMain {
   }
 
   private boolean overridesExternal(CtMethod<?> m) {
-    try {
-      for (CtMethod<?> top : m.getTopDefinitions()) {
-        CtType<?> dt = top.getDeclaringType();
-        if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
-          return true; // declared in a type not in our source model (JDK/library)
-        }
+    for (CtMethod<?> top : m.getTopDefinitions()) {
+      CtType<?> dt = top.getDeclaringType();
+      if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
+        return true; // declared in a type not in our source model (JDK/library)
       }
-    } catch (RuntimeException e) {
-      return true;
     }
     // Also treat overrides of Object methods as external.
     String n = m.getSimpleName();

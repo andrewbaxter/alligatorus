@@ -6,6 +6,6 @@ import compilerxyz.eval.Type;
 
 public record TryCatchClause(BindingId.Local binding, Type excType, CodeValue body) {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 }

@@ -42,6 +42,8 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.MethodVisitor;
+import java.util.HashMap;
+import java.util.Map;
 
 public class JavaBytecodeUtils {
   public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
@@ -197,26 +199,26 @@ public class JavaBytecodeUtils {
   }
 
   public static CodeDynamic callStaticMethod(
-      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
-    return methodCall(loc, INVOKESTATIC, klass, method, methodDesc, false);
-  }
-
-  public static CodeDynamic callStaticInterfaceMethod(
-      CodeLoc loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
-    return methodCall(loc, INVOKESTATIC, klass, method, methodDesc, true);
-  }
-
-  public static CodeDynamic callStaticMethod(
       QExprId loc, JavaInternalName klass, String method, JavaMethodDescriptor methodDesc) {
-    return callStaticMethod(lc(loc), klass, method, methodDesc);
+    return methodCall(lc(loc), INVOKESTATIC, klass, method, methodDesc, false);
   }
 
   public static CodeDynamic callStaticMethod(CodeLoc loc, JavaStaticMethodRef ref) {
-    return callStaticMethod(loc, ref.owner, ref.name, ref.descriptor);
+    return methodCall(loc, INVOKESTATIC, ref.owner, ref.name, ref.descriptor, ref.ownerIsInterface);
   }
 
   public static CodeDynamic callStaticMethod(QExprId loc, JavaStaticMethodRef ref) {
-    return callStaticMethod(lc(loc), ref.owner, ref.name, ref.descriptor);
+    return callStaticMethod(lc(loc), ref);
+  }
+
+  public static CodeDynamic callMethod(QExprId loc, JavaVirtualMethodRef ref) {
+    return methodCall(
+        lc(loc),
+        ref.ownerIsInterface ? INVOKEINTERFACE : INVOKEVIRTUAL,
+        ref.owner,
+        ref.name,
+        ref.descriptor,
+        ref.ownerIsInterface);
   }
 
   // ------------------- type ops -------------------
@@ -301,7 +303,7 @@ public class JavaBytecodeUtils {
     var keyMap = new TMap<JumpKey, JumpKey>();
     for (var k : landKeys) keyMap.put(k, new JumpKey());
     @SuppressWarnings("serial")
-    var labelNodeMap = new java.util.HashMap<LabelNode, LabelNode>() {
+    var labelNodeMap = new HashMap<LabelNode, LabelNode>() {
       @Override
       public LabelNode get(Object key) {
         var ln = (LabelNode) key;
@@ -341,7 +343,7 @@ public class JavaBytecodeUtils {
   private static CodeDynamic freshenCode(
       CodeDynamic cd,
       TMap<Label, Label> labelMap,
-      java.util.Map<LabelNode, LabelNode> labelNodeMap,
+      Map<LabelNode, LabelNode> labelNodeMap,
       TMap<JumpKey, JumpKey> keyMap) {
     var _fbBc = cd.code();
     JavaBytecode _fbResult;

@@ -91,6 +91,9 @@ import compilerxyz.gen.AspectElementUseDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectNumericConst;
 import java.lang.reflect.Field;
+import compilerxyz.gen.GenAspectElementUseDynamic;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectNumericConst;
 
 @BuiltinLight(uniqueId = 6147L)
 public final class Tuple
@@ -288,7 +291,7 @@ public final class Tuple
           }
           var accessedType = dynamicTypes.get(_isDynIdx);
           int accessedSlot = slotInfo.slotOfKey().get(_isDynIdx);
-          var useDynOpt = compilerxyz.gen.GenAspectElementUseDynamic.getMaybe(xx, accessedType);
+          var useDynOpt = GenAspectElementUseDynamic.getMaybe(xx, accessedType);
           if (useDynOpt.optIsNone()) {
             yield EResult.err(
                 loc,
@@ -390,7 +393,7 @@ public final class Tuple
         || key.equals(GenAspectDropDynamic.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
     }
@@ -419,7 +422,7 @@ public final class Tuple
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
     // The empty tuple `()` is the language-level unit value and converts to null.
     return elements.isEmpty()
-        && compilerxyz.gen.GenAspectNull.getMaybe(xx, destType).optIsSome();
+        && GenAspectNull.getMaybe(xx, destType).optIsSome();
   }
 
   @Override
@@ -429,11 +432,11 @@ public final class Tuple
     // typeCastFrom on the dest (which would itself route through AspectNull).
     return EResult.ok(
         new CodeValue(
-            compilerxyz.eval.Code.of(
+            Code.of(
                 loc,
                 JavaBytecodeUtils.literalNull(loc)),
             EvalOutcome.ofValue(
-                compilerxyz.eval.value.ValueDynamic.stack(destType, 1))));
+                ValueDynamic.stack(destType, 1))));
   }
 
   @Override
@@ -968,7 +971,7 @@ public final class Tuple
   public static final class TupleLift implements AspectLift {
     private final TList<AspectLift> elementLifts;
     private final TList<Type> elementTypes;
-    private volatile Field @org.jspecify.annotations.Nullable [] cachedFields;
+    private volatile Opt<Field[]> cachedFields = Opt.none();
 
     public TupleLift(TList<AspectLift> elementLifts, TList<Type> elementTypes) {
       this.elementLifts = elementLifts;
@@ -995,7 +998,7 @@ public final class Tuple
                     : externalHostValue.optUnwrap().getClass().getName()));
       }
       var rawHostValue = externalHostValue.optUnwrap();
-      var fields = cachedFields;
+      var fields = cachedFields.optUnwrapOr(null);
       if (fields == null) {
         fields = new Field[elementLifts.size()];
         var slotOf = slotOfIndex(xx, elementTypes);
@@ -1008,7 +1011,7 @@ public final class Tuple
                 "Tuple TupleLift::lift: generated class missing slot field _" + slot, e);
           }
         }
-        cachedFields = fields;
+        cachedFields = Opt.some(fields);
       }
       var out = new TList<TupleElement>(elementLifts.size());
       TList<ExprErr> errors = null;
@@ -1056,7 +1059,7 @@ public final class Tuple
       return EResult.err(loc, "Tuple::field: key has no compile-time value");
     }
     var keyVal = key.value().optUnwrap();
-    var numConst = compilerxyz.gen.GenAspectNumericConst.getMaybe(xx, keyVal.valueType());
+    var numConst = GenAspectNumericConst.getMaybe(xx, keyVal.valueType());
     if (numConst.optIsNone()) {
       return EResult.err(loc, "Tuple::field: key must be a compile-time number");
     }
@@ -1107,7 +1110,7 @@ public final class Tuple
   }
 
   @Override
-  public compilerxyz.eval.EResult<Artifact> artifactableExportArtifact(
+  public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
     return Value.super.artifactableExportArtifact(xx, loc);
   }

@@ -18,6 +18,10 @@ import compilerxyz.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class BuiltinTreeGen {
   private BuiltinTreeGen() {}
@@ -333,19 +337,19 @@ public final class BuiltinTreeGen {
   }
 
   private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();
-  private static java.util.Set<String> builtinInterfaceHostNames = java.util.Set.of();
+  private static Set<String> builtinInterfaceHostNames = Set.of();
 
   public static void setScannedPathEntries(TList<BuiltinPathScanner.Entry> entries) {
     scannedPathEntries = entries;
   }
 
-  public static void setBuiltinInterfaceHostNames(java.util.Set<String> names) {
+  public static void setBuiltinInterfaceHostNames(Set<String> names) {
     builtinInterfaceHostNames = names;
   }
 
   public static NodeSpec canonicalSpec() {
     // Collect (path, leaf) pairs from all sources.
-    var pathToLeaf = new java.util.LinkedHashMap<String, LeafSpec>();
+    var pathToLeaf = new LinkedHashMap<String, LeafSpec>();
 
     // Scanner-produced @BuiltinPath entries. @Builtin interface classes yield
     // a TypeObjectDynamic (via Gen<X>.dynamicType()), so their source-visible
@@ -446,7 +450,7 @@ public final class BuiltinTreeGen {
   }
 
   private static void addSpecial(
-      java.util.LinkedHashMap<String, LeafSpec> m,
+      LinkedHashMap<String, LeafSpec> m,
       String path,
       CodeBlock data,
       CodeBlock type) {
@@ -456,17 +460,17 @@ public final class BuiltinTreeGen {
   }
 
   /** Static hard-coded ORDER for children of well-known branches, to preserve generated-file layout. */
-  private static final java.util.Map<String, java.util.List<String>> BRANCH_ORDER =
-      java.util.Map.of(
+  private static final Map<String, List<String>> BRANCH_ORDER =
+      Map.of(
           "",
-              java.util.List.of("throw", "panic", "log", "define", "types", "eval"),
+              List.of("throw", "panic", "log", "define", "types", "eval"),
           "types",
-              java.util.List.of(
+              List.of(
                   "list", "map", "option", "eresult", "code", "string", "int", "null",
                   "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
                   "codedyn", "cve"),
           "eval",
-              java.util.List.of(
+              List.of(
                   "aspect_lookup", "cast_value", "const_eval", "codevalue", "stack",
                   "str_to_json", "constkey_to_str", "gen_binding_name", "new_expr_context",
                   "aspect_function", "aspect_field", "aspect_drop_dynamic",
@@ -482,17 +486,17 @@ public final class BuiltinTreeGen {
                   "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type"));
 
   private record TreeNode(
-      java.util.LinkedHashMap<String, TreeNode> children,
+      LinkedHashMap<String, TreeNode> children,
       Opt<LeafSpec> leaf) {
     TreeNode() {
-      this(new java.util.LinkedHashMap<>(), Opt.none());
+      this(new LinkedHashMap<>(), Opt.none());
     }
     TreeNode(LeafSpec leaf) {
-      this(new java.util.LinkedHashMap<>(), Opt.some(leaf));
+      this(new LinkedHashMap<>(), Opt.some(leaf));
     }
   }
 
-  private static NodeSpec buildTree(java.util.LinkedHashMap<String, LeafSpec> pathToLeaf) {
+  private static NodeSpec buildTree(LinkedHashMap<String, LeafSpec> pathToLeaf) {
     var root = new TreeNode();
     for (var e : pathToLeaf.entrySet()) {
       var parts = e.getKey().split("\\.");
@@ -523,7 +527,7 @@ public final class BuiltinTreeGen {
     if (n.leaf().optIsSome()) return n.leaf().optUnwrap();
     var children = new TList<Child>();
     var order = BRANCH_ORDER.get(branchPath);
-    var remaining = new java.util.LinkedHashMap<>(n.children());
+    var remaining = new LinkedHashMap<>(n.children());
     if (order != null) {
       for (var name : order) {
         var child = remaining.remove(name);

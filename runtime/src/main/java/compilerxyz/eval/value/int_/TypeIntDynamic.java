@@ -116,6 +116,7 @@ import compilerxyz.gen.AspectOperatorBitNot;
 import compilerxyz.gen.GenAspectOperatorBitNot;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6163L)
 @BuiltinPath("types.int")
@@ -265,7 +266,7 @@ public record TypeIntDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var d = compilerxyz.util.MustCast.mustCast(Integer.class, externalHostValue.optUnwrap());
+    var d = MustCast.mustCast(Integer.class, externalHostValue.optUnwrap());
     return EResult.ok(new ValueObjectConst(new TypeIntConst(), d));
   }
 

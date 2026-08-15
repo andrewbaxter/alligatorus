@@ -15,6 +15,7 @@ import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
 
 /**
  * The scope stack: a list of {@link ScopeLevel}s. Binding entries carry the
@@ -46,7 +47,7 @@ public final class Scope {
     return entry;
   }
 
-  public void pushAll(compilerxyz.util.TMap<ConstKey, Binding> named) {
+  public void pushAll(TMap<ConstKey, Binding> named) {
     for (var entry : named.entrySet()) {
       pushNamed(entry.getKey(), entry.getValue());
     }

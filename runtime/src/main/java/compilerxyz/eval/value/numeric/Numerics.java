@@ -53,6 +53,7 @@ import compilerxyz.gen.AspectInt;
 import compilerxyz.gen.AspectNumericConst;
 import compilerxyz.gen.AspectNumericDynamic;
 import compilerxyz.gen.GenCodegenDescriptors;
+import compilerxyz.gen.GenAspectInt;
 
 /**
  * Central operator/cast machinery shared by every numeric type family. A type's operator aspects
@@ -170,7 +171,7 @@ public final class Numerics {
     if (dynOpt.optIsSome()) {
       return Opt.some(new Operand(dynOpt.optUnwrap().aspectNumericDynamicKind(), false, v));
     }
-    if (compilerxyz.gen.GenAspectInt.getMaybe(xx, t).optIsSome()) {
+    if (GenAspectInt.getMaybe(xx, t).optIsSome()) {
       return Opt.some(new Operand(NumericKind.LONG, true, v));
     }
     var cdOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
@@ -198,7 +199,7 @@ public final class Numerics {
     if (a.optIsSome()) {
       return a.optUnwrap().aspectNumericConstGet(v);
     }
-    var i = compilerxyz.gen.GenAspectInt.getMaybe(xx, v.valueType());
+    var i = GenAspectInt.getMaybe(xx, v.valueType());
     if (i.optIsSome()) {
       return i.optUnwrap().aspectIntGet(v);
     }

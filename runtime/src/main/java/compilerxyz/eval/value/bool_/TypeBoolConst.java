@@ -44,6 +44,11 @@ import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.util.TList;
 
 @BuiltinLight(uniqueId = 6102L)
 public record TypeBoolConst()
@@ -59,7 +64,7 @@ public record TypeBoolConst()
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -143,12 +148,12 @@ public record TypeBoolConst()
       seq.add(JavaBytecodeUtils.literalBool(loc, bv));
       seq.add(JavaBytecodeUtils.callStaticMethod(
           loc,
-          compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class),
+          JavaInternalName.fromClass(Boolean.class),
           "valueOf",
-          compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
+          JavaMethodDescriptor.fromParts(
               JavaDataDescriptor.fromInternalName(
-                  compilerxyz.eval.dynamic.JavaInternalName.fromClass(Boolean.class)),
-              compilerxyz.util.TList.of(JavaDataDescriptor.DESC_BOOL))));
+                  JavaInternalName.fromClass(Boolean.class)),
+              TList.of(JavaDataDescriptor.DESC_BOOL))));
       return EResult.ok(new CodeDynamic(loc, seq));
     }
     return EResult.err(loc, "TypeBoolConst::toDynamic: expected bool ValueObjectConst");
@@ -173,15 +178,15 @@ public record TypeBoolConst()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -198,7 +203,7 @@ public record TypeBoolConst()
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 

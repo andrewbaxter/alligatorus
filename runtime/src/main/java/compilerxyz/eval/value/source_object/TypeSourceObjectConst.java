@@ -20,6 +20,10 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectType;
 import compilerxyz.gen.Value;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectType;
 
 /**
  * Compile-time type of a source-object *instance* — the value produced by lifting a runtime
@@ -38,7 +42,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
-    return compilerxyz.artifact.ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
+    return ExporterRoot.SOURCE_OBJECT_VALUE_CONST;
   }
 
   @Override
@@ -77,13 +81,13 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectArtifact.AspectId)) {
+    if (key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
-    if (key.equals(compilerxyz.gen.GenAspectType.AspectId)) {
+    if (key.equals(GenAspectType.AspectId)) {
       for (var impl : dynamic.interfaceImpls) {
         if (impl.interface_.builtinKind.optUnwrapOr(null)
-            == compilerxyz.eval.value.source_interface.BuiltinInterfaceKind.TYPE) {
+            == BuiltinInterfaceKind.TYPE) {
           return Opt.some(this);
         }
       }

@@ -33,6 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import com.google.gson.stream.JsonWriter;
 import java.io.StringWriter;
+import java.sql.DriverManager;
+import java.util.Arrays;
 
 public final class T0180ImportRealTest {
 
@@ -80,7 +82,7 @@ public final class T0180ImportRealTest {
   public void test00000Zbase32RoundTrip() {
     var data = new byte[] {0, 1, 2, 3, (byte) 200, (byte) 255, 42, 7};
     var encoded = Zbase32.encode(data);
-    assertTrue(java.util.Arrays.equals(data, Zbase32.decode(encoded)));
+    assertTrue(Arrays.equals(data, Zbase32.decode(encoded)));
   }
 
   @Test
@@ -292,7 +294,7 @@ public final class T0180ImportRealTest {
     }
 
     try (var conn =
-            java.sql.DriverManager.getConnection(
+            DriverManager.getConnection(
                 "jdbc:sqlite:" + cacheDir.resolve("cache.sqlite"));
         var st = conn.createStatement()) {
       st.executeUpdate("UPDATE schema_version SET version = 99");

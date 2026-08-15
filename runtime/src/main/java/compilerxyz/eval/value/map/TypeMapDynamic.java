@@ -73,6 +73,9 @@ import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.gen.AspectDynamicConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectDynamicConst;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6122L)
 public final class TypeMapDynamic
@@ -124,14 +127,14 @@ public final class TypeMapDynamic
           ? Opt.some(this)
           : Opt.none();
     }
-    if (key.equals(compilerxyz.gen.GenAspectDynamicConst.AspectId)
+    if (key.equals(GenAspectDynamicConst.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectIterable.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)) {
       return Opt.some(this);
@@ -310,7 +313,7 @@ public final class TypeMapDynamic
     setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
     var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    var localBinding = compilerxyz.util.MustCast.mustCast(BindingId.Local.class, elementScopeId);
+    var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
     // Iterator.next() returns Object; cast to Map.Entry (the element language
     // type) so the binding slot is typed as promised.
     var decodeSeq = new JavaBytecodeSequence();
@@ -339,7 +342,7 @@ public final class TypeMapDynamic
       bodyCode = body.code();
     }
     return EResult.ok(
-        compilerxyz.eval.dynamic.DynUtil.foreachSkeleton(xx,
+        DynUtil.foreachSkeleton(xx,
             loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
   }
 

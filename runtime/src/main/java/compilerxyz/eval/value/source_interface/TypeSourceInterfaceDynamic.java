@@ -2,6 +2,7 @@ package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.annotations.CodegenDescriptor;
 
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -54,6 +55,7 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
@@ -64,6 +66,9 @@ import compilerxyz.gen.GenAspectType;
 import compilerxyz.eval.TypeAspect;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenInterfaceData;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6004L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
@@ -90,6 +95,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
   }
 
 
+  @CodegenDescriptor
   public InterfaceData getInterfaceData() {
     return data;
   }
@@ -105,7 +111,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
       return JavaDataDescriptor.fromClass(TypeSourceInterfaceDynamic.class);
     }
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JavaInternalName.of(binaryName.replace('.', '/')));
+        JavaInternalName.of(binaryName.replace('.', '/')));
   }
 
 
@@ -124,7 +130,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
     }
@@ -219,7 +225,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             iface.aspectId,
                             iface.builtinKind,
                             iface.compiledBinaryName,
-                            iface.compiledBytecode.optUnwrapOr(null),
+                            iface.compiledBytecode,
                             methodsOut);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
@@ -255,7 +261,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                 var iface =
                     new InterfaceData(Opt.some(body.defSetId()), body.identity(), body.builtinKind());
                 iface.compiledBinaryName = body.compiledBinaryName();
-                iface.compiledBytecode = Opt.ofNullable(body.compiledBytecode());
+                iface.compiledBytecode = body.compiledBytecode();
                 iface.description = body.description();
                 iface.isAspect = body.isAspect();
                 iface.aspectId = body.aspectId();
@@ -280,7 +286,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeSourceInterfaceDynamic::finalizer defSet artifact");
-                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
+                      var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                       iface.initSetReflectively(set);
                       var methodsIt = body.methods().iterator();
                       for (var md : iface.methods) {
@@ -314,7 +320,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public EResult<Value> exporterAnyAsValue() {
-      return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(compilerxyz.util.Opt.some(new TypeSourceInterfaceDynamic(data))), new TypeSourceInterfaceDynamic(data)));
+      return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(new TypeSourceInterfaceDynamic(data))), new TypeSourceInterfaceDynamic(data)));
     }
   }
 
@@ -391,17 +397,17 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()
-        || destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
+    return destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()
+        || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
   }
 
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
       return EResult.ok(
           new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
     }
-    if (destType.typeAspect(xx, compilerxyz.gen.GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
+    if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
       var sourceCode = cv.code().codeDynamic();
       if (sourceCode == null) {
         return EResult.err(
@@ -411,12 +417,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
       seq.add(sourceCode);
       seq.add(
           JavaBytecodeUtils.callMethod(
-              loc,
-              JavaInternalName.fromClass(TypeSourceInterfaceDynamic.class),
-              "getInterfaceData",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromClass(InterfaceData.class),
-                  TList.of())));
+              loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
       return EResult.ok(
           new CodeValue(
               Code.of(loc, new CodeDynamic(loc, seq)),
@@ -432,7 +433,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public Type aspectTypeType(Value value) {
-    return compilerxyz.gen.GenInterfaceData.dynamicType();
+    return GenInterfaceData.dynamicType();
   }
 
   @Override
@@ -442,19 +443,19 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
   @Override
   public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(compilerxyz.util.Opt.some(this)), this));
+    return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(this)), this));
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override

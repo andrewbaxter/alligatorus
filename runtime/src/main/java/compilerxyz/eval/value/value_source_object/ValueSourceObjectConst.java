@@ -22,6 +22,10 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
+import compilerxyz.eval.ImportInstall;
+import compilerxyz.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.gen.GenAspectLift;
+import java.lang.reflect.Constructor;
 
 public final class ValueSourceObjectConst {
   private ValueSourceObjectConst() {}
@@ -53,13 +57,13 @@ public final class ValueSourceObjectConst {
           Object underlyingHost;
           try {
             var field = inst.data().getClass().getField(
-                compilerxyz.eval.dynamic.SourceObjectEmitter.DATA_INSTANCE_FIELD);
+                SourceObjectEmitter.DATA_INSTANCE_FIELD);
             underlyingHost = field.get(inst.data());
           } catch (NoSuchFieldException | IllegalAccessException e) {
             return EResult.err(loc,
                 "ValueSourceObjectConst::exporterRootDelegateSelfExport: source-object instance "
                     + inst.data().getClass().getName() + " missing "
-                    + compilerxyz.eval.dynamic.SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
+                    + SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
           }
           // Lift the underlying JVM value to a compile-time Value via the underlying type's AspectLift.
           if (tsod.underlyingType.optIsNone()) {
@@ -67,7 +71,7 @@ public final class ValueSourceObjectConst {
                 "ValueSourceObjectConst::exporterRootDelegateSelfExport: object underlying type not finalised");
           }
           var ut = tsod.underlyingType.optUnwrap();
-          var underlyingLiftRes = compilerxyz.gen.GenAspectLift.get(xx, loc, ut);
+          var underlyingLiftRes = GenAspectLift.get(xx, loc, ut);
           if (underlyingLiftRes.hasErrors()) return underlyingLiftRes.reerr();
           var underlyingLiftRes2 = underlyingLiftRes
               .requireValue("ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift aspect")
@@ -149,7 +153,7 @@ public final class ValueSourceObjectConst {
               underVal.requireValue(
                   "ValueSourceObjectConst::exporterFromArtifactData underlying value");
           var installRes =
-              compilerxyz.eval.ImportInstall.installDefSetToDynamic(xx, loc, dt.set);
+              ImportInstall.installDefSetToDynamic(xx, loc, dt.set);
           if (installRes.hasErrors()) {
             installRes.drainInto(errors);
             return EResult.errs(errors);
@@ -176,7 +180,7 @@ public final class ValueSourceObjectConst {
                 loc,
                 "ValueSourceObjectConst::exporterFromArtifactData: class " + binaryName + " not loadable");
           }
-          java.lang.reflect.Constructor<?> ctor = null;
+          Constructor<?> ctor = null;
           for (var c : cls.getDeclaredConstructors()) {
             if (c.getParameterCount() == 1) {
               ctor = c;

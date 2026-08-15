@@ -2,6 +2,7 @@ package compilerxyz.eval;
 
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
+import compilerxyz.annotations.CodegenDescriptor;
 
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
@@ -42,6 +43,7 @@ public sealed interface Code permits Code.None, Code.Target {
     return new Target(dynamic);
   }
 
+  @CodegenDescriptor
   static Code target(TargetCode impl) {
     return new Target(impl);
   }
@@ -61,6 +63,7 @@ public sealed interface Code permits Code.None, Code.Target {
     return of(loc, new CodeDynamic(loc, seq));
   }
 
+  @CodegenDescriptor
   static TargetCode targetImpl(Code code) {
     return switch (code) {
       case Code.Target t -> t.impl();

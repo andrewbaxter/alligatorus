@@ -85,6 +85,9 @@ import compilerxyz.eval.value.string.TypeStringConst;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectFieldUseDynamic;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.util.MustCast;
 
 @BuiltinPath("types.string")
 @BuiltinLight(uniqueId = 6145L)
@@ -114,7 +117,7 @@ public record TypeStringDynamic()
           JavaDataDescriptor.fromClass(String.class), TList.of());
 
   private static final Type EMPTY_TUPLE =
-      new Tuple(compilerxyz.util.Opt.none(), new TList<>());
+      new Tuple(Opt.none(), new TList<>());
 
   private static final TMap<ConstKey, Type> METHOD_FIELDS =
       TMap.ofEntries(
@@ -166,10 +169,10 @@ public record TypeStringDynamic()
         || key.equals(GenAspectField.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectLift.AspectId)
         || key.equals(GenAspectSet.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectFieldUseDynamic.AspectId)
+        || key.equals(GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectArtifact.AspectId)) {
       return Opt.some(this);
     }
@@ -208,7 +211,7 @@ public record TypeStringDynamic()
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var s = compilerxyz.util.MustCast.mustCast(String.class, externalHostValue.optUnwrap());
+    var s = MustCast.mustCast(String.class, externalHostValue.optUnwrap());
     return EResult.ok(new ValueObjectConst(new TypeStringConst(), s));
   }
 
@@ -360,11 +363,11 @@ public record TypeStringDynamic()
       };
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
 

@@ -51,10 +51,13 @@ import compilerxyz.util.TOrderedMap;
 import java.util.function.Function;
 import compilerxyz.gen.Value;
 import static compilerxyz.util.MustCast.mustCast;
+import compilerxyz.eval.dynamic.SourceUnionEmitter;
+import compilerxyz.gen.GenType;
+import java.util.HashSet;
 
 public final class DefinitionSet implements ExporterAny {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
@@ -96,7 +99,7 @@ public final class DefinitionSet implements ExporterAny {
             "DefinitionSet.finish: source object '" + obj.name.optUnwrapOr("(unnamed)") + "' has null setId");
       }
       var objInternalName =
-          compilerxyz.eval.dynamic.SourceObjectEmitter.internalNameFor(obj.setId.optUnwrap(), objIdx);
+          SourceObjectEmitter.internalNameFor(obj.setId.optUnwrap(), objIdx);
       for (var method : obj.methods) {
         var nameStr = obj.name.optUnwrapOr("(unnamed)");
         var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
@@ -118,7 +121,7 @@ public final class DefinitionSet implements ExporterAny {
         var _soeBinaryName = SourceObjectEmitter.binaryNameFor(obj.setId.optUnwrap(), objIdx);
         var _soeInternalNameStr = _soeBinaryName.replace('.', '/');
         var _soeInternalName = JavaInternalName.of(_soeInternalNameStr);
-        var _soeClaimedKinds = new java.util.HashSet<BuiltinInterfaceKind>();
+        var _soeClaimedKinds = new HashSet<BuiltinInterfaceKind>();
         for (var _soeImpl : obj.interfaceImpls) {
           if (_soeImpl.interface_.builtinKind.optIsSome()) {
             _soeClaimedKinds.add(_soeImpl.interface_.builtinKind.optUnwrap());
@@ -268,8 +271,8 @@ public final class DefinitionSet implements ExporterAny {
             var _emmLoc = CodeLoc.Infallible.INSTANCE;
             var _emmSelfLocal = mustCast(BindingId.Local.class, _emmSelfId);
             JavaDataDescriptor _emmDataFieldDesc = switch (GenAspectConsumeDynamic.getMaybe(xx, _emmUnderlyingType)) {
-              case compilerxyz.util.Opt.Some<AspectConsumeDynamic> s -> s.value().aspectConsumeDynamicJvmClass(xx);
-              case compilerxyz.util.Opt.None<AspectConsumeDynamic> n ->
+              case Opt.Some<AspectConsumeDynamic> s -> s.value().aspectConsumeDynamicJvmClass(xx);
+              case Opt.None<AspectConsumeDynamic> n ->
                   throw new IllegalStateException(
                       "SourceObjectEmitter.emit: underlyingType " + _emmUnderlyingType.typeDesc() + " does not implement AspectConsumeDynamic; cannot emit data field access");
             };
@@ -476,12 +479,12 @@ public final class DefinitionSet implements ExporterAny {
       if (_seu.compiledBaseBinaryName.optIsSome()) {
         r = EResult.ok(null);
       } else {
-        var _seuBaseBinaryName = compilerxyz.eval.dynamic.SourceUnionEmitter.baseBinaryNameFor(defSetId, unionIdx);
+        var _seuBaseBinaryName = SourceUnionEmitter.baseBinaryNameFor(defSetId, unionIdx);
         var _seuBaseInternalName = _seuBaseBinaryName.replace('.', '/');
         var _seuVariantBinaryNames = new TList<String>(_seu.variants.size());
         var _seuVariantInternalNames = new TList<String>(_seu.variants.size());
         for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
-          var _seuVbn = compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(defSetId, unionIdx, _seuI);
+          var _seuVbn = SourceUnionEmitter.variantBinaryNameFor(defSetId, unionIdx, _seuI);
           _seuVariantBinaryNames.add(_seuVbn);
           _seuVariantInternalNames.add(_seuVbn.replace('.', '/'));
         }
@@ -500,19 +503,19 @@ public final class DefinitionSet implements ExporterAny {
           _ebCtor.visitMaxs(0, 0);
           _ebCtor.visitEnd();
           _ebCw.visitEnd();
-          _seu.compiledBaseBytecode = _ebCw.toByteArray();
+          _seu.compiledBaseBytecode = Opt.some(_ebCw.toByteArray());
         }
         var _seuVariantBytecode = new TList<byte[]>(_seu.variants.size());
         for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
           var _seuVariant = _seu.variants.get(_seuI);
-          var _seuPayloadDesc = compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, _seuVariant.type);
+          var _seuPayloadDesc = SourceUnionEmitter.payloadDescriptor(xx, _seuVariant.type);
           {
             var _evVariantInternalName = _seuVariantInternalNames.get(_seuI);
             var _evCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
             _evCw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
                 _evVariantInternalName, null, _seuBaseInternalName, null);
             _evCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
-                compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD, _seuPayloadDesc.value(), null, null).visitEnd();
+                SourceUnionEmitter.PAYLOAD_FIELD, _seuPayloadDesc.value(), null, null).visitEnd();
             var _evCtorDesc = "(" + _seuPayloadDesc.value() + ")V";
             var _evCtor = _evCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", _evCtorDesc, null, null);
             _evCtor.visitCode();
@@ -528,7 +531,7 @@ public final class DefinitionSet implements ExporterAny {
             };
             _evCtor.visitVarInsn(_evLoadOp, 1);
             _evCtor.visitFieldInsn(Opcodes.PUTFIELD, _evVariantInternalName,
-                compilerxyz.eval.dynamic.SourceUnionEmitter.PAYLOAD_FIELD, _seuPayloadDesc.value());
+                SourceUnionEmitter.PAYLOAD_FIELD, _seuPayloadDesc.value());
             _evCtor.visitInsn(Opcodes.RETURN);
             _evCtor.visitMaxs(0, 0);
             _evCtor.visitEnd();

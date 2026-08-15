@@ -8,6 +8,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 
 public final class CompositeClassEmitter {
   private CompositeClassEmitter() {}
@@ -62,7 +63,7 @@ public final class CompositeClassEmitter {
   }
 
   public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
-    return switch (compilerxyz.gen.GenAspectConsumeDynamic.getMaybe(xx, t)) {
+    return switch (GenAspectConsumeDynamic.getMaybe(xx, t)) {
       case Opt.Some<AspectConsumeDynamic> some ->
           some.value().aspectConsumeDynamicJvmClass(xx);
       case Opt.None<AspectConsumeDynamic> n ->
@@ -86,7 +87,7 @@ public final class CompositeClassEmitter {
           Opt.some(new DefinitionSetClassLoader(
               xx.vx.ix.gx,
               DefinitionSetClassLoader.class.getClassLoader(),
-              new compilerxyz.util.TList<>()));
+              new TList<>()));
     }
     var loader = xx.vx.ix.classLoader.optUnwrap();
     var _bnfSb = new StringBuilder(BINARY_NAME_PREFIX);

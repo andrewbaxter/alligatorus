@@ -86,6 +86,8 @@ import compilerxyz.gen.GenAspectOperatorBitNot;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JvmConstants;
 
 @BuiltinLight(uniqueId = 6168L)
 public record TypeShortConst()
@@ -122,7 +124,7 @@ public record TypeShortConst()
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return JavaDataDescriptor.fromInternalName(
-        compilerxyz.eval.dynamic.JvmConstants.INTNAME_OBJECT);
+        JvmConstants.INTNAME_OBJECT);
   }
 
   @Override
@@ -370,7 +372,7 @@ public record TypeShortConst()
   @Override
   public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override

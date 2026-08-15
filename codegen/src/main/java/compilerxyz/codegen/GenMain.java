@@ -12,17 +12,26 @@ import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
+import compilerxyz.codegen.experimental.BuiltinIdentityScanner;
+import compilerxyz.codegen.experimental.BuiltinPathScanner;
+import compilerxyz.codegen.experimental.BuiltinPushStructScanner;
+import compilerxyz.codegen.experimental.CodegenDescriptorScanner;
+import compilerxyz.codegen.experimental.DynamicTypeScanner;
+import compilerxyz.codegen.experimental.JavaAspectExtractor;
+import compilerxyz.codegen.util.DynamicTypes;
+import java.util.HashSet;
 
 public final class GenMain {
   private GenMain() {}
 
   public static void main(String[] args) throws IOException {
-    if (args.length != 2) {
+    if (args.length != 3) {
       throw new IllegalArgumentException(
-          "Expected two args: output source root, runtime source root");
+          "Expected three args: output source root, runtime source root, util source root");
     }
     var outRoot = Path.of(args[0]);
     var runtimeSourceRoot = Path.of(args[1]);
+    var utilSourceRoot = Path.of(args[2]);
     if (Files.exists(outRoot)) {
       try (var walk = Files.walk(outRoot)) {
         walk.sorted(Comparator.reverseOrder())
@@ -45,14 +54,14 @@ public final class GenMain {
     var scopeIds = new TSet<Long>();
 
     var scannedLeaves =
-        compilerxyz.codegen.experimental.DynamicTypeScanner.scanRoot(runtimeSourceRoot);
+        DynamicTypeScanner.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.setScannedLeafDescriptors(scannedLeaves);
-    compilerxyz.codegen.util.DynamicTypes.setScannedLeaves(scannedLeaves);
+    DynamicTypes.setScannedLeaves(scannedLeaves);
     DynamicTypesGen.run(outRoot, formatter, scannedLeaves);
 
-    var scan = compilerxyz.codegen.experimental.JavaAspectExtractor.scanRoot(runtimeSourceRoot);
+    var scan = JavaAspectExtractor.scanRoot(runtimeSourceRoot);
     BuiltinInterfacesGen.run(outRoot, formatter, aspectIds, scan.builtins());
-    var hostNames = new java.util.HashSet<String>();
+    var hostNames = new HashSet<String>();
     var links = new TList<String>();
     for (var s : scan.builtins()) {
       hostNames.add(s.pkg() + "." + s.simpleName());
@@ -61,10 +70,10 @@ public final class GenMain {
     BuiltinTreeGen.setBuiltinInterfaceHostNames(hostNames);
     BuiltinTreeGen.setLinkClassNames(links);
     var pathEntries =
-        compilerxyz.codegen.experimental.BuiltinPathScanner.scanRoot(runtimeSourceRoot);
+        BuiltinPathScanner.scanRoot(runtimeSourceRoot);
     BuiltinTreeGen.setScannedPathEntries(pathEntries);
     var scannedIdentities =
-        compilerxyz.codegen.experimental.BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
+        BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
     var identityExtras = new TList<IdentitiesGen.IdentitySpec>();
     for (var s : scannedIdentities) {
       identityExtras.add(new IdentitiesGen.IdentitySpec(s.name(), s.value(), s.standalone()));
@@ -72,7 +81,7 @@ public final class GenMain {
     IdentitiesGen.run(outRoot, formatter, aspectIds, identityExtras);
 
     var scannedPushStructs =
-        compilerxyz.codegen.experimental.BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);
+        BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);
     PushStructsGen.run(
         outRoot,
         formatter,
@@ -82,7 +91,8 @@ public final class GenMain {
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
 
     var codegenDescriptors =
-        compilerxyz.codegen.experimental.CodegenDescriptorScanner.scanRoot(runtimeSourceRoot);
+        CodegenDescriptorScanner.scanRoot(runtimeSourceRoot);
+    codegenDescriptors.addAll(CodegenDescriptorScanner.scanRoot(utilSourceRoot));
     CodegenDescriptorGen.run(outRoot, formatter, codegenDescriptors);
   }
 

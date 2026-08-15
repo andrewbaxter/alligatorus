@@ -39,13 +39,16 @@ import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.SourceUnionEmitter;
+import compilerxyz.gen.GenType;
 
 @BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
     implements Type, AspectBind, AspectFunction, ExporterAny {
 
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 
 
@@ -101,7 +104,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     }
     xx.vx.definitionSets.putIfAbsent(type_.set.defSetId, type_.set);
     var variantBinaryName =
-        compilerxyz.eval.dynamic.SourceUnionEmitter.variantBinaryNameFor(
+        SourceUnionEmitter.variantBinaryNameFor(
             type_.set.defSetId, unionIndex, variantIndex);
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
@@ -109,7 +112,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.optUnwrap();
-    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -120,10 +123,10 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     Type resultType = type_;
     var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
     var payloadDesc =
-        compilerxyz.eval.dynamic.SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
+        SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
     var ctorDesc =
-        compilerxyz.eval.dynamic.JavaMethodDescriptor.fromParts(
-            compilerxyz.eval.dynamic.JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
+        JavaMethodDescriptor.fromParts(
+            JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
     var seq = new JavaBytecodeSequence();
     seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
     seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
@@ -175,7 +178,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -193,7 +196,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

@@ -29,6 +29,9 @@ import java.util.stream.Stream;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import compilerxyz.codegen.util.BuiltinMethodEmit.Method;
 import compilerxyz.codegen.util.BuiltinMethodEmit.Param;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import compilerxyz.codegen.util.NameDerivation;
+import java.util.HashSet;
 
 public final class JavaAspectExtractor {
   private JavaAspectExtractor() {}
@@ -134,12 +137,12 @@ public final class JavaAspectExtractor {
     var methods = new TList<Method>();
     for (var m : ifaceDecl.getMethods()) {
       if (!m.isAbstract()) continue;
-      var sourceName = compilerxyz.codegen.util.NameDerivation.snakeCase(
+      var sourceName = NameDerivation.snakeCase(
           deriveSourceName(m.getNameAsString(), simpleName));
       var params = new TList<Param>();
       for (var p : m.getParameters()) {
         params.add(new Param(
-            compilerxyz.codegen.util.NameDerivation.snakeCase(stripReservedSuffix(p.getNameAsString())),
+            NameDerivation.snakeCase(stripReservedSuffix(p.getNameAsString())),
             typeNameOf(p.getType(), effectiveImports, pkg)));
       }
       methods.add(new Method(
@@ -189,12 +192,12 @@ public final class JavaAspectExtractor {
     var importMap = buildImportMap(cu);
     var dataFields = new TList<BuiltinInterfacesGen.DataField>();
     var methods = new TList<Method>();
-    var recordComponentNames = new java.util.HashSet<String>();
+    var recordComponentNames = new HashSet<String>();
     for (var comp : recDecl.getParameters()) {
       var compName = comp.getNameAsString();
       recordComponentNames.add(compName);
       dataFields.add(new BuiltinInterfacesGen.DataField(
-          compilerxyz.codegen.util.NameDerivation.snakeCase(compName),
+          NameDerivation.snakeCase(compName),
           compName,
           typeNameOf(comp.getType(), importMap, pkg)));
     }
@@ -202,7 +205,7 @@ public final class JavaAspectExtractor {
       if (m.isStatic()) continue;
       if (!m.getParameters().isEmpty()) continue;
       if (recordComponentNames.contains(m.getNameAsString())) continue;
-      var sourceName = compilerxyz.codegen.util.NameDerivation.snakeCase(m.getNameAsString());
+      var sourceName = NameDerivation.snakeCase(m.getNameAsString());
       methods.add(new Method(
           sourceName,
           m.getNameAsString(),
@@ -293,7 +296,7 @@ public final class JavaAspectExtractor {
   }
 
   private static AnnotationExpr requireAnnotation(
-      com.github.javaparser.ast.nodeTypes.NodeWithAnnotations<?> node, String name) {
+      NodeWithAnnotations<?> node, String name) {
     return node.getAnnotationByName(name)
         .orElseThrow(() -> new IllegalStateException("Missing @" + name));
   }

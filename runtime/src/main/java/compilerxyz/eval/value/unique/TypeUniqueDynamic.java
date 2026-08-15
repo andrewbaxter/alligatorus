@@ -70,6 +70,8 @@ import compilerxyz.eval.EvalContext;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6003L)
 public record TypeUniqueDynamic()
@@ -108,7 +110,7 @@ public record TypeUniqueDynamic()
         || key.equals(GenAspectConsumeDynamic.AspectId)
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectElementUseDynamicBind.AspectId)
         || key.equals(GenAspectOperatorEq.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectLift.AspectId)
@@ -270,12 +272,12 @@ public record TypeUniqueDynamic()
 
   @Override
   public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.bindViaTarget(xx, loc, cv);
+    return DynUtil.bindViaTarget(xx, loc, cv);
   }
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+    return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
   }
 
   @Override
@@ -285,19 +287,19 @@ public record TypeUniqueDynamic()
 
   @Override
   public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-    return compilerxyz.eval.dynamic.DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
   }
 
   @Override
   public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.bindDynamicDefault(xx, loc, cv);
+    return DynUtil.bindDynamicDefault(xx, loc, cv);
   }
 
   @Override
   public EResult<Value> aspectLiftLift(
       ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var u = compilerxyz.util.MustCast.mustCast(Unique.class, externalHostValue.optUnwrap());
+    var u = MustCast.mustCast(Unique.class, externalHostValue.optUnwrap());
     return EResult.ok(new ValueObjectConst(new TypeUniqueConst(), u));
   }
 
@@ -391,11 +393,11 @@ public record TypeUniqueDynamic()
   }
 
   @Override
-  public compilerxyz.eval.EResult<Code> aspectDropDynamicLightDropDynamicLight(
+  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override

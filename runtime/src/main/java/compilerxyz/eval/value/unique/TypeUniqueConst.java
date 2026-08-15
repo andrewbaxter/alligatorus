@@ -34,6 +34,8 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6148L)
 public record TypeUniqueConst()
@@ -89,7 +91,7 @@ public record TypeUniqueConst()
     if (hostValue instanceof ValueObjectConst wrap) {
       hostValue = wrap.data();
     }
-    var u = compilerxyz.util.MustCast.mustCast(Unique.class, hostValue);
+    var u = MustCast.mustCast(Unique.class, hostValue);
     var key = new JavaBytecodeBindingKey();
     var id = new BindingId.Local(key);
     xx.vx.externals.add(
@@ -149,7 +151,7 @@ public record TypeUniqueConst()
   @Override
   public EResult<Code> aspectDropDynamicLightDropDynamicLight(
       ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
   @Override

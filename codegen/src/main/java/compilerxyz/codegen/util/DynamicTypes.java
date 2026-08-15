@@ -6,6 +6,7 @@ import com.squareup.javapoet.TypeName;
 import compilerxyz.util.TMap;
 import java.util.HashMap;
 import java.util.Map;
+import com.squareup.javapoet.ParameterizedTypeName;
 
 /**
  * Runtime {@code Type}-descriptor lookup for codegen. The <em>descriptor
@@ -171,7 +172,7 @@ public final class DynamicTypes {
               + " params, got "
               + params.length);
     }
-    return com.squareup.javapoet.ParameterizedTypeName.get((ClassName) spec.valueClass(), params);
+    return ParameterizedTypeName.get((ClassName) spec.valueClass(), params);
   }
 
   private static CompositeEntry compositeEntry(ClassName wrapper) {

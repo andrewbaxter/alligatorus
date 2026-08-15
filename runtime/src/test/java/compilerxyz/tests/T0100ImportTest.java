@@ -317,7 +317,7 @@ public final class T0100ImportTest {
                         methodImpl(2)),
                     interfaceImpl("aspect_lift"))),
             jsonField("compiled_binary_name", jsonObj(jsonField("some", jsonStr("SourceObject$0_0_0_0")))),
-            jsonField("compiled_bytecode", jsonStr("BYTECODE"))),
+            jsonField("compiled_bytecode", jsonObj(jsonField("some", jsonStr("BYTECODE"))))),
         Helpers.jsonRedacted(objArt.data()));
     var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");
     assertEquals(

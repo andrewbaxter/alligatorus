@@ -11,6 +11,6 @@ public record TargetCase(
     BindingId.Local payloadBinding,
     CodeValue body) {
   public static Type dynamicType() {
-    return compilerxyz.gen.GenType.dynamicType();
+    return GenType.dynamicType();
   }
 }

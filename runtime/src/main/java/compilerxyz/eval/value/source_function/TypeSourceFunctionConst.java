@@ -64,6 +64,12 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.eval.Eval;
+import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
@@ -84,7 +90,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
   @Override
   public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-    return compilerxyz.eval.dynamic.DynUtil.dropDefault(xx, loc, cv);
+    return DynUtil.dropDefault(xx, loc, cv);
   }
 
 
@@ -103,8 +109,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     if (key.equals(GenAspectArtifact.AspectId)
         || key.equals(GenAspectBind.AspectId)
         || key.equals(GenAspectBindDynamic.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectDropDynamicLight.AspectId)
-        || key.equals(compilerxyz.gen.GenAspectInitialBind.AspectId)
+        || key.equals(GenAspectDropDynamicLight.AspectId)
+        || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectFunction.AspectId)
         || key.equals(GenAspectType.AspectId)) {
       return Opt.some(this);
@@ -212,7 +218,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                         externalsRes.valueOrNull() != null
                             ? externalsRes.requireValue(
                                 "TypeSourceFunctionConst::exporterExport externals")
-                            : compilerxyz.util.TList.<ArtifactExternal>of();
+                            : TList.<ArtifactExternal>of();
                     var body =
                         new ArtifactDataDefSetFunction(
                             defSetArt,
@@ -289,7 +295,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                       var defSetVal =
                           defSetAny.requireValue(
                               "TypeSourceFunctionConst::finalizer defSet artifact");
-                      var set = compilerxyz.util.MustCast.mustCast(DefinitionSet.class, defSetVal);
+                      var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                       funcData.initSetReflectively(set);
                       var argRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
@@ -347,11 +353,11 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     var argType = data.argType.optUnwrap();
     var retType = data.retType;
     var klass =
-        compilerxyz.eval.dynamic.JavaInternalName.of(
-            compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
+        JavaInternalName.of(
+            DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
     var methodName =
-        compilerxyz.eval.dynamic.DefSetFunctionsEmitter.functionMethodName(data.funcIdx);
-    var convertedRes = compilerxyz.eval.Eval.typecheckConvert(xx, loc, argType, argument);
+        DefSetFunctionsEmitter.functionMethodName(data.funcIdx);
+    var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
     var argCodesRes = DynUtil.destructurePositional(xx, loc, argType, converted);
@@ -376,7 +382,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
     }
     var retStackRes =
-        compilerxyz.gen.GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
+        GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
     if (retStackRes.hasErrors()) return retStackRes.reerr();
     return EResult.ok(
         retStackRes
@@ -443,7 +449,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -461,7 +467,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }

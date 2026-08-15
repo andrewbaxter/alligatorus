@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import javax.lang.model.element.Modifier;
+import java.util.Comparator;
 
 public final class DynamicTypesGen {
   private DynamicTypesGen() {}
@@ -34,7 +35,7 @@ public final class DynamicTypesGen {
             .addParameter(String.class, "name");
     var names = new ArrayList<ClassName>();
     for (var e : scannedLeaves.entrySet()) names.add(e.getKey());
-    names.sort(java.util.Comparator.comparing(ClassName::reflectionName));
+    names.sort(Comparator.comparing(ClassName::reflectionName));
     method.beginControlFlow("switch (name)");
     for (var cn : names) {
       method.addStatement(

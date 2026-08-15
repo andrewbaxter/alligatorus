@@ -2,5 +2,6 @@
 module compilerxyz.util {
     requires transitive org.jspecify;
 
+    exports compilerxyz.annotations;
     exports compilerxyz.util;
 }

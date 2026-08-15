@@ -2,6 +2,7 @@ package compilerxyz.eval.value.option;
 
 import compilerxyz.eval.aspect.AspectLookup;
 
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
@@ -108,7 +109,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
       return EResult.errs(erb.errors());
     }
     var converted = convertedOpt.optUnwrap();
-    var consumeRes = compilerxyz.gen.GenAspectConsumeDynamic.get(xx, loc, underlyingType);
+    var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
     if (consumeRes.hasErrors()) return consumeRes.reerr();
     var underlyingJsRes =
         consumeRes
@@ -118,7 +119,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     var underlyingJs =
         underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
 
-    Type resultType = new TypeOptionDynamic(compilerxyz.eval.dynamic.DynUtil.substituteBoxed(xx, elementType));
+    Type resultType = new TypeOptionDynamic(DynUtil.substituteBoxed(xx, elementType));
     CodeDynamic newOpt;
     if (isSome) {
       newOpt =
@@ -129,15 +130,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
                   TList.of(JvmConstants.DESC_OBJECT)),
               underlyingJs);
     } else {
-      newOpt =
-          JavaBytecodeUtils.callStaticInterfaceMethod(
-              new Some(loc),
-              JavaInternalName.fromClass(Opt.class),
-              "none",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.fromClass(Opt.class)),
-                  TList.of()));
+      newOpt = JavaBytecodeUtils.callStaticMethod(new Some(loc), GenCodegenDescriptors.OPT_NONE);
     }
     return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newOpt, resultType, 1));
   }
@@ -158,7 +151,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
   }
 
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
   }
   @Override
@@ -176,7 +169,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
     return false;
   }
   @Override
-  public compilerxyz.eval.EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
   }
 }
