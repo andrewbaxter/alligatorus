@@ -696,8 +696,8 @@ var exprs = new TList<SourceExpr>();
                                 mb.evalAspectLookup(),
                                 mb.tupleOf(
                                     mb.call(
-                                        mb.field(mb.scopeUse("arg_value"), mb.str("type")),
-                                        mb.tupleOf()),
+                                        mb.field(mb.evalValue(), mb.str("type")),
+                                        mb.scopeUse("arg_value")),
                                     mb.lower(
                                         mb.field(
                                             mb.scopeUse("aspect_consume_nodejs"),
@@ -711,10 +711,17 @@ var exprs = new TList<SourceExpr>();
                                         mb.field(mb.scopeUse("acn_opt"), mb.str("is_some")),
                                         mb.call(
                                             mb.field(
+                                                mb.lower(
+                                                    mb.field(
+                                                        mb.scopeUse("aspect_consume_nodejs"),
+                                                        mb.str("type"))),
+                                                mb.str("to_code")),
+                                            mb.tupleOf(
                                                 mb.field(
                                                     mb.scopeUse("acn_opt"), mb.str("value")),
-                                                mb.str("to_code")),
-                                            mb.field(mb.scopeUse("arg"), mb.str("argument"))))),
+                                                mb.field(
+                                                    mb.scopeUse("arg"),
+                                                    mb.str("argument")))))),
                                 Opt.some(mb.call(
                                     mb.lower(
                                         mb.field(mb.scopeUse("code"), mb.str("lit_str"))),

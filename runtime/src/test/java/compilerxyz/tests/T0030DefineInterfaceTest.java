@@ -22,7 +22,7 @@ public final class T0030DefineInterfaceTest {
         new SourceModule.V1(
             mb.seqOf(
                 mb.bind(
-                    "make_upper",
+                    "defs",
                     mb.lower(
                         mb.seqOf(
                             mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
@@ -221,13 +221,21 @@ public final class T0030DefineInterfaceTest {
                                                                         mb.str("toUpperCase")),
                                                                     mb.tupleOf())))))))))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                            mb.return_(mb.field(mb.scopeUse("ndr"), mb.str("new")))))),
+                            mb.return_(mb.recordOf(
+                                TList.of(
+                                    new TestMb.RecordPair(
+                                        "iface", mb.field(mb.scopeUse("iface"), mb.str("type"))),
+                                    new TestMb.RecordPair(
+                                        "upper", mb.field(mb.scopeUse("ndr"), mb.str("new"))))))))),
+                mb.bind("make_upper", mb.field(mb.scopeUse("defs"), mb.str("upper"))),
                 mb.bind("val", mb.call(mb.scopeUse("make_upper"), mb.str("hello"))),
                 mb.call(
                     mb.log(),
                     mb.call(
-                        mb.field(mb.scopeUse("val"), mb.str("to_string")),
-                        mb.tupleOf())))));
+                        mb.field(
+                            mb.field(mb.scopeUse("defs"), mb.str("iface")),
+                            mb.str("to_string")),
+                        mb.tupleOf(mb.scopeUse("val"), mb.tupleOf()))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
@@ -466,9 +474,14 @@ public final class T0030DefineInterfaceTest {
                                                     mb.log(),
                                                     mb.call(
                                                         mb.field(
-                                                            mb.scopeUse("arg"),
+                                                            mb.lower(
+                                                                mb.field(
+                                                                    mb.scopeUse("iface"),
+                                                                    mb.str("type"))),
                                                             mb.str("to_string")),
-                                                        mb.tupleOf()))))))),
+                                                        mb.tupleOf(
+                                                            mb.scopeUse("arg"),
+                                                            mb.tupleOf())))))))),
                             mb.call(
                                 mb.field(mb.scopeUse("d"), mb.str("finish")),
                                 mb.tupleOf()),

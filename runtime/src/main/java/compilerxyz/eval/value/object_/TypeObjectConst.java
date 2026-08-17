@@ -28,7 +28,9 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.value.source_interface.TypeInterfaceMethodBuiltin;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
@@ -369,6 +371,41 @@ public record TypeObjectConst(
         }
         case Result.Err<ConstKey, String> ignored -> {}
       }
+    }
+    if (inner instanceof TypeObjectDynamic tod && tod.interfaceRepresented().optIsSome()) {
+      if (key.value().optIsNone()) {
+        return EResult.err(loc, typeDesc() + "::field: key has no compile-time value");
+      }
+      var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+      ConstKey ck;
+      switch (ckRes) {
+        case Result.Ok<ConstKey, String> ok -> ck = ok.value();
+        case Result.Err<ConstKey, String> e -> { return EResult.err(loc, e.error()); }
+      }
+      ConstKey.Str keyStr;
+      switch (ck) {
+        case ConstKey.Str s -> keyStr = s;
+        case ConstKey.Uint u -> {
+          return EResult.err(
+              loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
+        }
+      }
+      var keyName = keyStr.value();
+      for (var m : tod.methods()) {
+        if (m.langName().equals(keyName)) {
+          if (!(m.funcType() instanceof TypeMethodDynamic mt)) {
+            return EResult.err(
+                loc,
+                typeDesc() + "::field: interface method '" + keyName
+                    + "' funcType is not TypeMethodDynamic");
+          }
+          var refType = new TypeInterfaceMethodBuiltin(tod, keyName, mt);
+          return EResult.ok(
+              new CodeValue(
+                  self.code(), EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
+        }
+      }
+      return EResult.err(loc, "Method '" + keyName + "' not found on interface");
     }
     var asp = GenAspectField.get(xx, loc, inner);
     if (asp.hasErrors()) return asp.reerr();

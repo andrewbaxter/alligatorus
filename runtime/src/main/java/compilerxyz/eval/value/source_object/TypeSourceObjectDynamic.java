@@ -312,23 +312,6 @@ public final class TypeSourceObjectDynamic
       }
     }
     if (fieldName == null) {
-      outer:
-      for (int implIdx = 0; implIdx < interfaceImpls.size(); implIdx++) {
-        var impl = interfaceImpls.get(implIdx);
-        for (int mIdx = 0; mIdx < impl.interface_.methods.size(); mIdx++) {
-          var method = impl.interface_.methods.get(mIdx);
-          if (method.name.equals(keyName)) {
-            argType = method.argType;
-            retType = method.retType;
-            fieldName =
-                SourceObjectEmitter.interfaceMethodMethodName(
-                    implIdx, mIdx);
-            break outer;
-          }
-        }
-      }
-    }
-    if (fieldName == null) {
       return EResult.err(
           loc,
           "TypeSourceObjectDynamic::field: field '"

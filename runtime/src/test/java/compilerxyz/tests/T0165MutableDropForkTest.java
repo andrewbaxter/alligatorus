@@ -57,7 +57,8 @@ public final class T0165MutableDropForkTest {
 
   private static SourceExpr delegateNull(TestMb mb, SourceExpr underlying, SourceExpr aspectRef, String methodName) {
     return mb.call(
-        mb.field(
+        mb.field(aspectRef, mb.str(methodName)),
+        mb.tupleOf(
             mb.field(
                 mb.call(
                     mb.evalAspectLookup(),
@@ -66,24 +67,23 @@ public final class T0165MutableDropForkTest {
                         aspectRef,
                         mb.field(mb.scopeUse("arg"), mb.str("xx")))),
                 mb.str("value")),
-            mb.str(methodName)),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))));
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                    new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))));
   }
 
   private static SourceExpr delegateNullXxOnly(TestMb mb, SourceExpr underlying, SourceExpr aspectRef, String methodName) {
     return mb.call(
-        mb.field(
+        mb.field(aspectRef, mb.str(methodName)),
+        mb.tupleOf(
             mb.field(
                 mb.call(
                     mb.evalAspectLookup(),
                     mb.tupleOf(underlying, aspectRef, mb.scopeUse("arg"))),
                 mb.str("value")),
-            mb.str(methodName)),
-        mb.scopeUse("arg"));
+            mb.scopeUse("arg")));
   }
 
 
@@ -417,11 +417,13 @@ public final class T0165MutableDropForkTest {
                                                     "int_use_cv_",
                                                     mb.call(
                                                         mb.field(
+                                                            mb.evalBinding(),
+                                                            mb.str("use")),
+                                                        mb.tupleOf(
                                                             mb.field(
                                                                 mb.scopeUse("inner"),
                                                                 mb.str("int")),
-                                                            mb.str("use")),
-                                                        mb.recordOf(
+                                                            mb.recordOf(
                                                             TList.of(
                                                                 new TestMb.RecordPair(
                                                                     "xx",
@@ -444,7 +446,7 @@ public final class T0165MutableDropForkTest {
                                                                     "code",
                                                                     mb.field(
                                                                         mb.scopeUse("arg"),
-                                                                        mb.str("code"))))))),
+                                                                        mb.str("code")))))))),
                                                 mb.return_(
                                             mb.call(
                                                 mb.evalCodevalue(),
@@ -670,8 +672,8 @@ public final class T0165MutableDropForkTest {
                             mb.bind(
                                 "val_type_obj_",
                                 mb.call(
-                                    mb.field(mb.scopeUse("val_"), mb.str("type")),
-                                    mb.tupleOf())),
+                                    mb.field(mb.evalValue(), mb.str("type")),
+                                    mb.scopeUse("val_"))),
                             mb.bind(
                                 "int_aspect_opt_",
                                 mb.call(
@@ -683,13 +685,15 @@ public final class T0165MutableDropForkTest {
                             mb.bind(
                                 "int_dynamic_opt_",
                                 mb.call(
-                                    mb.field(mb.scopeUse("val_type_obj_"), mb.str("aspect")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "key", mb.evalTypeLongDynamicIdentity()))))),
+                                    mb.field(mb.evalType(), mb.str("aspect")),
+                                    mb.tupleOf(
+                                        mb.scopeUse("val_type_obj_"),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                new TestMb.RecordPair(
+                                                    "key", mb.evalTypeLongDynamicIdentity())))))),
                             mb.return_(
                                 mb.ifOf(
                                     TList.of(
@@ -703,25 +707,27 @@ public final class T0165MutableDropForkTest {
                                                     mb.field(
                                                         mb.call(
                                                             mb.field(
-                                                                mb.typesLong(),
+                                                                mb.evalType(),
                                                                 mb.str("cast_from")),
-                                                            mb.recordOf(
-                                                                TList.of(
-                                                                    new TestMb.RecordPair(
-                                                                        "xx",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("xx"))),
-                                                                    new TestMb.RecordPair(
-                                                                        "loc",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("loc"))),
-                                                                    new TestMb.RecordPair(
-                                                                        "cv",
-                                                                        mb.field(
-                                                                            mb.scopeUse("arg"),
-                                                                            mb.str("cv")))))),
+                                                            mb.tupleOf(
+                                                                mb.typesLong(),
+                                                                mb.recordOf(
+                                                                    TList.of(
+                                                                        new TestMb.RecordPair(
+                                                                            "xx",
+                                                                            mb.field(
+                                                                                mb.scopeUse("arg"),
+                                                                                mb.str("xx"))),
+                                                                        new TestMb.RecordPair(
+                                                                            "loc",
+                                                                            mb.field(
+                                                                                mb.scopeUse("arg"),
+                                                                                mb.str("loc"))),
+                                                                        new TestMb.RecordPair(
+                                                                            "cv",
+                                                                            mb.field(
+                                                                                mb.scopeUse("arg"),
+                                                                                mb.str("cv"))))))),
                                                         mb.str("value"))),
                                                 mb.return_(mb.call(
             mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("ok")),
@@ -749,12 +755,14 @@ public final class T0165MutableDropForkTest {
                                                             mb.operatorMod(
                                                                 mb.call(
                                                                     mb.field(
+                                                                        mb.evalAspectInt(),
+                                                                        mb.str("get")),
+                                                                    mb.tupleOf(
                                                                         mb.field(
                                                                             mb.scopeUse(
                                                                                 "int_aspect_opt_"),
                                                                             mb.str("value")),
-                                                                        mb.str("get")),
-                                                                    mb.scopeUse("val_")),
+                                                                        mb.scopeUse("val_"))),
                                                                 mb.as_(mb.num(2.0), mb.typesLong()))))))),
                                         new TestMb.RecordPair(
                                             "source",
@@ -867,7 +875,8 @@ public final class T0165MutableDropForkTest {
                                         new TestMb.RecordPair(
                                             "bind", mb.seqOf(
         mb.bind("int_bind_er", mb.call(
-            mb.field(
+            mb.field(mb.evalAspectBind(), mb.str("bind")),
+            mb.tupleOf(
                 mb.field(
                     mb.call(
                         mb.evalAspectLookup(),
@@ -876,12 +885,11 @@ public final class T0165MutableDropForkTest {
                             mb.evalAspectBind(),
                             mb.field(mb.scopeUse("arg"), mb.str("xx")))),
                     mb.str("value")),
-                mb.str("bind")),
-            mb.recordOf(
-                TList.of(
-                    new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                    new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                    new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))),
+                mb.recordOf(
+                    TList.of(
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                        new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))))),
         mb.bind("int_bind_res", mb.field(mb.scopeUse("int_bind_er"), mb.str("value"))),
         mb.bind("int_code", mb.field(mb.scopeUse("int_bind_res"), mb.str("code"))),
         mb.bind("int_binding", mb.field(mb.scopeUse("int_bind_res"), mb.str("binding"))),
@@ -938,7 +946,8 @@ public final class T0165MutableDropForkTest {
                                         new TestMb.RecordPair(
                                             "bind_dynamic",
                                             mb.call(
-        mb.field(
+        mb.field(mb.evalAspectBindDynamic(), mb.str("bind_dynamic")),
+        mb.tupleOf(
             mb.field(
                 mb.call(
                     mb.evalAspectLookup(),
@@ -947,12 +956,11 @@ public final class T0165MutableDropForkTest {
                         mb.evalAspectBindDynamic(),
                         mb.field(mb.scopeUse("arg"), mb.str("xx")))),
                 mb.str("value")),
-            mb.str("bind_dynamic")),
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))))))))),
+            mb.recordOf(
+                TList.of(
+                    new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                    new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                    new TestMb.RecordPair("cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))))))))))),
                 mb.call(
                     mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                     mb.recordOf(
@@ -968,7 +976,8 @@ public final class T0165MutableDropForkTest {
                                             "drop", mb.seqOf(
         mb.bind("underlying_code_", mb.field(
             mb.call(
-                mb.field(
+                mb.field(mb.evalAspectDropDynamicLight(), mb.str("drop_dynamic_light")),
+                mb.tupleOf(
                     mb.field(
                         mb.call(
                             mb.evalAspectLookup(),
@@ -977,15 +986,14 @@ public final class T0165MutableDropForkTest {
                                 mb.evalAspectDropDynamicLight(),
                                 mb.field(mb.scopeUse("arg"), mb.str("xx")))),
                         mb.str("value")),
-                    mb.str("drop_dynamic_light")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair(
-                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair(
-                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "cv", mb.field(mb.scopeUse("arg"), mb.str("cv")))))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair(
+                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                            new TestMb.RecordPair(
+                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                            new TestMb.RecordPair(
+                                "cv", mb.field(mb.scopeUse("arg"), mb.str("cv"))))))),
             mb.str("value"))),
         mb.return_(
             mb.ifOf(
@@ -1036,13 +1044,15 @@ public final class T0165MutableDropForkTest {
         mb.bind(
             "conv_er_",
             mb.call(
-                mb.field(mb.scopeUse("outer"), mb.str("cast_from")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "cv", mb.field(mb.scopeUse("arg"), mb.str("value"))))))),
+                mb.field(mb.evalType(), mb.str("cast_from")),
+                mb.tupleOf(
+                    mb.scopeUse("outer"),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                            new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                            new TestMb.RecordPair(
+                                "cv", mb.field(mb.scopeUse("arg"), mb.str("value")))))))),
         mb.return_(
             mb.ifOf(
                 TList.of(
@@ -1059,16 +1069,14 @@ public final class T0165MutableDropForkTest {
                                     mb.mustReinterpret(),
                                     mb.tupleOf(
                                         mb.call(
+                                            mb.field(mb.evalValue(), mb.str("type")),
                                             mb.field(
-                                                mb.field(
-                                                    mb.call(
-                                                        mb.field(
-                                                            mb.scopeUse("conv_cv_"),
-                                                            mb.str("value")),
-                                                        mb.tupleOf()),
-                                                    mb.str("value")),
-                                                mb.str("type")),
-                                            mb.tupleOf()),
+                                                mb.call(
+                                                    mb.field(
+                                                        mb.scopeUse("conv_cv_"),
+                                                        mb.str("value")),
+                                                    mb.tupleOf()),
+                                                mb.str("value"))),
                                         mb.lower(mb.scopeUse("u_type")))),
                                 mb.str("get_parity")),
                             mb.literalNull())),
@@ -1122,28 +1130,31 @@ public final class T0165MutableDropForkTest {
                                                                 mb.str("setter")))))))))),
                             mb.call(
                                 mb.field(
+                                    mb.builtin("eval", "binding_setter"),
+                                    mb.str("set")),
+                                mb.tupleOf(
                                     mb.field(
                                         mb.field(
                                             mb.field(mb.scopeUse("sv"), mb.str("state")),
                                             mb.str("setter")),
                                         mb.str("value")),
-                                    mb.str("set")),
-                                mb.recordOf(
-                                    TList.of(
-                                        new TestMb.RecordPair(
-                                            "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                        new TestMb.RecordPair(
-                                            "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                        new TestMb.RecordPair(
-                                            "new_binding", mb.scopeUse("new_binding_")),
-                                        new TestMb.RecordPair(
-                                            "drop_modified",
-                                            mb.as_(
-                                                mb.operatorEq(mb.num(1.0), mb.num(1.0)),
-                                                mb.typesBool()))))),
+                                    mb.recordOf(
+                                        TList.of(
+                                            new TestMb.RecordPair(
+                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                            new TestMb.RecordPair(
+                                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                            new TestMb.RecordPair(
+                                                "new_binding", mb.scopeUse("new_binding_")),
+                                            new TestMb.RecordPair(
+                                                "drop_modified",
+                                                mb.as_(
+                                                    mb.operatorEq(mb.num(1.0), mb.num(1.0)),
+                                                    mb.typesBool())))))),
                             mb.return_(
                                 mb.call(
-                                    mb.field(
+                                    mb.field(mb.evalAspectSet(), mb.str("set")),
+                                    mb.tupleOf(
                                         mb.field(
                                             mb.call(
                                                 mb.evalAspectLookup(),
@@ -1153,8 +1164,7 @@ public final class T0165MutableDropForkTest {
                                                     mb.field(
                                                         mb.scopeUse("arg"), mb.str("xx")))),
                                             mb.str("value")),
-                                        mb.str("set")),
-                                    mb.recordOf(
+                                        mb.recordOf(
                                         TList.of(
                                             new TestMb.RecordPair(
                                                 "xx",
@@ -1165,11 +1175,11 @@ public final class T0165MutableDropForkTest {
                                             new TestMb.RecordPair(
                                                 "self",
                                                 mb.call(
-                                                    mb.field(
+                                                    mb.field(mb.evalBinding(), mb.str("use")),
+                                                    mb.tupleOf(
                                                         mb.field(
                                                             mb.scopeUse("sv"), mb.str("int")),
-                                                        mb.str("use")),
-                                                    mb.recordOf(
+                                                        mb.recordOf(
                                                         TList.of(
                                                             new TestMb.RecordPair(
                                                                 "xx",
@@ -1194,9 +1204,9 @@ public final class T0165MutableDropForkTest {
                                                                     mb.field(
                                                                         mb.scopeUse("arg"),
                                                                         mb.str("self")),
-                                                                    mb.str("code"))))))),
+                                                                    mb.str("code")))))))),
                                             new TestMb.RecordPair(
-                                                "value", mb.scopeUse("conv_cv_"))))))))),
+                                                "value", mb.scopeUse("conv_cv_")))))))))),
                 Opt.some(mb.call(
                     mb.field(mb.call(mb.typesEresult(), mb.typesCve()), mb.str("err")),
                     mb.tupleOf(
@@ -1217,7 +1227,8 @@ public final class T0165MutableDropForkTest {
         mb.bind(
             "sum_er_",
             mb.call(
-                mb.field(
+                mb.field(mb.evalOperatorAdd(), mb.str("add")),
+                mb.tupleOf(
                     mb.field(
                         mb.call(
                             mb.evalAspectLookup(),
@@ -1226,29 +1237,30 @@ public final class T0165MutableDropForkTest {
                                 mb.evalOperatorAdd(),
                                 mb.field(mb.scopeUse("arg"), mb.str("xx")))),
                         mb.str("value")),
-                    mb.str("add")),
-                mb.recordOf(
-                    TList.of(
-                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                        new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                        new TestMb.RecordPair(
-                            "base", mb.field(mb.scopeUse("arg"), mb.str("base"))),
-                        new TestMb.RecordPair(
-                            "reference",
-                            mb.field(
-                                mb.call(
-                                    mb.field(mb.typesLong(), mb.str("cast_from")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
-                                            new TestMb.RecordPair(
-                                                "cv",
-                                                mb.field(
-                                                    mb.scopeUse("arg"), mb.str("reference")))))),
-                                mb.str("value"))))))),
+                    mb.recordOf(
+                        TList.of(
+                            new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                            new TestMb.RecordPair("loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                            new TestMb.RecordPair(
+                                "base", mb.field(mb.scopeUse("arg"), mb.str("base"))),
+                            new TestMb.RecordPair(
+                                "reference",
+                                mb.field(
+                                    mb.call(
+                                        mb.field(mb.evalType(), mb.str("cast_from")),
+                                        mb.tupleOf(
+                                            mb.typesLong(),
+                                            mb.recordOf(
+                                                TList.of(
+                                                    new TestMb.RecordPair(
+                                                        "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                    new TestMb.RecordPair(
+                                                        "loc", mb.field(mb.scopeUse("arg"), mb.str("loc"))),
+                                                    new TestMb.RecordPair(
+                                                        "cv",
+                                                        mb.field(
+                                                            mb.scopeUse("arg"), mb.str("reference"))))))),
+                                    mb.str("value")))))))),
         mb.bind("sum_cv_", mb.field(mb.scopeUse("sum_er_"), mb.str("value"))),
         mb.bind(
             "ref_opt_",
@@ -1266,8 +1278,8 @@ public final class T0165MutableDropForkTest {
                             mb.bind(
                                 "ref_type_obj_",
                                 mb.call(
-                                    mb.field(mb.scopeUse("ref_val_"), mb.str("type")),
-                                    mb.tupleOf())),
+                                    mb.field(mb.evalValue(), mb.str("type")),
+                                    mb.scopeUse("ref_val_"))),
                             mb.bind(
                                 "ref_int_aspect_opt_",
                                 mb.call(
@@ -1279,13 +1291,15 @@ public final class T0165MutableDropForkTest {
                             mb.bind(
                                 "ref_int_dynamic_opt_",
                                 mb.call(
-                                    mb.field(mb.scopeUse("ref_type_obj_"), mb.str("aspect")),
-                                    mb.recordOf(
-                                        TList.of(
-                                            new TestMb.RecordPair(
-                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                                            new TestMb.RecordPair(
-                                                "key", mb.evalTypeLongDynamicIdentity()))))),
+                                    mb.field(mb.evalType(), mb.str("aspect")),
+                                    mb.tupleOf(
+                                        mb.scopeUse("ref_type_obj_"),
+                                        mb.recordOf(
+                                            TList.of(
+                                                new TestMb.RecordPair(
+                                                    "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                new TestMb.RecordPair(
+                                                    "key", mb.evalTypeLongDynamicIdentity())))))),
                             mb.return_(
                                 mb.ifOf(
                                     TList.of(
@@ -1297,10 +1311,10 @@ public final class T0165MutableDropForkTest {
             mb.operatorAdd(
                 mb.field(mb.scopeUse("inner"), mb.str("parity")),
                 mb.call(
-                    mb.field(
+                    mb.field(mb.evalAspectInt(), mb.str("get")),
+                    mb.tupleOf(
                         mb.field(mb.scopeUse("ref_int_aspect_opt_"), mb.str("value")),
-                        mb.str("get")),
-                    mb.scopeUse("ref_val_"))),
+                        mb.scopeUse("ref_val_")))),
             mb.as_(mb.num(2.0), mb.typesLong())))),
                                         new TestMb.Branch(
                                             mb.field(

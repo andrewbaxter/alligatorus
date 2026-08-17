@@ -234,7 +234,8 @@ public record TypeObjectDynamic(
         || key.equals(GenAspectFieldUseDynamic.AspectId)) {
       return Opt.some(this);
     }
-    if ((!dataFields.isEmpty() || !methods.isEmpty()) && key.equals(GenAspectField.AspectId)) {
+    if ((!dataFields.isEmpty() || (!methods.isEmpty() && interfaceRepresented.optIsNone()))
+        && key.equals(GenAspectField.AspectId)) {
       return Opt.some(this);
     }
     if (aspectSource().optIsSome() && key.equals(GenAspectAspect.AspectId)) {
@@ -403,10 +404,12 @@ public record TypeObjectDynamic(
                 EvalOutcome.ofValue(ValueDynamic.stack(f.fieldType(), 1))));
       }
     }
-    for (var m : methods) {
-      if (m.langName().equals(keyStr)) {
-        return EResult.ok(
-            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(m.funcType(), 1))));
+    if (interfaceRepresented.optIsNone()) {
+      for (var m : methods) {
+        if (m.langName().equals(keyStr)) {
+          return EResult.ok(
+              new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(m.funcType(), 1))));
+        }
       }
     }
     return EResult.err(loc, typeDesc() + ": unknown field '" + keyStr);
@@ -423,8 +426,10 @@ public record TypeObjectDynamic(
     for (var f : dataFields) {
       if (f.langName().equals(name)) return Opt.some(f.fieldType());
     }
-    for (var m : methods) {
-      if (m.langName().equals(name)) return Opt.some(m.funcType());
+    if (interfaceRepresented.optIsNone()) {
+      for (var m : methods) {
+        if (m.langName().equals(name)) return Opt.some(m.funcType());
+      }
     }
     return Opt.none();
   }

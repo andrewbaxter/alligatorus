@@ -23,6 +23,8 @@ import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.tuple.Tuple;
+import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.AspectDropDynamic;
@@ -412,6 +414,48 @@ public final class DynUtil {
                         .aspectConsumeDynamicToDynamic(xx, loc, converted);
         if (argDyn.hasErrors()) return argDyn.reerr();
         return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
+    }
+
+    public record MethodRefArg(CodeValue receiver, CodeValue methodArgs) {}
+
+    /**
+     * Split a method-reference call argument into receiver and method arguments. A method
+     * with no arguments (empty-tuple arg signature) takes the receiver bare; a method with
+     * arguments takes a (receiver, args) 2-tuple. For the bare form the returned methodArgs
+     * is a synthesized unit value.
+     */
+    public static EResult<MethodRefArg> methodRefSplitArgument(
+            ExprContext xx, QExprId loc, Type argType, CodeValue argument, String desc) {
+        if (zeroArgSignature(xx, argType)) {
+            return EResult.ok(
+                    new MethodRefArg(
+                            argument,
+                            new CodeValue(
+                                    Code.none(loc),
+                                    EvalOutcome.ofValue(
+                                            new Tuple(Opt.none(), new TList<TupleElement>())))));
+        }
+        if (argument.value().optIsNone()) {
+            return EResult.err(loc, desc + ": argument has no compile-time value");
+        }
+        var argVal = argument.value().optUnwrap();
+        var tupleOpt = GenAspectTuple.getMaybe(xx, argVal.valueType());
+        if (tupleOpt.optIsNone()) {
+            return EResult.err(loc, desc + ": expected a (receiver, args) 2-tuple argument");
+        }
+        var elemCvs = tupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argVal);
+        if (elemCvs.size() != 2) {
+            return EResult.err(
+                    loc,
+                    desc + ": expected a (receiver, args) 2-tuple argument, got "
+                            + elemCvs.size() + " elements");
+        }
+        if (elemCvs.get(0).hasErrors()) return elemCvs.get(0).reerr();
+        if (elemCvs.get(1).hasErrors()) return elemCvs.get(1).reerr();
+        return EResult.ok(
+                new MethodRefArg(
+                        elemCvs.get(0).requireValue("DynUtil::methodRefSplitArgument receiver"),
+                        elemCvs.get(1).requireValue("DynUtil::methodRefSplitArgument args")));
     }
 
     private static EResult<TList<CodeDynamic>> destructureFromElements(

@@ -21,6 +21,7 @@ import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -84,11 +85,20 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
     var retType = method.retType;
     var ifaceInternalName = JavaInternalName.of(iface.compiledBinaryName.replace('.', '/'));
 
-    var selfDyn = self.code().codeDynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeInterfaceMethodDynamic::call: self has no dynamic code");
-    }
-    var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
+    var splitRes =
+        DynUtil.methodRefSplitArgument(
+            xx, loc, argType, argument, "interface method '" + method.name + "'");
+    if (splitRes.hasErrors()) return splitRes.reerr();
+    var split = splitRes.requireValue("TypeInterfaceMethodDynamic split");
+    var ifaceType = new TypeSourceInterfaceDynamic(iface);
+    var receiverRes = Eval.typecheckConvert(xx, loc, ifaceType, split.receiver());
+    if (receiverRes.hasErrors()) return receiverRes.reerr();
+    var receiverDynRes =
+        ifaceType.aspectConsumeDynamicToDynamic(
+            xx, loc, receiverRes.requireValue("TypeInterfaceMethodDynamic receiver"));
+    if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
+    var selfDyn = receiverDynRes.requireValue("TypeInterfaceMethodDynamic receiver toDynamic");
+    var convertedRes = Eval.typecheckConvert(xx, loc, argType, split.methodArgs());
     if (convertedRes.hasErrors()) return convertedRes.reerr();
     var converted = convertedRes.requireValue("TypeInterfaceMethodDynamic typecheckConvert");
     var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);

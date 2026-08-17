@@ -290,32 +290,34 @@ public final class TestMb extends ModuleBuilder {
 
   /**
    * Build a source expression that delegates a method call to an aspect on {@code underlying}.
-   * Emits: {@code aspect_lookup(underlying, aspectRef, arg.xx).value.<method>({argKeys: arg.argKeys...})}.
+   * Emits: {@code aspectRef.<method>((aspect_lookup(underlying, aspectRef, arg.xx).value,
+   * {argKeys: arg.argKeys...}))} — the interface-type method reference called with the
+   * looked-up aspect value as receiver (bare for no-arg methods).
    */
   public SourceExpr delegateAspect(
       SourceExpr underlying, SourceExpr aspectRef, String method, String... argKeys) {
     SourceExpr lookupXx;
-    SourceExpr callArg;
+    Opt<SourceExpr> callArg;
     if (argKeys.length == 0) {
       lookupXx = field(scopeUse("arg"), str("xx"));
-      callArg = tupleOf();
+      callArg = Opt.none();
     } else if (argKeys.length == 1) {
       lookupXx = scopeUse("arg");
-      callArg = scopeUse("arg");
+      callArg = Opt.some(scopeUse("arg"));
     } else {
       lookupXx = field(scopeUse("arg"), str("xx"));
       var args = new TList<RecordPair>(argKeys.length);
       for (var k : argKeys) {
         args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
       }
-      callArg = recordOf(args);
+      callArg = Opt.some(recordOf(args));
     }
-    return call(
+    var receiver =
         field(
-            field(
-                call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)),
-                str("value")),
-            str(method)),
-        callArg);
+            call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)),
+            str("value"));
+    return call(
+        field(aspectRef, str(method)),
+        callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
   }
 }

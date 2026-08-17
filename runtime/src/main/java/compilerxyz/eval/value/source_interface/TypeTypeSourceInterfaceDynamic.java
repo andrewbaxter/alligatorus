@@ -7,6 +7,7 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -43,6 +44,7 @@ import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.GenAspectLift;
@@ -157,7 +159,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return require("aspectConsumeDynamicJvmClass").aspectConsumeDynamicJvmClass(xx);
+    return JavaDataDescriptor.fromClass(TypeSourceInterfaceDynamic.class);
   }
 
   @Override
@@ -175,29 +177,69 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var type = require("aspectFieldField");
-    if (!self.code().codeIsNone()) {
-      return type.aspectFieldField(xx, loc, self, key);
+    if (key.value().optIsNone()) {
+      return EResult.err(
+          loc, "TypeTypeSourceInterfaceDynamic::field: key has no compile-time value");
     }
-    var selfCodeRes = type.aspectConsumeDynamicToDynamic(xx, loc, self);
-    if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
-    var selfCode = selfCodeRes.requireValue("TypeTypeSourceInterfaceDynamic::field toDynamic");
-    var selfDynamic =
-        new CodeValue(Code.of(loc, selfCode), EvalOutcome.ofValue(ValueDynamic.stack(type, 1)));
-    return type.aspectFieldField(xx, loc, selfDynamic, key);
+    var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+    ConstKey ck;
+    switch (ckRes) {
+      case Result.Ok<ConstKey, String> ok -> ck = ok.value();
+      case Result.Err<ConstKey, String> e -> { return EResult.err(loc, e.error()); }
+    }
+    ConstKey.Str keyStr;
+    switch (ck) {
+      case ConstKey.Str s -> keyStr = s;
+      case ConstKey.Uint u -> {
+        return EResult.err(
+            loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
+      }
+    }
+    var keyName = keyStr.value();
+    InterfaceMethodData match = null;
+    for (var m : type.data().methods) {
+      if (m.name.equals(keyName)) {
+        match = m;
+        break;
+      }
+    }
+    if (match == null) {
+      return EResult.err(loc, "Method '" + keyName + "' not found on interface");
+    }
+    var refType = new TypeInterfaceMethodDynamic(type.data(), match);
+    Code carry = self.code();
+    if (carry.codeDynamic() != null) {
+      var dropRes = DynUtil.dropDefault(xx, loc, self);
+      if (dropRes.hasErrors()) return dropRes.reerr();
+      var seq = new JavaBytecodeSequence();
+      seq.add(carry.codeDynamic());
+      var dropDyn = dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop").codeDynamic();
+      if (dropDyn != null) seq.add(dropDyn);
+      carry = Code.of(loc, new CodeDynamic(loc, seq));
+    }
+    return EResult.ok(
+        new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
   }
 
   @Override
   public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    if (type_.optIsSome()) {
-      return type_.optUnwrap().aspectFieldKeys(xx);
-    }
     return new TList<>();
   }
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    if (type_.optIsSome()) {
-      return type_.optUnwrap().aspectFieldTypeOpt(xx, key);
+    if (type_.optIsNone()) {
+      return Opt.none();
+    }
+    ConstKey.Str s;
+    switch (key) {
+      case ConstKey.Str ks -> s = ks;
+      case ConstKey.Uint u -> { return Opt.none(); }
+    }
+    for (var m : type_.optUnwrap().data().methods) {
+      if (m.name.equals(s.value())) {
+        return Opt.some(new TypeInterfaceMethodDynamic(type_.optUnwrap().data(), m));
+      }
     }
     return Opt.none();
   }
