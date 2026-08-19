@@ -34,6 +34,7 @@ import compilerxyz.gen.TargetBindSub;
 import compilerxyz.gen.TryCatchClause;
 import compilerxyz.gen.TupleBindSlot;
 import compilerxyz.gen.TargetCase;
+import compilerxyz.gen.TargetMatchFallback;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
@@ -430,7 +431,7 @@ public final class TargetDynamic implements Target {
       QExprId loc,
       CodeValue base,
       TList<TargetCase> cases,
-      Opt<CodeValue> fallback) {
+      Opt<TargetMatchFallback> fallback) {
     var erb = new Erb(loc);
     var baseDynOpt = cvToDynamic(erb, xx, loc, base);
     if (baseDynOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -504,7 +505,15 @@ public final class TargetDynamic implements Target {
       seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
     }
     if (fallback.optIsSome()) {
-      var fallbackCv = fallback.optUnwrap();
+      var fallbackCv = fallback.optUnwrap().body();
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
+      seq.add(
+          new CodeDynamic(
+              new CodeLoc.Some(loc),
+              new JavaBytecodeStoreLoad(
+                  Opcodes.ASTORE, fallback.optUnwrap().payloadBinding().key())));
       boolean fallbackControlEnded = fallbackCv.value().optIsNone();
       if (!fallbackControlEnded) allControlEnded = false;
       if (!fallbackControlEnded) {

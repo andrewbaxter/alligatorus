@@ -15,6 +15,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.gen.BindingSetter;
 import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
 
@@ -27,7 +28,11 @@ public sealed interface ValueDynamicSource
 
   Code valueDynamicSourceDrop(QExprId loc);
 
-  record Binding(BindingId key) implements ValueDynamicSource {
+  record Binding(BindingId key, Opt<BindingSetter> setter) implements ValueDynamicSource {
+    public Binding(BindingId key) {
+      this(key, Opt.<BindingSetter>none());
+    }
+
     @Override
     public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
       return BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, key);

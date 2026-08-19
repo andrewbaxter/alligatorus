@@ -117,13 +117,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     var underlyingJs = underlyingJsRes.requireValue("TypeSourceObjectNewDynamic::call toDynamic");
     Type resultType = type_;
 
-    var objectIndex = set.objects.indexOf(type_);
-    if (objectIndex < 0) {
-      return EResult.err(
-          loc,
-          "TypeSourceObjectNewDynamic::call: source object not registered in its owning def-set");
-    }
-    var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, objectIndex);
+    var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, type_.objIdx);
     var klass = JavaInternalName.of(objInternalName);
     var underlyingDesc =
         consumeRes

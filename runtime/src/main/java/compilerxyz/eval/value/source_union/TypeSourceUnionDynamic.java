@@ -15,17 +15,20 @@ import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.gen.AspectUnion;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.util.MustCast;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.eval.dynamic.DynUtil;
@@ -34,6 +37,7 @@ import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectSet;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectUnion;
 import compilerxyz.artifact.Artifact;
@@ -68,6 +72,7 @@ public final class TypeSourceUnionDynamic
         AspectDropDynamicLight,
         AspectElementUseDynamicBind,
         AspectInitialBind,
+        AspectSet,
         AspectStackValueDynamic,
         AspectUnion,
         MatchDynamic,
@@ -75,22 +80,22 @@ public final class TypeSourceUnionDynamic
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
+  public int unionIdx;
   public final Unique identity;
   public final Counter nextTagId;
   public final TList<SourceUnionVariant> variants;
-  public final ArtifactIdHolder artifactIdCell =
-      new ArtifactIdHolder();
-
-  public Opt<String> compiledBaseBinaryName = Opt.none();
-  public Opt<TList<String>> compiledVariantBinaryNames = Opt.none();
-  public Opt<byte[]> compiledBaseBytecode = Opt.none();
-  public Opt<TList<byte[]>> compiledVariantBytecode = Opt.none();
+  public final TList<Integer> active;
+  public final ArtifactIdHolder artifactIdCell;
+  public final SourceUnionCompiled compiled;
 
   public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
     this.set = set;
     this.identity = identity;
     this.nextTagId = new Counter();
     this.variants = new TList<>();
+    this.active = new TList<>();
+    this.artifactIdCell = new ArtifactIdHolder();
+    this.compiled = new SourceUnionCompiled();
   }
 
   @SuppressWarnings("NullAway")
@@ -99,6 +104,51 @@ public final class TypeSourceUnionDynamic
     this.identity = identity;
     this.nextTagId = new Counter();
     this.variants = new TList<>();
+    this.active = new TList<>();
+    this.artifactIdCell = new ArtifactIdHolder();
+    this.compiled = new SourceUnionCompiled();
+  }
+
+  private TypeSourceUnionDynamic(TypeSourceUnionDynamic base, TList<Integer> active) {
+    this.set = base.set;
+    this.unionIdx = base.unionIdx;
+    this.identity = base.identity;
+    this.nextTagId = base.nextTagId;
+    this.variants = base.variants;
+    this.active = active;
+    this.artifactIdCell = base.artifactIdCell;
+    this.compiled = base.compiled;
+  }
+
+  public TypeSourceUnionDynamic withActiveVariants(TList<Integer> newActive) {
+    var normalized = new TList<Integer>(newActive.size());
+    for (var i : newActive) {
+      if (!normalized.contains(i)) normalized.add(i);
+    }
+    normalized.sort(Integer::compareTo);
+    return new TypeSourceUnionDynamic(this, normalized);
+  }
+
+  /**
+   * The source union a type refers to, if any: a union instance carries its own active variant
+   * set; the const type-of-type resolves to its (all-active) union instance.
+   */
+  public static Opt<TypeSourceUnionDynamic> unionOf(ExprContext xx, Type t) {
+    var dynOpt =
+        AspectLookup.getMaybe(
+            xx,
+            t,
+            GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY,
+            TypeSourceUnionDynamic.class);
+    if (dynOpt.optIsSome()) return dynOpt;
+    var constOpt =
+        AspectLookup.getMaybe(
+            xx,
+            t,
+            GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY,
+            TypeTypeSourceUnionConst.class);
+    if (constOpt.optIsSome()) return Opt.some(constOpt.optUnwrap().type_());
+    return Opt.none();
   }
 
   public void initSetReflectively(DefinitionSet set) {
@@ -121,7 +171,18 @@ public final class TypeSourceUnionDynamic
 
   @Override
   public String typeDesc() {
-    return "union_dyn";
+    if (active.size() == variants.size()) {
+      return "union_dyn";
+    }
+    var sb = new StringBuilder("union_dyn(");
+    var first = true;
+    for (var i : active) {
+      if (!first) sb.append("|");
+      first = false;
+      sb.append(variants.get(i).tag.constKeyToCanonical());
+    }
+    sb.append(")");
+    return sb.toString();
   }
 
   @Override
@@ -141,6 +202,7 @@ public final class TypeSourceUnionDynamic
         || key.equals(GenAspectDropDynamicLight.AspectId)
         || key.equals(GenAspectInitialBind.AspectId)
         || key.equals(GenAspectElementUseDynamicBind.AspectId)
+        || key.equals(GenAspectSet.AspectId)
         || key.equals(GenAspectStackValueDynamic.AspectId)
         || key.equals(GenAspectFieldUseDynamic.AspectId)
         || key.equals(GenAspectUnion.AspectId)) {
@@ -199,18 +261,14 @@ public final class TypeSourceUnionDynamic
   }
 
   private JavaInternalName variantInternal(QExprId loc, int variantIndex) {
-    var unionIndex = set.unions.indexOf(this);
     return JavaInternalName.of(
         SourceUnionEmitter.variantBinaryNameFor(
-                set.defSetId, unionIndex, variantIndex)
+                set.defSetId, unionIdx, variantIndex)
             .replace('.', '/'));
   }
 
   @Override
   public EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
-    if (set.unions.indexOf(this) < 0) {
-      return EResult.err(loc, "Match: source union not in owning DefinitionSet");
-    }
     xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
     return EResult.ok(null);
   }
@@ -255,8 +313,37 @@ public final class TypeSourceUnionDynamic
     return DynUtil.dropDefault(xx, loc, cv);
   }
   @Override
+  public EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue base, CodeValue value) {
+    if (value.value().optIsNone()) {
+      return EResult.err(loc, "set: assigned union value has no compile-time value");
+    }
+    var newOpt = unionOf(xx, value.value().optUnwrap().valueType());
+    var out = DynUtil.dynamicSet(xx, loc, base, value);
+    if (out.hasErrors()) return out;
+    if (newOpt.optIsNone() || !newOpt.optUnwrap().identity.equals(identity)) {
+      return EResult.err(loc, "set: assigned value is not a value of this union");
+    }
+    var selfDyn = MustCast.mustCast(ValueDynamic.class, base.value().optUnwrap());
+    return switch (selfDyn.source()) {
+      case ValueDynamicSource.Binding b -> {
+        if (b.setter().optIsNone()) {
+          yield EResult.err(loc, "set: union binding is not settable here");
+        }
+        var replacement =
+            new BindingDynamicBinding(b.key(), withActiveVariants(newOpt.optUnwrap().active));
+        if (!b.setter().optUnwrap().bindingSetterSet(xx, loc, replacement, false)) {
+          yield EResult.err(loc, "set: union binding is no longer in scope");
+        }
+        yield out;
+      }
+      case ValueDynamicSource.Expr e -> out;
+      case ValueDynamicSource.Field f -> out;
+    };
+  }
+
+  @Override
   public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.ok(cv);
+    return EResult.ok(retype(cv, this));
   }
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
@@ -273,7 +360,12 @@ public final class TypeSourceUnionDynamic
   }
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    return EResult.ok(cv);
+    return EResult.ok(retype(cv, destType));
+  }
+
+  private static CodeValue retype(CodeValue cv, Type dest) {
+    var vd = MustCast.mustCast(ValueDynamic.class, cv.value().optUnwrap());
+    return new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), dest)));
   }
 
   @Override

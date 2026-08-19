@@ -22,6 +22,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaBytecode;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
+import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.util.Opt;
 import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.eval.dynamic.JvmSort;
@@ -37,7 +38,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
               new JavaBytecodeStoreLoad(
                   JvmSort.loadOpcode(xx, type_), local.key()));
     };
-    Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey), type_);
+    Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey, setter), type_);
     return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));
   }
 
@@ -50,13 +51,32 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
 
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+    Type mergedType = type_;
     for (var other : others) {
-      if (other != this && !this.equals(other)) {
+      if (other == this || this.equals(other)) continue;
+      if (!(other instanceof BindingDynamicBinding ob) || !dynamicKey.equals(ob.dynamicKey)) {
         return EResult.err(loc,
             "cannot merge " + getClass().getSimpleName()
                 + " with a differently-typed binding across branches");
       }
+      var aOpt = TypeSourceUnionDynamic.unionOf(xx, mergedType);
+      var bOpt = TypeSourceUnionDynamic.unionOf(xx, ob.type_);
+      if (aOpt.optIsNone()
+          || bOpt.optIsNone()
+          || !aOpt.optUnwrap().identity.equals(bOpt.optUnwrap().identity)) {
+        return EResult.err(loc,
+            "cannot merge " + getClass().getSimpleName()
+                + " with a differently-typed binding across branches");
+      }
+      var mergedActive =
+          new TList<Integer>(aOpt.optUnwrap().active.size() + bOpt.optUnwrap().active.size());
+      mergedActive.addAll(aOpt.optUnwrap().active);
+      mergedActive.addAll(bOpt.optUnwrap().active);
+      mergedType = aOpt.optUnwrap().withActiveVariants(mergedActive);
     }
-    return EResult.ok(this);
+    if (mergedType == type_) {
+      return EResult.ok(this);
+    }
+    return EResult.ok(new BindingDynamicBinding(dynamicKey, mergedType));
   }
 }

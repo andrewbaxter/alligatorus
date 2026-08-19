@@ -170,10 +170,10 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                             set.defSetId,
                             tu.identity,
                             variantsOut,
-                            tu.compiledBaseBinaryName,
-                            tu.compiledVariantBinaryNames,
-                            tu.compiledBaseBytecode,
-                            tu.compiledVariantBytecode);
+                            tu.compiled.baseBinaryName,
+                            tu.compiled.variantBinaryNames,
+                            tu.compiled.baseBytecode,
+                            tu.compiled.variantBytecode);
                     return makeBody.apply(JsonValues.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
@@ -207,11 +207,12 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
               (body) -> {
                 var tu = new TypeSourceUnionDynamic(body.identity());
                 tu.artifactIdCell.set(idValue);
-                tu.compiledBaseBinaryName = body.compiledBaseBinaryName();
-                tu.compiledVariantBinaryNames = body.compiledVariantBinaryNames();
-                tu.compiledBaseBytecode = body.compiledBaseBytecode();
-                tu.compiledVariantBytecode = body.compiledVariantBytecode();
+                tu.compiled.baseBinaryName = body.compiledBaseBinaryName();
+                tu.compiled.variantBinaryNames = body.compiledVariantBinaryNames();
+                tu.compiled.baseBytecode = body.compiledBaseBytecode();
+                tu.compiled.variantBytecode = body.compiledVariantBytecode();
                 for (var v : body.variants()) {
+                  tu.active.add(tu.variants.size());
                   tu.variants.add(
                       new SourceUnionVariant(v.tag(), v.jsTag(), GenType.dynamicType()));
                 }

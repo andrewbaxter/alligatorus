@@ -58,7 +58,13 @@ public final class EResult<T> {
   }
 
   public void drainInto(TList<ExprErr> sink) {
-    if (errors.optIsSome()) sink.addAll(errors.optUnwrap());
+    if (errors.optIsNone()) return;
+    if (errors.optUnwrap() == sink) {
+      throw new IllegalStateException(
+          "EResult.drainInto: sink is this result's own error list; the caller aliased an"
+              + " error accumulator into a result it then drained back into the same accumulator");
+    }
+    sink.addAll(errors.optUnwrap());
   }
 
   public <U> EResult<U> reerr() {

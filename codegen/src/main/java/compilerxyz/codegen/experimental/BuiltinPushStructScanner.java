@@ -185,6 +185,14 @@ public final class BuiltinPushStructScanner {
       return TypeRef.composite1(
           ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"), innerRef);
     }
+    if (t instanceof ClassOrInterfaceType cit
+        && cit.getNameAsString().equals("EResult")
+        && cit.getTypeArguments().isPresent()
+        && cit.getTypeArguments().get().size() == 1) {
+      var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg);
+      return TypeRef.composite1(
+          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"), innerRef);
+    }
     var tn = typeNameOf(t, imports, pkg);
     if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
     if (tn instanceof ClassName cn) {

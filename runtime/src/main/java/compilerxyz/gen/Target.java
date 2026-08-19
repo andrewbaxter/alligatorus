@@ -79,6 +79,6 @@ public interface Target {
             QExprId loc,
             CodeValue base,
             TList<TargetCase> cases,
-            Opt<CodeValue> fallback);
+            Opt<TargetMatchFallback> fallback);
 
 }

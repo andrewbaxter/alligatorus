@@ -63,12 +63,12 @@ public final class ImportInstall {
     }
     for (long unionIdx = 0; unionIdx < set.unions.size(); unionIdx++) {
       var union = set.unions.get((int) unionIdx);
-      if (union.compiledBaseBinaryName.optIsSome() && union.compiledBaseBytecode.optIsSome()) {
+      if (union.compiled.baseBinaryName.optIsSome() && union.compiled.baseBytecode.optIsSome()) {
         loader.registerClass(
-            union.compiledBaseBinaryName.optUnwrap(), union.compiledBaseBytecode.optUnwrap());
-        if (union.compiledVariantBinaryNames.optIsSome() && union.compiledVariantBytecode.optIsSome()) {
-          var variantNames = union.compiledVariantBinaryNames.optUnwrap();
-          var variantBytes = union.compiledVariantBytecode.optUnwrap();
+            union.compiled.baseBinaryName.optUnwrap(), union.compiled.baseBytecode.optUnwrap());
+        if (union.compiled.variantBinaryNames.optIsSome() && union.compiled.variantBytecode.optIsSome()) {
+          var variantNames = union.compiled.variantBinaryNames.optUnwrap();
+          var variantBytes = union.compiled.variantBytecode.optUnwrap();
           for (int i = 0; i < variantNames.size(); i++) {
             loader.registerClass(variantNames.get(i), variantBytes.get(i));
           }

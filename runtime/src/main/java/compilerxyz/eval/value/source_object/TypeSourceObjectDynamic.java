@@ -167,13 +167,9 @@ public final class TypeSourceObjectDynamic
     if (setId.optIsNone() || set == null) {
       return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
     }
-    var objectIndex = set.objects.indexOf(this);
-    if (objectIndex < 0) {
-      return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
-    }
     return JavaDataDescriptor.fromInternalName(
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objectIndex)));
+            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx)));
   }
 
 
@@ -347,14 +343,9 @@ public final class TypeSourceObjectDynamic
               + name.optUnwrapOr("(unnamed)")
               + "'");
     }
-    var objectIndex = set.objects.indexOf(this);
-    if (objectIndex < 0) {
-      throw new AssertionError(
-          "TypeSourceObjectDynamic::field: this not in its owning set");
-    }
     var objectInternalName =
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objectIndex));
+            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx));
     var fieldType =
         new TypeMethodDynamic(
             this,
@@ -580,13 +571,9 @@ public final class TypeSourceObjectDynamic
               + name.optUnwrapOr("(unnamed)")
               + "'");
     }
-    var objectIndex = set.objects.indexOf(this);
-    if (objectIndex < 0) {
-      throw new AssertionError("TypeSourceObjectDynamic::typeCastFrom: this not in its owning set");
-    }
     var objectInternalName =
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objectIndex));
+            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx));
     var unwrapSeq = new JavaBytecodeSequence();
     unwrapSeq.add(codeSource);
     unwrapSeq.add(

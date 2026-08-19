@@ -473,18 +473,17 @@ public final class DefinitionSet implements ExporterAny {
       }
       if (r.hasErrors()) return r.reerr();
     }
-    for (long unionIdx = 0; unionIdx < unions.size(); unionIdx++) {
-      var _seu = unions.get((int) unionIdx);
+    for (var _seu : unions) {
       EResult<Void> r;
-      if (_seu.compiledBaseBinaryName.optIsSome()) {
+      if (_seu.compiled.baseBinaryName.optIsSome()) {
         r = EResult.ok(null);
       } else {
-        var _seuBaseBinaryName = SourceUnionEmitter.baseBinaryNameFor(defSetId, unionIdx);
+        var _seuBaseBinaryName = SourceUnionEmitter.baseBinaryNameFor(defSetId, _seu.unionIdx);
         var _seuBaseInternalName = _seuBaseBinaryName.replace('.', '/');
         var _seuVariantBinaryNames = new TList<String>(_seu.variants.size());
         var _seuVariantInternalNames = new TList<String>(_seu.variants.size());
         for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
-          var _seuVbn = SourceUnionEmitter.variantBinaryNameFor(defSetId, unionIdx, _seuI);
+          var _seuVbn = SourceUnionEmitter.variantBinaryNameFor(defSetId, _seu.unionIdx, _seuI);
           _seuVariantBinaryNames.add(_seuVbn);
           _seuVariantInternalNames.add(_seuVbn.replace('.', '/'));
         }
@@ -503,7 +502,7 @@ public final class DefinitionSet implements ExporterAny {
           _ebCtor.visitMaxs(0, 0);
           _ebCtor.visitEnd();
           _ebCw.visitEnd();
-          _seu.compiledBaseBytecode = Opt.some(_ebCw.toByteArray());
+          _seu.compiled.baseBytecode = Opt.some(_ebCw.toByteArray());
         }
         var _seuVariantBytecode = new TList<byte[]>(_seu.variants.size());
         for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
@@ -539,9 +538,9 @@ public final class DefinitionSet implements ExporterAny {
             _seuVariantBytecode.add(_evCw.toByteArray());
           }
         }
-        _seu.compiledBaseBinaryName = Opt.some(_seuBaseBinaryName);
-        _seu.compiledVariantBinaryNames = Opt.some(_seuVariantBinaryNames);
-        _seu.compiledVariantBytecode = Opt.some(_seuVariantBytecode);
+        _seu.compiled.baseBinaryName = Opt.some(_seuBaseBinaryName);
+        _seu.compiled.variantBinaryNames = Opt.some(_seuVariantBinaryNames);
+        _seu.compiled.variantBytecode = Opt.some(_seuVariantBytecode);
         r = EResult.ok(null);
       }
       if (r.hasErrors()) return r.reerr();
@@ -932,6 +931,7 @@ public final class DefinitionSet implements ExporterAny {
                           throw new IllegalStateException(
                               "def-set union artifact had wrong type: " + v.getClass());
                         }
+                        uData.unionIdx = set.unions.size();
                         set.unions.add(uData);
                       }
                       for (var dep : body.dependencies()) {

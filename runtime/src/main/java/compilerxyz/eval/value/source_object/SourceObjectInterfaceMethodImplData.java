@@ -87,13 +87,8 @@ public final class SourceObjectInterfaceMethodImplData {
       throw new AssertionError(
           "SourceObjectInterfaceMethodImplData::finish: dtData.setId is null");
     }
-    var objectIndex = dtData.set.objects.indexOf(dtData);
-    if (objectIndex < 0) {
-      throw new AssertionError(
-          "SourceObjectInterfaceMethodImplData::finish: dtData not in its owning set");
-    }
     innerVx.evalRootInternalName =
-        SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), objectIndex);
+        SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), dtData.objIdx);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
     innerBindingId = Opt.some(selfId);

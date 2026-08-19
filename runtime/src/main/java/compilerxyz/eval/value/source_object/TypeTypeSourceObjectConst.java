@@ -221,10 +221,9 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                         continue;
                       }
                       if (m.compiledBodyCode.optIsNone() && m.compiledClassName.optIsNone()) {
-                        var objectIndex = dt.set.objects.indexOf(dt);
                         var objInternalName =
                             SourceObjectEmitter.internalNameFor(
-                                dt.setId.optUnwrap(), objectIndex);
+                                dt.setId.optUnwrap(), dt.objIdx);
                         var finishRes =
                             m.finish(
                                 xx,

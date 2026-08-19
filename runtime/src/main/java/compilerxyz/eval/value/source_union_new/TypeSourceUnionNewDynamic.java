@@ -97,15 +97,10 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       return EResult.err(
           loc, "TypeSourceUnionNewDynamic::call: variant payload type not finalised");
     }
-    var unionIndex = type_.set.unions.indexOf(type_);
-    if (unionIndex < 0) {
-      return EResult.err(
-          loc, "TypeSourceUnionNewDynamic::call: union type not in owning DefinitionSet");
-    }
     xx.vx.definitionSets.putIfAbsent(type_.set.defSetId, type_.set);
     var variantBinaryName =
         SourceUnionEmitter.variantBinaryNameFor(
-            type_.set.defSetId, unionIndex, variantIndex);
+            type_.set.defSetId, type_.unionIdx, variantIndex);
     var erb = new Erb(loc);
     var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
     if (convertedOpt.optIsNone()) {
@@ -120,7 +115,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
             .aspectConsumeDynamicToDynamic(xx, loc, converted);
     if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
     var underlyingJs = underlyingJsRes.requireValue("TypeSourceUnionNewDynamic::call toDynamic");
-    Type resultType = type_;
+    Type resultType = type_.withActiveVariants(TList.of(variantIndex));
     var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
     var payloadDesc =
         SourceUnionEmitter.payloadDescriptor(xx, underlyingType);

@@ -24,6 +24,8 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.gen.Target;
 import compilerxyz.gen.IfBranch;
 import compilerxyz.gen.TargetCase;
+import compilerxyz.gen.TargetMatchFallback;
+import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.gen.TryCatchClause;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.eval.value.record.RecordField;
@@ -480,93 +482,93 @@ public final class ConstEval {
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
         var reference = ropt.optUnwrap();
-        var out = erb.mustEr(switch (e.op()) {
+        var out = switch (e.op()) {
           case ADD -> {
             var aopt = erb.mustEr(GenAspectOperatorAdd.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorAddAdd(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorAddAdd(xx, loc, base, reference));
           }
           case SUB -> {
             var aopt = erb.mustEr(GenAspectOperatorSub.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorSubSub(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorSubSub(xx, loc, base, reference));
           }
           case MUL -> {
             var aopt = erb.mustEr(GenAspectOperatorMul.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorMulMul(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorMulMul(xx, loc, base, reference));
           }
           case DIV -> {
             var aopt = erb.mustEr(GenAspectOperatorDiv.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorDivDiv(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorDivDiv(xx, loc, base, reference));
           }
           case MOD -> {
             var aopt = erb.mustEr(GenAspectOperatorMod.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorModMod(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorModMod(xx, loc, base, reference));
           }
           case AND -> {
             var aopt = erb.mustEr(GenAspectOperatorAnd.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorAndAnd(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorAndAnd(xx, loc, base, reference));
           }
           case OR -> {
             var aopt = erb.mustEr(GenAspectOperatorOr.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorOrOr(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorOrOr(xx, loc, base, reference));
           }
           case XOR -> {
             var aopt = erb.mustEr(GenAspectOperatorXor.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorXorXor(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorXorXor(xx, loc, base, reference));
           }
           case SHL -> {
             var aopt = erb.mustEr(GenAspectOperatorShl.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorShlShl(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorShlShl(xx, loc, base, reference));
           }
           case SHR -> {
             var aopt = erb.mustEr(GenAspectOperatorShr.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorShrShr(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorShrShr(xx, loc, base, reference));
           }
           case USHR -> {
             var aopt = erb.mustEr(GenAspectOperatorUshr.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorUshrUshr(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorUshrUshr(xx, loc, base, reference));
           }
           case EQ -> {
             var aopt = erb.mustEr(GenAspectOperatorEq.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorEqEq(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorEqEq(xx, loc, base, reference));
           }
           case NE -> {
             var aopt = erb.mustEr(GenAspectOperatorNe.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorNeNe(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorNeNe(xx, loc, base, reference));
           }
           case LT -> {
             var aopt = erb.mustEr(GenAspectOperatorLt.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorLtLt(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorLtLt(xx, loc, base, reference));
           }
           case LE -> {
             var aopt = erb.mustEr(GenAspectOperatorLe.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorLeLe(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorLeLe(xx, loc, base, reference));
           }
           case GT -> {
             var aopt = erb.mustEr(GenAspectOperatorGt.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorGtGt(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorGtGt(xx, loc, base, reference));
           }
           case GE -> {
             var aopt = erb.mustEr(GenAspectOperatorGe.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorGeGe(xx, loc, base, reference);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorGeGe(xx, loc, base, reference));
           }
-        });
+        };
         if (out.optIsNone()) yield EResult.errs(erb.errors());
         yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
       }
@@ -577,18 +579,18 @@ public final class ConstEval {
         var base = bopt.optUnwrap();
         var bv = (Opt.Some<Value>) base.value();
         var baseType = bv.value().valueType();
-        var out = erb.mustEr(switch (e.op()) {
+        var out = switch (e.op()) {
           case NEG -> {
             var aopt = erb.mustEr(GenAspectOperatorNeg.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorNegNeg(xx, loc, base);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorNegNeg(xx, loc, base));
           }
           case BITNOT -> {
             var aopt = erb.mustEr(GenAspectOperatorBitNot.get(xx, loc, baseType));
-            if (aopt.optIsNone()) yield EResult.errs(erb.errors());
-            yield aopt.optUnwrap().aspectOperatorBitNotBitNot(xx, loc, base);
+            if (aopt.optIsNone()) yield Opt.<CodeValue>none();
+            yield erb.mustEr(aopt.optUnwrap().aspectOperatorBitNotBitNot(xx, loc, base));
           }
-        });
+        };
         if (out.optIsNone()) yield EResult.errs(erb.errors());
         yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
       }
@@ -681,7 +683,15 @@ public final class ConstEval {
           var unionOpt = erb.mustEr(GenAspectUnion.get(xx, loc, baseType));
           if (unionOpt.optIsNone()) { _matchRes = EResult.errs(erb.errors()); break matchCompute; }
           var variants = unionOpt.optUnwrap().aspectUnionVariants();
+          var unionInst = TypeSourceUnionDynamic.unionOf(xx, baseType);
+          var active = new TList<Integer>();
+          if (unionInst.optIsSome()) {
+            active.addAll(unionInst.optUnwrap().active);
+          } else {
+            for (int i = 0; i < variants.size(); i++) active.add(i);
+          }
           var caseTags = new TList<ConstKey>();
+          var caseIndices = new TList<Integer>();
           for (var c : e.cases()) {
             var condOpt = erb.mustCv(xx, constEvalOperand(xx, c.condition()));
             if (condOpt.optIsNone()) { _matchRes = EResult.errs(erb.errors()); break matchCompute; }
@@ -689,24 +699,30 @@ public final class ConstEval {
             var tagOpt = erb.mustRes(Eval.extractConstKey(xx, loc, cv.value()));
             if (tagOpt.optIsNone()) { _matchRes = EResult.errs(erb.errors()); break matchCompute; }
             var tag = tagOpt.optUnwrap();
-            boolean found = false;
-            for (var info : variants) {
-              if (info.key().equals(tag)) { found = true; break; }
+            int found = -1;
+            for (int j = 0; j < variants.size(); j++) {
+              if (variants.get(j).key().equals(tag)) { found = j; break; }
             }
-            if (!found) {
+            if (found < 0) {
               erb.errPush("Match case tag '" + tag + "' not found in union");
               _matchRes = EResult.errs(erb.errors()); break matchCompute;
             }
+            if (!active.contains(found)) {
+              erb.errPush("Match case tag '" + tag + "' is not an active variant of the matched value");
+              _matchRes = EResult.errs(erb.errors()); break matchCompute;
+            }
             caseTags.add(tag);
+            caseIndices.add(found);
           }
           boolean exhaustive = true;
-          for (var info : variants) {
-            if (!caseTags.contains(info.key())) { exhaustive = false; break; }
+          for (var idx : active) {
+            if (!caseIndices.contains(idx)) { exhaustive = false; break; }
           }
           if (!exhaustive && e.fallback().optIsNone()) {
-            for (var info : variants) {
-              if (!caseTags.contains(info.key())) {
-                erb.errPush("Non-exhaustive match: missing case for tag '" + info.key() + "'");
+            for (var idx : active) {
+              if (!caseIndices.contains(idx)) {
+                erb.errPush(
+                    "Non-exhaustive match: missing case for tag '" + variants.get(idx).key() + "'");
                 _matchRes = EResult.errs(erb.errors()); break matchCompute;
               }
             }
@@ -721,15 +737,7 @@ public final class ConstEval {
           boolean allControlEnded = true;
           var matchCases = new TList<TargetCase>(e.cases().size());
           for (int i = 0; i < e.cases().size(); i++) {
-            var tag = caseTags.get(i);
-            int variantIdx = -1;
-            for (int j = 0; j < variants.size(); j++) {
-              if (variants.get(j).key().equals(tag)) { variantIdx = j; break; }
-            }
-            if (variantIdx < 0) {
-              erb.errPush("Match: tag not found in union variants: " + tag.constKeyToCanonical());
-              _matchRes = EResult.errs(erb.errors()); break matchCompute;
-            }
+            int variantIdx = caseIndices.get(i);
             var variant = variants.get(variantIdx);
             var payloadBinding = BindingId.localFresh();
             var caseScope = initialScope.fork();
@@ -776,10 +784,26 @@ public final class ConstEval {
             matchCases.add(
                 new TargetCase(variant.jsTag(), variant.type(), variantIdx, payloadBinding, bodyCv));
           }
-          Opt<CodeValue> fallbackCv = Opt.none();
+          Opt<TargetMatchFallback> fallbackCv = Opt.none();
           if (e.fallback().optIsSome()) {
+            var remaining = new TList<Integer>();
+            for (var idx : active) {
+              if (!caseIndices.contains(idx)) remaining.add(idx);
+            }
+            Type fallbackType =
+                unionInst.optIsSome()
+                    ? unionInst.optUnwrap().withActiveVariants(remaining)
+                    : baseType;
+            var fallbackBinding = BindingId.localFresh();
+            var fallbackScope = initialScope.fork();
+            ScopeLevel.Entry fallbackEntry = null;
+            var fibMaybe = GenAspectInitialBind.getMaybe(xx, fallbackType);
+            if (fibMaybe.optIsSome()) {
+              fallbackEntry = fallbackScope.pushNamed(
+                  elementKey, fibMaybe.optUnwrap().aspectInitialBindInitialBind(fallbackBinding));
+            }
             var fallbackXx = new ExprContext(
-                initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+                fallbackScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
             var fallbackResult = constEval(fallbackXx, e.fallback().optUnwrap());
             if (fallbackResult.valueOrNull().optIsNone()) {
               fallbackResult.drainInto(erb.errors());
@@ -787,8 +811,19 @@ public final class ConstEval {
             }
             fallbackResult.drainInto(erb.errors());
             var fallbackEv = fallbackResult.requireValue("constEvalMatch fallback");
-            branchScopes.add(fallbackEv.scope());
+            var fallbackRanScope = fallbackEv.scope();
             var fbCv = fallbackEv.cv();
+            if (fallbackEntry != null) {
+              var fallbackSplice =
+                  blocksSplice(fallbackXx, loc, fallbackEntry.scopeLevelEmission().blocks, erb);
+              if (fallbackSplice == null) {
+                _matchRes = EResult.errs(erb.errors()); break matchCompute;
+              }
+              fbCv = new CodeValue(
+                  Code.concat(loc, fbCv.code(), fallbackSplice), fbCv.outcome());
+              popByBox(fallbackRanScope, fallbackEntry);
+            }
+            branchScopes.add(fallbackRanScope);
             if (fbCv.value().optIsSome()) {
               allControlEnded = false;
               if (resultType == null) {
@@ -801,7 +836,7 @@ public final class ConstEval {
                 fbCv = convertedOpt.optUnwrap();
               }
             }
-            fallbackCv = Opt.some(fbCv);
+            fallbackCv = Opt.some(new TargetMatchFallback(fallbackBinding, fbCv));
           } else if (!allControlEnded) {
             branchScopes.add(initialScope.fork());
           }

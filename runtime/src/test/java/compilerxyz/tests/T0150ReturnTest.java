@@ -270,13 +270,13 @@ public final class T0150ReturnTest {
                                     mb.tupleOf())),
                             mb.bind(
                                 "new_str",
-                                mb.call(
+                                mb.field(mb.call(
                                     mb.field(mb.scopeUse("builder"), mb.str("variant")),
                                     mb.recordOf(
                                         TList.of(
                                             new TestMb.RecordPair("tag", mb.str("strtag")),
                                             new TestMb.RecordPair(
-                                                "type_ref", mb.typesString()))))),
+                                                "type_ref", mb.typesString())))), mb.str("value"))),
                             mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                             mb.return_(mb.recordOf(
                                 TList.of(

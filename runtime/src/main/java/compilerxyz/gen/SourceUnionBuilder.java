@@ -2,7 +2,10 @@ package compilerxyz.gen;
 
 import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
+import compilerxyz.eval.SourceId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.Prefixes;
@@ -23,11 +26,17 @@ public final class SourceUnionBuilder {
         return GenObjectTypes.sourceUnionBuilder();
     }
 
-    public TypeSourceUnionNewDynamic variant(ExprContext xx, String tag, Type typeRef) {
+    public EResult<TypeSourceUnionNewDynamic> variant(ExprContext xx, String tag, Type typeRef) {
+        if (this.type_.set.finished) {
+            return EResult.err(
+                new QExprId(new SourceId(-1L), -1L),
+                "Cannot add a union variant after its definition set is finished");
+        }
         var jsTag = Prefixes.TAG_PREFIX + this.type_.nextTagId.next();
         var variantIndex = this.type_.variants.size();
         var payloadType = DynUtil.substituteBoxed(xx, typeRef);
         this.type_.variants.add(new SourceUnionVariant(new ConstKey.Str(tag), jsTag, payloadType));
-        return new TypeSourceUnionNewDynamic(this.type_, variantIndex);
+        this.type_.active.add(variantIndex);
+        return EResult.ok(new TypeSourceUnionNewDynamic(this.type_, variantIndex));
     }
 }

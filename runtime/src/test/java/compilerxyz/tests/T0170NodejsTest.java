@@ -64,7 +64,7 @@ public final class T0170NodejsTest {
         mb.bind("code", mb.field(mb.scopeUse("code_data"), mb.str("type"))),
         mb.bind(
             "code_tu_call",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
@@ -74,17 +74,17 @@ public final class T0170NodejsTest {
                             mb.recordOf(
                                 TList.of(
                                     rp("func", mb.scopeUse("code")),
-                                    rp("arg", mb.scopeUse("code"))))))))),
+                                    rp("arg", mb.scopeUse("code")))))))), mb.str("value"))),
         mb.bind(
             "code_tu_lit_str",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
-                        rp("tag", mb.str("lit_str")), rp("type_ref", mb.typesString()))))),
+                        rp("tag", mb.str("lit_str")), rp("type_ref", mb.typesString())))), mb.str("value"))),
         mb.bind(
             "code_tu_field",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
@@ -94,14 +94,14 @@ public final class T0170NodejsTest {
                             mb.recordOf(
                                 TList.of(
                                     rp("base", mb.scopeUse("code")),
-                                    rp("field", mb.scopeUse("code"))))))))),
+                                    rp("field", mb.scopeUse("code")))))))), mb.str("value"))),
         mb.bind(
             "code_tu_scope_use",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("code_tu_builder"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
-                        rp("tag", mb.str("scope_use")), rp("type_ref", mb.typesString()))))),
+                        rp("tag", mb.str("scope_use")), rp("type_ref", mb.typesString())))), mb.str("value"))),
         mb.call(
             mb.field(mb.scopeUse("code_data"), mb.str("impl_interface")),
             mb.recordOf(
@@ -573,19 +573,19 @@ var exprs = new TList<SourceExpr>();
     exprs.add(
         mb.bind(
             "nvalue_binding",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
-                        rp("tag", mb.str("binding")), rp("type_ref", mb.typesString()))))));
+                        rp("tag", mb.str("binding")), rp("type_ref", mb.typesString())))), mb.str("value"))));
     exprs.add(
         mb.bind(
             "nvalue_expr",
-            mb.call(
+            mb.field(mb.call(
                 mb.field(mb.scopeUse("nvalue_base"), mb.str("variant")),
                 mb.recordOf(
                     TList.of(
-                        rp("tag", mb.str("expr")), rp("type_ref", mb.typesNull()))))));
+                        rp("tag", mb.str("expr")), rp("type_ref", mb.typesNull())))), mb.str("value"))));
     exprs.add(
         mb.bind("nvalue_base_t", mb.field(mb.scopeUse("nvalue_base"), mb.str("type"))));
     exprs.add(

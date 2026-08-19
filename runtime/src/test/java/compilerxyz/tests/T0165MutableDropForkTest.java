@@ -142,15 +142,15 @@ public final class T0165MutableDropForkTest {
                         mb.tupleOf())),
                 mb.bind(
                     "vs_expr",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("vs"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
                                 new TestMb.RecordPair("tag", mb.str("expr")),
-                                new TestMb.RecordPair("type_ref", mb.typesNull()))))),
+                                new TestMb.RecordPair("type_ref", mb.typesNull())))), mb.str("value"))),
                 mb.bind(
                     "vs_binding",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("vs"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
@@ -167,7 +167,7 @@ public final class T0165MutableDropForkTest {
                                                     TList.of(
                                                         new TestMb.RecordPair(
                                                             "parity", mb.typesLong()),
-                                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter"))))))))))))),
+                                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")))))))))))), mb.str("value"))),
                 mb.bind(
                     "u",
                     mb.call(

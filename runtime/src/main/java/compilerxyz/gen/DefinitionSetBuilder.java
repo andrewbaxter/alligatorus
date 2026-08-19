@@ -49,6 +49,7 @@ public final class DefinitionSetBuilder {
     public SourceUnionBuilder union(ExprContext xx) {
         var identity = DynRuntime.freshUnique(xx);
         var data = new TypeSourceUnionDynamic(this.inner, identity);
+        data.unionIdx = this.inner.unions.size();
         this.inner.unions.add(data);
         return new SourceUnionBuilder(data);
     }

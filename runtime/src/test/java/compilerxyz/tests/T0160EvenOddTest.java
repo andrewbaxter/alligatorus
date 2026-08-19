@@ -141,15 +141,15 @@ public final class T0160EvenOddTest {
                         mb.tupleOf())),
                 mb.bind(
                     "vs_expr",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("vs"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
                                 new TestMb.RecordPair("tag", mb.str("expr")),
-                                new TestMb.RecordPair("type_ref", mb.typesNull()))))),
+                                new TestMb.RecordPair("type_ref", mb.typesNull())))), mb.str("value"))),
                 mb.bind(
                     "vs_binding",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("vs"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
@@ -166,7 +166,7 @@ public final class T0160EvenOddTest {
                                                     TList.of(
                                                         new TestMb.RecordPair(
                                                             "parity", mb.typesLong()),
-                                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter"))))))))))))),
+                                                        new TestMb.RecordPair("setter", mb.call(mb.typesOption(), mb.builtin("eval", "binding_setter")))))))))))), mb.str("value"))),
                 mb.bind(
                     "u",
                     mb.call(
@@ -1633,20 +1633,20 @@ public final class T0160EvenOddTest {
                     mb.call(mb.field(mb.scopeUse("d2"), mb.str("union")), mb.tupleOf())),
                 mb.bind(
                     "new_str",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("builder"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
                                 new TestMb.RecordPair("tag", mb.str("strtag")),
-                                new TestMb.RecordPair("type_ref", mb.typesString()))))),
+                                new TestMb.RecordPair("type_ref", mb.typesString())))), mb.str("value"))),
                 mb.bind(
                     "new_num",
-                    mb.call(
+                    mb.field(mb.call(
                         mb.field(mb.scopeUse("builder"), mb.str("variant")),
                         mb.recordOf(
                             TList.of(
                                 new TestMb.RecordPair("tag", mb.str("numtag")),
-                                new TestMb.RecordPair("type_ref", mb.typesLong()))))),
+                                new TestMb.RecordPair("type_ref", mb.typesLong())))), mb.str("value"))),
                 mb.call(mb.field(mb.scopeUse("d2"), mb.str("finish")), mb.tupleOf()),
                 mb.return_(
                     mb.recordOf(
@@ -1932,7 +1932,9 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.bind(
                     "x",
-                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                    mb.as_(
+                        mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
+                        mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                 mb.matchOf(
                     mb.scopeUse("x"),
                     mb.str("y"),
@@ -1960,7 +1962,9 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.bind(
                     "x",
-                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                    mb.as_(
+                        mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
+                        mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                 mb.matchOf(
                     mb.scopeUse("x"),
                     mb.str("y"),
@@ -2010,7 +2014,9 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.bind(
                     "x",
-                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                    mb.as_(
+                        mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
+                        mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                 mb.matchOf(
                     mb.scopeUse("x"),
                     mb.str("y"),
@@ -2036,7 +2042,9 @@ public final class T0160EvenOddTest {
                 mb.bind("a", evenCast(mb, 2.0)),
                 mb.bind(
                     "x",
-                    mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.))),
+                    mb.as_(
+                        mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
+                        mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                 mb.matchOf(
                     mb.scopeUse("x"),
                     mb.str("y"),
