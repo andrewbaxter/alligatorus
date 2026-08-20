@@ -1,9 +1,8 @@
 package compilerxyz.eval.value.source_interface;
 
-import compilerxyz.eval.EvalOutcome;
+
 import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.annotations.CodegenDescriptor;
-
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -13,30 +12,22 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
-import compilerxyz.eval.DefinitionSet;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValues;
-import compilerxyz.util.Result;
-import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeAspect;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.gen.AspectArtifact;
-import compilerxyz.gen.AspectBind;
-import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.AspectDropDynamicLight;
-import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.gen.AspectType;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
@@ -44,26 +35,35 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-import java.util.function.Function;
-import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
+import compilerxyz.gen.AspectElementUseDynamicBind;
+import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectType;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
-import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
-import compilerxyz.eval.TypeAspect;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.gen.AspectElementUseDynamicBind;
-import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenCodegenDescriptors;
 import compilerxyz.gen.GenInterfaceData;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataDefSetInterfaceCodec;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.MustCast;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
+import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6004L)
 public record TypeSourceInterfaceDynamic(InterfaceData data)
@@ -220,7 +220,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             iface.compiledBinaryName,
                             iface.compiledBytecode,
                             methodsOut);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -242,7 +242,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
               (raw) -> {
                 ArtifactDataDefSetInterface body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataDefSetInterface.class, raw);
+                  body = ArtifactDataDefSetInterfaceCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeSourceInterfaceDynamic data: failed to parse ArtifactDataDefSetInterface: "

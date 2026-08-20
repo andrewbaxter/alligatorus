@@ -1,8 +1,6 @@
 package compilerxyz.eval.value.source_union_new;
 
-import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
 import compilerxyz.annotations.BuiltinLight;
@@ -22,27 +20,29 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectFunction;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataSourceUnionNewCodec;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.gen.GenAspectArtifact;
-import compilerxyz.gen.GenAspectBind;
-import compilerxyz.gen.GenAspectPostDeserialize;
-import compilerxyz.eval.value.object_.ValueObjectConst;
 
 @BuiltinLight(uniqueId = 6143L)
 public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
@@ -138,7 +138,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                                 "TypeTypeSourceUnionNewConst::exporterExport parent union")
                             : nullArtifact();
                     var body = new ArtifactDataSourceUnionNew(tuArt, variantIndex);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataSourceUnionNewCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -160,7 +160,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
               (raw) -> {
                 ArtifactDataSourceUnionNew body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataSourceUnionNew.class, raw);
+                  body = ArtifactDataSourceUnionNewCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeTypeSourceUnionNewConst data: failed to parse "

@@ -1,8 +1,6 @@
 package compilerxyz.eval.value.source_union;
 
-import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
 import compilerxyz.annotations.BuiltinLight;
@@ -15,21 +13,25 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
-import compilerxyz.eval.DefinitionSet;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValues;
-import compilerxyz.util.Result;
-import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
@@ -38,15 +40,7 @@ import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
 import compilerxyz.gen.AspectUnion;
-import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.gen.TargetBindSub;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-import java.util.function.Function;
-import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
@@ -56,12 +50,18 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
-import compilerxyz.eval.Code;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenType;
+import compilerxyz.gen.TargetBindSub;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataSourceUnionCodec;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.MustCast;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
+import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6141L)
 public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
@@ -174,7 +174,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
                             tu.compiled.variantBinaryNames,
                             tu.compiled.baseBytecode,
                             tu.compiled.variantBytecode);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -196,7 +196,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_)
               (raw) -> {
                 ArtifactDataSourceUnion body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataSourceUnion.class, raw);
+                  body = ArtifactDataSourceUnionCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeTypeSourceUnionConst data: failed to parse "

@@ -13,14 +13,15 @@ import compilerxyz.eval.ImportStateId;
 import compilerxyz.eval.LogEntry;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
+import compilerxyz.gen.codec.SourceModuleCodec;
 import compilerxyz.langhelp.Compiles;
 import compilerxyz.langhelp.Sources;
-import compilerxyz.safejson.Json;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueArray;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
+import compilerxyz.safejson.JsonValues;
 import compilerxyz.syntax.HashValue;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
@@ -52,8 +53,6 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.zip.ZipInputStream;
-import com.google.gson.stream.JsonWriter;
-import java.io.StringWriter;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.zip.ZipEntry;
 import java.nio.charset.StandardCharsets;
@@ -280,7 +279,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
         SourceModule module;
         try {
-          module = Json.deserialize(SourceModule.class, text);
+          module = SourceModuleCodec.deserialize(text);
         } catch (IOException | RuntimeException e) {
           return Result.err("failed to parse local source " + l.path() + ": " + e.getMessage());
         }
@@ -351,7 +350,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
           if (isZip) return Result.ok(new SourceResolved.Bundle(r));
           SourceModule module;
           try {
-            module = Json.deserialize(SourceModule.class, new String(bytes, StandardCharsets.UTF_8));
+            module = SourceModuleCodec.deserialize(new String(bytes, StandardCharsets.UTF_8));
           } catch (IOException | RuntimeException e) {
             return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
           }
@@ -380,7 +379,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
         }
         SourceModule module;
         try {
-          module = Json.deserialize(SourceModule.class, new String(entryBytes, StandardCharsets.UTF_8));
+          module = SourceModuleCodec.deserialize(new String(entryBytes, StandardCharsets.UTF_8));
         } catch (IOException | RuntimeException e) {
           return Result.err("failed to parse remote source " + r.baseUrl() + ": " + e.getMessage());
         }
@@ -635,7 +634,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                   ps.setLong(1, aid.compileId().importState().value());
                   ps.setLong(2, aid.compileId().source().value());
                   ps.setLong(3, aid.index());
-                  ps.setString(4, serializeJson(ArtifactJson.encodeArtifactBody(e.getValue())));
+                  ps.setString(4, JsonValues.serialize(ArtifactJson.encodeArtifactBody(e.getValue())));
                   ps.addBatch();
                 }
                 ps.executeBatch();
@@ -680,7 +679,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                       obj.put("errors", new JsonValueArray(errArr));
                     }
                   }
-                  ps.setString(3, serializeJson(new JsonValueObject(obj)));
+                  ps.setString(3, JsonValues.serialize(new JsonValueObject(obj)));
                 }
                 if (product.local().optIsSome()) {
                   var localMeta = product.local().optUnwrap();
@@ -699,7 +698,7 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
                     mv.put("i", new JsonValueNumber(depId.source().value()));
                     arr.add(new JsonValueObject(mv));
                   }
-                  ps.setString(6, serializeJson(new JsonValueArray(arr)));
+                  ps.setString(6, JsonValues.serialize(new JsonValueArray(arr)));
                 }
                 ps.executeUpdate();
               }
@@ -752,23 +751,9 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
   }
 
-  private static String serializeJson(JsonValue jv) {
-    var sw = new StringWriter();
-    var writer = new JsonWriter(sw);
-    writer.setSerializeNulls(true);
-    writer.setIndent("");
-    try {
-      Json.encodeValue(writer, jv, JsonValue.class, Json.Style.COMPACT);
-      writer.close();
-    } catch (IOException e) {
-      throw new RuntimeException("CacheReal.serializeJson", e);
-    }
-    return sw.toString();
-  }
-
   private static JsonValue parseJson(String s) {
     try {
-      return Json.deserialize(JsonValue.class, s);
+      return JsonValues.parse(s);
     } catch (IOException e) {
       throw new RuntimeException("CacheReal.parseJson", e);
     }

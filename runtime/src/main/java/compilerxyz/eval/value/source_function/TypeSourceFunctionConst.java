@@ -1,18 +1,15 @@
 package compilerxyz.eval.value.source_function;
 
-import compilerxyz.gen.BindingSetter;
 
 
 
-import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.eval.EvalOutcome;
+
 import compilerxyz.annotations.BuiltinFull;
-
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ArtifactSupport;
@@ -20,56 +17,59 @@ import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.ArtifactExternal;
-import compilerxyz.gen.Binding;
+import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Eval;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ExprErr;
+import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.gen.GenAspectFunction;
+import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.AspectType;
-import compilerxyz.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.gen.Binding;
+import compilerxyz.gen.BindingSetter;
+import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenAspectBind;
+import compilerxyz.gen.GenAspectBindDynamic;
+import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectFunction;
+import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectType;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.TargetBindSub;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataDefSetFunctionCodec;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValues;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.util.MustCast;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.gen.AspectPostDeserialize;
-import compilerxyz.eval.ImportInstall;
-import compilerxyz.gen.GenAspectArtifact;
-import compilerxyz.gen.GenAspectBind;
-import compilerxyz.gen.GenAspectBindDynamic;
-import compilerxyz.gen.GenAspectPostDeserialize;
-import compilerxyz.gen.GenAspectStackValueDynamic;
-import compilerxyz.gen.GenAspectType;
-import compilerxyz.artifact.ArtifactBodyExporter.Root;
-import compilerxyz.eval.BindingId;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.AspectDropDynamicLight;
-import compilerxyz.gen.AspectInitialBind;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.eval.Eval;
-import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.gen.GenAspectDropDynamicLight;
-import compilerxyz.gen.GenAspectInitialBind;
-import compilerxyz.util.MustCast;
 
 @BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
@@ -229,7 +229,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                             compiledClassName,
                             compiledBytecode,
                             externals);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataDefSetFunctionCodec.toValue(body));
                   });
           if (errors.isEmpty()) {
             return EResult.ok(artifact);
@@ -260,7 +260,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
               (raw) -> {
                 ArtifactDataDefSetFunction body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataDefSetFunction.class, raw);
+                  body = ArtifactDataDefSetFunctionCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeSourceFunctionConst data: failed to parse "

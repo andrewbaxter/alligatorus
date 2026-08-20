@@ -1,26 +1,24 @@
 package compilerxyz.codegen;
 
-import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import com.squareup.javapoet.TypeVariableName;
 import compilerxyz.codegen.CodecsGen.Component;
 import compilerxyz.codegen.CodecsGen.ParsedType;
 import compilerxyz.codegen.CodecsGen.ParsedTypeKind;
 import compilerxyz.codegen.CodecsGen.TypeIndex;
 import compilerxyz.codegen.CodecsGen.TypeInfo;
 import compilerxyz.codegen.CodecsGen.TypeKind;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedSet;
 import java.io.IOException;
 import javax.lang.model.element.Modifier;
 import java.util.Arrays;
+import java.util.Map;
 
 final class CodecEmitter {
   private CodecEmitter() {}
@@ -31,8 +29,11 @@ final class CodecEmitter {
       ClassName.get("com.google.gson.stream", "JsonToken");
   private static final ClassName JSON_WRITER =
       ClassName.get("com.google.gson.stream", "JsonWriter");
-  private static final ClassName CODEC = ClassName.get("compilerxyz.safejson", "Codec");
   private static final ClassName JSON = ClassName.get("compilerxyz.safejson", "Json");
+  private static final ClassName JSON_VALUE = ClassName.get("compilerxyz.safejson", "JsonValue");
+  private static final ClassName JSON_VALUES = ClassName.get("compilerxyz.safejson", "JsonValues");
+  private static final ClassName STRING_READER = ClassName.get("java.io", "StringReader");
+  private static final ClassName STRING_WRITER = ClassName.get("java.io", "StringWriter");
   private static final ClassName JSON_STYLE = ClassName.get("compilerxyz.safejson", "Json", "Style");
   private static final ClassName FIELD_PATH =
       ClassName.get("compilerxyz.safejson", "Json", "FieldPath");
@@ -46,18 +47,33 @@ final class CodecEmitter {
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
   private static final String ARTIFACT_CODECS_REF = "compilerxyz.artifact.ArtifactCodecs";
-  private static final String[][] HAND_CODED_ENTRIES = {
-    {"compilerxyz.safejson.JsonValue", ARTIFACT_CODECS_REF + ".JSON_VALUE"},
-    {"compilerxyz.artifact.Artifact", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE"},
-    {"compilerxyz.artifact.Artifact.Body", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE_BODY"},
-    {"compilerxyz.artifact.Artifact.Ref", ARTIFACT_CODECS_REF + ".ArtifactCodec.INSTANCE_REF"},
-    {"compilerxyz.artifact.ArtifactBody", ARTIFACT_CODECS_REF + ".ArtifactBodyCodec.INSTANCE"},
-    {"compilerxyz.artifact.ArtifactBodyExporter", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE"},
-    {"compilerxyz.artifact.ArtifactBodyExporter.Body", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_BODY"},
-    {"compilerxyz.artifact.ArtifactBodyExporter.Root", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_ROOT"},
-    {"compilerxyz.artifact.ArtifactBodyExporter.SourceRef", ARTIFACT_CODECS_REF + ".ArtifactBodyExporterCodec.INSTANCE_SOURCE_REF"},
-    {"compilerxyz.artifact.ArtifactIdSource", ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec.INSTANCE"},
-  };
+
+  record CodecTarget(String klass, Opt<String> castTo) {}
+
+  private static final Map<String, CodecTarget> HAND_CODED_REFS =
+      Map.ofEntries(
+          Map.entry(
+              "compilerxyz.safejson.JsonValue",
+              new CodecTarget("compilerxyz.safejson.JsonValues", Opt.none())),
+          Map.entry(
+              "compilerxyz.artifact.Artifact",
+              new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.none())),
+          Map.entry(
+              "compilerxyz.artifact.Artifact.Body",
+              new CodecTarget(
+                  ARTIFACT_CODECS_REF + ".ArtifactCodec",
+                  Opt.some("compilerxyz.artifact.Artifact.Body"))),
+          Map.entry(
+              "compilerxyz.artifact.Artifact.Ref",
+              new CodecTarget(
+                  ARTIFACT_CODECS_REF + ".ArtifactCodec",
+                  Opt.some("compilerxyz.artifact.Artifact.Ref"))),
+          Map.entry(
+              "compilerxyz.artifact.ArtifactBody",
+              new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactBodyCodec", Opt.none())),
+          Map.entry(
+              "compilerxyz.artifact.ArtifactIdSource",
+              new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec", Opt.none())));
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
     for (var c : info.components) {
       resolveType(c.type, ctxQname, index);
@@ -91,18 +107,10 @@ final class CodecEmitter {
     resolveNames(info, qname, index);
     var simpleName = simpleNameOf(qname);
     var codecClassName = simpleName + "Codec";
-    var codecType = ClassName.get(CodecsGen.GEN_PACKAGE, codecClassName);
     var target = classNameOf(qname);
 
     var cls =
-            TypeSpec.classBuilder(codecClassName)
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                    .addSuperinterface(ParameterizedTypeName.get(CODEC, target));
-
-    cls.addField(
-        FieldSpec.builder(codecType, "INSTANCE", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .initializer("new $T()", codecType)
-            .build());
+        TypeSpec.classBuilder(codecClassName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
     cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
@@ -119,9 +127,64 @@ final class CodecEmitter {
       throw new IllegalStateException("Unsupported kind: " + info.kind + " for " + qname);
     }
 
+    if (info.implementsMarker) {
+      cls.addMethod(buildToValue(target));
+      cls.addMethod(buildFromValue(target));
+      cls.addMethod(buildDeserialize(target));
+    }
+
     var javaFile =
         JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build()).skipJavaLangImports(true).build();
     return javaFile.toString();
+  }
+
+  private static MethodSpec buildToValue(TypeName target) {
+    var body = CodeBlock.builder();
+    body.beginControlFlow("try");
+    body.addStatement("$T __sw = new $T()", STRING_WRITER, STRING_WRITER);
+    body.addStatement("$T __jw = new $T(__sw)", JSON_WRITER, JSON_WRITER);
+    body.addStatement("__jw.setSerializeNulls(true)");
+    body.addStatement("__jw.setIndent($S)", "");
+    body.addStatement("encode(__jw, value, $T.COMPACT)", JSON_STYLE);
+    body.addStatement("__jw.close()");
+    body.addStatement("return $T.parse(__sw.toString())", JSON_VALUES);
+    body.nextControlFlow("catch ($T __e)", IO_EXCEPTION);
+    body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
+    body.endControlFlow();
+    return MethodSpec.methodBuilder("toValue")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .returns(JSON_VALUE)
+        .addParameter(target, "value")
+        .addCode(body.build())
+        .build();
+  }
+
+  private static MethodSpec buildFromValue(TypeName target) {
+    var body = CodeBlock.builder();
+    body.beginControlFlow("try");
+    body.addStatement("return deserialize($T.serialize(value))", JSON_VALUES);
+    body.nextControlFlow("catch ($T __e)", IO_EXCEPTION);
+    body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
+    body.endControlFlow();
+    return MethodSpec.methodBuilder("fromValue")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .returns(target)
+        .addParameter(JSON_VALUE, "value")
+        .addCode(body.build())
+        .build();
+  }
+
+  private static MethodSpec buildDeserialize(TypeName target) {
+    var body = CodeBlock.builder();
+    body.addStatement("$T __reader = new $T(new $T(json))", JSON_READER, JSON_READER, STRING_READER);
+    body.addStatement("return decode(__reader, $T.root())", FIELD_PATH);
+    return MethodSpec.methodBuilder("deserialize")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+        .returns(target)
+        .addParameter(String.class, "json")
+        .addException(IO_EXCEPTION)
+        .addCode(body.build())
+        .build();
   }
 
   private static MethodSpec buildRecordEncode(String qname, TypeName target, TypeInfo info) {
@@ -137,9 +200,8 @@ final class CodecEmitter {
     }
     body.endControlFlow();
     body.addStatement("writer.endObject()");
-    return MethodSpec.methodBuilder("codecEncode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("encode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(void.class)
         .addParameter(JSON_WRITER, "writer")
         .addParameter(target, "value")
@@ -259,7 +321,8 @@ final class CodecEmitter {
       return b.build();
     }
 
-    b.addStatement("$T.encodeValue(writer, $L, $L.class, style)", JSON, valueExpr, qn);
+    var codecTarget = codecTargetFor(qn);
+    b.addStatement("$L.encode(writer, $L, style)", codecTarget.klass(), valueExpr);
     return b.build();
   }
 
@@ -306,9 +369,8 @@ final class CodecEmitter {
       ctorArgs.add("__$L", info.components.get(i).name);
     }
     body.addStatement("return new $L($L)", qname, ctorArgs.build());
-    return MethodSpec.methodBuilder("codecDecode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("decode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(target)
         .addParameter(JSON_READER, "reader")
         .addParameter(FIELD_PATH, "path")
@@ -486,8 +548,19 @@ final class CodecEmitter {
       return b.build();
     }
 
-    b.addStatement(
-        "$L = $T.decodeValue($L, $L.class, $L)", targetVar, JSON, readerExpr, qn, pathExpr);
+    var codecTarget = codecTargetFor(qn);
+    if (codecTarget.castTo().optIsSome()) {
+      b.addStatement(
+          "$L = ($L) $L.decode($L, $L)",
+          targetVar,
+          codecTarget.castTo().optUnwrap(),
+          codecTarget.klass(),
+          readerExpr,
+          pathExpr);
+    } else {
+      b.addStatement(
+          "$L = $L.decode($L, $L)", targetVar, codecTarget.klass(), readerExpr, pathExpr);
+    }
     return b.build();
   }
 
@@ -506,7 +579,7 @@ final class CodecEmitter {
       var key = toSnakeCase(lastSegment(perm));
       body.beginControlFlow("if (value instanceof $L __v)", perm);
       body.addStatement("writer.name($S)", key);
-      body.addStatement("$L.codecEncode(writer, __v, style)", codecRef(perm));
+      body.addStatement("$L.encode(writer, __v, style)", codecTargetFor(perm).klass());
       body.nextControlFlow("else");
     }
     body.addStatement(
@@ -516,9 +589,8 @@ final class CodecEmitter {
       body.endControlFlow();
     }
     body.addStatement("writer.endObject()");
-    return MethodSpec.methodBuilder("codecEncode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("encode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(void.class)
         .addParameter(JSON_WRITER, "writer")
         .addParameter(target, "value")
@@ -541,9 +613,9 @@ final class CodecEmitter {
     for (var perm : info.permittedSubclasses) {
       var key = toSnakeCase(lastSegment(perm));
       body.add(
-          "case $S -> __out = $L.codecDecode(reader, path.field($S));\n",
+          "case $S -> __out = $L.decode(reader, path.field($S));\n",
           key,
-          codecRef(perm),
+          codecTargetFor(perm).klass(),
           key);
     }
     body.add(
@@ -558,9 +630,8 @@ final class CodecEmitter {
         "Sealed " + qname + " must have exactly one variant");
     body.addStatement("reader.endObject()");
     body.addStatement("return __out");
-    return MethodSpec.methodBuilder("codecDecode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("decode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(target)
         .addParameter(JSON_READER, "reader")
         .addParameter(FIELD_PATH, "path")
@@ -570,9 +641,8 @@ final class CodecEmitter {
   }
 
   private static MethodSpec buildEnumEncode(TypeName target) {
-    return MethodSpec.methodBuilder("codecEncode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("encode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(void.class)
         .addParameter(JSON_WRITER, "writer")
         .addParameter(target, "value")
@@ -594,9 +664,8 @@ final class CodecEmitter {
         DESERIALIZATION_EXCEPTION,
         "Unknown enum constant '",
         "' for " + qname);
-    return MethodSpec.methodBuilder("codecDecode")
-        .addAnnotation(Override.class)
-        .addModifiers(Modifier.PUBLIC)
+    return MethodSpec.methodBuilder("decode")
+        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(target)
         .addParameter(JSON_READER, "reader")
         .addParameter(FIELD_PATH, "path")
@@ -634,8 +703,11 @@ final class CodecEmitter {
     return "null";
   }
 
-  private static String codecRef(String qname) {
-    return CodecsGen.GEN_PACKAGE + "." + simpleNameOf(qname) + "Codec.INSTANCE";
+  private static CodecTarget codecTargetFor(String qname) {
+    var hand = HAND_CODED_REFS.get(qname);
+    if (hand != null) return hand;
+    return new CodecTarget(
+        CodecsGen.GEN_PACKAGE + "." + simpleNameOf(qname) + "Codec", Opt.none());
   }
 
   private static TypeName classNameOf(String qname) {
@@ -686,41 +758,4 @@ final class CodecEmitter {
     return out;
   }
 
-  static String emitCodecs(TList<String> emitted) {
-    var t = TypeVariableName.get("T");
-    var codecOfT = ParameterizedTypeName.get(CODEC, t);
-    var optCodecOfT = ParameterizedTypeName.get(OPT, codecOfT);
-    var lookup =
-        MethodSpec.methodBuilder("lookup")
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .addTypeVariable(t)
-            .addAnnotation(
-                AnnotationSpec.builder(SuppressWarnings.class)
-                    .addMember("value", "$S", "unchecked")
-                    .build())
-            .returns(optCodecOfT)
-            .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), t), "clazz");
-    for (var q : emitted) {
-      lookup.addStatement(
-          "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
-          q, OPT, codecOfT, codecRef(q));
-    }
-    for (var entry : HAND_CODED_ENTRIES) {
-      lookup.addStatement(
-          "if (clazz == $L.class) return $T.some(($T) (Codec<?>) $L)",
-          entry[0], OPT, codecOfT, entry[1]);
-    }
-    lookup.addStatement("return $T.none()", OPT);
-
-    var cls =
-        TypeSpec.classBuilder("Codecs")
-            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build())
-            .addMethod(lookup.build());
-
-    return JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build())
-        .skipJavaLangImports(true)
-        .build()
-        .toString();
-  }
 }

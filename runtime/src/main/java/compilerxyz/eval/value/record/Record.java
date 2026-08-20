@@ -1,12 +1,9 @@
 package compilerxyz.eval.value.record;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
-import compilerxyz.eval.aspect.AspectLookup;
+
 
 import compilerxyz.annotations.BuiltinLight;
-import compilerxyz.eval.EvalOutcome;
-
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
 import compilerxyz.artifact.ArtifactBodyExporter;
@@ -16,32 +13,46 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValues;
-import compilerxyz.util.Result;
-import compilerxyz.eval.dynamic.CompositeSlotSort;
-import compilerxyz.eval.dynamic.CompositeClassEmitter;
-import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
-import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
-import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
+import compilerxyz.eval.ExprSubErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CompositeClassEmitter;
+import compilerxyz.eval.dynamic.CompositeSlotSort;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamic;
+import compilerxyz.gen.AspectDropDynamicLight;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFieldUseConst;
 import compilerxyz.gen.AspectFieldUseDynamic;
@@ -49,50 +60,39 @@ import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectRecord;
 import compilerxyz.gen.AspectType;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.dynamic.JvmConstants;
-import compilerxyz.gen.Target;
 import compilerxyz.gen.BindResult;
-import compilerxyz.gen.RecordBindField;
-import compilerxyz.gen.TargetBindSub;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.eval.ExprSubErr;
-import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.ValueDynamicSource;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.tuple.Tuple;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-import compilerxyz.util.TOrderedMap;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import org.objectweb.asm.Opcodes;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectFieldUseConst;
 import compilerxyz.gen.GenAspectFieldUseDynamic;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectRecord;
-import compilerxyz.gen.GenAspectType;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.gen.AspectDropDynamicLight;
-import compilerxyz.gen.AspectElementUseDynamicBind;
-import java.lang.reflect.Field;
-import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenAspectType;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.RecordBindField;
+import compilerxyz.gen.Target;
+import compilerxyz.gen.TargetBindSub;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactRecordTypeCodec;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.MustCast;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
+import compilerxyz.util.TOrderedMap;
+import java.lang.reflect.Field;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinLight(uniqueId = 6134L)
 public final class Record
@@ -581,7 +581,7 @@ public final class Record
                               : nullArtifact());
                     }
                     var body = new ArtifactRecordType(fieldArts);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactRecordTypeCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -602,7 +602,7 @@ public final class Record
               (raw) -> {
                 ArtifactRecordType body;
                 try {
-                  body = JsonValues.fromValue(ArtifactRecordType.class, raw);
+                  body = ArtifactRecordTypeCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "Record data: failed to parse ArtifactRecordType: " + e.getMessage());

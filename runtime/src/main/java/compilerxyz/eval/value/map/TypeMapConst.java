@@ -1,10 +1,10 @@
 package compilerxyz.eval.value.map;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ArtifactSupport;
@@ -19,18 +19,18 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.GenAspectArtifact;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValues;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
-import compilerxyz.artifact.ArtifactBodyExporter.Root;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinLight(uniqueId = 6162L)
 public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
@@ -113,7 +113,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
                             ? valueArtRes.requireValue("TypeMapConst::exporterExport value")
                             : nullArtifact();
                     var body = new ArtifactMapType(keyArt, valueArt);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactMapTypeCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -134,7 +134,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
               (raw) -> {
                 ArtifactMapType body;
                 try {
-                  body = JsonValues.fromValue(ArtifactMapType.class, raw);
+                  body = ArtifactMapTypeCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeMapConst data: failed to parse ArtifactMapType: " + e.getMessage());

@@ -1,21 +1,17 @@
 package compilerxyz.eval.value.option;
 
-import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.eval.EvalOutcome;
+
 import compilerxyz.annotations.BuiltinFull;
-
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.safejson.JsonValues;
-import compilerxyz.gen.Binding;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -23,60 +19,64 @@ import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
+import compilerxyz.eval.dynamic.CodeDynamic;
+import compilerxyz.eval.dynamic.CodeLoc.Some;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.value.ValueDynamic;
+import compilerxyz.eval.value.ValueDynamicSource;
+import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.value.bool_.TypeBoolDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
+import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectField;
+import compilerxyz.gen.AspectFieldUseDynamic;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectSet;
 import compilerxyz.gen.AspectStackValueDynamic;
-import compilerxyz.eval.dynamic.CodeDynamic;
-import compilerxyz.gen.TargetBindSub;
-import compilerxyz.eval.value.ValueDynamic;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.gen.GenCodegenDescriptors;
-import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
-import java.util.function.Function;
-import compilerxyz.eval.dynamic.DynUtil;
-import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
-import compilerxyz.gen.GenAspectField;
-import compilerxyz.gen.GenAspectInitialBind;
-import compilerxyz.gen.GenAspectStackValueDynamic;
-import compilerxyz.artifact.ArtifactBodyExporter.Root;
-import compilerxyz.eval.dynamic.CodeLoc.Some;
-import compilerxyz.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.value.ValueDynamicSource;
-import compilerxyz.eval.value.bool_.TypeBoolDynamic;
-import compilerxyz.gen.AspectElementUseDynamicBind;
-import compilerxyz.gen.AspectFieldUseDynamic;
-import compilerxyz.gen.AspectSet;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectFieldUseDynamic;
+import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectSet;
+import compilerxyz.gen.GenAspectStackValueDynamic;
+import compilerxyz.gen.GenCodegenDescriptors;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.TargetBindSub;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactOptionTypeCodec;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.Result;
+import compilerxyz.util.TList;
+import compilerxyz.util.TMap;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6008L)
 public final class TypeOptionDynamic
@@ -233,7 +233,7 @@ public final class TypeOptionDynamic
                                 "TypeOptionDynamic::exporterExport element")
                             : nullArtifact();
                     var body = new ArtifactOptionType(elementArt);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -254,7 +254,7 @@ public final class TypeOptionDynamic
               (raw) -> {
                 ArtifactOptionType body;
                 try {
-                  body = JsonValues.fromValue(ArtifactOptionType.class, raw);
+                  body = ArtifactOptionTypeCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeOptionDynamic data: failed to parse ArtifactOptionType: "

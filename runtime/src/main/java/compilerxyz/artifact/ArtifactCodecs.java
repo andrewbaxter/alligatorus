@@ -2,12 +2,11 @@ package compilerxyz.artifact;
 
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import compilerxyz.safejson.Codec;
-import compilerxyz.safejson.Json;
 import compilerxyz.safejson.Json.DeserializationException;
 import compilerxyz.safejson.Json.FieldPath;
 import compilerxyz.safejson.Json.Style;
 import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValues;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.TreeMap;
@@ -18,65 +17,25 @@ import compilerxyz.eval.SourceId;
 public final class ArtifactCodecs {
   private ArtifactCodecs() {}
 
-  public static final Codec<JsonValue> JSON_VALUE = new Codec<>() {
-    @Override
-    public void codecEncode(JsonWriter writer, JsonValue value, Style style) throws IOException {
-      JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value, style);
-    }
+  public static final class ArtifactCodec {
+    private ArtifactCodec() {}
 
-    @Override
-    public JsonValue codecDecode(JsonReader reader, FieldPath path) throws IOException {
-      return JsonValue.safeJsonAdapter.safeJsonAdapterDeserialize(reader, path);
-    }
-  };
-
-  public static final class ArtifactCodec implements Codec<Artifact> {
-    public static final ArtifactCodec INSTANCE = new ArtifactCodec();
-    public static final Codec<Artifact.Body> INSTANCE_BODY =
-        new Codec<>() {
-          @Override
-          public void codecEncode(JsonWriter writer, Artifact.Body value, Style style)
-              throws IOException {
-            INSTANCE.codecEncode(writer, value, style);
-          }
-
-          @Override
-          public Artifact.Body codecDecode(JsonReader reader, FieldPath path) throws IOException {
-            return (Artifact.Body) INSTANCE.codecDecode(reader, path);
-          }
-        };
-    public static final Codec<Artifact.Ref> INSTANCE_REF =
-        new Codec<>() {
-          @Override
-          public void codecEncode(JsonWriter writer, Artifact.Ref value, Style style)
-              throws IOException {
-            INSTANCE.codecEncode(writer, value, style);
-          }
-
-          @Override
-          public Artifact.Ref codecDecode(JsonReader reader, FieldPath path) throws IOException {
-            return (Artifact.Ref) INSTANCE.codecDecode(reader, path);
-          }
-        };
-
-    @Override
-    public void codecEncode(JsonWriter writer, Artifact value, Style style) throws IOException {
+    public static void encode(JsonWriter writer, Artifact value, Style style) throws IOException {
       writer.beginObject();
       switch (value) {
         case Artifact.Body b -> {
           writer.name("body");
-          ArtifactBodyCodec.INSTANCE.codecEncode(writer, b.body(), style);
+          ArtifactBodyCodec.encode(writer, b.body(), style);
         }
         case Artifact.Ref r -> {
           writer.name("ref");
-          ArtifactIdSourceCodec.INSTANCE.codecEncode(writer, r.id(), style);
+          ArtifactIdSourceCodec.encode(writer, r.id(), style);
         }
       }
       writer.endObject();
     }
 
-    @Override
-    public Artifact codecDecode(JsonReader reader, FieldPath path) throws IOException {
+    public static Artifact decode(JsonReader reader, FieldPath path) throws IOException {
       reader.beginObject();
       if (!reader.hasNext()) {
         throw new DeserializationException("Empty object for Artifact sealed variant", path);
@@ -86,9 +45,9 @@ public final class ArtifactCodecs {
       Artifact result;
       switch (tag) {
         case "body" ->
-            result = new Artifact.Body(ArtifactBodyCodec.INSTANCE.codecDecode(reader, variantPath));
+            result = new Artifact.Body(ArtifactBodyCodec.decode(reader, variantPath));
         case "ref" ->
-            result = new Artifact.Ref(ArtifactIdSourceCodec.INSTANCE.codecDecode(reader, variantPath));
+            result = new Artifact.Ref(ArtifactIdSourceCodec.decode(reader, variantPath));
         default ->
             throw new DeserializationException("Unknown Artifact variant: '" + tag + "'", path);
       }
@@ -101,11 +60,11 @@ public final class ArtifactCodecs {
     }
   }
 
-  public static final class ArtifactBodyCodec implements Codec<ArtifactBody> {
-    public static final ArtifactBodyCodec INSTANCE = new ArtifactBodyCodec();
+  public static final class ArtifactBodyCodec {
+    private ArtifactBodyCodec() {}
 
-    @Override
-    public void codecEncode(JsonWriter writer, ArtifactBody value, Style style) throws IOException {
+    public static void encode(JsonWriter writer, ArtifactBody value, Style style)
+        throws IOException {
       writer.beginObject();
       if (style == Style.CANONICAL) {
 
@@ -115,7 +74,7 @@ public final class ArtifactCodecs {
             () -> {
               try {
                 writer.name("data");
-                JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value.data(), style);
+                JsonValues.encode(writer, value.data(), style);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
@@ -125,7 +84,7 @@ public final class ArtifactCodecs {
             () -> {
               try {
                 writer.name("exporter");
-                ArtifactBodyExporterCodec.INSTANCE.codecEncode(writer, value.exporter(), style);
+                ArtifactBodyExporterCodec.encode(writer, value.exporter(), style);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
@@ -135,15 +94,14 @@ public final class ArtifactCodecs {
         }
       } else {
         writer.name("data");
-        JsonValue.safeJsonAdapter.safeJsonAdapterSerialize(writer, value.data(), style);
+        JsonValues.encode(writer, value.data(), style);
         writer.name("exporter");
-        ArtifactBodyExporterCodec.INSTANCE.codecEncode(writer, value.exporter(), style);
+        ArtifactBodyExporterCodec.encode(writer, value.exporter(), style);
       }
       writer.endObject();
     }
 
-    @Override
-    public ArtifactBody codecDecode(JsonReader reader, FieldPath path) throws IOException {
+    public static ArtifactBody decode(JsonReader reader, FieldPath path) throws IOException {
       JsonValue data = null;
       ArtifactBodyExporter exporter = null;
       boolean seenData = false;
@@ -154,11 +112,44 @@ public final class ArtifactCodecs {
         switch (fname) {
           case "data" -> {
             seenData = true;
-            data = JsonValue.safeJsonAdapter.safeJsonAdapterDeserialize(reader, path.field("data"));
+            data = JsonValues.decode(reader, path.field("data"));
           }
           case "exporter" -> {
             seenExporter = true;
-            exporter = ArtifactBodyExporterCodec.INSTANCE.codecDecode(reader, path.field("exporter"));
+            var exporterPath = path.field("exporter");
+            reader.beginObject();
+            if (!reader.hasNext()) {
+              throw new DeserializationException(
+                  "Empty object for ArtifactBodyExporter sealed variant", exporterPath);
+            }
+            var exporterTag = reader.nextName();
+            var exporterVariantPath = exporterPath.field(exporterTag);
+            switch (exporterTag) {
+              case "body" ->
+                  exporter = new ArtifactBodyExporter.Body(decode(reader, exporterVariantPath));
+              case "root" -> {
+
+                reader.beginObject();
+                if (reader.hasNext()) {
+                  throw new DeserializationException(
+                      "Unexpected field in ArtifactBodyExporter.Root payload", exporterVariantPath);
+                }
+                reader.endObject();
+                exporter = new ArtifactBodyExporter.Root();
+              }
+              case "source_ref" ->
+                  exporter =
+                      new ArtifactBodyExporter.SourceRef(
+                          ArtifactIdSourceCodec.decode(reader, exporterVariantPath));
+              default ->
+                  throw new DeserializationException(
+                      "Unknown ArtifactBodyExporter variant: '" + exporterTag + "'", exporterPath);
+            }
+            if (reader.hasNext()) {
+              throw new DeserializationException(
+                  "ArtifactBodyExporter sealed object must have exactly one variant", exporterPath);
+            }
+            reader.endObject();
           }
           default ->
               throw new DeserializationException(
@@ -178,59 +169,16 @@ public final class ArtifactCodecs {
     }
   }
 
-  public static final class ArtifactBodyExporterCodec implements Codec<ArtifactBodyExporter> {
-    public static final ArtifactBodyExporterCodec INSTANCE = new ArtifactBodyExporterCodec();
-    public static final Codec<ArtifactBodyExporter.Body> INSTANCE_BODY =
-        new Codec<>() {
-          @Override
-          public void codecEncode(JsonWriter writer, ArtifactBodyExporter.Body value, Style style)
-              throws IOException {
-            INSTANCE.codecEncode(writer, value, style);
-          }
+  public static final class ArtifactBodyExporterCodec {
+    private ArtifactBodyExporterCodec() {}
 
-          @Override
-          public ArtifactBodyExporter.Body codecDecode(JsonReader reader, FieldPath path)
-              throws IOException {
-            return (ArtifactBodyExporter.Body) INSTANCE.codecDecode(reader, path);
-          }
-        };
-    public static final Codec<ArtifactBodyExporter.Root> INSTANCE_ROOT =
-        new Codec<>() {
-          @Override
-          public void codecEncode(JsonWriter writer, ArtifactBodyExporter.Root value, Style style)
-              throws IOException {
-            INSTANCE.codecEncode(writer, value, style);
-          }
-
-          @Override
-          public ArtifactBodyExporter.Root codecDecode(JsonReader reader, FieldPath path)
-              throws IOException {
-            return (ArtifactBodyExporter.Root) INSTANCE.codecDecode(reader, path);
-          }
-        };
-    public static final Codec<ArtifactBodyExporter.SourceRef> INSTANCE_SOURCE_REF =
-        new Codec<>() {
-          @Override
-          public void codecEncode(JsonWriter writer, ArtifactBodyExporter.SourceRef value, Style style)
-              throws IOException {
-            INSTANCE.codecEncode(writer, value, style);
-          }
-
-          @Override
-          public ArtifactBodyExporter.SourceRef codecDecode(JsonReader reader, FieldPath path)
-              throws IOException {
-            return (ArtifactBodyExporter.SourceRef) INSTANCE.codecDecode(reader, path);
-          }
-        };
-
-    @Override
-    public void codecEncode(JsonWriter writer, ArtifactBodyExporter value, Style style)
+    public static void encode(JsonWriter writer, ArtifactBodyExporter value, Style style)
         throws IOException {
       writer.beginObject();
       switch (value) {
         case ArtifactBodyExporter.Body b -> {
           writer.name("body");
-          ArtifactBodyCodec.INSTANCE.codecEncode(writer, b.inner(), style);
+          ArtifactBodyCodec.encode(writer, b.inner(), style);
         }
         case ArtifactBodyExporter.Root r -> {
           writer.name("root");
@@ -239,59 +187,19 @@ public final class ArtifactCodecs {
         }
         case ArtifactBodyExporter.SourceRef sr -> {
           writer.name("source_ref");
-          ArtifactIdSourceCodec.INSTANCE.codecEncode(writer, sr.id(), style);
+          ArtifactIdSourceCodec.encode(writer, sr.id(), style);
         }
       }
       writer.endObject();
     }
 
-    @Override
-    public ArtifactBodyExporter codecDecode(JsonReader reader, FieldPath path) throws IOException {
-      reader.beginObject();
-      if (!reader.hasNext()) {
-        throw new DeserializationException(
-            "Empty object for ArtifactBodyExporter sealed variant", path);
-      }
-      var tag = reader.nextName();
-      var variantPath = path.field(tag);
-      ArtifactBodyExporter result;
-      switch (tag) {
-        case "body" ->
-            result =
-                new ArtifactBodyExporter.Body(
-                    ArtifactBodyCodec.INSTANCE.codecDecode(reader, variantPath));
-        case "root" -> {
-
-          reader.beginObject();
-          if (reader.hasNext()) {
-            throw new DeserializationException(
-                "Unexpected field in ArtifactBodyExporter.Root payload", variantPath);
-          }
-          reader.endObject();
-          result = new ArtifactBodyExporter.Root();
-        }
-        case "source_ref" ->
-            result =
-                new ArtifactBodyExporter.SourceRef(
-                    ArtifactIdSourceCodec.INSTANCE.codecDecode(reader, variantPath));
-        default ->
-            throw new DeserializationException(
-                "Unknown ArtifactBodyExporter variant: '" + tag + "'", path);
-      }
-      if (reader.hasNext()) {
-        throw new DeserializationException(
-            "ArtifactBodyExporter sealed object must have exactly one variant", path);
-      }
-      reader.endObject();
-      return result;
-    }
   }
 
-  public static final class ArtifactIdSourceCodec implements Codec<ArtifactIdSource> {
-    public static final ArtifactIdSourceCodec INSTANCE = new ArtifactIdSourceCodec();
+  public static final class ArtifactIdSourceCodec {
+    private ArtifactIdSourceCodec() {}
 
-    @Override
-    public void codecEncode(JsonWriter writer, ArtifactIdSource value, Style style) throws IOException {
+    public static void encode(JsonWriter writer, ArtifactIdSource value, Style style)
+        throws IOException {
       writer.beginObject();
 
       writer.name("compile_id");
@@ -306,8 +214,7 @@ public final class ArtifactCodecs {
       writer.endObject();
     }
 
-    @Override
-    public ArtifactIdSource codecDecode(JsonReader reader, FieldPath path) throws IOException {
+    public static ArtifactIdSource decode(JsonReader reader, FieldPath path) throws IOException {
       long importState = 0;
       long source = 0;
       long index = 0;

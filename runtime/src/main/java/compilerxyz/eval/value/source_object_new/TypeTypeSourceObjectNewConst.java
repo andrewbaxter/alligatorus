@@ -1,8 +1,6 @@
 package compilerxyz.eval.value.source_object_new;
 
-import compilerxyz.eval.aspect.AspectLookup;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
 
 import compilerxyz.annotations.BuiltinLight;
@@ -15,6 +13,7 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
@@ -22,32 +21,33 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
-import compilerxyz.safejson.JsonValueNull;
-import compilerxyz.safejson.JsonValues;
-import compilerxyz.util.Result;
-import compilerxyz.util.TList;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
+import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectLift;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.util.Opt;
-import java.util.function.Function;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectDropDynamicLight;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
-import compilerxyz.eval.Code;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataSourceObjectNewCodec;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.safejson.JsonValueNull;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
+import compilerxyz.util.TList;
+import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6140L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
@@ -157,7 +157,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                                 "TypeTypeSourceObjectNewConst::exporterExport parent object")
                             : nullArtifact();
                     var body = new ArtifactDataSourceObjectNew(objectArt);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -180,7 +180,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
               (raw) -> {
                 ArtifactDataSourceObjectNew body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataSourceObjectNew.class, raw);
+                  body = ArtifactDataSourceObjectNewCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeTypeSourceObjectNewConst data: failed to parse "

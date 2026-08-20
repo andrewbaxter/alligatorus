@@ -1,12 +1,8 @@
 package compilerxyz.safejson;
 
-import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import compilerxyz.gen.codec.Codecs;
 import compilerxyz.util.Opt;
 import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
 public final class Json {
 
   public static final int CANONICAL_EXP_LEN_LIMIT = 21;
@@ -17,61 +13,6 @@ public final class Json {
     COMPACT,
     PRETTY,
     CANONICAL
-  }
-
-  public interface SafeJsonAdapter<T> {
-    void safeJsonAdapterSerialize(JsonWriter writer, T value, Style style) throws IOException;
-
-    T safeJsonAdapterDeserialize(JsonReader reader, FieldPath path) throws IOException;
-  }
-
-  @SuppressWarnings("unchecked")
-  public static void encodeValue(JsonWriter writer, Object object, Style style)
-      throws IOException {
-    if (object == null) {
-      writer.nullValue();
-      return;
-    }
-    var codecOpt = (Opt<Codec<Object>>) (Opt<?>) Codecs.lookup(object.getClass());
-    if (codecOpt.optIsNone()) {
-      throw new SafeJsonException(
-          "No registered Codec for runtime class " + object.getClass().getName()
-              + " — mark the type with SafeJsonSerializable or register a hand-coded codec.");
-    }
-    codecOpt.optUnwrap().codecEncode(writer, object, style);
-  }
-
-  @SuppressWarnings("unchecked")
-  public static void encodeValue(
-      JsonWriter writer, Object object, Class<?> declaredClass, Style style)
-      throws IOException {
-    if (object == null) {
-      writer.nullValue();
-      return;
-    }
-    var codecOpt = (Opt<Codec<Object>>) (Opt<?>) Codecs.lookup(declaredClass);
-    if (codecOpt.optIsSome()) {
-      codecOpt.optUnwrap().codecEncode(writer, object, style);
-    } else {
-      encodeValue(writer, object, style);
-    }
-  }
-
-  public static <T> T decodeValue(JsonReader reader, Class<T> clazz, FieldPath path)
-      throws IOException {
-    var codecOpt = Codecs.lookup(clazz);
-    if (codecOpt.optIsNone()) {
-      throw new SafeJsonException(
-          "No registered Codec for class " + clazz.getName()
-              + " — mark the type with SafeJsonSerializable or register a hand-coded codec.");
-    }
-    return codecOpt.optUnwrap().codecDecode(reader, path);
-  }
-
-  public static <T> T deserialize(Class<T> clazz, String json) throws IOException {
-    var reader = new JsonReader(new StringReader(json));
-    var path = FieldPath.root();
-    return decodeValue(reader, clazz, path);
   }
 
   public static void serializeDouble(JsonWriter writer, double value, Style style)

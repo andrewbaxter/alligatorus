@@ -9,23 +9,23 @@ import compilerxyz.artifact.ExporterRootDelegate;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.ExprErr;
+import compilerxyz.eval.ImportInstall;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
-import compilerxyz.gen.Value;
+import compilerxyz.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
+import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ValueSourceObjectConstArtifactValueSourceObjectCodec;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValues;
 import compilerxyz.safejson.SafeJsonSerializable;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import java.util.function.Function;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.value.source_object.TypeSourceObjectConst;
-import compilerxyz.eval.ImportInstall;
-import compilerxyz.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.gen.GenAspectLift;
 import java.lang.reflect.Constructor;
+import java.util.function.Function;
 
 public final class ValueSourceObjectConst {
   private ValueSourceObjectConst() {}
@@ -98,7 +98,7 @@ public final class ValueSourceObjectConst {
               underArtRes.requireValue(
                   "ValueSourceObjectConst::exporterExport underlying artifact");
           var body = new ArtifactValueSourceObject(typeArt, underArt);
-          var artifact = new Artifact.Body(makeBody.apply(JsonValues.toValue(body)));
+          var artifact = new Artifact.Body(makeBody.apply(ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body)));
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
         }
@@ -108,7 +108,7 @@ public final class ValueSourceObjectConst {
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
           ArtifactValueSourceObject body;
           try {
-            body = JsonValues.fromValue(ArtifactValueSourceObject.class, data);
+            body = ValueSourceObjectConstArtifactValueSourceObjectCodec.fromValue(data);
           } catch (RuntimeException e) {
             return EResult.err(
                 loc,

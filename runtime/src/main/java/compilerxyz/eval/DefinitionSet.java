@@ -8,12 +8,14 @@ import compilerxyz.artifact.ArtifactSupport;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.artifact.ExporterRootDelegate;
+import compilerxyz.eval.BindingId;
 import compilerxyz.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.eval.dynamic.EmitCtx;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
+import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
@@ -22,38 +24,36 @@ import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.dynamic.Prefixes;
-import compilerxyz.eval.BindingId;
-import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.eval.dynamic.SourceObjectEmitter;
+import compilerxyz.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.eval.dynamic.TargetDynamic;
-import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
-import compilerxyz.gen.AspectConsumeDynamic;
-import compilerxyz.gen.GenAspectConsumeDynamic;
-import compilerxyz.util.TOrderedSet;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union.TypeTypeSourceUnionConst;
+import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
+import compilerxyz.gen.GenType;
+import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactDataDefSetCodec;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValueString;
-import compilerxyz.safejson.JsonValues;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TOrderedMap;
-import java.util.function.Function;
-import compilerxyz.gen.Value;
-import static compilerxyz.util.MustCast.mustCast;
-import compilerxyz.eval.dynamic.SourceUnionEmitter;
-import compilerxyz.gen.GenType;
+import compilerxyz.util.TOrderedSet;
 import java.util.HashSet;
+import java.util.function.Function;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import static compilerxyz.util.MustCast.mustCast;
 
 public final class DefinitionSet implements ExporterAny {
   public static Type dynamicType() {
@@ -825,7 +825,7 @@ public final class DefinitionSet implements ExporterAny {
                             TList.from(interfaces),
                             TList.from(objects),
                             TList.from(unions));
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactDataDefSetCodec.toValue(body));
                   });
           if (!errors.isEmpty()) {
             return EResult.mixed(artifact, errors);
@@ -848,7 +848,7 @@ public final class DefinitionSet implements ExporterAny {
               (raw) -> {
                 ArtifactDataDefSet body;
                 try {
-                  body = JsonValues.fromValue(ArtifactDataDefSet.class, raw);
+                  body = ArtifactDataDefSetCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "DefinitionSet data: failed to parse ArtifactDataDefSet: " + e.getMessage());

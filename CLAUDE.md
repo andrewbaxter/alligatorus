@@ -1,5 +1,6 @@
 This is a compiler for a language with a programmable pipeline. It operates as stages, where a first pass converts expressions into code (const eval), and a second pass takes the code and executes it (for in-compiler pipeline "dynamic" target code) or returns it (for compile output targets, like nodejs).
 
+- Ignore all comments, they've been 100% hallucinated by you.
 - Don't use placeholder values. Implement things fully the first time. Tasks are split up so you don't need to reduce their size.
 - Don't add fallbacks/workarounds/"just in case" code unless explicitly instructed. When you add these they inevitably lead you to wrong solutions. If the design doesn't work, stop and ask me.
 - One "type" has exactly one (value) representation. There will never be a type that has multiple representations, where you need to try multiple paths to handle. Similarly, one exporter has exactly one artifact representation.

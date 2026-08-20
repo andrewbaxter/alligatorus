@@ -62,7 +62,6 @@ public final class CodecsGen {
       walk(root, index, closure);
     }
 
-    var emitted = new TList<String>();
     for (var qname : closure) {
       if (HAND_CODED.contains(qname)) continue;
       var t = index.byQname.get(qname);
@@ -70,12 +69,8 @@ public final class CodecsGen {
       if (t.kind == TypeKind.RECORD || t.kind == TypeKind.SEALED || t.kind == TypeKind.ENUM) {
         var src = CodecEmitter.emit(qname, t, index);
         writeFormatted(outRoot, formatter, qname, src);
-        emitted.add(qname);
       }
     }
-
-    var codecsSrc = CodecEmitter.emitCodecs(emitted);
-    writeFormattedRaw(outRoot, formatter, "compilerxyz.gen.codec.Codecs", codecsSrc);
   }
 
   private static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {

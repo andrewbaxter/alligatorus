@@ -40,9 +40,12 @@ import spoon.reflect.declaration.CtClass;
  * nonzero. Because this is source-level, generics are not erased, references to compile-time
  * constants are visible, and implemented interfaces are in the model — so classes used only those
  * ways are not false positives. Roots are main methods, JUnit tests,
- * {@code @CodegenDescriptor} methods, and everything generated code references — {@code @Builtin*}
- * annotations are not roots themselves; they drive codegen, and the generated
- * registrations/references root the actually-used members.
+ * {@code @CodegenDescriptor} methods, external-override methods, and dynamic-dispatch registration
+ * targets. Generated code is not a root: it is reached through real call sites like everything
+ * else ({@code @Builtin*} annotations drive codegen, and the builtin tree provides reachability to
+ * the generated registrations). Generated types are still exempt from findings — they are
+ * regenerated every build, so deadness or single-use there is actionable only at the source that
+ * drives the generation.
  */
 public final class ReachabilityMain {
 
@@ -93,9 +96,8 @@ public final class ReachabilityMain {
     // Seed roots.
     Deque<String> work = new ArrayDeque<>();
     for (CtType<?> t : types) {
-      boolean rootedType = isGeneratedType(t);
       for (CtExecutable<?> ex : executablesOf(t)) {
-        if (rootedType || isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
+        if (isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
           String k = key(ex);
           if (reachable.add(k)) work.add(k);
         }

@@ -1,10 +1,10 @@
 package compilerxyz.eval.value.list;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
 
 import compilerxyz.annotations.BuiltinLight;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
+import compilerxyz.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.artifact.ArtifactExporter;
 import compilerxyz.artifact.ArtifactIdSource;
 import compilerxyz.artifact.ArtifactSupport;
@@ -19,6 +19,7 @@ import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.ExprErr;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
@@ -36,7 +37,6 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
-import compilerxyz.gen.Binding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
@@ -44,6 +44,7 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectIterable;
 import compilerxyz.gen.AspectListConst;
 import compilerxyz.gen.AspectPostDeserialize;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -53,17 +54,16 @@ import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectListConst;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenLists;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
+import compilerxyz.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.safejson.JsonValue;
-import compilerxyz.safejson.JsonValues;
+import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
-import compilerxyz.artifact.ArtifactBodyExporter.Root;
-import compilerxyz.eval.ExprErr;
-import compilerxyz.safejson.JsonValueNull;
 
 @BuiltinLight(uniqueId = 6152L)
 public final class TypeListConst
@@ -181,7 +181,7 @@ public final class TypeListConst
                             ? elementArtRes.requireValue("TypeListConst::exporterExport element")
                             : nullArtifact();
                     var body = new ArtifactListType(elementArt);
-                    return makeBody.apply(JsonValues.toValue(body));
+                    return makeBody.apply(ArtifactListTypeCodec.toValue(body));
                   });
           if (errors.isEmpty()) return EResult.ok(artifact);
           return EResult.mixed(artifact, errors);
@@ -202,7 +202,7 @@ public final class TypeListConst
               (raw) -> {
                 ArtifactListType body;
                 try {
-                  body = JsonValues.fromValue(ArtifactListType.class, raw);
+                  body = ArtifactListTypeCodec.fromValue(raw);
                 } catch (RuntimeException e) {
                   return new Result.Err<>(
                       "TypeListConst data: failed to parse ArtifactListType: " + e.getMessage());

@@ -1,10 +1,10 @@
 package compilerxyz.tests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.gson.stream.JsonWriter;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.builtin.Zbase32;
+import compilerxyz.gen.codec.SourceModuleCodec;
 import compilerxyz.langhelp.Compile;
 import compilerxyz.langhelp.GlobalContext;
 import compilerxyz.langhelp.Sources;
@@ -20,6 +20,7 @@ import compilerxyz.util.TOrderedMap;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
@@ -27,14 +28,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
+import java.sql.DriverManager;
+import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import com.google.gson.stream.JsonWriter;
-import java.io.StringWriter;
-import java.sql.DriverManager;
-import java.util.Arrays;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class T0180ImportRealTest {
 
@@ -43,7 +44,7 @@ public final class T0180ImportRealTest {
     var writer = new JsonWriter(sw);
     writer.setSerializeNulls(true);
     writer.setIndent("");
-    Json.encodeValue(writer, new SourceModule.V1(expr), SourceModule.class, Json.Style.COMPACT);
+    SourceModuleCodec.encode(writer, new SourceModule.V1(expr), Json.Style.COMPACT);
     writer.close();
     return sw.toString();
   }
