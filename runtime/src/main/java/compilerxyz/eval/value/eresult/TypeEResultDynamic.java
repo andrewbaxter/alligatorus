@@ -50,7 +50,7 @@ import compilerxyz.eval.dynamic.CodeLoc.Some;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.MatchDynamic;
 import compilerxyz.eval.value.bool_.TypeBoolDynamic;
-import compilerxyz.eval.value.list.TypeListDynamic;
+import compilerxyz.eval.value.list.TypeListBoxedDynamic;
 import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.AspectUnion.Variant;
 import compilerxyz.gen.AspectUnion;
@@ -108,7 +108,7 @@ public record TypeEResultDynamic(Type elementType)
   public TList<Variant> aspectUnionVariants() {
     var out = new TList<Variant>();
     out.add(new Variant(new ConstKey.Str("ok"), "ok", elementType));
-    out.add(new Variant(new ConstKey.Str("errs"), "errs", new TypeListDynamic(GenExprErr.dynamicType())));
+    out.add(new Variant(new ConstKey.Str("errs"), "errs", new TypeListBoxedDynamic(GenExprErr.dynamicType())));
     return out;
   }
 

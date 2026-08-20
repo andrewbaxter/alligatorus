@@ -88,41 +88,41 @@ public final class T0070ForeachTest {
 
           // access flags 0x9
           public static run()Ljava/lang/Object;
-            NEW compilerxyz/util/TList
+            NEW compilerxyz/gen/ListStoreInt
             DUP
-            INVOKESPECIAL compilerxyz/util/TList.<init> ()V
+            INVOKESPECIAL compilerxyz/gen/ListStoreInt.<init> ()V
             DUP
             LDC 1
-            INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
-            INVOKEVIRTUAL compilerxyz/util/TList.add (Ljava/lang/Object;)Z
-            POP
+            INVOKEVIRTUAL compilerxyz/gen/ListStoreInt.push (I)V
             DUP
             LDC 2
-            INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
-            INVOKEVIRTUAL compilerxyz/util/TList.add (Ljava/lang/Object;)Z
-            POP
+            INVOKEVIRTUAL compilerxyz/gen/ListStoreInt.push (I)V
             DUP
             LDC 7
-            INVOKESTATIC java/lang/Integer.valueOf (I)Ljava/lang/Integer;
-            INVOKEVIRTUAL compilerxyz/util/TList.add (Ljava/lang/Object;)Z
-            POP
+            INVOKEVIRTUAL compilerxyz/gen/ListStoreInt.push (I)V
             ASTORE 0
             ALOAD 0
-            INVOKEINTERFACE java/lang/Iterable.iterator ()Ljava/util/Iterator; (itf)
+            LDC 0
+            ISTORE 1
            L0
             DUP
-            INVOKEINTERFACE java/util/Iterator.hasNext ()Z (itf)
-            IFEQ L1
+            INVOKEVIRTUAL compilerxyz/gen/ListStoreInt.size ()I
+            ILOAD 1
+            SWAP
+            IF_ICMPGE L1
             DUP
-            INVOKEINTERFACE java/util/Iterator.next ()Ljava/lang/Object; (itf)
-            CHECKCAST java/lang/Integer
-            ASTORE 1
+            ILOAD 1
+            INVOKEVIRTUAL compilerxyz/gen/ListStoreInt.get (I)I
+            ISTORE 2
             GETSTATIC compilerxyz/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/eval/ExprContext;
-            ALOAD 1
-            INVOKEVIRTUAL java/lang/Integer.intValue ()I
+            ILOAD 2
             INVOKESTATIC compilerxyz/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/eval/builtin/BuiltinBodies.log (Lcompilerxyz/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
             POP
+            ILOAD 1
+            LDC 1
+            IADD
+            ISTORE 1
             GOTO L0
            L1
             POP
@@ -131,7 +131,7 @@ public final class T0070ForeachTest {
             INVOKESPECIAL compilerxyz/eval/gen/Composite$0.<init> ()V
             ARETURN
             MAXSTACK = 3
-            MAXLOCALS = 2
+            MAXLOCALS = 3
         }
         """,
         Helpers.disassembled(ok, "compilerxyz.eval.gen.EvalRoot$0"));

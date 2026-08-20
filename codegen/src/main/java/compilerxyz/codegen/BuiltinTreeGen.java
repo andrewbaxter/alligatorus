@@ -119,7 +119,7 @@ public final class BuiltinTreeGen {
   private static final ClassName ASPECT_INTERFACE =
       ClassName.get("compilerxyz.eval.aspect", "Aspect");
   private static final ClassName TYPE_LIST_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic");
+      ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic");
   private static final ClassName TYPE_LIST_CONSTRUCTOR_CONST =
       ClassName.get("compilerxyz.eval.value.list", "TypeListConstructorConst");
   private static final ClassName TYPE_MAP_DYNAMIC =

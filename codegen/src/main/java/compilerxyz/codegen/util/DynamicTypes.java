@@ -102,7 +102,7 @@ public final class DynamicTypes {
     // Composite descriptors.
     composite(
         "compilerxyz.eval.value.list",
-        "TypeListDynamic",
+        "TypeListBoxedDynamic",
         1,
         ClassName.get("compilerxyz.util", "TList"));
     composite(

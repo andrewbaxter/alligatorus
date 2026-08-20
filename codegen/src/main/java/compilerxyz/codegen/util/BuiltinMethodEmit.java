@@ -56,7 +56,7 @@ public final class BuiltinMethodEmit {
   private static final ClassName TYPE_ERESULT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
   private static final ClassName TYPE_LIST_DYNAMIC =
-      ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic");
+      ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic");
   private static final ClassName TYPE_OPTION_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
   private static final ClassName TYPE_MAP_DYNAMIC =

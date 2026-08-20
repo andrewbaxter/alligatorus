@@ -198,7 +198,7 @@ public final class BuiltinPathScanner {
       "compilerxyz.util.Opt",
           ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"),
       "compilerxyz.util.TList",
-          ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic"),
+          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic"),
       "compilerxyz.util.TMap",
           ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"),
       "compilerxyz.util.TOrderedMap",

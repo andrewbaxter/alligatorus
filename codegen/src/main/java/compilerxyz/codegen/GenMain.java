@@ -78,7 +78,9 @@ public final class GenMain {
     for (var s : scannedIdentities) {
       identityExtras.add(new IdentitiesGen.IdentitySpec(s.name(), s.value(), s.standalone()));
     }
+    identityExtras.addAll(ListsGen.identitySpecs());
     IdentitiesGen.run(outRoot, formatter, aspectIds, identityExtras);
+    ListsGen.run(outRoot, formatter);
 
     var scannedPushStructs =
         BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);

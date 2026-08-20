@@ -30,7 +30,7 @@ import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
-import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.gen.GenLists;
 
 @BuiltinPath("types.list")
 @BuiltinLight(uniqueId = 6116L)
@@ -77,8 +77,7 @@ public record TypeListConstructorConst()
         aspectTypeRes
             .requireValue("TypeListConstructorConst::call AspectType")
             .aspectTypeType(argValue);
-    elementType = DynUtil.substituteBoxed(xx, elementType);
-    Type listType = new TypeListDynamic(elementType);
+    Type listType = GenLists.listDynamic(xx, elementType);
     return EResult.ok(
         new CodeValue(Code.concat(loc, self.code(), argument.code()), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), listType))));
   }

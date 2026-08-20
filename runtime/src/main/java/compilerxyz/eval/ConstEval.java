@@ -78,7 +78,6 @@ import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenAspectUnion;
 import compilerxyz.eval.ScopeEntrySetter;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.binding.BindingIteratorStack;
 import compilerxyz.eval.value.null_.TypeNullConst;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.BindingSetter;
@@ -624,7 +623,7 @@ public final class ConstEval {
                   .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
           var bodyScope = xx.scope.fork();
           var _pscId = bodyScope.vx.dropStateCounter.next();
-          var iterEntry = new ScopeLevel.Entry(Opt.<ConstKey>none(), new BindingIteratorStack(), true, _pscId, _pscId);
+          var iterEntry = new ScopeLevel.Entry(Opt.<ConstKey>none(), iterable.aspectIterableLoopBinding(xx), true, _pscId, _pscId);
           bodyScope.levels.add(iterEntry);
           var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
           var bodyXx = new ExprContext(

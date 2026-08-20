@@ -1,7 +1,7 @@
 package compilerxyz.eval.builtin;
 
 import compilerxyz.annotations.CodegenDescriptor;
-import compilerxyz.util.TList;
+import compilerxyz.gen.ListStoreByte;
 import java.io.ByteArrayOutputStream;
 
 public final class Zbase32 {
@@ -53,10 +53,10 @@ public final class Zbase32 {
   }
 
   @CodegenDescriptor
-  public static TList<Byte> decodeToList(String encoded) {
+  public static ListStoreByte decodeToStore(String encoded) {
     var bytes = decode(encoded);
-    var list = new TList<Byte>(bytes.length);
-    for (var b : bytes) list.add(b);
+    var list = new ListStoreByte();
+    for (var b : bytes) list.push(b);
     return list;
   }
 }

@@ -39,7 +39,6 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectTuple;
 import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.eval.dynamic.DynUtil;
 
 @BuiltinLight(uniqueId = 6119L)
 public record TypeListNewDynamic(Type elementType)
@@ -105,7 +104,7 @@ public record TypeListNewDynamic(Type elementType)
       if (dynRes.hasErrors()) return dynRes.reerr();
       dynamicElements.add(dynRes.requireValue("toDynamic"));
     }
-    Type instanceType = new TypeListDynamic(DynUtil.substituteBoxed(xx, elementType));
+    Type instanceType = new TypeListBoxedDynamic(elementType);
     var retStackRes = GenAspectStackValueDynamic.get(xx, loc, instanceType);
     if (retStackRes.hasErrors()) {
       return retStackRes.reerr();

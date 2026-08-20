@@ -26,9 +26,8 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.byte_.TypeByteConst;
-import compilerxyz.eval.value.byte_.TypeByteDynamicBox;
+import compilerxyz.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.eval.value.list.TypeListConst;
-import compilerxyz.eval.value.list.TypeListDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.AspectInitialBind;
@@ -38,6 +37,7 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenCodegenDescriptors;
+import compilerxyz.gen.GenLists;
 import compilerxyz.gen.GenAspectStringConst;
 import compilerxyz.gen.GenAspectStringDynamic;
 import compilerxyz.gen.Value;
@@ -91,7 +91,7 @@ public record TypeZbase32Decode()
       for (var b : bytes) {
         elements.add(new ValueObjectConst(new TypeByteConst(), b));
       }
-      var listType = new TypeListConst(new TypeByteDynamicBox());
+      var listType = new TypeListConst(new TypeByteDynamic());
       return EResult.ok(
           new CodeValue(
               Code.concat(loc, self.code(), argument.code()),
@@ -107,8 +107,8 @@ public record TypeZbase32Decode()
       if (argDynRes.hasErrors()) return argDynRes.reerr();
       var seq = new JavaBytecodeSequence();
       seq.add(argDynRes.requireValue("zbase32.decode arg dynamic"));
-      seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_LIST));
-      var listType = new TypeListDynamic(new TypeByteDynamicBox());
+      seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_STORE));
+      var listType = GenLists.listDynamic(xx, new TypeByteDynamic());
       return EResult.ok(
           new CodeValue(
               Code.of(new CodeDynamic(loc, seq)),

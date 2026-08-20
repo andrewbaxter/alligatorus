@@ -43,6 +43,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.binding.BindingIteratorStack;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
@@ -71,9 +72,9 @@ import compilerxyz.gen.GenAspectFieldUseDynamic;
 import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6117L)
-public final class TypeListDynamic
+public final class TypeListBoxedDynamic
     implements
-        Type,
+        ListDynamic,
         AspectFieldUseDynamic,
         AspectDynamicConst,
         AspectBind,
@@ -92,8 +93,13 @@ public final class TypeListDynamic
   public final ArtifactIdHolder artifactIdCell =
       new ArtifactIdHolder();
 
-  public TypeListDynamic(Type elementType) {
+  public TypeListBoxedDynamic(Type elementType) {
     this.elementType = elementType;
+  }
+
+  @Override
+  public ArtifactIdHolder listDynamicArtifactIdCell() {
+    return artifactIdCell;
   }
 
   @Override
@@ -123,7 +129,7 @@ public final class TypeListDynamic
 
   @Override
   public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_DYNAMIC_IDENTITY)) {
+    if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)) {
       return Opt.some(this);
     }
     if (key.equals(GenAspectDropDynamic.AspectId)) {
@@ -189,7 +195,7 @@ public final class TypeListDynamic
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var erb = new Erb(loc);
     if (key.value().optIsNone()) {
-      return EResult.err(loc, "TypeListDynamic::field: key has no compile-time value");
+      return EResult.err(loc, "TypeListBoxedDynamic::field: key has no compile-time value");
     }
     var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
     if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -236,7 +242,7 @@ public final class TypeListDynamic
     var dyn = cv.code().codeDynamic();
     if (dyn == null) {
       throw new IllegalStateException(
-          "TypeListDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+          "TypeListBoxedDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
     }
     return EResult.ok(dyn);
   }
@@ -249,6 +255,11 @@ public final class TypeListDynamic
   @Override
   public Type aspectIterableElementType() {
     return elementType;
+  }
+
+  @Override
+  public Binding aspectIterableLoopBinding(ExprContext xx) {
+    return new BindingIteratorStack();
   }
 
   @Override
@@ -278,7 +289,7 @@ public final class TypeListDynamic
     if (body.value().optIsSome()) {
       var dropRes = xx.target.targetDrop(xx, loc, body);
       if (dropRes.hasErrors()) return dropRes.reerr();
-      var dropCode = dropRes.requireValue("TypeListDynamic::foreach body drop");
+      var dropCode = dropRes.requireValue("TypeListBoxedDynamic::foreach body drop");
       var bodyDyn = body.code().codeDynamic();
       var dropDyn = dropCode.codeDynamic();
       if (bodyDyn == null && dropDyn == null) {
@@ -337,7 +348,7 @@ public final class TypeListDynamic
   public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
     var elemDropRes = GenAspectDropDynamic.get(xx, loc, elementType);
     if (elemDropRes.hasErrors()) return elemDropRes.reerr();
-    var elemDrop = elemDropRes.requireValue("TypeListDynamic::drop element AspectDropDynamic");
+    var elemDrop = elemDropRes.requireValue("TypeListBoxedDynamic::drop element AspectDropDynamic");
     if (cv.value().optIsNone()
         || !(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
       return EResult.ok(Code.none(loc));
@@ -354,7 +365,7 @@ public final class TypeListDynamic
             EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1)));
     var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
     if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
-    var elemDropCode = elemDropCodeRes.requireValue("TypeListDynamic::drop element drop");
+    var elemDropCode = elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop");
 
     var iterableName = JavaInternalName.fromClass(Iterable.class);
     var iteratorName = JavaInternalName.fromClass(Iterator.class);
@@ -380,7 +391,7 @@ public final class TypeListDynamic
 
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
-    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_DYNAMIC_IDENTITY, TypeListDynamic.class);
+    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY, TypeListBoxedDynamic.class);
     return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
   }
 

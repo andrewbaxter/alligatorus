@@ -52,6 +52,7 @@ import compilerxyz.eval.Erb;
 import compilerxyz.eval.Eval;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.eval.binding.BindingIteratorStack;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
@@ -287,6 +288,11 @@ public final class TypeMapDynamic
   @Override
   public Type aspectIterableElementType() {
     return new TypeMapEntryDynamic(keyType, valueType);
+  }
+
+  @Override
+  public Binding aspectIterableLoopBinding(ExprContext xx) {
+    return new BindingIteratorStack();
   }
 
   @Override

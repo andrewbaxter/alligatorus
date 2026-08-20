@@ -33,7 +33,7 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
-import compilerxyz.eval.value.list.TypeListDynamic;
+import compilerxyz.eval.value.list.TypeListBoxedDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.GenExprErr;
 import compilerxyz.gen.GenQExprId;
@@ -107,7 +107,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
     }
     if (kind == Kind.ERRS) {
       var errsArgType =
-          new TypeListDynamic(GenExprErr.dynamicType());
+          new TypeListBoxedDynamic(GenExprErr.dynamicType());
       var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
       if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
       var consumeRes = GenAspectConsumeDynamic.get(xx, loc, errsArgType);

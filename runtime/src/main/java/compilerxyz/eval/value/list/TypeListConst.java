@@ -16,6 +16,7 @@ import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
@@ -35,6 +36,7 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.AspectArtifact;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.AspectBind;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
@@ -50,6 +52,7 @@ import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectIterable;
 import compilerxyz.gen.GenAspectListConst;
 import compilerxyz.gen.GenAspectPostDeserialize;
+import compilerxyz.gen.GenLists;
 import compilerxyz.gen.Value;
 import compilerxyz.safejson.JsonValue;
 import compilerxyz.safejson.JsonValues;
@@ -237,8 +240,8 @@ public final class TypeListConst
                               xx2, loc2, body.elementType());
                       var elementT =
                           elementRes.requireValue("TypeListConst::finalizer element type");
-                      var out = new TypeListDynamic(elementT);
-                      out.artifactIdCell.set(idValue);
+                      var out = GenLists.listDynamic(xx2, elementT);
+                      out.listDynamicArtifactIdCell().set(idValue);
                       holder[0] = out;
                     };
                 return new Result.Ok<>(
@@ -257,7 +260,11 @@ public final class TypeListConst
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
+    return switch (GenLists.listDynamic(xx, elementType)) {
+      case TypeListSpecializedDynamic spec -> spec.aspectConsumeDynamicJvmClass(xx);
+      case TypeListBoxedDynamic boxed ->
+          JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
+    };
   }
 
   @Override
@@ -266,38 +273,61 @@ public final class TypeListConst
       return EResult.err(loc, "TypeListConst::toDynamic: CodeValue has no compile-time value");
     }
     var elements = elementsOf(cv.value().optUnwrap());
-    var listName = JavaInternalName.fromClass(TList.class);
-    var seq = new JavaBytecodeSequence();
-    seq.add(
-        JavaBytecodeUtils.instantiate(
-            loc,
-            listName,
-            JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of()),
-            new CodeDynamic(loc, new JavaBytecodeSequence())));
-    var addDesc =
-        JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.DESC_BOOL, TList.of(JvmConstants.DESC_OBJECT));
-    for (var element : elements) {
-      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, element.valueType());
-      if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
-      var elemDynRes =
-          elemConsumeRes
-              .requireValue("TypeListConst::toDynamic element AspectConsumeDynamic")
-              .aspectConsumeDynamicToDynamic(
-                  xx, loc, new CodeValue(Code.none(loc), EvalOutcome.ofValue(element)));
-      if (elemDynRes.hasErrors()) return elemDynRes.reerr();
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-      seq.add(elemDynRes.requireValue("TypeListConst::toDynamic element dynamic"));
-      seq.add(JavaBytecodeUtils.callMethod(loc, listName, "add", addDesc));
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    }
-    return EResult.ok(new CodeDynamic(loc, seq));
+    return switch (GenLists.listDynamic(xx, elementType)) {
+      case TypeListSpecializedDynamic spec -> {
+        var dynamicElements = new TList<CodeDynamic>();
+        for (var element : elements) {
+          var convRes =
+              Eval.typecheckConvert(
+                  xx, loc, elementType, new CodeValue(Code.none(loc), EvalOutcome.ofValue(element)));
+          if (convRes.hasErrors()) yield convRes.reerr();
+          var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+          if (elemConsumeRes.hasErrors()) yield elemConsumeRes.reerr();
+          var elemDynRes =
+              elemConsumeRes
+                  .requireValue("TypeListConst::toDynamic element AspectConsumeDynamic")
+                  .aspectConsumeDynamicToDynamic(
+                      xx, loc, convRes.requireValue("TypeListConst::toDynamic element convert"));
+          if (elemDynRes.hasErrors()) yield elemDynRes.reerr();
+          dynamicElements.add(elemDynRes.requireValue("TypeListConst::toDynamic element dynamic"));
+        }
+        yield EResult.ok(spec.emitNew(xx, loc, dynamicElements));
+      }
+      case TypeListBoxedDynamic boxed -> {
+        var listName = JavaInternalName.fromClass(TList.class);
+        var seq = new JavaBytecodeSequence();
+        seq.add(
+            JavaBytecodeUtils.instantiate(
+                loc,
+                listName,
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of()),
+                new CodeDynamic(loc, new JavaBytecodeSequence())));
+        var addDesc =
+            JavaMethodDescriptor.fromParts(
+                JavaDataDescriptor.DESC_BOOL, TList.of(JvmConstants.DESC_OBJECT));
+        for (var element : elements) {
+          var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, element.valueType());
+          if (elemConsumeRes.hasErrors()) yield elemConsumeRes.reerr();
+          var elemDynRes =
+              elemConsumeRes
+                  .requireValue("TypeListConst::toDynamic element AspectConsumeDynamic")
+                  .aspectConsumeDynamicToDynamic(
+                      xx, loc, new CodeValue(Code.none(loc), EvalOutcome.ofValue(element)));
+          if (elemDynRes.hasErrors()) yield elemDynRes.reerr();
+          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+          seq.add(elemDynRes.requireValue("TypeListConst::toDynamic element dynamic"));
+          seq.add(JavaBytecodeUtils.callMethod(loc, listName, "add", addDesc));
+          seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+        }
+        yield EResult.ok(new CodeDynamic(loc, seq));
+      }
+    };
   }
 
   private EResult<CodeValue> dynamicCv(ExprContext xx, QExprId loc, CodeValue self) {
     var dynRes = aspectConsumeDynamicToDynamic(xx, loc, self);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    var dynType = new TypeListDynamic(elementType);
+    var dynType = GenLists.listDynamic(xx, elementType);
     return EResult.ok(
         new CodeValue(
             Code.of(dynRes.requireValue("TypeListConst::dynamicCv")),
@@ -308,18 +338,25 @@ public final class TypeListConst
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
     var dynRes = dynamicCv(xx, loc, self);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    return new TypeListDynamic(elementType)
+    var fieldRes = GenAspectField.get(xx, loc, GenLists.listDynamic(xx, elementType));
+    if (fieldRes.hasErrors()) return fieldRes.reerr();
+    return fieldRes
+        .requireValue("TypeListConst::field AspectField")
         .aspectFieldField(xx, loc, dynRes.requireValue("TypeListConst::field self"), key);
   }
 
   @Override
   public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    return new TypeListDynamic(elementType).aspectFieldKeys(xx);
+    return GenAspectField.getMaybe(xx, GenLists.listDynamic(xx, elementType))
+        .optUnwrap()
+        .aspectFieldKeys(xx);
   }
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    return new TypeListDynamic(elementType).aspectFieldTypeOpt(xx, key);
+    return GenAspectField.getMaybe(xx, GenLists.listDynamic(xx, elementType))
+        .optUnwrap()
+        .aspectFieldTypeOpt(xx, key);
   }
 
   @Override
@@ -328,11 +365,21 @@ public final class TypeListConst
   }
 
   @Override
+  public Binding aspectIterableLoopBinding(ExprContext xx) {
+    return GenAspectIterable.getMaybe(xx, GenLists.listDynamic(xx, elementType))
+        .optUnwrap()
+        .aspectIterableLoopBinding(xx);
+  }
+
+  @Override
   public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
     var dynRes = dynamicCv(xx, loc, base);
     if (dynRes.hasErrors()) return dynRes.reerr();
-    return new TypeListDynamic(elementType)
+    var iterRes = GenAspectIterable.get(xx, loc, GenLists.listDynamic(xx, elementType));
+    if (iterRes.hasErrors()) return iterRes.reerr();
+    return iterRes
+        .requireValue("TypeListConst::foreach AspectIterable")
         .aspectIterableForeach(
             xx, loc, dynRes.requireValue("TypeListConst::foreach self"), elementScopeId, body);
   }
@@ -372,7 +419,7 @@ public final class TypeListConst
 
   @Override
   public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_DYNAMIC_IDENTITY).optIsSome();
+    return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY).optIsSome();
   }
 
   @Override

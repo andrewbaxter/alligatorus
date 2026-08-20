@@ -14,6 +14,8 @@ import compilerxyz.eval.aspect.Aspect;
 public interface AspectIterable extends Aspect {
   Type aspectIterableElementType();
 
+  Binding aspectIterableLoopBinding(ExprContext xx);
+
   EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementKey, CodeValue body);
 }

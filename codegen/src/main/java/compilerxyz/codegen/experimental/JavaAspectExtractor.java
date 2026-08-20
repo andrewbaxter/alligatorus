@@ -273,7 +273,7 @@ public final class JavaAspectExtractor {
       "compilerxyz.util.Opt",
           ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"),
       "compilerxyz.util.TList",
-          ClassName.get("compilerxyz.eval.value.list", "TypeListDynamic"),
+          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic"),
       "compilerxyz.util.TMap",
           ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
 
