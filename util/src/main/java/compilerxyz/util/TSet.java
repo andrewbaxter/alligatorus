@@ -1,10 +1,11 @@
 package compilerxyz.util;
 
-import java.util.AbstractSet;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
-public final class TSet<T> extends AbstractSet<T> {
+public final class TSet<T> implements Set<T> {
   private final HashSet<T> backing;
 
   public TSet() {
@@ -26,6 +27,26 @@ public final class TSet<T> extends AbstractSet<T> {
   }
 
   @Override
+  public boolean contains(Object element) {
+    return backing.contains(element);
+  }
+
+  @Override
+  public Iterator<T> iterator() {
+    return backing.iterator();
+  }
+
+  @Override
+  public Object[] toArray() {
+    return backing.toArray();
+  }
+
+  @Override
+  public <U> U[] toArray(U[] target) {
+    return backing.toArray(target);
+  }
+
+  @Override
   public boolean add(T element) {
     return backing.add(element);
   }
@@ -36,12 +57,42 @@ public final class TSet<T> extends AbstractSet<T> {
   }
 
   @Override
-  public boolean contains(Object element) {
-    return backing.contains(element);
+  public boolean containsAll(Collection<?> elements) {
+    return backing.containsAll(elements);
   }
 
   @Override
-  public Iterator<T> iterator() {
-    return backing.iterator();
+  public boolean addAll(Collection<? extends T> elements) {
+    return backing.addAll(elements);
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> elements) {
+    return backing.retainAll(elements);
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> elements) {
+    return backing.removeAll(elements);
+  }
+
+  @Override
+  public void clear() {
+    backing.clear();
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return backing.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return backing.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return backing.toString();
   }
 }

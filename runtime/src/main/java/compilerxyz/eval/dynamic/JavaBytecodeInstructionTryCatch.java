@@ -20,4 +20,9 @@ public class JavaBytecodeInstructionTryCatch implements JavaBytecodeInstruction 
   public void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher) {
     moreDispatcher.moreDispatcherHandleTryCatch(this);
   }
+
+  @Override
+  public <T> T javaBytecodeDispatch(JavaBytecode.Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleInstruction(this);
+  }
 }

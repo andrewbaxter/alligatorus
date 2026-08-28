@@ -18,8 +18,10 @@ import compilerxyz.util.TList;
 public interface Binding extends AspectElementUseDynamicBind {
     CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code);
 
-    default EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
-        var useCv = bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
+    EResult<Code> bindingDrop(ExprContext xx, QExprId loc);
+
+    static EResult<Code> bindingDrop(ExprContext xx, QExprId loc, Binding self) {
+        var useCv = self.bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
         return Eval.dropValue(xx, loc, useCv);
     }
 
@@ -28,8 +30,7 @@ public interface Binding extends AspectElementUseDynamicBind {
     EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others);
 
 
-    @Override
-    default Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    static Binding elementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, GenBinding.dynamicType());
     }
 }

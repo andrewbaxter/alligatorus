@@ -511,7 +511,7 @@ public final class ReachabilityMain {
     return generatedFiles.contains(pos.getFile().getAbsolutePath());
   }
 
-  private boolean overridesExternal(CtMethod<?> m) {
+  static boolean overridesExternal(CtMethod<?> m) {
     for (CtMethod<?> top : m.getTopDefinitions()) {
       CtType<?> dt = top.getDeclaringType();
       if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {

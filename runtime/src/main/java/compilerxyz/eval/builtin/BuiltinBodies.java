@@ -157,4 +157,9 @@ public final class BuiltinBodies {
     return DynRuntime.freshUnique(xx);
   }
 
+  @BuiltinPath(value = "eval.drop_value", scopeId = 5020L)
+  public static EResult<Code> dropValue(ExprContext xx, ExprContext xx_, QExprId loc, CodeValue cv) {
+    return Eval.dropValue(xx_, loc, cv);
+  }
+
 }

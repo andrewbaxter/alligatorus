@@ -110,7 +110,7 @@ public final class TypeSourceObjectDynamic
         AspectFieldUseDynamic,
         ExporterAny {
 
-  public Opt<DefSetId> setId;
+  public DefSetId setId;
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
@@ -132,7 +132,7 @@ public final class TypeSourceObjectDynamic
 
   public TypeSourceObjectDynamic(
       DefSetId setId, String name, Unique identity, DefinitionSet set) {
-    this.setId = Opt.some(setId);
+    this.setId = setId;
     this.set = set;
     this.name = Opt.some(name);
     this.identity = identity;
@@ -142,7 +142,7 @@ public final class TypeSourceObjectDynamic
 
   @SuppressWarnings("NullAway")
   public TypeSourceObjectDynamic(
-      Opt<DefSetId> setId, Opt<String> name, Unique identity) {
+      DefSetId setId, Opt<String> name, Unique identity) {
     this.setId = setId;
     this.set = (DefinitionSet) null;
     this.name = name;
@@ -164,12 +164,12 @@ public final class TypeSourceObjectDynamic
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    if (setId.optIsNone() || set == null) {
+    if (set == null) {
       return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
     }
     return JavaDataDescriptor.fromInternalName(
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx)));
+            SourceObjectEmitter.internalNameFor(setId, objIdx)));
   }
 
 
@@ -337,15 +337,9 @@ public final class TypeSourceObjectDynamic
     for (var s : slots) argDescs.add(s.jvmDesc());
     var descObjObj =
         JavaMethodDescriptor.fromParts(retJvmDesc, argDescs);
-    if (setId.optIsNone()) {
-      throw new AssertionError(
-          "TypeSourceObjectDynamic::field: setId is null on '"
-              + name.optUnwrapOr("(unnamed)")
-              + "'");
-    }
     var objectInternalName =
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx));
+            SourceObjectEmitter.internalNameFor(setId, objIdx));
     var fieldType =
         new TypeSourceMethodDynamic(
             this,
@@ -565,15 +559,9 @@ public final class TypeSourceObjectDynamic
     if (codeSource == null) {
       return EResult.err(loc, "cast code -> " + typeDesc() + ": source has no runtime code");
     }
-    if (setId.optIsNone()) {
-      throw new AssertionError(
-          "TypeSourceObjectDynamic::typeCastFrom: setId is null on '"
-              + name.optUnwrapOr("(unnamed)")
-              + "'");
-    }
     var objectInternalName =
         JavaInternalName.of(
-            SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx));
+            SourceObjectEmitter.internalNameFor(setId, objIdx));
     var unwrapSeq = new JavaBytecodeSequence();
     unwrapSeq.add(codeSource);
     unwrapSeq.add(

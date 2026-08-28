@@ -31,6 +31,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.eval.dynamic.DynUtil;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinPath("types.eresult")
 @BuiltinLight(uniqueId = 6105L)
@@ -120,5 +121,10 @@ public record TypeEResultConstructorConst()
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

@@ -3,15 +3,15 @@ package compilerxyz.syntax;
 public sealed interface SourceSpecAbsolute {
   record Virtual(String name) implements SourceSpecAbsolute {}
 
-  record Local(String path) implements SourceSpecAbsolute {}
+  record Local(String path) implements SourceSpecAbsolute {
+    public String sourceSpecAbsoluteSpecKey() {
+      return "local:" + path;
+    }
+  }
 
-  record Remote(String baseUrl, HashValue hash, String subpath) implements SourceSpecAbsolute {}
-
-  default String sourceSpecAbsoluteSpecKey() {
-    return switch (this) {
-      case Virtual v -> "virtual:" + v.name();
-      case Local l -> "local:" + l.path();
-      case Remote r -> "remote:" + r.baseUrl() + "#" + r.hash().hashValueHashKey() + "!" + r.subpath();
-    };
+  record Remote(String baseUrl, HashValue hash, String subpath) implements SourceSpecAbsolute {
+    public String sourceSpecAbsoluteSpecKey() {
+      return "remote:" + baseUrl + "#" + hash.hashValueHashKey() + "!" + subpath;
+    }
   }
 }

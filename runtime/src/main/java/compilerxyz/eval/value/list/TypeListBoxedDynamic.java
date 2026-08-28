@@ -70,6 +70,7 @@ import compilerxyz.gen.GenAspectDynamicConst;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectFieldUseDynamic;
 import compilerxyz.util.MustCast;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type>
@@ -415,5 +416,10 @@ public final class TypeListBoxedDynamic<T extends Type>
   @Override
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

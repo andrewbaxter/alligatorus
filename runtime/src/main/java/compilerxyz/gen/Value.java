@@ -15,11 +15,10 @@ import compilerxyz.eval.Type;
 public interface Value extends Artifactable {
     Type valueType();
 
-    @Override
-    default EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-      var asp = GenAspectArtifact.get(xx, loc, valueType());
+    static EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc, Value self) {
+      var asp = GenAspectArtifact.get(xx, loc, self.valueType());
       if (asp.hasErrors()) return asp.reerr();
       var exporter = asp.requireValue("Value::artifactableExportArtifact aspect").aspectArtifactExporter();
-      return exporter.artifactExporterExport(xx, loc, ArtifactSupport.valueAsExporterAny(this));
+      return exporter.artifactExporterExport(xx, loc, ArtifactSupport.valueAsExporterAny(self));
     }
 }

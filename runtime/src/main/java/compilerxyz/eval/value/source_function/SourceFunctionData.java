@@ -3,7 +3,6 @@ package compilerxyz.eval.value.source_function;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.ConstEval;
 import compilerxyz.eval.ConstKey;
-import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.DefinitionSet;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Eval;
@@ -44,7 +43,6 @@ public final class SourceFunctionData {
   public final ArtifactIdHolder artifactIdCell =
       new ArtifactIdHolder();
   public final Unique identity;
-  public Opt<DefSetId> setId;
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
@@ -64,8 +62,7 @@ public final class SourceFunctionData {
   public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
   public final TList<EvalContext.ExternalEntry> capturedExternals;
 
-  public SourceFunctionData(DefSetId setId, String name, DefinitionSet set, Unique identity) {
-    this.setId = Opt.some(setId);
+  public SourceFunctionData(String name, DefinitionSet set, Unique identity) {
     this.set = set;
     this.name = Opt.some(name);
     this.identity = identity;
@@ -73,8 +70,7 @@ public final class SourceFunctionData {
   }
 
   @SuppressWarnings("NullAway")
-  public SourceFunctionData(DefSetId setId, Opt<String> name, Unique identity) {
-    this.setId = Opt.some(setId);
+  public SourceFunctionData(Opt<String> name, Unique identity) {
     this.identity = identity;
     this.set = (DefinitionSet) null;
     this.name = name;

@@ -61,6 +61,7 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
+import compilerxyz.artifact.Artifact;
 
 public final class TypeListSpecializedDynamic<T extends Type>
     implements
@@ -361,5 +362,10 @@ public final class TypeListSpecializedDynamic<T extends Type>
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

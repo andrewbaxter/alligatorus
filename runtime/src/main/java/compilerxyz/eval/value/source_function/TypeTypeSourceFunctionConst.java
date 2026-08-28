@@ -34,6 +34,7 @@ import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6135L)
 public final class TypeTypeSourceFunctionConst {
@@ -147,6 +148,11 @@ public final class TypeTypeSourceFunctionConst {
       return EResult.err(
           loc,
           typeDesc() + "::lift: unexpected host " + rawHostValue.getClass().getName());
+    }
+
+    @Override
+    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+      return Type.exportArtifact(xx, loc, this);
     }
   }
 }

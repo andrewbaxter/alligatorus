@@ -12,24 +12,32 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 public sealed interface Code permits Code.None, Code.Target {
 
   record None(QExprId loc) implements Code {
+    @Override
+    public CodeDynamic codeDynamic() {
+      return null;
+    }
+
+    @Override
+    public boolean codeIsNone() {
+      return true;
+    }
   }
 
   record Target(TargetCode impl) implements Code {
+    @Override
+    public CodeDynamic codeDynamic() {
+      return impl instanceof CodeDynamic cd ? cd : null;
+    }
+
+    @Override
+    public boolean codeIsNone() {
+      return false;
+    }
   }
 
-  default CodeDynamic codeDynamic() {
-    return switch (this) {
-      case Code.Target t -> t.impl() instanceof CodeDynamic cd ? cd : null;
-      case Code.None n -> null;
-    };
-  }
+  CodeDynamic codeDynamic();
 
-  default boolean codeIsNone() {
-    return switch (this) {
-      case Code.None n -> true;
-      case Code.Target t -> false;
-    };
-  }
+  boolean codeIsNone();
 
   static Code none(QExprId loc) {
     return new None(loc);

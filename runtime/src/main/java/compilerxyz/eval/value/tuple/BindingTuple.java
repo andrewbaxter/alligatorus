@@ -146,4 +146,14 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
     }
     return EResult.ok(new BindingTuple(mergedElements, jsKey));
   }
+
+  @Override
+  public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+    return Binding.bindingDrop(xx, loc, this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return Binding.elementUseDynamicBind(dynamicKey);
+  }
 }

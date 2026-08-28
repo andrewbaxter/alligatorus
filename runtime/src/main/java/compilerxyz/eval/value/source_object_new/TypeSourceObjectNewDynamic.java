@@ -42,6 +42,8 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.gen.GenType;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.eval.BindingId;
 
 @BuiltinLight(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
@@ -170,6 +172,16 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
       }
       return EResult.ok(this);
     }
+
+    @Override
+    public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+      return Binding.bindingDrop(xx, loc, this);
+    }
+
+    @Override
+    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+      return Binding.elementUseDynamicBind(dynamicKey);
+    }
   }
 
   @Override
@@ -193,5 +205,10 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

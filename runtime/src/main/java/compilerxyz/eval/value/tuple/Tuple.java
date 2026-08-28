@@ -1112,7 +1112,7 @@ public final class Tuple
   @Override
   public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
-    return Value.super.artifactableExportArtifact(xx, loc);
+    return Value.exportArtifact(xx, loc, this);
   }
 
   @Override

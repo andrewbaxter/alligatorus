@@ -1,10 +1,12 @@
 package compilerxyz.util;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-public final class TList<T> extends AbstractList<T> {
+import java.util.List;
+import java.util.ListIterator;
+
+public final class TList<T> implements List<T> {
   private final ArrayList<T> backing;
 
   public TList() {
@@ -13,10 +15,6 @@ public final class TList<T> extends AbstractList<T> {
 
   public TList(int initialCapacity) {
     this.backing = new ArrayList<>(initialCapacity);
-  }
-
-  private TList(ArrayList<T> backing) {
-    this.backing = backing;
   }
 
   @SafeVarargs
@@ -43,8 +41,23 @@ public final class TList<T> extends AbstractList<T> {
   }
 
   @Override
-  public T get(int index) {
-    return backing.get(index);
+  public boolean contains(Object element) {
+    return backing.contains(element);
+  }
+
+  @Override
+  public Iterator<T> iterator() {
+    return backing.iterator();
+  }
+
+  @Override
+  public Object[] toArray() {
+    return backing.toArray();
+  }
+
+  @Override
+  public <U> U[] toArray(U[] target) {
+    return backing.toArray(target);
   }
 
   @Override
@@ -52,19 +65,44 @@ public final class TList<T> extends AbstractList<T> {
     return backing.add(element);
   }
 
-  public TList<T> addAll(Iterable<? extends T> elements) {
-    for (var e : elements) backing.add(e);
-    return this;
+  @Override
+  public boolean remove(Object element) {
+    return backing.remove(element);
   }
 
   @Override
-  public T removeLast() {
-    return backing.removeLast();
+  public boolean containsAll(Collection<?> elements) {
+    return backing.containsAll(elements);
   }
 
   @Override
-  public T remove(int index) {
-    return backing.remove(index);
+  public boolean addAll(Collection<? extends T> elements) {
+    return backing.addAll(elements);
+  }
+
+  @Override
+  public boolean addAll(int index, Collection<? extends T> elements) {
+    return backing.addAll(index, elements);
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> elements) {
+    return backing.removeAll(elements);
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> elements) {
+    return backing.retainAll(elements);
+  }
+
+  @Override
+  public void clear() {
+    backing.clear();
+  }
+
+  @Override
+  public T get(int index) {
+    return backing.get(index);
   }
 
   @Override
@@ -73,7 +111,62 @@ public final class TList<T> extends AbstractList<T> {
   }
 
   @Override
-  public Iterator<T> iterator() {
-    return backing.iterator();
+  public void add(int index, T value) {
+    backing.add(index, value);
+  }
+
+  @Override
+  public T remove(int index) {
+    return backing.remove(index);
+  }
+
+  @Override
+  public int indexOf(Object element) {
+    return backing.indexOf(element);
+  }
+
+  @Override
+  public int lastIndexOf(Object element) {
+    return backing.lastIndexOf(element);
+  }
+
+  @Override
+  public ListIterator<T> listIterator() {
+    return backing.listIterator();
+  }
+
+  @Override
+  public ListIterator<T> listIterator(int index) {
+    return backing.listIterator(index);
+  }
+
+  @Override
+  public List<T> subList(int fromIndex, int toIndex) {
+    return backing.subList(fromIndex, toIndex);
+  }
+
+  @Override
+  public T removeLast() {
+    return backing.removeLast();
+  }
+
+  public TList<T> addAll(Iterable<? extends T> elements) {
+    for (var e : elements) backing.add(e);
+    return this;
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return backing.equals(other);
+  }
+
+  @Override
+  public int hashCode() {
+    return backing.hashCode();
+  }
+
+  @Override
+  public String toString() {
+    return backing.toString();
   }
 }

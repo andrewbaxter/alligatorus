@@ -47,7 +47,6 @@ public final class SourceObjectInterfaceMethodImplData {
   public Opt<BindingId> outerBindingId = Opt.none();
   public int methodImplIdx;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
-  public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
   public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
   public Opt<TList<BindingId.Local>> compiledArgParamIds = Opt.none();
@@ -83,12 +82,8 @@ public final class SourceObjectInterfaceMethodImplData {
     }
     var retT = ifaceMethod.retType.optUnwrap();
     var innerVx = new EvalContext(xx.vx.ix);
-    if (dtData.setId.optIsNone()) {
-      throw new AssertionError(
-          "SourceObjectInterfaceMethodImplData::finish: dtData.setId is null");
-    }
     innerVx.evalRootInternalName =
-        SourceObjectEmitter.internalNameFor(dtData.setId.optUnwrap(), dtData.objIdx);
+        SourceObjectEmitter.internalNameFor(dtData.setId, dtData.objIdx);
     var innerTarget = new TargetDynamic(innerVx.nextLocalId);
     var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
     innerBindingId = Opt.some(selfId);

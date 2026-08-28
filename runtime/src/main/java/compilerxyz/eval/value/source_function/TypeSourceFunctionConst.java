@@ -271,7 +271,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                 return new Result.Ok<>(body);
               },
               (body) -> {
-                var funcData = new SourceFunctionData(body.defSetId(), body.name(), DynRuntime.freshUnique(xx));
+                var funcData = new SourceFunctionData(body.name(), DynRuntime.freshUnique(xx));
                 funcData.artifactIdCell.set(idValue);
                 funcData.compiledClassName = body.compiledClassName();
                 funcData.compiledBytecode = body.compiledBytecode();
@@ -435,6 +435,16 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
       }
       return EResult.ok(this);
     }
+
+    @Override
+    public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+      return Binding.bindingDrop(xx, loc, this);
+    }
+
+    @Override
+    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+      return Binding.elementUseDynamicBind(dynamicKey);
+    }
   }
 
   public record ImportedSourceFunctionConst(SourceFunctionData data) implements ExporterAny {
@@ -470,5 +480,10 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

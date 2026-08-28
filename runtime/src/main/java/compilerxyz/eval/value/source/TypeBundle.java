@@ -30,6 +30,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.syntax.SourceSpecAbsolute;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6161L)
 public record TypeBundle(SourceSpecAbsolute.Remote base)
@@ -147,5 +148,10 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

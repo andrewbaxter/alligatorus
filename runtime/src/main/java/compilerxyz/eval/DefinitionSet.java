@@ -94,12 +94,8 @@ public final class DefinitionSet implements ExporterAny {
             loc, "Object '" + obj.name.optUnwrapOr("(unnamed)") + "' underlying type not finalised before finish");
       }
       var underlyingType = obj.underlyingType.optUnwrap();
-      if (obj.setId.optIsNone()) {
-        throw new AssertionError(
-            "DefinitionSet.finish: source object '" + obj.name.optUnwrapOr("(unnamed)") + "' has null setId");
-      }
       var objInternalName =
-          SourceObjectEmitter.internalNameFor(obj.setId.optUnwrap(), objIdx);
+          SourceObjectEmitter.internalNameFor(obj.setId, objIdx);
       for (var method : obj.methods) {
         var nameStr = obj.name.optUnwrapOr("(unnamed)");
         var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
@@ -114,11 +110,8 @@ public final class DefinitionSet implements ExporterAny {
       EResult<Void> r;
       if (obj.compiledBinaryName.optIsSome()) {
         r = EResult.ok(null);
-      } else if (obj.setId.optIsNone()) {
-        r = EResult.err(loc, "TypeSourceObjectDynamic.finish: setId is null for object '"
-            + obj.name.optUnwrapOr("(unnamed)") + "'");
       } else {
-        var _soeBinaryName = SourceObjectEmitter.binaryNameFor(obj.setId.optUnwrap(), objIdx);
+        var _soeBinaryName = SourceObjectEmitter.binaryNameFor(obj.setId, objIdx);
         var _soeInternalNameStr = _soeBinaryName.replace('.', '/');
         var _soeInternalName = JavaInternalName.of(_soeInternalNameStr);
         var _soeClaimedKinds = new HashSet<BuiltinInterfaceKind>();

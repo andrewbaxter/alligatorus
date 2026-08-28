@@ -50,6 +50,7 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6194L)
 public record TypeUlongDynamicBox()
@@ -226,4 +227,9 @@ public record TypeUlongDynamicBox()
   }
 
 
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
+  }
 }

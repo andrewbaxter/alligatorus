@@ -6,6 +6,7 @@ import compilerxyz.syntax.UnaryOperator;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.Value;
+import compilerxyz.artifact.Artifact;
 
 public record Expr(QExprId loc, Variant variant) implements Value {
 
@@ -121,4 +122,9 @@ public record Expr(QExprId loc, Variant variant) implements Value {
         record V1(Expr expr) implements Module {
         }
     }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Value.exportArtifact(xx, loc, this);
+  }
 }

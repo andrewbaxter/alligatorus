@@ -36,6 +36,7 @@ import compilerxyz.util.TList;
 import java.util.Map;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6126L)
 public record TypeMapPutFnDynamic(Type keyType, Type valueType)
@@ -198,5 +199,10 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType)
       ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(
         getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

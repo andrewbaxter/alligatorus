@@ -42,6 +42,8 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.gen.GenType;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.eval.BindingId;
 
 @BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
@@ -170,6 +172,16 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
       }
       return EResult.ok(this);
     }
+
+    @Override
+    public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+      return Binding.bindingDrop(xx, loc, this);
+    }
+
+    @Override
+    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+      return Binding.elementUseDynamicBind(dynamicKey);
+    }
   }
 
   @Override
@@ -193,5 +205,10 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

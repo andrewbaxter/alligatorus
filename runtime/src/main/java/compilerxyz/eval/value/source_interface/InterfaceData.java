@@ -47,12 +47,11 @@ public final class InterfaceData {
   public InterfaceData(
       DefSetId setId,
       Unique identity,
-      Opt<BuiltinInterfaceKind> builtinKind,
       DefinitionSet set) {
     this.setId = Opt.some(setId);
     this.set = set;
     this.identity = identity;
-    this.builtinKind = builtinKind;
+    this.builtinKind = Opt.none();
     this.description = Opt.none();
     this.aspectId = Opt.none();
     this.compiledBytecode = Opt.none();

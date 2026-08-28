@@ -402,6 +402,8 @@ public final class T0160EvenOddTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
+                                            "drop", mb.bindingDropViaUse()),
+                                        new TestMb.RecordPair(
                                             "use",
                                             mb.seqOf(
                                                 mb.set(
@@ -1317,6 +1319,8 @@ public final class T0160EvenOddTest {
                                 ifaceMethods(
                                     mb,
                                     TList.of(
+                                        new TestMb.RecordPair(
+                                            "drop", mb.bindingDropViaUse()),
                                         new TestMb.RecordPair(
                                             "use",
                                             mb.call(

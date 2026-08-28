@@ -24,6 +24,7 @@ import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectType;
+import compilerxyz.artifact.Artifact;
 
 /**
  * Compile-time type of a source-object *instance* — the value produced by lifting a runtime
@@ -120,5 +121,10 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     return dynamic.typeCastTo(xx, loc, cv, destType);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

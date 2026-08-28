@@ -24,6 +24,7 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinPath("source.virtual")
 @BuiltinLight(uniqueId = 6156L)
@@ -103,5 +104,10 @@ public record TypeSourceVirtual() implements Type, AspectFunction, AspectInitial
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

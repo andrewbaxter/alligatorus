@@ -46,10 +46,6 @@ public final class ImportInstall {
         return EResult.err(
             loc, "Object '" + obj.name.optUnwrapOr("(unnamed)") + "' underlying type not finalised before install");
       }
-      if (obj.setId.optIsNone()) {
-        throw new AssertionError(
-            "ImportInstall: source object '" + obj.name.optUnwrapOr("(unnamed)") + "' has null setId");
-      }
       if (obj.compiledBinaryName.optIsSome() && obj.compiledBytecode.optIsSome()) {
         var binaryName = obj.compiledBinaryName.optUnwrap();
         loader.registerClass(binaryName, obj.compiledBytecode.optUnwrap());
@@ -148,10 +144,6 @@ public final class ImportInstall {
         var binaryName = method.compiledClassName.optUnwrap();
         var bytecode = method.compiledBytecode.optUnwrap();
         loader.registerClass(binaryName, bytecode);
-        if (method.compiledStaticFieldValues.optIsSome()
-            && !method.compiledStaticFieldValues.optUnwrap().isEmpty()) {
-          loader.registerExternals(binaryName, method.compiledStaticFieldValues.optUnwrap());
-        }
       }
       for (var impl : obj.interfaceImpls) {
         for (var m : impl.methodImpls) {
@@ -169,10 +161,6 @@ public final class ImportInstall {
           var binaryName = m.compiledClassName.optUnwrap();
           var bytecode = m.compiledBytecode.optUnwrap();
           loader.registerClass(binaryName, bytecode);
-          if (m.compiledStaticFieldValues.optIsSome()
-              && !m.compiledStaticFieldValues.optUnwrap().isEmpty()) {
-            loader.registerExternals(binaryName, m.compiledStaticFieldValues.optUnwrap());
-          }
         }
       }
     }

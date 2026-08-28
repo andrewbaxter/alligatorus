@@ -15,21 +15,20 @@ import compilerxyz.util.Opt;
 public interface Type extends Artifactable {
 
   /**
-   * Default: a Type exports itself as an artifact by asking its own AspectArtifact for its
-   * exporter and delegating. Requires {@code this} to implement both AspectArtifact and
-   * ExporterAny; Types that don't need to be exportable can omit those interfaces and this
-   * default will fail at call time.
+   * Shared export path: a Type exports itself as an artifact by asking its own AspectArtifact for
+   * its exporter and delegating. Requires {@code self} to implement both AspectArtifact and
+   * ExporterAny; Types that don't need to be exportable can omit those interfaces and this fails
+   * at call time.
    */
-  @Override
-  default EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-    if (this instanceof AspectDynamicConst dc && !(this instanceof AspectArtifact)) {
+  static EResult<Artifact> exportArtifact(ExprContext xx, QExprId loc, Type self) {
+    if (self instanceof AspectDynamicConst dc && !(self instanceof AspectArtifact)) {
       return dc.aspectDynamicConstConstForm().artifactableExportArtifact(xx, loc);
     }
-    if (!(this instanceof AspectArtifact aa)) {
-      return EResult.err(loc, typeDesc() + " does not implement AspectArtifact");
+    if (!(self instanceof AspectArtifact aa)) {
+      return EResult.err(loc, self.typeDesc() + " does not implement AspectArtifact");
     }
-    if (!(this instanceof ExporterAny ea)) {
-      return EResult.err(loc, typeDesc() + " does not implement ExporterAny");
+    if (!(self instanceof ExporterAny ea)) {
+      return EResult.err(loc, self.typeDesc() + " does not implement ExporterAny");
     }
     return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
   }

@@ -15,6 +15,7 @@ import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.gen.Binding;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.BindingId;
 
 public record BindingObjectConst(Type type, Object data) implements Binding {
   @Override
@@ -38,5 +39,15 @@ public record BindingObjectConst(Type type, Object data) implements Binding {
       }
     }
     return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+    return Binding.bindingDrop(xx, loc, this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return Binding.elementUseDynamicBind(dynamicKey);
   }
 }

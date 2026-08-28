@@ -45,6 +45,7 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6321L)
 public record TypeSourceMethodDynamic(
@@ -170,5 +171,10 @@ public record TypeSourceMethodDynamic(
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

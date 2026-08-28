@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinPath("import")
 @BuiltinLight(uniqueId = 6160L)
@@ -201,5 +202,10 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

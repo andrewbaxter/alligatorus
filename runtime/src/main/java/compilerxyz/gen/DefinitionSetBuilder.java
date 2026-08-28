@@ -32,7 +32,7 @@ public final class DefinitionSetBuilder {
     }
 
     public SourceFuncResult func(ExprContext xx, String name) {
-        var data = new SourceFunctionData(this.inner.defSetId, name, this.inner, DynRuntime.freshUnique(xx));
+        var data = new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(xx));
         data.funcIdx = this.inner.functions.size();
         this.inner.functions.add(data);
         return new SourceFuncResult(new TypeSourceFunctionConst(data));
@@ -56,7 +56,7 @@ public final class DefinitionSetBuilder {
 
     public SourceInterfaceResult interface_(ExprContext xx) {
         var identity = DynRuntime.freshUnique(xx);
-        var iface = new InterfaceData(this.inner.defSetId, identity, Opt.none(), this.inner);
+        var iface = new InterfaceData(this.inner.defSetId, identity, this.inner);
         var ifaceIndex = (long) this.inner.interfaces.size();
         this.inner.interfaces.add(iface);
         iface.compiledBinaryName = SourceInterfaceEmitter.binaryNameFor(this.inner.defSetId, ifaceIndex);

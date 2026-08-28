@@ -312,6 +312,9 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
+                                            "drop",
+                                            mb.panic(mb.str("binding.drop not implemented"))),
+                                        new TestMb.RecordPair(
                                             "use",
                                             mb.call(
                                                 mb.evalCodevalue(),

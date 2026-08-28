@@ -15,6 +15,7 @@ import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.gen.Binding;
 import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
+import compilerxyz.eval.BindingId;
 
 /**
  * Synthetic scope entry for a foreach iterator that lives on the JVM operand
@@ -51,5 +52,10 @@ public record BindingIteratorStack() implements Binding {
       }
     }
     return EResult.ok(this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return Binding.elementUseDynamicBind(dynamicKey);
   }
 }

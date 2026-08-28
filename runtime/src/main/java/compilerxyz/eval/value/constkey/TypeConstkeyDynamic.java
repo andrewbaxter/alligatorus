@@ -46,6 +46,7 @@ import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.util.TList;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinFull(uniqueId = 6015L)
 @BuiltinPath("types.constkey")
@@ -179,5 +180,10 @@ public record TypeConstkeyDynamic()
   @Override
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

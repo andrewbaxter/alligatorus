@@ -7,6 +7,9 @@ import compilerxyz.gen.Value;
 import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.gen.GenType;
 import compilerxyz.util.Opt;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.eval.ExprContext;
+import compilerxyz.eval.QExprId;
 
 public record ValueObjectConst(Type type, Object data) implements Value, ExporterAny {
   @Override
@@ -38,5 +41,10 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
   @Override
   public EResult<Value> exporterAnyAsValue() {
     return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Value.exportArtifact(xx, loc, this);
   }
 }

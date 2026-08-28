@@ -921,6 +921,7 @@ var exprs = new TList<SourceExpr>();
             "nbinding",
             mb.evalBinding(),
             TList.of(
+                rp("drop", mb.panic(mb.str("nbinding.drop not implemented"))),
                 rp(
                     "use",
                     mb.seqOf(

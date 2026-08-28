@@ -81,4 +81,14 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     }
     return EResult.ok(new BindingDynamicBinding(dynamicKey, mergedType));
   }
+
+  @Override
+  public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+    return Binding.bindingDrop(xx, loc, this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return Binding.elementUseDynamicBind(dynamicKey);
+  }
 }

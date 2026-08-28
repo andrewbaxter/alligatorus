@@ -42,8 +42,10 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.MethodVisitor;
+import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class JavaBytecodeUtils {
   public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
@@ -305,8 +307,8 @@ public class JavaBytecodeUtils {
     return freshenCode(code, labelMap, new FreshLabelNodes(labelMap), keyMap);
   }
 
-  private static final class FreshLabelNodes extends IdentityHashMap<LabelNode, LabelNode> {
-    private static final long serialVersionUID = 0L;
+  private static final class FreshLabelNodes implements Map<LabelNode, LabelNode> {
+    private final IdentityHashMap<LabelNode, LabelNode> backing = new IdentityHashMap<>();
     private final IdentityHashMap<Label, Label> labelMap;
 
     FreshLabelNodes(IdentityHashMap<Label, Label> labelMap) {
@@ -316,12 +318,77 @@ public class JavaBytecodeUtils {
     @Override
     public LabelNode get(Object key) {
       var ln = (LabelNode) key;
-      var existing = super.get(ln);
+      var existing = backing.get(ln);
       if (existing != null) return existing;
       var mapped = labelMap.get(ln.getLabel());
       var fresh = mapped == null ? ln : new LabelNode(mapped);
-      put(ln, fresh);
+      backing.put(ln, fresh);
       return fresh;
+    }
+
+    @Override
+    public int size() {
+      return backing.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+      return backing.isEmpty();
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+      return backing.containsKey(key);
+    }
+
+    @Override
+    public boolean containsValue(Object value) {
+      return backing.containsValue(value);
+    }
+
+    @Override
+    public LabelNode put(LabelNode key, LabelNode value) {
+      return backing.put(key, value);
+    }
+
+    @Override
+    public LabelNode remove(Object key) {
+      return backing.remove(key);
+    }
+
+    @Override
+    public void putAll(Map<? extends LabelNode, ? extends LabelNode> source) {
+      backing.putAll(source);
+    }
+
+    @Override
+    public void clear() {
+      backing.clear();
+    }
+
+    @Override
+    public Set<LabelNode> keySet() {
+      return backing.keySet();
+    }
+
+    @Override
+    public Collection<LabelNode> values() {
+      return backing.values();
+    }
+
+    @Override
+    public Set<Map.Entry<LabelNode, LabelNode>> entrySet() {
+      return backing.entrySet();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return backing.equals(other);
+    }
+
+    @Override
+    public int hashCode() {
+      return backing.hashCode();
     }
   }
 
@@ -350,7 +417,7 @@ public class JavaBytecodeUtils {
   private static CodeDynamic freshenCode(
       CodeDynamic cd,
       IdentityHashMap<Label, Label> labelMap,
-      IdentityHashMap<LabelNode, LabelNode> labelNodeMap,
+      FreshLabelNodes labelNodeMap,
       IdentityHashMap<JumpKey, JumpKey> keyMap) {
     var _fbBc = cd.code();
     JavaBytecode _fbResult;

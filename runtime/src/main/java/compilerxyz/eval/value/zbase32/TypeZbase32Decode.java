@@ -44,6 +44,7 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.AspectStringConst;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinPath("zbase32.decode")
 @BuiltinLight(uniqueId = 6153L)
@@ -160,5 +161,10 @@ public record TypeZbase32Decode()
   @Override
   public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
     throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

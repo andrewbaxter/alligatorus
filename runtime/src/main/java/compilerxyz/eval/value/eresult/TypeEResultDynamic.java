@@ -60,6 +60,7 @@ import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectUnion;
 import compilerxyz.gen.GenExprErr;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinFull(uniqueId = 6017L)
 public record TypeEResultDynamic<T extends Type>(T elementType)
@@ -332,5 +333,10 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
   @Override
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

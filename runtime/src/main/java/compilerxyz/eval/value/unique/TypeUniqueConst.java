@@ -36,6 +36,7 @@ import compilerxyz.gen.GenAspectOperatorEq;
 import compilerxyz.eval.value.bool_.TypeBoolConst;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.util.MustCast;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6148L)
 public record TypeUniqueConst()
@@ -159,4 +160,9 @@ public record TypeUniqueConst()
 
   @Override
   public EResult<Value> exporterAnyAsValue() { return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this)); }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
+  }
 }

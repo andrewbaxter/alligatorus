@@ -4,9 +4,19 @@ import compilerxyz.eval.value.constkey.TypeConstkeyDynamic;
 import java.util.Comparator;
 
 public sealed interface ConstKey {
-  record Str(String value) implements ConstKey {}
+  record Str(String value) implements ConstKey {
+    @Override
+    public String constKeyToCanonical() {
+      return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+  }
 
-  record Uint(long value) implements ConstKey {}
+  record Uint(long value) implements ConstKey {
+    @Override
+    public String constKeyToCanonical() {
+      return Long.toUnsignedString(value);
+    }
+  }
 
   Comparator<ConstKey> CANONICAL_ORDER =
       new Comparator<>() {
@@ -16,12 +26,7 @@ public sealed interface ConstKey {
         }
       };
 
-  default String constKeyToCanonical() {
-    return switch (this) {
-      case Str s -> "\"" + s.value().replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
-      case Uint u -> Long.toUnsignedString(u.value());
-    };
-  }
+  String constKeyToCanonical();
 
   static Type dynamicType() {
     return new TypeConstkeyDynamic();

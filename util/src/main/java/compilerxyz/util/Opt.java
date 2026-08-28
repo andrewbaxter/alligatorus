@@ -5,10 +5,60 @@ import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 public sealed interface Opt<T> {
-  record Some<T>(@CodegenDescriptor T value) implements Opt<T> {}
+  record Some<T>(@CodegenDescriptor T value) implements Opt<T> {
+    @Override
+    public boolean optIsSome() {
+      return true;
+    }
+
+    @Override
+    public boolean optIsNone() {
+      return false;
+    }
+
+    @Override
+    public T optUnwrap() {
+      return value;
+    }
+
+    @Override
+    public T optUnwrapOr(T fallback) {
+      return value;
+    }
+
+    @Override
+    public <U> Opt<U> optMap(Function<T, U> f) {
+      return Opt.some(f.apply(value));
+    }
+  }
 
   record None<T>() implements Opt<T> {
     private static final None<?> INSTANCE = new None<>();
+
+    @Override
+    public boolean optIsSome() {
+      return false;
+    }
+
+    @Override
+    public boolean optIsNone() {
+      return true;
+    }
+
+    @Override
+    public T optUnwrap() {
+      throw new NoSuchElementException("unwrap() on None");
+    }
+
+    @Override
+    public T optUnwrapOr(T fallback) {
+      return fallback;
+    }
+
+    @Override
+    public <U> Opt<U> optMap(Function<T, U> f) {
+      return Opt.none();
+    }
   }
 
   @CodegenDescriptor
@@ -25,40 +75,14 @@ public sealed interface Opt<T> {
     return value == null ? Opt.none() : Opt.some(value);
   }
 
-  default boolean optIsSome() {
-    return switch (this) {
-      case Some<T> s -> true;
-      case None<T> n -> false;
-    };
-  }
+  boolean optIsSome();
 
-  default boolean optIsNone() {
-    return switch (this) {
-      case Some<T> s -> false;
-      case None<T> n -> true;
-    };
-  }
+  boolean optIsNone();
 
   @CodegenDescriptor
-  default T optUnwrap() {
-    return switch (this) {
-      case Some<T> s -> s.value();
-      case None<T> n -> throw new NoSuchElementException("unwrap() on None");
-    };
-  }
+  T optUnwrap();
 
-  default T optUnwrapOr(T fallback) {
-    return switch (this) {
-      case Some<T> s -> s.value();
-      case None<T> n -> fallback;
-    };
-  }
+  T optUnwrapOr(T fallback);
 
-  default <U> Opt<U> optMap(Function<T, U> f) {
-    return switch (this) {
-      case Some<T> s -> Opt.some(f.apply(s.value()));
-      case None<T> n -> Opt.none();
-    };
-  }
-
+  <U> Opt<U> optMap(Function<T, U> f);
 }

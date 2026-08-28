@@ -403,6 +403,8 @@ public final class T0165MutableDropForkTest {
                                     mb,
                                     TList.of(
                                         new TestMb.RecordPair(
+                                            "drop", mb.bindingDropViaUse()),
+                                        new TestMb.RecordPair(
                                             "use",
                                             mb.seqOf(
                                                 mb.set(
@@ -1359,6 +1361,8 @@ public final class T0165MutableDropForkTest {
                                 ifaceMethods(
                                     mb,
                                     TList.of(
+                                        new TestMb.RecordPair(
+                                            "drop", mb.bindingDropViaUse()),
                                         new TestMb.RecordPair(
                                             "use",
                                             mb.call(

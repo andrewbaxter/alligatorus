@@ -16,40 +16,4 @@ public interface JavaBytecode {
 
     T dispatcherHandleGuarded(JavaBytecodeGuarded n);
   }
-
-  interface DefaultDispatcher<T> extends Dispatcher<T> {
-    default T defaultDispatcherHandleDefault(JavaBytecode n) {
-      return null;
-    }
-
-    @Override
-    default T dispatcherHandleJump(JavaBytecodeJump n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-
-    @Override
-    default T dispatcherHandleGuarded(JavaBytecodeGuarded n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-
-    @Override
-    default T dispatcherHandleLand(JavaBytecodeLand n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-
-    @Override
-    default T dispatcherHandleInstruction(JavaBytecodeInstruction n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-
-    @Override
-    default T dispatcherHandleStoreLoad(JavaBytecodeStoreLoad n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-
-    @Override
-    default T dispatcherHandleSequence(JavaBytecodeSequence n) {
-      return defaultDispatcherHandleDefault(n);
-    }
-  }
 }

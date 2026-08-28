@@ -71,6 +71,8 @@ public final class AnalysisMain {
     List<ConventionChecks.Finding> conventionFindings = new ArrayList<>();
     conventionFindings.addAll(new ConventionChecks(generatedFiles).run(model));
     conventionFindings.addAll(new ImmutabilityChecks(generatedFiles).run(model));
+    conventionFindings.addAll(new StateChecks(generatedFiles).run(model));
+    conventionFindings.addAll(new InheritanceChecks(generatedFiles).run(model));
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (var f : conventionFindings) counts.merge(f.check(), 1, Integer::sum);
     System.out.println("=== Convention checks (" + conventionFindings.size() + " findings) ===");

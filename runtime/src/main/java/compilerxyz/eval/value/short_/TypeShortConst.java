@@ -404,4 +404,9 @@ public record TypeShortConst()
     }
     return EResult.err(loc, "TypeShortConst::typeCastTo: destination is not numeric");
   }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
+  }
 }

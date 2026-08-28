@@ -11,4 +11,9 @@ public class JavaBytecodeInstructionInt implements JavaBytecodeInstruction {
   public void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher) {
   moreDispatcher.moreDispatcherHandleInt(this);
   }
+
+  @Override
+  public <T> T javaBytecodeDispatch(JavaBytecode.Dispatcher<T> dispatcher) {
+    return dispatcher.dispatcherHandleInstruction(this);
+  }
 }

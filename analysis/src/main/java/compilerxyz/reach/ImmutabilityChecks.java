@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import spoon.reflect.CtModel;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.code.BinaryOperatorKind;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtConstructorCall;
@@ -22,6 +23,7 @@ import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtFormalTypeDeclarer;
 import spoon.reflect.declaration.CtInterface;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtRecord;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeParameter;
@@ -142,6 +144,18 @@ public final class ImmutabilityChecks {
       List<CtTypeReference<?>> args = tr.getActualTypeArguments();
       if (args.size() < 2) continue;
       if (args.get(0).isImplicit()) continue;
+      // A supertype-clause reference or an external-override parameter mirrors an external
+      // contract and allocates no storage; the map that backs it is still checked at its own
+      // declaration (identity-hashing backings are exempt like IdentityHashMap itself).
+      if (tr.getRoleInParent() == CtRole.INTERFACE || tr.getRoleInParent() == CtRole.SUPER_TYPE) {
+        continue;
+      }
+      if (tr.isParentInitialized()
+          && tr.getParent() instanceof CtParameter<?> mirroredParam
+          && mirroredParam.getParent() instanceof CtMethod<?> mirroredMethod
+          && ReachabilityMain.overridesExternal(mirroredMethod)) {
+        continue;
+      }
       Map<String, ImmutabilityCheck.Res> scope = new HashMap<>();
       CtElement cur = tr.isParentInitialized() ? tr.getParent() : null;
       while (cur != null) {

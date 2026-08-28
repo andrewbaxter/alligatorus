@@ -77,6 +77,7 @@ import compilerxyz.gen.AspectElementUseDynamicBind;
 import compilerxyz.gen.GenAspectDynamicConst;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.util.MustCast;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6122L)
 public final class TypeMapDynamic<K extends Type, V extends Type>
@@ -584,5 +585,10 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
   @Override
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingDynamicBinding(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

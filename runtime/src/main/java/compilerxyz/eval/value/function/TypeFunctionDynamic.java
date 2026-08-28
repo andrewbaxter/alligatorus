@@ -53,6 +53,7 @@ import compilerxyz.gen.AspectRecord;
 import compilerxyz.gen.AspectTuple;
 import compilerxyz.eval.dynamic.EvalRootEmitter;
 import compilerxyz.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6110L)
 public record TypeFunctionDynamic(
@@ -299,5 +300,10 @@ public record TypeFunctionDynamic(
   @Override
   public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
     return new BindingFunctionDynamic(dynamicKey, this);
+  }
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
   }
 }

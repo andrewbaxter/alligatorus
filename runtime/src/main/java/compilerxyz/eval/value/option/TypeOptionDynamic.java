@@ -467,4 +467,9 @@ public final class TypeOptionDynamic<T extends Type>
   }
 
 
+
+  @Override
+  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+    return Type.exportArtifact(xx, loc, this);
+  }
 }

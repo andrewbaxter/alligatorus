@@ -223,7 +223,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                       if (m.compiledBodyCode.optIsNone() && m.compiledClassName.optIsNone()) {
                         var objInternalName =
                             SourceObjectEmitter.internalNameFor(
-                                dt.setId.optUnwrap(), dt.objIdx);
+                                dt.setId, dt.objIdx);
                         var finishRes =
                             m.finish(
                                 xx,
@@ -393,7 +393,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
               },
               (body) -> {
                 var dt = new TypeSourceObjectDynamic(
-                    Opt.some(body.defSetId()), body.name(), body.identity());
+                    body.defSetId(), body.name(), body.identity());
                 dt.artifactIdCell.set(idValue);
                 dt.compiledBinaryName = body.compiledBinaryName();
                 dt.compiledBytecode = body.compiledBytecode();
@@ -448,7 +448,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                               "TypeTypeSourceObjectConst::finalizer defSet artifact");
                       var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
                       dt.initSetReflectively(set);
-                      dt.setId = Opt.some(set.defSetId);
+                      dt.setId = set.defSetId;
                       var underlyingRes =
                           ArtifactSupport.independentFinalizeImportTypeArtifact(
                               xx2, loc2, body.underlyingType());

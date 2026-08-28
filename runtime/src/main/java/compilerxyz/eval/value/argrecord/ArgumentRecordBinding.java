@@ -13,6 +13,7 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
+import compilerxyz.eval.BindingId;
 
 public record ArgumentRecordBinding(ArgumentRecord record) implements Binding {
   @Override
@@ -37,5 +38,15 @@ public record ArgumentRecordBinding(ArgumentRecord record) implements Binding {
       }
     }
     return EResult.ok(this);
+  }
+
+  @Override
+  public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+    return Binding.bindingDrop(xx, loc, this);
+  }
+
+  @Override
+  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+    return Binding.elementUseDynamicBind(dynamicKey);
   }
 }

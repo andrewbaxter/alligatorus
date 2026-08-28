@@ -36,6 +36,33 @@ is excluded via source-root origin):
 
 To add a check: add a method to `ConventionChecks.run(CtModel)` that emits `Finding`s.
 
+## 1a. Inheritance checks (`InheritanceChecks`)
+
+Shared behavior is composed via delegation and shared utility methods, never inherited.
+
+| Check | Rule |
+|-------|------|
+| `NoClassInheritance` | No class has an explicit superclass (anonymous classes included), and no class is abstract (an abstract class exists only to be subclassed). Exempt: superclasses whose API forces subclassing — the direct `Throwable` family (exceptions cannot be composed), `ClassLoader` (`defineClass` is protected), and ASM's `ClassWriter` (`getCommonSuperClass` is a protected extension point) — and enum constant class bodies, which are the enum's own constants, not reuse. Interface extension is allowed: it composes contracts, not behavior. |
+| `NoInterfaceDefaultMethod` | No interface default methods; interfaces declare contracts only. Variant-specific behavior on a sealed interface becomes an abstract method implemented per record; genuinely shared behavior becomes a static utility method the implementations call. On `@Builtin` host interfaces every abstract method is part of the language-visible contract (`JavaAspectExtractor` registers abstract methods), so every source-level `impl_interface` must implement it — with real semantics, or a `panic` if the method cannot apply. The `eval.drop_value` builtin (`Eval.dropValue`) and `TestMb.bindingDropViaUse()` express the standard binding `drop` (use self with no setter, drop the produced value). |
+
+## 1c. State checks (`StateChecks`)
+
+An `Opt` or a boolean that only ever holds one state carries no information; these lints find and
+eliminate pointless optionality and pointless flags. Argument/assignment classification is a value
+trace in the `ImmutabilityCheck.checkValue` style: `Opt.some`/`Opt.none` factories, `Some`/`None`
+constructions, boolean literals, and `!` negation are exact; ternaries union their branches,
+locals union their initializer and all writes, final fields look through their initializer, and
+single-return methods are looked through with parameter substitution. Anything untraceable — a
+value passed along from elsewhere, or a computed boolean — counts as both states, fail-open: only
+statically certain single-state values are flagged.
+
+| Check | Rule |
+|-------|------|
+| `OptParameterBothStates` | Every `Opt`-typed parameter must see both Some and None (or an untraceable pass-through) across its visible call sites, pooled across an override group at its root definition (constructor calls, `this`/`super` chains, and enum constants included). All-Some → drop the Opt; all-None → drop the parameter. Exempt: methods dispatched by name from emitted code (`TypeMethodDynamic`/`TypeFunctionDynamic`/`callStaticMethod` literals, `@CodegenDescriptor`), methods referenced as method references (arguments unknowable), and parameters with no visible call sites (dead code is the reachability analysis's finding). |
+| `BoolParameterBothStates` | Every `boolean`/`Boolean` parameter must see both true and false (or an untraceable/computed value) across its visible call sites, same pooling and exemptions as above. A parameter passed one literal at every site is not a parameter — remove it and specialize. |
+| `OptFieldBothStates` | Every `Opt`-typed field must be assigned both states (or an untraceable value) across its initializer and all assignments. |
+| `BoolFieldBothStates` | Every `boolean`/`Boolean` field must hold both values across its initializer and all assignments; a primitive boolean field with no initializer contributes its implicit `false`. |
+
 ## 1b. Immutability + equality checks (`ImmutabilityChecks`)
 
 Backed by `ImmutabilityCheck`, a recursive, memoized deep-immutability judgment over the Spoon
@@ -54,7 +81,7 @@ raw generics, arrays — is mutable, fail-closed.
 | `ImmutableAnnotationValid` | Every `@compilerxyz.annotations.Immutable` assertion is verified structurally; the annotation is never trusted. |
 | `ImmutableTypeValid` | Every implementer of `compilerxyz.eval.TypeImmutable` is verified — structurally, or (for the two-pass reflective-init protocol) by value analysis: every constructor and reflective-init call site's argument expression graph is evaluated (`checkValue` — constructions by record components / generic-class type-param substitution, I-collection and `TList.of` elements, `Opt.some/none`, single-assignment locals, `TList` accumulators bounded to add/addAll, final-field and trivial-factory look-through with parameter substitution). References to implementers are then immutable by verified contract. |
 | `StaticFieldImmutable` | Every global (static field, interface constant, enum value) is final and deeply immutable. For a final field whose declared type fails (e.g. an interface), the initializer's exact type is checked instead when it is a direct `new` or anonymous class — sound because the field is final, so the runtime type is exactly the initializer's. |
-| `MapKeyImmutable` | The key type argument of every map-typed reference (`TMap`/`TOrderedMap`/`IMap`/`java.util` maps) is immutable. Type parameters in scope at the reference are exempt — their concrete instantiations are checked at their own use sites. `IdentityHashMap`/`WeakHashMap` are exempt: they hash by reference identity, so key mutation cannot corrupt them. |
+| `MapKeyImmutable` | The key type argument of every map-typed reference (`TMap`/`TOrderedMap`/`IMap`/`java.util` maps) is immutable. Type parameters in scope at the reference are exempt — their concrete instantiations are checked at their own use sites. `IdentityHashMap`/`WeakHashMap` are exempt: they hash by reference identity, so key mutation cannot corrupt them. Supertype-clause references and parameters of external-override methods are exempt: they mirror an external contract and allocate no storage — the map that backs them is still checked at its own declaration. |
 | `NoReferenceEquality` | No `==`/`!=` on references (null checks and enums exempt); use the type's defined equality — identity aspects for types. |
 | `NoReflectiveEquals` | No equality that falls through to Object's reflective identity equals: `.equals` on model classes with no equals override, and `java.util.Objects.equals`/`deepEquals`. |
 

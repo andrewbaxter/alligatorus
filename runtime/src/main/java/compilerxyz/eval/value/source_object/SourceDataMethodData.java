@@ -52,7 +52,6 @@ public final class SourceDataMethodData {
   public Opt<BindingId> innerBindingId = Opt.none();
   public int methodIdx;
   public final TList<EvalContext.ExternalEntry> capturedExternals;
-  public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
   public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
   public Opt<TList<ArgSignatureSlot>> compiledArgSlots = Opt.none();
