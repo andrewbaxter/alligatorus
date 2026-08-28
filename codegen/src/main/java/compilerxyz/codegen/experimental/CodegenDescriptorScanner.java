@@ -20,12 +20,10 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public final class CodegenDescriptorScanner {
-    private CodegenDescriptorScanner() {
-    }
+    private CodegenDescriptorScanner() {}
 
     static {
-        StaticJavaParser.getParserConfiguration()
-                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
     }
 
     public record Entry(
@@ -35,8 +33,7 @@ public final class CodegenDescriptorScanner {
             TypeName returnType,
             TList<TypeName> paramTypes,
             boolean isStatic,
-            boolean ownerIsInterface) {
-    }
+            boolean ownerIsInterface) {}
 
     public static TList<Entry> scanRoot(Path runtimeSourceRoot) throws IOException {
         var out = new TList<Entry>();
@@ -46,7 +43,9 @@ public final class CodegenDescriptorScanner {
                 var src = Files.readString(file);
                 if (!src.contains("CodegenDescriptor")) continue;
                 var cu = StaticJavaParser.parse(file);
-                var pkg = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse("");
+                var pkg = cu.getPackageDeclaration()
+                        .map(pd -> pd.getNameAsString())
+                        .orElse("");
                 var imports = new TMap<String, String>();
                 for (var imp : cu.getImports()) {
                     if (imp.isAsterisk() || imp.isStatic()) continue;
@@ -62,17 +61,11 @@ public final class CodegenDescriptorScanner {
     }
 
     private static void walkType(
-            String pkg,
-            String enclosing,
-            TypeDeclaration<?> t,
-            TMap<String, String> imports,
-            TList<Entry> out) {
+            String pkg, String enclosing, TypeDeclaration<?> t, TMap<String, String> imports, TList<Entry> out) {
         var simple = t.getNameAsString();
         if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration) {
-            boolean ownerIsInterface =
-                    t instanceof ClassOrInterfaceDeclaration ci && ci.isInterface();
-            var owner =
-                    enclosing.isEmpty() ? ClassName.get(pkg, simple) : ClassName.get(pkg, enclosing, simple);
+            boolean ownerIsInterface = t instanceof ClassOrInterfaceDeclaration ci && ci.isInterface();
+            var owner = enclosing.isEmpty() ? ClassName.get(pkg, simple) : ClassName.get(pkg, enclosing, simple);
             var classTypeParams = new TSet<String>();
             if (t instanceof ClassOrInterfaceDeclaration ci) {
                 for (var tp : ci.getTypeParameters()) classTypeParams.add(tp.getNameAsString());
@@ -84,15 +77,14 @@ public final class CodegenDescriptorScanner {
                             .noneMatch(a -> a.getNameAsString().equals("CodegenDescriptor"))) {
                         continue;
                     }
-                    out.add(
-                            new Entry(
-                                    owner,
-                                    screamingSnake(simple) + "_" + screamingSnake(component.getNameAsString()),
-                                    component.getNameAsString(),
-                                    typeNameOf(component.getType(), imports, pkg, classTypeParams),
-                                    TList.of(),
-                                    false,
-                                    false));
+                    out.add(new Entry(
+                            owner,
+                            screamingSnake(simple) + "_" + screamingSnake(component.getNameAsString()),
+                            component.getNameAsString(),
+                            typeNameOf(component.getType(), imports, pkg, classTypeParams),
+                            TList.of(),
+                            false,
+                            false));
                 }
             }
             for (var m : t.getMethods()) {
@@ -105,17 +97,15 @@ public final class CodegenDescriptorScanner {
                 for (var p : m.getParameters()) {
                     paramTypes.add(typeNameOf(p.getType(), imports, pkg, typeParams));
                 }
-                var constantName =
-                        screamingSnake(simple) + "_" + screamingSnake(m.getNameAsString());
-                out.add(
-                        new Entry(
-                                owner,
-                                constantName,
-                                m.getNameAsString(),
-                                returnType,
-                                paramTypes,
-                                m.isStatic(),
-                                ownerIsInterface));
+                var constantName = screamingSnake(simple) + "_" + screamingSnake(m.getNameAsString());
+                out.add(new Entry(
+                        owner,
+                        constantName,
+                        m.getNameAsString(),
+                        returnType,
+                        paramTypes,
+                        m.isStatic(),
+                        ownerIsInterface));
             }
         }
         for (var member : t.getMembers()) {
@@ -127,12 +117,10 @@ public final class CodegenDescriptorScanner {
     }
 
     private static boolean isAnnotated(MethodDeclaration m) {
-        return m.getAnnotations().stream()
-                .anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
+        return m.getAnnotations().stream().anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
     }
 
-    private static TypeName typeNameOf(
-            Type t, TMap<String, String> imports, String pkg, TSet<String> typeParams) {
+    private static TypeName typeNameOf(Type t, TMap<String, String> imports, String pkg, TSet<String> typeParams) {
         if (t.isVoidType()) return TypeName.VOID;
         if (t.isPrimitiveType()) {
             return switch (t.asPrimitiveType().asString()) {
@@ -148,8 +136,7 @@ public final class CodegenDescriptorScanner {
             };
         }
         if (t.isArrayType()) {
-            return ArrayTypeName.of(
-                    typeNameOf(t.asArrayType().getComponentType(), imports, pkg, typeParams));
+            return ArrayTypeName.of(typeNameOf(t.asArrayType().getComponentType(), imports, pkg, typeParams));
         }
         if (t.isClassOrInterfaceType()) {
             var name = t.asClassOrInterfaceType().getNameAsString();
@@ -159,10 +146,19 @@ public final class CodegenDescriptorScanner {
         throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);
     }
 
-    private static final IList<String> JAVA_LANG =
-            IList.of(
-                    "String", "Object", "Integer", "Long", "Short", "Byte", "Boolean", "Float", "Double",
-                    "Character", "CharSequence", "Number");
+    private static final IList<String> JAVA_LANG = IList.of(
+            "String",
+            "Object",
+            "Integer",
+            "Long",
+            "Short",
+            "Byte",
+            "Boolean",
+            "Float",
+            "Double",
+            "Character",
+            "CharSequence",
+            "Number");
 
     private static String resolve(String name, TMap<String, String> imports, String pkg) {
         var head = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;

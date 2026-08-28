@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import spoon.reflect.CtModel;
-import spoon.reflect.path.CtRole;
 import spoon.reflect.code.BinaryOperatorKind;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtConstructorCall;
@@ -28,18 +27,26 @@ import spoon.reflect.declaration.CtRecord;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class ImmutabilityChecks {
 
-    private final Set<String> mapTypes =
-            Set.of(
-                    "compilerxyz.util.TMap", "compilerxyz.util.TOrderedMap", "compilerxyz.util.IMap",
-                    "java.util.Map", "java.util.HashMap", "java.util.LinkedHashMap", "java.util.TreeMap",
-                    "java.util.SortedMap", "java.util.NavigableMap",
-                    "java.util.EnumMap", "java.util.AbstractMap",
-                    "java.util.concurrent.ConcurrentHashMap", "java.util.concurrent.ConcurrentMap");
+    private final Set<String> mapTypes = Set.of(
+            "compilerxyz.util.TMap",
+            "compilerxyz.util.TOrderedMap",
+            "compilerxyz.util.IMap",
+            "java.util.Map",
+            "java.util.HashMap",
+            "java.util.LinkedHashMap",
+            "java.util.TreeMap",
+            "java.util.SortedMap",
+            "java.util.NavigableMap",
+            "java.util.EnumMap",
+            "java.util.AbstractMap",
+            "java.util.concurrent.ConcurrentHashMap",
+            "java.util.concurrent.ConcurrentMap");
     private final Set<String> objectsEquality = Set.of("equals", "deepEquals");
 
     private final List<ConventionChecks.Finding> findings = new ArrayList<>();
@@ -53,15 +60,13 @@ public final class ImmutabilityChecks {
 
     public List<ConventionChecks.Finding> run(CtModel model) {
         for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
-            boolean tokenAnnotated =
-                    t.getAnnotations().stream()
-                            .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("IdentityToken"));
+            boolean tokenAnnotated = t.getAnnotations().stream()
+                    .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("IdentityToken"));
             if (tokenAnnotated) {
-                boolean shape =
-                        t instanceof CtClass<?>
-                                && !(t instanceof CtRecord)
-                                && t.hasModifier(ModifierKind.FINAL)
-                                && t.getFields().stream().allMatch(f -> f.hasModifier(ModifierKind.STATIC));
+                boolean shape = t instanceof CtClass<?>
+                        && !(t instanceof CtRecord)
+                        && t.hasModifier(ModifierKind.FINAL)
+                        && t.getFields().stream().allMatch(f -> f.hasModifier(ModifierKind.STATIC));
                 if (!shape) {
                     report(
                             "IdentityTokenValid",
@@ -84,17 +89,15 @@ public final class ImmutabilityChecks {
                     }
                 }
             }
-            boolean annotated =
-                    t.getAnnotations().stream()
-                            .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("Immutable"));
+            boolean annotated = t.getAnnotations().stream()
+                    .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("Immutable"));
             if (!annotated) continue;
             var res = immutability.checkType(t);
             if (!res.immutable()) {
                 report(
                         "ImmutableAnnotationValid",
                         t,
-                        "'" + t.getQualifiedName() + "' is annotated @Immutable but is not immutable: "
-                                + res.reason());
+                        "'" + t.getQualifiedName() + "' is annotated @Immutable but is not immutable: " + res.reason());
             }
         }
         for (CtField<?> f : model.getElements(new TypeFilter<>(CtField.class))) {
@@ -151,10 +154,7 @@ public final class ImmutabilityChecks {
             }
             var res = immutability.checkRef(args.get(0), scope);
             if (!res.immutable()) {
-                report(
-                        "MapKeyImmutable",
-                        tr,
-                        "map key type '" + args.get(0) + "' is not immutable: " + res.reason());
+                report("MapKeyImmutable", tr, "map key type '" + args.get(0) + "' is not immutable: " + res.reason());
             }
         }
         for (CtBinaryOperator<?> op : model.getElements(new TypeFilter<>(CtBinaryOperator.class))) {
@@ -251,8 +251,7 @@ public final class ImmutabilityChecks {
             }
         }
         if (initMethods.isEmpty()) {
-            return new ImmutabilityCheck.Res(
-                    false, "no reflective two-pass init methods to value-verify");
+            return new ImmutabilityCheck.Res(false, "no reflective two-pass init methods to value-verify");
         }
         String qn = t.getQualifiedName();
         for (CtConstructorCall<?> cc : model.getElements(new TypeFilter<>(CtConstructorCall.class))) {
@@ -263,10 +262,9 @@ public final class ImmutabilityChecks {
             var ctor = cc.getExecutable() == null ? null : cc.getExecutable().getExecutableDeclaration();
             var args = cc.getArguments();
             for (int i = 0; i < args.size(); i++) {
-                var pr =
-                        ctor != null && i < ctor.getParameters().size()
-                                ? immutability.checkRef(ctor.getParameters().get(i).getType(), Map.of())
-                                : new ImmutabilityCheck.Res(false, "unresolvable constructor");
+                var pr = ctor != null && i < ctor.getParameters().size()
+                        ? immutability.checkRef(ctor.getParameters().get(i).getType(), Map.of())
+                        : new ImmutabilityCheck.Res(false, "unresolvable constructor");
                 var r = pr.immutable() ? pr : immutability.checkValue(args.get(i));
                 if (!r.immutable()) {
                     return new ImmutabilityCheck.Res(false, "constructor argument " + i + ": " + r.reason());
@@ -276,7 +274,8 @@ public final class ImmutabilityChecks {
         for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
             var ex = inv.getExecutable();
             if (ex == null || !initMethods.contains(ex.getSimpleName())) continue;
-            if (ex.getDeclaringType() == null || !qn.equals(ex.getDeclaringType().getQualifiedName())) {
+            if (ex.getDeclaringType() == null
+                    || !qn.equals(ex.getDeclaringType().getQualifiedName())) {
                 continue;
             }
             for (CtExpression<?> a : inv.getArguments()) {
@@ -303,7 +302,7 @@ public final class ImmutabilityChecks {
         CtType<?> decl = ref.getTypeDeclaration();
         return decl != null
                 && decl.getAnnotations().stream()
-                .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("IdentityToken"));
+                        .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("IdentityToken"));
     }
 
     private void report(String check, CtElement e, String message) {

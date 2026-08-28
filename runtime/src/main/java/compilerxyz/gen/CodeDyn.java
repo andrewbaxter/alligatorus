@@ -1,8 +1,7 @@
 package compilerxyz.gen;
 
-import compilerxyz.annotations.BuiltinPath;
-
 import compilerxyz.annotations.BuiltinFull;
+import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.TargetCode;
 
 @BuiltinFull(uniqueId = 2007L, scopeId = 3007)

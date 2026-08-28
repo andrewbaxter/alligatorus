@@ -11,6 +11,5 @@ public interface MatchDynamic {
 
     EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex);
 
-    EResult<CodeDynamic> matchDynamicExtract(
-            ExprContext xx, QExprId loc, int variantIndex, Type variantType);
+    EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType);
 }

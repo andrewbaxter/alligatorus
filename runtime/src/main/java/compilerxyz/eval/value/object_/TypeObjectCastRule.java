@@ -1,9 +1,9 @@
 package compilerxyz.eval.value.object_;
 
-import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
@@ -18,26 +18,25 @@ import compilerxyz.eval.value.ValueDynamic;
 
 public sealed interface TypeObjectCastRule {
 
-  boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);
+    boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);
 
-  EResult<CodeValue> typeObjectCastRuleApply(
-      ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType);
+    EResult<CodeValue> typeObjectCastRuleApply(
+            ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType);
 
-  record RestampToIdentity(Unique identity) implements TypeObjectCastRule {
-    @Override
-    public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
-      return destType.typeAspect(xx, identity).optIsSome();
+    record RestampToIdentity(Unique identity) implements TypeObjectCastRule {
+        @Override
+        public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
+            return destType.typeAspect(xx, identity).optIsSome();
+        }
+
+        @Override
+        public EResult<CodeValue> typeObjectCastRuleApply(
+                ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+        }
     }
 
-    @Override
-    public EResult<CodeValue> typeObjectCastRuleApply(
-        ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-      return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
-    }
-  }
-
-    record InvokeVirtualByDestIdentity(Unique identity, JavaVirtualMethodRef method)
-            implements TypeObjectCastRule {
+    record InvokeVirtualByDestIdentity(Unique identity, JavaVirtualMethodRef method) implements TypeObjectCastRule {
         @Override
         public boolean typeObjectCastRuleMatches(ExprContext xx, Type destType) {
             return destType.typeAspect(xx, identity).optIsSome();
@@ -50,8 +49,7 @@ public sealed interface TypeObjectCastRule {
             if (sourceCode == null) {
                 return EResult.err(
                         loc,
-                        "cast " + source.typeDesc() + " → " + destType.typeDesc()
-                                + ": source has no runtime code");
+                        "cast " + source.typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
             }
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
@@ -59,17 +57,14 @@ public sealed interface TypeObjectCastRule {
             seq.add(JavaBytecodeUtils.callMethod(loc, method));
             var retDesc = method.descriptor.value;
             var retStart = retDesc.indexOf(')') + 1;
-            if (retDesc.charAt(retStart) == 'L'
-                    && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
-                seq.add(
-                        JavaBytecodeUtils.cast(
-                                loc, JavaDataDescriptor.fromInternalName(
-                                        JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
+            if (retDesc.charAt(retStart) == 'L' && !retDesc.substring(retStart).equals("Ljava/lang/Object;")) {
+                seq.add(JavaBytecodeUtils.cast(
+                        loc,
+                        JavaDataDescriptor.fromInternalName(
+                                JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
             }
             var call = new CodeDynamic(loc, seq);
-            return EResult.ok(
-                    new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
         }
     }
-
 }

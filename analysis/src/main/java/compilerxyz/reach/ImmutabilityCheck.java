@@ -18,11 +18,11 @@ import spoon.reflect.code.CtVariableRead;
 import spoon.reflect.code.CtVariableWrite;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtExecutable;
-import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtEnumValue;
+import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtInterface;
+import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.declaration.CtRecord;
 import spoon.reflect.declaration.CtSealable;
 import spoon.reflect.declaration.CtType;
@@ -36,23 +36,39 @@ import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class ImmutabilityCheck {
 
-    public record Res(boolean immutable, String reason) {
-    }
+    public record Res(boolean immutable, String reason) {}
 
     private static final Res OK = new Res(true, "");
 
-    private final Set<String> leaves =
-            Set.of(
-                    "java.lang.String", "java.lang.Boolean", "java.lang.Byte", "java.lang.Short",
-                    "java.lang.Integer", "java.lang.Long", "java.lang.Character", "java.lang.Float",
-                    "java.lang.Double", "java.lang.Void", "java.math.BigInteger", "java.math.BigDecimal",
-                    "java.util.regex.Pattern", "java.lang.Class", "java.net.URI", "java.nio.file.Path",
-                    "com.squareup.javapoet.ClassName", "com.squareup.javapoet.TypeName",
-                    "com.squareup.javapoet.ParameterizedTypeName", "com.squareup.javapoet.ArrayTypeName",
-                    "com.squareup.javapoet.TypeVariableName", "com.squareup.javapoet.WildcardTypeName",
-                    "com.squareup.javapoet.CodeBlock", "com.squareup.javapoet.AnnotationSpec",
-                    "com.squareup.javapoet.FieldSpec", "com.squareup.javapoet.MethodSpec",
-                    "com.squareup.javapoet.ParameterSpec", "com.squareup.javapoet.TypeSpec");
+    private final Set<String> leaves = Set.of(
+            "java.lang.String",
+            "java.lang.Boolean",
+            "java.lang.Byte",
+            "java.lang.Short",
+            "java.lang.Integer",
+            "java.lang.Long",
+            "java.lang.Character",
+            "java.lang.Float",
+            "java.lang.Double",
+            "java.lang.Void",
+            "java.math.BigInteger",
+            "java.math.BigDecimal",
+            "java.util.regex.Pattern",
+            "java.lang.Class",
+            "java.net.URI",
+            "java.nio.file.Path",
+            "com.squareup.javapoet.ClassName",
+            "com.squareup.javapoet.TypeName",
+            "com.squareup.javapoet.ParameterizedTypeName",
+            "com.squareup.javapoet.ArrayTypeName",
+            "com.squareup.javapoet.TypeVariableName",
+            "com.squareup.javapoet.WildcardTypeName",
+            "com.squareup.javapoet.CodeBlock",
+            "com.squareup.javapoet.AnnotationSpec",
+            "com.squareup.javapoet.FieldSpec",
+            "com.squareup.javapoet.MethodSpec",
+            "com.squareup.javapoet.ParameterSpec",
+            "com.squareup.javapoet.TypeSpec");
     private final Set<String> containers =
             Set.of("compilerxyz.util.IList", "compilerxyz.util.IMap", "compilerxyz.util.ISet");
 
@@ -152,8 +168,7 @@ public final class ImmutabilityCheck {
                     Res r = checkRef(components.get(i).getType(), new HashMap<>());
                     if (!r.immutable()) r = checkValue(args.get(i), env, depth + 1);
                     if (!r.immutable()) {
-                        return new Res(
-                                false, "component '" + components.get(i).getSimpleName() + "': " + r.reason());
+                        return new Res(false, "component '" + components.get(i).getSimpleName() + "': " + r.reason());
                     }
                 }
                 return OK;
@@ -175,8 +190,9 @@ public final class ImmutabilityCheck {
         if (e instanceof CtInvocation<?> inv) {
             var ex = inv.getExecutable();
             String name = ex == null ? "" : ex.getSimpleName();
-            String owner =
-                    ex == null || ex.getDeclaringType() == null ? "" : ex.getDeclaringType().getQualifiedName();
+            String owner = ex == null || ex.getDeclaringType() == null
+                    ? ""
+                    : ex.getDeclaringType().getQualifiedName();
             if (("of".equals(name) || "from".equals(name) || "ofEntries".equals(name))
                     && (containers.contains(owner) || "compilerxyz.util.TList".equals(owner))) {
                 for (CtExpression<?> a : inv.getArguments()) {
@@ -254,33 +270,29 @@ public final class ImmutabilityCheck {
 
     Res traceAccumulator(CtLocalVariable<?> lv, CtVariableRead<?> consumption) {
         var init = lv.getDefaultExpression();
-        boolean emptyTList =
-                init instanceof CtConstructorCall<?> icc
-                        && icc.getType() != null
-                        && "compilerxyz.util.TList".equals(icc.getType().getQualifiedName())
-                        && icc.getArguments().isEmpty();
+        boolean emptyTList = init instanceof CtConstructorCall<?> icc
+                && icc.getType() != null
+                && "compilerxyz.util.TList".equals(icc.getType().getQualifiedName())
+                && icc.getArguments().isEmpty();
         if (!emptyTList) return null;
         CtElement body = lv.getParent(CtExecutable.class);
         if (body == null) body = lv.getParent(CtAnonymousExecutable.class);
         if (body == null) return null;
         int consumptionStart = consumption.getPosition().getSourceStart();
         for (CtVariableRead<?> use : body.getElements(new TypeFilter<>(CtVariableRead.class))) {
-            if (use.getVariable() == null
-                    || !use.getVariable().getSimpleName().equals(lv.getSimpleName())) {
+            if (use.getVariable() == null || !use.getVariable().getSimpleName().equals(lv.getSimpleName())) {
                 continue;
             }
             int useStart = use.getPosition().getSourceStart();
             if (useStart == consumptionStart) continue;
-            boolean isAddTarget =
-                    use.getParent() instanceof CtInvocation<?> pinv
-                            && pinv.getTarget() != null
-                            && pinv.getTarget().getPosition().isValidPosition()
-                            && pinv.getTarget().getPosition().getSourceStart() == useStart
-                            && ("add".equals(pinv.getExecutable().getSimpleName())
+            boolean isAddTarget = use.getParent() instanceof CtInvocation<?> pinv
+                    && pinv.getTarget() != null
+                    && pinv.getTarget().getPosition().isValidPosition()
+                    && pinv.getTarget().getPosition().getSourceStart() == useStart
+                    && ("add".equals(pinv.getExecutable().getSimpleName())
                             || "addAll".equals(pinv.getExecutable().getSimpleName()));
             if (!isAddTarget) {
-                return new Res(
-                        false, "accumulator '" + lv.getSimpleName() + "' escapes beyond add/addAll");
+                return new Res(false, "accumulator '" + lv.getSimpleName() + "' escapes beyond add/addAll");
             }
             for (CtExpression<?> a : ((CtInvocation<?>) use.getParent()).getArguments()) {
                 Res r = checkValue(a);
@@ -290,24 +302,21 @@ public final class ImmutabilityCheck {
         return OK;
     }
 
-    private Map<String, Res> argSubst(
-            CtType<?> decl, List<CtTypeReference<?>> args, Map<String, Res> subst) {
+    private Map<String, Res> argSubst(CtType<?> decl, List<CtTypeReference<?>> args, Map<String, Res> subst) {
         Map<String, Res> out = new HashMap<>();
         List<CtTypeParameter> params = decl.getFormalCtTypeParameters();
         for (int i = 0; i < params.size(); i++) {
             String name = params.get(i).getSimpleName();
-            Res r =
-                    i < args.size()
-                            ? checkRef(args.get(i), subst)
-                            : new Res(false, "raw type argument for '" + name + "'");
+            Res r = i < args.size()
+                    ? checkRef(args.get(i), subst)
+                    : new Res(false, "raw type argument for '" + name + "'");
             out.put(name, r);
         }
         return out;
     }
 
     private Res checkDecl(CtType<?> decl, Map<String, Res> subst, boolean asSupertype) {
-        StringBuilder keyB =
-                new StringBuilder(asSupertype ? "S|" : "F|").append(decl.getQualifiedName());
+        StringBuilder keyB = new StringBuilder(asSupertype ? "S|" : "F|").append(decl.getQualifiedName());
         for (CtTypeParameter p : decl.getFormalCtTypeParameters()) {
             Res r = subst.get(p.getSimpleName());
             keyB.append('|').append(r != null && r.immutable() ? 'I' : 'M');
@@ -328,14 +337,10 @@ public final class ImmutabilityCheck {
             if ("compilerxyz.eval.TypeImmutable".equals(qn)) {
                 res = OK;
             } else {
-                res =
-                        sealed
-                                ? permittedRes(decl, subst)
-                                : new Res(false, "'" + qn + "' is an open interface");
+                res = sealed ? permittedRes(decl, subst) : new Res(false, "'" + qn + "' is an open interface");
             }
         } else {
-            if (!asSupertype && !record && !decl.isEnum() && !decl.hasModifier(ModifierKind.FINAL)
-                    && !sealed) {
+            if (!asSupertype && !record && !decl.isEnum() && !decl.hasModifier(ModifierKind.FINAL) && !sealed) {
                 res = new Res(false, "'" + qn + "' is a non-final, non-sealed class");
             }
             if (res.immutable() && !asSupertype && sealed) res = permittedRes(decl, subst);
@@ -361,10 +366,9 @@ public final class ImmutabilityCheck {
                         && !"java.lang.Enum".equals(sc.getQualifiedName())
                         && !"java.lang.Record".equals(sc.getQualifiedName())) {
                     CtType<?> parent = sc.getTypeDeclaration();
-                    Res r =
-                            parent == null
-                                    ? new Res(false, "external superclass '" + sc.getQualifiedName() + "'")
-                                    : checkDecl(parent, argSubst(parent, sc.getActualTypeArguments(), subst), true);
+                    Res r = parent == null
+                            ? new Res(false, "external superclass '" + sc.getQualifiedName() + "'")
+                            : checkDecl(parent, argSubst(parent, sc.getActualTypeArguments(), subst), true);
                     if (!r.immutable()) {
                         res = new Res(false, "superclass '" + sc.getSimpleName() + "' of '" + qn + "': " + r.reason());
                     }
@@ -382,8 +386,7 @@ public final class ImmutabilityCheck {
         for (CtTypeReference<?> permittedRef : ((CtSealable) parent).getPermittedTypes()) {
             CtType<?> permDecl = permittedRef.getTypeDeclaration();
             if (permDecl == null) {
-                return new Res(
-                        false, "unresolvable permitted type '" + permittedRef.getQualifiedName() + "'");
+                return new Res(false, "unresolvable permitted type '" + permittedRef.getQualifiedName() + "'");
             }
             if (permDecl.getQualifiedName().equals(parent.getQualifiedName())) continue;
             CtTypeReference<?> superRef = null;
@@ -394,11 +397,10 @@ public final class ImmutabilityCheck {
             }
             Map<String, Res> permSubst = new HashMap<>();
             for (CtTypeParameter fp : permDecl.getFormalCtTypeParameters()) {
-                Res mapped =
-                        new Res(
-                                false,
-                                "type parameter '" + fp.getSimpleName() + "' of '" + permDecl.getQualifiedName()
-                                        + "' is not constrained by the sealed supertype");
+                Res mapped = new Res(
+                        false,
+                        "type parameter '" + fp.getSimpleName() + "' of '" + permDecl.getQualifiedName()
+                                + "' is not constrained by the sealed supertype");
                 if (superRef != null) {
                     List<CtTypeReference<?>> superArgs = superRef.getActualTypeArguments();
                     for (int i = 0; i < superArgs.size() && i < parentParams.size(); i++) {

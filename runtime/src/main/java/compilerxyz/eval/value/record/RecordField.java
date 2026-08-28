@@ -3,11 +3,9 @@ package compilerxyz.eval.value.record;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.Type;
-import compilerxyz.gen.Value;
-import compilerxyz.util.Opt;
 
 public sealed interface RecordField {
-  record Dynamic(Type type) implements RecordField {}
+    record Dynamic(Type type) implements RecordField {}
 
-  record EvalRes(EResult<CodeValue> result) implements RecordField {}
+    record EvalRes(EResult<CodeValue> result) implements RecordField {}
 }

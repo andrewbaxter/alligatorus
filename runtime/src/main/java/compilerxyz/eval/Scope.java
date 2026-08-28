@@ -1,25 +1,13 @@
 package compilerxyz.eval;
 
 import compilerxyz.annotations.BuiltinFull;
-import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.value.object_.ObjectAspectSource;
-import compilerxyz.eval.value.object_.ObjectDataField;
-import compilerxyz.eval.value.object_.ObjectDropKind;
-import compilerxyz.eval.value.object_.ObjectMethod;
-import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
-import compilerxyz.eval.value.object_.TypeObjectCastRule;
-import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectMeta;
 import compilerxyz.gen.Binding;
-import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
 @BuiltinFull(uniqueId = 6024L)
 public final class Scope {
-
 
     public final EvalContext vx;
     public final TList<ScopeLevel> levels = new TList<>();
@@ -34,7 +22,8 @@ public final class Scope {
 
     public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
         var id = vx.dropStateCounter.next();
-        var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+        var entry = new ScopeLevel.Entry(
+                Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(entry);
         return entry;
     }
@@ -46,7 +35,8 @@ public final class Scope {
     }
 
     public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
-        var level = new ScopeLevel.Labeled(label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
+        var level = new ScopeLevel.Labeled(
+                label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(level);
         return level;
     }
@@ -62,9 +52,18 @@ public final class Scope {
         for (var level : levels) {
             out.levels.add(
                     switch (level) {
-                        case ScopeLevel.Entry entry -> new ScopeLevel.Entry(entry.name, entry.binding.bindingFork(), entry.stackOnly, entry.state, entry.dropState, entry.emission);
-                        case ScopeLevel.Temp temp -> new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
-                        case ScopeLevel.Labeled labeled -> new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
+                        case ScopeLevel.Entry entry ->
+                            new ScopeLevel.Entry(
+                                    entry.name,
+                                    entry.binding.bindingFork(),
+                                    entry.stackOnly,
+                                    entry.state,
+                                    entry.dropState,
+                                    entry.emission);
+                        case ScopeLevel.Temp temp ->
+                            new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
+                        case ScopeLevel.Labeled labeled ->
+                            new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
                         case ScopeLevel.Catch catch_ -> new ScopeLevel.Catch(catch_.handler, catch_.emission);
                         case ScopeLevel.Finally finally_ -> {
                             var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
@@ -79,9 +78,10 @@ public final class Scope {
     public EResult<Void> merge(ExprContext xx, QExprId loc, TList<Scope> others) {
         for (var other : others) {
             if (other.levels.size() != levels.size()) {
-                return EResult.err(loc,
-                        "Scope.merge: branch produced a scope of different depth ("
-                                + other.levels.size() + " vs " + levels.size() + ")");
+                return EResult.err(
+                        loc,
+                        "Scope.merge: branch produced a scope of different depth (" + other.levels.size() + " vs "
+                                + levels.size() + ")");
             }
         }
         var merged = new TList<Binding>(levels.size());
@@ -143,8 +143,7 @@ public final class Scope {
                         if (mergedRes.hasErrors()) return mergedRes.reerr();
                         merged.add(mergedRes.requireValue("Scope.merge binding"));
                         mergedStates.add(vx.dropStateCounter.next());
-                        mergedDropStates.add(
-                                anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState);
+                        mergedDropStates.add(anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState);
                     }
                 }
             }
@@ -158,14 +157,10 @@ public final class Scope {
                         entry.dropState = mergedDropStates.get(i);
                     }
                 }
-                case ScopeLevel.Temp t -> {
-                }
-                case ScopeLevel.Labeled l -> {
-                }
-                case ScopeLevel.Catch c -> {
-                }
-                case ScopeLevel.Finally f -> {
-                }
+                case ScopeLevel.Temp t -> {}
+                case ScopeLevel.Labeled l -> {}
+                case ScopeLevel.Catch c -> {}
+                case ScopeLevel.Finally f -> {}
             }
         }
         return EResult.ok(null);

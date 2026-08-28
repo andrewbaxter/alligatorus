@@ -29,7 +29,6 @@ public interface Binding extends AspectElementUseDynamicBind {
 
     EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others);
 
-
     static Binding elementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, GenBinding.dynamicType());
     }

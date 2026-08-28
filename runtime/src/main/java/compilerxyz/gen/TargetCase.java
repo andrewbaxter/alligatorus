@@ -5,12 +5,8 @@ import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.Type;
 
 public record TargetCase(
-    String dynamicTag,
-    Type variantType,
-    int variantIndex,
-    BindingId.Local payloadBinding,
-    CodeValue body) {
-  public static Type dynamicType() {
-    return GenType.dynamicType();
-  }
+        String dynamicTag, Type variantType, int variantIndex, BindingId.Local payloadBinding, CodeValue body) {
+    public static Type dynamicType() {
+        return GenType.dynamicType();
+    }
 }

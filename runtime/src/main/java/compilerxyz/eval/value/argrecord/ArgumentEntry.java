@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.argrecord;
 
-import compilerxyz.gen.Binding;
 import compilerxyz.eval.Type;
+import compilerxyz.gen.Binding;
 
 public record ArgumentEntry(Binding binding, Type type) {}

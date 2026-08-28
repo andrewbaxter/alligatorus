@@ -12,7 +12,6 @@ import compilerxyz.eval.dynamic.Prefixes;
 import compilerxyz.eval.value.source_union.SourceUnionVariant;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.eval.value.source_union_new.TypeSourceUnionNewDynamic;
-import java.lang.String;
 
 @BuiltinPushStruct
 public final class SourceUnionBuilder {
@@ -29,8 +28,8 @@ public final class SourceUnionBuilder {
     public EResult<TypeSourceUnionNewDynamic> variant(ExprContext xx, String tag, Type typeRef) {
         if (this.type_.set.finished) {
             return EResult.err(
-                new QExprId(new SourceId(-1L), -1L),
-                "Cannot add a union variant after its definition set is finished");
+                    new QExprId(new SourceId(-1L), -1L),
+                    "Cannot add a union variant after its definition set is finished");
         }
         var jsTag = Prefixes.TAG_PREFIX + this.type_.nextTagId.next();
         var variantIndex = this.type_.variants.size();

@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,6 +21,8 @@ import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtNewClass;
+import spoon.reflect.declaration.CtAnonymousExecutable;
+import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtField;
@@ -31,9 +34,6 @@ import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
-import java.util.LinkedHashSet;
-import spoon.reflect.declaration.CtAnonymousExecutable;
-import spoon.reflect.declaration.CtClass;
 
 public final class ReachabilityMain {
 
@@ -43,10 +43,15 @@ public final class ReachabilityMain {
         this.generatedFiles = generatedFiles;
     }
 
-    private final Set<String> junit =
-            Set.of(
-                    "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
-                    "BeforeEach", "AfterEach", "BeforeAll", "AfterAll");
+    private final Set<String> junit = Set.of(
+            "Test",
+            "RepeatedTest",
+            "TestFactory",
+            "ParameterizedTest",
+            "BeforeEach",
+            "AfterEach",
+            "BeforeAll",
+            "AfterAll");
     private static final String CODEGEN_DESCRIPTOR = "CodegenDescriptor";
 
     private final Map<String, CtExecutable<?>> execByKey = new HashMap<>();
@@ -75,7 +80,8 @@ public final class ReachabilityMain {
                 String k = key(ex);
                 execByKey.put(k, ex);
                 keysByNameArity
-                        .computeIfAbsent(nameArity(ex.getSimpleName(), ex.getParameters().size()), x -> new ArrayList<>())
+                        .computeIfAbsent(
+                                nameArity(ex.getSimpleName(), ex.getParameters().size()), x -> new ArrayList<>())
                         .add(k);
             }
         }
@@ -174,10 +180,9 @@ public final class ReachabilityMain {
             String workKey = work.poll();
             CtExecutable<?> ex = execByKey.get(workKey);
             if (ex == null) continue;
-            boolean fromGenerated =
-                    ex instanceof CtTypeMember exTm
-                            && exTm.getDeclaringType() != null
-                            && isGeneratedType(exTm.getDeclaringType());
+            boolean fromGenerated = ex instanceof CtTypeMember exTm
+                    && exTm.getDeclaringType() != null
+                    && isGeneratedType(exTm.getDeclaringType());
             if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
                 String tn = tm.getDeclaringType().getQualifiedName();
                 if (fieldInitDone.add(tn)) {
@@ -215,8 +220,7 @@ public final class ReachabilityMain {
             }
         }
         for (CtType<?> t : types) {
-            boolean live =
-                    executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
+            boolean live = executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
             if (live) {
                 for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
                     String qn = tr.getQualifiedName();
@@ -252,15 +256,14 @@ public final class ReachabilityMain {
                         break;
                     }
                 }
-                boolean inlinable =
-                        !isRoot(ex)
-                                && !rooted
-                                && !"compilerxyz.util.Assert".equals(qn)
-                                && m.getBody() != null
-                                && !overridesExternal(m)
-                                && !_iam
-                                && !isRecordAccessor(t, m)
-                                && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
+                boolean inlinable = !isRoot(ex)
+                        && !rooted
+                        && !"compilerxyz.util.Assert".equals(qn)
+                        && m.getBody() != null
+                        && !overridesExternal(m)
+                        && !_iam
+                        && !isRecordAccessor(t, m)
+                        && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
                 if (!reachable.contains(k)
                         && concrete
                         && !rooted
@@ -283,14 +286,18 @@ public final class ReachabilityMain {
                     if (f.getModifiers().contains(ModifierKind.PRIVATE)
                             && !rooted
                             && !f.getSimpleName().equals("serialVersionUID")
-                            && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+                            && fieldWrites.getOrDefault(
+                                            fieldKey(f.getReference().getQualifiedName()), 0)
+                                    == 0
                             && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0) {
                         deadFields.add(qn + "#" + f.getSimpleName());
                     }
                     if (f.getModifiers().contains(ModifierKind.PRIVATE)
                             && !f.getModifiers().contains(ModifierKind.FINAL)
                             && !f.getModifiers().contains(ModifierKind.VOLATILE)
-                            && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+                            && fieldWrites.getOrDefault(
+                                            fieldKey(f.getReference().getQualifiedName()), 0)
+                                    == 0
                             && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
                         singleUseFields.add(qn + "#" + f.getSimpleName());
                     }
@@ -312,18 +319,20 @@ public final class ReachabilityMain {
         section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
         section(out, "#1 DEAD PRIVATE FIELDS (0 reads)", deadFields);
         section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
-        int total =
-                deadClasses.size()
-                        + deadMethods.size()
-                        + deadFields.size()
-                        + singleUseMethods.size()
-                        + singleUseFields.size();
+        int total = deadClasses.size()
+                + deadMethods.size()
+                + deadFields.size()
+                + singleUseMethods.size()
+                + singleUseFields.size();
         line(
                 out,
                 String.format(
                         "TOT:  dead classes=%d  dead methods=%d  dead fields=%d  single-use methods=%d"
                                 + "  single-use fields=%d",
-                        deadClasses.size(), deadMethods.size(), deadFields.size(), singleUseMethods.size(),
+                        deadClasses.size(),
+                        deadMethods.size(),
+                        deadFields.size(),
+                        singleUseMethods.size(),
                         singleUseFields.size()));
 
         System.out.print(out);
@@ -334,8 +343,7 @@ public final class ReachabilityMain {
         return total;
     }
 
-    private void onCall(
-            CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
+    private void onCall(CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
         if (ref == null) return;
         CtExecutable<?> decl = ref.getExecutableDeclaration();
         if (decl != null) {
@@ -362,9 +370,10 @@ public final class ReachabilityMain {
             for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), 1), List.of())) {
                 CtExecutable<?> cex = execByKey.get(cand);
                 if (cex == null) continue;
-                boolean isVarargs =
-                        !cex.getParameters().isEmpty()
-                                && cex.getParameters().get(cex.getParameters().size() - 1).isVarArgs();
+                boolean isVarargs = !cex.getParameters().isEmpty()
+                        && cex.getParameters()
+                                .get(cex.getParameters().size() - 1)
+                                .isVarArgs();
                 if (!isVarargs) continue;
                 if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
                     if (reachable.add(cand)) work.add(cand);
@@ -386,10 +395,8 @@ public final class ReachabilityMain {
 
     private boolean isRoot(CtExecutable<?> ex) {
         if (ex.getAnnotations().stream()
-                .anyMatch(
-                        a ->
-                                junit.contains(a.getAnnotationType().getSimpleName())
-                                        || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
+                .anyMatch(a -> junit.contains(a.getAnnotationType().getSimpleName())
+                        || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
             return true;
         }
         return ex instanceof CtMethod<?> m
@@ -423,10 +430,9 @@ public final class ReachabilityMain {
     }
 
     private static String key(CtExecutable<?> ex) {
-        String owner =
-                ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
-                        ? tm.getDeclaringType().getQualifiedName()
-                        : "?";
+        String owner = ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
+                ? tm.getDeclaringType().getQualifiedName()
+                : "?";
         return owner + "#" + sig(ex);
     }
 

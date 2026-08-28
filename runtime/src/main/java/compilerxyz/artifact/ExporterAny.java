@@ -5,7 +5,7 @@ import compilerxyz.eval.Type;
 import compilerxyz.gen.Value;
 
 public interface ExporterAny {
-  EResult<Type> exporterAnyAsType();
+    EResult<Type> exporterAnyAsType();
 
-  EResult<Value> exporterAnyAsValue();
+    EResult<Value> exporterAnyAsValue();
 }

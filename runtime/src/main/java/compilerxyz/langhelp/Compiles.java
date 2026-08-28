@@ -7,13 +7,13 @@ import compilerxyz.util.TList;
 import java.util.function.Supplier;
 
 public interface Compiles {
-  void compilesPrepare(CompileId root);
+    void compilesPrepare(CompileId root);
 
-  CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute);
+    CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute);
 
-  TList<CompileRes> compilesResults();
+    TList<CompileRes> compilesResults();
 
-  record CompileProduct(CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps) {}
+    record CompileProduct(CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps) {}
 
-  record LocalMeta(String path, long timestampMs) {}
+    record LocalMeta(String path, long timestampMs) {}
 }

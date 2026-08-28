@@ -1,7 +1,6 @@
 package compilerxyz.util;
 
 import compilerxyz.annotations.Immutable;
-
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;

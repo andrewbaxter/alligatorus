@@ -6,6 +6,6 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSetInterfaceImpl(
-    Opt<BuiltinInterfaceKind> builtinKind,
-    Opt<Artifact> userIface,
-    TList<ArtifactDataDefSetInterfaceMethodImpl> methodImpls) {}
+        Opt<BuiltinInterfaceKind> builtinKind,
+        Opt<Artifact> userIface,
+        TList<ArtifactDataDefSetInterfaceMethodImpl> methodImpls) {}

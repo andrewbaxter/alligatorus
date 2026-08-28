@@ -1,4 +1,3 @@
 package compilerxyz.eval;
 
-public interface TargetCode {
-}
+public interface TargetCode {}

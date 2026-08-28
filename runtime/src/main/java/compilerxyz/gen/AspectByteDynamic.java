@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.aspect.Aspect;
 

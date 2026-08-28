@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.string;
 
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
@@ -31,121 +32,119 @@ import compilerxyz.gen.GenAspectStackValueDynamic;
 import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
-import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6320L)
 public record TypeStringMethodDynamic(String methodName)
-    implements TypeImmutable, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
+        implements TypeImmutable, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
 
-  @Override
-  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
-  }
-
-  @Override
-  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().codeDynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(loc, "TypeStringMethodDynamic::toDynamic: CodeValue has no dynamic code");
-  }
-
-  @Override
-  public String typeDesc() {
-    return "string." + methodName;
-  }
-
-  @Override
-  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_METHOD_DYNAMIC_IDENTITY)) {
-      return Opt.some(this);
+    @Override
+    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+        return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
     }
-    if (key.equals(GenAspectFunction.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(GenAspectConsumeDynamic.AspectId)) {
-      return Opt.some(this);
+
+    @Override
+    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+        var dyn = cv.code().codeDynamic();
+        if (dyn != null) return EResult.ok(dyn);
+        return EResult.err(loc, "TypeStringMethodDynamic::toDynamic: CodeValue has no dynamic code");
     }
-    return Opt.none();
-  }
 
-  @Override
-  public EResult<CodeValue> aspectFunctionCall(
-      ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var selfDyn = self.code().codeDynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeStringMethodDynamic::call: self has no dynamic code");
+    @Override
+    public String typeDesc() {
+        return "string." + methodName;
     }
-    var retType = new TypeStringDynamic();
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-    var seq = new JavaBytecodeSequence();
-    seq.add(selfDyn);
-    seq.add(
-        JavaBytecodeUtils.callMethod(
-            loc,
-            JvmConstants.INTNAME_STRING,
-            methodName,
-            JavaMethodDescriptor.fromParts(JvmConstants.DESC_STRING)));
-    return EResult.ok(
-        retStackRes
-            .requireValue("AspectStackValueDynamic.get")
-            .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
-  }
+    @Override
+    public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_METHOD_DYNAMIC_IDENTITY)) {
+            return Opt.some(this);
+        }
+        if (key.equals(GenAspectFunction.AspectId)
+                || key.equals(GenAspectInitialBind.AspectId)
+                || key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(this);
+        }
+        return Opt.none();
+    }
 
-  @Override
-  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-    return Opt.none();
-  }
+    @Override
+    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+        var selfDyn = self.code().codeDynamic();
+        if (selfDyn == null) {
+            return EResult.err(loc, "TypeStringMethodDynamic::call: self has no dynamic code");
+        }
+        var retType = new TypeStringDynamic();
+        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
+        if (retStackRes.hasErrors()) return retStackRes.reerr();
 
-  @Override
-  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, this);
-  }
+        var seq = new JavaBytecodeSequence();
+        seq.add(selfDyn);
+        seq.add(JavaBytecodeUtils.callMethod(
+                loc,
+                JvmConstants.INTNAME_STRING,
+                methodName,
+                JavaMethodDescriptor.fromParts(JvmConstants.DESC_STRING)));
+        return EResult.ok(retStackRes
+                .requireValue("AspectStackValueDynamic.get")
+                .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
+    }
 
-  @Override
-  public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(this);
-  }
+    @Override
+    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
+        return Opt.none();
+    }
 
-  @Override
-  public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-  }
+    @Override
+    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
-  @Override
-  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    throw new UnsupportedOperationException(
-        getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
-  }
+    @Override
+    public EResult<Type> exporterAnyAsType() {
+        return EResult.ok(this);
+    }
 
-  @Override
-  public boolean typeIsEqual(ExprContext xx, Type other) {
-    return switch (AspectLookup.getMaybe(
-        xx, other, GenTrivialIdentityAspects.TYPE_STRING_METHOD_DYNAMIC_IDENTITY,
-        TypeStringMethodDynamic.class)) {
-      case Opt.Some<TypeStringMethodDynamic> o -> o.value().methodName().equals(methodName);
-      case Opt.None<TypeStringMethodDynamic> ignored -> false;
-    };
-  }
+    @Override
+    public EResult<Value> exporterAnyAsValue() {
+        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
+    }
 
-  @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return false;
-  }
+    @Override
+    public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    }
 
-  @Override
-  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return false;
-  }
+    @Override
+    public boolean typeIsEqual(ExprContext xx, Type other) {
+        return switch (AspectLookup.getMaybe(
+                xx,
+                other,
+                GenTrivialIdentityAspects.TYPE_STRING_METHOD_DYNAMIC_IDENTITY,
+                TypeStringMethodDynamic.class)) {
+            case Opt.Some<TypeStringMethodDynamic> o -> o.value().methodName().equals(methodName);
+            case Opt.None<TypeStringMethodDynamic> ignored -> false;
+        };
+    }
 
-  @Override
-  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    throw new UnsupportedOperationException(
-        getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-  }
+    @Override
+    public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+        return false;
+    }
 
-  @Override
-  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-    return Type.exportArtifact(xx, loc, this);
-  }
+    @Override
+    public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+        return false;
+    }
+
+    @Override
+    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+
+    @Override
+    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+        return Type.exportArtifact(xx, loc, this);
+    }
 }

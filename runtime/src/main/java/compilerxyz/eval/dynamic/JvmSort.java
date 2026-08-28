@@ -3,13 +3,12 @@ package compilerxyz.eval.dynamic;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.gen.AspectConsumeDynamic;
+import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.util.Opt;
 import org.objectweb.asm.Opcodes;
-import compilerxyz.gen.GenAspectConsumeDynamic;
 
 public final class JvmSort {
-    private JvmSort() {
-    }
+    private JvmSort() {}
 
     public static int loadOpcode(ExprContext xx, Type type) {
         return typedOpcode(xx, type, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD, Opcodes.ALOAD);

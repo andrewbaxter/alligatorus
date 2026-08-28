@@ -1,8 +1,7 @@
 package compilerxyz.codegen.util;
 
 public final class NameDerivation {
-    private NameDerivation() {
-    }
+    private NameDerivation() {}
 
     public static String snakeCase(String s) {
         var sb = new StringBuilder();

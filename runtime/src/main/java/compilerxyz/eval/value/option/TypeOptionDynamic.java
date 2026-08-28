@@ -1,7 +1,5 @@
 package compilerxyz.eval.value.option;
 
-
-
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ArtifactBody;
@@ -34,8 +32,6 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.eval.dynamic.JvmConstants;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
@@ -80,393 +76,350 @@ import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6008L)
 public final class TypeOptionDynamic<T extends Type>
-    implements
-        
-        AspectSet,
-        AspectFieldUseDynamic,Type,
-        AspectArtifact,
-        AspectBind,
-        AspectBindDynamic,
-        AspectConsumeDynamic,
-        AspectDropDynamicLight,
-        AspectField,
-        AspectElementUseDynamicBind,
-        AspectInitialBind,
-        AspectStackValueDynamic,
-        ExporterAny {
+        implements AspectSet,
+                AspectFieldUseDynamic,
+                Type,
+                AspectArtifact,
+                AspectBind,
+                AspectBindDynamic,
+                AspectConsumeDynamic,
+                AspectDropDynamicLight,
+                AspectField,
+                AspectElementUseDynamicBind,
+                AspectInitialBind,
+                AspectStackValueDynamic,
+                ExporterAny {
 
-  public final T elementType;
-  public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
-      new ArtifactSupport.ArtifactIdHolder();
+    public final T elementType;
+    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeOptionDynamic(T elementType) {
-    this.elementType = elementType;
-  }
-
-  public Type elementType() {
-    return elementType;
-  }
-
-
-
-  @Override
-  public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-      return JavaDataDescriptor.fromInternalName(
-              JavaInternalName.fromClass(Opt.class));
-  }
-
-  @Override
-  public String typeDesc() {
-    return "option(" + elementType.typeDesc() + ")";
-  }
-
-
-
-  @Override
-  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY)
-        || key.equals(GenAspectArtifact.AspectId)
-        || key.equals(GenAspectBind.AspectId)
-        || key.equals(GenAspectBindDynamic.AspectId)
-        || key.equals(GenAspectConsumeDynamic.AspectId)
-        || key.equals(GenAspectDropDynamicLight.AspectId)
-        || key.equals(GenAspectField.AspectId)
-        || key.equals(GenAspectInitialBind.AspectId)
-        || key.equals(GenAspectElementUseDynamicBind.AspectId)
-        || key.equals(GenAspectStackValueDynamic.AspectId)) {
-      return Opt.some(this);
+    public TypeOptionDynamic(T elementType) {
+        this.elementType = elementType;
     }
-    if (key.equals(GenAspectSet.AspectId)) {
-      return Opt.some(this);
+
+    public Type elementType() {
+        return elementType;
     }
-    if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
-      return Opt.some(this);
+
+    @Override
+    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+        return JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Opt.class));
     }
-    return Opt.none();
-  }
 
-  @Override
-  public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
-      ExprContext xx,
-      QExprId loc,
-      ValueDynamicSource source) {
-    return EResult.ok(
-        new CodeValue(
-            Code.of(
-                loc, DynUtil.renderSource(xx, loc, source)),
-            EvalOutcome.ofValue(
-                new ValueDynamic(source, this))));
-  }
+    @Override
+    public String typeDesc() {
+        return "option(" + elementType.typeDesc() + ")";
+    }
 
-  @Override
-  public EResult<CodeValue> aspectSetSet(
-      ExprContext xx,
-      QExprId loc,
-      CodeValue base,
-      CodeValue value) {
-    return DynUtil.dynamicSet(xx, loc, base, value);
-  }
+    @Override
+    public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY)
+                || key.equals(GenAspectArtifact.AspectId)
+                || key.equals(GenAspectBind.AspectId)
+                || key.equals(GenAspectBindDynamic.AspectId)
+                || key.equals(GenAspectConsumeDynamic.AspectId)
+                || key.equals(GenAspectDropDynamicLight.AspectId)
+                || key.equals(GenAspectField.AspectId)
+                || key.equals(GenAspectInitialBind.AspectId)
+                || key.equals(GenAspectElementUseDynamicBind.AspectId)
+                || key.equals(GenAspectStackValueDynamic.AspectId)) {
+            return Opt.some(this);
+        }
+        if (key.equals(GenAspectSet.AspectId)) {
+            return Opt.some(this);
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(this);
+        }
+        return Opt.none();
+    }
 
-  @Override
-  public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-    return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
-  }
+    @Override
+    public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+            ExprContext xx, QExprId loc, ValueDynamicSource source) {
+        return EResult.ok(new CodeValue(
+                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+    }
 
-  @Override
-  public boolean typeIsEqual(ExprContext xx, Type other) {
-    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY, TypeOptionDynamic.class);
-    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
-  }
+    @Override
+    public EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue base, CodeValue value) {
+        return DynUtil.dynamicSet(xx, loc, base, value);
+    }
 
-  @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return typeIsEqual(xx, sourceType);
-  }
+    @Override
+    public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
+        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+    }
 
-  @Override
-  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.ok(cv);
-  }
+    @Override
+    public boolean typeIsEqual(ExprContext xx, Type other) {
+        var oOpt = AspectLookup.getMaybe(
+                xx, other, GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY, TypeOptionDynamic.class);
+        return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType);
+    }
 
-  @Override
-  public ArtifactExporter aspectArtifactExporter() {
-    return ExporterRoot.OPTION_DYNAMIC;
-  }
+    @Override
+    public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+        return typeIsEqual(xx, sourceType);
+    }
 
-  private static Artifact nullArtifact() {
-    return new Artifact.Body(
-        new ArtifactBody(
-            new JsonValueNull(),
-            new Root()));
-  }
+    @Override
+    public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+        return EResult.ok(cv);
+    }
 
-  public static final ExporterRootDelegate DELEGATE =
-      new ExporterRootDelegate() {
+    @Override
+    public ArtifactExporter aspectArtifactExporter() {
+        return ExporterRoot.OPTION_DYNAMIC;
+    }
+
+    private static Artifact nullArtifact() {
+        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
+    }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-            ExprContext xx,
-            QExprId loc,
-            ExporterAny self,
-            Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeOptionDynamic<?> option)) {
-            return EResult.err(
-                loc,
-                "TypeOptionDynamic::exporterRootDelegateSelfExport: expected TypeOptionDynamic,"
-                    + " got "
-                    + self.getClass());
-          }
-          var cell = option.artifactIdCell;
-          var errors = new TList<ExprErr>();
-          var artifact =
-              ArtifactSupport.implExportIndependentArtifact(
-                  xx.vx.ix.gx.artifacts,
-                  cell,
-                  () -> {
-                    var elementArtRes = option.elementType().artifactableExportArtifact(xx, loc);
-                    elementArtRes.drainInto(errors);
-                    var elementArt =
-                        elementArtRes.valueOrNull() != null
-                            ? elementArtRes.requireValue(
-                                "TypeOptionDynamic::exporterExport element")
-                            : nullArtifact();
-                    var body = new ArtifactOptionType(elementArt);
-                    return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
-                  });
-          if (errors.isEmpty()) return EResult.ok(artifact);
-          return EResult.mixed(artifact, errors);
+                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (!(self instanceof TypeOptionDynamic<?> option)) {
+                return EResult.err(
+                        loc,
+                        "TypeOptionDynamic::exporterRootDelegateSelfExport: expected TypeOptionDynamic,"
+                                + " got "
+                                + self.getClass());
+            }
+            var cell = option.artifactIdCell;
+            var errors = new TList<ExprErr>();
+            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
+                var elementArtRes = option.elementType().artifactableExportArtifact(xx, loc);
+                elementArtRes.drainInto(errors);
+                var elementArt = elementArtRes.valueOrNull() != null
+                        ? elementArtRes.requireValue("TypeOptionDynamic::exporterExport element")
+                        : nullArtifact();
+                var body = new ArtifactOptionType(elementArt);
+                return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
+            });
+            if (errors.isEmpty()) return EResult.ok(artifact);
+            return EResult.mixed(artifact, errors);
         }
 
         @Override
         public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
-            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-          if (id.optIsNone()) {
-            return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
-          }
-          var idValue = id.optUnwrap();
-          return ArtifactSupport.implImportIndependentArtifact(
-              xx,
-              loc,
-              idValue,
-              data,
-              (raw) -> {
-                ArtifactOptionType body;
-                try {
-                  body = ArtifactOptionTypeCodec.fromValue(raw);
-                } catch (RuntimeException e) {
-                  return new Result.Err<>(
-                      "TypeOptionDynamic data: failed to parse ArtifactOptionType: "
-                          + e.getMessage());
-                }
-                return new Result.Ok<>(body);
-              },
-              (body) -> {
-                var holder = new ExporterAny[] {null};
-                ExporterAny stub =
-                    new ExporterAny() {
-                      @Override
-                      public EResult<Type> exporterAnyAsType() {
-                        if (holder[0] == null) {
-                          throw new IllegalStateException(
-                              "TypeOptionDynamic import stub accessed pre-finalize");
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactOptionType body;
+                        try {
+                            body = ArtifactOptionTypeCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>(
+                                    "TypeOptionDynamic data: failed to parse ArtifactOptionType: " + e.getMessage());
                         }
-                        return holder[0].exporterAnyAsType();
-                      }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var holder = new ExporterAny[] {null};
+                        ExporterAny stub = new ExporterAny() {
+                            @Override
+                            public EResult<Type> exporterAnyAsType() {
+                                if (holder[0] == null) {
+                                    throw new IllegalStateException(
+                                            "TypeOptionDynamic import stub accessed pre-finalize");
+                                }
+                                return holder[0].exporterAnyAsType();
+                            }
 
-                      @Override
-                      public EResult<Value> exporterAnyAsValue() {
-                        if (holder[0] == null) {
-                          throw new IllegalStateException(
-                              "TypeOptionDynamic import stub accessed pre-finalize");
-                        }
-                        return holder[0].exporterAnyAsValue();
-                      }
-                    };
-                var deps = new TList<Artifact>();
-                deps.add(body.elementType());
-                ArtifactSupport.ImportIndependentResult.Finalizer fin =
-                    (xx2, loc2) -> {
-                      var elementRes =
-                          ArtifactSupport.independentFinalizeImportTypeArtifact(
-                              xx2, loc2, body.elementType());
-                      var elementT =
-                          elementRes.requireValue("TypeOptionDynamic::finalizer element type");
-                      var out = new TypeOptionDynamic(elementT);
-                      out.artifactIdCell.set(idValue);
-                      holder[0] = out;
-                    };
-                return new Result.Ok<>(
-                    new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
-              });
+                            @Override
+                            public EResult<Value> exporterAnyAsValue() {
+                                if (holder[0] == null) {
+                                    throw new IllegalStateException(
+                                            "TypeOptionDynamic import stub accessed pre-finalize");
+                                }
+                                return holder[0].exporterAnyAsValue();
+                            }
+                        };
+                        var deps = new TList<Artifact>();
+                        deps.add(body.elementType());
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var elementRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                    xx2, loc2, body.elementType());
+                            var elementT = elementRes.requireValue("TypeOptionDynamic::finalizer element type");
+                            var out = new TypeOptionDynamic(elementT);
+                            out.artifactIdCell.set(idValue);
+                            holder[0] = out;
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                    });
         }
-      };
-
-  private sealed interface FieldSpec {
-    Type fieldSpecFieldType();
-
-    record Factory(Type type) implements FieldSpec {
-      @Override
-      public Type fieldSpecFieldType() {
-        return type;
-      }
-    }
-  }
-
-  private TMap<ConstKey, FieldSpec> fieldSpecs() {
-    return TMap.ofEntries(
-        new Pair<>(
-            new ConstKey.Str("some"),
-            new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, true))),
-        new Pair<>(
-            new ConstKey.Str("none"),
-            new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, false))));
-  }
-
-  @Override
-  public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    var erb = new Erb(loc);
-    if (key.value().optIsNone()) {
-      return EResult.err(loc, "TypeOptionDynamic::field: key has no compile-time value");
-    }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
-    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
-    var ck = ckOpt.optUnwrap();
-    var ckStr = switch (ck) {
-      case ConstKey.Str s -> Opt.some(s);
-      case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
     };
-    if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-      var selfDyn = self.code().codeDynamic();
-      if (selfDyn == null) {
-        return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(value): self has no runtime code");
-      }
-      var seq = new JavaBytecodeSequence();
-      seq.add(selfDyn);
-      seq.add(
-          JavaBytecodeUtils.cast(
-              loc,
-              JavaDataDescriptor.fromInternalName(
-                  JavaInternalName.fromClass(Opt.Some.class))));
-      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.SOME_VALUE));
-      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
-      if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
-      var elemDesc =
-          elemConsumeRes
-              .requireValue("TypeOptionDynamic::field value AspectConsumeDynamic")
-              .aspectConsumeDynamicJvmClass(xx);
-      if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
-      }
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
+
+    private sealed interface FieldSpec {
+        Type fieldSpecFieldType();
+
+        record Factory(Type type) implements FieldSpec {
+            @Override
+            public Type fieldSpecFieldType() {
+                return type;
+            }
+        }
     }
-    if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
-      var selfDyn = self.code().codeDynamic();
-      if (selfDyn == null) {
-        return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(is_some): self has no runtime code");
-      }
-      var seq = new JavaBytecodeSequence();
-      seq.add(selfDyn);
-      seq.add(
-          JavaBytecodeUtils.instanceOf(
-              loc, JavaInternalName.fromClass(Opt.Some.class)));
-      return EResult.ok(
-          new CodeValue(
-              Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-              EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+
+    private TMap<ConstKey, FieldSpec> fieldSpecs() {
+        return TMap.ofEntries(
+                new Pair<>(
+                        new ConstKey.Str("some"),
+                        new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, true))),
+                new Pair<>(
+                        new ConstKey.Str("none"),
+                        new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, false))));
     }
-    var spec = fieldSpecs().getOrNull(ck);
-    if (spec == null) {
-      return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
+
+    @Override
+    public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
+        var erb = new Erb(loc);
+        if (key.value().optIsNone()) {
+            return EResult.err(loc, "TypeOptionDynamic::field: key has no compile-time value");
+        }
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+        var ck = ckOpt.optUnwrap();
+        var ckStr =
+                switch (ck) {
+                    case ConstKey.Str s -> Opt.some(s);
+                    case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
+                };
+        if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
+            var selfDyn = self.code().codeDynamic();
+            if (selfDyn == null) {
+                return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(value): self has no runtime code");
+            }
+            var seq = new JavaBytecodeSequence();
+            seq.add(selfDyn);
+            seq.add(JavaBytecodeUtils.cast(
+                    loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Opt.Some.class))));
+            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.SOME_VALUE));
+            var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+            if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
+            var elemDesc = elemConsumeRes
+                    .requireValue("TypeOptionDynamic::field value AspectConsumeDynamic")
+                    .aspectConsumeDynamicJvmClass(xx);
+            if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
+                seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+            }
+            return EResult.ok(new CodeValue(
+                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
+        }
+        if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
+            var selfDyn = self.code().codeDynamic();
+            if (selfDyn == null) {
+                return EResult.err(loc, "TypeOptionDynamic::aspectFieldField(is_some): self has no runtime code");
+            }
+            var seq = new JavaBytecodeSequence();
+            seq.add(selfDyn);
+            seq.add(JavaBytecodeUtils.instanceOf(loc, JavaInternalName.fromClass(Opt.Some.class)));
+            return EResult.ok(new CodeValue(
+                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+        }
+        var spec = fieldSpecs().getOrNull(ck);
+        if (spec == null) {
+            return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
+        }
+        return switch (spec) {
+            case FieldSpec.Factory f ->
+                EResult.ok(new CodeValue(
+                        Code.none(loc),
+                        EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
+        };
     }
-    return switch (spec) {
-      case FieldSpec.Factory f ->
-          EResult.ok(
-              new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
-    };
-  }
 
-  @Override
-  public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    return TList.from(fieldSpecs().keySet());
-  }
-
-  @Override
-  public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    var keyStr = switch (key) {
-      case ConstKey.Str s -> Opt.some(s);
-      case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
-    };
-    if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("is_some")) {
-      return Opt.some(new TypeBoolDynamic());
+    @Override
+    public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
+        return TList.from(fieldSpecs().keySet());
     }
-    var spec = fieldSpecs().getOrNull(key);
-    return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
-  }
 
-  @Override
-  public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.bindViaTarget(xx, loc, cv);
-  }
-
-  @Override
-  public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
-      ExprContext xx, QExprId loc, CodeValue cv) {
-    return DynUtil.bindDynamicDefault(xx, loc, cv);
-  }
-
-  @Override
-  public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().codeDynamic();
-    if (dyn == null) {
-      throw new IllegalStateException(
-          "TypeOptionDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+    @Override
+    public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
+        var keyStr =
+                switch (key) {
+                    case ConstKey.Str s -> Opt.some(s);
+                    case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
+                };
+        if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("is_some")) {
+            return Opt.some(new TypeBoolDynamic());
+        }
+        var spec = fieldSpecs().getOrNull(key);
+        return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
     }
-    return EResult.ok(dyn);
-  }
 
-  @Override
-  public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, this);
-  }
+    @Override
+    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
+        return DynUtil.bindViaTarget(xx, loc, cv);
+    }
 
-  @Override
-  public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(this);
-  }
+    @Override
+    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+        return DynUtil.bindDynamicDefault(xx, loc, cv);
+    }
 
-  @Override
-  public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-  }
+    @Override
+    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+        var dyn = cv.code().codeDynamic();
+        if (dyn == null) {
+            throw new IllegalStateException(
+                    "TypeOptionDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
+        }
+        return EResult.ok(dyn);
+    }
 
-  @Override
-  public EResult<Code> aspectDropDynamicLightDropDynamicLight(
-      ExprContext xx,
-      QExprId loc,
-      CodeValue cv) {
-    return DynUtil.dropDefault(xx, loc, cv);
-  }
+    @Override
+    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
-  @Override
-  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return false;
-  }
-  @Override
-  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-  }
+    @Override
+    public EResult<Type> exporterAnyAsType() {
+        return EResult.ok(this);
+    }
 
-  @Override
-  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-    return new BindingDynamicBinding(dynamicKey, this);
-  }
+    @Override
+    public EResult<Value> exporterAnyAsValue() {
+        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
+    }
 
+    @Override
+    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+        return DynUtil.dropDefault(xx, loc, cv);
+    }
 
+    @Override
+    public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+        return false;
+    }
 
-  @Override
-  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-    return Type.exportArtifact(xx, loc, this);
-  }
+    @Override
+    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+
+    @Override
+    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
+    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+        return Type.exportArtifact(xx, loc, this);
+    }
 }

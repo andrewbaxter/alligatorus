@@ -6,9 +6,9 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSetMethod(
-    String name,
-    Artifact argType,
-    Artifact retType,
-    Opt<String> compiledClassName,
-    Opt<byte[]> compiledBytecode,
-    TList<ArtifactExternal> capturedExternals) {}
+        String name,
+        Artifact argType,
+        Artifact retType,
+        Opt<String> compiledClassName,
+        Opt<byte[]> compiledBytecode,
+        TList<ArtifactExternal> capturedExternals) {}

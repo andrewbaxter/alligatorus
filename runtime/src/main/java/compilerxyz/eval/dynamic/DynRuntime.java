@@ -1,10 +1,12 @@
 package compilerxyz.eval.dynamic;
 
+import static compilerxyz.util.MustCast.mustCast;
+
 import compilerxyz.annotations.CodegenDescriptor;
-import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.CompileId;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Unique;
@@ -13,16 +15,13 @@ import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
-import static compilerxyz.util.MustCast.mustCast;
 import java.util.Iterator;
 
 public final class DynRuntime {
-    private DynRuntime() {
-    }
+    private DynRuntime() {}
 
     @CodegenDescriptor
-    public static StagedExprCell stage(
-            ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
+    public static StagedExprCell stage(ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
         var tree = mustCast(Expr.class, treeCell.value());
         var values = new TList<StageLowerValue>(lowerCount);
         var i = 0;
@@ -40,29 +39,26 @@ public final class DynRuntime {
                 }
             } else {
                 var liftCell = (StageLiftCell) liftArg;
-                var liftXx =
-                        new ExprContext(
-                                liftCell.scope(),
-                                liftCell.target(),
-                                liftCell.vx(),
-                                liftCell.importState(),
-                                liftCell.currentExceptionType());
+                var liftXx = new ExprContext(
+                        liftCell.scope(),
+                        liftCell.target(),
+                        liftCell.vx(),
+                        liftCell.importState(),
+                        liftCell.currentExceptionType());
                 var liftRes = GenAspectLift.get(liftXx, liftCell.loc(), liftCell.sourceType());
                 if (liftRes.hasErrors()) {
-                    throw new IllegalStateException(
-                            "__stage: AspectLift lookup failed for source type "
-                                    + liftCell.sourceType().typeDesc()
-                                    + ": "
-                                    + liftRes.errorsOrNull().optUnwrapOr(new TList<>()));
+                    throw new IllegalStateException("__stage: AspectLift lookup failed for source type "
+                            + liftCell.sourceType().typeDesc()
+                            + ": "
+                            + liftRes.errorsOrNull().optUnwrapOr(new TList<>()));
                 }
                 var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
                 var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), Opt.ofNullable(valArg));
                 if (liftedRes.hasErrors()) {
-                    throw new IllegalStateException(
-                            "__stage: AspectLift.lift failed for source type "
-                                    + liftCell.sourceType().typeDesc()
-                                    + ": "
-                                    + liftedRes.errorsOrNull().optUnwrapOr(new TList<>()));
+                    throw new IllegalStateException("__stage: AspectLift.lift failed for source type "
+                            + liftCell.sourceType().typeDesc()
+                            + ": "
+                            + liftedRes.errorsOrNull().optUnwrapOr(new TList<>()));
                 }
                 var lifted = liftedRes.requireValue("DynRuntime::__stage AspectLift.lift");
                 values.add(new StageLowerValue.Val(lifted));
@@ -77,9 +73,8 @@ public final class DynRuntime {
             } else if (raw instanceof Code code) {
                 graft = new CodeValue(code, EvalOutcome.NO_VALUE);
             } else {
-                throw new RuntimeException(
-                        "__stage: graft argument is neither CodeValue nor Code: "
-                                + (raw == null ? "null" : raw.getClass().getName()));
+                throw new RuntimeException("__stage: graft argument is neither CodeValue nor Code: "
+                        + (raw == null ? "null" : raw.getClass().getName()));
             }
             grafts.add(graft);
             i += 1;
@@ -97,42 +92,32 @@ public final class DynRuntime {
     }
 
     private sealed interface StageLowerValue {
-        record ExprStage(Expr expr) implements StageLowerValue {
-        }
+        record ExprStage(Expr expr) implements StageLowerValue {}
 
-        record Val(Value value) implements StageLowerValue {
-        }
+        record Val(Value value) implements StageLowerValue {}
     }
 
     private static Expr cloneWithLowerSubstitutions(
-            Expr expr,
-            int sd,
-            int ld,
-            Iterator<StageLowerValue> values,
-            Iterator<CodeValue> grafts) {
+            Expr expr, int sd, int ld, Iterator<StageLowerValue> values, Iterator<CodeValue> grafts) {
         var loc = expr.loc();
         return switch (expr.variant()) {
             case Expr.Lower lower -> {
                 var newLd = ld + 1;
                 if (newLd - sd == 1) {
                     if (!values.hasNext()) {
-                        throw new IllegalStateException(
-                                "__stage: not enough lower values for substitution");
+                        throw new IllegalStateException("__stage: not enough lower values for substitution");
                     }
                     yield switch (values.next()) {
                         case StageLowerValue.ExprStage e -> e.expr();
-                        case StageLowerValue.Val v -> new Expr(loc, new Expr.Literal(new Expr.LitValue(v.value(), true)));
+                        case StageLowerValue.Val v ->
+                            new Expr(loc, new Expr.Literal(new Expr.LitValue(v.value(), true)));
                     };
                 }
                 yield new Expr(
-                        loc,
-                        new Expr.Lower(
-                                cloneWithLowerSubstitutions(lower.expr(), sd, newLd, values, grafts)));
+                        loc, new Expr.Lower(cloneWithLowerSubstitutions(lower.expr(), sd, newLd, values, grafts)));
             }
-            case Expr.Stage stage -> new Expr(
-                    loc,
-                    new Expr.Stage(
-                            cloneWithLowerSubstitutions(stage.expr(), sd + 1, ld, values, grafts)));
+            case Expr.Stage stage ->
+                new Expr(loc, new Expr.Stage(cloneWithLowerSubstitutions(stage.expr(), sd + 1, ld, values, grafts)));
             case Expr.Graft graft -> {
                 Expr.Graft next =
                         switch (graft) {
@@ -153,43 +138,49 @@ public final class DynRuntime {
             }
             case Expr.Literal lit -> expr;
             case Expr.ScopeUse u -> expr;
-            case Expr.Labeled lb -> new Expr(
-                    loc,
-                    new Expr.Labeled(
-                            lb.label(), cloneWithLowerSubstitutions(lb.inner(), sd, ld, values, grafts)));
+            case Expr.Labeled lb ->
+                new Expr(
+                        loc,
+                        new Expr.Labeled(lb.label(), cloneWithLowerSubstitutions(lb.inner(), sd, ld, values, grafts)));
             case Expr.Return rt -> {
                 Opt<Expr> newValue;
                 switch (rt.value()) {
-                    case Opt.Some<Expr> someV -> newValue = Opt.some(cloneWithLowerSubstitutions(someV.value(), sd, ld, values, grafts));
+                    case Opt.Some<Expr> someV ->
+                        newValue = Opt.some(cloneWithLowerSubstitutions(someV.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newValue = Opt.none();
                 }
                 yield new Expr(loc, new Expr.Return(rt.label(), newValue));
             }
-            case Expr.As a -> new Expr(
-                    loc,
-                    new Expr.As(
-                            cloneWithLowerSubstitutions(a.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(a.target(), sd, ld, values, grafts)));
-            case Expr.Call c -> new Expr(
-                    loc,
-                    new Expr.Call(
-                            cloneWithLowerSubstitutions(c.func(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(c.arg(), sd, ld, values, grafts)));
-            case Expr.Bind b -> new Expr(
-                    loc,
-                    new Expr.Bind(
-                            cloneWithLowerSubstitutions(b.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(b.value(), sd, ld, values, grafts)));
-            case Expr.Set s -> new Expr(
-                    loc,
-                    new Expr.Set(
-                            cloneWithLowerSubstitutions(s.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(s.value(), sd, ld, values, grafts)));
-            case Expr.Field f -> new Expr(
-                    loc,
-                    new Expr.Field(
-                            cloneWithLowerSubstitutions(f.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(f.key(), sd, ld, values, grafts)));
+            case Expr.As a ->
+                new Expr(
+                        loc,
+                        new Expr.As(
+                                cloneWithLowerSubstitutions(a.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(a.target(), sd, ld, values, grafts)));
+            case Expr.Call c ->
+                new Expr(
+                        loc,
+                        new Expr.Call(
+                                cloneWithLowerSubstitutions(c.func(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(c.arg(), sd, ld, values, grafts)));
+            case Expr.Bind b ->
+                new Expr(
+                        loc,
+                        new Expr.Bind(
+                                cloneWithLowerSubstitutions(b.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(b.value(), sd, ld, values, grafts)));
+            case Expr.Set s ->
+                new Expr(
+                        loc,
+                        new Expr.Set(
+                                cloneWithLowerSubstitutions(s.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(s.value(), sd, ld, values, grafts)));
+            case Expr.Field f ->
+                new Expr(
+                        loc,
+                        new Expr.Field(
+                                cloneWithLowerSubstitutions(f.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(f.key(), sd, ld, values, grafts)));
             case Expr.Seq seq -> {
                 var newExprs = new TList<Expr>();
                 for (var sub : seq.exprs()) {
@@ -207,55 +198,57 @@ public final class DynRuntime {
             case Expr.Record rec -> {
                 var newEntries = new TList<Expr.RecordEntry>();
                 for (var entry : rec.entries()) {
-                    newEntries.add(
-                            new Expr.RecordEntry(
-                                    cloneWithLowerSubstitutions(entry.key(), sd, ld, values, grafts),
-                                    cloneWithLowerSubstitutions(entry.value(), sd, ld, values, grafts)));
+                    newEntries.add(new Expr.RecordEntry(
+                            cloneWithLowerSubstitutions(entry.key(), sd, ld, values, grafts),
+                            cloneWithLowerSubstitutions(entry.value(), sd, ld, values, grafts)));
                 }
                 yield new Expr(loc, new Expr.Record(newEntries));
             }
             case Expr.If ifExpr -> {
                 var newConds = new TList<Expr.ConditionBranch>();
                 for (var branch : ifExpr.conditions()) {
-                    newConds.add(
-                            new Expr.ConditionBranch(
-                                    cloneWithLowerSubstitutions(branch.condition(), sd, ld, values, grafts),
-                                    cloneWithLowerSubstitutions(branch.body(), sd, ld, values, grafts)));
+                    newConds.add(new Expr.ConditionBranch(
+                            cloneWithLowerSubstitutions(branch.condition(), sd, ld, values, grafts),
+                            cloneWithLowerSubstitutions(branch.body(), sd, ld, values, grafts)));
                 }
                 Opt<Expr> newElse;
                 switch (ifExpr.else_()) {
-                    case Opt.Some<Expr> some -> newElse = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
+                    case Opt.Some<Expr> some ->
+                        newElse = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newElse = Opt.none();
                 }
                 yield new Expr(loc, new Expr.If(newConds, newElse));
             }
-            case Expr.OperatorBinary op -> new Expr(
-                    loc,
-                    new Expr.OperatorBinary(
-                            op.op(),
-                            cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
-            case Expr.OperatorUnary op -> new Expr(
-                    loc,
-                    new Expr.OperatorUnary(
-                            op.op(), cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts)));
-            case Expr.Foreach fe -> new Expr(
-                    loc,
-                    new Expr.Foreach(
-                            cloneWithLowerSubstitutions(fe.base(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(fe.elementKey(), sd, ld, values, grafts),
-                            cloneWithLowerSubstitutions(fe.body(), sd, ld, values, grafts)));
+            case Expr.OperatorBinary op ->
+                new Expr(
+                        loc,
+                        new Expr.OperatorBinary(
+                                op.op(),
+                                cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(op.reference(), sd, ld, values, grafts)));
+            case Expr.OperatorUnary op ->
+                new Expr(
+                        loc,
+                        new Expr.OperatorUnary(
+                                op.op(), cloneWithLowerSubstitutions(op.base(), sd, ld, values, grafts)));
+            case Expr.Foreach fe ->
+                new Expr(
+                        loc,
+                        new Expr.Foreach(
+                                cloneWithLowerSubstitutions(fe.base(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(fe.elementKey(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(fe.body(), sd, ld, values, grafts)));
             case Expr.Match m -> {
                 var newCases = new TList<Expr.MatchBranch>();
                 for (var c : m.cases()) {
-                    newCases.add(
-                            new Expr.MatchBranch(
-                                    cloneWithLowerSubstitutions(c.condition(), sd, ld, values, grafts),
-                                    cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
+                    newCases.add(new Expr.MatchBranch(
+                            cloneWithLowerSubstitutions(c.condition(), sd, ld, values, grafts),
+                            cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
                 }
                 Opt<Expr> newFallback;
                 switch (m.fallback()) {
-                    case Opt.Some<Expr> some -> newFallback = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
+                    case Opt.Some<Expr> some ->
+                        newFallback = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newFallback = Opt.none();
                 }
                 yield new Expr(
@@ -271,26 +264,23 @@ public final class DynRuntime {
                 switch (t.catchClause()) {
                     case Opt.Some<Expr.TryCatch> someCatch -> {
                         var c = someCatch.value();
-                        newCatch =
-                                Opt.some(
-                                        new Expr.TryCatch(
-                                                cloneWithLowerSubstitutions(c.bindingName(), sd, ld, values, grafts),
-                                                cloneWithLowerSubstitutions(c.exceptionType(), sd, ld, values, grafts),
-                                                cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
+                        newCatch = Opt.some(new Expr.TryCatch(
+                                cloneWithLowerSubstitutions(c.bindingName(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(c.exceptionType(), sd, ld, values, grafts),
+                                cloneWithLowerSubstitutions(c.body(), sd, ld, values, grafts)));
                     }
                     case Opt.None<Expr.TryCatch> none -> newCatch = Opt.none();
                 }
                 Opt<Expr> newFinally;
                 switch (t.finallyBlock()) {
-                    case Opt.Some<Expr> someFin -> newFinally = Opt.some(cloneWithLowerSubstitutions(someFin.value(), sd, ld, values, grafts));
+                    case Opt.Some<Expr> someFin ->
+                        newFinally = Opt.some(cloneWithLowerSubstitutions(someFin.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newFinally = Opt.none();
                 }
                 yield new Expr(
                         loc,
                         new Expr.Try(
-                                cloneWithLowerSubstitutions(t.body(), sd, ld, values, grafts),
-                                newCatch,
-                                newFinally));
+                                cloneWithLowerSubstitutions(t.body(), sd, ld, values, grafts), newCatch, newFinally));
             }
         };
     }

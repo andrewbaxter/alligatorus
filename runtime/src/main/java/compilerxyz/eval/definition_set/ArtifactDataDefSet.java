@@ -6,9 +6,10 @@ import compilerxyz.safejson.SafeJsonSerializable;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSet(
-    DefSetId defSetId,
-    TList<Artifact> dependencies,
-    TList<Artifact> functions,
-    TList<Artifact> interfaces,
-    TList<Artifact> objects,
-    TList<Artifact> unions) implements SafeJsonSerializable {}
+        DefSetId defSetId,
+        TList<Artifact> dependencies,
+        TList<Artifact> functions,
+        TList<Artifact> interfaces,
+        TList<Artifact> objects,
+        TList<Artifact> unions)
+        implements SafeJsonSerializable {}

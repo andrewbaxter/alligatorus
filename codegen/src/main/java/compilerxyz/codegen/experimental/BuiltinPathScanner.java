@@ -4,50 +4,44 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
-import compilerxyz.util.Opt;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
+import compilerxyz.util.IMap;
+import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
-import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
-import java.util.Map;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Pair;
 
 public final class BuiltinPathScanner {
-    private BuiltinPathScanner() {
-    }
+    private BuiltinPathScanner() {}
 
     static {
-        StaticJavaParser.getParserConfiguration()
-                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
     }
 
     public sealed interface Entry {
         String entryPath();
     }
 
-    public record TypeLeaf(String entryPath, ClassName typeClass) implements Entry {
-    }
+    public record TypeLeaf(String entryPath, ClassName typeClass) implements Entry {}
 
     public record FunctionLeaf(
             String entryPath,
@@ -57,11 +51,10 @@ public final class BuiltinPathScanner {
             boolean needsExprContext,
             TList<NamedTypeRef> args,
             TypeRef retType)
-            implements Entry {
-    }
+            implements Entry {}
 
-    public static TList<Entry> scanRoot(
-            Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves) throws IOException {
+    public static TList<Entry> scanRoot(Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves)
+            throws IOException {
         var out = new TList<Entry>();
         try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
             var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
@@ -69,7 +62,9 @@ public final class BuiltinPathScanner {
                 var src = Files.readString(file);
                 if (!src.contains("BuiltinPath")) continue;
                 var cu = StaticJavaParser.parse(file);
-                var pkg = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse("");
+                var pkg = cu.getPackageDeclaration()
+                        .map(pd -> pd.getNameAsString())
+                        .orElse("");
                 var imports = buildImportMap(cu);
                 for (var t : cu.getTypes()) {
                     walkType(pkg, pkg, "", t, imports, out, scannedLeaves);
@@ -95,8 +90,7 @@ public final class BuiltinPathScanner {
             else cn = ClassName.get(pkg, enclosing, simple);
             out.add(new TypeLeaf(pathOpt.optUnwrap(), cn));
         }
-        if (t instanceof ClassOrInterfaceDeclaration
-                || t instanceof RecordDeclaration) {
+        if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration) {
             for (var m : t.getMethods()) {
                 var mpathOpt = pathFromAnnotation(m);
                 if (mpathOpt.optIsNone()) continue;
@@ -114,14 +108,14 @@ public final class BuiltinPathScanner {
                 }
                 for (int i = firstArgIndex; i < params.size(); i++) {
                     var p = params.get(i);
-                    args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
+                    args.add(new NamedTypeRef(
+                            snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
                 }
                 var ownerSimple = enclosing.isEmpty() ? simple : enclosing.replace('.', '$') + "$" + simple;
                 var ownerInternalName = pkg.replace('.', '/') + "/" + ownerSimple;
                 var retType = typeRefOf(m.getType(), imports, sourcePkg, scannedLeaves);
-                out.add(
-                        new FunctionLeaf(
-                                mpath, scopeId, m.getNameAsString(), ownerInternalName, needsExprContext, args, retType));
+                out.add(new FunctionLeaf(
+                        mpath, scopeId, m.getNameAsString(), ownerInternalName, needsExprContext, args, retType));
             }
         }
         for (var member : t.getMembers()) {
@@ -132,8 +126,7 @@ public final class BuiltinPathScanner {
         }
     }
 
-    private static Opt<AnnotationExpr> findBuiltinPath(
-            NodeWithAnnotations<?> node) {
+    private static Opt<AnnotationExpr> findBuiltinPath(NodeWithAnnotations<?> node) {
         for (var a : node.getAnnotations()) {
             var n = a.getNameAsString();
             if (n.equals("BuiltinPath") || n.equals("compilerxyz.annotations.BuiltinPath")) {
@@ -143,8 +136,7 @@ public final class BuiltinPathScanner {
         return Opt.none();
     }
 
-    private static Opt<String> pathFromAnnotation(
-            NodeWithAnnotations<?> node) {
+    private static Opt<String> pathFromAnnotation(NodeWithAnnotations<?> node) {
         var opt = findBuiltinPath(node);
         if (opt.optIsNone()) return Opt.none();
         var ann = opt.optUnwrap();
@@ -165,8 +157,7 @@ public final class BuiltinPathScanner {
         throw new IllegalStateException("@BuiltinPath missing value");
     }
 
-    private static long scopeIdFromAnnotation(
-            NodeWithAnnotations<?> node) {
+    private static long scopeIdFromAnnotation(NodeWithAnnotations<?> node) {
         var opt = findBuiltinPath(node);
         if (opt.optIsNone()) return 0L;
         var ann = opt.optUnwrap();
@@ -192,44 +183,32 @@ public final class BuiltinPathScanner {
         return sb.toString();
     }
 
-    private static final IMap<String, ClassName> COMPOSITE_WRAPPERS =
-            IMap.ofEntries(
-                    new Pair<>("compilerxyz.eval.EResult",
-                            ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
-                    new Pair<>("compilerxyz.util.Opt",
-                            ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
-                    new Pair<>("compilerxyz.util.TList",
-                            ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
-                    new Pair<>("compilerxyz.util.TMap",
-                            ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")),
-                    new Pair<>("compilerxyz.util.TOrderedMap",
-                            ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
+    private static final IMap<String, ClassName> COMPOSITE_WRAPPERS = IMap.ofEntries(
+            new Pair<>(
+                    "compilerxyz.eval.EResult", ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
+            new Pair<>("compilerxyz.util.Opt", ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
+            new Pair<>("compilerxyz.util.TList", ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
+            new Pair<>("compilerxyz.util.TMap", ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")),
+            new Pair<>("compilerxyz.util.TOrderedMap", ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
 
-    private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS =
-            IMap.ofEntries(
-                    new Pair<>("java.lang.String",
-                            ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
-                    new Pair<>("compilerxyz.eval.Unique",
-                            ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")),
-                    new Pair<>("compilerxyz.eval.expr.StagedExprCell",
-                            ClassName.get("compilerxyz.eval.value.expr", "TypeExpr")),
-                    new Pair<>("compilerxyz.gen.AspectBind.BindResult",
-                            ClassName.get("compilerxyz.gen", "AspectBind", "BindResult")));
+    private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
+            new Pair<>("java.lang.String", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
+            new Pair<>("compilerxyz.eval.Unique", ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")),
+            new Pair<>(
+                    "compilerxyz.eval.expr.StagedExprCell", ClassName.get("compilerxyz.eval.value.expr", "TypeExpr")),
+            new Pair<>(
+                    "compilerxyz.gen.AspectBind.BindResult",
+                    ClassName.get("compilerxyz.gen", "AspectBind", "BindResult")));
 
-    private static final ClassName TYPE_BOOL_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
+    private static final ClassName TYPE_BOOL_DYNAMIC = ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
+    private static final ClassName TYPE_INT_DYNAMIC = ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
 
-    private static final ClassName TYPE_LONG_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.long_", "TypeLongDynamic");
+    private static final ClassName TYPE_LONG_DYNAMIC = ClassName.get("compilerxyz.eval.value.long_", "TypeLongDynamic");
 
-    private static final ClassName TYPE_NULL_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
+    private static final ClassName TYPE_NULL_DYNAMIC = ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
     private static TypeRef typeRefOf(
-            Type t, TMap<String, String> imports, String sourcePkg,
-            TMap<ClassName, CodeBlock> scannedLeaves) {
+            Type t, TMap<String, String> imports, String sourcePkg, TMap<ClassName, CodeBlock> scannedLeaves) {
         if (t.isVoidType()) return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
         var tn = typeNameOf(t, imports, sourcePkg);
         if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
@@ -247,11 +226,11 @@ public final class BuiltinPathScanner {
         }
         if (tn instanceof ParameterizedTypeName pt) {
             var wrapper = COMPOSITE_WRAPPERS.getOrNull(pt.rawType.canonicalName());
-            if (wrapper != null && pt.typeArguments.size() == 1
-                    && pt.typeArguments.get(0) instanceof ClassName inner) {
+            if (wrapper != null && pt.typeArguments.size() == 1 && pt.typeArguments.get(0) instanceof ClassName inner) {
                 return TypeRef.composite1(wrapper, TypeRef.leaf(inner, scannedLeaves));
             }
-            if (wrapper != null && pt.typeArguments.size() == 2
+            if (wrapper != null
+                    && pt.typeArguments.size() == 2
                     && pt.typeArguments.get(0) instanceof ClassName k
                     && pt.typeArguments.get(1) instanceof ClassName v) {
                 return TypeRef.composite2(wrapper, TypeRef.leaf(k, scannedLeaves), TypeRef.leaf(v, scannedLeaves));

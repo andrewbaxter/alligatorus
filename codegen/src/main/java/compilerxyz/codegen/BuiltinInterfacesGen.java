@@ -19,8 +19,7 @@ import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
 
 public final class BuiltinInterfacesGen {
-    private BuiltinInterfacesGen() {
-    }
+    private BuiltinInterfacesGen() {}
 
     public record BuiltinSpec(
             String simpleName,
@@ -42,16 +41,21 @@ public final class BuiltinInterfacesGen {
                 boolean isRecord,
                 TList<BuiltinMethodEmit.Method> methods,
                 TList<DataField> dataFields) {
-            this(simpleName, pkg, uniqueId, identityId, isAspect, isRecord,
-                    methods, dataFields, Opt.none(), Opt.none());
+            this(
+                    simpleName,
+                    pkg,
+                    uniqueId,
+                    identityId,
+                    isAspect,
+                    isRecord,
+                    methods,
+                    dataFields,
+                    Opt.none(),
+                    Opt.none());
         }
     }
 
-    public record DataField(
-            String langName,
-            String jvmFieldName,
-            TypeName fieldJavaType) {
-    }
+    public record DataField(String langName, String jvmFieldName, TypeName fieldJavaType) {}
 
     private static final String GEN_PACKAGE = "compilerxyz.gen";
 
@@ -68,24 +72,20 @@ public final class BuiltinInterfacesGen {
     private static final ClassName TYPE_OBJECT_DYNAMIC =
             ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
     private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
-    private static final ClassName TYPE_OBJECT_META =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
+    private static final ClassName TYPE_OBJECT_META = ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
     private static final ClassName TYPE_OBJECT_CAST_RULE =
             ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
     private static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
             ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
-    private static final ClassName OBJECT_METHOD =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
+    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
     private static final ClassName OBJECT_DATA_FIELD =
             ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
-    private static final ClassName OBJECT_DROP_KIND =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
+    private static final ClassName OBJECT_DROP_KIND = ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
     private static final ClassName OBJECT_ASPECT_SOURCE =
             ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource");
     private static final ClassName OBJECT_ASPECT_SOURCE_STATIC =
             ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource", "Static");
-    private static final ClassName JAVA_INTERNAL_NAME =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+    private static final ClassName JAVA_INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
     private static final ClassName JAVA_DATA_DESCRIPTOR =
             ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
 
@@ -103,20 +103,17 @@ public final class BuiltinInterfacesGen {
                 throw new IllegalStateException("duplicate builtin interface name: " + spec.simpleName);
             }
             if (!aspectIds.add(spec.uniqueId)) {
-                throw new IllegalStateException(
-                        "duplicate aspect id " + spec.uniqueId + " (in builtins)");
+                throw new IllegalStateException("duplicate aspect id " + spec.uniqueId + " (in builtins)");
             }
             if (spec.identityId != 0L && !identityIds.add(spec.identityId)) {
-                throw new IllegalStateException(
-                        "duplicate aspect identity id " + spec.identityId + " (in builtins)");
+                throw new IllegalStateException("duplicate aspect identity id " + spec.identityId + " (in builtins)");
             }
             writeCompanion(outRoot, formatter, spec, leafDescriptors);
         }
     }
 
     private static void writeCompanion(
-            Path outRoot, Formatter formatter, BuiltinSpec spec,
-            TMap<ClassName, CodeBlock> leafDescriptors)
+            Path outRoot, Formatter formatter, BuiltinSpec spec, TMap<ClassName, CodeBlock> leafDescriptors)
             throws IOException {
         var companionName = "Gen" + spec.simpleName;
         var self = ClassName.get(GEN_PACKAGE, companionName);
@@ -128,46 +125,42 @@ public final class BuiltinInterfacesGen {
         }
 
         var cls = TypeSpec.classBuilder(companionName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-        cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+        cls.addMethod(
+                MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
         if (spec.isAspect) {
-            cls.addField(
-                    FieldSpec.builder(UNIQUE, "AspectId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.uniqueId)
-                            .build());
-            cls.addField(
-                    FieldSpec.builder(UNIQUE, "IdentityId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                            .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.identityId)
-                            .build());
-            cls.addMethod(
-                    MethodSpec.methodBuilder("getMaybe")
-                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                            .returns(ParameterizedTypeName.get(OPT, interfaceRef))
-                            .addParameter(EXPR_CONTEXT, "xx")
-                            .addParameter(TYPE, "t")
-                            .addStatement("return $T.getMaybe(xx, t, AspectId, $T.class)", ASPECT_LOOKUP, interfaceRef)
-                            .build());
-            cls.addMethod(
-                    MethodSpec.methodBuilder("get")
-                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                            .returns(ParameterizedTypeName.get(ERESULT, interfaceRef))
-                            .addParameter(EXPR_CONTEXT, "xx")
-                            .addParameter(QEXPR_ID, "loc")
-                            .addParameter(TYPE, "t")
-                            .addStatement("return $T.get(xx, loc, t, AspectId, $T.class)", ASPECT_LOOKUP, interfaceRef)
-                            .build());
+            cls.addField(FieldSpec.builder(UNIQUE, "AspectId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.uniqueId)
+                    .build());
+            cls.addField(FieldSpec.builder(UNIQUE, "IdentityId", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                    .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.identityId)
+                    .build());
+            cls.addMethod(MethodSpec.methodBuilder("getMaybe")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(ParameterizedTypeName.get(OPT, interfaceRef))
+                    .addParameter(EXPR_CONTEXT, "xx")
+                    .addParameter(TYPE, "t")
+                    .addStatement("return $T.getMaybe(xx, t, AspectId, $T.class)", ASPECT_LOOKUP, interfaceRef)
+                    .build());
+            cls.addMethod(MethodSpec.methodBuilder("get")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(ParameterizedTypeName.get(ERESULT, interfaceRef))
+                    .addParameter(EXPR_CONTEXT, "xx")
+                    .addParameter(QEXPR_ID, "loc")
+                    .addParameter(TYPE, "t")
+                    .addStatement("return $T.get(xx, loc, t, AspectId, $T.class)", ASPECT_LOOKUP, interfaceRef)
+                    .build());
         }
 
-        cls.addMethod(
-                MethodSpec.methodBuilder("dynamicType")
-                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                        .returns(TYPE_OBJECT_DYNAMIC)
-                        .addStatement("return Holder.INSTANCE")
-                        .build());
+        cls.addMethod(MethodSpec.methodBuilder("dynamicType")
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .returns(TYPE_OBJECT_DYNAMIC)
+                .addStatement("return Holder.INSTANCE")
+                .build());
 
-        var holder = TypeSpec.classBuilder("Holder")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
-        holder.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
+        var holder = TypeSpec.classBuilder("Holder").addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+        holder.addMethod(
+                MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
         holder.addField(
                 FieldSpec.builder(TYPE_OBJECT_DYNAMIC, "INSTANCE", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                         .initializer("build()")
@@ -199,37 +192,60 @@ public final class BuiltinInterfacesGen {
             b.addStatement(
                     "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
                             + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)))",
-                    TYPE_OBJECT_META, typeDesc,
-                    ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
-                    OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC, self, self);
+                    TYPE_OBJECT_META,
+                    typeDesc,
+                    ILIST,
+                    ILIST,
+                    ILIST,
+                    TYPE_OBJECT_CAST_FROM_RULE,
+                    OPT,
+                    OBJECT_ASPECT_SOURCE,
+                    OBJECT_ASPECT_SOURCE_STATIC,
+                    self,
+                    self);
             b.addStatement(
-                    "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-                            + "$T.DYNAMIC, $T.some(jvmClass))",
-                    TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
+                    "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, " + "$T.DYNAMIC, $T.some(jvmClass))",
+                    TYPE_OBJECT_DYNAMIC,
+                    interfaceRef,
+                    OBJECT_DROP_KIND,
+                    OPT);
         } else if (spec.isRecord) {
-            b.addStatement(
-                    "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
+            b.addStatement("trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
             emitTypeHostRestamp(b, interfaceRef);
             b.addStatement(
                     "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
                             + "$T.<$T>none())",
-                    TYPE_OBJECT_META, typeDesc,
-                    ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
-                    OPT, OBJECT_ASPECT_SOURCE);
+                    TYPE_OBJECT_META,
+                    typeDesc,
+                    ILIST,
+                    ILIST,
+                    ILIST,
+                    TYPE_OBJECT_CAST_FROM_RULE,
+                    OPT,
+                    OBJECT_ASPECT_SOURCE);
             b.addStatement(
                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                             + "$T.DYNAMIC_LIGHT, $T.<$T>none())",
-                    TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT, JAVA_INTERNAL_NAME);
+                    TYPE_OBJECT_DYNAMIC,
+                    interfaceRef,
+                    OBJECT_DROP_KIND,
+                    OPT,
+                    JAVA_INTERNAL_NAME);
         } else {
-            b.addStatement(
-                    "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
+            b.addStatement("trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
             emitTypeHostRestamp(b, interfaceRef);
             b.addStatement(
                     "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
                             + "$T.<$T>some(new $T(new $T($LL), new $T($LL))))",
-                    TYPE_OBJECT_META, typeDesc,
-                    ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
-                    OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
+                    TYPE_OBJECT_META,
+                    typeDesc,
+                    ILIST,
+                    ILIST,
+                    ILIST,
+                    TYPE_OBJECT_CAST_FROM_RULE,
+                    OPT,
+                    OBJECT_ASPECT_SOURCE,
+                    OBJECT_ASPECT_SOURCE_STATIC,
                     UNIQUE_BUILTIN,
                     spec.uniqueId,
                     UNIQUE_BUILTIN,
@@ -237,7 +253,10 @@ public final class BuiltinInterfacesGen {
             b.addStatement(
                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
                             + "$T.DYNAMIC_LIGHT, $T.some(jvmClass))",
-                    TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
+                    TYPE_OBJECT_DYNAMIC,
+                    interfaceRef,
+                    OBJECT_DROP_KIND,
+                    OPT);
         }
 
         b.addStatement("return instance");
@@ -246,20 +265,15 @@ public final class BuiltinInterfacesGen {
 
     private static void emitTypeHostRestamp(MethodSpec.Builder b, ClassName interfaceRef) {
         var genTrivial = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
-        b.beginControlFlow(
-                "if ($T.class.isAssignableFrom($T.class))", TYPE, interfaceRef);
+        b.beginControlFlow("if ($T.class.isAssignableFrom($T.class))", TYPE, interfaceRef);
         b.addStatement("trivialIdentityAspects.add($T.TYPE_IDENTITY)", genTrivial);
-        b.addStatement(
-                "castRules.add(new $T.RestampToIdentity($T.TYPE_IDENTITY))",
-                TYPE_OBJECT_CAST_RULE,
-                genTrivial);
+        b.addStatement("castRules.add(new $T.RestampToIdentity($T.TYPE_IDENTITY))", TYPE_OBJECT_CAST_RULE, genTrivial);
         b.endControlFlow();
     }
 
     private static MethodSpec buildLink(
             BuiltinSpec spec, ClassName interfaceRef, TMap<ClassName, CodeBlock> leafDescriptors) {
-        var b = MethodSpec.methodBuilder("link")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
+        var b = MethodSpec.methodBuilder("link").addModifiers(Modifier.PUBLIC, Modifier.STATIC);
         b.addStatement("var instance = Holder.INSTANCE");
         b.beginControlFlow("if (instance.methods() != null)");
         b.addStatement("return");
@@ -267,8 +281,7 @@ public final class BuiltinInterfacesGen {
         b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
         b.addStatement("var dataFields = new $T<$T>()", TLIST, OBJECT_DATA_FIELD);
         for (var m : spec.methods) {
-            BuiltinMethodEmit.emitObjectMethod(
-                    b, interfaceRef, "instance", "methods", m, leafDescriptors);
+            BuiltinMethodEmit.emitObjectMethod(b, interfaceRef, "instance", "methods", m, leafDescriptors);
         }
         for (var f : spec.dataFields) {
             var descExprOpt = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, leafDescriptors);

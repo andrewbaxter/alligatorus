@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import spoon.reflect.path.CtRole;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.BinaryOperatorKind;
 import spoon.reflect.code.CtBinaryOperator;
@@ -23,23 +22,20 @@ import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtSealable;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class ConventionChecks {
 
-    public record Finding(String check, String file, int line, String message) {
-    }
+    public record Finding(String check, String file, int line, String message) {}
 
     private final Set<String> objectMethods = Set.of("equals", "hashCode", "toString");
     private final Set<String> jdkOptional =
-            Set.of(
-                    "java.util.Optional", "java.util.OptionalInt", "java.util.OptionalLong",
-                    "java.util.OptionalDouble");
+            Set.of("java.util.Optional", "java.util.OptionalInt", "java.util.OptionalLong", "java.util.OptionalDouble");
     private static final Pattern FQN = Pattern.compile("[a-z][\\w]*(\\.[a-z][\\w]*)*(\\.[A-Z]\\w*)+");
     private static final Pattern NULLABLE_USE = Pattern.compile("@\\s*([\\w.]*\\.)?Nullable\\b");
-    private static final Pattern NULLABLE_IMPORT =
-            Pattern.compile("^\\s*import\\s+[\\w.]*\\.Nullable\\s*;");
+    private static final Pattern NULLABLE_IMPORT = Pattern.compile("^\\s*import\\s+[\\w.]*\\.Nullable\\s*;");
 
     private final List<Finding> findings = new ArrayList<>();
     private final Set<String> seen = new HashSet<>();
@@ -76,7 +72,8 @@ public final class ConventionChecks {
                 if (_cisOperandType != null) {
                     CtType<?> _cisDecl = _cisOperandType.getTypeDeclaration();
                     if (_cisDecl != null) {
-                        boolean _cisSealed = _cisDecl instanceof CtSealable _s && !_s.getPermittedTypes().isEmpty();
+                        boolean _cisSealed = _cisDecl instanceof CtSealable _s
+                                && !_s.getPermittedTypes().isEmpty();
                         if (_cisSealed) {
                             report(
                                     "NoInstanceofOnSealed",
@@ -91,7 +88,9 @@ public final class ConventionChecks {
         Set<String> _nulScanned = new HashSet<>();
         for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
             var _nulPos = t.getPosition();
-            if (_nulPos == null || !_nulPos.isValidPosition() || _nulPos.getCompilationUnit() == null
+            if (_nulPos == null
+                    || !_nulPos.isValidPosition()
+                    || _nulPos.getCompilationUnit() == null
                     || _nulPos.getFile() == null) {
                 continue;
             }
@@ -117,8 +116,8 @@ public final class ConventionChecks {
             CtElement _ambEl = tr;
             while (_ambEl != null
                     && (_ambEl.getPosition() == null
-                    || !_ambEl.getPosition().isValidPosition()
-                    || _ambEl.getPosition().getFile() == null)) {
+                            || !_ambEl.getPosition().isValidPosition()
+                            || _ambEl.getPosition().getFile() == null)) {
                 _ambEl = _ambEl.isParentInitialized() ? _ambEl.getParent() : null;
             }
             if (_ambEl == null) continue;
@@ -136,18 +135,21 @@ public final class ConventionChecks {
                     && _ssTrSnippet.contains("Optional")) {
                 report("AvoidJdkOptional", tr, "Use compilerxyz.util.Opt instead of java.util.Optional.");
             }
-            if (_ssTrPos != null && _ssTrPos.isValidPosition() && _ssTrPos.getCompilationUnit() != null
+            if (_ssTrPos != null
+                    && _ssTrPos.isValidPosition()
+                    && _ssTrPos.getCompilationUnit() != null
                     && _ssTrPos.getFile() != null
                     && tr.getParent(CtImport.class) == null
                     && !_ssTrPos.getFile().getName().equals("module-info.java")) {
                 String _fqnQn = tr.getQualifiedName();
                 if (_fqnQn != null) {
                     String _fqnQnDot = _fqnQn.replace('$', '.');
-                    boolean _fqnWritten =
-                            _ssTrSnippet.equals(_fqnQnDot)
-                                    || _ssTrSnippet.startsWith(_fqnQnDot + "<")
-                                    || _ssTrSnippet.startsWith(_fqnQnDot + "[");
-                    if (_fqnWritten && _fqnQnDot.contains(".") && FQN.matcher(_fqnQnDot).matches()
+                    boolean _fqnWritten = _ssTrSnippet.equals(_fqnQnDot)
+                            || _ssTrSnippet.startsWith(_fqnQnDot + "<")
+                            || _ssTrSnippet.startsWith(_fqnQnDot + "[");
+                    if (_fqnWritten
+                            && _fqnQnDot.contains(".")
+                            && FQN.matcher(_fqnQnDot).matches()
                             && !ambiguous(_ssTrPos.getFile().getPath(), tr.getSimpleName())) {
                         CtTypeReference<?> _fqnTop = tr;
                         while (_fqnTop.getDeclaringType() != null) _fqnTop = _fqnTop.getDeclaringType();
@@ -163,7 +165,8 @@ public final class ConventionChecks {
         }
         for (CtFieldRead<?> fr : model.getElements(new TypeFilter<>(CtFieldRead.class))) {
             checkFqTarget(
-                    fr.getTarget(), fr.getVariable() == null ? null : fr.getVariable().getDeclaringType());
+                    fr.getTarget(),
+                    fr.getVariable() == null ? null : fr.getVariable().getDeclaringType());
         }
         return findings;
     }
@@ -171,8 +174,7 @@ public final class ConventionChecks {
     private void checkFqTarget(CtExpression<?> target, CtTypeReference<?> declaring) {
         if (target == null || declaring == null) return;
         var pos = target.getPosition();
-        if (pos == null || !pos.isValidPosition() || pos.getCompilationUnit() == null
-                || pos.getFile() == null) {
+        if (pos == null || !pos.isValidPosition() || pos.getCompilationUnit() == null || pos.getFile() == null) {
             return;
         }
         String snippet = snippetOf(pos);

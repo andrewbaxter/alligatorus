@@ -1,51 +1,37 @@
 package compilerxyz.eval.dynamic;
 
-import compilerxyz.eval.JumpKey;
-
 import static org.objectweb.asm.Opcodes.ACONST_NULL;
-import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.CHECKCAST;
-import static org.objectweb.asm.Opcodes.DLOAD;
-import static org.objectweb.asm.Opcodes.DSTORE;
 import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.FLOAD;
-import static org.objectweb.asm.Opcodes.FSTORE;
 import static org.objectweb.asm.Opcodes.GETFIELD;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.ICONST_0;
 import static org.objectweb.asm.Opcodes.ICONST_1;
-import static org.objectweb.asm.Opcodes.ILOAD;
 import static org.objectweb.asm.Opcodes.INSTANCEOF;
 import static org.objectweb.asm.Opcodes.INVOKEINTERFACE;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.ISTORE;
-import static org.objectweb.asm.Opcodes.LLOAD;
-import static org.objectweb.asm.Opcodes.LSTORE;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.PUTFIELD;
-import static org.objectweb.asm.Opcodes.PUTSTATIC;
 
+import compilerxyz.eval.JumpKey;
 import compilerxyz.eval.QExprId;
 import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
 import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
-import org.objectweb.asm.MethodVisitor;
-import java.util.Collection;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
 
 public class JavaBytecodeUtils {
     public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
@@ -151,17 +137,14 @@ public class JavaBytecodeUtils {
             String method,
             JavaMethodDescriptor methodDesc,
             boolean isInterface) {
-        return wrapObj(
-                loc, new MethodInsnNode(opcode, klass.value, method, methodDesc.value, isInterface));
+        return wrapObj(loc, new MethodInsnNode(opcode, klass.value, method, methodDesc.value, isInterface));
     }
 
-    public static CodeDynamic callConstructor(
-            CodeLoc loc, JavaInternalName klass, JavaMethodDescriptor methodDesc) {
+    public static CodeDynamic callConstructor(CodeLoc loc, JavaInternalName klass, JavaMethodDescriptor methodDesc) {
         return methodCall(loc, INVOKESPECIAL, klass, "<init>", methodDesc, false);
     }
 
-    public static CodeDynamic callConstructor(
-            QExprId loc, JavaInternalName klass, JavaMethodDescriptor methodDesc) {
+    public static CodeDynamic callConstructor(QExprId loc, JavaInternalName klass, JavaMethodDescriptor methodDesc) {
         return callConstructor(lc(loc), klass, methodDesc);
     }
 
@@ -230,10 +213,7 @@ public class JavaBytecodeUtils {
     }
 
     public static CodeDynamic cast(CodeLoc loc, JavaDataDescriptor toClass) {
-        return wrapObj(
-                loc,
-                new TypeInsnNode(
-                        CHECKCAST, toClass.value.substring(1, toClass.value.length() - 1)));
+        return wrapObj(loc, new TypeInsnNode(CHECKCAST, toClass.value.substring(1, toClass.value.length() - 1)));
     }
 
     public static CodeDynamic cast(QExprId loc, JavaDataDescriptor toClass) {
@@ -241,10 +221,7 @@ public class JavaBytecodeUtils {
     }
 
     public static CodeDynamic instantiate(
-            QExprId loc,
-            JavaInternalName klass,
-            JavaMethodDescriptor desc,
-            CodeDynamic arguments) {
+            QExprId loc, JavaInternalName klass, JavaMethodDescriptor desc, CodeDynamic arguments) {
         var lc = lc(loc);
         var code = new JavaBytecodeSequence();
         code.add(newInstance(lc, klass));
@@ -258,11 +235,8 @@ public class JavaBytecodeUtils {
         var _boaLoc = lc(loc);
         var _boaSeq = new JavaBytecodeSequence();
         _boaSeq.add(literalIntShortByte(_boaLoc, elements.size()));
-        _boaSeq.add(
-                wrapObj(
-                        _boaLoc,
-                        new TypeInsnNode(
-                                org.objectweb.asm.Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
+        _boaSeq.add(wrapObj(
+                _boaLoc, new TypeInsnNode(org.objectweb.asm.Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
         for (int _boaI = 0; _boaI < elements.size(); _boaI++) {
             _boaSeq.add(inst(_boaLoc, DUP));
             _boaSeq.add(literalIntShortByte(_boaLoc, _boaI));
@@ -368,8 +342,7 @@ public class JavaBytecodeUtils {
         }
     }
 
-    private static void freshenScan(
-            JavaBytecode bc, TSet<Label> definedLabels, TSet<JumpKey> landKeys) {
+    private static void freshenScan(JavaBytecode bc, TSet<Label> definedLabels, TSet<JumpKey> landKeys) {
         if (bc instanceof CodeDynamic cd) {
             freshenScan(cd.code(), definedLabels, landKeys);
         } else if (bc instanceof JavaBytecodeSequence seq) {
@@ -437,9 +410,7 @@ public class JavaBytecodeUtils {
     }
 
     public static void renderMethod(
-            JavaBytecodeSequence seq,
-            MethodVisitor mv,
-            TList<JavaBytecodeBindingKey> initialIndexes) {
+            JavaBytecodeSequence seq, MethodVisitor mv, TList<JavaBytecodeBindingKey> initialIndexes) {
         var _rSlots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var _rK : initialIndexes) _rSlots.add(new JavaBytecodeSequence.InitialSlot(_rK));
         seq.renderInternal(mv, initialIndexes, _rSlots);
@@ -448,9 +419,7 @@ public class JavaBytecodeUtils {
     }
 
     public static void renderMethodTyped(
-            JavaBytecodeSequence seq,
-            MethodVisitor mv,
-            TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
+            JavaBytecodeSequence seq, MethodVisitor mv, TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
         var _rtNarrowKeys = new TList<JavaBytecodeBindingKey>();
         for (var _rtS : initialSlots) _rtNarrowKeys.add(_rtS.key());
         seq.renderInternal(mv, _rtNarrowKeys, initialSlots);

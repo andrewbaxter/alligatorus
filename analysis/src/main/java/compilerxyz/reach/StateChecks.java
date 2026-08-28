@@ -79,7 +79,8 @@ public final class StateChecks {
             }
         }
         for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
-            String _dynName = inv.getExecutable() == null ? "" : inv.getExecutable().getSimpleName();
+            String _dynName =
+                    inv.getExecutable() == null ? "" : inv.getExecutable().getSimpleName();
             if (!"callStaticMethod".equals(_dynName) && !"callStaticInterfaceMethod".equals(_dynName)) {
                 continue;
             }
@@ -118,8 +119,7 @@ public final class StateChecks {
             Kind kind = kindOf(f.getType());
             if (kind == null) continue;
             if (f.getDefaultExpression() != null) {
-                fieldFlows.merge(
-                        fieldKey(f), classify(kind, f.getDefaultExpression(), Map.of(), 0), (a, b) -> a | b);
+                fieldFlows.merge(fieldKey(f), classify(kind, f.getDefaultExpression(), Map.of(), 0), (a, b) -> a | b);
             } else if (kind == Kind.BOOL && f.getType() != null && f.getType().isPrimitive()) {
                 fieldFlows.merge(fieldKey(f), STATE_B, (a, b) -> a | b);
             }
@@ -130,8 +130,7 @@ public final class StateChecks {
             if (f == null) continue;
             Kind kind = kindOf(f.getType());
             if (kind == null) continue;
-            fieldFlows.merge(
-                    fieldKey(f), classify(kind, a.getAssignment(), Map.of(), 0), (x, y) -> x | y);
+            fieldFlows.merge(fieldKey(f), classify(kind, a.getAssignment(), Map.of(), 0), (x, y) -> x | y);
         }
 
         for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
@@ -146,9 +145,8 @@ public final class StateChecks {
                     if (!m.getTopDefinitions().isEmpty()) continue;
                     if (dynMethodNames.contains(m.getSimpleName())) continue;
                 }
-                boolean descriptor =
-                        ex.getAnnotations().stream()
-                                .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("CodegenDescriptor"));
+                boolean descriptor = ex.getAnnotations().stream()
+                        .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("CodegenDescriptor"));
                 if (descriptor) continue;
                 int[] flows = paramFlows.get(key(ex));
                 for (int i = 0; i < params.size(); i++) {
@@ -167,22 +165,17 @@ public final class StateChecks {
                     if (!valid(at)) at = valid(ex) ? ex : t;
                     String message;
                     if (kind == Kind.OPT) {
-                        message =
-                                mask == STATE_A
-                                        ? "Opt parameter '" + name + "' of '" + where
-                                          + "' is Some at every call site; make it non-optional."
-                                        : "Opt parameter '" + name + "' of '" + where
-                                          + "' is None at every call site; remove the parameter.";
+                        message = mask == STATE_A
+                                ? "Opt parameter '" + name + "' of '" + where
+                                        + "' is Some at every call site; make it non-optional."
+                                : "Opt parameter '" + name + "' of '" + where
+                                        + "' is None at every call site; remove the parameter.";
                     } else {
-                        message =
-                                "boolean parameter '" + name + "' of '" + where + "' is "
-                                        + (mask == STATE_A ? "true" : "false")
-                                        + " at every call site; remove the parameter.";
+                        message = "boolean parameter '" + name + "' of '" + where + "' is "
+                                + (mask == STATE_A ? "true" : "false")
+                                + " at every call site; remove the parameter.";
                     }
-                    report(
-                            kind == Kind.OPT ? "OptParameterBothStates" : "BoolParameterBothStates",
-                            at,
-                            message);
+                    report(kind == Kind.OPT ? "OptParameterBothStates" : "BoolParameterBothStates", at, message);
                 }
             }
         }
@@ -193,15 +186,12 @@ public final class StateChecks {
             if (mask == null || mask == BOTH) continue;
             String message;
             if (kind == Kind.OPT) {
-                message =
-                        mask == STATE_A
-                                ? "Opt field '" + fieldKey(f)
-                                  + "' is only ever assigned Some values; make it non-optional."
-                                : "Opt field '" + fieldKey(f) + "' is only ever assigned None; remove the field.";
+                message = mask == STATE_A
+                        ? "Opt field '" + fieldKey(f) + "' is only ever assigned Some values; make it non-optional."
+                        : "Opt field '" + fieldKey(f) + "' is only ever assigned None; remove the field.";
             } else {
-                message =
-                        "boolean field '" + fieldKey(f) + "' is only ever "
-                                + (mask == STATE_A ? "true" : "false") + "; remove the field.";
+                message = "boolean field '" + fieldKey(f) + "' is only ever " + (mask == STATE_A ? "true" : "false")
+                        + "; remove the field.";
             }
             report(kind == Kind.OPT ? "OptFieldBothStates" : "BoolFieldBothStates", f, message);
         }
@@ -244,10 +234,9 @@ public final class StateChecks {
         if (e instanceof CtInvocation<?> inv) {
             var ex = inv.getExecutable();
             String name = ex == null ? "" : ex.getSimpleName();
-            String owner =
-                    ex == null || ex.getDeclaringType() == null
-                            ? ""
-                            : ex.getDeclaringType().getQualifiedName();
+            String owner = ex == null || ex.getDeclaringType() == null
+                    ? ""
+                    : ex.getDeclaringType().getQualifiedName();
             if (kind == Kind.OPT && OPT.equals(owner)) {
                 if ("none".equals(name)) return STATE_B;
                 if ("some".equals(name)) return STATE_A;
@@ -312,7 +301,8 @@ public final class StateChecks {
     }
 
     private int[] flowsOf(CtExecutable<?> target) {
-        return paramFlows.computeIfAbsent(key(target), x -> new int[target.getParameters().size()]);
+        return paramFlows.computeIfAbsent(
+                key(target), x -> new int[target.getParameters().size()]);
     }
 
     private static List<CtExecutable<?>> targetsOf(CtExecutable<?> decl) {
@@ -337,11 +327,11 @@ public final class StateChecks {
     }
 
     private static String key(CtExecutable<?> ex) {
-        String owner =
-                ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
-                        ? tm.getDeclaringType().getQualifiedName()
-                        : "?";
-        StringBuilder sb = new StringBuilder(owner).append('#').append(ex.getSimpleName()).append('(');
+        String owner = ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
+                ? tm.getDeclaringType().getQualifiedName()
+                : "?";
+        StringBuilder sb =
+                new StringBuilder(owner).append('#').append(ex.getSimpleName()).append('(');
         List<CtParameter<?>> ps = ex.getParameters();
         for (int i = 0; i < ps.size(); i++) {
             if (i > 0) sb.append(',');

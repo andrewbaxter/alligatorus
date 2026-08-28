@@ -1,7 +1,6 @@
 package compilerxyz.util;
 
 import compilerxyz.annotations.CodegenDescriptor;
-
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 

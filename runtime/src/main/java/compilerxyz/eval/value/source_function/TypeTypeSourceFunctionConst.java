@@ -1,8 +1,7 @@
 package compilerxyz.eval.value.source_function;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
-
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.artifact.Artifact;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
@@ -15,7 +14,6 @@ import compilerxyz.eval.aspect.Aspect;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.gen.TargetBindSub;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.empty_.ValueEmpty;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -32,127 +30,130 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.TargetBindSub;
 import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
-import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6135L)
 public final class TypeTypeSourceFunctionConst {
-  private TypeTypeSourceFunctionConst() {}
+    private TypeTypeSourceFunctionConst() {}
 
-  public static Type dynamicType() {
-    return Holder.INSTANCE;
-  }
-
-  private static final class Holder {
-    static final Impl INSTANCE = new Impl();
-  }
-
-  private static final class Impl implements Type, AspectLift, AspectConsumeDynamic,
-      AspectBind, AspectBindDynamic, AspectInitialBind, AspectDropDynamicLight {
-
-    @Override
-    public String typeDesc() {
-      return "definition_set_function";
+    public static Type dynamicType() {
+        return Holder.INSTANCE;
     }
 
-
-    @Override
-    public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-      if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)) {
-        return Opt.some(this);
-      }
-      if (key.equals(GenAspectLift.AspectId)
-          || key.equals(GenAspectConsumeDynamic.AspectId)
-          || key.equals(GenAspectBind.AspectId)
-          || key.equals(GenAspectBindDynamic.AspectId)
-          || key.equals(GenAspectInitialBind.AspectId)
-          || key.equals(GenAspectDropDynamicLight.AspectId)) {
-        return Opt.some(this);
-      }
-      return Opt.none();
+    private static final class Holder {
+        static final Impl INSTANCE = new Impl();
     }
 
-    @Override
-    public EResult<AspectBind.BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-      return DynUtil.bindViaTarget(xx, loc, cv);
-    }
+    private static final class Impl
+            implements Type,
+                    AspectLift,
+                    AspectConsumeDynamic,
+                    AspectBind,
+                    AspectBindDynamic,
+                    AspectInitialBind,
+                    AspectDropDynamicLight {
 
-    @Override
-    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-      return DynUtil.bindDynamicDefault(xx, loc, cv);
-    }
+        @Override
+        public String typeDesc() {
+            return "definition_set_function";
+        }
 
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-      return new BindingDynamicBinding(dynamicKey, this);
-    }
+        @Override
+        public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+            if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)) {
+                return Opt.some(this);
+            }
+            if (key.equals(GenAspectLift.AspectId)
+                    || key.equals(GenAspectConsumeDynamic.AspectId)
+                    || key.equals(GenAspectBind.AspectId)
+                    || key.equals(GenAspectBindDynamic.AspectId)
+                    || key.equals(GenAspectInitialBind.AspectId)
+                    || key.equals(GenAspectDropDynamicLight.AspectId)) {
+                return Opt.some(this);
+            }
+            return Opt.none();
+        }
 
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-      return DynUtil.dropDefault(xx, loc, cv);
-    }
+        @Override
+        public EResult<AspectBind.BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
+            return DynUtil.bindViaTarget(xx, loc, cv);
+        }
 
-    @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(
-        ExprContext xx, QExprId loc, CodeValue cv) {
-      return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
-    }
+        @Override
+        public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+            return DynUtil.bindDynamicDefault(xx, loc, cv);
+        }
 
-    @Override
-    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-      return JavaDataDescriptor.fromClass(TypeSourceFunctionConst.class);
-    }
+        @Override
+        public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
+            return new BindingDynamicBinding(dynamicKey, this);
+        }
 
-    @Override
-    public boolean typeIsEqual(ExprContext xx, Type other) {
-      return other
-          .typeAspect(xx, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)
-          .optIsSome();
-    }
+        @Override
+        public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
+            return DynUtil.dropDefault(xx, loc, cv);
+        }
 
-    @Override
-    public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-      return false;
-    }
+        @Override
+        public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+            return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+        }
 
-    @Override
-    public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-      return EResult.err(loc, typeDesc() + "::typeCastFrom: not supported");
-    }
+        @Override
+        public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
+            return JavaDataDescriptor.fromClass(TypeSourceFunctionConst.class);
+        }
 
-    @Override
-    public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-      return false;
-    }
+        @Override
+        public boolean typeIsEqual(ExprContext xx, Type other) {
+            return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_FUNCTION_CONST_IDENTITY)
+                    .optIsSome();
+        }
 
-    @Override
-    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-      return EResult.err(loc, typeDesc() + "::typeCastTo: not supported");
-    }
+        @Override
+        public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+            return false;
+        }
 
-    @Override
-    public EResult<Value> aspectLiftLift(
-        ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-      if (externalHostValue.optIsNone()) {
-        return EResult.err(loc, typeDesc() + "::lift: unexpected host null");
-      }
-      var rawHostValue = externalHostValue.optUnwrap();
-      if (rawHostValue instanceof ValueObjectConst voc
-          && voc.data() instanceof TypeSourceFunctionConst func) {
-        return EResult.ok(new ValueEmpty(func));
-      }
-      if (rawHostValue instanceof TypeSourceFunctionConst func) {
-        return EResult.ok(new ValueEmpty(func));
-      }
-      return EResult.err(
-          loc,
-          typeDesc() + "::lift: unexpected host " + rawHostValue.getClass().getName());
-    }
+        @Override
+        public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+            return EResult.err(loc, typeDesc() + "::typeCastFrom: not supported");
+        }
 
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-      return Type.exportArtifact(xx, loc, this);
+        @Override
+        public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+            return false;
+        }
+
+        @Override
+        public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+            return EResult.err(loc, typeDesc() + "::typeCastTo: not supported");
+        }
+
+        @Override
+        public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+            if (externalHostValue.optIsNone()) {
+                return EResult.err(loc, typeDesc() + "::lift: unexpected host null");
+            }
+            var rawHostValue = externalHostValue.optUnwrap();
+            if (rawHostValue instanceof ValueObjectConst voc && voc.data() instanceof TypeSourceFunctionConst func) {
+                return EResult.ok(new ValueEmpty(func));
+            }
+            if (rawHostValue instanceof TypeSourceFunctionConst func) {
+                return EResult.ok(new ValueEmpty(func));
+            }
+            return EResult.err(
+                    loc,
+                    typeDesc() + "::lift: unexpected host "
+                            + rawHostValue.getClass().getName());
+        }
+
+        @Override
+        public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+            return Type.exportArtifact(xx, loc, this);
+        }
     }
-  }
 }

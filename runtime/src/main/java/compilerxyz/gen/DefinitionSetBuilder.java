@@ -6,17 +6,15 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.SourceId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.dynamic.DynCompileErrors;
 import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.eval.value.source_function.SourceFunctionData;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.eval.value.source_interface.InterfaceData;
-import compilerxyz.util.Opt;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_union.TypeSourceUnionDynamic;
-import java.lang.String;
-import compilerxyz.eval.dynamic.DynCompileErrors;
 import compilerxyz.util.TList;
 
 @BuiltinPushStruct
@@ -68,8 +66,7 @@ public final class DefinitionSetBuilder {
         var _r = this.inner.finish(xx, _loc);
         if (_r.hasErrors()) {
             var _errs = _r.errorsOrNull();
-            throw new DynCompileErrors(
-                _errs.optUnwrapOr(new TList<>()));
+            throw new DynCompileErrors(_errs.optUnwrapOr(new TList<>()));
         }
     }
 }

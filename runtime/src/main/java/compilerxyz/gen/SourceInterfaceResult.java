@@ -3,14 +3,10 @@ package compilerxyz.gen;
 import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
-import compilerxyz.eval.value.source_interface.InterfaceData;
+import compilerxyz.eval.dynamic.DynRuntime;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.util.Opt;
-import java.lang.Boolean;
-import java.lang.IllegalStateException;
-import java.lang.String;
-import compilerxyz.eval.dynamic.DynRuntime;
 
 @BuiltinPushStruct
 public final class SourceInterfaceResult {

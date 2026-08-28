@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
@@ -21,8 +22,6 @@ import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.dynamic.JavaInternalName;
-import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.object_.ValueObjectConst;
@@ -31,6 +30,7 @@ import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectType;
 import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectBind;
@@ -38,6 +38,7 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
 import compilerxyz.gen.GenAspectInitialBind;
+import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
 import compilerxyz.gen.GenCodegenDescriptors;
@@ -46,25 +47,20 @@ import compilerxyz.gen.Value;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
-import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.GenAspectLift;
-import compilerxyz.artifact.Artifact;
 
 @BuiltinLight(uniqueId = 6196L)
 public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type_)
-        implements
-        Type,
-        AspectBind,
-        AspectConsumeDynamic,
-        AspectDropDynamicLight,
-        AspectField,
-        AspectInitialBind,
-        AspectLift,
-        AspectType,
-        ExporterAny {
+        implements Type,
+                AspectBind,
+                AspectConsumeDynamic,
+                AspectDropDynamicLight,
+                AspectField,
+                AspectInitialBind,
+                AspectLift,
+                AspectType,
+                ExporterAny {
 
-    public static final TypeTypeSourceInterfaceDynamic GENERIC =
-            new TypeTypeSourceInterfaceDynamic(Opt.none());
+    public static final TypeTypeSourceInterfaceDynamic GENERIC = new TypeTypeSourceInterfaceDynamic(Opt.none());
 
     private TypeSourceInterfaceDynamic require(String op) {
         if (type_.optIsSome()) return type_.optUnwrap();
@@ -102,31 +98,29 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()
-                || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
+        return destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+                        .optIsSome()
+                || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY)
+                        .optIsSome();
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
-            return EResult.ok(
-                    new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
         }
-        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY).optIsSome()) {
+        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+                .optIsSome()) {
             var sourceCode = cv.code().codeDynamic();
             if (sourceCode == null) {
-                return EResult.err(
-                        loc, "cast interface → interface_data: source has no runtime code");
+                return EResult.err(loc, "cast interface → interface_data: source has no runtime code");
             }
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
-            seq.add(
-                    JavaBytecodeUtils.callMethod(
-                            loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
-            return EResult.ok(
-                    new CodeValue(
-                            Code.of(loc, new CodeDynamic(loc, seq)),
-                            EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            seq.add(JavaBytecodeUtils.callMethod(
+                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
+            return EResult.ok(new CodeValue(
+                    Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
         }
         return EResult.err(loc, "Cannot cast interface to " + destType.typeDesc());
     }
@@ -134,9 +128,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
         var host = (TypeSourceInterfaceDynamic) externalHostValue.optUnwrap();
-        return EResult.ok(
-                new ValueObjectConst(
-                        new TypeTypeSourceInterfaceDynamic(Opt.some(host)), host));
+        return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(host)), host));
     }
 
     @Override
@@ -160,8 +152,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         var type = require("aspectFieldField");
         if (key.value().optIsNone()) {
-            return EResult.err(
-                    loc, "TypeTypeSourceInterfaceDynamic::field: key has no compile-time value");
+            return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::field: key has no compile-time value");
         }
         var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
         ConstKey ck;
@@ -175,8 +166,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         switch (ck) {
             case ConstKey.Str s -> keyStr = s;
             case ConstKey.Uint u -> {
-                return EResult.err(
-                        loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
+                return EResult.err(loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
             }
         }
         var keyName = keyStr.value();
@@ -197,12 +187,12 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
             if (dropRes.hasErrors()) return dropRes.reerr();
             var seq = new JavaBytecodeSequence();
             seq.add(carry.codeDynamic());
-            var dropDyn = dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop").codeDynamic();
+            var dropDyn = dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop")
+                    .codeDynamic();
             if (dropDyn != null) seq.add(dropDyn);
             carry = Code.of(loc, new CodeDynamic(loc, seq));
         }
-        return EResult.ok(
-                new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
+        return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
     }
 
     @Override

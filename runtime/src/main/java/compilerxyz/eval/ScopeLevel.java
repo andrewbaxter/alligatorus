@@ -19,12 +19,7 @@ public sealed interface ScopeLevel {
         final Emission emission;
 
         public Entry(
-                Opt<ConstKey> name,
-                Binding binding,
-                boolean stackOnly,
-                long state,
-                long dropState,
-                Emission emission) {
+                Opt<ConstKey> name, Binding binding, boolean stackOnly, long state, long dropState, Emission emission) {
             this.name = name;
             this.binding = binding;
             this.stackOnly = stackOnly;
@@ -107,12 +102,10 @@ public sealed interface ScopeLevel {
             return emission;
         }
 
-        public record Pending(JumpKey self, DestKey key) {
-        }
+        public record Pending(JumpKey self, DestKey key) {}
     }
 
-    record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {
-    }
+    record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {}
 
     final class DestKey {
         public final long dropState;
@@ -146,12 +139,13 @@ public sealed interface ScopeLevel {
                     && d.dropState == dropState
                     && d.label.equals(label)
                     && switch (d.next) {
-                case Opt.Some<JumpKey> as -> switch (next) {
-                    case Opt.Some<JumpKey> bs -> as.value() == bs.value();
-                    case Opt.None<JumpKey> ignored -> false;
-                };
-                case Opt.None<JumpKey> ignored -> next.optIsNone();
-            }
+                        case Opt.Some<JumpKey> as ->
+                            switch (next) {
+                                case Opt.Some<JumpKey> bs -> as.value() == bs.value();
+                                case Opt.None<JumpKey> ignored -> false;
+                            };
+                        case Opt.None<JumpKey> ignored -> next.optIsNone();
+                    }
                     && d.carryTypeIdx == carryTypeIdx;
         }
 
@@ -159,9 +153,8 @@ public sealed interface ScopeLevel {
         public int hashCode() {
             int h = Long.hashCode(dropState);
             h = h * 31 + label.hashCode();
-            h =
-                    h * 31
-                            + switch (next) {
+            h = h * 31
+                    + switch (next) {
                         case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
                         case Opt.None<JumpKey> ignored -> 0;
                     };

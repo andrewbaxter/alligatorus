@@ -7,8 +7,8 @@ import compilerxyz.eval.ExprErr;
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
-import compilerxyz.util.Result;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import org.junit.jupiter.api.Test;
@@ -20,14 +20,12 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.call(mb.log(), mb.str("before")),
-                                mb.returnEmpty(),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.call(mb.log(), mb.str("before")), mb.returnEmpty(), mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-        assertTrue(switch (res) {
+        assertTrue(
+                switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
                 },
@@ -40,13 +38,10 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.call(mb.log(), mb.str("before")),
-                                mb.labeled("outer", mb.seqOf(
-                                        mb.call(mb.log(), mb.str("inside")),
-                                        mb.returnLabel("outer"))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.call(mb.log(), mb.str("before")),
+                        mb.labeled("outer", mb.seqOf(mb.call(mb.log(), mb.str("inside")), mb.returnLabel("outer"))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes49;
@@ -68,28 +63,26 @@ public final class T0150ReturnTest {
     public void test01615ReturnInOperandRejected() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put(
-                "main",
-                new SourceModule.V1(mb.seqOf(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
+        modules.put("main", new SourceModule.V1(mb.seqOf(mb.operatorAdd(mb.num(1.0), mb.return_(mb.num(5.0))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
                 switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
-                }, () -> "return in an operand should fail compile: " + res);
+                },
+                () -> "return in an operand should fail compile: " + res);
     }
 
     @Test
     public void test01620ReturnUnknownLabelErrors() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        modules.put(
-                "main",
-                new SourceModule.V1(mb.returnLabel("nowhere")));
+        modules.put("main", new SourceModule.V1(mb.returnLabel("nowhere")));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-        assertTrue(switch (res) {
+        assertTrue(
+                switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
                 },
@@ -102,14 +95,14 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.labeled("other", mb.call(mb.log(), mb.str("in-other"))),
-                                mb.labeled("outer", mb.seqOf(mb.returnLabel("other"))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.labeled("other", mb.call(mb.log(), mb.str("in-other"))),
+                        mb.labeled("outer", mb.seqOf(mb.returnLabel("other"))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-        assertTrue(switch (res) {
+        assertTrue(
+                switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
                 },
@@ -122,23 +115,23 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.bind(
-                                        "my_list",
-                                        mb.call(
-                                                mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
-                                                mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
-                                mb.foreach(
-                                        mb.scopeUse("my_list"),
-                                        mb.str("e"),
-                                        mb.seqOf(
-                                                mb.call(mb.log(), mb.str("iter")),
-                                                mb.returnEmpty(),
-                                                mb.call(mb.log(), mb.str("SHOULD NOT LOG")))))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind(
+                                "my_list",
+                                mb.call(
+                                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                                        mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
+                        mb.foreach(
+                                mb.scopeUse("my_list"),
+                                mb.str("e"),
+                                mb.seqOf(
+                                        mb.call(mb.log(), mb.str("iter")),
+                                        mb.returnEmpty(),
+                                        mb.call(mb.log(), mb.str("SHOULD NOT LOG")))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-        assertTrue(switch (res) {
+        assertTrue(
+                switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
                 },
@@ -152,11 +145,7 @@ public final class T0150ReturnTest {
         modules.put(
                 "main",
                 new SourceModule.V1(
-                        mb.call(
-                                mb.log(),
-                                mb.labeled("out",
-                                        mb.seqOf(
-                                                mb.return_("out", mb.str("returned-value")))))));
+                        mb.call(mb.log(), mb.labeled("out", mb.seqOf(mb.return_("out", mb.str("returned-value")))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes144;
@@ -178,8 +167,9 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.labeled("out", mb.seqOf(
+                new SourceModule.V1(mb.labeled(
+                        "out",
+                        mb.seqOf(
                                 mb.call(mb.log(), mb.str("before")),
                                 mb.ifOf(
                                         TList.of(new TestMb.Branch(
@@ -192,7 +182,8 @@ public final class T0150ReturnTest {
                                 mb.call(mb.log(), mb.str("SHOULD NOT LOG AFTER"))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-        assertTrue(switch (res) {
+        assertTrue(
+                switch (res) {
                     case Result.Err<?, ?> ignored -> true;
                     case Result.Ok<?, ?> ignored -> false;
                 },
@@ -205,22 +196,19 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.bind(
-                                        "my_list",
-                                        mb.call(
-                                                mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
-                                                mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
-                                mb.labeled(
-                                        "outer",
-                                        mb.foreach(
-                                                mb.scopeUse("my_list"),
-                                                mb.str("e"),
-                                                mb.seqOf(
-                                                        mb.call(mb.log(), mb.str("iter")),
-                                                        mb.returnLabel("outer")))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind(
+                                "my_list",
+                                mb.call(
+                                        mb.field(mb.call(mb.typesList(), mb.typesInt()), mb.str("new")),
+                                        mb.tupleOf(mb.num(1.), mb.num(2.), mb.num(3.)))),
+                        mb.labeled(
+                                "outer",
+                                mb.foreach(
+                                        mb.scopeUse("my_list"),
+                                        mb.str("e"),
+                                        mb.seqOf(mb.call(mb.log(), mb.str("iter")), mb.returnLabel("outer")))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes203;
@@ -243,18 +231,15 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.labeled(
-                                        "outer",
-                                        mb.ifOf(
-                                                TList.of(new TestMb.Branch(
-                                                        mb.bool(true),
-                                                        mb.seqOf(
-                                                                mb.call(mb.log(), mb.str("in-if")),
-                                                                mb.returnLabel("outer")))),
-                                                Opt.some(mb.call(mb.log(), mb.str("SHOULD NOT LOG else"))))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.labeled(
+                                "outer",
+                                mb.ifOf(
+                                        TList.of(new TestMb.Branch(
+                                                mb.bool(true),
+                                                mb.seqOf(mb.call(mb.log(), mb.str("in-if")), mb.returnLabel("outer")))),
+                                        Opt.some(mb.call(mb.log(), mb.str("SHOULD NOT LOG else"))))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes230;
@@ -277,51 +262,47 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.bind(
-                                        "strnum",
-                                        mb.lower(
-                                                mb.seqOf(
-                                                        mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
-                                                        mb.bind(
-                                                                "builder",
-                                                                mb.call(
-                                                                        mb.field(mb.scopeUse("d"), mb.str("union")),
-                                                                        mb.tupleOf())),
-                                                        mb.bind(
-                                                                "new_str",
-                                                                mb.field(mb.call(
-                                                                        mb.field(mb.scopeUse("builder"), mb.str("variant")),
-                                                                        mb.recordOf(
-                                                                                TList.of(
-                                                                                        new TestMb.RecordPair("tag", mb.str("strtag")),
-                                                                                        new TestMb.RecordPair(
-                                                                                                "type_ref", mb.typesString())))), mb.str("value"))),
-                                                        mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
-                                                        mb.return_(mb.recordOf(
-                                                                TList.of(
-                                                                        new TestMb.RecordPair(
-                                                                                "type",
-                                                                                mb.field(mb.scopeUse("builder"), mb.str("type"))),
-                                                                        new TestMb.RecordPair("str", mb.scopeUse("new_str")))))))),
-                                mb.bind(
-                                        "x",
-                                        mb.call(
-                                                mb.field(mb.scopeUse("strnum"), mb.str("str")), mb.str("value"))),
-                                mb.labeled(
-                                        "outer",
-                                        mb.matchOf(
-                                                mb.scopeUse("x"),
-                                                mb.str("y"),
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind(
+                                "strnum",
+                                mb.lower(mb.seqOf(
+                                        mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
+                                        mb.bind(
+                                                "builder",
+                                                mb.call(mb.field(mb.scopeUse("d"), mb.str("union")), mb.tupleOf())),
+                                        mb.bind(
+                                                "new_str",
+                                                mb.field(
+                                                        mb.call(
+                                                                mb.field(mb.scopeUse("builder"), mb.str("variant")),
+                                                                mb.recordOf(
+                                                                        TList.of(
+                                                                                new TestMb.RecordPair(
+                                                                                        "tag", mb.str("strtag")),
+                                                                                new TestMb.RecordPair(
+                                                                                        "type_ref",
+                                                                                        mb.typesString())))),
+                                                        mb.str("value"))),
+                                        mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
+                                        mb.return_(mb.recordOf(
                                                 TList.of(
-                                                        new TestMb.Branch(
-                                                                mb.str("strtag"),
-                                                                mb.seqOf(
-                                                                        mb.call(mb.log(), mb.str("in-match")),
-                                                                        mb.returnLabel("outer")))),
-                                                Opt.none())),
-                                mb.call(mb.log(), mb.str("after")))));
+                                                        new TestMb.RecordPair(
+                                                                "type",
+                                                                mb.field(mb.scopeUse("builder"), mb.str("type"))),
+                                                        new TestMb.RecordPair("str", mb.scopeUse("new_str")))))))),
+                        mb.bind("x", mb.call(mb.field(mb.scopeUse("strnum"), mb.str("str")), mb.str("value"))),
+                        mb.labeled(
+                                "outer",
+                                mb.matchOf(
+                                        mb.scopeUse("x"),
+                                        mb.str("y"),
+                                        TList.of(new TestMb.Branch(
+                                                mb.str("strtag"),
+                                                mb.seqOf(
+                                                        mb.call(mb.log(), mb.str("in-match")),
+                                                        mb.returnLabel("outer")))),
+                                        Opt.none())),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes290;
@@ -344,17 +325,14 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.labeled(
-                                "out",
-                                mb.seqOf(
-                                        mb.call(mb.log(), mb.str("before")),
-                                        mb.ifOf(
-                                                TList.of(new TestMb.Branch(
-                                                        mb.bool(false),
-                                                        mb.returnLabel("out"))),
-                                                Opt.some(mb.call(mb.log(), mb.str("else")))),
-                                        mb.call(mb.log(), mb.str("after"))))));
+                new SourceModule.V1(mb.labeled(
+                        "out",
+                        mb.seqOf(
+                                mb.call(mb.log(), mb.str("before")),
+                                mb.ifOf(
+                                        TList.of(new TestMb.Branch(mb.bool(false), mb.returnLabel("out"))),
+                                        Opt.some(mb.call(mb.log(), mb.str("else")))),
+                                mb.call(mb.log(), mb.str("after"))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes319;
@@ -378,17 +356,14 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.labeled(
-                                        "outer",
-                                        mb.tryCatchFinally(
-                                                mb.seqOf(
-                                                        mb.call(mb.log(), mb.str("body")),
-                                                        mb.returnLabel("outer")),
-                                                Opt.none(),
-                                                Opt.some(mb.call(mb.log(), mb.str("finally"))))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.labeled(
+                                "outer",
+                                mb.tryCatchFinally(
+                                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.returnLabel("outer")),
+                                        Opt.none(),
+                                        Opt.some(mb.call(mb.log(), mb.str("finally"))))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes348;
@@ -412,26 +387,21 @@ public final class T0150ReturnTest {
     public void test01678LabeledReturnFinallyWithBranches() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        var dynTrue =
-                mb.operatorEq(
-                        mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+        var dynTrue = mb.operatorEq(mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.labeled(
-                                        "outer",
-                                        mb.tryCatchFinally(
-                                                mb.seqOf(
-                                                        mb.call(mb.log(), mb.str("body")),
-                                                        mb.returnLabel("outer")),
-                                                Opt.none(),
-                                                Opt.some(mb.ifOf(
-                                                        TList.of(
-                                                                new TestMb.Branch(
-                                                                        dynTrue, mb.call(mb.log(), mb.str("fin-then")))),
-                                                        Opt.some(mb.call(mb.log(), mb.str("fin-else"))))))),
-                                mb.call(mb.log(), mb.str("after")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.labeled(
+                                "outer",
+                                mb.tryCatchFinally(
+                                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.returnLabel("outer")),
+                                        Opt.none(),
+                                        Opt.some(mb.ifOf(
+                                                TList.of(
+                                                        new TestMb.Branch(
+                                                                dynTrue, mb.call(mb.log(), mb.str("fin-then")))),
+                                                Opt.some(mb.call(mb.log(), mb.str("fin-else"))))))),
+                        mb.call(mb.log(), mb.str("after")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes388;
@@ -457,10 +427,9 @@ public final class T0150ReturnTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
-                        mb.seqOf(
-                                mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
-                                mb.call(mb.log(), mb.str("done")))));
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
+                        mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes414;
@@ -475,5 +444,4 @@ public final class T0150ReturnTest {
         assertEquals(1, ok.logs().size());
         assertEquals("done", ok.logs().get(0).message());
     }
-
 }

@@ -27,18 +27,17 @@ public interface Type extends Artifactable {
         return aa.aspectArtifactExporter().artifactExporterExport(xx, loc, ea);
     }
 
+    boolean typeIsEqual(ExprContext xx, Type other);
 
-  boolean typeIsEqual(ExprContext xx, Type other);
+    boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
 
-  boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType);
+    EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
 
-  EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv);
+    boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
 
-  boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType);
+    EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
 
-  EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
+    String typeDesc();
 
-  String typeDesc();
-
-  Opt<Aspect> typeAspect(ExprContext xx, Unique key);
+    Opt<Aspect> typeAspect(ExprContext xx, Unique key);
 }

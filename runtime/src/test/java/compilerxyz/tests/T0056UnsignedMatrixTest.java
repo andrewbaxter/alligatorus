@@ -3,18 +3,18 @@ package compilerxyz.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import compilerxyz.eval.ExprErr;
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
-import compilerxyz.util.Result;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import compilerxyz.eval.ExprErr;
 
 public final class T0056UnsignedMatrixTest {
 
@@ -49,10 +49,9 @@ public final class T0056UnsignedMatrixTest {
         }
 
         void bool(SourceExpr cond, boolean exp) {
-            stmts.add(
-                    mb.ifOf(
-                            TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
-                            Opt.some(mb.call(mb.log(), mb.str("F")))));
+            stmts.add(mb.ifOf(
+                    TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
+                    Opt.some(mb.call(mb.log(), mb.str("F")))));
             expected.add(exp ? "T" : "F");
         }
     }
@@ -160,16 +159,15 @@ public final class T0056UnsignedMatrixTest {
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(
+                new SourceModule.V1(mb.call(
+                        mb.log(),
                         mb.call(
-                                mb.log(),
-                                mb.call(
-                                        mb.field(
-                                                mb.operatorAdd(
-                                                        mb.as_(mb.num(1.0), mb.typesUint()),
-                                                        mb.as_(mb.num(1.0), mb.typesInt())),
-                                                mb.str("to_string")),
-                                        mb.tupleOf()))));
+                                mb.field(
+                                        mb.operatorAdd(
+                                                mb.as_(mb.num(1.0), mb.typesUint()),
+                                                mb.as_(mb.num(1.0), mb.typesInt())),
+                                        mb.str("to_string")),
+                                mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(
@@ -178,8 +176,6 @@ public final class T0056UnsignedMatrixTest {
                     case Result.Err<?, ?> e -> true;
                 },
                 () -> "expected mixed signed/unsigned add to fail, got " + res);
-        assertTrue(
-                res.toString().contains("mix signed and unsigned"),
-                () -> "expected a signedness error, got " + res);
+        assertTrue(res.toString().contains("mix signed and unsigned"), () -> "expected a signedness error, got " + res);
     }
 }

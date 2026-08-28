@@ -8,14 +8,14 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSetInterface(
-    Artifact defSet,
-    DefSetId defSetId,
-    Unique identity,
-    Opt<String> description,
-    boolean isAspect,
-    Opt<Unique> aspectId,
-    Opt<BuiltinInterfaceKind> builtinKind,
-    String compiledBinaryName,
-    Opt<byte[]> compiledBytecode,
-    TList<ArtifactDataDefSetInterfaceMethodData> methods)
-    implements SafeJsonSerializable {}
+        Artifact defSet,
+        DefSetId defSetId,
+        Unique identity,
+        Opt<String> description,
+        boolean isAspect,
+        Opt<Unique> aspectId,
+        Opt<BuiltinInterfaceKind> builtinKind,
+        String compiledBinaryName,
+        Opt<byte[]> compiledBytecode,
+        TList<ArtifactDataDefSetInterfaceMethodData> methods)
+        implements SafeJsonSerializable {}

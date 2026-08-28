@@ -4,7 +4,7 @@ import com.squareup.javapoet.CodeBlock;
 import compilerxyz.util.Opt;
 
 public record NamedTypeRef(String name, TypeRef type, Opt<CodeBlock> derivedFrom) {
-  public NamedTypeRef(String name, TypeRef type) {
-    this(name, type, Opt.none());
-  }
+    public NamedTypeRef(String name, TypeRef type) {
+        this(name, type, Opt.none());
+    }
 }

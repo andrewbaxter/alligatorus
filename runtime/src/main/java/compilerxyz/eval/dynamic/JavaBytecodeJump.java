@@ -2,7 +2,6 @@ package compilerxyz.eval.dynamic;
 
 import compilerxyz.eval.JumpKey;
 
-
 public class JavaBytecodeJump implements JavaBytecode {
     public final JumpKey jumpKey;
 
@@ -12,6 +11,6 @@ public class JavaBytecodeJump implements JavaBytecode {
 
     @Override
     public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
-    return dispatcher.dispatcherHandleJump(this);
+        return dispatcher.dispatcherHandleJump(this);
     }
 }

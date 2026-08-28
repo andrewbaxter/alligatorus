@@ -3,18 +3,18 @@ package compilerxyz.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import compilerxyz.eval.ExprErr;
 import compilerxyz.langhelp.Compile;
 import compilerxyz.syntax.SourceExpr;
 import compilerxyz.syntax.SourceModule;
 import compilerxyz.syntax.SourceSpecAbsolute;
-import compilerxyz.util.Result;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import compilerxyz.eval.ExprErr;
 
 public final class T0055NumericMatrixTest {
 
@@ -57,18 +57,16 @@ public final class T0055NumericMatrixTest {
         }
 
         void bool(SourceExpr cond, boolean exp) {
-            stmts.add(
-                    mb.ifOf(
-                            TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
-                            Opt.some(mb.call(mb.log(), mb.str("F")))));
+            stmts.add(mb.ifOf(
+                    TList.of(new TestMb.Branch(cond, mb.call(mb.log(), mb.str("T")))),
+                    Opt.some(mb.call(mb.log(), mb.str("F")))));
             expected.add(exp ? "T" : "F");
         }
     }
 
     private void check(Cases c) {
         var modules = new TMap<String, SourceModule>();
-        modules.put(
-                "main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
+        modules.put("main", new SourceModule.V1(c.mb.seqOf(c.stmts.toArray(new SourceExpr[0]))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;

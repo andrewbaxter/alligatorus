@@ -1,6 +1,6 @@
 package compilerxyz.eval.value.object_;
 
 public enum ObjectDropKind {
-  DYNAMIC,
-  DYNAMIC_LIGHT,
+    DYNAMIC,
+    DYNAMIC_LIGHT,
 }

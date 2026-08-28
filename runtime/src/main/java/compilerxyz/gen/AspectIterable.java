@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.CodeValue;
@@ -12,10 +11,10 @@ import compilerxyz.eval.aspect.Aspect;
 
 @BuiltinFull(uniqueId = 1027L, identityId = 4027L)
 public interface AspectIterable extends Aspect {
-  Type aspectIterableElementType();
+    Type aspectIterableElementType();
 
-  Binding aspectIterableLoopBinding(ExprContext xx);
+    Binding aspectIterableLoopBinding(ExprContext xx);
 
-  EResult<CodeValue> aspectIterableForeach(
-      ExprContext xx, QExprId loc, CodeValue base, BindingId elementKey, CodeValue body);
+    EResult<CodeValue> aspectIterableForeach(
+            ExprContext xx, QExprId loc, CodeValue base, BindingId elementKey, CodeValue body);
 }

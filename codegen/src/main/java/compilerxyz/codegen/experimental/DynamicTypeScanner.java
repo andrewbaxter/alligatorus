@@ -2,7 +2,6 @@ package compilerxyz.codegen.experimental;
 
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
@@ -16,12 +15,10 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public final class DynamicTypeScanner {
-    private DynamicTypeScanner() {
-    }
+    private DynamicTypeScanner() {}
 
     static {
-        StaticJavaParser.getParserConfiguration()
-                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
+        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
     }
 
     public static TMap<ClassName, CodeBlock> scanRoot(Path runtimeSourceRoot) throws IOException {
@@ -32,7 +29,9 @@ public final class DynamicTypeScanner {
                 var src = Files.readString(file);
                 if (!src.contains("dynamicType") && !src.contains("@Builtin")) continue;
                 var cu = StaticJavaParser.parse(file);
-                var pkg = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse("");
+                var pkg = cu.getPackageDeclaration()
+                        .map(pd -> pd.getNameAsString())
+                        .orElse("");
                 for (var t : cu.getTypes()) {
                     walk(pkg, t, out);
                 }
@@ -81,16 +80,14 @@ public final class DynamicTypeScanner {
         var full = hasBuiltinFullAnnotation(t);
         var handWritten = hasNullaryDynamicType(t);
         if (full && handWritten) {
-            throw new IllegalStateException(
-                    "@BuiltinFull type "
-                            + cn.canonicalName()
-                            + " also hand-declares a nullary dynamicType(); its descriptor can't be both"
-                            + " generated and hand-written. Mark it @BuiltinLight (codegen generates no"
-                            + " companion) or drop the hand-written dynamicType().");
+            throw new IllegalStateException("@BuiltinFull type "
+                    + cn.canonicalName()
+                    + " also hand-declares a nullary dynamicType(); its descriptor can't be both"
+                    + " generated and hand-written. Mark it @BuiltinLight (codegen generates no"
+                    + " companion) or drop the hand-written dynamicType().");
         }
         if (full) {
-            out.put(
-                    cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", companionSimple)));
+            out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", companionSimple)));
         } else if (handWritten) {
             out.put(cn, CodeBlock.of("$T.dynamicType()", cn));
         }
@@ -107,9 +104,7 @@ public final class DynamicTypeScanner {
     }
 
     private static boolean hasNullaryDynamicType(TypeDeclaration<?> t) {
-        if (t instanceof ClassOrInterfaceDeclaration
-                || t instanceof RecordDeclaration
-                || t.isEnumDeclaration()) {
+        if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration || t.isEnumDeclaration()) {
             for (var m : t.getMethods()) {
                 if (isNullaryStaticDynamicType(m)) return true;
             }

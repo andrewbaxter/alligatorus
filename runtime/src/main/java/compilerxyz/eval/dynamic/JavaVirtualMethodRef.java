@@ -7,8 +7,7 @@ public final class JavaVirtualMethodRef {
     public final boolean ownerIsInterface;
 
     public JavaVirtualMethodRef(
-            JavaInternalName owner, String name, JavaMethodDescriptor descriptor,
-            boolean ownerIsInterface) {
+            JavaInternalName owner, String name, JavaMethodDescriptor descriptor, boolean ownerIsInterface) {
         this.owner = owner;
         this.name = name;
         this.descriptor = descriptor;

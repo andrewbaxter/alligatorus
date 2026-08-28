@@ -2,20 +2,6 @@ package compilerxyz.eval.dynamic;
 
 import compilerxyz.annotations.BuiltinFull;
 
-import compilerxyz.eval.Type;
-import compilerxyz.eval.Unique;
-import compilerxyz.eval.value.object_.ObjectAspectSource;
-import compilerxyz.eval.value.object_.ObjectDataField;
-import compilerxyz.eval.value.object_.ObjectDropKind;
-import compilerxyz.eval.value.object_.ObjectMethod;
-import compilerxyz.eval.value.object_.TypeObjectCastFromRule;
-import compilerxyz.eval.value.object_.TypeObjectCastRule;
-import compilerxyz.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.eval.value.object_.TypeObjectMeta;
-import compilerxyz.gen.GenTrivialIdentityAspects;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-
 @BuiltinFull(uniqueId = 6014L)
 public final class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
@@ -30,7 +16,9 @@ public final class JavaDataDescriptor {
 
     public final String value;
 
-    public String value() { return value; }
+    public String value() {
+        return value;
+    }
 
     public JavaDataDescriptor(String value) {
         this.value = value;
@@ -81,5 +69,4 @@ public final class JavaDataDescriptor {
     public int hashCode() {
         return value.hashCode();
     }
-
 }

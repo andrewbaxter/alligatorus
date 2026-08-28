@@ -1,22 +1,20 @@
 package compilerxyz.gen;
 
+import static compilerxyz.util.MustCast.mustCast;
+
 import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.Expr;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.expr.StagedExprCell;
-import compilerxyz.util.Opt;
-import static compilerxyz.util.MustCast.mustCast;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_object.SourceDataMethodData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceImplData;
 import compilerxyz.eval.value.source_object.SourceObjectInterfaceMethodImplData;
 import compilerxyz.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic;
-import java.lang.IllegalStateException;
-import java.lang.Object;
-import java.lang.String;
+import compilerxyz.util.Opt;
 import compilerxyz.util.TOrderedMap;
 import java.util.LinkedHashMap;
 

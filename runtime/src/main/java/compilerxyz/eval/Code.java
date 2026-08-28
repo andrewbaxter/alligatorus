@@ -3,7 +3,6 @@ package compilerxyz.eval;
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.annotations.CodegenDescriptor;
-
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 
@@ -11,68 +10,67 @@ import compilerxyz.eval.dynamic.JavaBytecodeSequence;
 @BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 
-  record None(QExprId loc) implements Code {
-    @Override
-    public CodeDynamic codeDynamic() {
-      return null;
+    record None(QExprId loc) implements Code {
+        @Override
+        public CodeDynamic codeDynamic() {
+            return null;
+        }
+
+        @Override
+        public boolean codeIsNone() {
+            return true;
+        }
     }
 
-    @Override
-    public boolean codeIsNone() {
-      return true;
+    record Target(TargetCode impl) implements Code {
+        @Override
+        public CodeDynamic codeDynamic() {
+            return impl instanceof CodeDynamic cd ? cd : null;
+        }
+
+        @Override
+        public boolean codeIsNone() {
+            return false;
+        }
     }
-  }
 
-  record Target(TargetCode impl) implements Code {
-    @Override
-    public CodeDynamic codeDynamic() {
-      return impl instanceof CodeDynamic cd ? cd : null;
+    CodeDynamic codeDynamic();
+
+    boolean codeIsNone();
+
+    static Code none(QExprId loc) {
+        return new None(loc);
     }
 
-    @Override
-    public boolean codeIsNone() {
-      return false;
+    static Code of(CodeDynamic dynamic) {
+        return new Target(dynamic);
     }
-  }
 
-  CodeDynamic codeDynamic();
+    static Code of(QExprId loc, CodeDynamic dynamic) {
+        return new Target(dynamic);
+    }
 
-  boolean codeIsNone();
+    @CodegenDescriptor
+    static Code target(TargetCode impl) {
+        return new Target(impl);
+    }
 
-  static Code none(QExprId loc) {
-    return new None(loc);
-  }
+    static Code concat(QExprId loc, Code first, Code second) {
+        var firstDyn = first.codeDynamic();
+        var secondDyn = second.codeDynamic();
+        if (firstDyn == null) return secondDyn == null ? first : second;
+        if (secondDyn == null) return first;
+        var seq = new JavaBytecodeSequence();
+        seq.add(firstDyn);
+        seq.add(secondDyn);
+        return of(loc, new CodeDynamic(loc, seq));
+    }
 
-  static Code of(CodeDynamic dynamic) {
-    return new Target(dynamic);
-  }
-
-  static Code of(QExprId loc, CodeDynamic dynamic) {
-    return new Target(dynamic);
-  }
-
-  @CodegenDescriptor
-  static Code target(TargetCode impl) {
-    return new Target(impl);
-  }
-
-  static Code concat(QExprId loc, Code first, Code second) {
-    var firstDyn = first.codeDynamic();
-    var secondDyn = second.codeDynamic();
-    if (firstDyn == null) return secondDyn == null ? first : second;
-    if (secondDyn == null) return first;
-    var seq = new JavaBytecodeSequence();
-    seq.add(firstDyn);
-    seq.add(secondDyn);
-    return of(loc, new CodeDynamic(loc, seq));
-  }
-
-  @CodegenDescriptor
-  static TargetCode targetImpl(Code code) {
-    return switch (code) {
-      case Code.Target t -> t.impl();
-      case Code.None n -> throw new IllegalStateException(
-          "Code::targetImpl: code is None, not Target");
-    };
-  }
+    @CodegenDescriptor
+    static TargetCode targetImpl(Code code) {
+        return switch (code) {
+            case Code.Target t -> t.impl();
+            case Code.None n -> throw new IllegalStateException("Code::targetImpl: code is None, not Target");
+        };
+    }
 }

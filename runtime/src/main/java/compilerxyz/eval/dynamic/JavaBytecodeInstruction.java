@@ -1,13 +1,13 @@
 package compilerxyz.eval.dynamic;
 
 public interface JavaBytecodeInstruction extends JavaBytecode {
-  void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher);
+    void javaBytecodeInstructionDispatchMore(MoreDispatcher moreDispatcher);
 
-  public interface MoreDispatcher {
-    void moreDispatcherHandleObj(JavaBytecodeInstructionObj n);
+    public interface MoreDispatcher {
+        void moreDispatcherHandleObj(JavaBytecodeInstructionObj n);
 
-    void moreDispatcherHandleInt(JavaBytecodeInstructionInt n);
+        void moreDispatcherHandleInt(JavaBytecodeInstructionInt n);
 
-    void moreDispatcherHandleTryCatch(JavaBytecodeInstructionTryCatch n);
-  }
+        void moreDispatcherHandleTryCatch(JavaBytecodeInstructionTryCatch n);
+    }
 }

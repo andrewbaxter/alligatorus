@@ -5,8 +5,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public final class ScopeChains {
-    private ScopeChains() {
-    }
+    private ScopeChains() {}
 
     public static EResult<Opt<JumpKey>> excDest(ExprContext xx, QExprId loc) {
         var levels = xx.scope.levels;
@@ -25,26 +24,22 @@ public final class ScopeChains {
                 }
                 case ScopeLevel.Temp temp -> cleanups.add(temp);
                 case ScopeLevel.Finally finally_ -> cleanups.add(finally_);
-                case ScopeLevel.Labeled labeled -> {
-                }
+                case ScopeLevel.Labeled labeled -> {}
             }
             if (done) break;
         }
         var parent = terminal;
         for (int i = cleanups.size() - 1; i >= 0; i--) {
-            var resolved =
-                    node(
-                            xx,
-                            loc,
-                            cleanups.get(i),
-                            new ScopeLevel.DestKey(
-                                    levelDropState(cleanups.get(i)), Opt.<String>none(), parent, -1));
+            var resolved = node(
+                    xx,
+                    loc,
+                    cleanups.get(i),
+                    new ScopeLevel.DestKey(levelDropState(cleanups.get(i)), Opt.<String>none(), parent, -1));
             if (resolved.hasErrors()) return resolved.reerr();
             parent = resolved.requireValue("ScopeChains.excDest node");
         }
         return EResult.ok(parent);
     }
-
 
     static long levelDropState(ScopeLevel level) {
         return switch (level) {
@@ -56,8 +51,7 @@ public final class ScopeChains {
         };
     }
 
-    static EResult<Opt<JumpKey>> node(
-            ExprContext xx, QExprId loc, ScopeLevel level, ScopeLevel.DestKey key) {
+    static EResult<Opt<JumpKey>> node(ExprContext xx, QExprId loc, ScopeLevel level, ScopeLevel.DestKey key) {
         var emission = level.scopeLevelEmission();
         var existing = emission.dests.getOrNull(key);
         if (existing != null) {
@@ -88,10 +82,13 @@ public final class ScopeChains {
             var self = new JumpKey();
             EResult<Code> nodeRes;
             if (key.label().optIsSome()) {
-                nodeRes =
-                        xx.target.targetExitTrampoline(
-                                xx, loc, self, key.carryType(emission), cleanup,
-                                key.next().optUnwrap());
+                nodeRes = xx.target.targetExitTrampoline(
+                        xx,
+                        loc,
+                        self,
+                        key.carryType(emission),
+                        cleanup,
+                        key.next().optUnwrap());
             } else {
                 nodeRes = xx.target.targetExcCleanup(xx, loc, self, cleanup, key.next());
             }
@@ -102,5 +99,4 @@ public final class ScopeChains {
         emission.dests.put(key, resolved);
         return EResult.ok(resolved);
     }
-
 }

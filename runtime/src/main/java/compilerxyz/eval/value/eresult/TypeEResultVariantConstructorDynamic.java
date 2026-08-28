@@ -1,11 +1,7 @@
 package compilerxyz.eval.value.eresult;
 
-import compilerxyz.eval.aspect.AspectLookup;
-
-import compilerxyz.gen.GenTrivialIdentityAspects;
-
-
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.artifact.Artifact;
 import compilerxyz.artifact.ExporterAny;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -15,8 +11,8 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeSequence;
@@ -25,26 +21,24 @@ import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.value.list.TypeListBoxedDynamic;
+import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.string.TypeStringDynamic;
 import compilerxyz.eval.value.tuple.Tuple;
 import compilerxyz.eval.value.tuple.TupleElement;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.gen.GenAspectFunction;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectConsumeDynamic;
-import compilerxyz.eval.value.list.TypeListBoxedDynamic;
-import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenExprErr;
 import compilerxyz.gen.GenQExprId;
-import compilerxyz.artifact.Artifact;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.Value;
+import compilerxyz.util.Opt;
+import compilerxyz.util.TList;
 
 @BuiltinLight(uniqueId = 6106L)
 public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
-    implements
-        Type,
-        AspectFunction,
-        ExporterAny {
+        implements Type, AspectFunction, ExporterAny {
 
     public enum Kind {
         OK,
@@ -52,163 +46,158 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
         ERRS
     }
 
-  @Override
-  public String typeDesc() {
-    return "eresult("
-        + elementType.typeDesc()
-        + ")."
-        + switch (kind) {
-          case OK -> "ok";
-          case ERR -> "err";
-          case ERRS -> "errs";
-        };
-  }
+    @Override
+    public String typeDesc() {
+        return "eresult("
+                + elementType.typeDesc()
+                + ")."
+                + switch (kind) {
+                    case OK -> "ok";
+                    case ERR -> "err";
+                    case ERRS -> "errs";
+                };
+    }
 
+    @Override
+    public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY)) {
+            return Opt.some(this);
+        }
+        if (key.equals(GenAspectFunction.AspectId)) {
+            return Opt.some(this);
+        }
+        return Opt.none();
+    }
 
-
-  @Override
-  public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-    if (key.equals(GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY)) {
-      return Opt.some(this);
-    }
-    if (key.equals(GenAspectFunction.AspectId)) {
-      return Opt.some(this);
-    }
-    return Opt.none();
-  }
-
-  @Override
-  public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var erb = new Erb(loc);
-    Type resultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, elementType));
-    if (kind == Kind.OK) {
-      var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
-      if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
-      var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
-      if (consumeRes.hasErrors()) return consumeRes.reerr();
-      var innerJsRes =
-          consumeRes
-              .requireValue("TypeEResultVariantConstructorDynamic::call ok consume")
-              .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.optUnwrap());
-      if (innerJsRes.hasErrors()) return innerJsRes.reerr();
-      var innerJs = innerJsRes.requireValue("TypeEResultVariantConstructorDynamic::call ok toDynamic");
-      var okSeq = new JavaBytecodeSequence();
-      okSeq.add(innerJs);
-      okSeq.add(
-          JavaBytecodeUtils.callStaticMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "ok",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromInternalName(
-                      JavaInternalName.fromClass(EResult.class)),
-                  TList.of(JvmConstants.DESC_OBJECT))));
-      return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType, 1));
-    }
-    if (kind == Kind.ERRS) {
-      var errsArgType =
-          new TypeListBoxedDynamic(GenExprErr.dynamicType());
-      var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
-      if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
-      var consumeRes = GenAspectConsumeDynamic.get(xx, loc, errsArgType);
-      if (consumeRes.hasErrors()) return consumeRes.reerr();
-      var listJsRes =
-          consumeRes
-              .requireValue("TypeEResultVariantConstructorDynamic::call errs consume")
-              .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.optUnwrap());
-      if (listJsRes.hasErrors()) return listJsRes.reerr();
-      var errsSeq = new JavaBytecodeSequence();
-      errsSeq.add(
-          listJsRes.requireValue("TypeEResultVariantConstructorDynamic::call errs toDynamic"));
-      errsSeq.add(
-          JavaBytecodeUtils.callStaticMethod(
-              loc,
-              JavaInternalName.fromClass(EResult.class),
-              "errs",
-              JavaMethodDescriptor.fromParts(
-                  JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
-                  TList.of(
-                      JavaDataDescriptor.fromInternalName(
-                          JavaInternalName.fromClass(compilerxyz.util.TList.class))))));
-      return EResult.ok(
-          DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errsSeq), resultType, 1));
-    }
-    var argTupleType =
-        new Tuple(
-            Opt.none(),
-            TList.of(
-                new TupleElement.Dynamic(GenQExprId.dynamicType()),
-                new TupleElement.Dynamic(new TypeStringDynamic())));
-    var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
-    if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
-    var slotsRes = DynUtil.destructurePositional(xx, loc, argTupleType, convertedOpt.optUnwrap());
-    if (slotsRes.hasErrors()) return slotsRes.reerr();
-    var slots = slotsRes.requireValue("TypeEResultVariantConstructorDynamic::call destructure");
-    if (slots.size() != 2) {
-      throw new AssertionError(
-          "TypeEResultVariantConstructorDynamic::call err: expected 2 slots, got " + slots.size());
-    }
-    var locJs = slots.get(0);
-    var msgJs = slots.get(1);
-    var errSeq = new JavaBytecodeSequence();
-    errSeq.add(locJs);
-    errSeq.add(msgJs);
-    errSeq.add(
-        JavaBytecodeUtils.callStaticMethod(
-            loc,
-            JavaInternalName.fromClass(EResult.class),
-            "err",
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromInternalName(
-                    JavaInternalName.fromClass(EResult.class)),
+    @Override
+    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+        var erb = new Erb(loc);
+        Type resultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, elementType));
+        if (kind == Kind.OK) {
+            var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, elementType, argument));
+            if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+            if (consumeRes.hasErrors()) return consumeRes.reerr();
+            var innerJsRes = consumeRes
+                    .requireValue("TypeEResultVariantConstructorDynamic::call ok consume")
+                    .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.optUnwrap());
+            if (innerJsRes.hasErrors()) return innerJsRes.reerr();
+            var innerJs = innerJsRes.requireValue("TypeEResultVariantConstructorDynamic::call ok toDynamic");
+            var okSeq = new JavaBytecodeSequence();
+            okSeq.add(innerJs);
+            okSeq.add(JavaBytecodeUtils.callStaticMethod(
+                    loc,
+                    JavaInternalName.fromClass(EResult.class),
+                    "ok",
+                    JavaMethodDescriptor.fromParts(
+                            JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
+                            TList.of(JvmConstants.DESC_OBJECT))));
+            return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType, 1));
+        }
+        if (kind == Kind.ERRS) {
+            var errsArgType = new TypeListBoxedDynamic(GenExprErr.dynamicType());
+            var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
+            if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
+            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, errsArgType);
+            if (consumeRes.hasErrors()) return consumeRes.reerr();
+            var listJsRes = consumeRes
+                    .requireValue("TypeEResultVariantConstructorDynamic::call errs consume")
+                    .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.optUnwrap());
+            if (listJsRes.hasErrors()) return listJsRes.reerr();
+            var errsSeq = new JavaBytecodeSequence();
+            errsSeq.add(listJsRes.requireValue("TypeEResultVariantConstructorDynamic::call errs toDynamic"));
+            errsSeq.add(JavaBytecodeUtils.callStaticMethod(
+                    loc,
+                    JavaInternalName.fromClass(EResult.class),
+                    "errs",
+                    JavaMethodDescriptor.fromParts(
+                            JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
+                            TList.of(JavaDataDescriptor.fromInternalName(
+                                    JavaInternalName.fromClass(compilerxyz.util.TList.class))))));
+            return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errsSeq), resultType, 1));
+        }
+        var argTupleType = new Tuple(
+                Opt.none(),
                 TList.of(
-                    JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.fromClass(QExprId.class)),
-                    JavaDataDescriptor.fromInternalName(
-                        JavaInternalName.fromClass(String.class))))));
-    return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType, 1));
-  }
+                        new TupleElement.Dynamic(GenQExprId.dynamicType()),
+                        new TupleElement.Dynamic(new TypeStringDynamic())));
+        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, argTupleType, argument));
+        if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
+        var slotsRes = DynUtil.destructurePositional(xx, loc, argTupleType, convertedOpt.optUnwrap());
+        if (slotsRes.hasErrors()) return slotsRes.reerr();
+        var slots = slotsRes.requireValue("TypeEResultVariantConstructorDynamic::call destructure");
+        if (slots.size() != 2) {
+            throw new AssertionError(
+                    "TypeEResultVariantConstructorDynamic::call err: expected 2 slots, got " + slots.size());
+        }
+        var locJs = slots.get(0);
+        var msgJs = slots.get(1);
+        var errSeq = new JavaBytecodeSequence();
+        errSeq.add(locJs);
+        errSeq.add(msgJs);
+        errSeq.add(JavaBytecodeUtils.callStaticMethod(
+                loc,
+                JavaInternalName.fromClass(EResult.class),
+                "err",
+                JavaMethodDescriptor.fromParts(
+                        JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
+                        TList.of(
+                                JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(QExprId.class)),
+                                JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(String.class))))));
+        return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType, 1));
+    }
 
-  @Override
-  public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-    return Opt.none();
-  }
+    @Override
+    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
+        return Opt.none();
+    }
 
-  @Override
-  public EResult<Type> exporterAnyAsType() {
-    return EResult.ok(this);
-  }
+    @Override
+    public EResult<Type> exporterAnyAsType() {
+        return EResult.ok(this);
+    }
 
-  @Override
-  public EResult<Value> exporterAnyAsValue() {
-    return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-  }
+    @Override
+    public EResult<Value> exporterAnyAsValue() {
+        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
+    }
 
-  @Override
-  public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
-  }
-  @Override
-  public boolean typeIsEqual(ExprContext xx, Type other) {
-    var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY, TypeEResultVariantConstructorDynamic.class);
-    return oOpt.optIsSome() && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType) && kind == oOpt.optUnwrap().kind;
-  }
+    @Override
+    public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
+    }
 
-  @Override
-  public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-    return false;
-  }
-  @Override
-  public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-    return false;
-  }
-  @Override
-  public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-    throw new UnsupportedOperationException(getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-  }
+    @Override
+    public boolean typeIsEqual(ExprContext xx, Type other) {
+        var oOpt = AspectLookup.getMaybe(
+                xx,
+                other,
+                GenTrivialIdentityAspects.TYPE_E_RESULT_VARIANT_CONSTRUCTOR_DYNAMIC_IDENTITY,
+                TypeEResultVariantConstructorDynamic.class);
+        return oOpt.optIsSome()
+                && elementType.typeIsEqual(xx, oOpt.optUnwrap().elementType)
+                && kind == oOpt.optUnwrap().kind;
+    }
 
-  @Override
-  public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-    return Type.exportArtifact(xx, loc, this);
-  }
+    @Override
+    public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
+        return false;
+    }
+
+    @Override
+    public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
+        return false;
+    }
+
+    @Override
+    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
+    }
+
+    @Override
+    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
+        return Type.exportArtifact(xx, loc, this);
+    }
 }

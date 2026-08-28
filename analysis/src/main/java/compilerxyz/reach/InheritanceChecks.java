@@ -17,10 +17,13 @@ import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class InheritanceChecks {
 
-    private final Set<String> mandatedSuperclasses =
-            Set.of(
-                    "java.lang.Throwable", "java.lang.Exception", "java.lang.RuntimeException",
-                    "java.lang.Error", "java.lang.ClassLoader", "org.objectweb.asm.ClassWriter");
+    private final Set<String> mandatedSuperclasses = Set.of(
+            "java.lang.Throwable",
+            "java.lang.Exception",
+            "java.lang.RuntimeException",
+            "java.lang.Error",
+            "java.lang.ClassLoader",
+            "org.objectweb.asm.ClassWriter");
 
     private final List<ConventionChecks.Finding> findings = new ArrayList<>();
     private final Set<String> seen = new HashSet<>();

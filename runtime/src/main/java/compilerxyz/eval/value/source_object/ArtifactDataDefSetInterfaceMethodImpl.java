@@ -5,7 +5,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSetInterfaceMethodImpl(
-    int interfaceMethodIndex,
-    Opt<String> compiledClassName,
-    Opt<byte[]> compiledBytecode,
-    TList<ArtifactExternal> capturedExternals) {}
+        int interfaceMethodIndex,
+        Opt<String> compiledClassName,
+        Opt<byte[]> compiledBytecode,
+        TList<ArtifactExternal> capturedExternals) {}

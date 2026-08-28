@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
@@ -10,5 +9,5 @@ import compilerxyz.eval.aspect.Aspect;
 
 @BuiltinFull(uniqueId = 1036L, identityId = 4036L)
 public interface AspectFieldUseConst extends Aspect {
-  EResult<CodeValue> aspectFieldUseConstFieldUseConst(ExprContext xx, QExprId loc, CodeValue cv);
+    EResult<CodeValue> aspectFieldUseConstFieldUseConst(ExprContext xx, QExprId loc, CodeValue cv);
 }

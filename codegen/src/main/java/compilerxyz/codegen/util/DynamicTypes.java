@@ -2,23 +2,20 @@ package compilerxyz.codegen.util;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
-import compilerxyz.util.TMap;
 import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
 import compilerxyz.util.IMap;
+import compilerxyz.util.TMap;
 
 public final class DynamicTypes {
-    private DynamicTypes() {
-    }
+    private DynamicTypes() {}
 
-    private record CompositeEntry(int arity, TypeName valueClass) {
-    }
+    private record CompositeEntry(int arity, TypeName valueClass) {}
 
     private static final IMap<ClassName, TypeName> NULLARY;
     private static final IMap<ClassName, CompositeEntry> COMPOSITES;
 
-    private static void nullary(
-            TMap<ClassName, TypeName> nullary, String pkg, String cls, TypeName valueClass) {
+    private static void nullary(TMap<ClassName, TypeName> nullary, String pkg, String cls, TypeName valueClass) {
         nullary.put(ClassName.get(pkg, cls), valueClass);
     }
 
@@ -28,11 +25,7 @@ public final class DynamicTypes {
     }
 
     private static void composite(
-            TMap<ClassName, CompositeEntry> composites,
-            String pkg,
-            String cls,
-            int arity,
-            TypeName valueClass) {
+            TMap<ClassName, CompositeEntry> composites, String pkg, String cls, int arity, TypeName valueClass) {
         composites.put(ClassName.get(pkg, cls), new CompositeEntry(arity, valueClass));
     }
 
@@ -124,8 +117,7 @@ public final class DynamicTypes {
         if (descriptor.packageName().equals("compilerxyz.gen")) {
             return CodeBlock.of("$T.dynamicType()", descriptor);
         }
-        throw new IllegalArgumentException(
-                "DynamicTypes has no descriptor for " + descriptor.canonicalName());
+        throw new IllegalArgumentException("DynamicTypes has no descriptor for " + descriptor.canonicalName());
     }
 
     public static TypeName leafValueClass(ClassName descriptor) {
@@ -136,13 +128,12 @@ public final class DynamicTypes {
     public static CodeBlock composite(ClassName wrapper, CodeBlock... params) {
         var spec = compositeEntry(wrapper);
         if (spec.arity() != params.length) {
-            throw new IllegalArgumentException(
-                    "DynamicTypes composite "
-                            + wrapper.canonicalName()
-                            + " expects "
-                            + spec.arity()
-                            + " params, got "
-                            + params.length);
+            throw new IllegalArgumentException("DynamicTypes composite "
+                    + wrapper.canonicalName()
+                    + " expects "
+                    + spec.arity()
+                    + " params, got "
+                    + params.length);
         }
         var joined = CodeBlock.builder();
         for (int i = 0; i < params.length; i++) {
@@ -155,13 +146,12 @@ public final class DynamicTypes {
     public static TypeName compositeValueClass(ClassName wrapper, TypeName... params) {
         var spec = compositeEntry(wrapper);
         if (spec.arity() != params.length) {
-            throw new IllegalArgumentException(
-                    "DynamicTypes composite "
-                            + wrapper.canonicalName()
-                            + " expects "
-                            + spec.arity()
-                            + " params, got "
-                            + params.length);
+            throw new IllegalArgumentException("DynamicTypes composite "
+                    + wrapper.canonicalName()
+                    + " expects "
+                    + spec.arity()
+                    + " params, got "
+                    + params.length);
         }
         return ParameterizedTypeName.get((ClassName) spec.valueClass(), params);
     }
@@ -169,8 +159,7 @@ public final class DynamicTypes {
     private static CompositeEntry compositeEntry(ClassName wrapper) {
         var spec = COMPOSITES.getOrNull(wrapper);
         if (spec == null) {
-            throw new IllegalArgumentException(
-                    "DynamicTypes has no composite entry for " + wrapper.canonicalName());
+            throw new IllegalArgumentException("DynamicTypes has no composite entry for " + wrapper.canonicalName());
         }
         return spec;
     }

@@ -3,8 +3,7 @@ package compilerxyz.eval.value.numeric;
 import compilerxyz.annotations.CodegenDescriptor;
 
 public final class Unsigned {
-    private Unsigned() {
-    }
+    private Unsigned() {}
 
     @CodegenDescriptor
     public static double toDouble(long x) {

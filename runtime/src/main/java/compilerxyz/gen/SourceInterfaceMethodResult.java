@@ -4,7 +4,6 @@ import compilerxyz.annotations.BuiltinPushStruct;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.value.source_interface.InterfaceMethodData;
-import java.lang.IllegalStateException;
 import compilerxyz.util.Opt;
 
 @BuiltinPushStruct

@@ -7,12 +7,11 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 
 public interface Sources {
-  Result<SourceResolved, String> sourcesGet(SourceSpecAbsolute spec);
+    Result<SourceResolved, String> sourcesGet(SourceSpecAbsolute spec);
 
-  sealed interface SourceResolved {
-    record Module(SourceId id, SourceModule module, Opt<Compiles.LocalMeta> local)
-        implements SourceResolved {}
+    sealed interface SourceResolved {
+        record Module(SourceId id, SourceModule module, Opt<Compiles.LocalMeta> local) implements SourceResolved {}
 
-    record Bundle(SourceSpecAbsolute.Remote base) implements SourceResolved {}
-  }
+        record Bundle(SourceSpecAbsolute.Remote base) implements SourceResolved {}
+    }
 }

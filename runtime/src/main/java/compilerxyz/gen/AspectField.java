@@ -1,6 +1,5 @@
 package compilerxyz.gen;
 
-
 import compilerxyz.annotations.BuiltinFull;
 import compilerxyz.annotations.BuiltinPath;
 import compilerxyz.eval.CodeValue;
@@ -16,9 +15,9 @@ import compilerxyz.util.TList;
 @BuiltinFull(uniqueId = 1015L, identityId = 4015L)
 @BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {
-  EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);
+    EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);
 
-  Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key);
+    Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key);
 
-  TList<ConstKey> aspectFieldKeys(ExprContext xx);
+    TList<ConstKey> aspectFieldKeys(ExprContext xx);
 }

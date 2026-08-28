@@ -21,8 +21,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public final class TypeMethodShared {
-    private TypeMethodShared() {
-    }
+    private TypeMethodShared() {}
 
     public static EResult<CodeValue> callDynamic(
             ExprContext xx,
@@ -54,12 +53,11 @@ public final class TypeMethodShared {
         var seq = new JavaBytecodeSequence();
         seq.add(receiverDyn);
         if (needsExprContext) {
-            seq.add(
-                    JavaBytecodeUtils.accessStaticField(
-                            loc,
-                            JavaInternalName.of(xx.vx.evalRootInternalName),
-                            EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                            EvalRootEmitter.DESC_EXPR_CONTEXT));
+            seq.add(JavaBytecodeUtils.accessStaticField(
+                    loc,
+                    JavaInternalName.of(xx.vx.evalRootInternalName),
+                    EvalRootEmitter.EXPR_CONTEXT_FIELD,
+                    EvalRootEmitter.DESC_EXPR_CONTEXT));
         }
         var args = argsDynRes.requireValue(what + "::call args");
         var paramDescs = new TList<JavaDataDescriptor>();
@@ -105,9 +103,7 @@ public final class TypeMethodShared {
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();
         return EResult.ok(
-                retStackRes
-                        .requireValue(what + "::call ret stack")
-                        .aspectStackValueDynamicToValue(xx, loc, seqCode));
+                retStackRes.requireValue(what + "::call ret stack").aspectStackValueDynamicToValue(xx, loc, seqCode));
     }
 
     public static EResult<CodeDynamic> toDynamic(QExprId loc, CodeValue cv, String what) {

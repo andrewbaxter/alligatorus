@@ -5,8 +5,6 @@ import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.expr.StagedExprCell;
 import compilerxyz.eval.value.source_function.TypeSourceFunctionConst;
-import java.lang.IllegalStateException;
-import java.lang.String;
 import compilerxyz.util.Opt;
 
 @BuiltinPushStruct
@@ -28,8 +26,7 @@ public final class SourceFuncResult {
         this.func.data().description = Opt.some(description);
     }
 
-    public void impl(
-        ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    public void impl(ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
         var data = this.func.data();
         if (data.argType.optIsSome()) {
             throw new IllegalStateException("Function already has an arg type");

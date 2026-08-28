@@ -9,10 +9,10 @@ import compilerxyz.gen.Target;
 import compilerxyz.util.Opt;
 
 public record StageLiftCell(
-    QExprId loc,
-    EvalContext vx,
-    ImportStateId importState,
-    Scope scope,
-    Type sourceType,
-    Opt<Type> currentExceptionType,
-    Target target) {}
+        QExprId loc,
+        EvalContext vx,
+        ImportStateId importState,
+        Scope scope,
+        Type sourceType,
+        Opt<Type> currentExceptionType,
+        Target target) {}

@@ -1,4 +1,3 @@
 package compilerxyz.eval;
 
-public interface TypeImmutable extends Type {
-}
+public interface TypeImmutable extends Type {}

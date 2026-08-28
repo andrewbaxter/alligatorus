@@ -7,12 +7,12 @@ import compilerxyz.eval.QExprId;
 import compilerxyz.gen.AspectPostDeserialize;
 
 public final class PostDeserializeIdentity implements AspectPostDeserialize {
-  public static final PostDeserializeIdentity INSTANCE = new PostDeserializeIdentity();
+    public static final PostDeserializeIdentity INSTANCE = new PostDeserializeIdentity();
 
-  private PostDeserializeIdentity() {}
+    private PostDeserializeIdentity() {}
 
-  @Override
-  public EResult<CodeValue> aspectPostDeserializePostDeserialize(ExprContext xx, QExprId loc, CodeValue cv) {
-    return EResult.ok(cv);
-  }
+    @Override
+    public EResult<CodeValue> aspectPostDeserializePostDeserialize(ExprContext xx, QExprId loc, CodeValue cv) {
+        return EResult.ok(cv);
+    }
 }

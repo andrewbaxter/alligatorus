@@ -8,12 +8,12 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 public record ArtifactDataDefSetFunction(
-    Artifact defSet,
-    DefSetId defSetId,
-    Opt<String> name,
-    Artifact argType,
-    Artifact retType,
-    Opt<String> compiledClassName,
-    Opt<byte[]> compiledBytecode,
-    TList<ArtifactExternal> capturedExternals)
-    implements SafeJsonSerializable {}
+        Artifact defSet,
+        DefSetId defSetId,
+        Opt<String> name,
+        Artifact argType,
+        Artifact retType,
+        Opt<String> compiledClassName,
+        Opt<byte[]> compiledBytecode,
+        TList<ArtifactExternal> capturedExternals)
+        implements SafeJsonSerializable {}

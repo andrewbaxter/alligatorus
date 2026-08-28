@@ -3,7 +3,9 @@ package compilerxyz.eval.dynamic;
 public final class JavaInternalName {
     public final String value;
 
-    public String value() { return value; }
+    public String value() {
+        return value;
+    }
 
     public JavaInternalName(String value) {
         this.value = value;

@@ -1,48 +1,51 @@
 package compilerxyz.eval.value.object_;
 
-import compilerxyz.gen.GenTrivialIdentityAspects;
-
-import compilerxyz.eval.aspect.AspectLookup;
-
 import compilerxyz.annotations.BuiltinLight;
-import compilerxyz.eval.EvalOutcome;
-import compilerxyz.gen.Binding;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ArtifactIdSource;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.eval.BindingId;
 import compilerxyz.eval.Code;
 import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.ConstKey;
 import compilerxyz.eval.EResult;
+import compilerxyz.eval.Eval;
 import compilerxyz.eval.EvalContext;
+import compilerxyz.eval.EvalOutcome;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.External;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeAspect;
 import compilerxyz.eval.Unique;
-import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
+import compilerxyz.eval.aspect.AspectLookup;
+import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.eval.binding.BindingValue;
 import compilerxyz.eval.dynamic.BindingCode;
 import compilerxyz.eval.dynamic.CodeDynamic;
 import compilerxyz.eval.dynamic.CodeLoc;
 import compilerxyz.eval.dynamic.DynUtil;
 import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.artifact.ExporterRoot;
 import compilerxyz.eval.value.function.TypeMethodDynamic;
 import compilerxyz.eval.value.source_interface.InterfaceData;
 import compilerxyz.eval.value.source_interface.TypeInterfaceMethodBuiltin;
+import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectAspect;
 import compilerxyz.gen.AspectBind;
+import compilerxyz.gen.AspectBindDynamic;
 import compilerxyz.gen.AspectConsumeDynamic;
 import compilerxyz.gen.AspectDropDynamicLight;
 import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectFunction;
-import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
+import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectType;
-import compilerxyz.util.IList;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
+import compilerxyz.gen.Binding;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectAspect;
 import compilerxyz.gen.GenAspectBind;
@@ -50,60 +53,51 @@ import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
 import compilerxyz.gen.GenAspectDropDynamicLight;
 import compilerxyz.gen.GenAspectField;
+import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.GenAspectInitialBind;
 import compilerxyz.gen.GenAspectLift;
 import compilerxyz.gen.GenAspectPostDeserialize;
 import compilerxyz.gen.GenAspectType;
-import compilerxyz.artifact.Artifact;
-import compilerxyz.artifact.ArtifactExporter;
-import compilerxyz.artifact.ArtifactIdSource;
-import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.ConstKey;
-import compilerxyz.eval.TypeAspect;
-import compilerxyz.eval.binding.BindingValue;
-import compilerxyz.eval.value.object_.ValueObjectConst;
-import compilerxyz.gen.AspectArtifact;
-import compilerxyz.gen.AspectBindDynamic;
-import compilerxyz.gen.AspectLift;
-import compilerxyz.gen.TargetBindSub;
-import compilerxyz.safejson.JsonValue;
-import compilerxyz.eval.Eval;
-import compilerxyz.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.gen.GenType;
+import compilerxyz.gen.TargetBindSub;
+import compilerxyz.gen.Value;
+import compilerxyz.safejson.JsonValue;
+import compilerxyz.util.IList;
+import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
+import compilerxyz.util.TList;
 
 @SuppressWarnings("rawtypes")
 @BuiltinLight(uniqueId = 6129L)
-public record TypeObjectConst(
-        TypeObjectMeta meta,
-        Class externalHostClass,
-        Opt<ExporterRoot> exporter)
-        implements
-        Type,
-        TypeAspect,
-        AspectArtifact,
-        ArtifactExporter,
-        AspectAspect,
-        AspectBind,
-        AspectBindDynamic,
-        AspectConsumeDynamic,
-        AspectDropDynamicLight,
-        AspectField,
-        AspectFunction,
-        AspectInitialBind,
-        AspectLift,
-        AspectType {
+public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<ExporterRoot> exporter)
+        implements Type,
+                TypeAspect,
+                AspectArtifact,
+                ArtifactExporter,
+                AspectAspect,
+                AspectBind,
+                AspectBindDynamic,
+                AspectConsumeDynamic,
+                AspectDropDynamicLight,
+                AspectField,
+                AspectFunction,
+                AspectInitialBind,
+                AspectLift,
+                AspectType {
 
     public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix) {
         var trivialIdentityAspects = new TList<Unique>();
         trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
         var castRules = new TList<TypeObjectCastRule>();
         castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
-        var meta = new TypeObjectMeta("type<" + descSuffix + ">", IList.from(trivialIdentityAspects), IList.from(castRules), IList.<TypeObjectCastFromRule>of(), Opt.<ObjectAspectSource>none());
-        return new TypeObjectConst(
-                meta,
-                hostClass,
-                Opt.<ExporterRoot>none());
+        var meta = new TypeObjectMeta(
+                "type<" + descSuffix + ">",
+                IList.from(trivialIdentityAspects),
+                IList.from(castRules),
+                IList.<TypeObjectCastFromRule>of(),
+                Opt.<ObjectAspectSource>none());
+        return new TypeObjectConst(meta, hostClass, Opt.<ExporterRoot>none());
     }
 
     public String typeDesc() {
@@ -124,12 +118,14 @@ public record TypeObjectConst(
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY, TypeObjectConst.class);
+        var oOpt = AspectLookup.getMaybe(
+                xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY, TypeObjectConst.class);
         return oOpt.optIsSome()
-                && externalHostClass.getName().equals(oOpt.optUnwrap().externalHostClass.getName())
+                && externalHostClass
+                        .getName()
+                        .equals(oOpt.optUnwrap().externalHostClass.getName())
                 && meta.typeDesc().equals(oOpt.optUnwrap().meta.typeDesc());
     }
-
 
     @Override
     public Unique typeAspectId() {
@@ -140,7 +136,8 @@ public record TypeObjectConst(
         ObjectAspectSource.Static staticSrc;
         switch (aspSrcOpt.optUnwrap()) {
             case ObjectAspectSource.Static s -> staticSrc = s;
-            case ObjectAspectSource.FromInterfaceData ignored -> throw new IllegalStateException(typeDesc() + "::id: aspect id is not statically known");
+            case ObjectAspectSource.FromInterfaceData ignored ->
+                throw new IllegalStateException(typeDesc() + "::id: aspect id is not statically known");
         }
         return staticSrc.id();
     }
@@ -193,8 +190,9 @@ public record TypeObjectConst(
             throw new UnsupportedOperationException(typeDesc() + "::getIfaceData: no aspect source");
         }
         return switch (aspSrcOpt3.optUnwrap()) {
-            case ObjectAspectSource.Static ignored -> throw new UnsupportedOperationException(
-                    typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
+            case ObjectAspectSource.Static ignored ->
+                throw new UnsupportedOperationException(
+                        typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
             case ObjectAspectSource.FromInterfaceData ignored -> value;
         };
     }
@@ -213,10 +211,8 @@ public record TypeObjectConst(
                 if (cv.code().codeDynamic() == null) {
                     var dynRes = aspectConsumeDynamicToDynamic(xx, loc, cv);
                     if (dynRes.hasErrors()) return dynRes.reerr();
-                    materialized =
-                            new CodeValue(
-                                    Code.of(loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize")),
-                                    cv.outcome());
+                    materialized = new CodeValue(
+                            Code.of(loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
                 }
                 return rule.typeObjectCastRuleApply(xx, null, loc, materialized, destType);
             }
@@ -262,24 +258,21 @@ public record TypeObjectConst(
         }
         var key = new JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
-        xx.vx.externals.add(
-                new EvalContext.ExternalEntry(
-                        key, this, new External(externalHostClass, hostValue)));
+        xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(externalHostClass, hostValue)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
     }
 
     @Override
     public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsSome()) {
-            return EResult.ok(new BindResult(
-                    Code.none(loc), new BindingValue(cv.value().optUnwrap())));
+            return EResult.ok(
+                    new BindResult(Code.none(loc), new BindingValue(cv.value().optUnwrap())));
         }
         return DynUtil.bindViaTarget(xx, loc, cv);
     }
 
     @Override
-    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(
-            ExprContext xx, QExprId loc, CodeValue cv) {
+    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsSome()) {
             return EResult.ok(Opt.none());
         }
@@ -302,22 +295,18 @@ public record TypeObjectConst(
     }
 
     @Override
-    public EResult<Artifact> artifactExporterExport(
-            ExprContext xx, QExprId loc, ExporterAny self) {
-        if (self instanceof ValueObjectConst wrapper
-                && wrapper.data() instanceof Type innerType) {
+    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, ExporterAny self) {
+        if (self instanceof ValueObjectConst wrapper && wrapper.data() instanceof Type innerType) {
             return innerType.artifactableExportArtifact(xx, loc);
         }
         return EResult.err(
-                loc, typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type, got " + self.getClass());
+                loc,
+                typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type, got " + self.getClass());
     }
 
     @Override
     public EResult<ExporterAny> artifactExporterImportFromData(
-            ExprContext xx,
-            QExprId loc,
-            Opt<ArtifactIdSource> id,
-            JsonValue data) {
+            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
         return EResult.err(loc, typeDesc() + "::artifactExporterImportFromData: should not be invoked");
     }
 
@@ -330,21 +319,20 @@ public record TypeObjectConst(
             var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
             switch (ckRes) {
                 case Result.Ok<ConstKey, String> ok -> {
-                    if (GenType.Holder.INSTANCE.aspectFieldTypeOpt(xx, ok.value()).optIsSome()) {
+                    if (GenType.Holder.INSTANCE
+                            .aspectFieldTypeOpt(xx, ok.value())
+                            .optIsSome()) {
                         CodeValue selfLifted = self;
                         if (self.code().codeIsNone()) {
                             var liftRes = aspectConsumeDynamicToDynamic(xx, loc, self);
                             if (liftRes.hasErrors()) return liftRes.reerr();
-                            selfLifted =
-                                    new CodeValue(
-                                            Code.of(loc, liftRes.requireValue(typeDesc() + "::field lift")),
-                                            self.outcome());
+                            selfLifted = new CodeValue(
+                                    Code.of(loc, liftRes.requireValue(typeDesc() + "::field lift")), self.outcome());
                         }
                         return GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
                     }
                 }
-                case Result.Err<ConstKey, String> ignored -> {
-                }
+                case Result.Err<ConstKey, String> ignored -> {}
             }
         }
         if (inner instanceof TypeObjectDynamic tod && tod.interfaceRepresented().optIsSome()) {
@@ -363,8 +351,7 @@ public record TypeObjectConst(
             switch (ck) {
                 case ConstKey.Str s -> keyStr = s;
                 case ConstKey.Uint u -> {
-                    return EResult.err(
-                            loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
+                    return EResult.err(loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
                 }
             }
             var keyName = keyStr.value();
@@ -378,8 +365,7 @@ public record TypeObjectConst(
                     }
                     var refType = new TypeInterfaceMethodBuiltin(tod, keyName, mt);
                     return EResult.ok(
-                            new CodeValue(
-                                    self.code(), EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
+                            new CodeValue(self.code(), EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
                 }
             }
             return EResult.err(loc, "Method '" + keyName + "' not found on interface");
@@ -400,15 +386,13 @@ public record TypeObjectConst(
     }
 
     @Override
-    public EResult<CodeValue> aspectFunctionCall(
-            ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         var innerRes = extractInnerType(loc, self, "call");
         if (innerRes.hasErrors()) return innerRes.reerr();
         var inner = innerRes.requireValue(typeDesc() + "::call inner");
         var asp = GenAspectFunction.get(xx, loc, inner);
         if (asp.hasErrors()) return asp.reerr();
-        return asp.requireValue(typeDesc() + "::call inner AspectFunction")
-                .aspectFunctionCall(xx, loc, self, argument);
+        return asp.requireValue(typeDesc() + "::call inner AspectFunction").aspectFunctionCall(xx, loc, self, argument);
     }
 
     private EResult<Type> extractInnerType(QExprId loc, CodeValue self, String op) {
@@ -422,17 +406,14 @@ public record TypeObjectConst(
         if (v instanceof Type t) {
             return EResult.ok(t);
         }
-        return EResult.err(
-                loc,
-                typeDesc() + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
+        return EResult.err(loc, typeDesc() + "::" + op + ": expected Type or ValueObjectConst, got " + v.getClass());
     }
 
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         var innerRes = extractInnerType(loc, self, "exception_type");
         if (!innerRes.hasErrors()
-                && innerRes.requireValue(typeDesc() + "::exception_type inner")
-                instanceof AspectFunction innerAsp) {
+                && innerRes.requireValue(typeDesc() + "::exception_type inner") instanceof AspectFunction innerAsp) {
             return innerAsp.aspectFunctionExceptionType(xx, loc, self);
         }
         return Opt.none();
@@ -451,11 +432,9 @@ public record TypeObjectConst(
     }
 
     @Override
-    public EResult<Value> aspectLiftLift(
-            ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
+    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
         return EResult.ok(new ValueObjectConst(this, externalHostValue.optUnwrap()));
     }
-
 
     @Override
     public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {

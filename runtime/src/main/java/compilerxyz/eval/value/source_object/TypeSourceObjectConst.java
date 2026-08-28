@@ -1,37 +1,31 @@
 package compilerxyz.eval.value.source_object;
 
-import compilerxyz.eval.aspect.AspectLookup;
-
-import compilerxyz.gen.GenTrivialIdentityAspects;
-
-
 import compilerxyz.annotations.BuiltinLight;
+import compilerxyz.artifact.Artifact;
+import compilerxyz.artifact.ArtifactExporter;
+import compilerxyz.artifact.ExporterAny;
+import compilerxyz.artifact.ExporterRoot;
+import compilerxyz.eval.CodeValue;
 import compilerxyz.eval.EResult;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.aspect.Aspect;
-import compilerxyz.util.Opt;
-import compilerxyz.artifact.ArtifactExporter;
-import compilerxyz.artifact.ExporterAny;
-import compilerxyz.eval.CodeValue;
+import compilerxyz.eval.aspect.AspectLookup;
 import compilerxyz.eval.value.object_.ValueObjectConst;
+import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectType;
-import compilerxyz.gen.Value;
-import compilerxyz.artifact.ExporterRoot;
-import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.gen.GenAspectArtifact;
 import compilerxyz.gen.GenAspectType;
-import compilerxyz.artifact.Artifact;
+import compilerxyz.gen.GenTrivialIdentityAspects;
+import compilerxyz.gen.Value;
+import compilerxyz.util.Opt;
 
 @BuiltinLight(uniqueId = 6137L)
 public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
-        implements Type,
-        AspectArtifact,
-        AspectType,
-        ExporterAny {
+        implements Type, AspectArtifact, AspectType, ExporterAny {
 
     @Override
     public ArtifactExporter aspectArtifactExporter() {
@@ -41,14 +35,12 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     @Override
     public Type aspectTypeType(Value value) {
         if (!(value instanceof ValueObjectConst voc)) {
-            throw new IllegalStateException(
-                    "TypeSourceObjectConst::type_: expected ValueObjectConst, got "
-                            + (value == null ? "null" : value.getClass().getName()));
+            throw new IllegalStateException("TypeSourceObjectConst::type_: expected ValueObjectConst, got "
+                    + (value == null ? "null" : value.getClass().getName()));
         }
         if (!(voc.data() instanceof Type t)) {
-            throw new IllegalStateException(
-                    "TypeSourceObjectConst::type_: wrapped data is not a Type, got "
-                            + (voc.data() == null ? "null" : voc.data().getClass().getName()));
+            throw new IllegalStateException("TypeSourceObjectConst::type_: wrapped data is not a Type, got "
+                    + (voc.data() == null ? "null" : voc.data().getClass().getName()));
         }
         return t;
     }
@@ -62,7 +54,6 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
     public EResult<Value> exporterAnyAsValue() {
         return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectConst(dynamic), dynamic));
     }
-
 
     @Override
     public String typeDesc() {
@@ -79,8 +70,7 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
         }
         if (key.equals(GenAspectType.AspectId)) {
             for (var impl : dynamic.interfaceImpls) {
-                if (impl.interface_.builtinKind.optUnwrapOr(null)
-                        == BuiltinInterfaceKind.TYPE) {
+                if (impl.interface_.builtinKind.optUnwrapOr(null) == BuiltinInterfaceKind.TYPE) {
                     return Opt.some(this);
                 }
             }
@@ -91,7 +81,8 @@ public record TypeSourceObjectConst(TypeSourceObjectDynamic dynamic)
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeSourceObjectConst.class);
+        var oOpt = AspectLookup.getMaybe(
+                xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_OBJECT_CONST_IDENTITY, TypeSourceObjectConst.class);
         return oOpt.optIsSome() && dynamic.typeIsEqual(xx, oOpt.optUnwrap().dynamic);
     }
 
