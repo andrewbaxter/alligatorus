@@ -455,88 +455,84 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
   }
 
   private boolean staleWalk(CompileId id, Map<CompileId, Boolean> memo, Set<CompileId> visiting) {
-    var cached = memo.get(id);
-    if (cached != null) return cached;
-    if (!visiting.add(id)) return false;
-    // loadCompileRow inlined
-    CompileRow row;
-    try (var ps =
-        conn.prepareStatement(
-            "SELECT local_path, local_mtime, local_deps FROM compiles WHERE import_state = ? AND source = ?")) {
-      ps.setLong(1, id.importState().value());
-      ps.setLong(2, id.source().value());
-      try (var rs = ps.executeQuery()) {
-        if (!rs.next()) {
-          row = null;
-        } else {
-          var localPath = rs.getString(1);
-          var localMtime = rs.getLong(2);
-          // decodeCompileIds inlined
-          TList<CompileId> deps;
-          {
-            var s = rs.getString(3);
-            deps = new TList<>();
-            if (s != null && !s.isEmpty()) {
-              var arr = (JsonValueArray) parseJson(s);
-              for (var e : arr.elements()) {
-                var o = (JsonValueObject) e;
-                var s0 = (long) ((JsonValueNumber) o.entries().get("s")).value();
-                var i0 = (long) ((JsonValueNumber) o.entries().get("i")).value();
-                deps.add(new CompileId(new ImportStateId(s0), new SourceId(i0)));
+      var cached = memo.get(id);
+      if (cached != null) return cached;
+      if (!visiting.add(id)) return false;
+      CompileRow row;
+      try (var ps =
+                   conn.prepareStatement(
+                           "SELECT local_path, local_mtime, local_deps FROM compiles WHERE import_state = ? AND source = ?")) {
+          ps.setLong(1, id.importState().value());
+          ps.setLong(2, id.source().value());
+          try (var rs = ps.executeQuery()) {
+              if (!rs.next()) {
+                  row = null;
+              } else {
+                  var localPath = rs.getString(1);
+                  var localMtime = rs.getLong(2);
+                  TList<CompileId> deps;
+                  {
+                      var s = rs.getString(3);
+                      deps = new TList<>();
+                      if (s != null && !s.isEmpty()) {
+                          var arr = (JsonValueArray) parseJson(s);
+                          for (var e : arr.elements()) {
+                              var o = (JsonValueObject) e;
+                              var s0 = (long) ((JsonValueNumber) o.entries().get("s")).value();
+                              var i0 = (long) ((JsonValueNumber) o.entries().get("i")).value();
+                              deps.add(new CompileId(new ImportStateId(s0), new SourceId(i0)));
+                          }
+                      }
+                  }
+                  row = new CompileRow(localPath, localMtime, deps);
               }
-            }
           }
-          row = new CompileRow(localPath, localMtime, deps);
-        }
-      }
-    } catch (SQLException e) {
-      throw new RuntimeException("CacheReal.loadCompileRow", e);
-    }
-    if (row == null) {
-      memo.put(id, false);
-      visiting.remove(id);
-      return false;
-    }
-    var stale = false;
-    if (row.localPath != null) {
-      // currentMtime inlined
-      Long current;
-      {
-        var file = Path.of(row.localPath);
-        if (!Files.isRegularFile(file)) {
-          current = null;
-        } else {
-          try {
-            current = Files.getLastModifiedTime(file).toMillis();
-          } catch (IOException e) {
-            current = null;
-          }
-        }
-      }
-      if (current == null || current != row.localMtime) stale = true;
-    }
-    for (var dep : row.localDeps) {
-      if (staleWalk(dep, memo, visiting)) stale = true;
-    }
-    if (stale) {
-      // deleteCompile inlined
-      try (var ps = conn.prepareStatement("DELETE FROM compiles WHERE import_state = ? AND source = ?")) {
-        ps.setLong(1, id.importState().value());
-        ps.setLong(2, id.source().value());
-        ps.executeUpdate();
       } catch (SQLException e) {
-        throw new RuntimeException("CacheReal.deleteCompile", e);
+          throw new RuntimeException("CacheReal.loadCompileRow", e);
       }
-      compileMapLock.lock();
-      try {
-        compileMem.remove(id);
-      } finally {
-        compileMapLock.unlock();
+      if (row == null) {
+          memo.put(id, false);
+          visiting.remove(id);
+          return false;
       }
-    }
-    memo.put(id, stale);
-    visiting.remove(id);
-    return stale;
+      var stale = false;
+      if (row.localPath != null) {
+          Long current;
+          {
+              var file = Path.of(row.localPath);
+              if (!Files.isRegularFile(file)) {
+                  current = null;
+              } else {
+                  try {
+                      current = Files.getLastModifiedTime(file).toMillis();
+                  } catch (IOException e) {
+                      current = null;
+                  }
+              }
+          }
+          if (current == null || current != row.localMtime) stale = true;
+      }
+      for (var dep : row.localDeps) {
+          if (staleWalk(dep, memo, visiting)) stale = true;
+      }
+      if (stale) {
+          try (var ps = conn.prepareStatement("DELETE FROM compiles WHERE import_state = ? AND source = ?")) {
+              ps.setLong(1, id.importState().value());
+              ps.setLong(2, id.source().value());
+              ps.executeUpdate();
+          } catch (SQLException e) {
+              throw new RuntimeException("CacheReal.deleteCompile", e);
+          }
+          compileMapLock.lock();
+          try {
+              compileMem.remove(id);
+          } finally {
+              compileMapLock.unlock();
+          }
+      }
+      memo.put(id, stale);
+      visiting.remove(id);
+      return stale;
   }
 
   private record CompileRow(String localPath, long localMtime, TList<CompileId> localDeps) {}
@@ -556,165 +552,158 @@ public final class CacheReal implements Sources, Artifacts, Compiles, AutoClosea
     }
     slot.lock.lock();
     try {
-      if (slot.value != null) return slot.value;
-      evictIfStale(id);
-      // loadCompile inlined
-      CompileRes fromDb;
-      {
-        synchronized (dbLock) {
-          try (var ps =
-              conn.prepareStatement("SELECT result FROM compiles WHERE import_state = ? AND source = ?")) {
-            ps.setLong(1, id.importState().value());
-            ps.setLong(2, id.source().value());
-            try (var rs = ps.executeQuery()) {
-              if (!rs.next()) {
-                fromDb = null;
-              } else {
-                // decodeCompileRes inlined
-                var obj = (JsonValueObject) parseJson(rs.getString(1));
-                var logsArr = (JsonValueArray) obj.entries().get("logs");
-                var logs = new TList<LogEntry>();
-                for (var e : logsArr.elements()) {
-                  var lo = (JsonValueObject) e;
-                  var t = (long) ((JsonValueNumber) lo.entries().get("t")).value();
-                  var m = ((JsonValueString) lo.entries().get("m")).value();
-                  logs.add(new LogEntry(t, m));
-                }
-                var errorsJson = obj.entries().getOrNull("errors");
-                if (errorsJson != null) {
-                  // decodeErrors inlined
-                  var out = new TList<ExprErr>();
-                  var arr = (JsonValueArray) errorsJson;
-                  for (var e : arr.elements()) {
-                    var eo = (JsonValueObject) e;
-                    var source = (long) ((JsonValueNumber) eo.entries().get("s")).value();
-                    var expr = (long) ((JsonValueNumber) eo.entries().get("e")).value();
-                    var msgs = new TList<ExprSubErr>();
-                    for (var mv : ((JsonValueArray) eo.entries().get("m")).elements()) {
-                      msgs.add(new ExprSubErr.Opaque(((JsonValueString) mv).value()));
-                    }
-                    out.add(new ExprErr(new QExprId(new SourceId(source), expr), msgs));
-                  }
-                  fromDb = new CompileRes(logs, new CompileResResult.Err(out));
-                } else {
-                  var artRes = ArtifactJson.decodeArtifact(DUMMY_LOC, obj.entries().get("artifact"));
-                  var art = artRes.requireValue("CacheReal.decodeCompileRes artifact");
-                  fromDb = new CompileRes(logs, new CompileResResult.Ok(art));
-                }
-              }
-            }
-          } catch (SQLException e) {
-            throw new RuntimeException("CacheReal.loadCompile", e);
-          }
-        }
-      }
-      if (fromDb != null) {
-        slot.value = fromDb;
-        return fromDb;
-      }
-      var product = compute.get();
-      slot.value = product.res();
-      // flush inlined
-      {
-        TMap<ArtifactIdSource, ArtifactBody> artifacts;
-        synchronized (this) {
-          artifacts = new TMap<ArtifactIdSource, ArtifactBody>();
-          for (var e : pendingArtifacts.entrySet()) artifacts.put(e.getKey(), e.getValue());
-          pendingArtifacts.clear();
-        }
-        synchronized (dbLock) {
-          try {
-            conn.setAutoCommit(false);
-            try {
-              try (var ps =
-                  conn.prepareStatement(
-                      "INSERT OR REPLACE INTO artifacts (import_state, source, idx, body) VALUES (?, ?, ?, ?)")) {
-                for (var e : artifacts.entrySet()) {
-                  var aid = e.getKey();
-                  ps.setLong(1, aid.compileId().importState().value());
-                  ps.setLong(2, aid.compileId().source().value());
-                  ps.setLong(3, aid.index());
-                  ps.setString(4, JsonValues.serialize(ArtifactJson.encodeArtifactBody(e.getValue())));
-                  ps.addBatch();
-                }
-                ps.executeBatch();
-              }
-              try (var ps =
-                  conn.prepareStatement(
-                      "INSERT OR REPLACE INTO compiles"
-                          + " (import_state, source, result, local_path, local_mtime, local_deps)"
-                          + " VALUES (?, ?, ?, ?, ?, ?)")) {
-                ps.setLong(1, id.importState().value());
-                ps.setLong(2, id.source().value());
-                // encodeCompileRes inlined
-                {
-                  var res = product.res();
-                  var obj = new TOrderedMap<String, JsonValue>();
-                  var logsArr = new TList<JsonValue>();
-                  for (var log : res.logs()) {
-                    var lm = new TOrderedMap<String, JsonValue>();
-                    lm.put("t", new JsonValueNumber(log.timestampMs()));
-                    lm.put("m", new JsonValueString(log.message()));
-                    logsArr.add(new JsonValueObject(lm));
-                  }
-                  obj.put("logs", new JsonValueArray(logsArr));
-                  switch (res.result()) {
-                    case CompileResResult.Ok ok -> obj.put("artifact", ArtifactJson.encodeArtifact(ok.artifact()));
-                    case CompileResResult.Err err -> {
-                      // encodeErrors inlined
-                      var errArr = new TList<JsonValue>();
-                      for (var err2 : err.errors()) {
-                        var em = new TOrderedMap<String, JsonValue>();
-                        em.put("s", new JsonValueNumber(err2.loc().source().value()));
-                        em.put("e", new JsonValueNumber(err2.loc().expr()));
-                        var msgs = new TList<JsonValue>();
-                        for (var sub : err2.errors()) {
-                          switch (sub) {
-                            case ExprSubErr.Opaque o -> msgs.add(new JsonValueString(o.message()));
-                          }
+        if (slot.value != null) return slot.value;
+        evictIfStale(id);
+        CompileRes fromDb;
+        {
+            synchronized (dbLock) {
+                try (var ps =
+                             conn.prepareStatement("SELECT result FROM compiles WHERE import_state = ? AND source = ?")) {
+                    ps.setLong(1, id.importState().value());
+                    ps.setLong(2, id.source().value());
+                    try (var rs = ps.executeQuery()) {
+                        if (!rs.next()) {
+                            fromDb = null;
+                        } else {
+                            var obj = (JsonValueObject) parseJson(rs.getString(1));
+                            var logsArr = (JsonValueArray) obj.entries().get("logs");
+                            var logs = new TList<LogEntry>();
+                            for (var e : logsArr.elements()) {
+                                var lo = (JsonValueObject) e;
+                                var t = (long) ((JsonValueNumber) lo.entries().get("t")).value();
+                                var m = ((JsonValueString) lo.entries().get("m")).value();
+                                logs.add(new LogEntry(t, m));
+                            }
+                            var errorsJson = obj.entries().getOrNull("errors");
+                            if (errorsJson != null) {
+                                var out = new TList<ExprErr>();
+                                var arr = (JsonValueArray) errorsJson;
+                                for (var e : arr.elements()) {
+                                    var eo = (JsonValueObject) e;
+                                    var source = (long) ((JsonValueNumber) eo.entries().get("s")).value();
+                                    var expr = (long) ((JsonValueNumber) eo.entries().get("e")).value();
+                                    var msgs = new TList<ExprSubErr>();
+                                    for (var mv : ((JsonValueArray) eo.entries().get("m")).elements()) {
+                                        msgs.add(new ExprSubErr.Opaque(((JsonValueString) mv).value()));
+                                    }
+                                    out.add(new ExprErr(new QExprId(new SourceId(source), expr), msgs));
+                                }
+                                fromDb = new CompileRes(logs, new CompileResResult.Err(out));
+                            } else {
+                                var artRes = ArtifactJson.decodeArtifact(DUMMY_LOC, obj.entries().get("artifact"));
+                                var art = artRes.requireValue("CacheReal.decodeCompileRes artifact");
+                                fromDb = new CompileRes(logs, new CompileResResult.Ok(art));
+                            }
                         }
-                        em.put("m", new JsonValueArray(msgs));
-                        errArr.add(new JsonValueObject(em));
-                      }
-                      obj.put("errors", new JsonValueArray(errArr));
                     }
-                  }
-                  ps.setString(3, JsonValues.serialize(new JsonValueObject(obj)));
+                } catch (SQLException e) {
+                    throw new RuntimeException("CacheReal.loadCompile", e);
                 }
-                if (product.local().optIsSome()) {
-                  var localMeta = product.local().optUnwrap();
-                  ps.setString(4, localMeta.path());
-                  ps.setLong(5, localMeta.timestampMs());
-                } else {
-                  ps.setNull(4, Types.VARCHAR);
-                  ps.setNull(5, Types.INTEGER);
-                }
-                // encodeCompileIds inlined
-                {
-                  var arr = new TList<JsonValue>();
-                  for (var depId : product.localDeps()) {
-                    var mv = new TOrderedMap<String, JsonValue>();
-                    mv.put("s", new JsonValueNumber(depId.importState().value()));
-                    mv.put("i", new JsonValueNumber(depId.source().value()));
-                    arr.add(new JsonValueObject(mv));
-                  }
-                  ps.setString(6, JsonValues.serialize(new JsonValueArray(arr)));
-                }
-                ps.executeUpdate();
-              }
-              conn.commit();
-            } catch (SQLException e) {
-              conn.rollback();
-              throw e;
-            } finally {
-              conn.setAutoCommit(true);
             }
-          } catch (SQLException e) {
-            throw new RuntimeException("CacheReal.flush", e);
-          }
         }
-      }
-      return slot.value;
+        if (fromDb != null) {
+            slot.value = fromDb;
+            return fromDb;
+        }
+        var product = compute.get();
+        slot.value = product.res();
+        {
+            TMap<ArtifactIdSource, ArtifactBody> artifacts;
+            synchronized (this) {
+                artifacts = new TMap<ArtifactIdSource, ArtifactBody>();
+                for (var e : pendingArtifacts.entrySet()) artifacts.put(e.getKey(), e.getValue());
+                pendingArtifacts.clear();
+            }
+            synchronized (dbLock) {
+                try {
+                    conn.setAutoCommit(false);
+                    try {
+                        try (var ps =
+                                     conn.prepareStatement(
+                                             "INSERT OR REPLACE INTO artifacts (import_state, source, idx, body) VALUES (?, ?, ?, ?)")) {
+                            for (var e : artifacts.entrySet()) {
+                                var aid = e.getKey();
+                                ps.setLong(1, aid.compileId().importState().value());
+                                ps.setLong(2, aid.compileId().source().value());
+                                ps.setLong(3, aid.index());
+                                ps.setString(4, JsonValues.serialize(ArtifactJson.encodeArtifactBody(e.getValue())));
+                                ps.addBatch();
+                            }
+                            ps.executeBatch();
+                        }
+                        try (var ps =
+                                     conn.prepareStatement(
+                                             "INSERT OR REPLACE INTO compiles"
+                                                     + " (import_state, source, result, local_path, local_mtime, local_deps)"
+                                                     + " VALUES (?, ?, ?, ?, ?, ?)")) {
+                            ps.setLong(1, id.importState().value());
+                            ps.setLong(2, id.source().value());
+                            {
+                                var res = product.res();
+                                var obj = new TOrderedMap<String, JsonValue>();
+                                var logsArr = new TList<JsonValue>();
+                                for (var log : res.logs()) {
+                                    var lm = new TOrderedMap<String, JsonValue>();
+                                    lm.put("t", new JsonValueNumber(log.timestampMs()));
+                                    lm.put("m", new JsonValueString(log.message()));
+                                    logsArr.add(new JsonValueObject(lm));
+                                }
+                                obj.put("logs", new JsonValueArray(logsArr));
+                                switch (res.result()) {
+                                    case CompileResResult.Ok ok -> obj.put("artifact", ArtifactJson.encodeArtifact(ok.artifact()));
+                                    case CompileResResult.Err err -> {
+                                        var errArr = new TList<JsonValue>();
+                                        for (var err2 : err.errors()) {
+                                            var em = new TOrderedMap<String, JsonValue>();
+                                            em.put("s", new JsonValueNumber(err2.loc().source().value()));
+                                            em.put("e", new JsonValueNumber(err2.loc().expr()));
+                                            var msgs = new TList<JsonValue>();
+                                            for (var sub : err2.errors()) {
+                                                switch (sub) {
+                                                    case ExprSubErr.Opaque o -> msgs.add(new JsonValueString(o.message()));
+                                                }
+                                            }
+                                            em.put("m", new JsonValueArray(msgs));
+                                            errArr.add(new JsonValueObject(em));
+                                        }
+                                        obj.put("errors", new JsonValueArray(errArr));
+                                    }
+                                }
+                                ps.setString(3, JsonValues.serialize(new JsonValueObject(obj)));
+                            }
+                            if (product.local().optIsSome()) {
+                                var localMeta = product.local().optUnwrap();
+                                ps.setString(4, localMeta.path());
+                                ps.setLong(5, localMeta.timestampMs());
+                            } else {
+                                ps.setNull(4, Types.VARCHAR);
+                                ps.setNull(5, Types.INTEGER);
+                            }
+                            {
+                                var arr = new TList<JsonValue>();
+                                for (var depId : product.localDeps()) {
+                                    var mv = new TOrderedMap<String, JsonValue>();
+                                    mv.put("s", new JsonValueNumber(depId.importState().value()));
+                                    mv.put("i", new JsonValueNumber(depId.source().value()));
+                                    arr.add(new JsonValueObject(mv));
+                                }
+                                ps.setString(6, JsonValues.serialize(new JsonValueArray(arr)));
+                            }
+                            ps.executeUpdate();
+                        }
+                        conn.commit();
+                    } catch (SQLException e) {
+                        conn.rollback();
+                        throw e;
+                    } finally {
+                        conn.setAutoCommit(true);
+                    }
+                } catch (SQLException e) {
+                    throw new RuntimeException("CacheReal.flush", e);
+                }
+            }
+        }
+        return slot.value;
     } finally {
       slot.lock.unlock();
     }

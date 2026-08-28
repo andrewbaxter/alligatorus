@@ -26,31 +26,27 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
 
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-    // Sourced-ness is exactly "is a composite stored?" — i.e. jsKey. Inferring
-    // it from whether any element is dynamic is a lossy proxy: a 0-field
-    // composite (empty tuple) is stored yet has no dynamic element, so it must
-    // still load from its local on use.
-    Code useCode;
-    Opt<TupleBaseDynamic> base;
-    if (jsKey.optIsSome()) {
-      useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, jsKey.optUnwrap()));
-      base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap())));
-    } else {
-      useCode = Code.none(loc);
-      base = Opt.none();
-    }
-    var resultElements = new TList<TupleElement>(elements.size());
-    for (var e : elements) {
-      TupleElement te =
-          switch (e) {
-            case TupleScopeField.Scope s -> new TupleElement.EvalRes(
-                EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
-            case TupleScopeField.Dynamic d -> new TupleElement.Dynamic(d.type());
-            case TupleScopeField.Error er -> new TupleElement.EvalRes(EResult.errs(er.errors()));
-          };
-      resultElements.add(te);
-    }
-    return new CodeValue(useCode, EvalOutcome.ofValue(new Tuple(base, resultElements)));
+      Code useCode;
+      Opt<TupleBaseDynamic> base;
+      if (jsKey.optIsSome()) {
+          useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, jsKey.optUnwrap()));
+          base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap())));
+      } else {
+          useCode = Code.none(loc);
+          base = Opt.none();
+      }
+      var resultElements = new TList<TupleElement>(elements.size());
+      for (var e : elements) {
+          TupleElement te =
+                  switch (e) {
+                      case TupleScopeField.Scope s -> new TupleElement.EvalRes(
+                              EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
+                      case TupleScopeField.Dynamic d -> new TupleElement.Dynamic(d.type());
+                      case TupleScopeField.Error er -> new TupleElement.EvalRes(EResult.errs(er.errors()));
+                  };
+          resultElements.add(te);
+      }
+      return new CodeValue(useCode, EvalOutcome.ofValue(new Tuple(base, resultElements)));
   }
 
   @Override

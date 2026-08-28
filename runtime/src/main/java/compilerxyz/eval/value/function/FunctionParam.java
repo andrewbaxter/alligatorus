@@ -12,22 +12,17 @@ import compilerxyz.util.TOrderedMap;
 
 public record FunctionParam(String name, Type type) {
 
-  /**
-   * The in-language argument shape for a host parameter list: no parameters take an empty
-   * tuple, a single parameter is taken bare, and two or more parameters are taken as a
-   * record keyed by parameter name.
-   */
-  public static Type argType(TList<FunctionParam> params) {
-    if (params.isEmpty()) {
-      return new Tuple(Opt.none(), TList.<TupleElement>of());
+    public static Type argType(TList<FunctionParam> params) {
+        if (params.isEmpty()) {
+            return new Tuple(Opt.none(), TList.<TupleElement>of());
+        }
+        if (params.size() == 1) {
+            return params.get(0).type();
+        }
+        var fields = new TOrderedMap<ConstKey, RecordField>();
+        for (var p : params) {
+            fields.put(new ConstKey.Str(p.name()), new RecordField.Dynamic(p.type()));
+        }
+        return new Record(Opt.none(), fields);
     }
-    if (params.size() == 1) {
-      return params.get(0).type();
-    }
-    var fields = new TOrderedMap<ConstKey, RecordField>();
-    for (var p : params) {
-      fields.put(new ConstKey.Str(p.name()), new RecordField.Dynamic(p.type()));
-    }
-    return new Record(Opt.none(), fields);
-  }
 }

@@ -6,269 +6,192 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
-/**
- * One level of the scope stack. Levels are the units of the drop/exit chain:
- * an exceptional unwind or a labeled return passes level by level outward,
- * and each cleanup-bearing level contributes one chain node per (state,
- * continuation) it is passed through under.
- *
- * <p>Chain bookkeeping ({@link Emission}, arrivals, pending finally nodes) is
- * emission-path state, not branch state: forks share it by identity, so
- * registrations from inside a branch arm surface at the owning level's close
- * regardless of which fork registered them. Dedup across forks is sound
- * because state ids are minted from the per-eval counter — two paths only
- * share a node key when they share the state lineage that produced it.
- */
 public sealed interface ScopeLevel {
 
-  Emission scopeLevelEmission();
+    Emission scopeLevelEmission();
 
-  /** A named (or synthetic unnamed) binding pushed by a block. */
-  final class Entry implements ScopeLevel {
-    public final Opt<ConstKey> name;
-    public Binding binding;
-    /**
-     * True for synthetic operand-stack cleanup entries (e.g. a foreach's
-     * iterator slot, dropped with a POP): they participate in exit
-     * trampolines — a jump leaves the value dangling — but not in
-     * exceptional chains, where the target's unwind already discards it.
-     */
-    public final boolean stackOnly;
-    /**
-     * General state id: minted on every mutation. Equal ids across branches
-     * mean nothing changed and the merge is the identity.
-     */
-    public long state;
-    /**
-     * Drop-state id: minted only for drop-affecting mutations; keys chain
-     * nodes. A mutation may bump {@code state} without bumping this — it does
-     * not matter that such changes are invisible where drop code is emitted.
-     */
-    public long dropState;
-    final Emission emission;
+    final class Entry implements ScopeLevel {
+        public final Opt<ConstKey> name;
+        public Binding binding;
+        public final boolean stackOnly;
+        public long state;
+        public long dropState;
+        final Emission emission;
 
-    public Entry(
-        Opt<ConstKey> name,
-        Binding binding,
-        boolean stackOnly,
-        long state,
-        long dropState,
-        Emission emission) {
-      this.name = name;
-      this.binding = binding;
-      this.stackOnly = stackOnly;
-      this.state = state;
-      this.dropState = dropState;
-      this.emission = emission;
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-  }
-
-  /**
-   * An in-flight droppable temporary: produced on the operand stack with a
-   * shadow copy stored to a local at production, popped at consumption. The
-   * binding reads the shadow local, so chain nodes can drop the value after
-   * a handler entry has discarded the operand stack.
-   */
-  final class Temp implements ScopeLevel {
-    public Binding binding;
-    public long state;
-    public long dropState;
-    final Emission emission;
-
-    public Temp(Binding binding, long state, long dropState, Emission emission) {
-      this.binding = binding;
-      this.state = state;
-      this.dropState = dropState;
-      this.emission = emission;
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-  }
-
-  /**
-   * A control construct that consumes returns: named when pushed by a labeled
-   * expression, anonymous for seq/if/match/foreach. An unlabeled return
-   * targets the innermost Labeled of either kind; a labeled return targets
-   * the innermost with the matching name.
-   */
-  final class Labeled implements ScopeLevel {
-    public final Opt<String> label;
-    /** Convergence point; matched returns land here after their trampoline chain. */
-    public final JumpKey end;
-    /** Arrivals recorded by matched returns; shared across forks. */
-    public final TList<Arrival> arrivals;
-    final Emission emission;
-
-    public Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
-      this.label = label;
-      this.end = end;
-      this.arrivals = arrivals;
-      this.emission = emission;
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-  }
-
-  /**
-   * A try with a catch: terminal of the exceptional chain for its extent —
-   * chain nodes inside jump to {@code handler}, where the exception is the
-   * single stack element.
-   */
-  final class Catch implements ScopeLevel {
-    public final JumpKey handler;
-    final Emission emission;
-
-    public Catch(JumpKey handler, Emission emission) {
-      this.handler = handler;
-      this.emission = emission;
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-  }
-
-  /**
-   * A try's finally: chain-wise a cleanup level whose code is a fresh
-   * instance of the evaluated finally body rather than a binding drop. The
-   * body is const-evaled after the try's body and catch (source order), so
-   * node code generation is deferred: chain construction records a
-   * {@link Pending} per key and the try's close generates the blocks once
-   * {@code body} is set.
-   */
-  final class Finally implements ScopeLevel {
-    public Code body;
-    /** Deferred chain nodes, shared across forks; generated at the try's close. */
-    public final TList<Pending> pending;
-    final Emission emission;
-
-    public Finally(TList<Pending> pending, Emission emission) {
-      this.pending = pending;
-      this.emission = emission;
-    }
-
-    @Override
-    public Emission scopeLevelEmission() {
-      return emission;
-    }
-
-    public record Pending(JumpKey self, DestKey key) {}
-  }
-
-  /** A return's arrival at a {@link Labeled} level, pre-convergence. */
-  record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {}
-
-  /**
-   * Identity of one chain node at a level: the level's drop state when the
-   * chain passed through, the destination discriminator (none = exceptional
-   * chain; some = a return trampoline chain), the next node's key (none only
-   * for the exceptional root, which rethrows), and the carried value's type
-   * for trampolines whose value rides the stack, interned per emission via
-   * typeIsEqual so equal carry types share a node.
-   */
-  final class DestKey {
-    public final long dropState;
-    public final Opt<String> label;
-    public final Opt<JumpKey> next;
-    public final int carryTypeIdx;
-
-    public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int carryTypeIdx) {
-      this.dropState = dropState;
-      this.label = label;
-      this.next = next;
-      this.carryTypeIdx = carryTypeIdx;
-    }
-
-    public Opt<String> label() {
-      return label;
-    }
-
-    public Opt<JumpKey> next() {
-      return next;
-    }
-
-    public Opt<Type> carryType(Emission emission) {
-      if (carryTypeIdx < 0) return Opt.none();
-      return Opt.some(emission.carryTypes.get(carryTypeIdx));
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      return other instanceof DestKey d
-          && d.dropState == dropState
-          && d.label.equals(label)
-          && switch (d.next) {
-            case Opt.Some<JumpKey> as ->
-                switch (next) {
-                  case Opt.Some<JumpKey> bs -> as.value() == bs.value();
-                  case Opt.None<JumpKey> ignored -> false;
-                };
-            case Opt.None<JumpKey> ignored -> next.optIsNone();
-          }
-          && d.carryTypeIdx == carryTypeIdx;
-    }
-
-    @Override
-    public int hashCode() {
-      int h = Long.hashCode(dropState);
-      h = h * 31 + label.hashCode();
-      h =
-          h * 31
-              + switch (next) {
-                case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
-                case Opt.None<JumpKey> ignored -> 0;
-              };
-      h = h * 31 + carryTypeIdx;
-      return h;
-    }
-  }
-
-  /**
-   * Per-level-lineage chain bookkeeping, shared across forks by identity.
-   * {@code dests} dedups chain nodes; {@code blocks} holds their generated
-   * code, spliced in by the construct that owns the level at its close.
-   */
-  final class Emission {
-    /** Lineage id: fork copies of a level share the Emission, so equal ids mean same lineage. */
-    public final long id;
-
-    public Emission(long id) {
-      this.id = id;
-    }
-
-    /**
-     * Resolved destination per chain key. A level whose cleanup is empty at
-     * the keyed state resolves to its parent's dest (pass-through, no node);
-     * none = the chain root rethrows out of the method.
-     */
-    public final TMap<DestKey, Opt<JumpKey>> dests = new TMap<>();
-    public final TList<Code> blocks = new TList<>();
-    /** Carry types interned by {@link #carryTypeIntern}; {@link DestKey#carryTypeIdx} indexes. */
-    public final TList<Type> carryTypes = new TList<>();
-
-    public int carryTypeIntern(ExprContext xx, Opt<Type> carryType) {
-      return switch (carryType) {
-        case Opt.None<Type> ignored -> -1;
-        case Opt.Some<Type> some -> {
-          for (int i = 0; i < carryTypes.size(); i++) {
-            if (carryTypes.get(i).typeIsEqual(xx, some.value())) yield i;
-          }
-          carryTypes.add(some.value());
-          yield carryTypes.size() - 1;
+        public Entry(
+                Opt<ConstKey> name,
+                Binding binding,
+                boolean stackOnly,
+                long state,
+                long dropState,
+                Emission emission) {
+            this.name = name;
+            this.binding = binding;
+            this.stackOnly = stackOnly;
+            this.state = state;
+            this.dropState = dropState;
+            this.emission = emission;
         }
-      };
+
+        @Override
+        public Emission scopeLevelEmission() {
+            return emission;
+        }
     }
-  }
+
+    final class Temp implements ScopeLevel {
+        public Binding binding;
+        public long state;
+        public long dropState;
+        final Emission emission;
+
+        public Temp(Binding binding, long state, long dropState, Emission emission) {
+            this.binding = binding;
+            this.state = state;
+            this.dropState = dropState;
+            this.emission = emission;
+        }
+
+        @Override
+        public Emission scopeLevelEmission() {
+            return emission;
+        }
+    }
+
+    final class Labeled implements ScopeLevel {
+        public final Opt<String> label;
+        public final JumpKey end;
+        public final TList<Arrival> arrivals;
+        final Emission emission;
+
+        public Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
+            this.label = label;
+            this.end = end;
+            this.arrivals = arrivals;
+            this.emission = emission;
+        }
+
+        @Override
+        public Emission scopeLevelEmission() {
+            return emission;
+        }
+    }
+
+    final class Catch implements ScopeLevel {
+        public final JumpKey handler;
+        final Emission emission;
+
+        public Catch(JumpKey handler, Emission emission) {
+            this.handler = handler;
+            this.emission = emission;
+        }
+
+        @Override
+        public Emission scopeLevelEmission() {
+            return emission;
+        }
+    }
+
+    final class Finally implements ScopeLevel {
+        public Code body;
+        public final TList<Pending> pending;
+        final Emission emission;
+
+        public Finally(TList<Pending> pending, Emission emission) {
+            this.pending = pending;
+            this.emission = emission;
+        }
+
+        @Override
+        public Emission scopeLevelEmission() {
+            return emission;
+        }
+
+        public record Pending(JumpKey self, DestKey key) {
+        }
+    }
+
+    record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {
+    }
+
+    final class DestKey {
+        public final long dropState;
+        public final Opt<String> label;
+        public final Opt<JumpKey> next;
+        public final int carryTypeIdx;
+
+        public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int carryTypeIdx) {
+            this.dropState = dropState;
+            this.label = label;
+            this.next = next;
+            this.carryTypeIdx = carryTypeIdx;
+        }
+
+        public Opt<String> label() {
+            return label;
+        }
+
+        public Opt<JumpKey> next() {
+            return next;
+        }
+
+        public Opt<Type> carryType(Emission emission) {
+            if (carryTypeIdx < 0) return Opt.none();
+            return Opt.some(emission.carryTypes.get(carryTypeIdx));
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof DestKey d
+                    && d.dropState == dropState
+                    && d.label.equals(label)
+                    && switch (d.next) {
+                case Opt.Some<JumpKey> as -> switch (next) {
+                    case Opt.Some<JumpKey> bs -> as.value() == bs.value();
+                    case Opt.None<JumpKey> ignored -> false;
+                };
+                case Opt.None<JumpKey> ignored -> next.optIsNone();
+            }
+                    && d.carryTypeIdx == carryTypeIdx;
+        }
+
+        @Override
+        public int hashCode() {
+            int h = Long.hashCode(dropState);
+            h = h * 31 + label.hashCode();
+            h =
+                    h * 31
+                            + switch (next) {
+                        case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
+                        case Opt.None<JumpKey> ignored -> 0;
+                    };
+            h = h * 31 + carryTypeIdx;
+            return h;
+        }
+    }
+
+    final class Emission {
+        public final long id;
+
+        public Emission(long id) {
+            this.id = id;
+        }
+
+        public final TMap<DestKey, Opt<JumpKey>> dests = new TMap<>();
+        public final TList<Code> blocks = new TList<>();
+        public final TList<Type> carryTypes = new TList<>();
+
+        public int carryTypeIntern(ExprContext xx, Opt<Type> carryType) {
+            return switch (carryType) {
+                case Opt.None<Type> ignored -> -1;
+                case Opt.Some<Type> some -> {
+                    for (int i = 0; i < carryTypes.size(); i++) {
+                        if (carryTypes.get(i).typeIsEqual(xx, some.value())) yield i;
+                    }
+                    carryTypes.add(some.value());
+                    yield carryTypes.size() - 1;
+                }
+            };
+        }
+    }
 }

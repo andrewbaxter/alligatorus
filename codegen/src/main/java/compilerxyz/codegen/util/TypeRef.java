@@ -24,15 +24,10 @@ public record TypeRef(TypeName path, CodeBlock dynamicType) {
         DynamicTypes.composite(wrapper, first.dynamicType(), second.dynamicType()));
   }
 
-  /**
-   * The runtime descriptor is unknown / not yet designed. Path can be anything; dynamicType falls
-   * through to {@code Type.dynamicType()}. Use only when the class in question has no runtime
-   * Type descriptor and the callee's dispatch treats it as any-Type.
-   */
-  public static TypeRef opaque(TypeName path) {
-    return new TypeRef(
-        path,
-        CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenType")));
-  }
+    public static TypeRef opaque(TypeName path) {
+        return new TypeRef(
+                path,
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenType")));
+    }
 
 }

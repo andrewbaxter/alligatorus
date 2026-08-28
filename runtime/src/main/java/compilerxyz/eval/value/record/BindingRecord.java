@@ -31,33 +31,30 @@ public record BindingRecord(
 
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-    // Sourced-ness is exactly "is a composite stored?" — i.e. jsKey — not
-    // whether some field happens to be dynamic (a lossy proxy that misses a
-    // 0-field composite).
-    Code useCode;
-    Opt<RecordBaseDynamic> base;
-    switch (jsKey) {
-      case Opt.Some<BindingId> some -> {
-        useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
-        base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
+      Code useCode;
+      Opt<RecordBaseDynamic> base;
+      switch (jsKey) {
+          case Opt.Some<BindingId> some -> {
+              useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
+              base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
+          }
+          case Opt.None<BindingId> none -> {
+              useCode = Code.none(loc);
+              base = Opt.none();
+          }
       }
-      case Opt.None<BindingId> none -> {
-        useCode = Code.none(loc);
-        base = Opt.none();
+      var resultFields = new TOrderedMap<ConstKey, RecordField>();
+      for (var entry : fields.entrySet()) {
+          RecordField rf =
+                  switch (entry.getValue()) {
+                      case RecordScopeField.Scope s -> new RecordField.EvalRes(
+                              EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
+                      case RecordScopeField.Dynamic d -> new RecordField.Dynamic(d.type());
+                      case RecordScopeField.Error e -> new RecordField.EvalRes(EResult.errs(e.errors()));
+                  };
+          resultFields.put(entry.getKey(), rf);
       }
-    }
-    var resultFields = new TOrderedMap<ConstKey, RecordField>();
-    for (var entry : fields.entrySet()) {
-      RecordField rf =
-          switch (entry.getValue()) {
-            case RecordScopeField.Scope s -> new RecordField.EvalRes(
-                EResult.ok(s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
-            case RecordScopeField.Dynamic d -> new RecordField.Dynamic(d.type());
-            case RecordScopeField.Error e -> new RecordField.EvalRes(EResult.errs(e.errors()));
-          };
-      resultFields.put(entry.getKey(), rf);
-    }
-    return new CodeValue(useCode, EvalOutcome.ofValue(new Record(base, resultFields)));
+      return new CodeValue(useCode, EvalOutcome.ofValue(new Record(base, resultFields)));
   }
 
   @Override

@@ -213,7 +213,6 @@ public final class BuiltinPushStructScanner {
       try {
         return TypeRef.leaf(cn, scannedLeaves);
       } catch (IllegalArgumentException e) {
-        // fall through
       }
     }
     if (tn instanceof ParameterizedTypeName pt

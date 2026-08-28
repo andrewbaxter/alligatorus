@@ -44,7 +44,6 @@ public final class SourceDataMethodData {
 
   public final String name;
   public Opt<Type> argType = Opt.none();
-  // Optional return: some(type) if the method yields a value, none if it returns nothing.
   public Opt<Type> retType = Opt.none();
   public Opt<Value> implExpr = Opt.none();
   public Opt<String> compiledClassName = Opt.none();

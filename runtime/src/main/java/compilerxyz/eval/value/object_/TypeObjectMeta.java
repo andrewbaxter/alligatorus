@@ -4,15 +4,10 @@ import compilerxyz.eval.Unique;
 import compilerxyz.util.Opt;
 import compilerxyz.util.IList;
 
-/**
- * Shared descriptor metadata between {@link TypeObjectDynamic} and
- * {@link TypeObjectConst}. Paired instances must carry the same
- * {@code TypeObjectMeta} so a dynamic can synthesize its matching const
- * (and vice versa).
- */
 public record TypeObjectMeta(
-    String typeDesc,
-    IList<Unique> trivialIdentityAspects,
-    IList<TypeObjectCastRule> castRules,
-    IList<TypeObjectCastFromRule> castFromRules,
-    Opt<ObjectAspectSource> aspectSource) {}
+        String typeDesc,
+        IList<Unique> trivialIdentityAspects,
+        IList<TypeObjectCastRule> castRules,
+        IList<TypeObjectCastFromRule> castFromRules,
+        Opt<ObjectAspectSource> aspectSource) {
+}

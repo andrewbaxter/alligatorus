@@ -50,32 +50,31 @@ public final class JavaAspectExtractor {
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
       for (var file : files) {
-        var src = Files.readString(file);
-        if (!src.contains("@BuiltinFull(")) continue;
-        var cu = StaticJavaParser.parse(file);
-        var declOpt = findBuiltinType(cu);
-        if (declOpt.optIsSome()) {
-          var decl = declOpt.optUnwrap();
-          Opt<BuiltinInterfacesGen.BuiltinSpec> builtin;
-          if (decl instanceof ClassOrInterfaceDeclaration coid) {
-            if (coid.isInterface()) {
-              builtin = extractBuiltinSpecInterface(
-                  file, cu, coid, interfaceExtendsAspect(coid));
-            } else {
-              builtin = extractBuiltinSpecClass(file, cu, coid);
-            }
-          } else if (decl instanceof RecordDeclaration recDecl) {
-            builtin = extractBuiltinSpecRecord(file, cu, recDecl, Opt.none());
-          } else {
-            throw new IllegalStateException(
-                "JavaAspectExtractor: unexpected decl type " + decl.getClass());
+          var src = Files.readString(file);
+          if (!src.contains("@BuiltinFull(")) continue;
+          var cu = StaticJavaParser.parse(file);
+          var declOpt = findBuiltinType(cu);
+          if (declOpt.optIsSome()) {
+              var decl = declOpt.optUnwrap();
+              Opt<BuiltinInterfacesGen.BuiltinSpec> builtin;
+              if (decl instanceof ClassOrInterfaceDeclaration coid) {
+                  if (coid.isInterface()) {
+                      builtin = extractBuiltinSpecInterface(
+                              file, cu, coid, interfaceExtendsAspect(coid));
+                  } else {
+                      builtin = extractBuiltinSpecClass(file, cu, coid);
+                  }
+              } else if (decl instanceof RecordDeclaration recDecl) {
+                  builtin = extractBuiltinSpecRecord(file, cu, recDecl, Opt.none());
+              } else {
+                  throw new IllegalStateException(
+                          "JavaAspectExtractor: unexpected decl type " + decl.getClass());
+              }
+              if (builtin.optIsSome()) builtins.add(builtin.optUnwrap());
           }
-          if (builtin.optIsSome()) builtins.add(builtin.optUnwrap());
-        }
-        // Also scan for nested @Builtin records inside any top-level type.
-        for (var t : cu.getTypes()) {
-          collectNestedBuiltinRecords(file, cu, t, builtins);
-        }
+          for (var t : cu.getTypes()) {
+              collectNestedBuiltinRecords(file, cu, t, builtins);
+          }
       }
     }
     return new ScanResult(builtins);
@@ -107,56 +106,53 @@ public final class JavaAspectExtractor {
       CompilationUnit cu,
       ClassOrInterfaceDeclaration ifaceDecl,
       boolean isAspect) {
-    var simpleName = ifaceDecl.getNameAsString();
-    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-    var builtinAnn = getBuiltinAnnotation(ifaceDecl);
-    var attrs = readAttrs(builtinAnn);
-    var uniqueIdStr = attrs.get("uniqueId");
-    if (uniqueIdStr == null) {
-      throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
-    }
-    var uniqueId = Long.parseLong(uniqueIdStr);
-    var identityIdStr = attrs.get("identityId");
-    var identityId = identityIdStr == null ? 0L : Long.parseLong(identityIdStr);
-    if (isAspect && identityId == 0L) {
-      throw new IllegalStateException(
-          "@Builtin on aspect " + simpleName + " missing required identityId");
-    }
-    var importMap = buildImportMap(cu);
-    // Nested records declared inside an aspect interface become
-    // compilerxyz.gen.AspectXxx.NestedName in generated code; wire their short
-    // names so method signatures referencing them resolve correctly.
-    var effectiveImports = new TMap<String, String>();
-    for (var e : importMap.entrySet()) effectiveImports.put(e.getKey(), e.getValue());
-    if (isAspect) {
-      for (var member : ifaceDecl.getMembers()) {
-        if (member instanceof RecordDeclaration r) {
-          effectiveImports.put(
-              r.getNameAsString(), pkg + "." + simpleName + "." + r.getNameAsString());
-        }
+      var simpleName = ifaceDecl.getNameAsString();
+      var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
+      var builtinAnn = getBuiltinAnnotation(ifaceDecl);
+      var attrs = readAttrs(builtinAnn);
+      var uniqueIdStr = attrs.get("uniqueId");
+      if (uniqueIdStr == null) {
+          throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
       }
-    }
-    var methods = new TList<Method>();
-    for (var m : ifaceDecl.getMethods()) {
-      if (!m.isAbstract()) continue;
-      var sourceName = NameDerivation.snakeCase(
-          deriveSourceName(m.getNameAsString(), simpleName));
-      var params = new TList<Param>();
-      for (var p : m.getParameters()) {
-        params.add(new Param(
-            NameDerivation.snakeCase(stripReservedSuffix(p.getNameAsString())),
-            typeNameOf(p.getType(), effectiveImports, pkg)));
+      var uniqueId = Long.parseLong(uniqueIdStr);
+      var identityIdStr = attrs.get("identityId");
+      var identityId = identityIdStr == null ? 0L : Long.parseLong(identityIdStr);
+      if (isAspect && identityId == 0L) {
+          throw new IllegalStateException(
+                  "@Builtin on aspect " + simpleName + " missing required identityId");
       }
-      methods.add(new Method(
-          sourceName,
-          m.getNameAsString(),
-          params,
-          typeNameOf(m.getType(), effectiveImports, pkg),
-          true));
-    }
-    return Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
-        simpleName, pkg, uniqueId, identityId, isAspect, false, methods,
-        new TList<BuiltinInterfacesGen.DataField>()));
+      var importMap = buildImportMap(cu);
+      var effectiveImports = new TMap<String, String>();
+      for (var e : importMap.entrySet()) effectiveImports.put(e.getKey(), e.getValue());
+      if (isAspect) {
+          for (var member : ifaceDecl.getMembers()) {
+              if (member instanceof RecordDeclaration r) {
+                  effectiveImports.put(
+                          r.getNameAsString(), pkg + "." + simpleName + "." + r.getNameAsString());
+              }
+          }
+      }
+      var methods = new TList<Method>();
+      for (var m : ifaceDecl.getMethods()) {
+          if (!m.isAbstract()) continue;
+          var sourceName = NameDerivation.snakeCase(
+                  deriveSourceName(m.getNameAsString(), simpleName));
+          var params = new TList<Param>();
+          for (var p : m.getParameters()) {
+              params.add(new Param(
+                      NameDerivation.snakeCase(stripReservedSuffix(p.getNameAsString())),
+                      typeNameOf(p.getType(), effectiveImports, pkg)));
+          }
+          methods.add(new Method(
+                  sourceName,
+                  m.getNameAsString(),
+                  params,
+                  typeNameOf(m.getType(), effectiveImports, pkg),
+                  true));
+      }
+      return Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
+              simpleName, pkg, uniqueId, identityId, isAspect, false, methods,
+              new TList<BuiltinInterfacesGen.DataField>()));
   }
 
   private static Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecClass(
@@ -239,20 +235,14 @@ public final class JavaAspectExtractor {
     return false;
   }
 
-  /**
-   * Derive the source-visible method name from the Java method name and the enclosing
-   * interface name. If the Java name starts with the interface name (lowercase first char),
-   * strip that prefix and lowercase the first remaining char. Otherwise return the Java
-   * name unchanged.
-   */
-  private static String deriveSourceName(String javaMethodName, String interfaceSimpleName) {
-    var prefix = Character.toLowerCase(interfaceSimpleName.charAt(0)) + interfaceSimpleName.substring(1);
-    if (javaMethodName.startsWith(prefix) && javaMethodName.length() > prefix.length()) {
-      var rest = javaMethodName.substring(prefix.length());
-      return Character.toLowerCase(rest.charAt(0)) + rest.substring(1);
+    private static String deriveSourceName(String javaMethodName, String interfaceSimpleName) {
+        var prefix = Character.toLowerCase(interfaceSimpleName.charAt(0)) + interfaceSimpleName.substring(1);
+        if (javaMethodName.startsWith(prefix) && javaMethodName.length() > prefix.length()) {
+            var rest = javaMethodName.substring(prefix.length());
+            return Character.toLowerCase(rest.charAt(0)) + rest.substring(1);
+        }
+        return javaMethodName;
     }
-    return javaMethodName;
-  }
 
   private static String stripReservedSuffix(String name) {
     if (name.endsWith("_") && name.length() > 1) return name.substring(0, name.length() - 1);

@@ -24,66 +24,63 @@ public final class ImportRun {
   }
 
   public static EResult<SpecOutcome> compileOne(ExprContext xx, QExprId loc, SourceSpecValue specValue) {
-    var ix = xx.vx.ix;
-    // inlined resolve(specValue, ix.currentSpec)
-    Result<SourceSpecAbsolute, String> resolveRes = switch (specValue) {
-      case SourceSpecValue.Virtual v -> Result.ok(new SourceSpecAbsolute.Virtual(v.name()));
-      case SourceSpecValue.Remote r ->
-          Result.ok(
-              new SourceSpecAbsolute.Remote(r.remote().url(), r.remote().hash(), ""));
-      case SourceSpecValue.Local l ->
-          switch (ix.currentSpec) {
-            case SourceSpecAbsolute.Virtual cv ->
-                Result.err("local import is not allowed from a virtual module");
-            case SourceSpecAbsolute.Local cl -> {
-              var dir = Path.of(cl.path()).getParent();
-              var base = dir == null ? Path.of("") : dir;
-              yield Result.ok(
-                  new SourceSpecAbsolute.Local(base.resolve(l.path()).normalize().toString()));
-            }
-            case SourceSpecAbsolute.Remote cr -> {
-              if (cr.subpath().isEmpty()) {
-                yield Result.err(
-                    "relative import is only allowed from a bundle, not a single remote file");
+      var ix = xx.vx.ix;
+      Result<SourceSpecAbsolute, String> resolveRes = switch (specValue) {
+          case SourceSpecValue.Virtual v -> Result.ok(new SourceSpecAbsolute.Virtual(v.name()));
+          case SourceSpecValue.Remote r -> Result.ok(
+                  new SourceSpecAbsolute.Remote(r.remote().url(), r.remote().hash(), ""));
+          case SourceSpecValue.Local l -> switch (ix.currentSpec) {
+              case SourceSpecAbsolute.Virtual cv -> Result.err("local import is not allowed from a virtual module");
+              case SourceSpecAbsolute.Local cl -> {
+                  var dir = Path.of(cl.path()).getParent();
+                  var base = dir == null ? Path.of("") : dir;
+                  yield Result.ok(
+                          new SourceSpecAbsolute.Local(base.resolve(l.path()).normalize().toString()));
               }
-              var subpath = cr.subpath();
-              var slashIdx = subpath.lastIndexOf('/');
-              // inlined posixResolve(slashIdx < 0 ? "" : subpath.substring(0, slashIdx), l.path())
-              var baseDir = slashIdx < 0 ? "" : subpath.substring(0, slashIdx);
-              var rel = l.path();
-              var segs = new ArrayList<String>();
-              if (!baseDir.isEmpty()) {
-                for (var s : baseDir.split("/")) {
-                  if (!s.isEmpty() && !s.equals(".")) segs.add(s);
-                }
-              }
-              for (var s : rel.split("/")) {
-                if (s.isEmpty() || s.equals(".")) continue;
-                if (s.equals("..")) {
-                  if (segs.isEmpty()) {
-                    yield Result.err("path escapes bundle root: " + rel);
+              case SourceSpecAbsolute.Remote cr -> {
+                  if (cr.subpath().isEmpty()) {
+                      yield Result.err(
+                              "relative import is only allowed from a bundle, not a single remote file");
                   }
-                  segs.remove(segs.size() - 1);
-                } else {
-                  segs.add(s);
-                }
+                  var subpath = cr.subpath();
+                  var slashIdx = subpath.lastIndexOf('/');
+                  var baseDir = slashIdx < 0 ? "" : subpath.substring(0, slashIdx);
+                  var rel = l.path();
+                  var segs = new ArrayList<String>();
+                  if (!baseDir.isEmpty()) {
+                      for (var s : baseDir.split("/")) {
+                          if (!s.isEmpty() && !s.equals(".")) segs.add(s);
+                      }
+                  }
+                  for (var s : rel.split("/")) {
+                      if (s.isEmpty() || s.equals(".")) continue;
+                      if (s.equals("..")) {
+                          if (segs.isEmpty()) {
+                              yield Result.err("path escapes bundle root: " + rel);
+                          }
+                          segs.remove(segs.size() - 1);
+                      } else {
+                          segs.add(s);
+                      }
+                  }
+                  var resolvedPath = String.join("/", segs);
+                  yield Result.ok(
+                          new SourceSpecAbsolute.Remote(
+                                  cr.baseUrl(),
+                                  cr.hash(),
+                                  resolvedPath));
               }
-              var resolvedPath = String.join("/", segs);
-              yield Result.ok(
-                  new SourceSpecAbsolute.Remote(
-                      cr.baseUrl(),
-                      cr.hash(),
-                      resolvedPath));
-            }
           };
-    };
-    Result.Ok<SourceSpecAbsolute, String> resolveResOk;
-    switch (resolveRes) {
-      case Result.Ok<SourceSpecAbsolute, String> ok -> resolveResOk = ok;
-      case Result.Err<SourceSpecAbsolute, String> err -> { return EResult.err(loc, err.error()); }
-    }
-    var abs = resolveResOk.value();
-    return compileAbsolute(xx, loc, abs);
+      };
+      Result.Ok<SourceSpecAbsolute, String> resolveResOk;
+      switch (resolveRes) {
+          case Result.Ok<SourceSpecAbsolute, String> ok -> resolveResOk = ok;
+          case Result.Err<SourceSpecAbsolute, String> err -> {
+              return EResult.err(loc, err.error());
+          }
+      }
+      var abs = resolveResOk.value();
+      return compileAbsolute(xx, loc, abs);
   }
 
   public static EResult<SpecOutcome> compileAbsolute(

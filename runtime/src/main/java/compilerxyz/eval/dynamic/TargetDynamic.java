@@ -164,58 +164,53 @@ public final class TargetDynamic implements Target {
       if (bodyDyn != null) seq.add(bodyDyn);
     }
     if (catch_.optIsSome()) {
-      var clause = catch_.optUnwrap();
-      var handler = catchHandler.optUnwrap();
-      var joinKey = new JumpKey();
-      if (bodyHasValue) {
-        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeJump(joinKey)));
-      }
-      // Chain nodes route every exception here (entries are catch-any); only
-      // the declared user exception type enters the catch body — panics and
-      // anything foreign continue unwinding after the drop chain has run.
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(handler)));
-      var isExc = new LabelNode(new Label());
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-      seq.add(new CodeDynamic(
-          new CodeLoc.Some(loc),
-          new JavaBytecodeInstructionObj(
-              new TypeInsnNode(
-                  Opcodes.INSTANCEOF, INTNAME_DYN_EXCEPTION.value()))));
-      seq.add(new CodeDynamic(
-          new CodeLoc.Some(loc),
-          new JavaBytecodeInstructionObj(
-              new JumpInsnNode(Opcodes.IFNE, isExc))));
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionObj(isExc)));
-      seq.add(JavaBytecodeUtils.cast(loc, new JavaDataDescriptor("L" + INTNAME_DYN_EXCEPTION.value() + ";")));
-      seq.add(
-          JavaBytecodeUtils.accessField(
-              loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
-      var payloadConsumeRes = GenAspectConsumeDynamic.get(xx, loc, clause.excType());
-      if (payloadConsumeRes.hasErrors()) return payloadConsumeRes.reerr();
-      var payloadDesc =
-          payloadConsumeRes
-              .requireValue("try/catch payload AspectConsumeDynamic")
-              .aspectConsumeDynamicJvmClass(xx);
-      if (payloadDesc.value().startsWith("L")
-          && !payloadDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
-        seq.add(JavaBytecodeUtils.cast(loc, payloadDesc));
-      }
-      seq.add(
-          new CodeDynamic(
-              new CodeLoc.Some(loc),
-              new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
-      if (clause.body().value().optIsSome()) {
-        var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body());
-        if (catchDynOpt.optIsNone()) return EResult.errs(erb.errors());
-        seq.add(catchDynOpt.optUnwrap());
-      } else {
-        // The catch body never falls through: its exits and throws carry
-        // their own cleanup paths.
-        var catchDyn = clause.body().code().codeDynamic();
-        if (catchDyn != null) seq.add(catchDyn);
-      }
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(joinKey)));
+        var clause = catch_.optUnwrap();
+        var handler = catchHandler.optUnwrap();
+        var joinKey = new JumpKey();
+        if (bodyHasValue) {
+            seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeJump(joinKey)));
+        }
+        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(handler)));
+        var isExc = new LabelNode(new Label());
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+        seq.add(new CodeDynamic(
+                new CodeLoc.Some(loc),
+                new JavaBytecodeInstructionObj(
+                        new TypeInsnNode(
+                                Opcodes.INSTANCEOF, INTNAME_DYN_EXCEPTION.value()))));
+        seq.add(new CodeDynamic(
+                new CodeLoc.Some(loc),
+                new JavaBytecodeInstructionObj(
+                        new JumpInsnNode(Opcodes.IFNE, isExc))));
+        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
+        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionObj(isExc)));
+        seq.add(JavaBytecodeUtils.cast(loc, new JavaDataDescriptor("L" + INTNAME_DYN_EXCEPTION.value() + ";")));
+        seq.add(
+                JavaBytecodeUtils.accessField(
+                        loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
+        var payloadConsumeRes = GenAspectConsumeDynamic.get(xx, loc, clause.excType());
+        if (payloadConsumeRes.hasErrors()) return payloadConsumeRes.reerr();
+        var payloadDesc =
+                payloadConsumeRes
+                        .requireValue("try/catch payload AspectConsumeDynamic")
+                        .aspectConsumeDynamicJvmClass(xx);
+        if (payloadDesc.value().startsWith("L")
+                && !payloadDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+            seq.add(JavaBytecodeUtils.cast(loc, payloadDesc));
+        }
+        seq.add(
+                new CodeDynamic(
+                        new CodeLoc.Some(loc),
+                        new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
+        if (clause.body().value().optIsSome()) {
+            var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body());
+            if (catchDynOpt.optIsNone()) return EResult.errs(erb.errors());
+            seq.add(catchDynOpt.optUnwrap());
+        } else {
+            var catchDyn = clause.body().code().codeDynamic();
+            if (catchDyn != null) seq.add(catchDyn);
+        }
+        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(joinKey)));
     }
     if (finallyNormal.optIsSome()) {
       var finDyn = finallyNormal.optUnwrap().codeDynamic();
@@ -270,10 +265,7 @@ public final class TargetDynamic implements Target {
     seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
     var cleanupDyn = cleanup.codeDynamic();
     if (cleanupDyn != null) {
-      // The cleanup may be a shared template (a finally body embedded in one
-      // node per state); labels are single-emission, so every embedding is a
-      // fresh instance.
-      seq.add(JavaBytecodeUtils.freshen(cleanupDyn));
+        seq.add(JavaBytecodeUtils.freshen(cleanupDyn));
     }
     seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, excKey)));
     if (parent.optIsSome()) {
@@ -371,10 +363,8 @@ public final class TargetDynamic implements Target {
         }
       }
     } else {
-      // No else: any condition may fall through — the "no branch matched"
-      // path reaches endLabel with an implicit null value.
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-      allControlEnded = false;
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+        allControlEnded = false;
     }
     if (allControlEnded) {
       return EResult.ok(new CodeValue(
@@ -494,14 +484,11 @@ public final class TargetDynamic implements Target {
         }
       }
     } else if (allControlEnded) {
-      // Every case body is control-ended; no fallback is needed since the
-      // match is exhaustive. Emit an unreachable ATHROW so verifier does not
-      // require a fall-through value here.
-      seq.add(JavaBytecodeUtils.instantiate(loc,
-          JavaInternalName.of("java/lang/AssertionError"),
-          JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID),
-          new CodeDynamic(loc, new JavaBytecodeSequence())));
-      seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
+        seq.add(JavaBytecodeUtils.instantiate(loc,
+                JavaInternalName.of("java/lang/AssertionError"),
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID),
+                new CodeDynamic(loc, new JavaBytecodeSequence())));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
     } else {
       seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
     }
@@ -703,37 +690,34 @@ public final class TargetDynamic implements Target {
       Type calleeExc,
       Type callerExc,
       Opt<JumpKey> next) {
-    var erb = new Erb(loc);
-    // Materialize the in-flight exception through a fresh local — pure
-    // target machinery: the handler frame's single stack element lands in a
-    // slot and reads back as a value of the callee's exception type.
-    var catchBinding = BindingId.localFresh();
-    var initialBindOpt = erb.mustEr(GenAspectInitialBind.get(xx, loc, calleeExc));
-    if (initialBindOpt.optIsNone()) return EResult.errs(erb.errors());
-    var binding = initialBindOpt.optUnwrap().aspectInitialBindInitialBind(catchBinding);
-    var boundCv =
-        binding.bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
-    var castCvOpt = erb.mustEr(calleeExc.typeCastTo(xx, loc, boundCv, callerExc));
-    if (castCvOpt.optIsNone()) return EResult.errs(erb.errors());
-    var castCv = castCvOpt.optUnwrap();
-    if (castCv.code().codeIsNone()) {
-      return EResult.ok(Opt.<Code>none());
-    }
-    var seq = new JavaBytecodeSequence();
-    seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(self)));
-    seq.add(
-        new CodeDynamic(
-            new CodeLoc.Some(loc),
-            new JavaBytecodeStoreLoad(Opcodes.ASTORE, catchBinding.key())));
-    var castDynOpt = cvToDynamic(erb, xx, loc, castCv);
-    if (castDynOpt.optIsNone()) return EResult.errs(erb.errors());
-    seq.add(castDynOpt.optUnwrap());
-    if (next.optIsSome()) {
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeJump(next.optUnwrap())));
-    } else {
-      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
-    }
-    return EResult.ok(Opt.some(Code.of(loc, new CodeDynamic(loc, seq))));
+      var erb = new Erb(loc);
+      var catchBinding = BindingId.localFresh();
+      var initialBindOpt = erb.mustEr(GenAspectInitialBind.get(xx, loc, calleeExc));
+      if (initialBindOpt.optIsNone()) return EResult.errs(erb.errors());
+      var binding = initialBindOpt.optUnwrap().aspectInitialBindInitialBind(catchBinding);
+      var boundCv =
+              binding.bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc));
+      var castCvOpt = erb.mustEr(calleeExc.typeCastTo(xx, loc, boundCv, callerExc));
+      if (castCvOpt.optIsNone()) return EResult.errs(erb.errors());
+      var castCv = castCvOpt.optUnwrap();
+      if (castCv.code().codeIsNone()) {
+          return EResult.ok(Opt.<Code>none());
+      }
+      var seq = new JavaBytecodeSequence();
+      seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(self)));
+      seq.add(
+              new CodeDynamic(
+                      new CodeLoc.Some(loc),
+                      new JavaBytecodeStoreLoad(Opcodes.ASTORE, catchBinding.key())));
+      var castDynOpt = cvToDynamic(erb, xx, loc, castCv);
+      if (castDynOpt.optIsNone()) return EResult.errs(erb.errors());
+      seq.add(castDynOpt.optUnwrap());
+      if (next.optIsSome()) {
+          seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeJump(next.optUnwrap())));
+      } else {
+          seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
+      }
+      return EResult.ok(Opt.some(Code.of(loc, new CodeDynamic(loc, seq))));
   }
 
   @Override

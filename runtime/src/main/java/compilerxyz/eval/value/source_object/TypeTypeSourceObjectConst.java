@@ -135,20 +135,14 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
   @Override
   public ArtifactExporter aspectArtifactExporter() {
-    // TTOSC is now used only as a type-descriptor (source-object VALUES wrap in TSOC).
-    // Route to SOURCE_OBJECT_CONST which handles the bare-TTOSC delegate shape.
-    return ExporterRoot.SOURCE_OBJECT_CONST;
+      return ExporterRoot.SOURCE_OBJECT_CONST;
   }
 
-  /**
-   * Bare-TTOSC-as-type-descriptor export: route to SOURCE_OBJECT_CONST (TTOSC's own DELEGATE),
-   * distinct from {@link #aspectArtifactExporter()} which is the value-of-TTOSC path.
-   */
-  @Override
-  public EResult<Artifact> artifactableExportArtifact(
-      ExprContext xx, QExprId loc) {
-    return ExporterRoot.SOURCE_OBJECT_CONST.artifactExporterExport(xx, loc, this);
-  }
+    @Override
+    public EResult<Artifact> artifactableExportArtifact(
+            ExprContext xx, QExprId loc) {
+        return ExporterRoot.SOURCE_OBJECT_CONST.artifactExporterExport(xx, loc, this);
+    }
 
   public static final ExporterRootDelegate DELEGATE =
       new ExporterRootDelegate() {

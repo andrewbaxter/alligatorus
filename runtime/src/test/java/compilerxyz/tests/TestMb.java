@@ -235,43 +235,38 @@ public final class TestMb {
     return call(builtin("throw"), value);
   }
 
-  /**
-   * An {@code eval.binding} {@code drop} method body with the standard semantics: {@code use} on
-   * self ({@code outer}) with no setter and no incoming code, then drop the produced value via
-   * {@code eval.drop_value}.
-   */
-  public SourceExpr bindingDropViaUse() {
-    return call(
-        builtin("eval", "drop_value"),
-        recordOf(
-            TList.of(
-                new RecordPair("xx_", field(scopeUse("arg"), str("xx"))),
-                new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
-                new RecordPair(
-                    "cv",
-                    call(
-                        field(evalBinding(), str("use")),
-                        tupleOf(
-                            scopeUse("outer"),
-                            recordOf(
-                                TList.of(
-                                    new RecordPair("xx", field(scopeUse("arg"), str("xx"))),
-                                    new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
-                                    new RecordPair(
-                                        "setter",
+    public SourceExpr bindingDropViaUse() {
+        return call(
+                builtin("eval", "drop_value"),
+                recordOf(
+                        TList.of(
+                                new RecordPair("xx_", field(scopeUse("arg"), str("xx"))),
+                                new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
+                                new RecordPair(
+                                        "cv",
                                         call(
-                                            field(
-                                                call(
-                                                    typesOption(),
-                                                    builtin("eval", "binding_setter")),
-                                                str("none")),
-                                            literalNull())),
-                                    new RecordPair(
-                                        "code",
-                                        call(
-                                            builtin("eval", "code_none"),
-                                            field(scopeUse("arg"), str("loc"))))))))))));
-  }
+                                                field(evalBinding(), str("use")),
+                                                tupleOf(
+                                                        scopeUse("outer"),
+                                                        recordOf(
+                                                                TList.of(
+                                                                        new RecordPair("xx", field(scopeUse("arg"), str("xx"))),
+                                                                        new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
+                                                                        new RecordPair(
+                                                                                "setter",
+                                                                                call(
+                                                                                        field(
+                                                                                                call(
+                                                                                                        typesOption(),
+                                                                                                        builtin("eval", "binding_setter")),
+                                                                                                str("none")),
+                                                                                        literalNull())),
+                                                                        new RecordPair(
+                                                                                "code",
+                                                                                call(
+                                                                                        builtin("eval", "code_none"),
+                                                                                        field(scopeUse("arg"), str("loc"))))))))))));
+    }
 
   public SourceExpr define() {
     return builtin("define");
@@ -469,10 +464,9 @@ public final class TestMb {
     return builtin("types", "option");
   }
 
-  /** {@code option(type).some(typeExpr)} — an optional return type that yields a value. */
-  public SourceExpr optSomeType(SourceExpr typeExpr) {
-    return call(field(call(typesOption(), evalType()), str("some")), typeExpr);
-  }
+    public SourceExpr optSomeType(SourceExpr typeExpr) {
+        return call(field(call(typesOption(), evalType()), str("some")), typeExpr);
+    }
 
   public SourceExpr typesString() {
     return builtin("types", "string");
@@ -509,29 +503,23 @@ public final class TestMb {
     return new SourceExpr(id(), new SourceExpr.Match(base, elementKey, out, fallback));
   }
 
-  /**
-   * Turn a {@code const_eval(...)} result — an {@code eresult(cve)} — into an
-   * {@code eresult(code)} by matching: on {@code ok} take the value's {@code
-   * code}; on {@code errs} propagate the errors. This is how a meta-function
-   * (e.g. a drop body) surfaces const-eval errors through its own return.
-   */
-  public SourceExpr constEvalCode(SourceExpr constEvalCall) {
-    return matchOf(
-        constEvalCall,
-        str("__ce_p"),
-        TList.of(
-            new Branch(
-                str("ok"),
-                call(
-                    field(call(typesEresult(), typesCode()), str("ok")),
-                    field(scopeUse("__ce_p"), str("code")))),
-            new Branch(
-                str("errs"),
-                call(
-                    field(call(typesEresult(), typesCode()), str("errs")),
-                    scopeUse("__ce_p")))),
-        Opt.none());
-  }
+    public SourceExpr constEvalCode(SourceExpr constEvalCall) {
+        return matchOf(
+                constEvalCall,
+                str("__ce_p"),
+                TList.of(
+                        new Branch(
+                                str("ok"),
+                                call(
+                                        field(call(typesEresult(), typesCode()), str("ok")),
+                                        field(scopeUse("__ce_p"), str("code")))),
+                        new Branch(
+                                str("errs"),
+                                call(
+                                        field(call(typesEresult(), typesCode()), str("errs")),
+                                        scopeUse("__ce_p")))),
+                Opt.none());
+    }
 
   public SourceExpr tryCatchFinally(
       SourceExpr body,
@@ -555,36 +543,30 @@ public final class TestMb {
 
   public record Catch(String name, SourceExpr exceptionType, SourceExpr body) {}
 
-  /**
-   * Build a source expression that delegates a method call to an aspect on {@code underlying}.
-   * Emits: {@code aspectRef.<method>((aspect_lookup(underlying, aspectRef, arg.xx).value,
-   * {argKeys: arg.argKeys...}))} — the interface-type method reference called with the
-   * looked-up aspect value as receiver (bare for no-arg methods).
-   */
-  public SourceExpr delegateAspect(
-      SourceExpr underlying, SourceExpr aspectRef, String method, String... argKeys) {
-    SourceExpr lookupXx;
-    Opt<SourceExpr> callArg;
-    if (argKeys.length == 0) {
-      lookupXx = field(scopeUse("arg"), str("xx"));
-      callArg = Opt.none();
-    } else if (argKeys.length == 1) {
-      lookupXx = scopeUse("arg");
-      callArg = Opt.some(scopeUse("arg"));
-    } else {
-      lookupXx = field(scopeUse("arg"), str("xx"));
-      var args = new TList<RecordPair>(argKeys.length);
-      for (var k : argKeys) {
-        args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
-      }
-      callArg = Opt.some(recordOf(args));
+    public SourceExpr delegateAspect(
+            SourceExpr underlying, SourceExpr aspectRef, String method, String... argKeys) {
+        SourceExpr lookupXx;
+        Opt<SourceExpr> callArg;
+        if (argKeys.length == 0) {
+            lookupXx = field(scopeUse("arg"), str("xx"));
+            callArg = Opt.none();
+        } else if (argKeys.length == 1) {
+            lookupXx = scopeUse("arg");
+            callArg = Opt.some(scopeUse("arg"));
+        } else {
+            lookupXx = field(scopeUse("arg"), str("xx"));
+            var args = new TList<RecordPair>(argKeys.length);
+            for (var k : argKeys) {
+                args.add(new RecordPair(k, field(scopeUse("arg"), str(k))));
+            }
+            callArg = Opt.some(recordOf(args));
+        }
+        var receiver =
+                field(
+                        call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)),
+                        str("value"));
+        return call(
+                field(aspectRef, str(method)),
+                callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
     }
-    var receiver =
-        field(
-            call(evalAspectLookup(), tupleOf(underlying, aspectRef, lookupXx)),
-            str("value"));
-    return call(
-        field(aspectRef, str(method)),
-        callArg.optIsSome() ? tupleOf(receiver, callArg.optUnwrap()) : receiver);
-  }
 }

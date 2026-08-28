@@ -17,45 +17,38 @@ import compilerxyz.util.TList;
 import org.objectweb.asm.Opcodes;
 import compilerxyz.eval.BindingId;
 
-/**
- * Synthetic scope entry for a foreach iterator that lives on the JVM operand
- * stack across body iterations. It is never resolved by name; its sole role
- * is to contribute a {@code POP} to scope-exit cleanup so that a Return-Jump
- * escaping the loop body restores stack shape.
- */
 public record BindingIteratorStack() implements Binding {
-  @Override
-  public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-    throw new IllegalStateException(
-        "BindingIteratorStack: iterator is a stack-only scope entry, never resolved by name");
-  }
-
-  @Override
-  public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
-    return EResult.ok(Code.of(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
-  }
-
-  @Override
-  public Binding bindingFork() {
-    return this;
-  }
-
-
-
-  @Override
-  public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
-    for (var other : others) {
-      if (!this.equals(other)) {
-        return EResult.err(loc,
-            "cannot merge " + getClass().getSimpleName()
-                + " with a differently-typed binding across branches");
-      }
+    @Override
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+        throw new IllegalStateException(
+                "BindingIteratorStack: iterator is a stack-only scope entry, never resolved by name");
     }
-    return EResult.ok(this);
-  }
 
-  @Override
-  public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-    return Binding.elementUseDynamicBind(dynamicKey);
-  }
+    @Override
+    public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
+        return EResult.ok(Code.of(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
+    }
+
+    @Override
+    public Binding bindingFork() {
+        return this;
+    }
+
+
+    @Override
+    public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
+        for (var other : others) {
+            if (!this.equals(other)) {
+                return EResult.err(loc,
+                        "cannot merge " + getClass().getSimpleName()
+                                + " with a differently-typed binding across branches");
+            }
+        }
+        return EResult.ok(this);
+    }
+
+    @Override
+    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
+        return Binding.elementUseDynamicBind(dynamicKey);
+    }
 }

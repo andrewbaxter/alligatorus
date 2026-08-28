@@ -120,49 +120,46 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
 
   @Override
   public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
-    // Stack: [eresult] -> [boolean]. Variant 0 = ok (no errors), 1 = errs.
-    var seq = new JavaBytecodeSequence();
-    seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
-    if (variantIndex == 0) {
-      // ok = !hasErrors
-      seq.add(
-          JavaBytecodeUtils.inst(
-              loc, org.objectweb.asm.Opcodes.ICONST_1));
-      seq.add(
-          JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
-    }
-    return EResult.ok(new CodeDynamic(loc, seq));
+      var seq = new JavaBytecodeSequence();
+      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
+      if (variantIndex == 0) {
+          seq.add(
+                  JavaBytecodeUtils.inst(
+                          loc, org.objectweb.asm.Opcodes.ICONST_1));
+          seq.add(
+                  JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
+      }
+      return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override
   public EResult<CodeDynamic> matchDynamicExtract(
       ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
-    // Stack: [eresult] -> [payload].
-    var seq = new JavaBytecodeSequence();
-    if (variantIndex == 0) {
-      seq.add(
-          JavaBytecodeUtils.literalString(
-              new Some(loc), "eresult match ok"));
-      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE));
-      var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
-      if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
-      var elemDesc =
-          elemConsumeRes
-              .requireValue("TypeEResultDynamic::matchExtract ok consume")
-              .aspectConsumeDynamicJvmClass(xx);
-      if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-        seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+      var seq = new JavaBytecodeSequence();
+      if (variantIndex == 0) {
+          seq.add(
+                  JavaBytecodeUtils.literalString(
+                          new Some(loc), "eresult match ok"));
+          seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE));
+          var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
+          if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
+          var elemDesc =
+                  elemConsumeRes
+                          .requireValue("TypeEResultDynamic::matchExtract ok consume")
+                          .aspectConsumeDynamicJvmClass(xx);
+          if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
+              seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+          }
+      } else {
+          seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_ERRORS_OR_NULL));
+          seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.OPT_OPT_UNWRAP));
+          seq.add(
+                  JavaBytecodeUtils.cast(
+                          loc,
+                          JavaDataDescriptor.fromInternalName(
+                                  JavaInternalName.fromClass(TList.class))));
       }
-    } else {
-      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_ERRORS_OR_NULL));
-      seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.OPT_OPT_UNWRAP));
-      seq.add(
-          JavaBytecodeUtils.cast(
-              loc,
-              JavaDataDescriptor.fromInternalName(
-                  JavaInternalName.fromClass(compilerxyz.util.TList.class))));
-    }
-    return EResult.ok(new CodeDynamic(loc, seq));
+      return EResult.ok(new CodeDynamic(loc, seq));
   }
 
   @Override

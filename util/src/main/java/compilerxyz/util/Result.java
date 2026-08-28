@@ -1,39 +1,39 @@
 package compilerxyz.util;
 
 public sealed interface Result<T, E> {
-  record Ok<T, E>(T value) implements Result<T, E> {
-    @Override
-    public boolean resultIsOk() {
-      return true;
+    static <T, E> Result<T, E> ok(T value) {
+        return new Ok<>(value);
     }
 
-    @Override
-    public boolean resultIsErr() {
-      return false;
-    }
-  }
-
-  record Err<T, E>(E error) implements Result<T, E> {
-    @Override
-    public boolean resultIsOk() {
-      return false;
+    static <T, E> Result<T, E> err(E error) {
+        return new Err<>(error);
     }
 
-    @Override
-    public boolean resultIsErr() {
-      return true;
+    boolean resultIsOk();
+
+    boolean resultIsErr();
+
+    record Ok<T, E>(T value) implements Result<T, E> {
+        @Override
+        public boolean resultIsOk() {
+            return true;
+        }
+
+        @Override
+        public boolean resultIsErr() {
+            return false;
+        }
     }
-  }
 
-  static <T, E> Result<T, E> ok(T value) {
-    return new Ok<>(value);
-  }
+    record Err<T, E>(E error) implements Result<T, E> {
+        @Override
+        public boolean resultIsOk() {
+            return false;
+        }
 
-  static <T, E> Result<T, E> err(E error) {
-    return new Err<>(error);
-  }
-
-  boolean resultIsOk();
-
-  boolean resultIsErr();
+        @Override
+        public boolean resultIsErr() {
+            return true;
+        }
+    }
 }

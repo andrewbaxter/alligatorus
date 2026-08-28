@@ -98,27 +98,25 @@ public final class BuiltinBodies {
 
   @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
   public static EResult<CodeValue> constEval(ExprContext xx, ExprContext xx_, StagedExprCell staged) {
-    ExprContext targetXx;
-    if (xx_ instanceof ExprContext raw) {
-      targetXx = raw;
-    } else {
-      throw new AssertionError(
-          "builtin 5008 (const_eval): xx is not ExprContext, got "
-              + (xx_ == null ? "null" : xx_.getClass()));
-    }
-    Object exprValue = staged.value();
-    if (!(exprValue instanceof Expr exprAst)) {
-      throw new AssertionError(
-          "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
-    }
-    // Errors from the user-staged code ride out through the return: the caller
-    // gets an eresult and propagates it (e.g. a drop via match).
-    var _constEvalResult = ConstEval.constEval(targetXx, exprAst);
-    if (_constEvalResult.valueOrNull().optIsNone()) return _constEvalResult.reerr();
-    var _cv = _constEvalResult.requireValue("const_eval map").cv();
-    var _errs = _constEvalResult.errorsOrNull();
-    if (_errs.optIsNone() || _errs.optUnwrap().isEmpty()) return EResult.ok(_cv);
-    return EResult.mixed(_cv, _errs.optUnwrap());
+      ExprContext targetXx;
+      if (xx_ instanceof ExprContext raw) {
+          targetXx = raw;
+      } else {
+          throw new AssertionError(
+                  "builtin 5008 (const_eval): xx is not ExprContext, got "
+                          + (xx_ == null ? "null" : xx_.getClass()));
+      }
+      Object exprValue = staged.value();
+      if (!(exprValue instanceof Expr exprAst)) {
+          throw new AssertionError(
+                  "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
+      }
+      var _constEvalResult = ConstEval.constEval(targetXx, exprAst);
+      if (_constEvalResult.valueOrNull().optIsNone()) return _constEvalResult.reerr();
+      var _cv = _constEvalResult.requireValue("const_eval map").cv();
+      var _errs = _constEvalResult.errorsOrNull();
+      if (_errs.optIsNone() || _errs.optUnwrap().isEmpty()) return EResult.ok(_cv);
+      return EResult.mixed(_cv, _errs.optUnwrap());
   }
 
   @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)

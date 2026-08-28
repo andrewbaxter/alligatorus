@@ -94,13 +94,6 @@ public final class DynUtil {
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
-    /**
-     * Shared JVM foreach-loop skeleton. Callers provide the type-specific
-     * pieces (iterator setup, element decode, element slot, store opcode, body)
-     * and this emits the label-based loop wrapping them. The loop return value
-     * is a stack null wrapped as a TypeNullDynamic ValueDynamic — no
-     * AspectStackValueDynamic lookup involved.
-     */
     public static CodeValue foreachSkeleton(
             ExprContext xx,
             QExprId loc,
@@ -151,8 +144,8 @@ public final class DynUtil {
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
         return new CodeValue(
-            Code.of(loc, new CodeDynamic(loc, seq)),
-            EvalOutcome.NO_VALUE);
+                Code.of(loc, new CodeDynamic(loc, seq)),
+                EvalOutcome.NO_VALUE);
     }
 
     public static CodeDynamic renderSource(
@@ -243,17 +236,9 @@ public final class DynUtil {
         return EResult.ok(dyn);
     }
 
-    /**
-     * If {@code type} carries AspectDynamicBoxed (i.e. is an unboxed primitive
-     * dynamic type with a boxed counterpart), returns the boxed counterpart type.
-     * Otherwise returns {@code type} unchanged. Used at container (list/map/tuple)
-     * type-construction sites so element types are always boxed when flowing
-     * through Object-shaped runtime containers.
-     */
     public static Type substituteBoxed(ExprContext xx, Type type) {
         return switch (GenAspectDynamicBoxed.getMaybe(xx, type)) {
-            case Opt.Some<AspectDynamicBoxed> boxedSome ->
-                boxedSome.value().aspectDynamicBoxedBoxedForm();
+            case Opt.Some<AspectDynamicBoxed> boxedSome -> boxedSome.value().aspectDynamicBoxedBoxedForm();
             case Opt.None<AspectDynamicBoxed> n -> type;
         };
     }
@@ -352,12 +337,6 @@ public final class DynUtil {
         };
     }
 
-    /**
-     * If {@code argType} is a tuple, destructure the compile-time value into per-element
-     * CodeDynamic pushes (each element lowered via its own AspectConsumeDynamic). Otherwise
-     * lowers the whole value via {@code argType}'s AspectConsumeDynamic and returns a
-     * singleton list. Used at call sites whose JVM descriptor takes destructured positional args.
-     */
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {
         var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
@@ -418,12 +397,6 @@ public final class DynUtil {
 
     public record MethodRefArg(CodeValue receiver, CodeValue methodArgs) {}
 
-    /**
-     * Split a method-reference call argument into receiver and method arguments. A method
-     * with no arguments (empty-tuple arg signature) takes the receiver bare; a method with
-     * arguments takes a (receiver, args) 2-tuple. For the bare form the returned methodArgs
-     * is a synthesized unit value.
-     */
     public static EResult<MethodRefArg> methodRefSplitArgument(
             ExprContext xx, QExprId loc, Type argType, CodeValue argument, String desc) {
         if (zeroArgSignature(xx, argType)) {

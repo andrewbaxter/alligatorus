@@ -111,11 +111,8 @@ public final class TypeOptionDynamic<T extends Type>
 
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-    // Options are real Opt objects at runtime (Opt.Some for some, Opt.none()
-    // for none) — never bare nullable values — so Opt<Opt<X>> is
-    // unambiguous. The runtime data type is Opt, not Object.
-    return JavaDataDescriptor.fromInternalName(
-        JavaInternalName.fromClass(compilerxyz.util.Opt.class));
+      return JavaDataDescriptor.fromInternalName(
+              JavaInternalName.fromClass(Opt.class));
   }
 
   @Override

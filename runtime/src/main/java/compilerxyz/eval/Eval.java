@@ -23,15 +23,6 @@ public final class Eval {
         "TODO value type [X] must expose const key aspect [LIST] but doesn't");
   }
 
-  /**
-   * Generate the drop of a value. A drop must never throw, so it is generated
-   * with no declared exception type in scope: any throw (or call to a throwing
-   * function) in the drop code — including code the drop itself produces — is a
-   * compile error regardless of the enclosing function's declared exception
-   * type. This is the single target-agnostic entry point for dropping a value;
-   * enforcing the rule here (rather than in each target's targetDrop) keeps it
-   * out of the hands of target authors, since targets can be user-defined.
-   */
   public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
     var dropXx = new ExprContext(xx.scope, xx.target, xx.vx, xx.importState, Opt.none());
     return dropXx.target.targetDrop(dropXx, loc, cv);

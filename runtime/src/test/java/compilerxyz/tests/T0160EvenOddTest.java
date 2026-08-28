@@ -1392,58 +1392,57 @@ public final class T0160EvenOddTest {
 
   @Test
   public void test00110DropCannotThrow() {
-    // A drop implementation must not throw: its body is evaluated with no
-    // declared exception type, so a throw (or a call to a throwing function)
-    // is a compile error.
-    var mb = new TestMb();
-    var modules = new TMap<String, SourceModule>();
-    modules.put(
-        "main",
-        new SourceModule.V1(
-            moduleSeq(
-                mb,
-                bindEvenOddType(mb, "EvenOdd", mb.throw_(mb.str("drop boom"))),
-                mb.call(mb.log(), mb.str("defined")))));
-    var gx = Helpers.newGx(modules);
-    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(
-        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; }, () -> "a throwing drop should fail compile: " + res);
-    assertTrue(
-        res.toString().contains("throw not allowed"),
-        () -> "expected the throw-not-allowed gate to fire, got: " + res);
+      var mb = new TestMb();
+      var modules = new TMap<String, SourceModule>();
+      modules.put(
+              "main",
+              new SourceModule.V1(
+                      moduleSeq(
+                              mb,
+                              bindEvenOddType(mb, "EvenOdd", mb.throw_(mb.str("drop boom"))),
+                              mb.call(mb.log(), mb.str("defined")))));
+      var gx = Helpers.newGx(modules);
+      var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+      assertTrue(
+              switch (res) {
+                  case Result.Err<?, ?> ignored -> true;
+                  case Result.Ok<?, ?> ignored -> false;
+              }, () -> "a throwing drop should fail compile: " + res);
+      assertTrue(
+              res.toString().contains("throw not allowed"),
+              () -> "expected the throw-not-allowed gate to fire, got: " + res);
   }
 
   @Test
   public void test00120DropProducedCodeCannotThrow() {
-    // Not just the drop's meta body: the code a drop PRODUCES must not throw
-    // either. The drop is invoked with no declared exception type, so a staged
-    // throw in the produced drop code is rejected even though the enclosing
-    // (module) context does declare an exception type.
-    var mb = new TestMb();
-    var modules = new TMap<String, SourceModule>();
-    modules.put(
-        "main",
-        new SourceModule.V1(
-            moduleSeq(
-                mb,
-                bindEvenOddType(mb, "EvenOdd", mb.seqOf(mb.return_(mb.constEvalCode(mb.call(
-            mb.evalConstEval(),
-            mb.recordOf(
-                TList.of(
-                    new TestMb.RecordPair(
-                        "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
-                    new TestMb.RecordPair(
-                        "staged", mb.stage(mb.throw_(mb.str("drop boom"))))))))))),
-                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
-                mb.call(mb.log(), mb.str("bound")))));
-    var gx = Helpers.newGx(modules);
-    var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
-    assertTrue(
-        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
-        () -> "a drop that produces a throw should fail compile: " + res);
-    assertTrue(
-        res.toString().contains("throw not allowed"),
-        () -> "expected the throw-not-allowed gate to fire on the produced drop code, got: " + res);
+      var mb = new TestMb();
+      var modules = new TMap<String, SourceModule>();
+      modules.put(
+              "main",
+              new SourceModule.V1(
+                      moduleSeq(
+                              mb,
+                              bindEvenOddType(mb, "EvenOdd", mb.seqOf(mb.return_(mb.constEvalCode(mb.call(
+                                      mb.evalConstEval(),
+                                      mb.recordOf(
+                                              TList.of(
+                                                      new TestMb.RecordPair(
+                                                              "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                      new TestMb.RecordPair(
+                                                              "staged", mb.stage(mb.throw_(mb.str("drop boom"))))))))))),
+                              mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                              mb.call(mb.log(), mb.str("bound")))));
+      var gx = Helpers.newGx(modules);
+      var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+      assertTrue(
+              switch (res) {
+                  case Result.Err<?, ?> ignored -> true;
+                  case Result.Ok<?, ?> ignored -> false;
+              },
+              () -> "a drop that produces a throw should fail compile: " + res);
+      assertTrue(
+              res.toString().contains("throw not allowed"),
+              () -> "expected the throw-not-allowed gate to fire on the produced drop code, got: " + res);
   }
 
   @Test

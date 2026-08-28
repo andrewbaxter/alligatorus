@@ -165,61 +165,53 @@ public final class T0180ImportRealTest {
 
   @Test
   public void test00350PersistentCacheAcrossContexts(@TempDir Path tmp) throws IOException {
-    var mb = new TestMb();
-    var src = tmp.resolve("src");
-    Files.createDirectories(src);
-    var cacheDir = tmp.resolve("cache");
+      var mb = new TestMb();
+      var src = tmp.resolve("src");
+      Files.createDirectories(src);
+      var cacheDir = tmp.resolve("cache");
 
-    writeModule(src.resolve("one.at"), mb.str("cached-one"));
-    var oneEntry = new SourceSpecAbsolute.Local(src.resolve("one.at").toString());
+      writeModule(src.resolve("one.at"), mb.str("cached-one"));
+      var oneEntry = new SourceSpecAbsolute.Local(src.resolve("one.at").toString());
+      try (var cache1 = new CacheReal(cacheDir)) {
+          expectOk(Compile.compile(gxFor(cache1), oneEntry));
+      }
 
-    // First context: compile module one into the on-disk cache, then discard it.
-    try (var cache1 = new CacheReal(cacheDir)) {
-      expectOk(Compile.compile(gxFor(cache1), oneEntry));
-    }
-
-    writeModule(
-        src.resolve("two.at"),
-        mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
-    var twoEntry = new SourceSpecAbsolute.Local(src.resolve("two.at").toString());
-
-    // Entirely new context over the same cache dir: module two imports module one,
-    // whose compiled result is loaded from the persisted cache.
-    try (var cache2 = new CacheReal(cacheDir)) {
-      var ok = expectOk(Compile.compile(gxFor(cache2), twoEntry));
-      assertEquals(1, ok.logs().size());
-      assertEquals("cached-one", ok.logs().get(0).message());
-    }
+      writeModule(
+              src.resolve("two.at"),
+              mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
+      var twoEntry = new SourceSpecAbsolute.Local(src.resolve("two.at").toString());
+      try (var cache2 = new CacheReal(cacheDir)) {
+          var ok = expectOk(Compile.compile(gxFor(cache2), twoEntry));
+          assertEquals(1, ok.logs().size());
+          assertEquals("cached-one", ok.logs().get(0).message());
+      }
   }
 
   @Test
   public void test00360NewRootSeesChangedDependency(@TempDir Path tmp) throws IOException {
-    var mb = new TestMb();
-    var src = tmp.resolve("src");
-    Files.createDirectories(src);
-    var cacheDir = tmp.resolve("cache");
-    var oneFile = src.resolve("one.at");
+      var mb = new TestMb();
+      var src = tmp.resolve("src");
+      Files.createDirectories(src);
+      var cacheDir = tmp.resolve("cache");
+      var oneFile = src.resolve("one.at");
 
-    writeModule(oneFile, mb.str("v1"));
-    try (var cache = new CacheReal(cacheDir)) {
-      expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
-    }
+      writeModule(oneFile, mb.str("v1"));
+      try (var cache = new CacheReal(cacheDir)) {
+          expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(oneFile.toString())));
+      }
+      writeModule(oneFile, mb.str("v2"));
+      Files.setLastModifiedTime(
+              oneFile, FileTime.fromMillis(Files.getLastModifiedTime(oneFile).toMillis() + 100000));
 
-    // Change the dependency, then compile a brand-new root that imports it. The root has no
-    // cache row of its own, so validation must still reach the dependency.
-    writeModule(oneFile, mb.str("v2"));
-    Files.setLastModifiedTime(
-        oneFile, FileTime.fromMillis(Files.getLastModifiedTime(oneFile).toMillis() + 100000));
+      var twoFile = src.resolve("two.at");
+      writeModule(
+              twoFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
 
-    var twoFile = src.resolve("two.at");
-    writeModule(
-        twoFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("one.at")))));
-
-    try (var cache = new CacheReal(cacheDir)) {
-      var ok =
-          expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
-      assertEquals("v2", ok.logs().get(0).message());
-    }
+      try (var cache = new CacheReal(cacheDir)) {
+          var ok =
+                  expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(twoFile.toString())));
+          assertEquals("v2", ok.logs().get(0).message());
+      }
   }
 
   @Test
@@ -228,7 +220,6 @@ public final class T0180ImportRealTest {
     try (var first = new CacheReal(cacheDir)) {
       var failed = false;
       try (var second = new CacheReal(cacheDir)) {
-        // unreachable when locking works
       } catch (RuntimeException e) {
         failed = true;
         assertTrue(
@@ -241,43 +232,39 @@ public final class T0180ImportRealTest {
   @Test
   public void test00380FailedCompileIsCachedThenRecompiledOnFix(@TempDir Path tmp)
       throws IOException {
-    var mb = new TestMb();
-    var src = tmp.resolve("src");
-    Files.createDirectories(src);
-    var cacheDir = tmp.resolve("cache");
-    var mainFile = src.resolve("main.at");
-
-    // Imports a file that does not exist -> the compile fails and the failure is cached.
-    writeModule(
-        mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at")))));
-    try (var cache = new CacheReal(cacheDir)) {
-      var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
-      assertTrue(
-          switch (res) {
-            case Result.Ok<?, ?> o -> false;
-            case Result.Err<?, ?> e -> true;
-          },
-          () -> "expected failure, got " + res);
-    }
-    try (var cache = new CacheReal(cacheDir)) {
-      var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
-      assertTrue(
-          switch (res) {
-            case Result.Ok<?, ?> o -> false;
-            case Result.Err<?, ?> e -> true;
-          },
-          () -> "expected cached failure, got " + res);
-    }
-
-    // Fixing the source (new mtime) must invalidate the cached failure.
-    writeModule(mainFile, mb.call(mb.log(), mb.str("fixed")));
-    Files.setLastModifiedTime(
-        mainFile, FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
-    try (var cache = new CacheReal(cacheDir)) {
-      var ok =
-          expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
-      assertEquals("fixed", ok.logs().get(0).message());
-    }
+      var mb = new TestMb();
+      var src = tmp.resolve("src");
+      Files.createDirectories(src);
+      var cacheDir = tmp.resolve("cache");
+      var mainFile = src.resolve("main.at");
+      writeModule(
+              mainFile, mb.call(mb.log(), importField(mb, "v", mb.sourceLocal(mb.str("missing.at")))));
+      try (var cache = new CacheReal(cacheDir)) {
+          var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
+          assertTrue(
+                  switch (res) {
+                      case Result.Ok<?, ?> o -> false;
+                      case Result.Err<?, ?> e -> true;
+                  },
+                  () -> "expected failure, got " + res);
+      }
+      try (var cache = new CacheReal(cacheDir)) {
+          var res = Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString()));
+          assertTrue(
+                  switch (res) {
+                      case Result.Ok<?, ?> o -> false;
+                      case Result.Err<?, ?> e -> true;
+                  },
+                  () -> "expected cached failure, got " + res);
+      }
+      writeModule(mainFile, mb.call(mb.log(), mb.str("fixed")));
+      Files.setLastModifiedTime(
+              mainFile, FileTime.fromMillis(Files.getLastModifiedTime(mainFile).toMillis() + 100000));
+      try (var cache = new CacheReal(cacheDir)) {
+          var ok =
+                  expectOk(Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
+          assertEquals("fixed", ok.logs().get(0).message());
+      }
   }
 
   @Test
@@ -349,58 +336,55 @@ public final class T0180ImportRealTest {
     thread.setDaemon(true);
     thread.start();
     try {
-      var base = "http://127.0.0.1:" + server.getLocalPort();
-      var singleUrl = base + "/single.at";
-      var bundleUrl = base + "/bundle.zip";
+        var base = "http://127.0.0.1:" + server.getLocalPort();
+        var singleUrl = base + "/single.at";
+        var bundleUrl = base + "/bundle.zip";
 
-      var singleHash = hashSpec(mb, sha256(singleBytes));
-      var bundleHash = hashSpec(mb, sha256(bundleBytes));
+        var singleHash = hashSpec(mb, sha256(singleBytes));
+        var bundleHash = hashSpec(mb, sha256(bundleBytes));
 
-      var remoteSingle = importField(mb, "v", mb.sourceRemote(mb.str(singleUrl), singleHash));
-      var bundleRecord =
-          mb.importRecord(
-              TList.of(
-                  new SourceExpr.RecordEntry(
-                      mb.str("b"), mb.sourceRemote(mb.str(bundleUrl), bundleHash))));
-      var bundleMod = mb.field(mb.field(bundleRecord, mb.str("b")), mb.str("mod"));
+        var remoteSingle = importField(mb, "v", mb.sourceRemote(mb.str(singleUrl), singleHash));
+        var bundleRecord =
+                mb.importRecord(
+                        TList.of(
+                                new SourceExpr.RecordEntry(
+                                        mb.str("b"), mb.sourceRemote(mb.str(bundleUrl), bundleHash))));
+        var bundleMod = mb.field(mb.field(bundleRecord, mb.str("b")), mb.str("mod"));
 
-      var mainExpr = mb.seqOf(mb.call(mb.log(), remoteSingle), mb.call(mb.log(), bundleMod));
-      var src = tmp.resolve("src");
-      Files.createDirectories(src);
-      var mainFile = src.resolve("main.at");
-      writeModule(mainFile, mainExpr);
+        var mainExpr = mb.seqOf(mb.call(mb.log(), remoteSingle), mb.call(mb.log(), bundleMod));
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        var mainFile = src.resolve("main.at");
+        writeModule(mainFile, mainExpr);
 
-      try (var cache = new CacheReal(tmp.resolve("cache"))) {
-        var ok =
-            expectOk(
-                Compile.compile(
-                    gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
-        assertEquals(2, ok.logs().size());
-        assertEquals("from-remote", ok.logs().get(0).message());
-        assertEquals("from-bundle-mod", ok.logs().get(1).message());
-      }
-
-      // The bytes for singleUrl are now cached; requesting the same URL with a different
-      // expected hash must still be rejected rather than served from the cache.
-      var wrongDigest = sha256(singleBytes);
-      wrongDigest[0] ^= 0x01;
-      var badFile = src.resolve("bad.at");
-      writeModule(
-          badFile,
-          mb.call(
-              mb.log(),
-              importField(
-                  mb, "v", mb.sourceRemote(mb.str(singleUrl), hashSpec(mb, wrongDigest)))));
-      try (var cache = new CacheReal(tmp.resolve("cache"))) {
-        var res =
-            Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
-        assertTrue(
-            switch (res) {
-              case Result.Ok<?, ?> o -> false;
-              case Result.Err<?, ?> e -> true;
-            },
-            () -> "expected hash mismatch, got " + res);
-      }
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var ok =
+                    expectOk(
+                            Compile.compile(
+                                    gxFor(cache), new SourceSpecAbsolute.Local(mainFile.toString())));
+            assertEquals(2, ok.logs().size());
+            assertEquals("from-remote", ok.logs().get(0).message());
+            assertEquals("from-bundle-mod", ok.logs().get(1).message());
+        }
+        var wrongDigest = sha256(singleBytes);
+        wrongDigest[0] ^= 0x01;
+        var badFile = src.resolve("bad.at");
+        writeModule(
+                badFile,
+                mb.call(
+                        mb.log(),
+                        importField(
+                                mb, "v", mb.sourceRemote(mb.str(singleUrl), hashSpec(mb, wrongDigest)))));
+        try (var cache = new CacheReal(tmp.resolve("cache"))) {
+            var res =
+                    Compile.compile(gxFor(cache), new SourceSpecAbsolute.Local(badFile.toString()));
+            assertTrue(
+                    switch (res) {
+                        case Result.Ok<?, ?> o -> false;
+                        case Result.Err<?, ?> e -> true;
+                    },
+                    () -> "expected hash mismatch, got " + res);
+        }
     } finally {
       server.close();
     }

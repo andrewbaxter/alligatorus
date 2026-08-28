@@ -35,502 +35,452 @@ import java.util.LinkedHashSet;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 
-/**
- * Whole-program dead-code (#1) and single-use (#2) analysis over the source model (Spoon). Returns
- * the total finding count; AnalysisMain adds it to the combined total and fails the build if
- * nonzero. Because this is source-level, generics are not erased, references to compile-time
- * constants are visible, and implemented interfaces are in the model — so classes used only those
- * ways are not false positives. Roots are main methods, JUnit tests,
- * {@code @CodegenDescriptor} methods, external-override methods, and dynamic-dispatch registration
- * targets. Generated code is not a root: it is reached through real call sites like everything
- * else ({@code @Builtin*} annotations drive codegen, and the builtin tree provides reachability to
- * the generated registrations). Generated types are still exempt from findings — they are
- * regenerated every build, so deadness or single-use there is actionable only at the source that
- * drives the generation.
- */
 public final class ReachabilityMain {
 
-  private final Set<String> generatedFiles;
+    private final Set<String> generatedFiles;
 
-  public ReachabilityMain(Set<String> generatedFiles) {
-    this.generatedFiles = generatedFiles;
-  }
+    public ReachabilityMain(Set<String> generatedFiles) {
+        this.generatedFiles = generatedFiles;
+    }
 
-  private final Set<String> junit =
-      Set.of(
-          "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
-          "BeforeEach", "AfterEach", "BeforeAll", "AfterAll");
-  private static final String CODEGEN_DESCRIPTOR = "CodegenDescriptor";
+    private final Set<String> junit =
+            Set.of(
+                    "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
+                    "BeforeEach", "AfterEach", "BeforeAll", "AfterAll");
+    private static final String CODEGEN_DESCRIPTOR = "CodegenDescriptor";
 
-  private final Map<String, CtExecutable<?>> execByKey = new HashMap<>();
-  private final Map<String, List<String>> keysByNameArity = new HashMap<>();
-  private final Set<String> reachable = new HashSet<>();
-  private final Map<String, Integer> callCounts = new HashMap<>();
-  private final Map<String, Integer> fieldReads = new HashMap<>();
-  private final Map<String, Integer> fieldWrites = new HashMap<>();
-  private final Set<String> referencedTypes = new HashSet<>();
-  private final Set<String> genReferenced = new HashSet<>();
+    private final Map<String, CtExecutable<?>> execByKey = new HashMap<>();
+    private final Map<String, List<String>> keysByNameArity = new HashMap<>();
+    private final Set<String> reachable = new HashSet<>();
+    private final Map<String, Integer> callCounts = new HashMap<>();
+    private final Map<String, Integer> fieldReads = new HashMap<>();
+    private final Map<String, Integer> fieldWrites = new HashMap<>();
+    private final Set<String> referencedTypes = new HashSet<>();
+    private final Set<String> genReferenced = new HashSet<>();
 
-  public int run(CtModel model) throws IOException {
-    // Exclude codegen: it uses external library types (JavaPoet, JavaParser, Palantir) that
-    // noClasspath mode cannot resolve, producing systematic false positives in the call graph.
-    // Convention checks still run on codegen via ConventionChecks; reachability focuses on runtime.
-    // Spoon's getAllTypes() omits inner classes of interfaces; collect them recursively.
-    List<CtType<?>> types = new ArrayList<>();
-    for (CtType<?> t : model.getAllTypes()) {
-      collectTypes(t, types);
+    public int run(CtModel model) throws IOException {
+        List<CtType<?>> types = new ArrayList<>();
+        for (CtType<?> t : model.getAllTypes()) {
+            collectTypes(t, types);
+        }
+        List<CtType<?>> codegenTypes = new ArrayList<>();
+        types.removeIf(t -> {
+            String qn = t.getQualifiedName();
+            boolean cg = qn == null || qn.startsWith("compilerxyz.codegen.");
+            if (cg) codegenTypes.add(t);
+            return cg;
+        });
+        for (CtType<?> t : types) {
+            for (CtExecutable<?> ex : executablesOf(t)) {
+                String k = key(ex);
+                execByKey.put(k, ex);
+                keysByNameArity
+                        .computeIfAbsent(nameArity(ex.getSimpleName(), ex.getParameters().size()), x -> new ArrayList<>())
+                        .add(k);
+            }
+        }
+        Deque<String> work = new ArrayDeque<>();
+        for (CtType<?> t : types) {
+            for (CtExecutable<?> ex : executablesOf(t)) {
+                if (isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
+                    String k = key(ex);
+                    if (reachable.add(k)) work.add(k);
+                }
+            }
+        }
+        Set<String> dynMethodNames = new HashSet<>();
+        for (CtType<?> t : types) {
+            for (CtConstructorCall<?> cc : t.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                String ctorType = cc.getType().getSimpleName();
+                int nameIdx;
+                switch (ctorType) {
+                    case "TypeMethodDynamic" -> nameIdx = 4;
+                    case "TypeFunctionDynamic" -> nameIdx = 3;
+                    default -> {
+                        continue;
+                    }
+                }
+                List<CtExpression<?>> args = cc.getArguments();
+                if (args.size() > nameIdx
+                        && args.get(nameIdx) instanceof CtLiteral<?> lit
+                        && lit.getValue() instanceof String n) {
+                    dynMethodNames.add(n);
+                }
+            }
+            for (CtInvocation<?> inv : t.getElements(new TypeFilter<>(CtInvocation.class))) {
+                String invName = inv.getExecutable().getSimpleName();
+                if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
+                List<CtExpression<?>> args = inv.getArguments();
+                if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+                    dynMethodNames.add(n);
+                }
+            }
+        }
+        for (CtType<?> t : types) {
+            for (CtExecutable<?> ex : executablesOf(t)) {
+                if (ex instanceof CtMethod<?> m && dynMethodNames.contains(m.getSimpleName())) {
+                    String k = key(ex);
+                    genReferenced.add(k);
+                    if (reachable.add(k)) work.add(k);
+                }
+            }
+        }
+        for (CtType<?> t : codegenTypes) {
+            for (CtField<?> f : t.getFields()) {
+                var init = f.getDefaultExpression();
+                if (init == null) continue;
+                for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
+                    onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+                }
+                for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                    onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+                }
+            }
+            if (t instanceof CtClass<?> cgClass) {
+                for (CtAnonymousExecutable ab : cgClass.getAnonymousExecutables()) {
+                    for (CtInvocation<?> inv : ab.getElements(new TypeFilter<>(CtInvocation.class))) {
+                        onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+                    }
+                    for (CtConstructorCall<?> cc : ab.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                        onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+                    }
+                }
+            }
+            for (CtExecutable<?> ex : executablesOf(t)) {
+                for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
+                    onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+                }
+                for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                    onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+                }
+                for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
+                    if (fr.getVariable() != null) {
+                        fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+                    }
+                }
+                for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
+                    if (fw.getVariable() != null) {
+                        fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                    }
+                }
+            }
+            for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
+                String cgQn = tr.getQualifiedName();
+                if (cgQn != null && !cgQn.isEmpty()) referencedTypes.add(cgQn);
+            }
+        }
+        Set<String> fieldInitDone = new HashSet<>();
+        while (!work.isEmpty()) {
+            String workKey = work.poll();
+            CtExecutable<?> ex = execByKey.get(workKey);
+            if (ex == null) continue;
+            boolean fromGenerated =
+                    ex instanceof CtTypeMember exTm
+                            && exTm.getDeclaringType() != null
+                            && isGeneratedType(exTm.getDeclaringType());
+            if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
+                String tn = tm.getDeclaringType().getQualifiedName();
+                if (fieldInitDone.add(tn)) {
+                    for (CtField<?> f : tm.getDeclaringType().getFields()) {
+                        var init = f.getDefaultExpression();
+                        if (init == null) continue;
+                        for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
+                            onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+                        }
+                        for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                            onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+                        }
+                    }
+                }
+            }
+            for (CtTypeReference<?> _artTr : ex.getElements(new TypeFilter<>(CtTypeReference.class))) {
+                String _artQn = _artTr.getQualifiedName();
+                if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
+            }
+            for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
+                onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+            }
+            for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+                onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+            }
+            for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
+                if (fr.getVariable() != null) {
+                    fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+                }
+            }
+            for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
+                if (fw.getVariable() != null) {
+                    fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                }
+            }
+        }
+        for (CtType<?> t : types) {
+            boolean live =
+                    executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
+            if (live) {
+                for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
+                    String qn = tr.getQualifiedName();
+                    if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
+                }
+            }
+        }
+
+        List<String> deadClasses = new ArrayList<>();
+        List<String> deadMethods = new ArrayList<>();
+        List<String> deadFields = new ArrayList<>();
+        List<String> singleUseMethods = new ArrayList<>();
+        List<String> singleUseFields = new ArrayList<>();
+
+        for (CtType<?> t : types) {
+            String qn = t.getQualifiedName();
+            List<CtExecutable<?>> execs = executablesOf(t);
+            boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
+            boolean rooted = isGeneratedType(t);
+            boolean isAnnotation = t.isAnnotationType();
+            if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
+                deadClasses.add(qn);
+                continue;
+            }
+            for (CtExecutable<?> ex : execs) {
+                if (!(ex instanceof CtMethod<?> m)) continue;
+                String k = key(ex);
+                boolean concrete = m.getBody() != null;
+                boolean _iam = false;
+                for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
+                    if (!key(_iamTop).equals(key(m)) && _iamTop.isAbstract()) {
+                        _iam = true;
+                        break;
+                    }
+                }
+                boolean inlinable =
+                        !isRoot(ex)
+                                && !rooted
+                                && !"compilerxyz.util.Assert".equals(qn)
+                                && m.getBody() != null
+                                && !overridesExternal(m)
+                                && !_iam
+                                && !isRecordAccessor(t, m)
+                                && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
+                if (!reachable.contains(k)
+                        && concrete
+                        && !rooted
+                        && !isRoot(ex)
+                        && !m.getSimpleName().equals("main")
+                        && !overridesExternal(m)
+                        && !isRecordAccessor(t, m)) {
+                    deadMethods.add(qn + "#" + sig(ex));
+                }
+                if (inlinable
+                        && reachable.contains(k)
+                        && !genReferenced.contains(k)
+                        && callCounts.getOrDefault(k, 0) == 1) {
+                    singleUseMethods.add(qn + "#" + sig(ex));
+                }
+            }
+            boolean recordOrEnum = t.isEnum() || (t instanceof CtRecord);
+            if (!recordOrEnum) {
+                for (CtField<?> f : t.getFields()) {
+                    if (f.getModifiers().contains(ModifierKind.PRIVATE)
+                            && !rooted
+                            && !f.getSimpleName().equals("serialVersionUID")
+                            && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+                            && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0) {
+                        deadFields.add(qn + "#" + f.getSimpleName());
+                    }
+                    if (f.getModifiers().contains(ModifierKind.PRIVATE)
+                            && !f.getModifiers().contains(ModifierKind.FINAL)
+                            && !f.getModifiers().contains(ModifierKind.VOLATILE)
+                            && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+                            && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
+                        singleUseFields.add(qn + "#" + f.getSimpleName());
+                    }
+                }
+            }
+        }
+
+        deadClasses.sort(Comparator.naturalOrder());
+        deadMethods.sort(Comparator.naturalOrder());
+        singleUseMethods.sort(Comparator.naturalOrder());
+        singleUseFields.sort(Comparator.naturalOrder());
+
+        StringBuilder out = new StringBuilder();
+        line(out, "=== Reachability / single-use analysis (Spoon, source-level) ===");
+        line(out, "types: " + types.size());
+        line(out, "");
+        section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
+        section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
+        section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
+        section(out, "#1 DEAD PRIVATE FIELDS (0 reads)", deadFields);
+        section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
+        int total =
+                deadClasses.size()
+                        + deadMethods.size()
+                        + deadFields.size()
+                        + singleUseMethods.size()
+                        + singleUseFields.size();
+        line(
+                out,
+                String.format(
+                        "TOT:  dead classes=%d  dead methods=%d  dead fields=%d  single-use methods=%d"
+                                + "  single-use fields=%d",
+                        deadClasses.size(), deadMethods.size(), deadFields.size(), singleUseMethods.size(),
+                        singleUseFields.size()));
+
+        System.out.print(out);
+        Path reportPath = Path.of("analysis/target/reachability-report.txt");
+        Files.createDirectories(reportPath.getParent());
+        Files.writeString(reportPath, out.toString());
+        System.out.println("(report written to " + reportPath + ")");
+        return total;
     }
-    List<CtType<?>> codegenTypes = new ArrayList<>();
-    types.removeIf(t -> {
-      String qn = t.getQualifiedName();
-      boolean cg = qn == null || qn.startsWith("compilerxyz.codegen.");
-      if (cg) codegenTypes.add(t);
-      return cg;
-    });
-    // Index all executables.
-    for (CtType<?> t : types) {
-      for (CtExecutable<?> ex : executablesOf(t)) {
-        String k = key(ex);
-        execByKey.put(k, ex);
-        keysByNameArity
-            .computeIfAbsent(nameArity(ex.getSimpleName(), ex.getParameters().size()), x -> new ArrayList<>())
-            .add(k);
-      }
+
+    private void onCall(
+            CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
+        if (ref == null) return;
+        CtExecutable<?> decl = ref.getExecutableDeclaration();
+        if (decl != null) {
+            String dk = key(decl);
+            callCounts.merge(dk, 1, Integer::sum);
+            if (fromGenerated) genReferenced.add(dk);
+            if (reachable.add(dk)) work.add(dk);
+        }
+        CtTypeReference<?> refDecl = ref.getDeclaringType();
+        int refArity = ref.getParameters().size();
+        Set<Integer> arities = new LinkedHashSet<>();
+        arities.add(actualArity);
+        if (refArity != actualArity) arities.add(refArity);
+        for (int arity : arities) {
+            for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
+                CtExecutable<?> cex = execByKey.get(cand);
+                if (cex == null) continue;
+                if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+                    if (reachable.add(cand)) work.add(cand);
+                }
+            }
+        }
+        if (actualArity != 1) {
+            for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), 1), List.of())) {
+                CtExecutable<?> cex = execByKey.get(cand);
+                if (cex == null) continue;
+                boolean isVarargs =
+                        !cex.getParameters().isEmpty()
+                                && cex.getParameters().get(cex.getParameters().size() - 1).isVarArgs();
+                if (!isVarargs) continue;
+                if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+                    if (reachable.add(cand)) work.add(cand);
+                }
+            }
+        }
     }
-    // Seed roots.
-    Deque<String> work = new ArrayDeque<>();
-    for (CtType<?> t : types) {
-      for (CtExecutable<?> ex : executablesOf(t)) {
-        if (isRoot(ex) || (ex instanceof CtMethod<?> me && me.getBody() != null && overridesExternal(me))) {
-          String k = key(ex);
-          if (reachable.add(k)) work.add(k);
-        }
-      }
+
+    private static boolean isDirect(CtExecutableReference<?> ref, CtExecutable<?> cex) {
+        CtExecutable<?> decl = ref.getExecutableDeclaration();
+        return decl != null && key(cex).equals(key(decl));
     }
-    // Root methods registered as dynamic-dispatch targets. TypeMethodDynamic (name at arg index 4)
-    // and TypeFunctionDynamic (name at arg index 3) invoke Java methods by string name via ASM
-    // bytecode, invisible to CHA; callStaticMethod/callStaticInterfaceMethod (name at arg index 2)
-    // emit direct bytecodes the same way. The registrations live mostly in generated code —
-    // @Builtin* annotations drive codegen, and these generated references root the actually-used
-    // members. Registration-referenced methods are also exempt from single-use (the reference is
-    // dynamic dispatch, not an inlinable call site).
-    Set<String> dynMethodNames = new HashSet<>();
-    for (CtType<?> t : types) {
-      for (CtConstructorCall<?> cc : t.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-        String ctorType = cc.getType().getSimpleName();
-        int nameIdx;
-        switch (ctorType) {
-          case "TypeMethodDynamic" -> nameIdx = 4;
-          case "TypeFunctionDynamic" -> nameIdx = 3;
-          default -> {
-            continue;
-          }
-        }
-        List<CtExpression<?>> args = cc.getArguments();
-        if (args.size() > nameIdx
-            && args.get(nameIdx) instanceof CtLiteral<?> lit
-            && lit.getValue() instanceof String n) {
-          dynMethodNames.add(n);
-        }
-      }
-      for (CtInvocation<?> inv : t.getElements(new TypeFilter<>(CtInvocation.class))) {
-        String invName = inv.getExecutable().getSimpleName();
-        if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
-        List<CtExpression<?>> args = inv.getArguments();
-        if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
-          dynMethodNames.add(n);
-        }
-      }
+
+    private boolean subtypeOf(CtExecutable<?> cex, CtTypeReference<?> superRef) {
+        if (superRef == null) return false;
+        if (!(cex instanceof CtTypeMember tm) || tm.getDeclaringType() == null) return false;
+        return tm.getDeclaringType().getReference().isSubtypeOf(superRef);
     }
-    for (CtType<?> t : types) {
-      for (CtExecutable<?> ex : executablesOf(t)) {
-        if (ex instanceof CtMethod<?> m && dynMethodNames.contains(m.getSimpleName())) {
-          String k = key(ex);
-          genReferenced.add(k);
-          if (reachable.add(k)) work.add(k);
+
+    private boolean isRoot(CtExecutable<?> ex) {
+        if (ex.getAnnotations().stream()
+                .anyMatch(
+                        a ->
+                                junit.contains(a.getAnnotationType().getSimpleName())
+                                        || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
+            return true;
         }
-      }
+        return ex instanceof CtMethod<?> m
+                && m.getSimpleName().equals("main")
+                && m.getModifiers().contains(ModifierKind.STATIC)
+                && m.getParameters().size() == 1;
     }
-    // Codegen members are excluded from the index above (external JavaPoet/JavaParser types break
-    // resolution of its internal call graph, and its members are findings-exempt), but calls FROM
-    // codegen into runtime/util are real edges: every codegen body and field initializer is an
-    // always-live source. Unresolvable external targets yield no candidates and are harmless.
-    for (CtType<?> t : codegenTypes) {
-      for (CtField<?> f : t.getFields()) {
-        var init = f.getDefaultExpression();
-        if (init == null) continue;
-        for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
-          onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+
+    private static void collectTypes(CtType<?> t, List<CtType<?>> out) {
+        out.add(t);
+        for (CtType<?> nested : t.getNestedTypes()) {
+            collectTypes(nested, out);
         }
-        for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-          onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-        }
-      }
-      if (t instanceof CtClass<?> cgClass) {
-        for (CtAnonymousExecutable ab : cgClass.getAnonymousExecutables()) {
-          for (CtInvocation<?> inv : ab.getElements(new TypeFilter<>(CtInvocation.class))) {
-            onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
-          }
-          for (CtConstructorCall<?> cc : ab.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-            onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-          }
-        }
-      }
-      for (CtExecutable<?> ex : executablesOf(t)) {
-        for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
-          onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
-        }
-        for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-          onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-        }
-        for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
-          if (fr.getVariable() != null) {
-            fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-          }
-        }
-        for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
-          if (fw.getVariable() != null) {
-            fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
-          }
-        }
-      }
-      for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
-        String cgQn = tr.getQualifiedName();
-        if (cgQn != null && !cgQn.isEmpty()) referencedTypes.add(cgQn);
-      }
-    }
-    // Fixpoint. Calls made from generated code mark their target genReferenced: the generated
-    // reference is the annotation-driven root, and the target cannot be inlined into code that is
-    // regenerated every build, so it is exempt from single-use.
-    Set<String> fieldInitDone = new HashSet<>();
-    while (!work.isEmpty()) {
-      String workKey = work.poll();
-      CtExecutable<?> ex = execByKey.get(workKey);
-      if (ex == null) continue;
-      boolean fromGenerated =
-          ex instanceof CtTypeMember exTm
-              && exTm.getDeclaringType() != null
-              && isGeneratedType(exTm.getDeclaringType());
-      if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
-        String tn = tm.getDeclaringType().getQualifiedName();
-        if (fieldInitDone.add(tn)) {
-          for (CtField<?> f : tm.getDeclaringType().getFields()) {
+        for (CtField<?> f : t.getFields()) {
             var init = f.getDefaultExpression();
             if (init == null) continue;
-            for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
-              onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+            for (CtNewClass<?> nc : init.getElements(new TypeFilter<>(CtNewClass.class))) {
+                var anon = nc.getAnonymousClass();
+                if (anon != null) collectTypes(anon, out);
             }
-            for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-              onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+        }
+    }
+
+    private static List<CtExecutable<?>> executablesOf(CtType<?> t) {
+        List<CtExecutable<?>> out = new ArrayList<>();
+        for (CtMethod<?> m : t.getMethods()) out.add(m);
+        if (t instanceof CtClass<?> c) {
+            for (CtConstructor<?> ctor : c.getConstructors()) out.add(ctor);
+        }
+        return out;
+    }
+
+    private static String key(CtExecutable<?> ex) {
+        String owner =
+                ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
+                        ? tm.getDeclaringType().getQualifiedName()
+                        : "?";
+        return owner + "#" + sig(ex);
+    }
+
+    private static String sig(CtExecutable<?> ex) {
+        StringBuilder sb = new StringBuilder(ex.getSimpleName()).append('(');
+        var ps = ex.getParameters();
+        for (int i = 0; i < ps.size(); i++) {
+            if (i > 0) sb.append(',');
+            var ty = ps.get(i).getType();
+            sb.append(ty == null ? "?" : ty.getSimpleName());
+        }
+        return sb.append(')').toString();
+    }
+
+    private static String nameArity(String name, int arity) {
+        return name + "/" + arity;
+    }
+
+    private static String fieldKey(String qualifiedName) {
+        return qualifiedName == null ? "?" : qualifiedName;
+    }
+
+    private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {
+        if (!(t instanceof CtRecord rec)) return false;
+        if (!m.getParameters().isEmpty()) return false;
+        return rec.getRecordComponents().stream()
+                .anyMatch(rc -> rc.getSimpleName().equals(m.getSimpleName()));
+    }
+
+    private boolean isGeneratedType(CtType<?> t) {
+        var pos = t.getPosition();
+        if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
+        return generatedFiles.contains(pos.getFile().getAbsolutePath());
+    }
+
+    static boolean overridesExternal(CtMethod<?> m) {
+        for (CtMethod<?> top : m.getTopDefinitions()) {
+            CtType<?> dt = top.getDeclaringType();
+            if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
+                return true;
             }
-          }
         }
-      }
-      for (CtTypeReference<?> _artTr : ex.getElements(new TypeFilter<>(CtTypeReference.class))) {
-        String _artQn = _artTr.getQualifiedName();
-        if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
-      }
-      for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
-        onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
-      }
-      for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-        onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
-      }
-      for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
-        if (fr.getVariable() != null) {
-          fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-        }
-      }
-      for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
-        if (fw.getVariable() != null) {
-          fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
-        }
-      }
+        String n = m.getSimpleName();
+        return (n.equals("equals") || n.equals("hashCode") || n.equals("toString"))
+                && m.getModifiers().contains(ModifierKind.PUBLIC);
     }
 
-    // A live type (has a reachable method or is a builtin root) keeps every type it names —
-    // superclass, implemented (marker) interfaces, field types — alive as a referenced type.
-    for (CtType<?> t : types) {
-      boolean live =
-          executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
-      if (live) {
-        for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
-          String qn = tr.getQualifiedName();
-          if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
-        }
-      }
+    private static void section(StringBuilder out, String title, List<String> items) {
+        line(out, "## " + title + " (" + items.size() + ")");
+        for (String s : items) line(out, "  " + s);
+        line(out, "");
     }
 
-    List<String> deadClasses = new ArrayList<>();
-    List<String> deadMethods = new ArrayList<>();
-    List<String> deadFields = new ArrayList<>();
-    List<String> singleUseMethods = new ArrayList<>();
-    List<String> singleUseFields = new ArrayList<>();
-
-    for (CtType<?> t : types) {
-      String qn = t.getQualifiedName();
-      List<CtExecutable<?>> execs = executablesOf(t);
-      boolean anyReachable = execs.stream().anyMatch(e -> reachable.contains(key(e)));
-      boolean rooted = isGeneratedType(t);
-      boolean isAnnotation = t.isAnnotationType();
-      if (!anyReachable && !rooted && !isAnnotation && !referencedTypes.contains(qn)) {
-        deadClasses.add(qn);
-        continue;
-      }
-      for (CtExecutable<?> ex : execs) {
-        if (!(ex instanceof CtMethod<?> m)) continue;
-        String k = key(ex);
-        boolean concrete = m.getBody() != null;
-        boolean _iam = false;
-        for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
-          if (!key(_iamTop).equals(key(m)) && _iamTop.isAbstract()) {
-            _iam = true;
-            break;
-          }
-        }
-        boolean inlinable =
-            !isRoot(ex)
-                && !rooted
-                && !"compilerxyz.util.Assert".equals(qn)
-                && m.getBody() != null
-                && !overridesExternal(m)
-                && !_iam
-                && !isRecordAccessor(t, m)
-                && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
-        if (!reachable.contains(k)
-            && concrete
-            && !rooted
-            && !isRoot(ex)
-            && !m.getSimpleName().equals("main")
-            && !overridesExternal(m)
-            && !isRecordAccessor(t, m)) {
-          deadMethods.add(qn + "#" + sig(ex));
-        }
-        if (inlinable
-            && reachable.contains(k)
-            && !genReferenced.contains(k)
-            && callCounts.getOrDefault(k, 0) == 1) {
-          singleUseMethods.add(qn + "#" + sig(ex));
-        }
-      }
-      boolean recordOrEnum = t.isEnum() || (t instanceof CtRecord);
-      if (!recordOrEnum) {
-        for (CtField<?> f : t.getFields()) {
-          if (f.getModifiers().contains(ModifierKind.PRIVATE)
-              && !rooted
-              && !f.getSimpleName().equals("serialVersionUID")
-              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
-              && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0) {
-            deadFields.add(qn + "#" + f.getSimpleName());
-          }
-          if (f.getModifiers().contains(ModifierKind.PRIVATE)
-              && !f.getModifiers().contains(ModifierKind.FINAL)
-              && !f.getModifiers().contains(ModifierKind.VOLATILE)
-              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
-              && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 1) {
-            singleUseFields.add(qn + "#" + f.getSimpleName());
-          }
-        }
-      }
+    private static void line(StringBuilder out, String s) {
+        out.append(s).append('\n');
     }
-
-    deadClasses.sort(Comparator.naturalOrder());
-    deadMethods.sort(Comparator.naturalOrder());
-    singleUseMethods.sort(Comparator.naturalOrder());
-    singleUseFields.sort(Comparator.naturalOrder());
-
-    StringBuilder out = new StringBuilder();
-    line(out, "=== Reachability / single-use analysis (Spoon, source-level) ===");
-    line(out, "types: " + types.size());
-    line(out, "");
-    section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
-    section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
-    section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
-    section(out, "#1 DEAD PRIVATE FIELDS (0 reads)", deadFields);
-    section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
-    int total =
-        deadClasses.size()
-            + deadMethods.size()
-            + deadFields.size()
-            + singleUseMethods.size()
-            + singleUseFields.size();
-    line(
-        out,
-        String.format(
-            "TOT:  dead classes=%d  dead methods=%d  dead fields=%d  single-use methods=%d"
-                + "  single-use fields=%d",
-            deadClasses.size(), deadMethods.size(), deadFields.size(), singleUseMethods.size(),
-            singleUseFields.size()));
-
-    System.out.print(out);
-    Path reportPath = Path.of("analysis/target/reachability-report.txt");
-    Files.createDirectories(reportPath.getParent());
-    Files.writeString(reportPath, out.toString());
-    System.out.println("(report written to " + reportPath + ")");
-    return total;
-  }
-
-  private void onCall(
-      CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
-    if (ref == null) return;
-    CtExecutable<?> decl = ref.getExecutableDeclaration();
-    if (decl != null) {
-      String dk = key(decl);
-      callCounts.merge(dk, 1, Integer::sum);
-      if (fromGenerated) genReferenced.add(dk);
-      // Mark the directly-resolved declaration reachable; this handles generic/varargs calls where
-      // the arity-based fallback below may compute the wrong arity from the reference.
-      if (reachable.add(dk)) work.add(dk);
-    }
-    // Reach all same-name/arity overriders that are subtypes of the reference's declaring type
-    // (class-hierarchy analysis). Use the actual argument count from the call site since
-    // ref.getParameters() may return 0 when noClasspath can't resolve generic/lambda types.
-    CtTypeReference<?> refDecl = ref.getDeclaringType();
-    int refArity = ref.getParameters().size();
-    // Prefer the actual call-site arity; fall back to the reference arity when they differ.
-    // Also try varargs methods (1 varargs param handles any call arity).
-    Set<Integer> arities = new LinkedHashSet<>();
-    arities.add(actualArity);
-    if (refArity != actualArity) arities.add(refArity);
-    for (int arity : arities) {
-      for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
-        CtExecutable<?> cex = execByKey.get(cand);
-        if (cex == null) continue;
-        if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
-          if (reachable.add(cand)) work.add(cand);
-        }
-      }
-    }
-    // Also check varargs methods with 1 parameter when the call has != 1 argument.
-    if (actualArity != 1) {
-      for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), 1), List.of())) {
-        CtExecutable<?> cex = execByKey.get(cand);
-        if (cex == null) continue;
-        boolean isVarargs =
-            !cex.getParameters().isEmpty()
-                && cex.getParameters().get(cex.getParameters().size() - 1).isVarArgs();
-        if (!isVarargs) continue;
-        if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
-          if (reachable.add(cand)) work.add(cand);
-        }
-      }
-    }
-  }
-
-  private static boolean isDirect(CtExecutableReference<?> ref, CtExecutable<?> cex) {
-    CtExecutable<?> decl = ref.getExecutableDeclaration();
-    return decl != null && key(cex).equals(key(decl));
-  }
-
-  private boolean subtypeOf(CtExecutable<?> cex, CtTypeReference<?> superRef) {
-    if (superRef == null) return false;
-    if (!(cex instanceof CtTypeMember tm) || tm.getDeclaringType() == null) return false;
-    return tm.getDeclaringType().getReference().isSubtypeOf(superRef);
-  }
-
-  private boolean isRoot(CtExecutable<?> ex) {
-    if (ex.getAnnotations().stream()
-        .anyMatch(
-            a ->
-                junit.contains(a.getAnnotationType().getSimpleName())
-                    || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
-      return true;
-    }
-    return ex instanceof CtMethod<?> m
-        && m.getSimpleName().equals("main")
-        && m.getModifiers().contains(ModifierKind.STATIC)
-        && m.getParameters().size() == 1;
-  }
-
-  // ---- helpers ----
-
-  private static void collectTypes(CtType<?> t, List<CtType<?>> out) {
-    out.add(t);
-    for (CtType<?> nested : t.getNestedTypes()) {
-      collectTypes(nested, out);
-    }
-    // Spoon's getNestedTypes() omits anonymous classes from field initializers
-    // (e.g. `static final Iface DELEGATE = new Iface() {...}`). Include them so
-    // the BFS can resolve interface dispatch to their implementations.
-    for (CtField<?> f : t.getFields()) {
-      var init = f.getDefaultExpression();
-      if (init == null) continue;
-      for (CtNewClass<?> nc : init.getElements(new TypeFilter<>(CtNewClass.class))) {
-        var anon = nc.getAnonymousClass();
-        if (anon != null) collectTypes(anon, out);
-      }
-    }
-  }
-
-  private static List<CtExecutable<?>> executablesOf(CtType<?> t) {
-    List<CtExecutable<?>> out = new ArrayList<>();
-    for (CtMethod<?> m : t.getMethods()) out.add(m);
-    if (t instanceof CtClass<?> c) {
-      for (CtConstructor<?> ctor : c.getConstructors()) out.add(ctor);
-    }
-    return out;
-  }
-
-  private static String key(CtExecutable<?> ex) {
-    String owner =
-        ex instanceof CtTypeMember tm && tm.getDeclaringType() != null
-            ? tm.getDeclaringType().getQualifiedName()
-            : "?";
-    return owner + "#" + sig(ex);
-  }
-
-  private static String sig(CtExecutable<?> ex) {
-    StringBuilder sb = new StringBuilder(ex.getSimpleName()).append('(');
-    var ps = ex.getParameters();
-    for (int i = 0; i < ps.size(); i++) {
-      if (i > 0) sb.append(',');
-      var ty = ps.get(i).getType();
-      sb.append(ty == null ? "?" : ty.getSimpleName());
-    }
-    return sb.append(')').toString();
-  }
-
-  private static String nameArity(String name, int arity) {
-    return name + "/" + arity;
-  }
-
-  private static String fieldKey(String qualifiedName) {
-    return qualifiedName == null ? "?" : qualifiedName;
-  }
-
-  private static boolean isRecordAccessor(CtType<?> t, CtMethod<?> m) {
-    if (!(t instanceof CtRecord rec)) return false;
-    if (!m.getParameters().isEmpty()) return false;
-    return rec.getRecordComponents().stream()
-        .anyMatch(rc -> rc.getSimpleName().equals(m.getSimpleName()));
-  }
-
-  private boolean isGeneratedType(CtType<?> t) {
-    var pos = t.getPosition();
-    if (pos == null || !pos.isValidPosition() || pos.getFile() == null) return false;
-    return generatedFiles.contains(pos.getFile().getAbsolutePath());
-  }
-
-  static boolean overridesExternal(CtMethod<?> m) {
-    for (CtMethod<?> top : m.getTopDefinitions()) {
-      CtType<?> dt = top.getDeclaringType();
-      if (dt == null || dt.getPosition() == null || !dt.getPosition().isValidPosition()) {
-        return true; // declared in a type not in our source model (JDK/library)
-      }
-    }
-    // Also treat overrides of Object methods as external.
-    String n = m.getSimpleName();
-    return (n.equals("equals") || n.equals("hashCode") || n.equals("toString"))
-        && m.getModifiers().contains(ModifierKind.PUBLIC);
-  }
-
-  private static void section(StringBuilder out, String title, List<String> items) {
-    line(out, "## " + title + " (" + items.size() + ")");
-    for (String s : items) line(out, "  " + s);
-    line(out, "");
-  }
-
-  private static void line(StringBuilder out, String s) {
-    out.append(s).append('\n');
-  }
 }

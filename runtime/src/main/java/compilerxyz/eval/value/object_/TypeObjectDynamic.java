@@ -132,11 +132,6 @@ public final class TypeObjectDynamic
     this.interfaceRepresented = interfaceRepresented;
   }
 
-  /**
-   * Second construction pass: generated {@code link()} companions build the method and data-field
-   * lists (which circularly reference this instance as receiver) and set the final fields
-   * reflectively, exactly once. Pure construction — no logic beyond the write.
-   */
   public void linkInit(IList<ObjectDataField> dataFields, IList<ObjectMethod> methods) {
     if (this.dataFields != null || this.methods != null) {
       throw new IllegalStateException("TypeObjectDynamic.linkInit: already initialized");
@@ -587,11 +582,6 @@ public final class TypeObjectDynamic
     return BuiltinInterfaceRegistry.resolve(kind);
   }
 
-  /**
-   * Compile-time type of a value whose {@code data} is a TypeObjectDynamic
-   * instance. Returned as a TypeObjectConst because TOD instances are only ever
-   * wrapped in {@link ValueObjectConst}, which requires a const-side type.
-   */
   public static Type constType() {
     return SelfConstType.INSTANCE;
   }

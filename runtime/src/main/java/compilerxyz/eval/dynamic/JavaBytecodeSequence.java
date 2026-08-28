@@ -67,10 +67,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
         {
             var jumpLabels = new TMap<JumpKey, LabelNode>();
             final int[] realInsnCount = {0};
-            // Per-site exception-dest runs: the innermost enclosing Guarded
-            // decides every instruction's handler; a maximal contiguous run
-            // of same-dest instructions becomes one catch-any table entry
-            // pointing at the dest key's landing label.
             var destStack = new TList<JumpKey>();
             final JumpKey[] runDest = {null};
             final LabelNode[] runStart = {null};
@@ -98,17 +94,18 @@ public class JavaBytecodeSequence implements JavaBytecode {
             Function<CodeDynamic, Iterator<CodeDynamic>> flattenStep =
                     cd -> {
                         switch (cd.loc()) {
-                          case CodeLoc.Some some -> {
-                            locCounter[0] += 1;
-                            int line = locCounter[0];
-                            locMap.put(line, some.qExprId());
-                            var label = new LabelNode(new Label());
-                            flattened.add(new JavaBytecodeInstructionObj(label));
-                            flattened.add(
-                                    new JavaBytecodeInstructionObj(
-                                            new LineNumberNode(line, label)));
-                          }
-                          case CodeLoc.Infallible i -> {}
+                            case CodeLoc.Some some -> {
+                                locCounter[0] += 1;
+                                int line = locCounter[0];
+                                locMap.put(line, some.qExprId());
+                                var label = new LabelNode(new Label());
+                                flattened.add(new JavaBytecodeInstructionObj(label));
+                                flattened.add(
+                                        new JavaBytecodeInstructionObj(
+                                                new LineNumberNode(line, label)));
+                            }
+                            case CodeLoc.Infallible i -> {
+                            }
                         }
                         return cd.code()
                                 .javaBytecodeDispatch(
@@ -117,8 +114,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                             public Iterator<CodeDynamic> dispatcherHandleInstruction(JavaBytecodeInstruction n) {
                                                 if (!(n instanceof JavaBytecodeInstructionTryCatch)
                                                         && !(n instanceof JavaBytecodeInstructionObj obj
-                                                                && (obj.node instanceof LabelNode
-                                                                        || obj.node instanceof LineNumberNode))) {
+                                                        && (obj.node instanceof LabelNode
+                                                        || obj.node instanceof LineNumberNode))) {
                                                     realInsnCount[0] += 1;
                                                 }
                                                 flattened.add(n);
@@ -179,20 +176,14 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
         TList<JavaBytecode> emitList;
         {
-            // Shadow-store elision: a droppable temp's DUP;STORE pair whose
-            // local is never loaded (no throwing site occurred inside the
-            // temp's lifetime, so no handler reads it) is deleted outright —
-            // the emitted code matches never having tracked the temp. The
-            // pair is emitted adjacently by the shadow generator; matching is
-            // strict on that shape.
             var loadedKeys = new TSet<JavaBytecodeBindingKey>();
             for (var n : flattened) {
                 if (n instanceof JavaBytecodeStoreLoad sl
                         && (sl.code == ALOAD
-                                || sl.code == ILOAD
-                                || sl.code == FLOAD
-                                || sl.code == LLOAD
-                                || sl.code == DLOAD)) {
+                        || sl.code == ILOAD
+                        || sl.code == FLOAD
+                        || sl.code == LLOAD
+                        || sl.code == DLOAD)) {
                     loadedKeys.add(sl.key);
                 }
             }
@@ -205,8 +196,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
                         && flattened.get(i + 1) instanceof JavaBytecodeStoreLoad sl
                         && !loadedKeys.contains(sl.key)
                         && (ii.code == DUP
-                                ? (sl.code == ASTORE || sl.code == ISTORE || sl.code == FSTORE)
-                                : (sl.code == LSTORE || sl.code == DSTORE))) {
+                        ? (sl.code == ASTORE || sl.code == ISTORE || sl.code == FSTORE)
+                        : (sl.code == LSTORE || sl.code == DSTORE))) {
                     i += 1;
                     continue;
                 }
@@ -214,11 +205,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
             }
         }
         {
-            // Direct slot allocation: every binding key gets its own local for
-            // the method's lifetime, assigned on first use. Slot state is a
-            // plain map — no liveness, no per-label frame merging — so a slot
-            // referenced from any position (exception handlers included)
-            // always resolves to the same index.
             var slotIndexes = new TMap<JavaBytecodeBindingKey, Integer>();
             final int[] nextSlot = {0};
             for (var s : initialSlotWidths) {
@@ -239,8 +225,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
                                                 if (n.node instanceof LabelNode ln
                                                         && !emittedLabels.add(ln.getLabel())) {
                                                     throw new AssertionError(
-                                                        "duplicate label emission — code fragment"
-                                                            + " reused without freshen");
+                                                            "duplicate label emission — code fragment"
+                                                                    + " reused without freshen");
                                                 }
                                                 n.node.accept(out);
                                             }
@@ -252,10 +238,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                                             @Override
                                             public void moreDispatcherHandleTryCatch(JavaBytecodeInstructionTryCatch n) {
-                                                // Defer visitTryCatchBlock so we can emit entries in
-                                                // nesting order at method end — the JVM matches exception
-                                                // table entries in table order, so innermost handlers must
-                                                // appear first for correct nesting.
                                                 pendingTryCatchBlocks.add(n);
                                             }
                                         });
@@ -300,8 +282,6 @@ public class JavaBytecodeSequence implements JavaBytecode {
 
                         });
             }
-            // Dest runs never overlap, so table order is free; keep insertion
-            // order.
             for (var n : pendingTryCatchBlocks) {
                 out.visitTryCatchBlock(n.start, n.end, n.handler, n.excType);
             }

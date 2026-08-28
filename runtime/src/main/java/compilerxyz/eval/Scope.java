@@ -17,164 +17,163 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
-/**
- * The scope stack: a list of {@link ScopeLevel}s. Binding entries carry the
- * lexical names; label, catch, and finally levels mark the control constructs
- * an unwind or labeled return must pass through; temp levels track in-flight
- * droppable values. Chain bookkeeping lives on the levels themselves and is
- * shared across forks by identity.
- */
 @BuiltinFull(uniqueId = 6024L)
 public final class Scope {
 
 
-  public final EvalContext vx;
-  public final TList<ScopeLevel> levels = new TList<>();
+    public final EvalContext vx;
+    public final TList<ScopeLevel> levels = new TList<>();
 
-  public Scope(EvalContext vx) {
-    this.vx = vx;
-  }
-
-  /** Total level count, all kinds. Constructs snapshot this to pop back to. */
-  public int levelCount() {
-    return levels.size();
-  }
-
-  public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
-    var id = vx.dropStateCounter.next();
-    var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
-    levels.add(entry);
-    return entry;
-  }
-
-  public void pushAll(TMap<ConstKey, Binding> named) {
-    for (var entry : named.entrySet()) {
-      pushNamed(entry.getKey(), entry.getValue());
+    public Scope(EvalContext vx) {
+        this.vx = vx;
     }
-  }
 
-  public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
-    var level = new ScopeLevel.Labeled(label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
-    levels.add(level);
-    return level;
-  }
-
-  /** Pop levels until {@link #levelCount()} is {@code targetCount}. */
-  public void popToLevelCount(int targetCount) {
-    while (levels.size() > targetCount) {
-      levels.remove(levels.size() - 1);
+    public int levelCount() {
+        return levels.size();
     }
-  }
 
-  /**
-   * Clone the scope for a branch — binding entries are forked so mutations in
-   * the branch do not leak into the parent or siblings; drop states carry
-   * over (the fork is the same state until a path mutates); chain bookkeeping
-   * boxes are shared by identity so nodes registered on any path surface at
-   * the owning level's close.
-   */
-  public Scope fork() {
-    var out = new Scope(vx);
-    for (var level : levels) {
-      out.levels.add(
-          switch (level) {
-            case ScopeLevel.Entry entry ->
-                new ScopeLevel.Entry(entry.name, entry.binding.bindingFork(), entry.stackOnly, entry.state, entry.dropState, entry.emission);
-            case ScopeLevel.Temp temp ->
-                new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
-            case ScopeLevel.Labeled labeled ->
-                new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
-            case ScopeLevel.Catch catch_ ->
-                new ScopeLevel.Catch(catch_.handler, catch_.emission);
-            case ScopeLevel.Finally finally_ -> {
-                var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
-                _f.body = finally_.body;
-                yield _f;
-            }
-          });
+    public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
+        var id = vx.dropStateCounter.next();
+        var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+        levels.add(entry);
+        return entry;
     }
-    return out;
-  }
 
-  /**
-   * Merge branch outcomes into this scope. Binding entries merge
-   * position-wise; branch scopes must have the same level shape.
-   */
-  public EResult<Void> merge(ExprContext xx, QExprId loc, TList<Scope> others) {
-    for (var other : others) {
-      if (other.levels.size() != levels.size()) {
-        return EResult.err(loc,
-            "Scope.merge: branch produced a scope of different depth ("
-                + other.levels.size() + " vs " + levels.size() + ")");
-      }
-    }
-    var merged = new TList<Binding>(levels.size());
-    var mergedStates = new TList<Long>(levels.size());
-    var mergedDropStates = new TList<Long>(levels.size());
-    for (int i = 0; i < levels.size(); i++) {
-      switch (levels.get(i)) {
-        case ScopeLevel.Temp t -> { merged.add(null); mergedStates.add(null); mergedDropStates.add(null); }
-        case ScopeLevel.Labeled l -> { merged.add(null); mergedStates.add(null); mergedDropStates.add(null); }
-        case ScopeLevel.Catch c -> { merged.add(null); mergedStates.add(null); mergedDropStates.add(null); }
-        case ScopeLevel.Finally f -> { merged.add(null); mergedStates.add(null); mergedDropStates.add(null); }
-        case ScopeLevel.Entry entry -> {
-          var branchBindings = new TList<Binding>(others.size());
-          boolean anyStateDiffers = false;
-          boolean anyDropStateDiffers = false;
-          for (var other : others) {
-            switch (other.levels.get(i)) {
-              case ScopeLevel.Entry otherEntry -> {
-                branchBindings.add(otherEntry.binding);
-                if (otherEntry.state != entry.state) anyStateDiffers = true;
-                if (otherEntry.dropState != entry.dropState) anyDropStateDiffers = true;
-              }
-              case ScopeLevel.Temp t -> { return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i); }
-              case ScopeLevel.Labeled l -> { return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i); }
-              case ScopeLevel.Catch c -> { return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i); }
-              case ScopeLevel.Finally f -> { return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i); }
-            }
-          }
-          if (!anyStateDiffers) {
-            merged.add(entry.binding);
-            mergedStates.add(entry.state);
-            mergedDropStates.add(entry.dropState);
-          } else {
-            var mergedRes = entry.binding.bindingMerge(xx, loc, branchBindings);
-            if (mergedRes.hasErrors()) return mergedRes.reerr();
-            merged.add(mergedRes.requireValue("Scope.merge binding"));
-            mergedStates.add(vx.dropStateCounter.next());
-            mergedDropStates.add(
-                anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState);
-          }
+    public void pushAll(TMap<ConstKey, Binding> named) {
+        for (var entry : named.entrySet()) {
+            pushNamed(entry.getKey(), entry.getValue());
         }
-      }
     }
-    for (int i = 0; i < levels.size(); i++) {
-      switch (levels.get(i)) {
-        case ScopeLevel.Entry entry -> {
-          if (merged.get(i) != null) {
-            entry.binding = merged.get(i);
-            entry.state = mergedStates.get(i);
-            entry.dropState = mergedDropStates.get(i);
-          }
-        }
-        case ScopeLevel.Temp t -> {}
-        case ScopeLevel.Labeled l -> {}
-        case ScopeLevel.Catch c -> {}
-        case ScopeLevel.Finally f -> {}
-      }
-    }
-    return EResult.ok(null);
-  }
 
-  /**
-   * Install {@code other}'s contents as this scope's, unless it already is
-   * this scope. Used to adopt an expression result's default-exit scope tree
-   * before evaluating the next expression.
-   */
-  public void adopt(Scope other) {
-    var src = TList.from(other.levels);
-    levels.clear();
-    levels.addAll(src);
-  }
+    public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
+        var level = new ScopeLevel.Labeled(label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
+        levels.add(level);
+        return level;
+    }
+
+    public void popToLevelCount(int targetCount) {
+        while (levels.size() > targetCount) {
+            levels.remove(levels.size() - 1);
+        }
+    }
+
+    public Scope fork() {
+        var out = new Scope(vx);
+        for (var level : levels) {
+            out.levels.add(
+                    switch (level) {
+                        case ScopeLevel.Entry entry -> new ScopeLevel.Entry(entry.name, entry.binding.bindingFork(), entry.stackOnly, entry.state, entry.dropState, entry.emission);
+                        case ScopeLevel.Temp temp -> new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
+                        case ScopeLevel.Labeled labeled -> new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
+                        case ScopeLevel.Catch catch_ -> new ScopeLevel.Catch(catch_.handler, catch_.emission);
+                        case ScopeLevel.Finally finally_ -> {
+                            var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
+                            _f.body = finally_.body;
+                            yield _f;
+                        }
+                    });
+        }
+        return out;
+    }
+
+    public EResult<Void> merge(ExprContext xx, QExprId loc, TList<Scope> others) {
+        for (var other : others) {
+            if (other.levels.size() != levels.size()) {
+                return EResult.err(loc,
+                        "Scope.merge: branch produced a scope of different depth ("
+                                + other.levels.size() + " vs " + levels.size() + ")");
+            }
+        }
+        var merged = new TList<Binding>(levels.size());
+        var mergedStates = new TList<Long>(levels.size());
+        var mergedDropStates = new TList<Long>(levels.size());
+        for (int i = 0; i < levels.size(); i++) {
+            switch (levels.get(i)) {
+                case ScopeLevel.Temp t -> {
+                    merged.add(null);
+                    mergedStates.add(null);
+                    mergedDropStates.add(null);
+                }
+                case ScopeLevel.Labeled l -> {
+                    merged.add(null);
+                    mergedStates.add(null);
+                    mergedDropStates.add(null);
+                }
+                case ScopeLevel.Catch c -> {
+                    merged.add(null);
+                    mergedStates.add(null);
+                    mergedDropStates.add(null);
+                }
+                case ScopeLevel.Finally f -> {
+                    merged.add(null);
+                    mergedStates.add(null);
+                    mergedDropStates.add(null);
+                }
+                case ScopeLevel.Entry entry -> {
+                    var branchBindings = new TList<Binding>(others.size());
+                    boolean anyStateDiffers = false;
+                    boolean anyDropStateDiffers = false;
+                    for (var other : others) {
+                        switch (other.levels.get(i)) {
+                            case ScopeLevel.Entry otherEntry -> {
+                                branchBindings.add(otherEntry.binding);
+                                if (otherEntry.state != entry.state) anyStateDiffers = true;
+                                if (otherEntry.dropState != entry.dropState) anyDropStateDiffers = true;
+                            }
+                            case ScopeLevel.Temp t -> {
+                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                            }
+                            case ScopeLevel.Labeled l -> {
+                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                            }
+                            case ScopeLevel.Catch c -> {
+                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                            }
+                            case ScopeLevel.Finally f -> {
+                                return EResult.err(loc, "Scope.merge: branch level kind mismatch at " + i);
+                            }
+                        }
+                    }
+                    if (!anyStateDiffers) {
+                        merged.add(entry.binding);
+                        mergedStates.add(entry.state);
+                        mergedDropStates.add(entry.dropState);
+                    } else {
+                        var mergedRes = entry.binding.bindingMerge(xx, loc, branchBindings);
+                        if (mergedRes.hasErrors()) return mergedRes.reerr();
+                        merged.add(mergedRes.requireValue("Scope.merge binding"));
+                        mergedStates.add(vx.dropStateCounter.next());
+                        mergedDropStates.add(
+                                anyDropStateDiffers ? vx.dropStateCounter.next() : entry.dropState);
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < levels.size(); i++) {
+            switch (levels.get(i)) {
+                case ScopeLevel.Entry entry -> {
+                    if (merged.get(i) != null) {
+                        entry.binding = merged.get(i);
+                        entry.state = mergedStates.get(i);
+                        entry.dropState = mergedDropStates.get(i);
+                    }
+                }
+                case ScopeLevel.Temp t -> {
+                }
+                case ScopeLevel.Labeled l -> {
+                }
+                case ScopeLevel.Catch c -> {
+                }
+                case ScopeLevel.Finally f -> {
+                }
+            }
+        }
+        return EResult.ok(null);
+    }
+
+    public void adopt(Scope other) {
+        var src = TList.from(other.levels);
+        levels.clear();
+        levels.addAll(src);
+    }
 }

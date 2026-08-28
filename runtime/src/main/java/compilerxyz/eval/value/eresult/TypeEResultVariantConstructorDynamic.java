@@ -46,12 +46,11 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
         AspectFunction,
         ExporterAny {
 
-  /** ok(value), err(loc, message), or errs(error-list). */
-  public enum Kind {
-    OK,
-    ERR,
-    ERRS
-  }
+    public enum Kind {
+        OK,
+        ERR,
+        ERRS
+    }
 
   @Override
   public String typeDesc() {

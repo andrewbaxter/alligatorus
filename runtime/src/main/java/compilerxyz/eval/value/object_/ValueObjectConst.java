@@ -17,19 +17,13 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
     return type;
   }
 
-  /**
-   * The type-of-type of a plain type — a type with no specialized type-of-type
-   * (primitives, list/map/option, functions, …). It is the const form of the
-   * builtin {@code Type} descriptor. Source kinds (object/union/interface) name
-   * their own {@code TypeTypeSource…} type-of-type at the wrap site instead.
-   */
-  public static Type plainTypeType() {
-    var td = (TypeObjectDynamic) GenType.dynamicType();
-    return new TypeObjectConst(
-        td.meta(),
-        td.hostClass(),
-        Opt.<ExporterRoot>none());
-  }
+    public static Type plainTypeType() {
+        var td = (TypeObjectDynamic) GenType.dynamicType();
+        return new TypeObjectConst(
+                td.meta(),
+                td.hostClass(),
+                Opt.<ExporterRoot>none());
+    }
 
 
   @Override

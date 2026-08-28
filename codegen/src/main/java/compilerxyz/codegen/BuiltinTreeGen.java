@@ -199,12 +199,6 @@ public final class BuiltinTreeGen {
     GenMain.write(outRoot, file, formatter);
   }
 
-  /**
-   * Mutable counter for allocating unique local-variable names in the
-   * generated installRoot method. Each emit method appends statements to
-   * the shared body and returns the names of the (binding, type) locals it
-   * left in scope.
-   */
   private static final class EmitState {
     int counter = 0;
     final CodeBlock.Builder body = CodeBlock.builder();
@@ -233,7 +227,6 @@ public final class BuiltinTreeGen {
     return m.build();
   }
 
-  /** Emit inline statements for a node; return [bindingVarName, typeVarName]. */
   private static String[] emitNode(NodeSpec node, EmitState st) {
     return switch (node) {
       case Branch b -> emitBranch(b, st);
@@ -300,12 +293,8 @@ public final class BuiltinTreeGen {
     return new String[] {binding, wrapper};
   }
 
-  /**
-   * Shared emit for InitialBind / Function / Constructor / Interface — all
-   * follow the pattern "AspectInitialBind.get(type).initialBind(key)".
-   */
   private static String[] emitInitialBindLike(
-      CodeBlock typeExpr, long dynamicKeyScopeId, EmitState st, String tag) {
+          CodeBlock typeExpr, long dynamicKeyScopeId, EmitState st, String tag) {
     var type = st.next("type");
     var ib = st.next("ib");
     var binding = st.next("binding");
@@ -315,14 +304,14 @@ public final class BuiltinTreeGen {
     st.body.addStatement("return $N.reerr()", ib);
     st.body.endControlFlow();
     st.body.addStatement(
-        "$T $N = $N.requireValue($S).aspectInitialBindInitialBind(new $T($LL))",
-        BINDING,
-        binding,
-        ib,
-        "installRoot " + tag,
-        BINDING_ID_BUILTIN,
-        dynamicKeyScopeId);
-    return new String[] {binding, type};
+            "$T $N = $N.requireValue($S).aspectInitialBindInitialBind(new $T($LL))",
+            BINDING,
+            binding,
+            ib,
+            "installRoot " + tag,
+            BINDING_ID_BUILTIN,
+            dynamicKeyScopeId);
+    return new String[]{binding, type};
   }
 
 
@@ -344,23 +333,16 @@ public final class BuiltinTreeGen {
       TList<BuiltinPathScanner.Entry> scannedPathEntries,
       Set<String> builtinInterfaceHostNames,
       TMap<ClassName, CodeBlock> scannedLeaves) {
-    // Collect (path, leaf) pairs from all sources.
     var pathToLeaf = new LinkedHashMap<String, LeafSpec>();
-
-    // Scanner-produced @BuiltinPath entries. @Builtin interface classes yield
-    // a TypeObjectDynamic (via Gen<X>.dynamicType()), so their source-visible
-    // wrapper is TypeObjectDynamic.constType() rather than the plain Type
-    // wrapper.
     for (var entry : scannedPathEntries) {
       LeafSpec spec = switch (entry) {
         case BuiltinPathScanner.TypeLeaf tl -> {
           var host = tl.typeClass().canonicalName();
           var wrapper =
-              builtinInterfaceHostNames.contains(host) ? TOD_SELF_TYPE_EXPR : TYPE_WRAPPER_EXPR;
+                  builtinInterfaceHostNames.contains(host) ? TOD_SELF_TYPE_EXPR : TYPE_WRAPPER_EXPR;
           yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);
         }
-        case BuiltinPathScanner.FunctionLeaf fl ->
-            LeafSpec.functionByName(
+        case BuiltinPathScanner.FunctionLeaf fl -> LeafSpec.functionByName(
                 fl.methodName(),
                 fl.ownerInternalName(),
                 fl.needsExprContext(),
@@ -371,76 +353,73 @@ public final class BuiltinTreeGen {
         throw new IllegalStateException("duplicate @BuiltinPath entry: " + entry.entryPath());
       }
     }
-
-    // 3) Hand-coded specials — TTOD-style, .ID-style, and remaining entries
-    //    that don't fit type-leaf / function-leaf / interface-leaf.
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TOD_SELF_TYPE_EXPR);
+            CodeBlock.of("$T.dynamicType()",
+                    ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_initial_bind",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectInitialBind")), TOD_SELF_TYPE_EXPR);
+            CodeBlock.of("$T.dynamicType()",
+                    ClassName.get("compilerxyz.gen", "GenAspectInitialBind")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_lift",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectLift")), TOD_SELF_TYPE_EXPR);
+            CodeBlock.of("$T.dynamicType()",
+                    ClassName.get("compilerxyz.gen", "GenAspectLift")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TOD_SELF_TYPE_EXPR);
+            CodeBlock.of("$T.dynamicType()",
+                    ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic",
-        CodeBlock.of("$T.dynamicType()",
-            ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TOD_SELF_TYPE_EXPR);
+            CodeBlock.of("$T.dynamicType()",
+                    ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")), TOD_SELF_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_string_dynamic",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_function_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFunction")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFunction")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_field_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectField")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectField")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBind")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBind")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_consume_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_bind_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_set_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectSet")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectSet")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_operator_add_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectOperatorAdd")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectOperatorAdd")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_drop_dynamic_light_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_stack_value_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStackValueDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStackValueDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_field_use_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFieldUseDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFieldUseDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_element_use_dynamic_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectElementUseDynamic")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectElementUseDynamic")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.aspect_initial_bind_id",
-        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.type_int_dynamic_identity",
-        CodeBlock.of(
-            "$T.TYPE_INT_DYNAMIC_IDENTITY",
-            ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of(
+                    "$T.TYPE_INT_DYNAMIC_IDENTITY",
+                    ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+            TUC_TYPE_EXPR);
     addSpecial(pathToLeaf, "eval.type_long_dynamic_identity",
-        CodeBlock.of(
-            "$T.TYPE_LONG_DYNAMIC_IDENTITY",
-            ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
-        TUC_TYPE_EXPR);
+            CodeBlock.of(
+                    "$T.TYPE_LONG_DYNAMIC_IDENTITY",
+                    ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+            TUC_TYPE_EXPR);
 
     return buildTree(pathToLeaf);
   }
@@ -455,34 +434,33 @@ public final class BuiltinTreeGen {
     }
   }
 
-  /** Static hard-coded ORDER for children of well-known branches, to preserve generated-file layout. */
   private static final IMap<String, IList<String>> BRANCH_ORDER =
-      IMap.ofEntries(
-          new Pair<>(
-              "",
-              IList.of("throw", "panic", "log", "define", "types", "eval")),
-          new Pair<>(
-              "types",
-              IList.of(
-                  "list", "map", "option", "eresult", "code", "string", "int", "null",
-                  "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
-                  "codedyn", "cve")),
-          new Pair<>(
-              "eval",
-              IList.of(
-                  "aspect_lookup", "cast_value", "const_eval", "codevalue", "stack",
-                  "str_to_json", "constkey_to_str", "gen_binding_name", "new_expr_context",
-                  "aspect_function", "aspect_field", "aspect_drop_dynamic",
-                  "aspect_drop_dynamic_light", "aspect_bind_dynamic",
-                  "aspect_consume_dynamic", "bind_result", "aspect_bind",
-                  "aspect_initial_bind", "aspect_lift",
-                  "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
-                  "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
-                  "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",
-                  "aspect_drop_dynamic_light_id", "aspect_stack_value_dynamic_id",
-                  "aspect_field_use_dynamic", "aspect_element_use_dynamic",
-                  "aspect_field_use_dynamic_id", "aspect_element_use_dynamic_id",
-                  "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type")));
+          IMap.ofEntries(
+                  new Pair<>(
+                          "",
+                          IList.of("throw", "panic", "log", "define", "types", "eval")),
+                  new Pair<>(
+                          "types",
+                          IList.of(
+                                  "list", "map", "option", "eresult", "code", "string", "int", "null",
+                                  "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
+                                  "codedyn", "cve")),
+                  new Pair<>(
+                          "eval",
+                          IList.of(
+                                  "aspect_lookup", "cast_value", "const_eval", "codevalue", "stack",
+                                  "str_to_json", "constkey_to_str", "gen_binding_name", "new_expr_context",
+                                  "aspect_function", "aspect_field", "aspect_drop_dynamic",
+                                  "aspect_drop_dynamic_light", "aspect_bind_dynamic",
+                                  "aspect_consume_dynamic", "bind_result", "aspect_bind",
+                                  "aspect_initial_bind", "aspect_lift",
+                                  "aspect_string_dynamic", "aspect_function_id", "aspect_field_id",
+                                  "aspect_bind_id", "aspect_drop_dynamic_id", "aspect_consume_dynamic_id",
+                                  "aspect_bind_dynamic_id", "aspect_set_id", "aspect_operator_add_id",
+                                  "aspect_drop_dynamic_light_id", "aspect_stack_value_dynamic_id",
+                                  "aspect_field_use_dynamic", "aspect_element_use_dynamic",
+                                  "aspect_field_use_dynamic_id", "aspect_element_use_dynamic_id",
+                                  "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type")));
 
   private record TreeNode(
       LinkedHashMap<String, TreeNode> children,

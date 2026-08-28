@@ -81,56 +81,51 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
       ExprContext xx,
       QExprId loc,
       CodeValue cv) {
-    // Map entry has exactly two child slots (key, value) accessed through
-    // Map.Entry.getKey / getValue. In practice both slots are just GC-managed
-    // Object references, so the base POP suffices, but the destructuring
-    // policy is emitted for correctness when a child type introduces its own
-    // drop semantics.
-    if (cv.value().optIsNone()) {
-      throw new IllegalStateException("TypeMapEntryDynamic::drop: called on absent CodeValue");
-    }
-    if (!(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
-      throw new IllegalStateException(
-          "TypeMapEntryDynamic::drop: expected ValueDynamic, got " + cv.value().optUnwrap().getClass());
-    }
-    var descObjNoArgs =
-        JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromClass(Object.class), TList.of());
-    var children =
-        new TList<DropChild>(2);
-    children.add(
-        new DropChild(
-            keyType,
-            JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getKey", descObjNoArgs)));
-    children.add(
-        new DropChild(
-            valueType,
-            JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
-    var _ddcSource = vd.source();
-    boolean _ddcStackRooted = DynUtil.isStackRooted(_ddcSource);
-    var _ddcChildDrops = new TList<CodeDynamic>();
-    for (var _ddcChild : children) {
-      var _ddcDropOpt = GenAspectDropDynamic.getMaybe(xx, _ddcChild.childType());
-      if (_ddcDropOpt.optIsNone()) continue;
-      var _ddcSeq = new JavaBytecodeSequence();
-      _ddcSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-      _ddcSeq.add(_ddcChild.access());
-      var _ddcChildDesc = CompositeClassEmitter.slotDescriptor(xx, _ddcChild.childType()).value();
-      var _ddcChildWidth = _ddcChildDesc.equals("J") || _ddcChildDesc.equals("D") ? 2 : 1;
-      var _ddcChildCv = new CodeValue(
-          Code.of(loc, new CodeDynamic(loc, _ddcSeq)),
-          EvalOutcome.ofValue(ValueDynamic.stack(_ddcChild.childType(), _ddcChildWidth)));
-      var _ddcChildDropRes = _ddcDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _ddcChildCv);
-      if (_ddcChildDropRes.hasErrors()) return _ddcChildDropRes.reerr();
-      var _ddcChildDyn = _ddcChildDropRes.requireValue("dropDestructiveComposite child drop").codeDynamic();
-      if (_ddcChildDyn != null) _ddcChildDrops.add(_ddcChildDyn);
-    }
-    if (_ddcChildDrops.isEmpty()) return EResult.ok(_ddcSource.valueDynamicSourceDrop(loc));
-    var _ddcOut = new JavaBytecodeSequence();
-    if (!_ddcStackRooted) _ddcOut.add(_ddcSource.valueDynamicSourceRealize(xx, loc));
-    for (var _ddcD : _ddcChildDrops) _ddcOut.add(_ddcD);
-    _ddcOut.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    return EResult.ok(Code.of(loc, new CodeDynamic(loc, _ddcOut)));
+      if (cv.value().optIsNone()) {
+          throw new IllegalStateException("TypeMapEntryDynamic::drop: called on absent CodeValue");
+      }
+      if (!(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
+          throw new IllegalStateException(
+                  "TypeMapEntryDynamic::drop: expected ValueDynamic, got " + cv.value().optUnwrap().getClass());
+      }
+      var descObjNoArgs =
+              JavaMethodDescriptor.fromParts(
+                      JavaDataDescriptor.fromClass(Object.class), TList.of());
+      var children =
+              new TList<DropChild>(2);
+      children.add(
+              new DropChild(
+                      keyType,
+                      JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getKey", descObjNoArgs)));
+      children.add(
+              new DropChild(
+                      valueType,
+                      JavaBytecodeUtils.callInterfaceMethod(loc, MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
+      var _ddcSource = vd.source();
+      boolean _ddcStackRooted = DynUtil.isStackRooted(_ddcSource);
+      var _ddcChildDrops = new TList<CodeDynamic>();
+      for (var _ddcChild : children) {
+          var _ddcDropOpt = GenAspectDropDynamic.getMaybe(xx, _ddcChild.childType());
+          if (_ddcDropOpt.optIsNone()) continue;
+          var _ddcSeq = new JavaBytecodeSequence();
+          _ddcSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+          _ddcSeq.add(_ddcChild.access());
+          var _ddcChildDesc = CompositeClassEmitter.slotDescriptor(xx, _ddcChild.childType()).value();
+          var _ddcChildWidth = _ddcChildDesc.equals("J") || _ddcChildDesc.equals("D") ? 2 : 1;
+          var _ddcChildCv = new CodeValue(
+                  Code.of(loc, new CodeDynamic(loc, _ddcSeq)),
+                  EvalOutcome.ofValue(ValueDynamic.stack(_ddcChild.childType(), _ddcChildWidth)));
+          var _ddcChildDropRes = _ddcDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _ddcChildCv);
+          if (_ddcChildDropRes.hasErrors()) return _ddcChildDropRes.reerr();
+          var _ddcChildDyn = _ddcChildDropRes.requireValue("dropDestructiveComposite child drop").codeDynamic();
+          if (_ddcChildDyn != null) _ddcChildDrops.add(_ddcChildDyn);
+      }
+      if (_ddcChildDrops.isEmpty()) return EResult.ok(_ddcSource.valueDynamicSourceDrop(loc));
+      var _ddcOut = new JavaBytecodeSequence();
+      if (!_ddcStackRooted) _ddcOut.add(_ddcSource.valueDynamicSourceRealize(xx, loc));
+      for (var _ddcD : _ddcChildDrops) _ddcOut.add(_ddcD);
+      _ddcOut.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+      return EResult.ok(Code.of(loc, new CodeDynamic(loc, _ddcOut)));
   }
 
   @Override
@@ -162,49 +157,45 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
 
   @Override
   public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-    var erb = new Erb(loc);
-    if (key.value().optIsNone()) {
-      return EResult.err(loc, "TypeMapEntryDynamic::field: key has no compile-time value");
-    }
-    var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
-    if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
-    var ck = ckOpt.optUnwrap();
-    var spec = fieldSpecs().getOrNull(ck);
-    if (spec == null) {
-      return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
-    }
-    var selfDyn = self.code().codeDynamic();
-    if (selfDyn == null) {
-      return EResult.err(loc, "TypeMapEntryDynamic::field: receiver has no runtime code");
-    }
-    var seq = new JavaBytecodeSequence();
-    seq.add(selfDyn);
-    seq.add(
-        JavaBytecodeUtils.callInterfaceMethod(
-            loc,
-            MAP_ENTRY_INAME,
-            spec.jvmGetter(),
-            JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.fromClass(Object.class), TList.of())));
-    // Iterator.next() and Map.Entry.getKey/getValue return Object; cast to the
-    // field type's declared JVM class so the stack shape matches the language
-    // type. Container element types are already box-substituted at construction
-    // time, so the target descriptor is always object-shaped here.
-    var fieldConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, spec.type());
-    if (fieldConsumeOpt.optIsSome()) {
-      var fieldDesc = fieldConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-      var d = fieldDesc.value();
-      if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
-        char c = d.charAt(0);
-        if (c == 'L' || c == '[') {
-          seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
-        }
+      var erb = new Erb(loc);
+      if (key.value().optIsNone()) {
+          return EResult.err(loc, "TypeMapEntryDynamic::field: key has no compile-time value");
       }
-    }
-    return EResult.ok(
-        new CodeValue(
-            Code.of(new CodeDynamic(loc, seq)),
-            EvalOutcome.ofValue(ValueDynamic.stack(spec.type(), 1))));
+      var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+      if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
+      var ck = ckOpt.optUnwrap();
+      var spec = fieldSpecs().getOrNull(ck);
+      if (spec == null) {
+          return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
+      }
+      var selfDyn = self.code().codeDynamic();
+      if (selfDyn == null) {
+          return EResult.err(loc, "TypeMapEntryDynamic::field: receiver has no runtime code");
+      }
+      var seq = new JavaBytecodeSequence();
+      seq.add(selfDyn);
+      seq.add(
+              JavaBytecodeUtils.callInterfaceMethod(
+                      loc,
+                      MAP_ENTRY_INAME,
+                      spec.jvmGetter(),
+                      JavaMethodDescriptor.fromParts(
+                              JavaDataDescriptor.fromClass(Object.class), TList.of())));
+      var fieldConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, spec.type());
+      if (fieldConsumeOpt.optIsSome()) {
+          var fieldDesc = fieldConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
+          var d = fieldDesc.value();
+          if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
+              char c = d.charAt(0);
+              if (c == 'L' || c == '[') {
+                  seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
+              }
+          }
+      }
+      return EResult.ok(
+              new CodeValue(
+                      Code.of(new CodeDynamic(loc, seq)),
+                      EvalOutcome.ofValue(ValueDynamic.stack(spec.type(), 1))));
   }
 
   @Override

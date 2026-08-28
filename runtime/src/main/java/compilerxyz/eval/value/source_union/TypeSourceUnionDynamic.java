@@ -129,27 +129,23 @@ public final class TypeSourceUnionDynamic
     return new TypeSourceUnionDynamic(this, normalized);
   }
 
-  /**
-   * The source union a type refers to, if any: a union instance carries its own active variant
-   * set; the const type-of-type resolves to its (all-active) union instance.
-   */
-  public static Opt<TypeSourceUnionDynamic> unionOf(ExprContext xx, Type t) {
-    var dynOpt =
-        AspectLookup.getMaybe(
-            xx,
-            t,
-            GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY,
-            TypeSourceUnionDynamic.class);
-    if (dynOpt.optIsSome()) return dynOpt;
-    var constOpt =
-        AspectLookup.getMaybe(
-            xx,
-            t,
-            GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY,
-            TypeTypeSourceUnionConst.class);
-    if (constOpt.optIsSome()) return Opt.some(constOpt.optUnwrap().type_());
-    return Opt.none();
-  }
+    public static Opt<TypeSourceUnionDynamic> unionOf(ExprContext xx, Type t) {
+        var dynOpt =
+                AspectLookup.getMaybe(
+                        xx,
+                        t,
+                        GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY,
+                        TypeSourceUnionDynamic.class);
+        if (dynOpt.optIsSome()) return dynOpt;
+        var constOpt =
+                AspectLookup.getMaybe(
+                        xx,
+                        t,
+                        GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY,
+                        TypeTypeSourceUnionConst.class);
+        if (constOpt.optIsSome()) return Opt.some(constOpt.optUnwrap().type_());
+        return Opt.none();
+    }
 
   public void initSetReflectively(DefinitionSet set) {
     try {

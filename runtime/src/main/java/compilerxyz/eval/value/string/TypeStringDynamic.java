@@ -283,20 +283,18 @@ public record TypeStringDynamic()
     var sourceType = cv.value().optUnwrap().valueType();
     var stringConstOpt = GenAspectStringConst.getMaybe(xx, sourceType);
     if (stringConstOpt.optIsSome()) {
-      String strVal = stringConstOpt.optUnwrap().aspectStringConstGet(cv.value().optUnwrap());
-      // Concatenate the source's existing dynamic code (if any) with an LDC of the string
-      // literal, matching the semantics of the old Block(existing, literal) construction.
-      var seq = new JavaBytecodeSequence();
-      var existingDyn = cv.code().codeDynamic();
-      if (existingDyn != null) {
-        seq.add(existingDyn);
-      }
-      seq.add(JavaBytecodeUtils.literalString(loc, strVal));
-      var result = new CodeDynamic(loc, seq);
-      return EResult.ok(
-          new CodeValue(
-              Code.of(result),
-              EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+        String strVal = stringConstOpt.optUnwrap().aspectStringConstGet(cv.value().optUnwrap());
+        var seq = new JavaBytecodeSequence();
+        var existingDyn = cv.code().codeDynamic();
+        if (existingDyn != null) {
+            seq.add(existingDyn);
+        }
+        seq.add(JavaBytecodeUtils.literalString(loc, strVal));
+        var result = new CodeDynamic(loc, seq);
+        return EResult.ok(
+                new CodeValue(
+                        Code.of(result),
+                        EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
     }
     return EResult.ok(
         new CodeValue(

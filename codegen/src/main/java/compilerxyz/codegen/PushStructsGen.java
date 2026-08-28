@@ -279,20 +279,15 @@ public final class PushStructsGen {
           "SourceObjectMethodResult",
           "SourceUnionBuilder");
 
-  /**
-   * Push structs whose Java class lives in runtime source (handwritten). Codegen skips
-   * generating the {@code .java} for these but still emits their GenObjectTypes registry entry
-   * from the PushStructSpec.
-   */
   private static final ISet<String> HANDWRITTEN_STRUCTS =
-      ISet.of(
-          "DefinitionSetBuilder",
-          "SourceFuncResult",
-          "SourceInterfaceMethodResult",
-          "SourceInterfaceResult",
-          "SourceObjectBuilder",
-          "SourceObjectMethodResult",
-          "SourceUnionBuilder");
+          ISet.of(
+                  "DefinitionSetBuilder",
+                  "SourceFuncResult",
+                  "SourceInterfaceMethodResult",
+                  "SourceInterfaceResult",
+                  "SourceObjectBuilder",
+                  "SourceObjectMethodResult",
+                  "SourceUnionBuilder");
 
   private static CodeBlock methodFunctionType(
       PushStructSpec spec, ClassName receiverClass, PushMethod m, String dynRuntimeMethodName) {

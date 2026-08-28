@@ -51,8 +51,7 @@ public final class SourceFunctionData {
   public Opt<Type> exceptionType = Opt.none();
   public Opt<Value> implExpr = Opt.none();
   public Opt<Type> argType = Opt.none();
-  // Optional return: some(type) if the function yields a value, none if it returns nothing.
-  public Opt<Type> retType = Opt.none();
+    public Opt<Type> retType = Opt.none();
   public int funcIdx;
   public Opt<String> compiledClassName = Opt.none();
   public Opt<byte[]> compiledBytecode = Opt.none();

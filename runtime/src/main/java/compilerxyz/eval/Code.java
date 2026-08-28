@@ -56,10 +56,6 @@ public sealed interface Code permits Code.None, Code.Target {
     return new Target(impl);
   }
 
-  /**
-   * Sequences two pieces of code, preserving the side effects carried by each. Used where a value
-   * is produced from operands that may each carry code of their own.
-   */
   static Code concat(QExprId loc, Code first, Code second) {
     var firstDyn = first.codeDynamic();
     var secondDyn = second.codeDynamic();

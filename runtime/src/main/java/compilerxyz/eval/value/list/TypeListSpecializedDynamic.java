@@ -254,68 +254,66 @@ public final class TypeListSpecializedDynamic<T extends Type>
   @Override
   public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
-    var baseDynRes = aspectConsumeDynamicToDynamic(xx, loc, base);
-    if (baseDynRes.hasErrors()) return baseDynRes.reerr();
-    var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
-    Code bodyCode;
-    if (body.value().optIsSome()) {
-      var dropRes = xx.target.targetDrop(xx, loc, body);
-      if (dropRes.hasErrors()) return dropRes.reerr();
-      var dropCode = dropRes.requireValue("TypeListSpecializedDynamic::foreach body drop");
-      var bodyDyn = body.code().codeDynamic();
-      var dropDyn = dropCode.codeDynamic();
-      if (bodyDyn == null && dropDyn == null) {
-        bodyCode = Code.none(loc);
+      var baseDynRes = aspectConsumeDynamicToDynamic(xx, loc, base);
+      if (baseDynRes.hasErrors()) return baseDynRes.reerr();
+      var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
+      Code bodyCode;
+      if (body.value().optIsSome()) {
+          var dropRes = xx.target.targetDrop(xx, loc, body);
+          if (dropRes.hasErrors()) return dropRes.reerr();
+          var dropCode = dropRes.requireValue("TypeListSpecializedDynamic::foreach body drop");
+          var bodyDyn = body.code().codeDynamic();
+          var dropDyn = dropCode.codeDynamic();
+          if (bodyDyn == null && dropDyn == null) {
+              bodyCode = Code.none(loc);
+          } else {
+              var seq = new JavaBytecodeSequence();
+              if (bodyDyn != null) seq.add(bodyDyn);
+              if (dropDyn != null) seq.add(dropDyn);
+              bodyCode = Code.of(loc, new CodeDynamic(loc, seq));
+          }
       } else {
-        var seq = new JavaBytecodeSequence();
-        if (bodyDyn != null) seq.add(bodyDyn);
-        if (dropDyn != null) seq.add(dropDyn);
-        bodyCode = Code.of(loc, new CodeDynamic(loc, seq));
+          bodyCode = body.code();
       }
-    } else {
-      bodyCode = body.code();
-    }
-    var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
-    var storeOp = JvmSort.storeOpcode(xx, elementType);
-    var getDesc =
-        JavaMethodDescriptor.fromParts(elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
-    var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
-    var indexSlot = new BindingId.Local(new JavaBytecodeBindingKey());
-    var loopLabel = new LabelNode();
-    var doneLabel = new LabelNode();
-    // The loop keeps exactly one value (the store) on the operand stack across the body, matching
-    // the single POP of the BindingIteratorStack scope entry from aspectIterableLoopBinding.
-    var loopSeq = new JavaBytecodeSequence();
-    loopSeq.add(baseDyn);
-    loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-    loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "size", sizeDesc));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
-    loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
-    loopSeq.add(
-        new CodeDynamic(
-            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IF_ICMPGE, doneLabel))));
-    loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
-    loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "get", getDesc));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOp, localBinding.key())));
-    var bodyDyn = bodyCode.codeDynamic();
-    if (bodyDyn != null) {
-      loopSeq.add(bodyDyn);
-    }
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
-    loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
-    loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.IADD));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
-    loopSeq.add(
-        new CodeDynamic(
-            loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
-    loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-    loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-    return EResult.ok(
-        new CodeValue(Code.of(loc, new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
+      var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
+      var storeOp = JvmSort.storeOpcode(xx, elementType);
+      var getDesc =
+              JavaMethodDescriptor.fromParts(elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
+      var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
+      var indexSlot = new BindingId.Local(new JavaBytecodeBindingKey());
+      var loopLabel = new LabelNode();
+      var doneLabel = new LabelNode();
+      var loopSeq = new JavaBytecodeSequence();
+      loopSeq.add(baseDyn);
+      loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
+      loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "size", sizeDesc));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+      loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
+      loopSeq.add(
+              new CodeDynamic(
+                      loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IF_ICMPGE, doneLabel))));
+      loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+      loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "get", getDesc));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOp, localBinding.key())));
+      var bodyDyn = bodyCode.codeDynamic();
+      if (bodyDyn != null) {
+          loopSeq.add(bodyDyn);
+      }
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+      loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
+      loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.IADD));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
+      loopSeq.add(
+              new CodeDynamic(
+                      loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
+      loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
+      loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+      return EResult.ok(
+              new CodeValue(Code.of(loc, new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
   }
 
   @Override

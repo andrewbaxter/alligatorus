@@ -299,58 +299,56 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
   @Override
   public EResult<CodeValue> aspectIterableForeach(
       ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
-    var baseConsumeRes = GenAspectConsumeDynamic.get(xx, loc, this);
-    if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
-    var baseDynRes =
-        baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
-    if (baseDynRes.hasErrors()) return baseDynRes.reerr();
-    var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
+      var baseConsumeRes = GenAspectConsumeDynamic.get(xx, loc, this);
+      if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
+      var baseDynRes =
+              baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
+      if (baseDynRes.hasErrors()) return baseDynRes.reerr();
+      var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
 
-    var mapName = JavaInternalName.fromClass(Map.class);
-    var setName = JavaInternalName.fromClass(Set.class);
-    var iteratorName = JavaInternalName.fromClass(Iterator.class);
-    var entrySetMethod =
-        JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
-    var iterMethod =
-        JavaMethodDescriptor.fromParts(
-            JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-    var setupSeq = new JavaBytecodeSequence();
-    setupSeq.add(baseDyn);
-    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
-    setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
-    var iteratorSetup = new CodeDynamic(loc, setupSeq);
+      var mapName = JavaInternalName.fromClass(Map.class);
+      var setName = JavaInternalName.fromClass(Set.class);
+      var iteratorName = JavaInternalName.fromClass(Iterator.class);
+      var entrySetMethod =
+              JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
+      var iterMethod =
+              JavaMethodDescriptor.fromParts(
+                      JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
+      var setupSeq = new JavaBytecodeSequence();
+      setupSeq.add(baseDyn);
+      setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
+      setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
+      var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-    var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
-    // Iterator.next() returns Object; cast to Map.Entry (the element language
-    // type) so the binding slot is typed as promised.
-    var decodeSeq = new JavaBytecodeSequence();
-    decodeSeq.add(
-        JavaBytecodeUtils.cast(loc,
-            JavaDataDescriptor.fromInternalName(
-                JavaInternalName.fromClass(Map.Entry.class))));
-    var elementDecode = new CodeDynamic(loc, decodeSeq);
+      var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
+      var decodeSeq = new JavaBytecodeSequence();
+      decodeSeq.add(
+              JavaBytecodeUtils.cast(loc,
+                      JavaDataDescriptor.fromInternalName(
+                              JavaInternalName.fromClass(Map.Entry.class))));
+      var elementDecode = new CodeDynamic(loc, decodeSeq);
 
-    Code bodyCode;
-    if (body.value().optIsSome()) {
-      var dropRes = xx.target.targetDrop(xx, loc, body);
-      if (dropRes.hasErrors()) return dropRes.reerr();
-      var dropCode = dropRes.requireValue("TypeMapDynamic::foreach body drop");
-      var bodyDyn = body.code().codeDynamic();
-      var dropDyn = dropCode.codeDynamic();
-      if (bodyDyn == null && dropDyn == null) {
-        bodyCode = Code.none(loc);
+      Code bodyCode;
+      if (body.value().optIsSome()) {
+          var dropRes = xx.target.targetDrop(xx, loc, body);
+          if (dropRes.hasErrors()) return dropRes.reerr();
+          var dropCode = dropRes.requireValue("TypeMapDynamic::foreach body drop");
+          var bodyDyn = body.code().codeDynamic();
+          var dropDyn = dropCode.codeDynamic();
+          if (bodyDyn == null && dropDyn == null) {
+              bodyCode = Code.none(loc);
+          } else {
+              var combinedSeq = new JavaBytecodeSequence();
+              if (bodyDyn != null) combinedSeq.add(bodyDyn);
+              if (dropDyn != null) combinedSeq.add(dropDyn);
+              bodyCode = Code.of(loc, new CodeDynamic(loc, combinedSeq));
+          }
       } else {
-        var combinedSeq = new JavaBytecodeSequence();
-        if (bodyDyn != null) combinedSeq.add(bodyDyn);
-        if (dropDyn != null) combinedSeq.add(dropDyn);
-        bodyCode = Code.of(loc, new CodeDynamic(loc, combinedSeq));
+          bodyCode = body.code();
       }
-    } else {
-      bodyCode = body.code();
-    }
-    return EResult.ok(
-        DynUtil.foreachSkeleton(xx,
-            loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
+      return EResult.ok(
+              DynUtil.foreachSkeleton(xx,
+                      loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
   }
 
   @Override

@@ -16,12 +16,6 @@ import compilerxyz.gen.GenTrivialIdentityAspects;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
-/**
- * Identity of a jump destination. Target-agnostic: emitted jumps, landing
- * points, and exception dests all reference keys; each target maps key
- * identity to its own representation (JVM: a label; structured targets:
- * whatever their control model requires).
- */
 @BuiltinFull(uniqueId = 6026L)
 @IdentityToken
 public final class JumpKey {

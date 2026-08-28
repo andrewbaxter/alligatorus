@@ -563,40 +563,42 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
 
   @Test
   public void test01335FinallyThrowRejected() {
-    // A throw out of a finally expression is invalid: the finally must
-    // complete normally.
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.tryCatchFinally(
-                mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom"))))));
+            "main",
+            new SourceModule.V1(
+                    mb.tryCatchFinally(
+                            mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.throw_(mb.str("boom"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
-        () -> "throw in a finally should fail compile: " + res);
+            switch (res) {
+              case Result.Err<?, ?> ignored -> true;
+              case Result.Ok<?, ?> ignored -> false;
+            },
+            () -> "throw in a finally should fail compile: " + res);
   }
 
   @Test
   public void test01337FinallyReturnRejected() {
-    // A return out of a finally expression is invalid, even when an enclosing
-    // label exists to target.
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.labeled(
-                "outer",
-                mb.tryCatchFinally(
-                    mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer"))))));
+            "main",
+            new SourceModule.V1(
+                    mb.labeled(
+                            "outer",
+                            mb.tryCatchFinally(
+                                    mb.call(mb.log(), mb.str("body")), Opt.none(), Opt.some(mb.returnLabel("outer"))))));
     var gx = Helpers.newGx(modules);
     var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
     assertTrue(
-        switch (res) { case Result.Err<?, ?> ignored -> true; case Result.Ok<?, ?> ignored -> false; },
-        () -> "return in a finally should fail compile: " + res);
+            switch (res) {
+              case Result.Err<?, ?> ignored -> true;
+              case Result.Ok<?, ?> ignored -> false;
+            },
+            () -> "return in a finally should fail compile: " + res);
   }
 
   @Test
@@ -713,27 +715,25 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
   public void test01380ThrowInCatchStillRunsFinally() {
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
-    // inner: try { throw "boom" } catch(e) { log("caught"); throw "rethrown" } finally { log("always") }
     var inner =
-        mb.tryCatchFinally(
-            mb.throw_(mb.str("boom")),
-            Opt.some(new TestMb.Catch(
-                "e",
-                mb.builtin("types", "string"),
-                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown"))))),
-            Opt.some(mb.call(mb.log(), mb.str("always"))));
-    // The outer catch observes that the exception raised inside the inner catch propagated.
+            mb.tryCatchFinally(
+                    mb.throw_(mb.str("boom")),
+                    Opt.some(new TestMb.Catch(
+                            "e",
+                            mb.builtin("types", "string"),
+                            mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown"))))),
+                    Opt.some(mb.call(mb.log(), mb.str("always"))));
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.tryExpr(
-                inner,
-                Opt.some(
-                    new SourceExpr.TryCatch(
-                        mb.str("e2"),
-                        mb.builtin("types", "string"),
-                        mb.call(mb.log(), mb.str("outer")))),
-                Opt.none())));
+            "main",
+            new SourceModule.V1(
+                    mb.tryExpr(
+                            inner,
+                            Opt.some(
+                                    new SourceExpr.TryCatch(
+                                            mb.str("e2"),
+                                            mb.builtin("types", "string"),
+                                            mb.call(mb.log(), mb.str("outer")))),
+                            Opt.none())));
     var res = compileOk(modules);
     assertEquals(TList.of("caught", "always", "outer"), messages(res));
   }
@@ -856,62 +856,58 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
 
   @Test
   public void test01432IfArmDropRuntime() {
-    // A droppable produced inside an if-arm is dropped at the arm's end, before
-    // control rejoins after the if.
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.seqOf(
-                mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "arm_dropped"))),
-                mb.ifOf(
-                    TList.of(
-                        new TestMb.Branch(
-                            dynTrue(mb),
-                            mb.seqOf(
-                                mb.bind(
-                                    "cnry",
-                                    mb.as_(
-                                        mb.as_(mb.str("Z"), mb.typesString()),
-                                        mb.scopeUse("canary"))),
-                                mb.call(mb.log(), mb.str("then")),
-                                mb.tupleOf()))),
-                    Opt.none()),
-                mb.call(mb.log(), mb.str("end")))));
+            "main",
+            new SourceModule.V1(
+                    mb.seqOf(
+                            mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "arm_dropped"))),
+                            mb.ifOf(
+                                    TList.of(
+                                            new TestMb.Branch(
+                                                    dynTrue(mb),
+                                                    mb.seqOf(
+                                                            mb.bind(
+                                                                    "cnry",
+                                                                    mb.as_(
+                                                                            mb.as_(mb.str("Z"), mb.typesString()),
+                                                                            mb.scopeUse("canary"))),
+                                                            mb.call(mb.log(), mb.str("then")),
+                                                            mb.tupleOf()))),
+                                    Opt.none()),
+                            mb.call(mb.log(), mb.str("end")))));
     var res = compileOk(modules);
     var messages = messages(res);
     int dropIdx = messages.indexOf("arm_dropped");
     int endIdx = messages.indexOf("end");
     assertTrue(dropIdx >= 0, () -> "expected arm-local drop 'arm_dropped', got " + messages);
     assertTrue(
-        dropIdx < endIdx,
-        () -> "arm-local value should drop at arm end, before 'end'; got " + messages);
+            dropIdx < endIdx,
+            () -> "arm-local value should drop at arm end, before 'end'; got " + messages);
   }
 
   @Test
   public void test01434IfArmDropOnThrowRuntime() {
-    // A droppable that is live when an if-arm throws is dropped on the
-    // exceptional edge, before the catch handler runs.
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.tryCatchFinally(
-                mb.seqOf(
-                    mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
-                    mb.bind(
-                        "cnry",
-                        mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
-                    mb.ifOf(
-                        TList.of(new TestMb.Branch(dynTrue(mb), mb.throw_(mb.str("boom")))),
-                        Opt.some(mb.tupleOf()))),
-                Opt.some(new TestMb.Catch(
-                    "e",
-                    mb.builtin("types", "string"),
-                    mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
-                Opt.none())));
+            "main",
+            new SourceModule.V1(
+                    mb.tryCatchFinally(
+                            mb.seqOf(
+                                    mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
+                                    mb.bind(
+                                            "cnry",
+                                            mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
+                                    mb.ifOf(
+                                            TList.of(new TestMb.Branch(dynTrue(mb), mb.throw_(mb.str("boom")))),
+                                            Opt.some(mb.tupleOf()))),
+                            Opt.some(new TestMb.Catch(
+                                    "e",
+                                    mb.builtin("types", "string"),
+                                    mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
+                            Opt.none())));
     var res = compileOk(modules);
     var messages = messages(res);
     int dropIdx = messages.indexOf("dropped");
@@ -919,8 +915,8 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
     assertTrue(dropIdx >= 0, () -> "expected 'dropped' log, got " + messages);
     assertTrue(caughtIdx >= 0, () -> "expected 'caught' log, got " + messages);
     assertTrue(
-        dropIdx < caughtIdx,
-        () -> "live value should drop before the catch when an if-arm throws; got " + messages);
+            dropIdx < caughtIdx,
+            () -> "live value should drop before the catch when an if-arm throws; got " + messages);
   }
 
   @Test
@@ -1192,75 +1188,66 @@ private static SourceExpr makeCanaryInstance(TestMb mb, String name, String drop
 
   @Test
   public void test01522RecordCastReorderDropSourceless() {
-    // Sourceless variant: record literal cast directly (no intermediate bind).
-    // The cast result is a discarded seq entry, so it drops in place. Its
-    // fields are laid out per the target's declared order (b, a), so the
-    // reverse-iterated drop fires drop_A then drop_B, before "after".
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     var sourceRecord =
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
+            mb.recordOf(
+                    TList.of(
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
     var reorderedType =
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+            mb.recordOf(
+                    TList.of(
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.seqOf(
-                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
-                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
-                mb.as_(sourceRecord, reorderedType),
-                mb.call(mb.log(), mb.str("after")))));
+            "main",
+            new SourceModule.V1(
+                    mb.seqOf(
+                            mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                            mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                            mb.as_(sourceRecord, reorderedType),
+                            mb.call(mb.log(), mb.str("after")))));
     var res = compileOk(modules);
     assertEquals(
-        TList.of("drop_A", "drop_B", "after"),
-        messages(res),
-        () ->
-            "sourceless record cast should reorder to target (b, a); reverse-iterated drop"
-                + " -> drop_A then drop_B, before 'after'. Got: " + messages(res));
+            TList.of("drop_A", "drop_B", "after"),
+            messages(res),
+            () ->
+                    "sourceless record cast should reorder to target (b, a); reverse-iterated drop"
+                            + " -> drop_A then drop_B, before 'after'. Got: " + messages(res));
   }
 
   @Test
   public void test01524RecordCastReorderDropSourced() {
-    // Sourced variant: literal -> bind -> cast -> bind again.
-    // The final `r` binding drops first at end-of-scope (LIFO). Its fields
-    // are laid out per the target type's declared order (b, a), so the
-    // reverse-iterated drop fires drop_A then drop_B. Then `src` drops in
-    // its own construction order (a, b) reversed => drop_B then drop_A.
     var mb = new TestMb();
     var modules = new TMap<String, SourceModule>();
     var sourceRecord =
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
+            mb.recordOf(
+                    TList.of(
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", "a")),
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "b"))));
     var reorderedType =
-        mb.recordOf(
-            TList.of(
-                new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
-                new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
+            mb.recordOf(
+                    TList.of(
+                            new TestMb.RecordPair("b", canaryInstance(mb, "cB", "")),
+                            new TestMb.RecordPair("a", canaryInstance(mb, "cA", ""))));
     modules.put(
-        "main",
-        new SourceModule.V1(
-            mb.seqOf(
-                mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
-                mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
-                mb.bind("src", sourceRecord),
-                mb.bind("r", mb.as_(mb.scopeUse("src"), reorderedType)),
-                mb.call(mb.log(), mb.str("after")))));
+            "main",
+            new SourceModule.V1(
+                    mb.seqOf(
+                            mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
+                            mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
+                            mb.bind("src", sourceRecord),
+                            mb.bind("r", mb.as_(mb.scopeUse("src"), reorderedType)),
+                            mb.call(mb.log(), mb.str("after")))));
     var res = compileOk(modules);
     assertEquals(
-        TList.of("after", "drop_A", "drop_B", "drop_B", "drop_A"),
-        messages(res),
-        () ->
-            "record cast should reorder r's field layout to match target (b, a); reverse-drop"
-                + " -> drop_A, drop_B; then src drops in its own (a, b) reversed"
-                + " -> drop_B, drop_A. Got: " + messages(res));
+            TList.of("after", "drop_A", "drop_B", "drop_B", "drop_A"),
+            messages(res),
+            () ->
+                    "record cast should reorder r's field layout to match target (b, a); reverse-drop"
+                            + " -> drop_A, drop_B; then src drops in its own (a, b) reversed"
+                            + " -> drop_B, drop_A. Got: " + messages(res));
   }
 
   @Test

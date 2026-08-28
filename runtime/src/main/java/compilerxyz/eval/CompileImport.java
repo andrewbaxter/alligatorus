@@ -216,112 +216,111 @@ public final class CompileImport {
         }
         Object rawResult;
         try {
-          if (stage1Code.optIsNone()) {
-            if (fallbackValue.optIsNone()) {
-              throw new IllegalStateException("eval: no stage1 code and no fallback value");
+            if (stage1Code.optIsNone()) {
+                if (fallbackValue.optIsNone()) {
+                    throw new IllegalStateException("eval: no stage1 code and no fallback value");
+                }
+                evalResult = new EvalOutcome.Ok(fallbackValue.optUnwrap(), evalVx.logs, false);
+                break evalBlock;
             }
-            evalResult = new EvalOutcome.Ok(fallbackValue.optUnwrap(), evalVx.logs, false);
-            break evalBlock;
-          }
-          // inlined EvalRootEmitter.emit
-          var _ereInternalName = EvalRootEmitter.toInternalName(evalBinaryName);
-          var _ereCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
-            @Override
-            protected String getCommonSuperClass(String type1, String type2) {
-              return JvmConstants.INTNAME_OBJECT.value();
+            var _ereInternalName = EvalRootEmitter.toInternalName(evalBinaryName);
+            var _ereCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+                @Override
+                protected String getCommonSuperClass(String type1, String type2) {
+                    return JvmConstants.INTNAME_OBJECT.value();
+                }
+            };
+            _ereCw.visit(Opcodes.V11,
+                    Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
+                    _ereInternalName, null, JvmConstants.INTNAME_OBJECT.value(), null);
+            var _ereFieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
+            _ereFieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
+            var _ereExternalFieldNames = new TList<String>(evalVx.externals.size());
+            var _ereExternalFieldDescs = new TList<JavaDataDescriptor>(evalVx.externals.size());
+            for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
+                var _ereEntry = evalVx.externals.get(_ereI);
+                var _ereFieldName = Prefixes.EXTERNAL_PREFIX + _ereI;
+                _ereExternalFieldNames.add(_ereFieldName);
+                var _ereDesc = JavaDataDescriptor.fromClass(_ereEntry.external().externalHostClass());
+                _ereExternalFieldDescs.add(_ereDesc);
+                _ereFieldDescriptors.put(_ereFieldName, _ereDesc);
             }
-          };
-          _ereCw.visit(Opcodes.V11,
-              Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
-              _ereInternalName, null, JvmConstants.INTNAME_OBJECT.value(), null);
-          var _ereFieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-          _ereFieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
-          var _ereExternalFieldNames = new TList<String>(evalVx.externals.size());
-          var _ereExternalFieldDescs = new TList<JavaDataDescriptor>(evalVx.externals.size());
-          for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-            var _ereEntry = evalVx.externals.get(_ereI);
-            var _ereFieldName = Prefixes.EXTERNAL_PREFIX + _ereI;
-            _ereExternalFieldNames.add(_ereFieldName);
-            var _ereDesc = JavaDataDescriptor.fromClass(_ereEntry.external().externalHostClass());
-            _ereExternalFieldDescs.add(_ereDesc);
-            _ereFieldDescriptors.put(_ereFieldName, _ereDesc);
-          }
-          for (var _ereFieldEntry : _ereFieldDescriptors.entrySet()) {
-            _ereCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                _ereFieldEntry.getKey(), _ereFieldEntry.getValue().value(), null, null).visitEnd();
-          }
-          var _ereMdescRun = JavaMethodDescriptor.fromParts(
-              JvmConstants.DESC_OBJECT, TList.of());
-          var _ereMv = _ereCw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-              "run", _ereMdescRun.value(), null, null);
-          var _ereCtx = new EmitCtx(_ereInternalName, 0);
-          var _ereSeq = new JavaBytecodeSequence();
-          var _ereOwnerInternal = JavaInternalName.of(_ereInternalName);
-          for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-            var _ereEntry = evalVx.externals.get(_ereI);
-            _ereSeq.add(JavaBytecodeUtils.accessStaticField(
-                CodeLoc.Infallible.INSTANCE,
-                _ereOwnerInternal, _ereExternalFieldNames.get(_ereI), _ereExternalFieldDescs.get(_ereI)));
-            _ereSeq.add(new CodeDynamic(
-                CodeLoc.Infallible.INSTANCE,
-                new JavaBytecodeStoreLoad(Opcodes.ASTORE, _ereEntry.key())));
-          }
-          evalTarget.emit(_ereSeq, _ereCtx, stage1Code.optUnwrap());
-          _ereSeq.add(JavaBytecodeUtils.inst(
-              CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-          JavaBytecodeUtils.renderMethod(_ereSeq, _ereMv, TList.of());
-          _ereCw.visitEnd();
-          var _ereBytecode = _ereCw.toByteArray();
-          var _ereStaticFields = new TOrderedMap<String, Object>();
-          for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-            _ereStaticFields.put(_ereExternalFieldNames.get(_ereI),
-                evalVx.externals.get(_ereI).external().externalHostValue());
-          }
-          if (evalXx.vx.ix.classLoader.optIsNone()) {
-            evalXx.vx.ix.classLoader =
-                Opt.some(new DefinitionSetClassLoader(
-                    evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
-          }
-          var loader = evalXx.vx.ix.classLoader.optUnwrap();
-          loader.registerClass(evalBinaryName, _ereBytecode);
-          var rootStaticFields = new TOrderedMap<String, Object>();
-          rootStaticFields.putAll(_ereStaticFields);
-          rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
-          loader.registerExternals(evalBinaryName, rootStaticFields);
-          Class<?> rootClass;
-          try {
-            rootClass = Class.forName(evalBinaryName, true, loader);
-          } catch (ClassNotFoundException e) {
-            throw new AssertionError(
-                "Generated root class " + evalBinaryName + " failed to load", e);
-          }
-          try {
-            var runMethod = rootClass.getDeclaredMethod("run");
-            rawResult = runMethod.invoke(null);
-          } catch (ReflectiveOperationException e) {
-            var cause = e.getCause();
-            if (cause instanceof DynPanic panic) {
-              evalResult = new EvalOutcome.Err(
-                  TList.of(new ExprErr(evalRootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
-              break evalBlock;
+            for (var _ereFieldEntry : _ereFieldDescriptors.entrySet()) {
+                _ereCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                        _ereFieldEntry.getKey(), _ereFieldEntry.getValue().value(), null, null).visitEnd();
             }
-            if (cause instanceof DynCompileErrors compileErrs) {
-              evalResult = new EvalOutcome.Err(compileErrs.errors);
-              break evalBlock;
+            var _ereMdescRun = JavaMethodDescriptor.fromParts(
+                    JvmConstants.DESC_OBJECT, TList.of());
+            var _ereMv = _ereCw.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
+                    "run", _ereMdescRun.value(), null, null);
+            var _ereCtx = new EmitCtx(_ereInternalName, 0);
+            var _ereSeq = new JavaBytecodeSequence();
+            var _ereOwnerInternal = JavaInternalName.of(_ereInternalName);
+            for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
+                var _ereEntry = evalVx.externals.get(_ereI);
+                _ereSeq.add(JavaBytecodeUtils.accessStaticField(
+                        CodeLoc.Infallible.INSTANCE,
+                        _ereOwnerInternal, _ereExternalFieldNames.get(_ereI), _ereExternalFieldDescs.get(_ereI)));
+                _ereSeq.add(new CodeDynamic(
+                        CodeLoc.Infallible.INSTANCE,
+                        new JavaBytecodeStoreLoad(Opcodes.ASTORE, _ereEntry.key())));
             }
-            if (cause instanceof DynException dynEx) {
-              var rendered = dynEx.payload == null ? "null" : dynEx.payload.toString();
-              evalResult = new EvalOutcome.Err(
-                  TList.of(new ExprErr(evalRootLoc, TList.of(new ExprSubErr.Opaque(rendered)))));
-              break evalBlock;
+            evalTarget.emit(_ereSeq, _ereCtx, stage1Code.optUnwrap());
+            _ereSeq.add(JavaBytecodeUtils.inst(
+                    CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
+            JavaBytecodeUtils.renderMethod(_ereSeq, _ereMv, TList.of());
+            _ereCw.visitEnd();
+            var _ereBytecode = _ereCw.toByteArray();
+            var _ereStaticFields = new TOrderedMap<String, Object>();
+            for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
+                _ereStaticFields.put(_ereExternalFieldNames.get(_ereI),
+                        evalVx.externals.get(_ereI).external().externalHostValue());
             }
-            if (cause instanceof RuntimeException re) {
-              throw re;
+            if (evalXx.vx.ix.classLoader.optIsNone()) {
+                evalXx.vx.ix.classLoader =
+                        Opt.some(new DefinitionSetClassLoader(
+                                evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
             }
-            var causeMsg = cause == null ? e.toString() : (cause.getClass().getName() + ": " + cause.getMessage());
-            throw new AssertionError(
-                "Generated root class " + evalBinaryName + " invoke failed: " + causeMsg, e);
-          }
+            var loader = evalXx.vx.ix.classLoader.optUnwrap();
+            loader.registerClass(evalBinaryName, _ereBytecode);
+            var rootStaticFields = new TOrderedMap<String, Object>();
+            rootStaticFields.putAll(_ereStaticFields);
+            rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
+            loader.registerExternals(evalBinaryName, rootStaticFields);
+            Class<?> rootClass;
+            try {
+                rootClass = Class.forName(evalBinaryName, true, loader);
+            } catch (ClassNotFoundException e) {
+                throw new AssertionError(
+                        "Generated root class " + evalBinaryName + " failed to load", e);
+            }
+            try {
+                var runMethod = rootClass.getDeclaredMethod("run");
+                rawResult = runMethod.invoke(null);
+            } catch (ReflectiveOperationException e) {
+                var cause = e.getCause();
+                if (cause instanceof DynPanic panic) {
+                    evalResult = new EvalOutcome.Err(
+                            TList.of(new ExprErr(evalRootLoc, TList.of(new ExprSubErr.Opaque("panic: " + panic.getMessage())))));
+                    break evalBlock;
+                }
+                if (cause instanceof DynCompileErrors compileErrs) {
+                    evalResult = new EvalOutcome.Err(compileErrs.errors);
+                    break evalBlock;
+                }
+                if (cause instanceof DynException dynEx) {
+                    var rendered = dynEx.payload == null ? "null" : dynEx.payload.toString();
+                    evalResult = new EvalOutcome.Err(
+                            TList.of(new ExprErr(evalRootLoc, TList.of(new ExprSubErr.Opaque(rendered)))));
+                    break evalBlock;
+                }
+                if (cause instanceof RuntimeException re) {
+                    throw re;
+                }
+                var causeMsg = cause == null ? e.toString() : (cause.getClass().getName() + ": " + cause.getMessage());
+                throw new AssertionError(
+                        "Generated root class " + evalBinaryName + " invoke failed: " + causeMsg, e);
+            }
         } finally {
         }
         Value finalValue;

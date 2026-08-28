@@ -43,60 +43,56 @@ public final class ValueSourceObjectConst {
             Function<JsonValue, ArtifactBody> makeBody) {
           if (!(self instanceof ValueObjectConst inst)) {
             return EResult.err(loc,
-                "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected ValueObjectConst, got "
-                    + self.getClass());
+                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected ValueObjectConst, got "
+                            + self.getClass());
           }
           if (!(inst.type() instanceof TypeSourceObjectConst tsoc)) {
             return EResult.err(loc,
-                "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected TypeSourceObjectConst type, got "
-                    + inst.type().getClass());
+                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: expected TypeSourceObjectConst type, got "
+                            + inst.type().getClass());
           }
           var tsod = tsoc.dynamic();
           var instType = new TypeTypeSourceObjectConst(tsod);
-          // Extract the underlying JVM value from the source-object instance via known field name.
           Object underlyingHost;
           try {
             var field = inst.data().getClass().getField(
-                SourceObjectEmitter.DATA_INSTANCE_FIELD);
+                    SourceObjectEmitter.DATA_INSTANCE_FIELD);
             underlyingHost = field.get(inst.data());
           } catch (NoSuchFieldException | IllegalAccessException e) {
             return EResult.err(loc,
-                "ValueSourceObjectConst::exporterRootDelegateSelfExport: source-object instance "
-                    + inst.data().getClass().getName() + " missing "
-                    + SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
+                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: source-object instance "
+                            + inst.data().getClass().getName() + " missing "
+                            + SourceObjectEmitter.DATA_INSTANCE_FIELD + " field");
           }
-          // Lift the underlying JVM value to a compile-time Value via the underlying type's AspectLift.
           if (tsod.underlyingType.optIsNone()) {
             return EResult.err(loc,
-                "ValueSourceObjectConst::exporterRootDelegateSelfExport: object underlying type not finalised");
+                    "ValueSourceObjectConst::exporterRootDelegateSelfExport: object underlying type not finalised");
           }
           var ut = tsod.underlyingType.optUnwrap();
           var underlyingLiftRes = GenAspectLift.get(xx, loc, ut);
           if (underlyingLiftRes.hasErrors()) return underlyingLiftRes.reerr();
           var underlyingLiftRes2 = underlyingLiftRes
-              .requireValue("ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift aspect")
-              .aspectLiftLift(xx, loc, Opt.ofNullable(underlyingHost));
+                  .requireValue("ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift aspect")
+                  .aspectLiftLift(xx, loc, Opt.ofNullable(underlyingHost));
           if (underlyingLiftRes2.hasErrors()) return underlyingLiftRes2.reerr();
           Value underlying = underlyingLiftRes2.requireValue(
-              "ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift");
+                  "ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift");
           var errors = new TList<ExprErr>();
-          // Export instType directly by invoking its AspectArtifact — bypass the artifactableExportArtifact
-          // wrap, which would go through ofType and recurse back into this delegate.
           var typeArtRes = instType.aspectArtifactExporter().artifactExporterExport(xx, loc, instType);
           if (typeArtRes.hasErrors()) {
             typeArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
           var typeArt =
-              typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
+                  typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
           var underArtRes = underlying.artifactableExportArtifact(xx, loc);
           if (underArtRes.hasErrors()) {
             underArtRes.drainInto(errors);
             return EResult.errs(errors);
           }
           var underArt =
-              underArtRes.requireValue(
-                  "ValueSourceObjectConst::exporterExport underlying artifact");
+                  underArtRes.requireValue(
+                          "ValueSourceObjectConst::exporterExport underlying artifact");
           var body = new ArtifactValueSourceObject(typeArt, underArt);
           var artifact = new Artifact.Body(makeBody.apply(ValueSourceObjectConstArtifactValueSourceObjectCodec.toValue(body)));
           if (errors.isEmpty()) return EResult.ok(artifact);

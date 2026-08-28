@@ -27,15 +27,9 @@ public final class EvalContext {
 
   public final Counter uniqueCounter = new Counter();
 
-  /**
-   * Mints drop-state ids for scope levels. Ids are unique across the whole
-   * eval so states minted on divergent branch paths never collide in the
-   * shared per-level chain lookups.
-   */
-  public final Counter dropStateCounter = new Counter();
+    public final Counter dropStateCounter = new Counter();
 
-  /** Mints {@link ScopeLevel.Emission} lineage ids. */
-  public final Counter emissionCounter = new Counter();
+    public final Counter emissionCounter = new Counter();
 
   public final TList<LogEntry> logs = new TList<>();
 
