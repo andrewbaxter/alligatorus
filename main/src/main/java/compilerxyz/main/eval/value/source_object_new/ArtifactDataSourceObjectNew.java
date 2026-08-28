@@ -1,0 +1,6 @@
+package compilerxyz.main.eval.value.source_object_new;
+
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.safejson.SafeJsonSerializable;
+
+public record ArtifactDataSourceObjectNew(Artifact object) implements SafeJsonSerializable {}

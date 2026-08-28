@@ -1,0 +1,31 @@
+package compilerxyz.main.gen;
+
+import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
+import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.util.Opt;
+
+@BuiltinPushStruct
+public final class SourceInterfaceMethodResult {
+    public final InterfaceMethodData method;
+
+    public SourceInterfaceMethodResult(InterfaceMethodData method) {
+        this.method = method;
+    }
+
+    public static Type dynamicType() {
+        return GenObjectTypes.sourceInterfaceMethodResult();
+    }
+
+    public void impl(ExprContext xx, Type arg, Opt<Type> ret) {
+        if (this.method.argType != null) {
+            throw new IllegalStateException("Interface method already has an arg type");
+        }
+        this.method.argType = arg;
+        if (this.method.retType.optIsSome()) {
+            throw new IllegalStateException("Interface method already has a ret type");
+        }
+        this.method.retType = ret;
+    }
+}

@@ -3,7 +3,7 @@ package compilerxyz.codegen.util;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.TMap;
 
 public record TypeRef(TypeName path, CodeBlock dynamicType) {
 
@@ -24,6 +24,6 @@ public record TypeRef(TypeName path, CodeBlock dynamicType) {
     }
 
     public static TypeRef opaque(TypeName path) {
-        return new TypeRef(path, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenType")));
+        return new TypeRef(path, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenType")));
     }
 }

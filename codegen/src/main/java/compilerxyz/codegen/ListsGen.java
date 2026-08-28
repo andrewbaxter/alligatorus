@@ -8,8 +8,8 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.util.IList;
-import compilerxyz.util.TList;
+import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -19,14 +19,16 @@ import javax.lang.model.element.Modifier;
 public final class ListsGen {
     private ListsGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
-    private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
-    private static final ClassName JAVA_INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
+    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
+    private static final ClassName JAVA_INTERNAL_NAME =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     private static final ClassName LIST_SPECIALIZED =
-            ClassName.get("compilerxyz.eval.value.list", "TypeListSpecializedDynamic");
-    private static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.eval.value.list", "ListDynamic");
-    private static final ClassName LIST_BOXED = ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic");
+            ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic");
+    private static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.main.eval.value.list", "ListDynamic");
+    private static final ClassName LIST_BOXED =
+            ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic");
     private static final ClassName GEN_IDENTITIES = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
 
     private record Store(String simple, TypeName javaPrim) {}
@@ -43,41 +45,57 @@ public final class ListsGen {
             new Store("ListStoreBool", TypeName.BOOLEAN));
 
     private static final IList<Prim> PRIMS = IList.of(
-            new Prim("Int", "ListStoreInt", ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic"), 6200L),
-            new Prim("Uint", "ListStoreInt", ClassName.get("compilerxyz.eval.value.uint_", "TypeUintDynamic"), 6201L),
-            new Prim("Long", "ListStoreLong", ClassName.get("compilerxyz.eval.value.long_", "TypeLongDynamic"), 6202L),
+            new Prim("Int", "ListStoreInt", ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic"), 6200L),
+            new Prim(
+                    "Uint",
+                    "ListStoreInt",
+                    ClassName.get("compilerxyz.main.eval.value.uint_", "TypeUintDynamic"),
+                    6201L),
+            new Prim(
+                    "Long",
+                    "ListStoreLong",
+                    ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic"),
+                    6202L),
             new Prim(
                     "Ulong",
                     "ListStoreLong",
-                    ClassName.get("compilerxyz.eval.value.ulong_", "TypeUlongDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ulong_", "TypeUlongDynamic"),
                     6203L),
             new Prim(
                     "Short",
                     "ListStoreShort",
-                    ClassName.get("compilerxyz.eval.value.short_", "TypeShortDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.short_", "TypeShortDynamic"),
                     6204L),
             new Prim(
                     "Ushort",
                     "ListStoreShort",
-                    ClassName.get("compilerxyz.eval.value.ushort_", "TypeUshortDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ushort_", "TypeUshortDynamic"),
                     6205L),
-            new Prim("Byte", "ListStoreByte", ClassName.get("compilerxyz.eval.value.byte_", "TypeByteDynamic"), 6206L),
+            new Prim(
+                    "Byte",
+                    "ListStoreByte",
+                    ClassName.get("compilerxyz.main.eval.value.byte_", "TypeByteDynamic"),
+                    6206L),
             new Prim(
                     "Ubyte",
                     "ListStoreByte",
-                    ClassName.get("compilerxyz.eval.value.ubyte_", "TypeUbyteDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ubyte_", "TypeUbyteDynamic"),
                     6207L),
             new Prim(
                     "Float",
                     "ListStoreFloat",
-                    ClassName.get("compilerxyz.eval.value.float_", "TypeFloatDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.float_", "TypeFloatDynamic"),
                     6208L),
             new Prim(
                     "Double",
                     "ListStoreDouble",
-                    ClassName.get("compilerxyz.eval.value.double_", "TypeDoubleDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic"),
                     6209L),
-            new Prim("Bool", "ListStoreBool", ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic"), 6210L));
+            new Prim(
+                    "Bool",
+                    "ListStoreBool",
+                    ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic"),
+                    6210L));
 
     public static TList<IdentitiesGen.IdentitySpec> identitySpecs() {
         var out = new TList<IdentitiesGen.IdentitySpec>();

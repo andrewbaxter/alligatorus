@@ -1,0 +1,23 @@
+package compilerxyz.main.eval.value.source_interface;
+
+public enum BuiltinInterfaceKind {
+    ASPECT_BIND,
+    ASPECT_BIND_DYNAMIC,
+    ASPECT_CONSUME_DYNAMIC,
+    ASPECT_DROP_DYNAMIC,
+    ASPECT_DROP_DYNAMIC_LIGHT,
+    ASPECT_FIELD,
+    ASPECT_FIELD_USE_DYNAMIC,
+    ASPECT_ELEMENT_USE_DYNAMIC,
+    ASPECT_INITIAL_BIND,
+    ASPECT_LIFT,
+    ASPECT_FUNCTION,
+    ASPECT_OPERATOR_ADD,
+    ASPECT_OPERATOR_MOD,
+    ASPECT_SET,
+    BINDING,
+    CODE_DYN,
+    TARGET,
+    TYPE,
+    VALUE;
+}

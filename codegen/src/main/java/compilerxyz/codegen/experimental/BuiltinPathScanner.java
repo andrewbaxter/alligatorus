@@ -20,11 +20,11 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Opt;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -102,7 +102,7 @@ public final class BuiltinPathScanner {
                 var firstArgIndex = 0;
                 if (!params.isEmpty()
                         && typeNameOf(params.get(0).getType(), imports, sourcePkg) instanceof ClassName ficn
-                        && ficn.canonicalName().equals("compilerxyz.eval.ExprContext")) {
+                        && ficn.canonicalName().equals("compilerxyz.main.eval.ExprContext")) {
                     needsExprContext = true;
                     firstArgIndex = 1;
                 }
@@ -129,7 +129,7 @@ public final class BuiltinPathScanner {
     private static Opt<AnnotationExpr> findBuiltinPath(NodeWithAnnotations<?> node) {
         for (var a : node.getAnnotations()) {
             var n = a.getNameAsString();
-            if (n.equals("BuiltinPath") || n.equals("compilerxyz.annotations.BuiltinPath")) {
+            if (n.equals("BuiltinPath") || n.equals("compilerxyz.prelude.annotations.BuiltinPath")) {
                 return Opt.some(a);
             }
         }
@@ -185,27 +185,43 @@ public final class BuiltinPathScanner {
 
     private static final IMap<String, ClassName> COMPOSITE_WRAPPERS = IMap.ofEntries(
             new Pair<>(
-                    "compilerxyz.eval.EResult", ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
-            new Pair<>("compilerxyz.util.Opt", ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
-            new Pair<>("compilerxyz.util.TList", ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
-            new Pair<>("compilerxyz.util.TMap", ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")),
-            new Pair<>("compilerxyz.util.TOrderedMap", ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
+                    "compilerxyz.main.eval.EResult",
+                    ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.Opt",
+                    ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.TList",
+                    ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.TMap",
+                    ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.TOrderedMap",
+                    ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic")));
 
     private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
-            new Pair<>("java.lang.String", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
-            new Pair<>("compilerxyz.eval.Unique", ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")),
+            new Pair<>("java.lang.String", ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic")),
             new Pair<>(
-                    "compilerxyz.eval.expr.StagedExprCell", ClassName.get("compilerxyz.eval.value.expr", "TypeExpr")),
+                    "compilerxyz.main.eval.Unique",
+                    ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueDynamic")),
             new Pair<>(
-                    "compilerxyz.gen.AspectBind.BindResult",
-                    ClassName.get("compilerxyz.gen", "AspectBind", "BindResult")));
+                    "compilerxyz.main.eval.expr.StagedExprCell",
+                    ClassName.get("compilerxyz.main.eval.value.expr", "TypeExpr")),
+            new Pair<>(
+                    "compilerxyz.main.gen.AspectBind.BindResult",
+                    ClassName.get("compilerxyz.main.gen", "AspectBind", "BindResult")));
 
-    private static final ClassName TYPE_BOOL_DYNAMIC = ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC = ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
+    private static final ClassName TYPE_BOOL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
+    private static final ClassName TYPE_INT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
 
-    private static final ClassName TYPE_LONG_DYNAMIC = ClassName.get("compilerxyz.eval.value.long_", "TypeLongDynamic");
+    private static final ClassName TYPE_LONG_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
 
-    private static final ClassName TYPE_NULL_DYNAMIC = ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
+    private static final ClassName TYPE_NULL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
 
     private static TypeRef typeRefOf(
             Type t, TMap<String, String> imports, String sourcePkg, TMap<ClassName, CodeBlock> scannedLeaves) {

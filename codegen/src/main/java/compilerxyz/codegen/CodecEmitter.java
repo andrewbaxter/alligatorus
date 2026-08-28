@@ -12,10 +12,10 @@ import compilerxyz.codegen.CodecsGen.ParsedTypeKind;
 import compilerxyz.codegen.CodecsGen.TypeIndex;
 import compilerxyz.codegen.CodecsGen.TypeInfo;
 import compilerxyz.codegen.CodecsGen.TypeKind;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Opt;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.util.Arrays;
 import javax.lang.model.element.Modifier;
@@ -26,45 +26,48 @@ final class CodecEmitter {
     private static final ClassName JSON_READER = ClassName.get("com.google.gson.stream", "JsonReader");
     private static final ClassName JSON_TOKEN = ClassName.get("com.google.gson.stream", "JsonToken");
     private static final ClassName JSON_WRITER = ClassName.get("com.google.gson.stream", "JsonWriter");
-    private static final ClassName JSON = ClassName.get("compilerxyz.safejson", "Json");
-    private static final ClassName JSON_VALUE = ClassName.get("compilerxyz.safejson", "JsonValue");
-    private static final ClassName JSON_VALUES = ClassName.get("compilerxyz.safejson", "JsonValues");
+    private static final ClassName JSON = ClassName.get("compilerxyz.main.safejson", "Json");
+    private static final ClassName JSON_VALUE = ClassName.get("compilerxyz.main.safejson", "JsonValue");
+    private static final ClassName JSON_VALUES = ClassName.get("compilerxyz.main.safejson", "JsonValues");
     private static final ClassName STRING_READER = ClassName.get("java.io", "StringReader");
     private static final ClassName STRING_WRITER = ClassName.get("java.io", "StringWriter");
-    private static final ClassName JSON_STYLE = ClassName.get("compilerxyz.safejson", "Json", "Style");
-    private static final ClassName FIELD_PATH = ClassName.get("compilerxyz.safejson", "Json", "FieldPath");
+    private static final ClassName JSON_STYLE = ClassName.get("compilerxyz.main.safejson", "Json", "Style");
+    private static final ClassName FIELD_PATH = ClassName.get("compilerxyz.main.safejson", "Json", "FieldPath");
     private static final ClassName DESERIALIZATION_EXCEPTION =
-            ClassName.get("compilerxyz.safejson", "Json", "DeserializationException");
+            ClassName.get("compilerxyz.main.safejson", "Json", "DeserializationException");
     private static final ClassName IO_EXCEPTION = ClassName.get(IOException.class);
     private static final ClassName BASE64 = ClassName.get("java.util", "Base64");
-    private static final ClassName TSET = ClassName.get("compilerxyz.util", "TSet");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
-    private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
-    private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
-    private static final ClassName OPT_SOME = ClassName.get("compilerxyz.util", "Opt", "Some");
-    private static final String ARTIFACT_CODECS_REF = "compilerxyz.artifact.ArtifactCodecs";
+    private static final ClassName TSET = ClassName.get("compilerxyz.prelude.util", "TSet");
+    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
+    private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
+    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    private static final ClassName OPT_SOME = ClassName.get("compilerxyz.prelude.util", "Opt", "Some");
+    private static final String ARTIFACT_CODECS_REF = "compilerxyz.main.artifact.ArtifactCodecs";
 
     record CodecTarget(String klass, Opt<String> castTo) {}
 
     private static final IMap<String, CodecTarget> HAND_CODED_REFS = IMap.ofEntries(
             new Pair<>(
-                    "compilerxyz.safejson.JsonValue", new CodecTarget("compilerxyz.safejson.JsonValues", Opt.none())),
+                    "compilerxyz.main.safejson.JsonValue",
+                    new CodecTarget("compilerxyz.main.safejson.JsonValues", Opt.none())),
             new Pair<>(
-                    "compilerxyz.artifact.Artifact",
+                    "compilerxyz.main.artifact.Artifact",
                     new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.none())),
             new Pair<>(
-                    "compilerxyz.artifact.Artifact.Body",
+                    "compilerxyz.main.artifact.Artifact.Body",
                     new CodecTarget(
-                            ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.some("compilerxyz.artifact.Artifact.Body"))),
+                            ARTIFACT_CODECS_REF + ".ArtifactCodec",
+                            Opt.some("compilerxyz.main.artifact.Artifact.Body"))),
             new Pair<>(
-                    "compilerxyz.artifact.Artifact.Ref",
+                    "compilerxyz.main.artifact.Artifact.Ref",
                     new CodecTarget(
-                            ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.some("compilerxyz.artifact.Artifact.Ref"))),
+                            ARTIFACT_CODECS_REF + ".ArtifactCodec",
+                            Opt.some("compilerxyz.main.artifact.Artifact.Ref"))),
             new Pair<>(
-                    "compilerxyz.artifact.ArtifactBody",
+                    "compilerxyz.main.artifact.ArtifactBody",
                     new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactBodyCodec", Opt.none())),
             new Pair<>(
-                    "compilerxyz.artifact.ArtifactIdSource",
+                    "compilerxyz.main.artifact.ArtifactIdSource",
                     new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec", Opt.none())));
 
     private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
@@ -239,7 +242,7 @@ final class CodecEmitter {
             return b.build();
         }
         var qn = type.name;
-        if (qn.equals("TList") || qn.equals("compilerxyz.util.TList")) {
+        if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
             var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
             b.addStatement("writer.beginArray()");
             b.beginControlFlow("for (var __e : $L)", valueExpr);
@@ -252,7 +255,7 @@ final class CodecEmitter {
             b.addStatement("writer.endArray()");
             return b.build();
         }
-        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.util.TOrderedMap")) {
+        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
             var keyT = type.typeArgs.size() > 0 ? type.typeArgs.get(0) : null;
             var valT = type.typeArgs.size() > 1 ? type.typeArgs.get(1) : null;
             b.addStatement("writer.beginArray()");
@@ -273,7 +276,7 @@ final class CodecEmitter {
             b.addStatement("writer.endArray()");
             return b.build();
         }
-        if (qn.equals("Opt") || qn.equals("compilerxyz.util.Opt")) {
+        if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
             var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
             b.addStatement("writer.beginObject()");
             b.beginControlFlow("if ($L instanceof $T<?> __some)", valueExpr, OPT_SOME);
@@ -418,7 +421,7 @@ final class CodecEmitter {
             return b.build();
         }
         var qn = type.name;
-        if (qn.equals("Opt") || qn.equals("compilerxyz.util.Opt")) {
+        if (qn.equals("Opt") || qn.equals("compilerxyz.prelude.util.Opt")) {
             var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
             var elemJava = elem == null ? "Object" : javaTypeOf(elem);
             b.beginControlFlow("");
@@ -453,7 +456,7 @@ final class CodecEmitter {
             b.endControlFlow();
             return b.build();
         }
-        if (qn.equals("TList") || qn.equals("compilerxyz.util.TList")) {
+        if (qn.equals("TList") || qn.equals("compilerxyz.prelude.util.TList")) {
             var elem = type.typeArgs.isEmpty() ? null : type.typeArgs.get(0);
             var elemType = elem == null ? "Object" : javaTypeOf(elem);
             b.beginControlFlow("");
@@ -475,7 +478,7 @@ final class CodecEmitter {
             b.endControlFlow();
             return b.build();
         }
-        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.util.TOrderedMap")) {
+        if (qn.equals("TOrderedMap") || qn.equals("compilerxyz.prelude.util.TOrderedMap")) {
             var keyT = type.typeArgs.size() > 0 ? type.typeArgs.get(0) : null;
             var valT = type.typeArgs.size() > 1 ? type.typeArgs.get(1) : null;
             var keyType = keyT == null ? "Object" : javaTypeOf(keyT);

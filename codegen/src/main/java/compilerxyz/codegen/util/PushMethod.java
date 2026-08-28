@@ -2,7 +2,7 @@ package compilerxyz.codegen.util;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import compilerxyz.util.TList;
+import compilerxyz.prelude.util.TList;
 
 public record PushMethod(
         String name, TList<NamedTypeRef> args, String ret, CodeBlock body, String dynRuntimeMethod, TypeRef retClass) {

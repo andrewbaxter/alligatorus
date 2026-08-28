@@ -13,9 +13,9 @@ import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.PushMethod;
 import compilerxyz.codegen.util.TypeRef;
-import compilerxyz.util.ISet;
-import compilerxyz.util.TList;
-import compilerxyz.util.TSet;
+import compilerxyz.prelude.util.ISet;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
@@ -23,36 +23,39 @@ import javax.lang.model.element.Modifier;
 public final class PushStructsGen {
     private PushStructsGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
 
-    private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-    private static final ClassName UNIQUE = ClassName.get("compilerxyz.eval", "Unique");
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
+    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    private static final ClassName UNIQUE = ClassName.get("compilerxyz.main.eval", "Unique");
+    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
     private static final ClassName TYPE_FUNCTION_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionDynamic");
     private static final ClassName TYPE_METHOD_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.function", "TypeMethodDynamic");
-    private static final ClassName JAVA_INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeMethodDynamic");
+    private static final ClassName JAVA_INTERNAL_NAME =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     private static final ClassName JAVA_METHOD_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaMethodDescriptor");
     private static final ClassName JAVA_DATA_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
-    private static final String DYN_RUNTIME_INTNAME = "compilerxyz/eval/dynamic/DynRuntime";
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
+    private static final String DYN_RUNTIME_INTNAME = "compilerxyz/main/eval/dynamic/DynRuntime";
     private static final ClassName TYPE_OBJECT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
-    private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
-    private static final ClassName TYPE_OBJECT_META = ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
-    private static final ClassName OBJECT_DROP_KIND = ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
+    private static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
+    private static final ClassName TYPE_OBJECT_META =
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectMeta");
+    private static final ClassName OBJECT_DROP_KIND =
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDropKind");
     private static final ClassName TYPE_OBJECT_CAST_RULE =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastRule");
     private static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastFromRule");
     private static final ClassName OBJECT_DATA_FIELD =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
-    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDataField");
+    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
 
-    private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
+    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
 
     public record PushField(String name, String javaFieldName, TypeRef ret, CodeBlock body) {}
 
@@ -340,7 +343,7 @@ public final class PushStructsGen {
     }
 
     private static CodeBlock paramsExpr(TList<NamedTypeRef> args) {
-        var functionParam = ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
+        var functionParam = ClassName.get("compilerxyz.main.eval.value.function", "FunctionParam");
         var b = CodeBlock.builder();
         b.add("$T.<$T>of(", ILIST, functionParam);
         for (var i = 0; i < args.size(); i++) {

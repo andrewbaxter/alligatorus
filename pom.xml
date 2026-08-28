@@ -10,11 +10,10 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>util</module>
+        <module>prelude</module>
         <module>codegen</module>
-        <module>runtime</module>
-        <module>analysis</module>
-        <module>docguard</module>
+        <module>main</module>
+        <module>lint</module>
     </modules>
 
     <properties>

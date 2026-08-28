@@ -22,11 +22,11 @@ import compilerxyz.codegen.BuiltinInterfacesGen;
 import compilerxyz.codegen.util.BuiltinMethodEmit.Method;
 import compilerxyz.codegen.util.BuiltinMethodEmit.Param;
 import compilerxyz.codegen.util.NameDerivation;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Opt;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +86,7 @@ public final class JavaAspectExtractor {
         for (var member : outer.getMembers()) {
             if (member instanceof RecordDeclaration rec) {
                 var hasBuiltin = rec.getAnnotationByName("BuiltinFull").isPresent()
-                        || rec.getAnnotationByName("compilerxyz.annotations.BuiltinFull")
+                        || rec.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull")
                                 .isPresent();
                 if (hasBuiltin) {
                     var spec = extractBuiltinSpecRecord(sourceFile, cu, rec, Opt.some(outerSimple));
@@ -221,7 +221,7 @@ public final class JavaAspectExtractor {
     private static Opt<TypeDeclaration<?>> findBuiltinType(CompilationUnit cu) {
         for (var t : cu.getTypes()) {
             var hasBuiltin = t.getAnnotationByName("BuiltinFull").isPresent()
-                    || t.getAnnotationByName("compilerxyz.annotations.BuiltinFull")
+                    || t.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull")
                             .isPresent();
             if (!hasBuiltin) continue;
             if (t instanceof ClassOrInterfaceDeclaration c) return Opt.some(c);
@@ -233,7 +233,7 @@ public final class JavaAspectExtractor {
     private static boolean interfaceExtendsAspect(ClassOrInterfaceDeclaration decl) {
         for (var ext : decl.getExtendedTypes()) {
             var n = ext.getNameAsString();
-            if (n.equals("Aspect") || n.equals("compilerxyz.eval.aspect.Aspect")) return true;
+            if (n.equals("Aspect") || n.equals("compilerxyz.main.eval.aspect.Aspect")) return true;
         }
         return false;
     }
@@ -264,21 +264,32 @@ public final class JavaAspectExtractor {
 
     private static final IMap<String, ClassName> COMPOSITE_WRAPPERS = IMap.ofEntries(
             new Pair<>(
-                    "compilerxyz.eval.EResult", ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
-            new Pair<>("compilerxyz.util.Opt", ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
-            new Pair<>("compilerxyz.util.TList", ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
-            new Pair<>("compilerxyz.util.TMap", ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
+                    "compilerxyz.main.eval.EResult",
+                    ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.Opt",
+                    ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.TList",
+                    ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic")),
+            new Pair<>(
+                    "compilerxyz.prelude.util.TMap",
+                    ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic")));
 
     private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
-            new Pair<>("java.lang.String", ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
-            new Pair<>("compilerxyz.eval.Unique", ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")));
+            new Pair<>("java.lang.String", ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic")),
+            new Pair<>(
+                    "compilerxyz.main.eval.Unique",
+                    ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueDynamic")));
 
-    private static final ClassName TYPE_BOOL_DYNAMIC = ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC = ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
+    private static final ClassName TYPE_BOOL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
+    private static final ClassName TYPE_INT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
 
     private static AnnotationExpr getBuiltinAnnotation(TypeDeclaration<?> decl) {
         return decl.getAnnotationByName("BuiltinFull")
-                .or(() -> decl.getAnnotationByName("compilerxyz.annotations.BuiltinFull"))
+                .or(() -> decl.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull"))
                 .orElseThrow(() -> new IllegalStateException("@BuiltinFull missing on " + decl.getNameAsString()));
     }
 

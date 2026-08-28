@@ -5,7 +5,7 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
-import compilerxyz.util.TList;
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,8 +40,8 @@ public final class BuiltinIdentityScanner {
         var mySimple = t.getNameAsString();
         for (var a : t.getAnnotations()) {
             var n = a.getNameAsString();
-            var isBuiltin = n.equals("BuiltinFull") || n.equals("compilerxyz.annotations.BuiltinFull");
-            var isIdentityOnly = n.equals("BuiltinLight") || n.equals("compilerxyz.annotations.BuiltinLight");
+            var isBuiltin = n.equals("BuiltinFull") || n.equals("compilerxyz.prelude.annotations.BuiltinFull");
+            var isIdentityOnly = n.equals("BuiltinLight") || n.equals("compilerxyz.prelude.annotations.BuiltinLight");
             if (isBuiltin || isIdentityOnly) {
                 Long uniqueId = null;
                 if (a instanceof NormalAnnotationExpr n2) {

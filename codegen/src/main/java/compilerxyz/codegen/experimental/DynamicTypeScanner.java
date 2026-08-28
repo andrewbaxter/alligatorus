@@ -8,7 +8,7 @@ import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,7 +43,7 @@ public final class DynamicTypeScanner {
             if (!cn.packageName().equals("compilerxyz.handwritten")) continue;
             if (cn.simpleNames().size() < 2) continue;
             var mirrored = ClassName.get(
-                    "compilerxyz.gen",
+                    "compilerxyz.main.gen",
                     cn.simpleNames().get(0),
                     cn.simpleNames().subList(1, cn.simpleNames().size()).toArray(new String[0]));
             mirror.put(mirrored, e.getValue());
@@ -87,7 +87,7 @@ public final class DynamicTypeScanner {
                     + " companion) or drop the hand-written dynamicType().");
         }
         if (full) {
-            out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", companionSimple)));
+            out.put(cn, CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", companionSimple)));
         } else if (handWritten) {
             out.put(cn, CodeBlock.of("$T.dynamicType()", cn));
         }
@@ -96,7 +96,7 @@ public final class DynamicTypeScanner {
     private static boolean hasBuiltinFullAnnotation(TypeDeclaration<?> t) {
         for (var a : t.getAnnotations()) {
             var n = a.getNameAsString();
-            if (n.equals("BuiltinFull") || n.equals("compilerxyz.annotations.BuiltinFull")) {
+            if (n.equals("BuiltinFull") || n.equals("compilerxyz.prelude.annotations.BuiltinFull")) {
                 return true;
             }
         }

@@ -11,13 +11,13 @@ import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.util.NamedTypeRef;
-import compilerxyz.util.IList;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Opt;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
-import compilerxyz.util.TSet;
+import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -27,96 +27,102 @@ import javax.lang.model.element.Modifier;
 public final class BuiltinTreeGen {
     private BuiltinTreeGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
 
     static final long ASPECT_COMPILE_SCOPE_ID = 7023;
     static final long CAST_VALUE_COMPILE_SCOPE_ID = 7024;
     static final long THROW_COMPILE_SCOPE_ID = 7025;
     static final long PANIC_COMPILE_SCOPE_ID = 7026;
 
-    private static final ClassName BINDING_ID = ClassName.get("compilerxyz.eval", "BindingId");
-    private static final ClassName BINDING = ClassName.get("compilerxyz.gen", "Binding");
-    private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
-    private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.eval", "QExprId");
-    private static final ClassName CODE_RT = ClassName.get("compilerxyz.eval", "Code");
-    private static final ClassName CODE_VALUE = ClassName.get("compilerxyz.eval", "CodeValue");
-    private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
-    private static final ClassName CONST_KEY = ClassName.get("compilerxyz.eval", "ConstKey");
-    private static final ClassName CONST_KEY_STR = ClassName.get("compilerxyz.eval", "ConstKey", "Str");
-    private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.util", "TOrderedMap");
-    private static final ClassName ARGUMENT_ENTRY = ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentEntry");
+    private static final ClassName BINDING_ID = ClassName.get("compilerxyz.main.eval", "BindingId");
+    private static final ClassName BINDING = ClassName.get("compilerxyz.main.gen", "Binding");
+    private static final ClassName ERESULT = ClassName.get("compilerxyz.main.eval", "EResult");
+    private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.main.eval", "QExprId");
+    private static final ClassName CODE_RT = ClassName.get("compilerxyz.main.eval", "Code");
+    private static final ClassName CODE_VALUE = ClassName.get("compilerxyz.main.eval", "CodeValue");
+    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    private static final ClassName CONST_KEY = ClassName.get("compilerxyz.main.eval", "ConstKey");
+    private static final ClassName CONST_KEY_STR = ClassName.get("compilerxyz.main.eval", "ConstKey", "Str");
+    private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
+    private static final ClassName ARGUMENT_ENTRY =
+            ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentEntry");
     private static final ClassName ARGUMENT_RECORD =
-            ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentRecord");
+            ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecord");
     private static final ClassName ARGUMENT_RECORD_BINDING =
-            ClassName.get("compilerxyz.eval.value.argrecord", "ArgumentRecordBinding");
+            ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecordBinding");
     private static final ClassName BINDING_UNIQUE_DUAL_MODE =
-            ClassName.get("compilerxyz.eval.value.unique", "BindingUniqueDualMode");
-    private static final ClassName TYPE_UNIQUE_RT = ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic");
-    private static final ClassName ASPECT_BIND = ClassName.get("compilerxyz.gen", "GenAspectBind");
-    private static final ClassName ASPECT_INITIAL_BIND = ClassName.get("compilerxyz.gen", "GenAspectInitialBind");
+            ClassName.get("compilerxyz.main.eval.value.unique", "BindingUniqueDualMode");
+    private static final ClassName TYPE_UNIQUE_RT =
+            ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueDynamic");
+    private static final ClassName ASPECT_BIND = ClassName.get("compilerxyz.main.gen", "GenAspectBind");
+    private static final ClassName ASPECT_INITIAL_BIND = ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind");
     private static final ClassName VALUE_OBJECT_CONST =
-            ClassName.get("compilerxyz.eval.value.object_", "ValueObjectConst");
+            ClassName.get("compilerxyz.main.eval.value.object_", "ValueObjectConst");
     private static final ClassName TYPE_OBJECT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
     private static final ClassName TYPE_OBJECT_CONST_CLS =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectConst");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectConst");
     private static final CodeBlock TOD_SELF_TYPE_EXPR = CodeBlock.of("$T.constType()", TYPE_OBJECT_DYNAMIC);
     private static final CodeBlock TYPE_WRAPPER_EXPR = CodeBlock.of(
-            "$T.metaOf($T.class, $S)", TYPE_OBJECT_CONST_CLS, ClassName.get("compilerxyz.eval", "Type"), "type");
+            "$T.metaOf($T.class, $S)", TYPE_OBJECT_CONST_CLS, ClassName.get("compilerxyz.main.eval", "Type"), "type");
     private static final ClassName TYPE_UNIQUE_CONST =
-            ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueConst");
+            ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueConst");
     private static final CodeBlock TUC_TYPE_EXPR = CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);
-    private static final ClassName IMPORT_INSTALL = ClassName.get("compilerxyz.eval", "ImportInstall");
+    private static final ClassName IMPORT_INSTALL = ClassName.get("compilerxyz.main.eval", "ImportInstall");
     private static final ClassName TYPE_FUNCTION_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionDynamic");
-    private static final ClassName BINDING_ID_BUILTIN = ClassName.get("compilerxyz.eval", "BindingId", "Builtin");
-    private static final ClassName IMPORT_STATE_ID = ClassName.get("compilerxyz.eval", "ImportStateId");
-    private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
-    private static final ClassName EXTERNAL = ClassName.get("compilerxyz.eval", "External");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionDynamic");
+    private static final ClassName BINDING_ID_BUILTIN = ClassName.get("compilerxyz.main.eval", "BindingId", "Builtin");
+    private static final ClassName IMPORT_STATE_ID = ClassName.get("compilerxyz.main.eval", "ImportStateId");
+    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
+    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
+    private static final ClassName EXTERNAL = ClassName.get("compilerxyz.main.eval", "External");
     private static final ClassName INTERFACE_DATA =
-            ClassName.get("compilerxyz.eval.value.source_interface", "InterfaceData");
+            ClassName.get("compilerxyz.main.eval.value.source_interface", "InterfaceData");
 
     private static final ClassName GEN_BUILTIN_INTERFACES = ClassName.get(GEN_PACKAGE, "GenBuiltinInterfaces");
 
     private static final ClassName TYPE_THROW_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.throw_", "TypeThrowDynamic");
+            ClassName.get("compilerxyz.main.eval.value.throw_", "TypeThrowDynamic");
     private static final ClassName TYPE_PANIC_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.panic", "TypePanicDynamic");
+            ClassName.get("compilerxyz.main.eval.value.panic", "TypePanicDynamic");
     private static final ClassName TYPE_FUNCTION_ASPECT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionAspectDynamic");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionAspectDynamic");
     private static final ClassName TYPE_FUNCTION_CAST_VALUE_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.function", "TypeFunctionCastValueDynamic");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionCastValueDynamic");
 
     private static final ClassName TYPE_STRING_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC = ClassName.get("compilerxyz.eval.value.int_", "TypeIntDynamic");
-    private static final ClassName TYPE_NULL_DYNAMIC = ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
-    private static final ClassName TYPE_BOOL_DYNAMIC = ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
+            ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic");
+    private static final ClassName TYPE_INT_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
+    private static final ClassName TYPE_NULL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
+    private static final ClassName TYPE_BOOL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
     private static final ClassName TYPE_CONSTKEY_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.constkey", "TypeConstkeyDynamic");
-    private static final ClassName TYPE_EXPR = ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");
-    private static final ClassName ASPECT_INTERFACE = ClassName.get("compilerxyz.eval.aspect", "Aspect");
+            ClassName.get("compilerxyz.main.eval.value.constkey", "TypeConstkeyDynamic");
+    private static final ClassName TYPE_EXPR = ClassName.get("compilerxyz.main.eval.value.expr", "TypeExpr");
+    private static final ClassName ASPECT_INTERFACE = ClassName.get("compilerxyz.main.eval.aspect", "Aspect");
     private static final ClassName TYPE_LIST_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic");
+            ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic");
     private static final ClassName TYPE_LIST_CONSTRUCTOR_CONST =
-            ClassName.get("compilerxyz.eval.value.list", "TypeListConstructorConst");
-    private static final ClassName TYPE_MAP_DYNAMIC = ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic");
+            ClassName.get("compilerxyz.main.eval.value.list", "TypeListConstructorConst");
+    private static final ClassName TYPE_MAP_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic");
     private static final ClassName TYPE_MAP_CONSTRUCTOR_CONST =
-            ClassName.get("compilerxyz.eval.value.map", "TypeMapConstructorConst");
+            ClassName.get("compilerxyz.main.eval.value.map", "TypeMapConstructorConst");
     private static final ClassName TYPE_OPTION_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic");
+            ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic");
     private static final ClassName TYPE_OPTION_CONSTRUCTOR_CONST =
-            ClassName.get("compilerxyz.eval.value.option", "TypeOptionConstructorConst");
+            ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionConstructorConst");
     private static final ClassName TYPE_ERESULT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic");
+            ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic");
     private static final ClassName TYPE_ERESULT_CONSTRUCTOR_CONST =
-            ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
-    private static final ClassName CODE_INTERFACE = ClassName.get("compilerxyz.eval", "Code");
-    private static final ClassName VALUE_INTERFACE = ClassName.get("compilerxyz.gen", "Value");
+            ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultConstructorConst");
+    private static final ClassName CODE_INTERFACE = ClassName.get("compilerxyz.main.eval", "Code");
+    private static final ClassName VALUE_INTERFACE = ClassName.get("compilerxyz.main.gen", "Value");
 
-    private static final ClassName UNIQUE_CLASS = ClassName.get("compilerxyz.eval", "Unique");
+    private static final ClassName UNIQUE_CLASS = ClassName.get("compilerxyz.main.eval", "Unique");
 
     public sealed interface NodeSpec {}
 
@@ -235,11 +241,12 @@ public final class BuiltinTreeGen {
         return emitConstLeaf(spec.data(), spec.type(), st);
     }
 
-    private static final ClassName JAVA_INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+    private static final ClassName JAVA_INTERNAL_NAME =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     private static final ClassName JAVA_METHOD_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaMethodDescriptor");
     private static final ClassName JAVA_DATA_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
 
     private static ClassName argClassLiteral(NamedTypeRef a) {
         var path = a.type().path();
@@ -255,7 +262,11 @@ public final class BuiltinTreeGen {
         st.body.addStatement("$T $N = $L", Object.class, type, innerExpr);
         st.body.addStatement("$T $N = ($T) $L", TYPE, wrapper, TYPE, valueTypeExpr);
         st.body.addStatement(
-                "$T $N = new compilerxyz.eval.binding.BindingObjectConst($N, $N)", BINDING, binding, wrapper, type);
+                "$T $N = new compilerxyz.main.eval.binding.BindingObjectConst($N, $N)",
+                BINDING,
+                binding,
+                wrapper,
+                type);
         return new String[] {binding, wrapper};
     }
 
@@ -280,7 +291,7 @@ public final class BuiltinTreeGen {
     }
 
     private static CodeBlock paramsExpr(TList<NamedTypeRef> args) {
-        var functionParam = ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
+        var functionParam = ClassName.get("compilerxyz.main.eval.value.function", "FunctionParam");
         var b = CodeBlock.builder();
         b.add("$T.<$T>of(", TLIST, functionParam);
         for (var i = 0; i < args.size(); i++) {
@@ -321,109 +332,111 @@ public final class BuiltinTreeGen {
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_drop_dynamic_light",
-                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")),
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
                 TOD_SELF_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_initial_bind",
-                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
                 TOD_SELF_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_lift",
-                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenAspectLift")),
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectLift")),
                 TOD_SELF_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_bind_dynamic",
-                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectBindDynamic")),
                 TOD_SELF_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_consume_dynamic",
-                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")),
+                CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectConsumeDynamic")),
                 TOD_SELF_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_string_dynamic",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStringDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectStringDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_function_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFunction")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectFunction")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_field_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectField")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectField")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_bind_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBind")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectBind")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_drop_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_consume_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectConsumeDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectConsumeDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_bind_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectBindDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectBindDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_set_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectSet")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectSet")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_operator_add_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectOperatorAdd")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorAdd")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_drop_dynamic_light_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectDropDynamicLight")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_stack_value_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectStackValueDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectStackValueDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_field_use_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectFieldUseDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectFieldUseDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_element_use_dynamic_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectElementUseDynamic")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectElementUseDynamic")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.aspect_initial_bind_id",
-                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.gen", "GenAspectInitialBind")),
+                CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.type_int_dynamic_identity",
                 CodeBlock.of(
-                        "$T.TYPE_INT_DYNAMIC_IDENTITY", ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+                        "$T.TYPE_INT_DYNAMIC_IDENTITY",
+                        ClassName.get("compilerxyz.main.gen", "GenTrivialIdentityAspects")),
                 TUC_TYPE_EXPR);
         addSpecial(
                 pathToLeaf,
                 "eval.type_long_dynamic_identity",
                 CodeBlock.of(
-                        "$T.TYPE_LONG_DYNAMIC_IDENTITY", ClassName.get("compilerxyz.gen", "GenTrivialIdentityAspects")),
+                        "$T.TYPE_LONG_DYNAMIC_IDENTITY",
+                        ClassName.get("compilerxyz.main.gen", "GenTrivialIdentityAspects")),
                 TUC_TYPE_EXPR);
 
         return buildTree(pathToLeaf);

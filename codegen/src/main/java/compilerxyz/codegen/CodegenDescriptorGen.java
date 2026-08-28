@@ -8,7 +8,7 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.experimental.CodegenDescriptorScanner;
-import compilerxyz.util.TList;
+import compilerxyz.prelude.util.TList;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
@@ -16,13 +16,15 @@ import javax.lang.model.element.Modifier;
 public final class CodegenDescriptorGen {
     private CodegenDescriptorGen() {}
 
-    private static final ClassName STATIC_METHOD_REF = ClassName.get("compilerxyz.eval.dynamic", "JavaStaticMethodRef");
+    private static final ClassName STATIC_METHOD_REF =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaStaticMethodRef");
     private static final ClassName VIRTUAL_METHOD_REF =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaVirtualMethodRef");
-    private static final ClassName INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaVirtualMethodRef");
+    private static final ClassName INTERNAL_NAME = ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     private static final ClassName METHOD_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
-    private static final ClassName DATA_DESCRIPTOR = ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaMethodDescriptor");
+    private static final ClassName DATA_DESCRIPTOR =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
 
     public static void run(Path outRoot, Formatter formatter, TList<CodegenDescriptorScanner.Entry> entries)
             throws IOException {
@@ -55,7 +57,7 @@ public final class CodegenDescriptorGen {
                     .build());
         }
 
-        var file = JavaFile.builder("compilerxyz.gen", cls.build())
+        var file = JavaFile.builder("compilerxyz.main.gen", cls.build())
                 .skipJavaLangImports(true)
                 .build();
         GenMain.write(outRoot, file, formatter);

@@ -1,0 +1,19 @@
+package compilerxyz.main.langhelp;
+
+import compilerxyz.main.eval.CompileId;
+import compilerxyz.main.eval.CompileRes;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
+import java.util.function.Supplier;
+
+public interface Compiles {
+    void compilesPrepare(CompileId root);
+
+    CompileRes compilesGetOrCompute(CompileId id, Supplier<CompileProduct> compute);
+
+    TList<CompileRes> compilesResults();
+
+    record CompileProduct(CompileRes res, Opt<LocalMeta> local, TList<CompileId> localDeps) {}
+
+    record LocalMeta(String path, long timestampMs) {}
+}

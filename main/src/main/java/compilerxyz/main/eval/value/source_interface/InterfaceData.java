@@ -1,0 +1,63 @@
+package compilerxyz.main.eval.value.source_interface;
+
+import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.eval.DefSetId;
+import compilerxyz.main.eval.DefinitionSet;
+import compilerxyz.main.eval.Unique;
+import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
+
+@BuiltinFull(uniqueId = 6005L)
+public final class InterfaceData {
+    public final Opt<DefSetId> setId;
+
+    @SuppressWarnings("NullAway.Init")
+    public final DefinitionSet set;
+
+    public final Unique identity;
+    public final Opt<BuiltinInterfaceKind> builtinKind;
+    public Opt<String> description;
+    public boolean isAspect;
+    public Opt<Unique> aspectId;
+    public final TList<InterfaceMethodData> methods;
+    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
+
+    @SuppressWarnings("NullAway.Init")
+    public String compiledBinaryName;
+
+    public Opt<byte[]> compiledBytecode;
+
+    public InterfaceData(DefSetId setId, Unique identity, DefinitionSet set) {
+        this.setId = Opt.some(setId);
+        this.set = set;
+        this.identity = identity;
+        this.builtinKind = Opt.none();
+        this.description = Opt.none();
+        this.aspectId = Opt.none();
+        this.compiledBytecode = Opt.none();
+        this.methods = new TList<>();
+    }
+
+    @SuppressWarnings("NullAway")
+    public InterfaceData(Opt<DefSetId> setId, Unique identity, Opt<BuiltinInterfaceKind> builtinKind) {
+        this.setId = setId;
+        this.set = (DefinitionSet) null;
+        this.identity = identity;
+        this.builtinKind = builtinKind;
+        this.description = Opt.none();
+        this.aspectId = Opt.none();
+        this.compiledBytecode = Opt.none();
+        this.methods = new TList<>();
+    }
+
+    public void initSetReflectively(DefinitionSet set) {
+        try {
+            var f = InterfaceData.class.getDeclaredField("set");
+            f.setAccessible(true);
+            f.set(this, set);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("InterfaceData.initSetReflectively: failed to write final 'set' field", e);
+        }
+    }
+}

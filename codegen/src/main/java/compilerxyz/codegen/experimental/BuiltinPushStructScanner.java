@@ -19,10 +19,10 @@ import compilerxyz.codegen.PushStructsGen;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.PushMethod;
 import compilerxyz.codegen.util.TypeRef;
-import compilerxyz.util.IMap;
-import compilerxyz.util.Pair;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,22 +35,24 @@ public final class BuiltinPushStructScanner {
         StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
     }
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
 
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
+    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
     private static final ClassName TYPE_STRING_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic");
-    private static final ClassName TYPE_BOOL_DYNAMIC = ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_MAP_DYNAMIC = ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic");
+            ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic");
+    private static final ClassName TYPE_BOOL_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
+    private static final ClassName TYPE_MAP_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic");
     private static final ClassName TYPE_CONSTKEY_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.constkey", "TypeConstkeyDynamic");
-    private static final ClassName TYPE_EXPR = ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");
+            ClassName.get("compilerxyz.main.eval.value.constkey", "TypeConstkeyDynamic");
+    private static final ClassName TYPE_EXPR = ClassName.get("compilerxyz.main.eval.value.expr", "TypeExpr");
 
     private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
             new Pair<>("java.lang.String", TYPE_STRING_DYNAMIC),
             new Pair<>("java.lang.Boolean", TYPE_BOOL_DYNAMIC),
-            new Pair<>("compilerxyz.eval.ConstKey", TYPE_CONSTKEY_DYNAMIC),
-            new Pair<>("compilerxyz.eval.expr.StagedExprCell", TYPE_EXPR));
+            new Pair<>("compilerxyz.main.eval.ConstKey", TYPE_CONSTKEY_DYNAMIC),
+            new Pair<>("compilerxyz.main.eval.expr.StagedExprCell", TYPE_EXPR));
 
     public static TList<PushStructsGen.PushStructSpec> scanRoot(
             Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves) throws IOException {
@@ -68,7 +70,8 @@ public final class BuiltinPushStructScanner {
                     AnnotationExpr ann = null;
                     for (var a : c.getAnnotations()) {
                         var n = a.getNameAsString();
-                        if (n.equals("BuiltinPushStruct") || n.equals("compilerxyz.annotations.BuiltinPushStruct")) {
+                        if (n.equals("BuiltinPushStruct")
+                                || n.equals("compilerxyz.prelude.annotations.BuiltinPushStruct")) {
                             ann = a;
                             break;
                         }
@@ -136,7 +139,7 @@ public final class BuiltinPushStructScanner {
         if (!(t instanceof ClassOrInterfaceType c)) return false;
         var simple = c.getNameAsString();
         var fqn = resolve(simple, imports, pkg);
-        return fqn.equals("compilerxyz.eval.ExprContext");
+        return fqn.equals("compilerxyz.main.eval.ExprContext");
     }
 
     private static String returnExpr(
@@ -177,14 +180,16 @@ public final class BuiltinPushStructScanner {
                 && cit.getTypeArguments().isPresent()
                 && cit.getTypeArguments().get().size() == 1) {
             var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg, scannedLeaves);
-            return TypeRef.composite1(ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"), innerRef);
+            return TypeRef.composite1(
+                    ClassName.get("compilerxyz.main.eval.value.option", "TypeOptionDynamic"), innerRef);
         }
         if (t instanceof ClassOrInterfaceType cit
                 && cit.getNameAsString().equals("EResult")
                 && cit.getTypeArguments().isPresent()
                 && cit.getTypeArguments().get().size() == 1) {
             var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg, scannedLeaves);
-            return TypeRef.composite1(ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"), innerRef);
+            return TypeRef.composite1(
+                    ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic"), innerRef);
         }
         var tn = typeNameOf(t, imports, pkg);
         if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
@@ -197,7 +202,7 @@ public final class BuiltinPushStructScanner {
             }
         }
         if (tn instanceof ParameterizedTypeName pt
-                && pt.rawType.canonicalName().equals("compilerxyz.util.TOrderedMap")
+                && pt.rawType.canonicalName().equals("compilerxyz.prelude.util.TOrderedMap")
                 && pt.typeArguments.size() == 2
                 && pt.typeArguments.get(0) instanceof ClassName k
                 && pt.typeArguments.get(1) instanceof ClassName v) {

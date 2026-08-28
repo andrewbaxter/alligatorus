@@ -7,7 +7,7 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.TMap;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -17,9 +17,9 @@ import javax.lang.model.element.Modifier;
 public final class DynamicTypesGen {
     private DynamicTypesGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
-    private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-    private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
+    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
 
     public static void run(Path outRoot, Formatter formatter, TMap<ClassName, CodeBlock> scannedLeaves)
             throws IOException {

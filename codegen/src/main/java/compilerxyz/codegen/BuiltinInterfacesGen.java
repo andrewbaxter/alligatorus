@@ -10,10 +10,10 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.BuiltinMethodEmit;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
-import compilerxyz.util.TSet;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
@@ -57,37 +57,40 @@ public final class BuiltinInterfacesGen {
 
     public record DataField(String langName, String jvmFieldName, TypeName fieldJavaType) {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
 
-    private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
-    private static final ClassName UNIQUE = ClassName.get("compilerxyz.eval", "Unique");
-    private static final ClassName UNIQUE_BUILTIN = ClassName.get("compilerxyz.eval", "Unique", "Builtin");
-    private static final ClassName ERESULT = ClassName.get("compilerxyz.eval", "EResult");
-    private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.eval", "ExprContext");
-    private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.eval", "QExprId");
-    private static final ClassName ASPECT_LOOKUP = ClassName.get("compilerxyz.eval.aspect", "AspectLookup");
+    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    private static final ClassName UNIQUE = ClassName.get("compilerxyz.main.eval", "Unique");
+    private static final ClassName UNIQUE_BUILTIN = ClassName.get("compilerxyz.main.eval", "Unique", "Builtin");
+    private static final ClassName ERESULT = ClassName.get("compilerxyz.main.eval", "EResult");
+    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
+    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
+    private static final ClassName QEXPR_ID = ClassName.get("compilerxyz.main.eval", "QExprId");
+    private static final ClassName ASPECT_LOOKUP = ClassName.get("compilerxyz.main.eval.aspect", "AspectLookup");
 
     private static final ClassName TYPE_OBJECT_DYNAMIC =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
-    private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
-    private static final ClassName TYPE_OBJECT_META = ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
+    private static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
+    private static final ClassName TYPE_OBJECT_META =
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectMeta");
     private static final ClassName TYPE_OBJECT_CAST_RULE =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastRule");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastRule");
     private static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
-            ClassName.get("compilerxyz.eval.value.object_", "TypeObjectCastFromRule");
-    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.eval.value.object_", "ObjectMethod");
+            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastFromRule");
+    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
     private static final ClassName OBJECT_DATA_FIELD =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField");
-    private static final ClassName OBJECT_DROP_KIND = ClassName.get("compilerxyz.eval.value.object_", "ObjectDropKind");
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDataField");
+    private static final ClassName OBJECT_DROP_KIND =
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDropKind");
     private static final ClassName OBJECT_ASPECT_SOURCE =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource");
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectAspectSource");
     private static final ClassName OBJECT_ASPECT_SOURCE_STATIC =
-            ClassName.get("compilerxyz.eval.value.object_", "ObjectAspectSource", "Static");
-    private static final ClassName JAVA_INTERNAL_NAME = ClassName.get("compilerxyz.eval.dynamic", "JavaInternalName");
+            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectAspectSource", "Static");
+    private static final ClassName JAVA_INTERNAL_NAME =
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     private static final ClassName JAVA_DATA_DESCRIPTOR =
-            ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
+            ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
 
     public static void run(
             Path outRoot,
@@ -295,9 +298,9 @@ public final class BuiltinInterfacesGen {
                         "dataFields.add(new $T($S, new $T($S, $T.fromParts($T.fromClass($T.class), $T.of())), $L))",
                         OBJECT_DATA_FIELD,
                         f.langName,
-                        ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField", "Access", "MethodCall"),
+                        ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDataField", "Access", "MethodCall"),
                         f.jvmFieldName,
-                        ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor"),
+                        ClassName.get("compilerxyz.main.eval.dynamic", "JavaMethodDescriptor"),
                         JAVA_DATA_DESCRIPTOR,
                         rawClass,
                         TLIST,

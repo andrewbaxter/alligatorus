@@ -12,12 +12,12 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.palantir.javaformat.java.Formatter;
 import com.palantir.javaformat.java.FormatterException;
-import compilerxyz.util.ISet;
-import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
-import compilerxyz.util.TOrderedMap;
-import compilerxyz.util.TOrderedSet;
+import compilerxyz.prelude.util.ISet;
+import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
+import compilerxyz.prelude.util.TOrderedMap;
+import compilerxyz.prelude.util.TOrderedSet;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,19 +28,19 @@ import java.util.stream.Stream;
 public final class CodecsGen {
     private CodecsGen() {}
 
-    static final String GEN_PACKAGE = "compilerxyz.gen.codec";
+    static final String GEN_PACKAGE = "compilerxyz.main.gen.codec";
 
     private static final ISet<String> HAND_CODED = ISet.of(
-            "compilerxyz.safejson.JsonValue",
-            "compilerxyz.artifact.Artifact",
-            "compilerxyz.artifact.ArtifactBody",
-            "compilerxyz.artifact.ArtifactBodyExporter",
-            "compilerxyz.artifact.ArtifactIdSource",
-            "compilerxyz.util.Opt",
-            "compilerxyz.util.Opt.Some",
-            "compilerxyz.util.Opt.None");
+            "compilerxyz.main.safejson.JsonValue",
+            "compilerxyz.main.artifact.Artifact",
+            "compilerxyz.main.artifact.ArtifactBody",
+            "compilerxyz.main.artifact.ArtifactBodyExporter",
+            "compilerxyz.main.artifact.ArtifactIdSource",
+            "compilerxyz.prelude.util.Opt",
+            "compilerxyz.prelude.util.Opt.Some",
+            "compilerxyz.prelude.util.Opt.None");
 
-    private static final String MARKER = "compilerxyz.safejson.SafeJsonSerializable";
+    private static final String MARKER = "compilerxyz.main.safejson.SafeJsonSerializable";
 
     static void run(Path outRoot, Formatter formatter, Path runtimeSourceRoot) throws IOException {
         StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);

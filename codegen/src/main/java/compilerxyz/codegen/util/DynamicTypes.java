@@ -4,8 +4,8 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import compilerxyz.util.IMap;
-import compilerxyz.util.TMap;
+import compilerxyz.prelude.util.IMap;
+import compilerxyz.prelude.util.TMap;
 
 public final class DynamicTypes {
     private DynamicTypes() {}
@@ -32,78 +32,78 @@ public final class DynamicTypes {
     static {
         var nullary = new TMap<ClassName, TypeName>();
         var composites = new TMap<ClassName, CompositeEntry>();
-        nullary(nullary, "compilerxyz.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
-        nullary(nullary, "compilerxyz.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
-        nullary(nullary, "compilerxyz.eval.value.int_", "TypeIntDynamic", TypeName.INT);
-        nullary(nullary, "compilerxyz.eval.value.short_", "TypeShortDynamic", TypeName.SHORT);
-        nullary(nullary, "compilerxyz.eval.value.long_", "TypeLongDynamic", TypeName.LONG);
-        nullary(nullary, "compilerxyz.eval.value.float_", "TypeFloatDynamic", TypeName.FLOAT);
-        nullary(nullary, "compilerxyz.eval.value.double_", "TypeDoubleDynamic", TypeName.DOUBLE);
-        nullary(nullary, "compilerxyz.eval.value.ubyte_", "TypeUbyteDynamic", TypeName.BYTE);
-        nullary(nullary, "compilerxyz.eval.value.ushort_", "TypeUshortDynamic", TypeName.SHORT);
-        nullary(nullary, "compilerxyz.eval.value.uint_", "TypeUintDynamic", TypeName.INT);
-        nullary(nullary, "compilerxyz.eval.value.ulong_", "TypeUlongDynamic", TypeName.LONG);
-        nullary(nullary, "compilerxyz.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
-        nullary(nullary, "compilerxyz.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
+        nullary(nullary, "compilerxyz.main.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
+        nullary(nullary, "compilerxyz.main.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
+        nullary(nullary, "compilerxyz.main.eval.value.int_", "TypeIntDynamic", TypeName.INT);
+        nullary(nullary, "compilerxyz.main.eval.value.short_", "TypeShortDynamic", TypeName.SHORT);
+        nullary(nullary, "compilerxyz.main.eval.value.long_", "TypeLongDynamic", TypeName.LONG);
+        nullary(nullary, "compilerxyz.main.eval.value.float_", "TypeFloatDynamic", TypeName.FLOAT);
+        nullary(nullary, "compilerxyz.main.eval.value.double_", "TypeDoubleDynamic", TypeName.DOUBLE);
+        nullary(nullary, "compilerxyz.main.eval.value.ubyte_", "TypeUbyteDynamic", TypeName.BYTE);
+        nullary(nullary, "compilerxyz.main.eval.value.ushort_", "TypeUshortDynamic", TypeName.SHORT);
+        nullary(nullary, "compilerxyz.main.eval.value.uint_", "TypeUintDynamic", TypeName.INT);
+        nullary(nullary, "compilerxyz.main.eval.value.ulong_", "TypeUlongDynamic", TypeName.LONG);
+        nullary(nullary, "compilerxyz.main.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
+        nullary(nullary, "compilerxyz.main.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
         nullary(
                 nullary,
-                "compilerxyz.eval.value.unique",
+                "compilerxyz.main.eval.value.unique",
                 "TypeUniqueDynamic",
-                ClassName.get("compilerxyz.eval", "Unique"));
+                ClassName.get("compilerxyz.main.eval", "Unique"));
         nullary(
                 nullary,
-                "compilerxyz.eval.value.unique",
+                "compilerxyz.main.eval.value.unique",
                 "TypeUniqueConst",
-                ClassName.get("compilerxyz.eval", "Unique"));
+                ClassName.get("compilerxyz.main.eval", "Unique"));
         nullary(
                 nullary,
-                "compilerxyz.eval.value.constkey",
+                "compilerxyz.main.eval.value.constkey",
                 "TypeConstkeyDynamic",
-                ClassName.get("compilerxyz.eval", "ConstKey"));
+                ClassName.get("compilerxyz.main.eval", "ConstKey"));
         nullary(
                 nullary,
-                "compilerxyz.eval.value.expr",
+                "compilerxyz.main.eval.value.expr",
                 "TypeExpr",
-                ClassName.get("compilerxyz.eval.expr", "StagedExprCell"));
-        nullary(nullary, "compilerxyz.eval.value.throw_", "TypeThrowDynamic");
-        nullary(nullary, "compilerxyz.eval.value.panic", "TypePanicDynamic");
-        nullary(nullary, "compilerxyz.eval.value.function", "TypeFunctionAspectDynamic");
-        nullary(nullary, "compilerxyz.eval.value.function", "TypeFunctionCastValueDynamic");
-        nullary(nullary, "compilerxyz.eval.value.function", "TypeFunctionMustReinterpretConst");
-        nullary(nullary, "compilerxyz.eval.value.list", "TypeListConstructorConst");
-        nullary(nullary, "compilerxyz.eval.value.map", "TypeMapConstructorConst");
-        nullary(nullary, "compilerxyz.eval.value.option", "TypeOptionConstructorConst");
-        nullary(nullary, "compilerxyz.eval.value.eresult", "TypeEResultConstructorConst");
-        nullary(nullary, "compilerxyz.eval.value.zbase32", "TypeZbase32Decode");
-        nullary(nullary, "compilerxyz.eval.value.source", "TypeImport");
-        nullary(nullary, "compilerxyz.eval.value.source", "TypeSourceVirtual");
-        nullary(nullary, "compilerxyz.eval.value.source", "TypeSourceLocal");
-        nullary(nullary, "compilerxyz.eval.value.source", "TypeSourceRemote");
-        nullary(nullary, "compilerxyz.eval.value.source", "TypeSourceSha256");
+                ClassName.get("compilerxyz.main.eval.expr", "StagedExprCell"));
+        nullary(nullary, "compilerxyz.main.eval.value.throw_", "TypeThrowDynamic");
+        nullary(nullary, "compilerxyz.main.eval.value.panic", "TypePanicDynamic");
+        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionAspectDynamic");
+        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionCastValueDynamic");
+        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionMustReinterpretConst");
+        nullary(nullary, "compilerxyz.main.eval.value.list", "TypeListConstructorConst");
+        nullary(nullary, "compilerxyz.main.eval.value.map", "TypeMapConstructorConst");
+        nullary(nullary, "compilerxyz.main.eval.value.option", "TypeOptionConstructorConst");
+        nullary(nullary, "compilerxyz.main.eval.value.eresult", "TypeEResultConstructorConst");
+        nullary(nullary, "compilerxyz.main.eval.value.zbase32", "TypeZbase32Decode");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeImport");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceVirtual");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceLocal");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceRemote");
+        nullary(nullary, "compilerxyz.main.eval.value.source", "TypeSourceSha256");
         composite(
                 composites,
-                "compilerxyz.eval.value.list",
+                "compilerxyz.main.eval.value.list",
                 "TypeListBoxedDynamic",
                 1,
-                ClassName.get("compilerxyz.util", "TList"));
+                ClassName.get("compilerxyz.prelude.util", "TList"));
         composite(
                 composites,
-                "compilerxyz.eval.value.option",
+                "compilerxyz.main.eval.value.option",
                 "TypeOptionDynamic",
                 1,
-                ClassName.get("compilerxyz.util", "Opt"));
+                ClassName.get("compilerxyz.prelude.util", "Opt"));
         composite(
                 composites,
-                "compilerxyz.eval.value.eresult",
+                "compilerxyz.main.eval.value.eresult",
                 "TypeEResultDynamic",
                 1,
-                ClassName.get("compilerxyz.eval", "EResult"));
+                ClassName.get("compilerxyz.main.eval", "EResult"));
         composite(
                 composites,
-                "compilerxyz.eval.value.map",
+                "compilerxyz.main.eval.value.map",
                 "TypeMapDynamic",
                 2,
-                ClassName.get("compilerxyz.util", "TOrderedMap"));
+                ClassName.get("compilerxyz.prelude.util", "TOrderedMap"));
         NULLARY = IMap.from(nullary);
         COMPOSITES = IMap.from(composites);
     }
@@ -114,7 +114,7 @@ public final class DynamicTypes {
         }
         var scanned = scannedLeaves.getOrNull(descriptor);
         if (scanned != null) return scanned;
-        if (descriptor.packageName().equals("compilerxyz.gen")) {
+        if (descriptor.packageName().equals("compilerxyz.main.gen")) {
             return CodeBlock.of("$T.dynamicType()", descriptor);
         }
         throw new IllegalArgumentException("DynamicTypes has no descriptor for " + descriptor.canonicalName());

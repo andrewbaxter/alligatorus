@@ -6,8 +6,8 @@ import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
-import compilerxyz.util.TList;
-import compilerxyz.util.TSet;
+import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TSet;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Locale;
@@ -16,9 +16,9 @@ import javax.lang.model.element.Modifier;
 public final class IdentitiesGen {
     private IdentitiesGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.gen";
-    private static final ClassName UNIQUE = ClassName.get("compilerxyz.eval", "Unique");
-    private static final ClassName UNIQUE_BUILTIN = ClassName.get("compilerxyz.eval", "Unique", "Builtin");
+    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
+    private static final ClassName UNIQUE = ClassName.get("compilerxyz.main.eval", "Unique");
+    private static final ClassName UNIQUE_BUILTIN = ClassName.get("compilerxyz.main.eval", "Unique", "Builtin");
 
     public record IdentitySpec(String name, long builtinUniqueId, boolean standalone) {}
 

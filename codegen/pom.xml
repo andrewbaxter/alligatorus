@@ -15,7 +15,7 @@
     <dependencies>
         <dependency>
             <groupId>compilerxyz</groupId>
-            <artifactId>allig3-util</artifactId>
+            <artifactId>allig3-prelude</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
