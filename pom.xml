@@ -14,6 +14,7 @@
         <module>codegen</module>
         <module>runtime</module>
         <module>analysis</module>
+        <module>docguard</module>
     </modules>
 
     <properties>
@@ -114,6 +115,15 @@
                         </palantirJavaFormat>
                     </java>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>spotless-gate</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
         <pluginManagement>
@@ -143,6 +153,11 @@
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
                     <version>3.5.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>3.6.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
