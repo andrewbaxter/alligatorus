@@ -987,7 +987,7 @@ public final class Tuple
       }
       var expectedClass = CompositeClassEmitter.getOrEmit(xx, sortTupleTypes(xx, elementTypes));
       if (externalHostValue.optIsNone()
-          || externalHostValue.optUnwrap().getClass() != expectedClass) {
+          || !expectedClass.isInstance(externalHostValue.optUnwrap())) {
         return EResult.err(
             loc,
             "Tuple TupleLift::lift: expected "

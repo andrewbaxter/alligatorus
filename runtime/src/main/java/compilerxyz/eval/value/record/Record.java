@@ -1172,7 +1172,7 @@ public final class Record
       for (var entry : entryLifts) sortedTypes.add(entry.type());
       var expectedClass = CompositeClassEmitter.getOrEmit(xx, sortedTypes);
       if (externalHostValue.optIsNone()
-          || externalHostValue.optUnwrap().getClass() != expectedClass) {
+          || !expectedClass.isInstance(externalHostValue.optUnwrap())) {
         return EResult.err(
             loc,
             "Record RecordLift::lift: expected "

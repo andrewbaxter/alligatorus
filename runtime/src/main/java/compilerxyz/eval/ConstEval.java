@@ -359,7 +359,7 @@ public final class ConstEval {
             case ScopeLevel.Catch c -> throw new AssertionError("seq unwind: top level is not the expected entry");
             case ScopeLevel.Finally f -> throw new AssertionError("seq unwind: top level is not the expected entry");
           }
-          if (current.scopeLevelEmission() != entries.get(i).scopeLevelEmission()) {
+          if (current.scopeLevelEmission().id != entries.get(i).scopeLevelEmission().id) {
             throw new AssertionError("seq unwind: top level is not the expected entry");
           }
           var _dropRes = current.binding.bindingDrop(xx, loc);
@@ -623,7 +623,7 @@ public final class ConstEval {
                   .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
           var bodyScope = xx.scope.fork();
           var _pscId = bodyScope.vx.dropStateCounter.next();
-          var iterEntry = new ScopeLevel.Entry(Opt.<ConstKey>none(), iterable.aspectIterableLoopBinding(xx), true, _pscId, _pscId);
+          var iterEntry = new ScopeLevel.Entry(Opt.<ConstKey>none(), iterable.aspectIterableLoopBinding(xx), true, _pscId, _pscId, new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
           bodyScope.levels.add(iterEntry);
           var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
           var bodyXx = new ExprContext(
@@ -1037,14 +1037,14 @@ public final class ConstEval {
         }
         ScopeLevel.Finally finallyLevel = null;
         if (e.finallyBlock().optIsSome()) {
-          finallyLevel = new ScopeLevel.Finally();
+          finallyLevel = new ScopeLevel.Finally(new TList<>(), new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
           xx.scope.levels.add(finallyLevel);
         }
         ScopeLevel.Catch catchLevel = null;
         JumpKey handlerKey = null;
         if (e.catchClause().optIsSome()) {
           handlerKey = new JumpKey();
-          catchLevel = new ScopeLevel.Catch(handlerKey);
+          catchLevel = new ScopeLevel.Catch(handlerKey, new ScopeLevel.Emission(xx.vx.emissionCounter.next()));
           xx.scope.levels.add(catchLevel);
         }
         var bodyXx = new ExprContext(
@@ -1146,7 +1146,7 @@ public final class ConstEval {
             EResult<Code> _nodeRes;
             if (_key.label().optIsSome()) {
               _nodeRes = xx.target.targetExitTrampoline(
-                  xx, loc, _pending.self(), _key.carryType(), finallyLevel.body,
+                  xx, loc, _pending.self(), _key.carryType(finallyLevel.scopeLevelEmission()), finallyLevel.body,
                   _key.next().optUnwrap());
             } else {
               _nodeRes = xx.target.targetExcCleanup(
@@ -1253,7 +1253,7 @@ public final class ConstEval {
           boolean _found = false;
           for (int _i = _levels.size() - 1; _i >= 0; _i--) {
             var _level = _levels.get(_i);
-            if (_level == target) { _found = true; break; }
+            if (_level.scopeLevelEmission().id == target.scopeLevelEmission().id) { _found = true; break; }
             switch (_level) {
               case ScopeLevel.Entry _en -> _exitCleanups.add(_en);
               case ScopeLevel.Temp _tmp -> _exitCleanups.add(_tmp);
@@ -1268,7 +1268,8 @@ public final class ConstEval {
           for (int _ci = _exitCleanups.size() - 1; _ci >= 0; _ci--) {
             var _resolved = ScopeChains.node(xx, loc, _exitCleanups.get(_ci),
                 new ScopeLevel.DestKey(ScopeChains.levelDropState(_exitCleanups.get(_ci)),
-                    Opt.some(_discriminator), Opt.some(_next), carryType));
+                    Opt.some(_discriminator), Opt.some(_next),
+                    _exitCleanups.get(_ci).scopeLevelEmission().carryTypeIntern(xx, carryType)));
             if (_resolved.hasErrors()) { _destRes = _resolved.reerr(); break exitDestCompute; }
             _next = _resolved.requireValue("ScopeChains.exitDest node").optUnwrap();
           }
@@ -1324,7 +1325,7 @@ public final class ConstEval {
   /** Pop the topmost level, which must share {@code level}'s lineage (fork copies allowed). */
   private static void popByBox(Scope scope, ScopeLevel level) {
     var top = scope.levels.remove(scope.levels.size() - 1);
-    if (top.scopeLevelEmission() != level.scopeLevelEmission()) {
+    if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
       throw new AssertionError("scope level pop does not match the owning level");
     }
   }
@@ -1378,7 +1379,7 @@ public final class ConstEval {
       case ScopeLevel.Catch c -> throw new AssertionError("labeledConsume: consumer level is not on top");
       case ScopeLevel.Finally f -> throw new AssertionError("labeledConsume: consumer level is not on top");
     }
-    if (top.scopeLevelEmission() != level.scopeLevelEmission()) {
+    if (top.scopeLevelEmission().id != level.scopeLevelEmission().id) {
       throw new AssertionError("labeledConsume: consumer level is not on top");
     }
     xx.scope.levels.remove(xx.scope.levels.size() - 1);

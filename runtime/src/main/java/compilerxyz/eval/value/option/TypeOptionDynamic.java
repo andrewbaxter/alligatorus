@@ -79,7 +79,7 @@ import compilerxyz.util.TMap;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6008L)
-public final class TypeOptionDynamic
+public final class TypeOptionDynamic<T extends Type>
     implements
         
         AspectSet,
@@ -95,11 +95,11 @@ public final class TypeOptionDynamic
         AspectStackValueDynamic,
         ExporterAny {
 
-  public final Type elementType;
+  public final T elementType;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
       new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeOptionDynamic(Type elementType) {
+  public TypeOptionDynamic(T elementType) {
     this.elementType = elementType;
   }
 
@@ -211,7 +211,7 @@ public final class TypeOptionDynamic
             QExprId loc,
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
-          if (!(self instanceof TypeOptionDynamic option)) {
+          if (!(self instanceof TypeOptionDynamic<?> option)) {
             return EResult.err(
                 loc,
                 "TypeOptionDynamic::exporterRootDelegateSelfExport: expected TypeOptionDynamic,"

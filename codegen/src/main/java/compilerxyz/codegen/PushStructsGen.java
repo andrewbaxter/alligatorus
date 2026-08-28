@@ -13,6 +13,7 @@ import com.squareup.javapoet.TypeSpec;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.PushMethod;
 import compilerxyz.codegen.util.TypeRef;
+import compilerxyz.util.ISet;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
 import java.util.Set;
@@ -42,6 +43,7 @@ public final class PushStructsGen {
   private static final String DYN_RUNTIME_INTNAME = "compilerxyz/eval/dynamic/DynRuntime";
   private static final ClassName TYPE_OBJECT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
   private static final ClassName TYPE_OBJECT_META =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
   private static final ClassName OBJECT_DROP_KIND =
@@ -131,7 +133,7 @@ public final class PushStructsGen {
     cls.addMethod(
         MethodSpec.methodBuilder("dynamicType")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(TYPE)
+            .returns(TYPE_OBJECT_DYNAMIC)
             .addStatement("return $T.$L()", genObjectTypes, factoryName)
             .build());
 
@@ -151,7 +153,8 @@ public final class PushStructsGen {
       chars[0] = Character.toLowerCase(chars[0]);
       var fieldName = new String(chars) + "_instance";
       cls.addField(
-          FieldSpec.builder(TYPE, fieldName, Modifier.PRIVATE, Modifier.STATIC).build());
+          FieldSpec.builder(TYPE_OBJECT_DYNAMIC, fieldName, Modifier.PRIVATE, Modifier.STATIC)
+              .build());
       cls.addMethod(buildObjectTypeFactory(spec, fieldName));
     }
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
@@ -207,7 +210,7 @@ public final class PushStructsGen {
     var builder =
         MethodSpec.methodBuilder(factoryName)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(TYPE)
+            .returns(TYPE_OBJECT_DYNAMIC)
             .beginControlFlow("if ($N == null)", fieldName);
     if (isSelfReferential) {
       builder.addStatement("var __methods = new $T<$T>()", TLIST, OBJECT_METHOD);
@@ -216,16 +219,16 @@ public final class PushStructsGen {
         "var __meta = new $T($S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
         TYPE_OBJECT_META,
         spec.name(),
-        TLIST,
+        ILIST,
         UNIQUE,
-        TLIST,
+        ILIST,
         TYPE_OBJECT_CAST_RULE,
-        TLIST,
+        ILIST,
         TYPE_OBJECT_CAST_FROM_RULE,
         OPT);
     builder.addStatement(
         "$N = new $T(__meta, $T.of($S), $T.fromClass($T.class), $T.class, "
-            + "$L, $L, $T.DYNAMIC, $T.none())",
+            + "$T.DYNAMIC, $T.none())",
         fieldName,
         TYPE_OBJECT_DYNAMIC,
         JAVA_INTERNAL_NAME,
@@ -233,10 +236,13 @@ public final class PushStructsGen {
         JAVA_DATA_DESCRIPTOR,
         specClass,
         specClass,
-        dataFieldsList.build(),
-        methodsList.build(),
         OBJECT_DROP_KIND,
         OPT);
+    if (!isSelfReferential) {
+      builder.addStatement(
+          "$N.linkInit($T.from($L), $T.from($L))",
+          fieldName, ILIST, dataFieldsList.build(), ILIST, methodsList.build());
+    }
     if (isSelfReferential) {
       for (var meth : spec.methods()) {
         var dynRuntimeMethod = meth.dynRuntimeMethod();
@@ -250,6 +256,9 @@ public final class PushStructsGen {
             pushMethodName(meth.name()),
             methodFunctionType(spec, specClass, meth, dynRuntimeMethod));
       }
+      builder.addStatement(
+          "$N.linkInit($T.from($L), $T.from(__methods))",
+          fieldName, ILIST, dataFieldsList.build(), ILIST);
     }
     return builder.endControlFlow().addStatement("return $N", fieldName).build();
   }
@@ -260,8 +269,8 @@ public final class PushStructsGen {
     return t;
   }
 
-  private static final Set<String> INSTANCE_METHOD_STRUCTS =
-      Set.of(
+  private static final ISet<String> INSTANCE_METHOD_STRUCTS =
+      ISet.of(
           "DefinitionSetBuilder",
           "SourceFuncResult",
           "SourceInterfaceMethodResult",
@@ -275,8 +284,8 @@ public final class PushStructsGen {
    * generating the {@code .java} for these but still emits their GenObjectTypes registry entry
    * from the PushStructSpec.
    */
-  private static final Set<String> HANDWRITTEN_STRUCTS =
-      Set.of(
+  private static final ISet<String> HANDWRITTEN_STRUCTS =
+      ISet.of(
           "DefinitionSetBuilder",
           "SourceFuncResult",
           "SourceInterfaceMethodResult",
@@ -357,7 +366,7 @@ public final class PushStructsGen {
     var functionParam =
         ClassName.get("compilerxyz.eval.value.function", "FunctionParam");
     var b = CodeBlock.builder();
-    b.add("$T.<$T>of(", TLIST, functionParam);
+    b.add("$T.<$T>of(", ILIST, functionParam);
     for (var i = 0; i < args.size(); i++) {
       var a = args.get(i);
       if (i > 0) b.add(", ");

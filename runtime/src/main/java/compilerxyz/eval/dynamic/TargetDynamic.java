@@ -80,43 +80,6 @@ import java.util.Comparator;
 public final class TargetDynamic implements Target {
   private static final JavaInternalName INTNAME_DYN_EXCEPTION =
       JavaInternalName.fromClass(DynException.class);
-  private static final JavaInternalName INTNAME_EXPR_CONTEXT =
-      JavaInternalName.fromClass(ExprContext.class);
-  private static final JavaInternalName INTNAME_OBJECT_ARRAY_ELEM =
-      JavaInternalName.fromClass(Object[].class);
-
-  private static final JavaDataDescriptor DESC_EXPR_CONTEXT =
-      JavaDataDescriptor.fromInternalName(INTNAME_EXPR_CONTEXT);
-  private static final JavaDataDescriptor DESC_ITERATOR =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_ITERATOR);
-  private static final JavaDataDescriptor DESC_LIST =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_LIST);
-  private static final JavaDataDescriptor DESC_MAP =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP);
-  private static final JavaDataDescriptor DESC_MAP_ENTRY =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_MAP_ENTRY);
-  private static final JavaDataDescriptor DESC_RUNTIME_EXCEPTION =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_RUNTIME_EXCEPTION);
-
-  private static final JavaDataDescriptor DESC_SET =
-      JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_SET);
-  private static final JavaMethodDescriptor MDESC_ITERATOR =
-      JavaMethodDescriptor.fromParts(DESC_ITERATOR);
-  private static final JavaMethodDescriptor MDESC_HAS_NEXT =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL);
-  private static final JavaMethodDescriptor MDESC_NEXT =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT);
-  private static final JavaMethodDescriptor MDESC_BOOL_VALUE =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL);
-  private static final JavaMethodDescriptor MDESC_MAP_ENTRY_GET =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT);
-  private static final JavaMethodDescriptor MDESC_MAP_ENTRY_SET =
-      JavaMethodDescriptor.fromParts(DESC_SET);
-  private static final JavaMethodDescriptor MDESC_MAP_PUT =
-      JavaMethodDescriptor.fromParts(
-          JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
-  private static final JavaMethodDescriptor MDESC_STRING_EQUALS =
-      JavaMethodDescriptor.fromParts(JvmConstants.DESC_BOOL, JvmConstants.DESC_OBJECT);
 
   private final Counter localIds;
 

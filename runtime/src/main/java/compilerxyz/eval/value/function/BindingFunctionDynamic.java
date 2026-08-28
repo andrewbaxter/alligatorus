@@ -39,7 +39,7 @@ public record BindingFunctionDynamic(BindingId dynamicKey, TypeFunctionDynamic t
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
-      if (other != this && !this.equals(other)) {
+      if (!this.equals(other)) {
         return EResult.err(loc,
             "cannot merge " + getClass().getSimpleName()
                 + " with a differently-typed binding across branches");

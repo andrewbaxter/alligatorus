@@ -40,7 +40,7 @@ import compilerxyz.eval.value.ValueDynamic;
 import compilerxyz.eval.value.ValueDynamicSource;
 import compilerxyz.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.eval.value.function.FunctionParam;
-import compilerxyz.eval.value.function.TypeMethodDynamic;
+import compilerxyz.eval.value.function.TypeSourceMethodDynamic;
 import compilerxyz.eval.value.null_.TypeNullDynamic;
 import compilerxyz.eval.value.object_.ValueObjectConst;
 import compilerxyz.eval.value.source_interface.BuiltinInterfaceKind;
@@ -347,7 +347,7 @@ public final class TypeSourceObjectDynamic
         JavaInternalName.of(
             SourceObjectEmitter.internalNameFor(setId.optUnwrap(), objIdx));
     var fieldType =
-        new TypeMethodDynamic(
+        new TypeSourceMethodDynamic(
             this,
             TList.of(new FunctionParam("arg", argType)),
             retType,

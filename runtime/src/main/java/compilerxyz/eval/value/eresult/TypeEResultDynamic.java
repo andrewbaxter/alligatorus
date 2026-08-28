@@ -62,7 +62,7 @@ import compilerxyz.gen.GenAspectUnion;
 import compilerxyz.gen.GenExprErr;
 
 @BuiltinFull(uniqueId = 6017L)
-public record TypeEResultDynamic(Type elementType)
+public record TypeEResultDynamic<T extends Type>(T elementType)
     implements
         Type,
         AspectBind,

@@ -11,6 +11,7 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.palantir.javaformat.java.Formatter;
 import com.palantir.javaformat.java.FormatterException;
+import compilerxyz.util.ISet;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TOrderedMap;
@@ -29,8 +30,8 @@ public final class CodecsGen {
 
   static final String GEN_PACKAGE = "compilerxyz.gen.codec";
 
-  private static final Set<String> HAND_CODED =
-      Set.of(
+  private static final ISet<String> HAND_CODED =
+      ISet.of(
           "compilerxyz.safejson.JsonValue",
           "compilerxyz.artifact.Artifact",
           "compilerxyz.artifact.ArtifactBody",

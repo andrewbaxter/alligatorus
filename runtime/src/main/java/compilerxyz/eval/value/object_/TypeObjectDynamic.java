@@ -28,6 +28,7 @@ import compilerxyz.eval.Eval;
 import compilerxyz.eval.ExprContext;
 import compilerxyz.eval.QExprId;
 import compilerxyz.eval.Type;
+import compilerxyz.eval.TypeImmutable;
 import compilerxyz.eval.Unique;
 import compilerxyz.gen.Value;
 import compilerxyz.eval.aspect.Aspect;
@@ -55,6 +56,7 @@ import compilerxyz.gen.AspectField;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectLift;
 import compilerxyz.gen.AspectStackValueDynamic;
+import compilerxyz.util.IList;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectArtifact;
@@ -85,17 +87,9 @@ import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
 @BuiltinLight(uniqueId = 6130L)
-public record TypeObjectDynamic(
-    TypeObjectMeta meta,
-    JavaInternalName jvmClass,
-    JavaDataDescriptor jvmClassDesc,
-    Class hostClass,
-    TList<ObjectDataField> dataFields,
-    TList<ObjectMethod> methods,
-    ObjectDropKind dropKind,
-    Opt<JavaInternalName> interfaceRepresented)
+public final class TypeObjectDynamic
     implements
-        Type,
+        TypeImmutable,
         AspectFieldUseDynamic,
         TypeAspect,
         AspectArtifact,
@@ -112,19 +106,82 @@ public record TypeObjectDynamic(
         AspectStackValueDynamic,
         ExporterAny {
 
+  private final TypeObjectMeta meta;
+  private final JavaInternalName jvmClass;
+  private final JavaDataDescriptor jvmClassDesc;
+  private final Class hostClass;
+  private final IList<ObjectDataField> dataFields;
+  private final IList<ObjectMethod> methods;
+  private final ObjectDropKind dropKind;
+  private final Opt<JavaInternalName> interfaceRepresented;
+
+  public TypeObjectDynamic(
+      TypeObjectMeta meta,
+      JavaInternalName jvmClass,
+      JavaDataDescriptor jvmClassDesc,
+      Class hostClass,
+      ObjectDropKind dropKind,
+      Opt<JavaInternalName> interfaceRepresented) {
+    this.meta = meta;
+    this.jvmClass = jvmClass;
+    this.jvmClassDesc = jvmClassDesc;
+    this.hostClass = hostClass;
+    this.dataFields = null;
+    this.methods = null;
+    this.dropKind = dropKind;
+    this.interfaceRepresented = interfaceRepresented;
+  }
+
+  /**
+   * Second construction pass: generated {@code link()} companions build the method and data-field
+   * lists (which circularly reference this instance as receiver) and set the final fields
+   * reflectively, exactly once. Pure construction — no logic beyond the write.
+   */
+  public void linkInit(IList<ObjectDataField> dataFields, IList<ObjectMethod> methods) {
+    if (this.dataFields != null || this.methods != null) {
+      throw new IllegalStateException("TypeObjectDynamic.linkInit: already initialized");
+    }
+    try {
+      var df = TypeObjectDynamic.class.getDeclaredField("dataFields");
+      df.setAccessible(true);
+      df.set(this, dataFields);
+      var m = TypeObjectDynamic.class.getDeclaredField("methods");
+      m.setAccessible(true);
+      m.set(this, methods);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("TypeObjectDynamic.linkInit: failed to set final list fields", e);
+    }
+  }
+
+  public TypeObjectMeta meta() {
+    return meta;
+  }
+
+  public Class hostClass() {
+    return hostClass;
+  }
+
+  public IList<ObjectMethod> methods() {
+    return methods;
+  }
+
+  public Opt<JavaInternalName> interfaceRepresented() {
+    return interfaceRepresented;
+  }
+
   public String typeDesc() {
     return meta.typeDesc();
   }
 
-  public TList<Unique> trivialIdentityAspects() {
+  public IList<Unique> trivialIdentityAspects() {
     return meta.trivialIdentityAspects();
   }
 
-  public TList<TypeObjectCastRule> castRules() {
+  public IList<TypeObjectCastRule> castRules() {
     return meta.castRules();
   }
 
-  public TList<TypeObjectCastFromRule> castFromRules() {
+  public IList<TypeObjectCastFromRule> castFromRules() {
     return meta.castFromRules();
   }
 
@@ -136,7 +193,7 @@ public record TypeObjectDynamic(
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY, TypeObjectDynamic.class);
     return oOpt.optIsSome()
-        && hostClass == oOpt.optUnwrap().hostClass
+        && hostClass.getName().equals(oOpt.optUnwrap().hostClass.getName())
         && meta.typeDesc().equals(oOpt.optUnwrap().meta.typeDesc());
   }
 
@@ -486,7 +543,7 @@ public record TypeObjectDynamic(
 
   @Override
   public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-    var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<Type>none(), Opt.<ExporterRoot>none());
+    var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<ExporterRoot>none());
     return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue.optUnwrap()));
   }
 
@@ -550,11 +607,11 @@ public record TypeObjectDynamic(
           GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
           GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
       var _meta = new TypeObjectMeta("type_object_dynamic",
-          _trivialIdentityAspects,
-          _castRules,
-          new TList<TypeObjectCastFromRule>(),
+          IList.from(_trivialIdentityAspects),
+          IList.from(_castRules),
+          IList.<TypeObjectCastFromRule>of(),
           Opt.<ObjectAspectSource>none());
-      INSTANCE = new TypeObjectConst(_meta, Type.class, Opt.<Type>none(), Opt.<ExporterRoot>none());
+      INSTANCE = new TypeObjectConst(_meta, Type.class, Opt.<ExporterRoot>none());
     }
   }
 

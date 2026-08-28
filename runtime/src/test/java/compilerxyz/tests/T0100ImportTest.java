@@ -378,9 +378,7 @@ public final class T0100ImportTest {
     return jsonObj(
         jsonField(
             "type",
-            jsonObj(
-                jsonField("artifact_external_key", jsonObj(jsonField("id", jsonStr("KEY")))),
-                jsonField("type_artifact", typeArtifact("string_dynamic")))));
+            jsonObj(jsonField("type_artifact", typeArtifact("string_dynamic")))));
   }
 
   private static JsonValue externalUnique(long builtinId) {
@@ -388,7 +386,6 @@ public final class T0100ImportTest {
         jsonField(
             "unique_ref",
             jsonObj(
-                jsonField("artifact_external_key", jsonObj(jsonField("id", jsonStr("KEY")))),
                 jsonField(
                     "unique",
                     jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(builtinId)))))))));

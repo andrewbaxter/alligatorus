@@ -16,6 +16,7 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
 import compilerxyz.util.Opt;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
@@ -29,6 +30,8 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import java.util.Map;
+import compilerxyz.util.IMap;
+import compilerxyz.util.Pair;
 
 /**
  * Scans runtime source for {@code @BuiltinPath} on TYPE declarations (type leaves)
@@ -59,7 +62,8 @@ public final class BuiltinPathScanner {
       TypeRef retType)
       implements Entry {}
 
-  public static TList<Entry> scanRoot(Path runtimeSourceRoot) throws IOException {
+  public static TList<Entry> scanRoot(
+      Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves) throws IOException {
     var out = new TList<Entry>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
       var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
@@ -70,7 +74,7 @@ public final class BuiltinPathScanner {
         var pkg = cu.getPackageDeclaration().map(pd -> pd.getNameAsString()).orElse("");
         var imports = buildImportMap(cu);
         for (var t : cu.getTypes()) {
-          walkType(pkg, pkg, "", t, imports, out);
+          walkType(pkg, pkg, "", t, imports, out, scannedLeaves);
         }
       }
     }
@@ -83,7 +87,8 @@ public final class BuiltinPathScanner {
       String enclosing,
       TypeDeclaration<?> t,
       TMap<String, String> imports,
-      TList<Entry> out) {
+      TList<Entry> out,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     var simple = t.getNameAsString();
     var pathOpt = pathFromAnnotation(t);
     if (pathOpt.optIsSome()) {
@@ -112,11 +117,11 @@ public final class BuiltinPathScanner {
         }
         for (int i = firstArgIndex; i < params.size(); i++) {
           var p = params.get(i);
-          args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg)));
+          args.add(new NamedTypeRef(snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
         }
         var ownerSimple = enclosing.isEmpty() ? simple : enclosing.replace('.', '$') + "$" + simple;
         var ownerInternalName = pkg.replace('.', '/') + "/" + ownerSimple;
-        var retType = typeRefOf(m.getType(), imports, sourcePkg);
+        var retType = typeRefOf(m.getType(), imports, sourcePkg, scannedLeaves);
         out.add(
             new FunctionLeaf(
                 mpath, scopeId, m.getNameAsString(), ownerInternalName, needsExprContext, args, retType));
@@ -125,7 +130,7 @@ public final class BuiltinPathScanner {
     for (var member : t.getMembers()) {
       if (member instanceof TypeDeclaration<?> nested) {
         var nextEnclosing = enclosing.isEmpty() ? simple : enclosing + "." + simple;
-        walkType(pkg, sourcePkg, nextEnclosing, nested, imports, out);
+        walkType(pkg, sourcePkg, nextEnclosing, nested, imports, out, scannedLeaves);
       }
     }
   }
@@ -192,27 +197,29 @@ public final class BuiltinPathScanner {
 
   // === type resolution (mirrors JavaAspectExtractor conventions) ===
 
-  private static final Map<String, ClassName> COMPOSITE_WRAPPERS = Map.of(
-      "compilerxyz.eval.EResult",
-          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"),
-      "compilerxyz.util.Opt",
-          ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"),
-      "compilerxyz.util.TList",
-          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic"),
-      "compilerxyz.util.TMap",
-          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"),
-      "compilerxyz.util.TOrderedMap",
-          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
+  private static final IMap<String, ClassName> COMPOSITE_WRAPPERS =
+      IMap.ofEntries(
+      new Pair<>("compilerxyz.eval.EResult",
+          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
+      new Pair<>("compilerxyz.util.Opt",
+          ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
+      new Pair<>("compilerxyz.util.TList",
+          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
+      new Pair<>("compilerxyz.util.TMap",
+          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")),
+      new Pair<>("compilerxyz.util.TOrderedMap",
+          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
 
-  private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = Map.of(
-      "java.lang.String",
-          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
-      "compilerxyz.eval.Unique",
-          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic"),
-      "compilerxyz.eval.expr.StagedExprCell",
-          ClassName.get("compilerxyz.eval.value.expr", "TypeExpr"),
-      "compilerxyz.gen.AspectBind.BindResult",
-          ClassName.get("compilerxyz.gen", "AspectBind", "BindResult"));
+  private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS =
+      IMap.ofEntries(
+      new Pair<>("java.lang.String",
+          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
+      new Pair<>("compilerxyz.eval.Unique",
+          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")),
+      new Pair<>("compilerxyz.eval.expr.StagedExprCell",
+          ClassName.get("compilerxyz.eval.value.expr", "TypeExpr")),
+      new Pair<>("compilerxyz.gen.AspectBind.BindResult",
+          ClassName.get("compilerxyz.gen", "AspectBind", "BindResult")));
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");
@@ -225,33 +232,35 @@ public final class BuiltinPathScanner {
   private static final ClassName TYPE_NULL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
-  private static TypeRef typeRefOf(Type t, TMap<String, String> imports, String sourcePkg) {
-    if (t.isVoidType()) return TypeRef.leaf(TYPE_NULL_DYNAMIC);
+  private static TypeRef typeRefOf(
+      Type t, TMap<String, String> imports, String sourcePkg,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
+    if (t.isVoidType()) return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
     var tn = typeNameOf(t, imports, sourcePkg);
-    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
-    if (tn.equals(TypeName.LONG)) return TypeRef.leaf(TYPE_LONG_DYNAMIC);
+    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
+    if (tn.equals(TypeName.LONG)) return TypeRef.leaf(TYPE_LONG_DYNAMIC, scannedLeaves);
     if (tn instanceof ClassName cn && cn.canonicalName().equals("java.lang.Object")) {
-      return TypeRef.leaf(TYPE_NULL_DYNAMIC);
+      return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
     }
     if (tn instanceof ClassName cn) {
-      var descriptor = VALUE_CLASS_DESCRIPTORS.get(cn.canonicalName());
-      if (descriptor != null) return TypeRef.leaf(descriptor);
+      var descriptor = VALUE_CLASS_DESCRIPTORS.getOrNull(cn.canonicalName());
+      if (descriptor != null) return TypeRef.leaf(descriptor, scannedLeaves);
       try {
-        return TypeRef.leaf(cn);
+        return TypeRef.leaf(cn, scannedLeaves);
       } catch (IllegalArgumentException e) {
         // fall through
       }
     }
     if (tn instanceof ParameterizedTypeName pt) {
-      var wrapper = COMPOSITE_WRAPPERS.get(pt.rawType.canonicalName());
+      var wrapper = COMPOSITE_WRAPPERS.getOrNull(pt.rawType.canonicalName());
       if (wrapper != null && pt.typeArguments.size() == 1
           && pt.typeArguments.get(0) instanceof ClassName inner) {
-        return TypeRef.composite1(wrapper, TypeRef.leaf(inner));
+        return TypeRef.composite1(wrapper, TypeRef.leaf(inner, scannedLeaves));
       }
       if (wrapper != null && pt.typeArguments.size() == 2
           && pt.typeArguments.get(0) instanceof ClassName k
           && pt.typeArguments.get(1) instanceof ClassName v) {
-        return TypeRef.composite2(wrapper, TypeRef.leaf(k), TypeRef.leaf(v));
+        return TypeRef.composite2(wrapper, TypeRef.leaf(k, scannedLeaves), TypeRef.leaf(v, scannedLeaves));
       }
     }
     return TypeRef.opaque(tn);

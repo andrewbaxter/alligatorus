@@ -22,7 +22,7 @@ import org.objectweb.asm.Opcodes;
  * is to contribute a {@code POP} to scope-exit cleanup so that a Return-Jump
  * escaping the loop body restores stack shape.
  */
-public final class BindingIteratorStack implements Binding {
+public record BindingIteratorStack() implements Binding {
   @Override
   public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
     throw new IllegalStateException(
@@ -44,7 +44,7 @@ public final class BindingIteratorStack implements Binding {
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     for (var other : others) {
-      if (other != this && !this.equals(other)) {
+      if (!this.equals(other)) {
         return EResult.err(loc,
             "cannot merge " + getClass().getSimpleName()
                 + " with a differently-typed binding across branches");

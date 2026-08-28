@@ -70,6 +70,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.Result;
 import compilerxyz.util.TList;
 import java.util.function.Function;
+import compilerxyz.eval.dynamic.DynRuntime;
 
 @BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
@@ -270,7 +271,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                 return new Result.Ok<>(body);
               },
               (body) -> {
-                var funcData = new SourceFunctionData(body.defSetId(), body.name());
+                var funcData = new SourceFunctionData(body.defSetId(), body.name(), DynRuntime.freshUnique(xx));
                 funcData.artifactIdCell.set(idValue);
                 funcData.compiledClassName = body.compiledClassName();
                 funcData.compiledBytecode = body.compiledBytecode();
@@ -426,7 +427,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     @Override
     public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
       for (var other : others) {
-        if (other != this && !this.equals(other)) {
+        if (!this.equals(other)) {
           return EResult.err(loc,
               "cannot merge " + getClass().getSimpleName()
                   + " with a differently-typed binding across branches");
@@ -455,7 +456,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY, TypeSourceFunctionConst.class);
-    return oOpt.optIsSome() && data == oOpt.optUnwrap().data;
+    return oOpt.optIsSome() && data.identity.equals(oOpt.optUnwrap().data.identity);
   }
 
   @Override

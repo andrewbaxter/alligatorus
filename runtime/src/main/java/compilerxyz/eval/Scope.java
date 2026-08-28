@@ -42,7 +42,7 @@ public final class Scope {
 
   public ScopeLevel.Entry pushNamed(ConstKey name, Binding binding) {
     var id = vx.dropStateCounter.next();
-    var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id);
+    var entry = new ScopeLevel.Entry(Opt.some(name), binding, false, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
     levels.add(entry);
     return entry;
   }
@@ -54,7 +54,7 @@ public final class Scope {
   }
 
   public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
-    var level = new ScopeLevel.Labeled(label, new JumpKey());
+    var level = new ScopeLevel.Labeled(label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
     levels.add(level);
     return level;
   }
@@ -173,9 +173,8 @@ public final class Scope {
    * before evaluating the next expression.
    */
   public void adopt(Scope other) {
-    if (other != this) {
-      levels.clear();
-      levels.addAll(other.levels);
-    }
+    var src = TList.from(other.levels);
+    levels.clear();
+    levels.addAll(src);
   }
 }

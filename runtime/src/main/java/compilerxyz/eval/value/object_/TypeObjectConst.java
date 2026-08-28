@@ -40,6 +40,7 @@ import compilerxyz.gen.AspectFunction;
 import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectType;
+import compilerxyz.util.IList;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectArtifact;
@@ -87,7 +88,6 @@ import compilerxyz.util.Result;
 public record TypeObjectConst(
     TypeObjectMeta meta,
     Class externalHostClass,
-    Opt<Type> deferDynamic,
     Opt<ExporterRoot> exporter)
     implements
         Type,
@@ -110,11 +110,10 @@ public record TypeObjectConst(
     trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
     var castRules = new TList<TypeObjectCastRule>();
     castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
-    var meta = new TypeObjectMeta("type<" + descSuffix + ">", trivialIdentityAspects, castRules, new TList<TypeObjectCastFromRule>(), Opt.<ObjectAspectSource>none());
+    var meta = new TypeObjectMeta("type<" + descSuffix + ">", IList.from(trivialIdentityAspects), IList.from(castRules), IList.<TypeObjectCastFromRule>of(), Opt.<ObjectAspectSource>none());
     return new TypeObjectConst(
         meta,
         hostClass,
-        Opt.<Type>none(),
         Opt.<ExporterRoot>none());
   }
 
@@ -122,11 +121,11 @@ public record TypeObjectConst(
     return meta.typeDesc();
   }
 
-  public TList<TypeObjectCastRule> castRules() {
+  public IList<TypeObjectCastRule> castRules() {
     return meta.castRules();
   }
 
-  public TList<TypeObjectCastFromRule> castFromRules() {
+  public IList<TypeObjectCastFromRule> castFromRules() {
     return meta.castFromRules();
   }
 
@@ -138,7 +137,7 @@ public record TypeObjectConst(
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY, TypeObjectConst.class);
     return oOpt.optIsSome()
-        && externalHostClass == oOpt.optUnwrap().externalHostClass
+        && externalHostClass.getName().equals(oOpt.optUnwrap().externalHostClass.getName())
         && meta.typeDesc().equals(oOpt.optUnwrap().meta.typeDesc());
   }
 
@@ -328,11 +327,8 @@ public record TypeObjectConst(
         && wrapper.data() instanceof Type innerType) {
       return innerType.artifactableExportArtifact(xx, loc);
     }
-    if (self instanceof AspectArtifact concrete && concrete != this) {
-      return concrete.aspectArtifactExporter().artifactExporterExport(xx, loc, self);
-    }
     return EResult.err(
-        loc, typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type or AspectArtifact, got " + self.getClass());
+        loc, typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type, got " + self.getClass());
   }
 
   @Override
@@ -458,9 +454,7 @@ public record TypeObjectConst(
             instanceof AspectFunction innerAsp) {
       return innerAsp.aspectFunctionExceptionType(xx, loc, self);
     }
-    if (deferDynamic.optIsNone()) return Opt.none();
-    if (!(deferDynamic.optUnwrap() instanceof AspectFunction asp)) return Opt.none();
-    return asp.aspectFunctionExceptionType(xx, loc, self);
+    return Opt.none();
   }
 
   @Override

@@ -2,7 +2,7 @@ package compilerxyz.eval.dynamic;
 
 import compilerxyz.util.TList;
 
-public class JavaMethodDescriptor {
+public final class JavaMethodDescriptor {
   public static final JavaMethodDescriptor VOID_NOARGS =
       new JavaMethodDescriptor("()V");
 

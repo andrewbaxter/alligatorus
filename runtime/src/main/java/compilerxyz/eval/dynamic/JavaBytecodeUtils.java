@@ -42,7 +42,7 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.MethodVisitor;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 
 public class JavaBytecodeUtils {
@@ -298,24 +298,31 @@ public class JavaBytecodeUtils {
     var definedLabels = new TSet<Label>();
     var landKeys = new TSet<JumpKey>();
     freshenScan(code.code(), definedLabels, landKeys);
-    var labelMap = new TMap<Label, Label>();
+    var labelMap = new IdentityHashMap<Label, Label>();
     for (var l : definedLabels) labelMap.put(l, new Label());
-    var keyMap = new TMap<JumpKey, JumpKey>();
+    var keyMap = new IdentityHashMap<JumpKey, JumpKey>();
     for (var k : landKeys) keyMap.put(k, new JumpKey());
-    @SuppressWarnings("serial")
-    var labelNodeMap = new HashMap<LabelNode, LabelNode>() {
-      @Override
-      public LabelNode get(Object key) {
-        var ln = (LabelNode) key;
-        var existing = super.get(ln);
-        if (existing != null) return existing;
-        var mapped = labelMap.getOrNull(ln.getLabel());
-        var fresh = mapped == null ? ln : new LabelNode(mapped);
-        put(ln, fresh);
-        return fresh;
-      }
-    };
-    return freshenCode(code, labelMap, labelNodeMap, keyMap);
+    return freshenCode(code, labelMap, new FreshLabelNodes(labelMap), keyMap);
+  }
+
+  private static final class FreshLabelNodes extends IdentityHashMap<LabelNode, LabelNode> {
+    private static final long serialVersionUID = 0L;
+    private final IdentityHashMap<Label, Label> labelMap;
+
+    FreshLabelNodes(IdentityHashMap<Label, Label> labelMap) {
+      this.labelMap = labelMap;
+    }
+
+    @Override
+    public LabelNode get(Object key) {
+      var ln = (LabelNode) key;
+      var existing = super.get(ln);
+      if (existing != null) return existing;
+      var mapped = labelMap.get(ln.getLabel());
+      var fresh = mapped == null ? ln : new LabelNode(mapped);
+      put(ln, fresh);
+      return fresh;
+    }
   }
 
   private static void freshenScan(
@@ -342,9 +349,9 @@ public class JavaBytecodeUtils {
 
   private static CodeDynamic freshenCode(
       CodeDynamic cd,
-      TMap<Label, Label> labelMap,
-      Map<LabelNode, LabelNode> labelNodeMap,
-      TMap<JumpKey, JumpKey> keyMap) {
+      IdentityHashMap<Label, Label> labelMap,
+      IdentityHashMap<LabelNode, LabelNode> labelNodeMap,
+      IdentityHashMap<JumpKey, JumpKey> keyMap) {
     var _fbBc = cd.code();
     JavaBytecode _fbResult;
     if (_fbBc instanceof CodeDynamic _fbCd) {
@@ -366,13 +373,13 @@ public class JavaBytecodeUtils {
     } else if (_fbBc instanceof JavaBytecodeStoreLoad) {
       _fbResult = _fbBc;
     } else if (_fbBc instanceof JavaBytecodeLand _fbLand) {
-      var _fbNk = keyMap.getOrNull(_fbLand.jumpKey);
+      var _fbNk = keyMap.get(_fbLand.jumpKey);
       _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeLand(_fbNk);
     } else if (_fbBc instanceof JavaBytecodeJump _fbJump) {
-      var _fbNk = keyMap.getOrNull(_fbJump.jumpKey);
+      var _fbNk = keyMap.get(_fbJump.jumpKey);
       _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeJump(_fbNk);
     } else if (_fbBc instanceof JavaBytecodeGuarded _fbGuarded) {
-      var _fbNk = keyMap.getOrNull(_fbGuarded.dest);
+      var _fbNk = keyMap.get(_fbGuarded.dest);
       _fbResult = new JavaBytecodeGuarded(
           _fbNk == null ? _fbGuarded.dest : _fbNk,
           freshenCode(_fbGuarded.inner, labelMap, labelNodeMap, keyMap));
@@ -382,8 +389,8 @@ public class JavaBytecodeUtils {
     return new CodeDynamic(cd.loc(), _fbResult);
   }
 
-  private static Label freshenLabel(Label l, TMap<Label, Label> labelMap) {
-    var mapped = labelMap.getOrNull(l);
+  private static Label freshenLabel(Label l, IdentityHashMap<Label, Label> labelMap) {
+    var mapped = labelMap.get(l);
     return mapped == null ? l : mapped;
   }
 

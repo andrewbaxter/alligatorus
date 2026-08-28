@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -67,7 +68,9 @@ public final class AnalysisMain {
     launcher.buildModel();
     CtModel model = launcher.getModel();
 
-    var conventionFindings = new ConventionChecks(generatedFiles).run(model);
+    List<ConventionChecks.Finding> conventionFindings = new ArrayList<>();
+    conventionFindings.addAll(new ConventionChecks(generatedFiles).run(model));
+    conventionFindings.addAll(new ImmutabilityChecks(generatedFiles).run(model));
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (var f : conventionFindings) counts.merge(f.check(), 1, Integer::sum);
     System.out.println("=== Convention checks (" + conventionFindings.size() + " findings) ===");

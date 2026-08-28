@@ -40,10 +40,10 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
+import compilerxyz.util.IMap;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectArtifact;
 import compilerxyz.gen.AspectBind;
@@ -158,8 +158,8 @@ public record TypeByteDynamic()
         AspectOperatorBitNot,
         ExporterAny {
 
-  private static final TMap<ConstKey, Type> METHOD_FIELDS =
-      TMap.ofEntries(new Pair<>(new ConstKey.Str("to_string"), new TypeByteToStringDynamic()));
+  private static final IMap<ConstKey, TypeByteToStringDynamic> METHOD_FIELDS =
+      IMap.ofEntries(new Pair<>(new ConstKey.Str("to_string"), new TypeByteToStringDynamic()));
 
   @Override
   public String typeDesc() {
@@ -295,12 +295,12 @@ public record TypeByteDynamic()
 
   @Override
   public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    return TList.from(METHOD_FIELDS.keySet());
+    return METHOD_FIELDS.keys();
   }
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    return METHOD_FIELDS.getOpt(key);
+    return METHOD_FIELDS.getOpt(key).optMap(t -> t);
   }
 
   @Override

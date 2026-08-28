@@ -31,7 +31,7 @@ public final class CompileImportContext {
 
   public Opt<DefinitionSetClassLoader> classLoader = Opt.none();
 
-  public final Map<Object, Class<?>> compositeCache = new HashMap<>();
+  public final Map<String, Class<?>> compositeCache = new HashMap<>();
 
   public CompileImportContext(
       GlobalContext gx,

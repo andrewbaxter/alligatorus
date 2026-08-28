@@ -79,7 +79,7 @@ import compilerxyz.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6122L)
-public final class TypeMapDynamic
+public final class TypeMapDynamic<K extends Type, V extends Type>
     implements
         Type,
         AspectDynamicConst,
@@ -95,12 +95,12 @@ public final class TypeMapDynamic
         AspectStackValueDynamic,
         ExporterAny {
 
-  public final Type keyType;
-  public final Type valueType;
+  public final K keyType;
+  public final V valueType;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
       new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeMapDynamic(Type keyType, Type valueType) {
+  public TypeMapDynamic(K keyType, V valueType) {
     this.keyType = keyType;
     this.valueType = valueType;
   }

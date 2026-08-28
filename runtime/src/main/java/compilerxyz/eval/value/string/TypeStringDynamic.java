@@ -55,10 +55,10 @@ import compilerxyz.safejson.JsonValueNull;
 import compilerxyz.safejson.JsonValueNumber;
 import compilerxyz.safejson.JsonValueObject;
 import compilerxyz.safejson.JsonValueString;
+import compilerxyz.util.IMap;
 import compilerxyz.util.Opt;
 import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
-import compilerxyz.util.TMap;
 import java.util.function.Function;
 import compilerxyz.gen.AspectPostDeserialize;
 import compilerxyz.gen.GenAspectArtifact;
@@ -116,33 +116,12 @@ public record TypeStringDynamic()
       JavaMethodDescriptor.fromParts(
           JavaDataDescriptor.fromClass(String.class), TList.of());
 
-  private static final Type EMPTY_TUPLE =
-      new Tuple(Opt.none(), new TList<>());
-
-  private static final TMap<ConstKey, Type> METHOD_FIELDS =
-      TMap.ofEntries(
+  private static final IMap<ConstKey, TypeStringMethodDynamic> METHOD_FIELDS =
+      IMap.ofEntries(
           new Pair<>(
-              new ConstKey.Str("toLowerCase"),
-              new TypeMethodDynamic(
-                  new TypeStringDynamic(),
-                  TList.<FunctionParam>of(),
-                  Opt.some(new TypeStringDynamic()),
-                  JAVA_STRING,
-                  "toLowerCase",
-                  DESC_TO_STR,
-                  false,
-                  false)),
+              new ConstKey.Str("toLowerCase"), new TypeStringMethodDynamic("toLowerCase")),
           new Pair<>(
-              new ConstKey.Str("toUpperCase"),
-              new TypeMethodDynamic(
-                  new TypeStringDynamic(),
-                  TList.<FunctionParam>of(),
-                  Opt.some(new TypeStringDynamic()),
-                  JAVA_STRING,
-                  "toUpperCase",
-                  DESC_TO_STR,
-                  false,
-                  false)));
+              new ConstKey.Str("toUpperCase"), new TypeStringMethodDynamic("toUpperCase")));
 
   @Override
   public String typeDesc() {
@@ -262,12 +241,12 @@ public record TypeStringDynamic()
 
   @Override
   public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-    return TList.from(METHOD_FIELDS.keySet());
+    return METHOD_FIELDS.keys();
   }
 
   @Override
   public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-    return METHOD_FIELDS.getOpt(key);
+    return METHOD_FIELDS.getOpt(key).optMap(t -> t);
   }
 
   @Override

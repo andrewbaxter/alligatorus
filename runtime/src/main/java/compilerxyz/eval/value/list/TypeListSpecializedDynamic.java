@@ -62,7 +62,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 
-public final class TypeListSpecializedDynamic
+public final class TypeListSpecializedDynamic<T extends Type>
     implements
         ListDynamic,
         AspectFieldUseDynamic,
@@ -77,13 +77,13 @@ public final class TypeListSpecializedDynamic
         AspectIterable,
         AspectStackValueDynamic {
 
-  public final Type elementType;
+  public final T elementType;
   public final JavaInternalName storeName;
   public final Unique identity;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
       new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeListSpecializedDynamic(Type elementType, JavaInternalName storeName, Unique identity) {
+  public TypeListSpecializedDynamic(T elementType, JavaInternalName storeName, Unique identity) {
     this.elementType = elementType;
     this.storeName = storeName;
     this.identity = identity;

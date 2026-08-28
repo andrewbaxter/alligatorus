@@ -1,6 +1,7 @@
 package compilerxyz.eval;
 
 import compilerxyz.annotations.BuiltinFull;
+import compilerxyz.annotations.IdentityToken;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JavaInternalName;
 import compilerxyz.eval.value.object_.ObjectAspectSource;
@@ -22,6 +23,7 @@ import compilerxyz.util.TList;
  * whatever their control model requires).
  */
 @BuiltinFull(uniqueId = 6026L)
+@IdentityToken
 public final class JumpKey {
 
 }

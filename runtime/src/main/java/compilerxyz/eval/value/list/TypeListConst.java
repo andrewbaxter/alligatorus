@@ -66,7 +66,7 @@ import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinLight(uniqueId = 6152L)
-public final class TypeListConst
+public final class TypeListConst<T extends Type>
     implements
         Type,
         AspectArtifact,
@@ -78,11 +78,11 @@ public final class TypeListConst
         AspectListConst,
         ExporterAny {
 
-  public final Type elementType;
+  public final T elementType;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
       new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeListConst(Type elementType) {
+  public TypeListConst(T elementType) {
     this.elementType = elementType;
   }
 
@@ -157,9 +157,9 @@ public final class TypeListConst
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           TypeListConst list;
-          if (self instanceof TypeListConst t) {
+          if (self instanceof TypeListConst<?> t) {
             list = t;
-          } else if (self instanceof ValueObjectConst v && v.type() instanceof TypeListConst t) {
+          } else if (self instanceof ValueObjectConst v && v.type() instanceof TypeListConst<?> t) {
             list = t;
           } else {
             return EResult.err(
@@ -261,8 +261,8 @@ public final class TypeListConst
   @Override
   public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
     return switch (GenLists.listDynamic(xx, elementType)) {
-      case TypeListSpecializedDynamic spec -> spec.aspectConsumeDynamicJvmClass(xx);
-      case TypeListBoxedDynamic boxed ->
+      case TypeListSpecializedDynamic<?> spec -> spec.aspectConsumeDynamicJvmClass(xx);
+      case TypeListBoxedDynamic<?> boxed ->
           JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class));
     };
   }
@@ -274,7 +274,7 @@ public final class TypeListConst
     }
     var elements = elementsOf(cv.value().optUnwrap());
     return switch (GenLists.listDynamic(xx, elementType)) {
-      case TypeListSpecializedDynamic spec -> {
+      case TypeListSpecializedDynamic<?> spec -> {
         var dynamicElements = new TList<CodeDynamic>();
         for (var element : elements) {
           var convRes =
@@ -293,7 +293,7 @@ public final class TypeListConst
         }
         yield EResult.ok(spec.emitNew(xx, loc, dynamicElements));
       }
-      case TypeListBoxedDynamic boxed -> {
+      case TypeListBoxedDynamic<?> boxed -> {
         var listName = JavaInternalName.fromClass(TList.class);
         var seq = new JavaBytecodeSequence();
         seq.add(
@@ -403,7 +403,7 @@ public final class TypeListConst
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var someOpt = other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_LIST_CONST_IDENTITY);
     return someOpt.optIsSome()
-        && someOpt.optUnwrap() instanceof TypeListConst o
+        && someOpt.optUnwrap() instanceof TypeListConst<?> o
         && elementType.typeIsEqual(xx, o.elementType);
   }
 

@@ -30,6 +30,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
+import compilerxyz.util.IMap;
+import compilerxyz.util.Pair;
 
 public final class BuiltinPushStructScanner {
   private BuiltinPushStructScanner() {}
@@ -54,15 +56,15 @@ public final class BuiltinPushStructScanner {
   private static final ClassName TYPE_EXPR =
       ClassName.get("compilerxyz.eval.value.expr", "TypeExpr");
 
-  private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = new HashMap<>();
+  private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS =
+      IMap.ofEntries(
+          new Pair<>("java.lang.String", TYPE_STRING_DYNAMIC),
+          new Pair<>("java.lang.Boolean", TYPE_BOOL_DYNAMIC),
+          new Pair<>("compilerxyz.eval.ConstKey", TYPE_CONSTKEY_DYNAMIC),
+          new Pair<>("compilerxyz.eval.expr.StagedExprCell", TYPE_EXPR));
 
-  static {
-    VALUE_CLASS_DESCRIPTORS.put("java.lang.String", TYPE_STRING_DYNAMIC);
-    VALUE_CLASS_DESCRIPTORS.put("java.lang.Boolean", TYPE_BOOL_DYNAMIC);
-    VALUE_CLASS_DESCRIPTORS.put("compilerxyz.eval.expr.StagedExprCell", TYPE_EXPR);
-  }
-
-  public static TList<PushStructsGen.PushStructSpec> scanRoot(Path runtimeSourceRoot)
+  public static TList<PushStructsGen.PushStructSpec> scanRoot(
+      Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves)
       throws IOException {
     var out = new TList<PushStructsGen.PushStructSpec>();
     try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
@@ -85,7 +87,7 @@ public final class BuiltinPushStructScanner {
             }
           }
           if (ann == null) continue;
-          out.add(extractStruct(c, ann, imports, pkg));
+          out.add(extractStruct(c, ann, imports, pkg, scannedLeaves));
         }
       }
     }
@@ -93,7 +95,11 @@ public final class BuiltinPushStructScanner {
   }
 
   private static PushStructsGen.PushStructSpec extractStruct(
-      ClassOrInterfaceDeclaration cls, AnnotationExpr ann, TMap<String, String> imports, String pkg) {
+      ClassOrInterfaceDeclaration cls,
+      AnnotationExpr ann,
+      TMap<String, String> imports,
+      String pkg,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     var name = cls.getNameAsString();
 
     var dataFields = new TList<NamedTypeRef>();
@@ -102,7 +108,7 @@ public final class BuiltinPushStructScanner {
       var ctor = ctors.get(0);
       for (var p : ctor.getParameters()) {
         var srcName = snakeStripTrailing(p.getNameAsString());
-        dataFields.add(new NamedTypeRef(srcName, typeRefOf(p.getType(), imports, pkg)));
+        dataFields.add(new NamedTypeRef(srcName, typeRefOf(p.getType(), imports, pkg, scannedLeaves)));
       }
     }
 
@@ -112,7 +118,7 @@ public final class BuiltinPushStructScanner {
       for (var v : f.getVariables()) {
         var javaName = v.getNameAsString();
         var srcName = snakeStripTrailing(javaName);
-        var tr = typeRefOf(f.getElementType(), imports, pkg);
+        var tr = typeRefOf(f.getElementType(), imports, pkg, scannedLeaves);
         fields.add(
             new PushStructsGen.PushField(srcName, javaName, tr, CodeBlock.of("")));
       }
@@ -130,10 +136,10 @@ public final class BuiltinPushStructScanner {
       for (int i = 1; i < params.size(); i++) {
         var p = params.get(i);
         var argSrcName = snakeStripTrailing(p.getNameAsString());
-        args.add(new NamedTypeRef(argSrcName, typeRefOf(p.getType(), imports, pkg)));
+        args.add(new NamedTypeRef(argSrcName, typeRefOf(p.getType(), imports, pkg, scannedLeaves)));
       }
-      var retExpr = returnExpr(m.getType(), imports, pkg);
-      var retClass = returnTypeRef(m.getType(), imports, pkg);
+      var retExpr = returnExpr(m.getType(), imports, pkg, scannedLeaves);
+      var retClass = returnTypeRef(m.getType(), imports, pkg, scannedLeaves);
       methods.add(new PushMethod(srcMethodName, args, retExpr, CodeBlock.of(""), "", retClass));
     }
 
@@ -147,15 +153,19 @@ public final class BuiltinPushStructScanner {
     return fqn.equals("compilerxyz.eval.ExprContext");
   }
 
-  private static String returnExpr(Type t, TMap<String, String> imports, String pkg) {
+  private static String returnExpr(
+      Type t, TMap<String, String> imports, String pkg,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     if (t instanceof VoidType) return "()";
-    var tr = typeRefOf(t, imports, pkg);
+    var tr = typeRefOf(t, imports, pkg, scannedLeaves);
     return tr.dynamicType().toString();
   }
 
-  private static TypeRef returnTypeRef(Type t, TMap<String, String> imports, String pkg) {
+  private static TypeRef returnTypeRef(
+      Type t, TMap<String, String> imports, String pkg,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     if (t instanceof VoidType) return TypeRef.opaque(TypeName.VOID);
-    return typeRefOf(t, imports, pkg);
+    return typeRefOf(t, imports, pkg, scannedLeaves);
   }
 
   private static long literalLong(MemberValuePair p) {
@@ -176,12 +186,14 @@ public final class BuiltinPushStructScanner {
     return s;
   }
 
-  private static TypeRef typeRefOf(Type t, TMap<String, String> imports, String pkg) {
+  private static TypeRef typeRefOf(
+      Type t, TMap<String, String> imports, String pkg,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     if (t instanceof ClassOrInterfaceType cit
         && cit.getNameAsString().equals("Opt")
         && cit.getTypeArguments().isPresent()
         && cit.getTypeArguments().get().size() == 1) {
-      var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg);
+      var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg, scannedLeaves);
       return TypeRef.composite1(
           ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"), innerRef);
     }
@@ -189,38 +201,32 @@ public final class BuiltinPushStructScanner {
         && cit.getNameAsString().equals("EResult")
         && cit.getTypeArguments().isPresent()
         && cit.getTypeArguments().get().size() == 1) {
-      var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg);
+      var innerRef = typeRefOf(cit.getTypeArguments().get().get(0), imports, pkg, scannedLeaves);
       return TypeRef.composite1(
           ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"), innerRef);
     }
     var tn = typeNameOf(t, imports, pkg);
-    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC);
+    if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
     if (tn instanceof ClassName cn) {
-      var descriptor = VALUE_CLASS_DESCRIPTORS.get(cn.canonicalName());
-      if (descriptor != null) return TypeRef.leaf(descriptor);
+      var descriptor = VALUE_CLASS_DESCRIPTORS.getOrNull(cn.canonicalName());
+      if (descriptor != null) return TypeRef.leaf(descriptor, scannedLeaves);
       try {
-        return TypeRef.leaf(cn);
+        return TypeRef.leaf(cn, scannedLeaves);
       } catch (IllegalArgumentException e) {
         // fall through
       }
     }
-    if (tn instanceof ParameterizedTypeName pt) {
-      // Special case: Map<Object, Object> -> record type (Map<ConstKey, Expr>).
-      if (pt.rawType.canonicalName().equals("java.util.Map")
-          && pt.typeArguments.size() == 2
-          && pt.typeArguments.get(0).equals(ClassName.OBJECT)
-          && pt.typeArguments.get(1).equals(ClassName.OBJECT)) {
-        return new TypeRef(
-            ParameterizedTypeName.get(
-                ClassName.get("java.util", "Map"),
-                ClassName.OBJECT,
-                ClassName.OBJECT),
-            CodeBlock.of(
-                "new $T(new $T(), new $T())",
-                TYPE_MAP_DYNAMIC,
-                TYPE_CONSTKEY_DYNAMIC,
-                TYPE_EXPR));
-      }
+    if (tn instanceof ParameterizedTypeName pt
+        && pt.rawType.canonicalName().equals("compilerxyz.util.TOrderedMap")
+        && pt.typeArguments.size() == 2
+        && pt.typeArguments.get(0) instanceof ClassName k
+        && pt.typeArguments.get(1) instanceof ClassName v) {
+      var kDesc = VALUE_CLASS_DESCRIPTORS.getOrNull(k.canonicalName());
+      var vDesc = VALUE_CLASS_DESCRIPTORS.getOrNull(v.canonicalName());
+      return TypeRef.composite2(
+          TYPE_MAP_DYNAMIC,
+          TypeRef.leaf(kDesc != null ? kDesc : k, scannedLeaves),
+          TypeRef.leaf(vDesc != null ? vDesc : v, scannedLeaves));
     }
     return TypeRef.opaque(tn);
   }

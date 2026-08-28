@@ -35,6 +35,7 @@ import compilerxyz.gen.GenAspectFunction;
 import compilerxyz.gen.AspectInitialBind;
 import compilerxyz.gen.AspectStackValueDynamic;
 import compilerxyz.util.Opt;
+import compilerxyz.util.IList;
 import compilerxyz.util.TList;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -49,7 +50,7 @@ import compilerxyz.eval.dynamic.JvmConstants;
 @BuiltinLight(uniqueId = 6112L)
 public record TypeMethodDynamic(
     Type receiver,
-    TList<FunctionParam> params,
+    IList<FunctionParam> params,
     Opt<Type> ret,
     JavaInternalName klass,
     String methodName,
@@ -71,7 +72,7 @@ public record TypeMethodDynamic(
   }
 
   public Type arg() {
-    return FunctionParam.argType(params);
+    return FunctionParam.argType(new TList<FunctionParam>().addAll(params));
   }
 
 
@@ -106,81 +107,10 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-    var receiverDyn = self.code().codeDynamic();
-    if (receiverDyn == null) {
-      return EResult.err(loc, "TypeMethodDynamic::call: receiver has no dynamic code");
-    }
-    var argType = arg();
-    EResult<TList<CodeDynamic>> argsDynRes;
-    if (DynUtil.zeroArgSignature(xx, argType)) {
-      argsDynRes = EResult.ok(new TList<>());
-    } else {
-      var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
-      if (convertedRes.hasErrors()) return convertedRes.reerr();
-      var converted = convertedRes.requireValue("TypeMethodDynamic::call converted arg");
-      argsDynRes =
-          DynUtil.destructurePositional(xx, loc, argType, converted);
-      if (argsDynRes.hasErrors()) return argsDynRes.reerr();
-    }
-    var seq = new JavaBytecodeSequence();
-    seq.add(receiverDyn);
-    if (needsExprContext) {
-      seq.add(
-          JavaBytecodeUtils.accessStaticField(
-              loc,
-              JavaInternalName.of(xx.vx.evalRootInternalName),
-              EvalRootEmitter.EXPR_CONTEXT_FIELD,
-              EvalRootEmitter.DESC_EXPR_CONTEXT));
-    }
-    var args = argsDynRes.requireValue("TypeMethodDynamic::call args");
-    var paramDescs = new TList<JavaDataDescriptor>();
-    {
-      var _pd = descriptor.value();
-      if (_pd.isEmpty() || _pd.charAt(0) != '(') {
-        throw new IllegalStateException("JavaMethodDescriptor missing '(': " + _pd);
-      }
-      int _pdi = 1;
-      while (_pdi < _pd.length() && _pd.charAt(_pdi) != ')') {
-        int _pdStart = _pdi;
-        while (_pdi < _pd.length() && _pd.charAt(_pdi) == '[') _pdi++;
-        char _pdc = _pd.charAt(_pdi);
-        if (_pdc == 'L') {
-          while (_pdi < _pd.length() && _pd.charAt(_pdi) != ';') _pdi++;
-          _pdi++;
-        } else {
-          _pdi++;
-        }
-        paramDescs.add(JavaDataDescriptor.create(_pd.substring(_pdStart, _pdi)));
-      }
-    }
-    var paramOffset = needsExprContext ? 1 : 0;
-    for (int i = 0; i < args.size(); i++) {
-      seq.add(args.get(i));
-      var pi = i + paramOffset;
-      if (pi < paramDescs.size()) {
-        var expected = paramDescs.get(pi);
-        if (expected.value().startsWith("L") && !expected.value().equals("Ljava/lang/Object;")) {
-          seq.add(JavaBytecodeUtils.cast(loc, expected));
-        }
-      }
-    }
-    if (isInterface) {
-      seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, klass, methodName, descriptor));
-    } else {
-      seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
-    }
-    var seqCode = new CodeDynamic(loc, seq);
-    if (ret.optIsNone()) {
-      return EResult.ok(new CodeValue(Code.of(loc, seqCode), EvalOutcome.NO_VALUE));
-    }
-    var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
-    if (retStackRes.hasErrors()) return retStackRes.reerr();
-    return EResult.ok(
-        retStackRes
-            .requireValue("TypeMethodDynamic::call ret stack")
-            .aspectStackValueDynamicToValue(xx, loc, seqCode));
+    return TypeMethodShared.callDynamic(
+        xx, loc, self, argument, "TypeMethodDynamic", arg(), ret, klass, methodName, descriptor,
+        isInterface, needsExprContext);
   }
-
 
   @Override
   public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
@@ -194,9 +124,7 @@ public record TypeMethodDynamic(
 
   @Override
   public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-    var dyn = cv.code().codeDynamic();
-    if (dyn != null) return EResult.ok(dyn);
-    return EResult.err(loc, "TypeMethodDynamic::toDynamic: CodeValue has no dynamic code");
+    return TypeMethodShared.toDynamic(loc, cv, "TypeMethodDynamic");
   }
 
   @Override
@@ -229,7 +157,7 @@ public record TypeMethodDynamic(
   @Override
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var oOpt = AspectLookup.getMaybe(xx, other, GenTrivialIdentityAspects.TYPE_METHOD_DYNAMIC_IDENTITY, TypeMethodDynamic.class);
-    return oOpt.optIsSome() && receiver.typeIsEqual(xx, oOpt.optUnwrap().receiver) && TypeFunctionDynamic.paramsEqual(xx, params, oOpt.optUnwrap().params) && TypeFunctionDynamic.retEqual(xx, ret, oOpt.optUnwrap().ret) && klass.equals(oOpt.optUnwrap().klass) && methodName.equals(oOpt.optUnwrap().methodName) && isInterface == oOpt.optUnwrap().isInterface && needsExprContext == oOpt.optUnwrap().needsExprContext;
+    return oOpt.optIsSome() && receiver.typeIsEqual(xx, oOpt.optUnwrap().receiver) && TypeFunctionDynamic.paramsEqual(xx, new TList<FunctionParam>().addAll(params), new TList<FunctionParam>().addAll(oOpt.optUnwrap().params)) && TypeFunctionDynamic.retEqual(xx, ret, oOpt.optUnwrap().ret) && klass.equals(oOpt.optUnwrap().klass) && methodName.equals(oOpt.optUnwrap().methodName) && isInterface == oOpt.optUnwrap().isInterface && needsExprContext == oOpt.optUnwrap().needsExprContext;
   }
 
   @Override

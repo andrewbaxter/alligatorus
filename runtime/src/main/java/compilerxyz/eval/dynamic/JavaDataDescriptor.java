@@ -17,7 +17,7 @@ import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 
 @BuiltinFull(uniqueId = 6014L)
-public class JavaDataDescriptor {
+public final class JavaDataDescriptor {
     public static final JavaDataDescriptor DESC_VOID = new JavaDataDescriptor("V");
     public static final JavaDataDescriptor DESC_INT = new JavaDataDescriptor("I");
     public static final JavaDataDescriptor DESC_BYTE = new JavaDataDescriptor("B");
@@ -49,16 +49,20 @@ public class JavaDataDescriptor {
     }
 
     public static JavaDataDescriptor fromClass(Class<?> t) {
-        if (t == int.class) return DESC_INT;
-        if (t == byte.class) return DESC_BYTE;
-        if (t == char.class) return DESC_CHAR;
-        if (t == short.class) return DESC_SHORT;
-        if (t == long.class) return DESC_LONG;
-        if (t == boolean.class) return DESC_BOOL;
-        if (t == float.class) return DESC_FLOAT;
-        if (t == double.class) return DESC_DOUBLE;
-        if (t == void.class) return DESC_VOID;
-        if (t.isPrimitive()) throw new AssertionError("Unknown primitive: " + t);
+        if (t.isPrimitive()) {
+            return switch (t.getName()) {
+                case "int" -> DESC_INT;
+                case "byte" -> DESC_BYTE;
+                case "char" -> DESC_CHAR;
+                case "short" -> DESC_SHORT;
+                case "long" -> DESC_LONG;
+                case "boolean" -> DESC_BOOL;
+                case "float" -> DESC_FLOAT;
+                case "double" -> DESC_DOUBLE;
+                case "void" -> DESC_VOID;
+                default -> throw new AssertionError("Unknown primitive: " + t);
+            };
+        }
         if (t.isArray()) return new JavaDataDescriptor("[" + fromClass(t.getComponentType()).value);
         return fromJVMName(JavaInternalName.fromClass(t));
     }

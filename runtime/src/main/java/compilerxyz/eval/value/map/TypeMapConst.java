@@ -33,14 +33,14 @@ import compilerxyz.util.TList;
 import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6162L)
-public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
+public final class TypeMapConst<K extends Type, V extends Type> implements Type, AspectArtifact, ExporterAny {
 
-  public final Type keyType;
-  public final Type valueType;
+  public final K keyType;
+  public final V valueType;
   public final ArtifactSupport.ArtifactIdHolder artifactIdCell =
       new ArtifactSupport.ArtifactIdHolder();
 
-  public TypeMapConst(Type keyType, Type valueType) {
+  public TypeMapConst(K keyType, V valueType) {
     this.keyType = keyType;
     this.valueType = valueType;
   }
@@ -82,10 +82,10 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
             ExporterAny self,
             Function<JsonValue, ArtifactBody> makeBody) {
           TypeMapConst map;
-          if (self instanceof TypeMapConst t) {
+          if (self instanceof TypeMapConst<?, ?> t) {
             map = t;
           } else if (self instanceof ValueObjectConst v
-              && v.type() instanceof TypeMapConst t) {
+              && v.type() instanceof TypeMapConst<?, ?> t) {
             map = t;
           } else {
             return EResult.err(
@@ -199,7 +199,7 @@ public final class TypeMapConst implements Type, AspectArtifact, ExporterAny {
   public boolean typeIsEqual(ExprContext xx, Type other) {
     var someOpt = other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY);
     return someOpt.optIsSome()
-        && someOpt.optUnwrap() instanceof TypeMapConst o
+        && someOpt.optUnwrap() instanceof TypeMapConst<?, ?> o
         && keyType.typeIsEqual(xx, o.keyType)
         && valueType.typeIsEqual(xx, o.valueType);
   }

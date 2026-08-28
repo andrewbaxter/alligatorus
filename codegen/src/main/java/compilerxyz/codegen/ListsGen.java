@@ -8,6 +8,7 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
+import compilerxyz.util.IList;
 import compilerxyz.util.TList;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -44,8 +45,8 @@ public final class ListsGen {
   private record Prim(
       String name, String storeSimple, ClassName elementClass, long uniqueId) {}
 
-  private static final TList<Store> STORES =
-      TList.of(
+  private static final IList<Store> STORES =
+      IList.of(
           new Store("ListStoreInt", TypeName.INT),
           new Store("ListStoreLong", TypeName.LONG),
           new Store("ListStoreShort", TypeName.SHORT),
@@ -54,8 +55,8 @@ public final class ListsGen {
           new Store("ListStoreDouble", TypeName.DOUBLE),
           new Store("ListStoreBool", TypeName.BOOLEAN));
 
-  private static final TList<Prim> PRIMS =
-      TList.of(
+  private static final IList<Prim> PRIMS =
+      IList.of(
           new Prim(
               "Int",
               "ListStoreInt",

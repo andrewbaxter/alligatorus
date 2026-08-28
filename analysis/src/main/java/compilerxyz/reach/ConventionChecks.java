@@ -38,8 +38,8 @@ public final class ConventionChecks {
 
   public record Finding(String check, String file, int line, String message) {}
 
-  private static final Set<String> OBJECT_METHODS = Set.of("equals", "hashCode", "toString");
-  private static final Set<String> JDK_OPTIONAL =
+  private final Set<String> objectMethods = Set.of("equals", "hashCode", "toString");
+  private final Set<String> jdkOptional =
       Set.of(
           "java.util.Optional", "java.util.OptionalInt", "java.util.OptionalLong",
           "java.util.OptionalDouble");
@@ -66,7 +66,7 @@ public final class ConventionChecks {
           String _cimPrefix = Character.toLowerCase(_cimName.charAt(0)) + _cimName.substring(1);
           for (CtMethod<?> _cimM : iface.getMethods()) {
             if (_cimM.hasModifier(ModifierKind.STATIC) || _cimM.hasModifier(ModifierKind.PRIVATE)) continue;
-            if (OBJECT_METHODS.contains(_cimM.getSimpleName())) continue;
+            if (objectMethods.contains(_cimM.getSimpleName())) continue;
             if (!_cimM.getTopDefinitions().isEmpty()) continue;
             if (_cimM.getSimpleName().startsWith(_cimPrefix)) continue;
             report(
@@ -143,7 +143,7 @@ public final class ConventionChecks {
       if (tr.isImplicit()) continue;
       var _ssTrPos = tr.getPosition();
       String _ssTrSnippet = snippetOf(_ssTrPos);
-      if (JDK_OPTIONAL.contains(tr.getQualifiedName())
+      if (jdkOptional.contains(tr.getQualifiedName())
           && tr.getRoleInParent() == CtRole.TYPE
           && _ssTrSnippet.contains("Optional")) {
         report("AvoidJdkOptional", tr, "Use compilerxyz.util.Opt instead of java.util.Optional.");

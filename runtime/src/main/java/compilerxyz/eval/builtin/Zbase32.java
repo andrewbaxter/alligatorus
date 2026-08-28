@@ -8,12 +8,6 @@ public final class Zbase32 {
   private Zbase32() {}
 
   private static final String ALPHABET = "ybndrfg8ejkmcpqxot1uwisza345h769";
-  private static final int[] DECODE = new int[128];
-
-  static {
-    for (var i = 0; i < DECODE.length; i++) DECODE[i] = -1;
-    for (var i = 0; i < ALPHABET.length(); i++) DECODE[ALPHABET.charAt(i)] = i;
-  }
 
   public static byte[] decode(String encoded) {
     var out = new ByteArrayOutputStream(encoded.length() * 5 / 8 + 1);
@@ -21,10 +15,11 @@ public final class Zbase32 {
     var bits = 0;
     for (var i = 0; i < encoded.length(); i++) {
       var c = encoded.charAt(i);
-      if (c >= DECODE.length || DECODE[c] < 0) {
+      var v = ALPHABET.indexOf(c);
+      if (v < 0) {
         throw new IllegalArgumentException("zbase32.decode: invalid character '" + c + "'");
       }
-      buffer = (buffer << 5) | DECODE[c];
+      buffer = (buffer << 5) | v;
       bits += 5;
       if (bits >= 8) {
         bits -= 8;

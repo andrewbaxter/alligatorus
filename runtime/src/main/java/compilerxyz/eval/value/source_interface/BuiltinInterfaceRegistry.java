@@ -1,6 +1,7 @@
 package compilerxyz.eval.value.source_interface;
 
 import compilerxyz.eval.ConstKey;
+import compilerxyz.eval.DefSetId;
 import compilerxyz.eval.Type;
 import compilerxyz.eval.Unique;
 import compilerxyz.eval.value.function.TypeMethodDynamic;
@@ -8,7 +9,6 @@ import compilerxyz.eval.value.object_.ObjectAspectSource;
 import compilerxyz.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.eval.value.record.Record;
 import compilerxyz.util.Opt;
-import java.util.concurrent.ConcurrentHashMap;
 import compilerxyz.gen.GenAspectBind;
 import compilerxyz.gen.GenAspectBindDynamic;
 import compilerxyz.gen.GenAspectConsumeDynamic;
@@ -30,14 +30,10 @@ import compilerxyz.gen.GenType;
 import compilerxyz.gen.GenValue;
 
 public final class BuiltinInterfaceRegistry {
-  private static final ConcurrentHashMap<BuiltinInterfaceKind, InterfaceData> CACHE =
-      new ConcurrentHashMap<>();
-
   private BuiltinInterfaceRegistry() {}
 
   public static InterfaceData resolve(BuiltinInterfaceKind kind) {
-    return CACHE.computeIfAbsent(kind, k -> {
-      Type t = switch (k) {
+      Type t = switch (kind) {
         case VALUE -> GenValue.dynamicType();
         case TYPE -> GenType.dynamicType();
         case ASPECT_FUNCTION -> GenAspectFunction.dynamicType();
@@ -101,7 +97,7 @@ public final class BuiltinInterfaceRegistry {
           yield Opt.<BuiltinInterfaceKind>none();
         }
       };
-      var data = new InterfaceData(null, staticSrc2.identity(), kind2);
+      var data = new InterfaceData(Opt.<DefSetId>none(), staticSrc2.identity(), kind2);
       data.aspectId = Opt.some(staticSrc2.id());
       data.isAspect = !staticSrc2.identity().equals(staticSrc2.id());
       data.description = Opt.some(_tod.typeDesc());
@@ -128,7 +124,6 @@ public final class BuiltinInterfaceRegistry {
         data.methods.add(md);
       }
       return data;
-    });
   }
 
 }

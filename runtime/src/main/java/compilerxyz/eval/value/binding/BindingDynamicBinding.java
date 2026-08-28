@@ -52,8 +52,9 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
   @Override
   public EResult<Binding> bindingMerge(ExprContext xx, QExprId loc, TList<Binding> others) {
     Type mergedType = type_;
+    boolean merged = false;
     for (var other : others) {
-      if (other == this || this.equals(other)) continue;
+      if (this.equals(other)) continue;
       if (!(other instanceof BindingDynamicBinding ob) || !dynamicKey.equals(ob.dynamicKey)) {
         return EResult.err(loc,
             "cannot merge " + getClass().getSimpleName()
@@ -73,8 +74,9 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
       mergedActive.addAll(aOpt.optUnwrap().active);
       mergedActive.addAll(bOpt.optUnwrap().active);
       mergedType = aOpt.optUnwrap().withActiveVariants(mergedActive);
+      merged = true;
     }
-    if (mergedType == type_) {
+    if (!merged) {
       return EResult.ok(this);
     }
     return EResult.ok(new BindingDynamicBinding(dynamicKey, mergedType));

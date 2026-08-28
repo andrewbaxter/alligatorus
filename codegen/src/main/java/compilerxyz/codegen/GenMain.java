@@ -18,7 +18,6 @@ import compilerxyz.codegen.experimental.BuiltinPushStructScanner;
 import compilerxyz.codegen.experimental.CodegenDescriptorScanner;
 import compilerxyz.codegen.experimental.DynamicTypeScanner;
 import compilerxyz.codegen.experimental.JavaAspectExtractor;
-import compilerxyz.codegen.util.DynamicTypes;
 import java.util.HashSet;
 
 public final class GenMain {
@@ -55,23 +54,18 @@ public final class GenMain {
 
     var scannedLeaves =
         DynamicTypeScanner.scanRoot(runtimeSourceRoot);
-    BuiltinInterfacesGen.setScannedLeafDescriptors(scannedLeaves);
-    DynamicTypes.setScannedLeaves(scannedLeaves);
     DynamicTypesGen.run(outRoot, formatter, scannedLeaves);
 
     var scan = JavaAspectExtractor.scanRoot(runtimeSourceRoot);
-    BuiltinInterfacesGen.run(outRoot, formatter, aspectIds, scan.builtins());
+    BuiltinInterfacesGen.run(outRoot, formatter, aspectIds, scan.builtins(), scannedLeaves);
     var hostNames = new HashSet<String>();
     var links = new TList<String>();
     for (var s : scan.builtins()) {
       hostNames.add(s.pkg() + "." + s.simpleName());
       links.add("Gen" + s.simpleName());
     }
-    BuiltinTreeGen.setBuiltinInterfaceHostNames(hostNames);
-    BuiltinTreeGen.setLinkClassNames(links);
     var pathEntries =
-        BuiltinPathScanner.scanRoot(runtimeSourceRoot);
-    BuiltinTreeGen.setScannedPathEntries(pathEntries);
+        BuiltinPathScanner.scanRoot(runtimeSourceRoot, scannedLeaves);
     var scannedIdentities =
         BuiltinIdentityScanner.scanRoot(runtimeSourceRoot);
     var identityExtras = new TList<IdentitiesGen.IdentitySpec>();
@@ -83,13 +77,13 @@ public final class GenMain {
     ListsGen.run(outRoot, formatter);
 
     var scannedPushStructs =
-        BuiltinPushStructScanner.scanRoot(runtimeSourceRoot);
+        BuiltinPushStructScanner.scanRoot(runtimeSourceRoot, scannedLeaves);
     PushStructsGen.run(
         outRoot,
         formatter,
         PushStructsGen.specs(),
         scannedPushStructs);
-    BuiltinTreeGen.run(outRoot, formatter, scopeIds);
+    BuiltinTreeGen.run(outRoot, formatter, scopeIds, links, pathEntries, hostNames, scannedLeaves);
     CodecsGen.run(outRoot, formatter, runtimeSourceRoot);
 
     var codegenDescriptors =

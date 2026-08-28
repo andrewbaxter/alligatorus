@@ -15,6 +15,7 @@ import compilerxyz.codegen.experimental.BuiltinPathScanner;
 import compilerxyz.util.Opt;
 import compilerxyz.util.TList;
 import compilerxyz.util.TSet;
+import compilerxyz.util.TMap;
 import java.io.IOException;
 import java.nio.file.Path;
 import javax.lang.model.element.Modifier;
@@ -22,6 +23,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import compilerxyz.util.IMap;
+import compilerxyz.util.IList;
+import compilerxyz.util.Pair;
 
 public final class BuiltinTreeGen {
   private BuiltinTreeGen() {}
@@ -172,9 +176,15 @@ public final class BuiltinTreeGen {
   }
 
   public static void run(
-      Path outRoot, Formatter formatter, TSet<Long> scopeIds)
+      Path outRoot,
+      Formatter formatter,
+      TSet<Long> scopeIds,
+      TList<String> linkClassNames,
+      TList<BuiltinPathScanner.Entry> scannedPathEntries,
+      Set<String> builtinInterfaceHostNames,
+      TMap<ClassName, CodeBlock> scannedLeaves)
       throws IOException {
-    var spec = canonicalSpec();
+    var spec = canonicalSpec(scannedPathEntries, builtinInterfaceHostNames, scannedLeaves);
     validate(spec, scopeIds);
 
     var cls =
@@ -183,7 +193,7 @@ public final class BuiltinTreeGen {
 
     cls.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build());
 
-    cls.addMethod(installRootFactory(spec));
+    cls.addMethod(installRootFactory(spec, linkClassNames));
 
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
@@ -204,7 +214,7 @@ public final class BuiltinTreeGen {
     }
   }
 
-  private static MethodSpec installRootFactory(NodeSpec root) {
+  private static MethodSpec installRootFactory(NodeSpec root, TList<String> linkClassNames) {
     var m =
         MethodSpec.methodBuilder("installRoot")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -221,12 +231,6 @@ public final class BuiltinTreeGen {
     m.addCode(st.body.build());
     m.addStatement("return $T.ok($N)", ERESULT, vars[0]);
     return m.build();
-  }
-
-  private static TList<String> linkClassNames = new TList<>();
-
-  public static void setLinkClassNames(TList<String> names) {
-    linkClassNames = names;
   }
 
   /** Emit inline statements for a node; return [bindingVarName, typeVarName]. */
@@ -336,18 +340,10 @@ public final class BuiltinTreeGen {
     return b.build();
   }
 
-  private static TList<BuiltinPathScanner.Entry> scannedPathEntries = new TList<>();
-  private static Set<String> builtinInterfaceHostNames = Set.of();
-
-  public static void setScannedPathEntries(TList<BuiltinPathScanner.Entry> entries) {
-    scannedPathEntries = entries;
-  }
-
-  public static void setBuiltinInterfaceHostNames(Set<String> names) {
-    builtinInterfaceHostNames = names;
-  }
-
-  public static NodeSpec canonicalSpec() {
+  public static NodeSpec canonicalSpec(
+      TList<BuiltinPathScanner.Entry> scannedPathEntries,
+      Set<String> builtinInterfaceHostNames,
+      TMap<ClassName, CodeBlock> scannedLeaves) {
     // Collect (path, leaf) pairs from all sources.
     var pathToLeaf = new LinkedHashMap<String, LeafSpec>();
 
@@ -361,7 +357,7 @@ public final class BuiltinTreeGen {
           var host = tl.typeClass().canonicalName();
           var wrapper =
               builtinInterfaceHostNames.contains(host) ? TOD_SELF_TYPE_EXPR : TYPE_WRAPPER_EXPR;
-          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass()), wrapper);
+          yield LeafSpec.of(DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);
         }
         case BuiltinPathScanner.FunctionLeaf fl ->
             LeafSpec.functionByName(
@@ -460,17 +456,20 @@ public final class BuiltinTreeGen {
   }
 
   /** Static hard-coded ORDER for children of well-known branches, to preserve generated-file layout. */
-  private static final Map<String, List<String>> BRANCH_ORDER =
-      Map.of(
-          "",
-              List.of("throw", "panic", "log", "define", "types", "eval"),
-          "types",
-              List.of(
+  private static final IMap<String, IList<String>> BRANCH_ORDER =
+      IMap.ofEntries(
+          new Pair<>(
+              "",
+              IList.of("throw", "panic", "log", "define", "types", "eval")),
+          new Pair<>(
+              "types",
+              IList.of(
                   "list", "map", "option", "eresult", "code", "string", "int", "null",
                   "bool", "binding", "bind_result", "constkey", "expr", "type", "aspect",
-                  "codedyn", "cve"),
-          "eval",
-              List.of(
+                  "codedyn", "cve")),
+          new Pair<>(
+              "eval",
+              IList.of(
                   "aspect_lookup", "cast_value", "const_eval", "codevalue", "stack",
                   "str_to_json", "constkey_to_str", "gen_binding_name", "new_expr_context",
                   "aspect_function", "aspect_field", "aspect_drop_dynamic",
@@ -483,7 +482,7 @@ public final class BuiltinTreeGen {
                   "aspect_drop_dynamic_light_id", "aspect_stack_value_dynamic_id",
                   "aspect_field_use_dynamic", "aspect_element_use_dynamic",
                   "aspect_field_use_dynamic_id", "aspect_element_use_dynamic_id",
-                  "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type"));
+                  "aspect_initial_bind_id", "binding", "target", "code_dyn", "value", "type")));
 
   private record TreeNode(
       LinkedHashMap<String, TreeNode> children,
@@ -526,7 +525,7 @@ public final class BuiltinTreeGen {
   private static NodeSpec toNodeSpec(TreeNode n, String branchPath) {
     if (n.leaf().optIsSome()) return n.leaf().optUnwrap();
     var children = new TList<Child>();
-    var order = BRANCH_ORDER.get(branchPath);
+    var order = BRANCH_ORDER.getOrNull(branchPath);
     var remaining = new LinkedHashMap<>(n.children());
     if (order != null) {
       for (var name : order) {

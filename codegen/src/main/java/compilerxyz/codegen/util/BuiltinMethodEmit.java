@@ -5,7 +5,9 @@ import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.util.IMap;
 import compilerxyz.util.Opt;
+import compilerxyz.util.Pair;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 
@@ -41,6 +43,7 @@ public final class BuiltinMethodEmit {
   private static final ClassName RECORD_FIELD_DYNAMIC = ClassName.get("compilerxyz.eval.value.record", "RecordField", "Dynamic");
   private static final ClassName OPT = ClassName.get("compilerxyz.util", "Opt");
   private static final ClassName TYPE = ClassName.get("compilerxyz.eval", "Type");
+  private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
   private static final ClassName TLIST = ClassName.get("compilerxyz.util", "TList");
   private static final ClassName JAVA_METHOD_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor");
@@ -70,16 +73,12 @@ public final class BuiltinMethodEmit {
   private static final ClassName TYPE_NULL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.null_", "TypeNullDynamic");
 
-  private static final TMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS = compositeDescriptors();
-
-  private static TMap<ClassName, ClassName> compositeDescriptors() {
-    var m = new TMap<ClassName, ClassName>();
-    m.put(ERESULT, TYPE_ERESULT_DYNAMIC);
-    m.put(OPT, TYPE_OPTION_DYNAMIC);
-    m.put(TLIST, TYPE_LIST_DYNAMIC);
-    m.put(ClassName.get("compilerxyz.util", "TMap"), TYPE_MAP_DYNAMIC);
-    return m;
-  }
+  private static final IMap<ClassName, ClassName> COMPOSITE_DESCRIPTORS =
+      IMap.ofEntries(
+          new Pair<>(ERESULT, TYPE_ERESULT_DYNAMIC),
+          new Pair<>(OPT, TYPE_OPTION_DYNAMIC),
+          new Pair<>(TLIST, TYPE_LIST_DYNAMIC),
+          new Pair<>(ClassName.get("compilerxyz.util", "TMap"), TYPE_MAP_DYNAMIC));
 
   /**
    * Emit statements that build a {@code TypeMethodDynamic} for {@code method}
@@ -126,7 +125,7 @@ public final class BuiltinMethodEmit {
 
     var argRecordName = "params_" + suffix;
     var paramsExpr = CodeBlock.builder();
-    paramsExpr.add("$T.<$T>of(", TLIST, FUNCTION_PARAM);
+    paramsExpr.add("$T.<$T>of(", ILIST, FUNCTION_PARAM);
     for (int i = 0; i < method.params.size(); i++) {
       var p = method.params.get(i);
       if (i > 0) paramsExpr.add(", ");
@@ -183,7 +182,7 @@ public final class BuiltinMethodEmit {
       return Opt.ofNullable(leafDescriptors.get(cn));
     }
     if (tn instanceof ParameterizedTypeName pt) {
-      var wrapper = COMPOSITE_DESCRIPTORS.get(pt.rawType);
+      var wrapper = COMPOSITE_DESCRIPTORS.getOrNull(pt.rawType);
       if (wrapper == null) return Opt.none();
       var parts = new TList<CodeBlock>();
       for (var arg : pt.typeArguments) {

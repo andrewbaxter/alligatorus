@@ -3,11 +3,13 @@ package compilerxyz.codegen.util;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.util.TMap;
 
 public record TypeRef(TypeName path, CodeBlock dynamicType) {
 
-  public static TypeRef leaf(ClassName descriptor) {
-    return new TypeRef(DynamicTypes.leafValueClass(descriptor), DynamicTypes.leaf(descriptor));
+  public static TypeRef leaf(ClassName descriptor, TMap<ClassName, CodeBlock> scannedLeaves) {
+    return new TypeRef(
+        DynamicTypes.leafValueClass(descriptor), DynamicTypes.leaf(descriptor, scannedLeaves));
   }
 
   public static TypeRef composite1(ClassName wrapper, TypeRef inner) {

@@ -27,7 +27,7 @@ import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6005L)
 public final class InterfaceData {
-  public Opt<DefSetId> setId;
+  public final Opt<DefSetId> setId;
 
   @SuppressWarnings("NullAway.Init")
   public final DefinitionSet set;
@@ -60,8 +60,7 @@ public final class InterfaceData {
   }
 
   @SuppressWarnings("NullAway")
-  public InterfaceData(
-      Opt<DefSetId> setId, Unique identity, Opt<BuiltinInterfaceKind> builtinKind) {
+  public InterfaceData(Opt<DefSetId> setId, Unique identity, Opt<BuiltinInterfaceKind> builtinKind) {
     this.setId = setId;
     this.set = (DefinitionSet) null;
     this.identity = identity;

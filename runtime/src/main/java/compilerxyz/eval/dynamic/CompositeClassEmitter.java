@@ -13,40 +13,6 @@ import compilerxyz.gen.GenAspectConsumeDynamic;
 public final class CompositeClassEmitter {
   private CompositeClassEmitter() {}
 
-  public static final class StructuralKey {
-    private final String[] descriptors;
-    private final int hash;
-
-    public StructuralKey(TList<JavaDataDescriptor> slotDescs) {
-      this.descriptors = new String[slotDescs.size()];
-      int h = 1;
-      for (int i = 0; i < slotDescs.size(); i++) {
-        this.descriptors[i] = slotDescs.get(i).value();
-        h = 31 * h + this.descriptors[i].hashCode();
-      }
-      this.hash = h;
-    }
-
-    public int arity() {
-      return descriptors.length;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (!(o instanceof StructuralKey other)) return false;
-      if (other.descriptors.length != descriptors.length) return false;
-      for (int i = 0; i < descriptors.length; i++) {
-        if (!other.descriptors[i].equals(descriptors[i])) return false;
-      }
-      return true;
-    }
-
-    @Override
-    public int hashCode() {
-      return hash;
-    }
-  }
-
   public static final String BINARY_NAME_PREFIX = "compilerxyz.eval.gen.Composite$";
 
   public static String slotFieldName(int slotIndex) {
@@ -75,26 +41,11 @@ public final class CompositeClassEmitter {
   public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
     var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
     for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));
-    var key = new StructuralKey(slotDescs);
-    var cache = xx.vx.ix.compositeCache;
-    var existing = cache.get(key);
-    if (existing != null) {
-      return existing;
-    }
-
-    if (xx.vx.ix.classLoader.optIsNone()) {
-      xx.vx.ix.classLoader =
-          Opt.some(new DefinitionSetClassLoader(
-              xx.vx.ix.gx,
-              DefinitionSetClassLoader.class.getClassLoader(),
-              new TList<>()));
-    }
-    var loader = xx.vx.ix.classLoader.optUnwrap();
     var _bnfSb = new StringBuilder(BINARY_NAME_PREFIX);
-    _bnfSb.append(key.arity());
-    for (int _bnfI = 0; _bnfI < key.arity(); _bnfI++) {
+    _bnfSb.append(slotDescs.size());
+    for (var _bnfDesc : slotDescs) {
       _bnfSb.append("#x");
-      var _bnfD = key.descriptors[_bnfI];
+      var _bnfD = _bnfDesc.value();
       for (int _bnfJ = 0; _bnfJ < _bnfD.length(); _bnfJ++) {
         char _bnfC = _bnfD.charAt(_bnfJ);
         switch (_bnfC) {
@@ -107,6 +58,20 @@ public final class CompositeClassEmitter {
       }
     }
     var binaryName = _bnfSb.toString();
+    var cache = xx.vx.ix.compositeCache;
+    var existing = cache.get(binaryName);
+    if (existing != null) {
+      return existing;
+    }
+
+    if (xx.vx.ix.classLoader.optIsNone()) {
+      xx.vx.ix.classLoader =
+          Opt.some(new DefinitionSetClassLoader(
+              xx.vx.ix.gx,
+              DefinitionSetClassLoader.class.getClassLoader(),
+              new TList<>()));
+    }
+    var loader = xx.vx.ix.classLoader.optUnwrap();
     var bytecode = emitBytecode(binaryName, slotDescs);
     loader.registerClass(binaryName, bytecode);
     Class<?> defined;
@@ -116,7 +81,7 @@ public final class CompositeClassEmitter {
       throw new AssertionError(
           "CompositeClassEmitter: freshly-registered class not loadable: " + binaryName, e);
     }
-    cache.put(key, defined);
+    cache.put(binaryName, defined);
     return defined;
   }
 

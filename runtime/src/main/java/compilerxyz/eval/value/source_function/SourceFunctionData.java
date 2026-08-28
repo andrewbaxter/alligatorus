@@ -38,10 +38,12 @@ import compilerxyz.artifact.ArtifactSupport.ArtifactIdHolder;
 import compilerxyz.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.eval.dynamic.JvmConstants;
+import compilerxyz.eval.Unique;
 
 public final class SourceFunctionData {
   public final ArtifactIdHolder artifactIdCell =
       new ArtifactIdHolder();
+  public final Unique identity;
   public Opt<DefSetId> setId;
 
   @SuppressWarnings("NullAway.Init")
@@ -62,16 +64,18 @@ public final class SourceFunctionData {
   public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
   public final TList<EvalContext.ExternalEntry> capturedExternals;
 
-  public SourceFunctionData(DefSetId setId, String name, DefinitionSet set) {
+  public SourceFunctionData(DefSetId setId, String name, DefinitionSet set, Unique identity) {
     this.setId = Opt.some(setId);
     this.set = set;
     this.name = Opt.some(name);
+    this.identity = identity;
     this.capturedExternals = new TList<>();
   }
 
   @SuppressWarnings("NullAway")
-  public SourceFunctionData(DefSetId setId, Opt<String> name) {
+  public SourceFunctionData(DefSetId setId, Opt<String> name, Unique identity) {
     this.setId = Opt.some(setId);
+    this.identity = identity;
     this.set = (DefinitionSet) null;
     this.name = name;
     this.capturedExternals = new TList<>();

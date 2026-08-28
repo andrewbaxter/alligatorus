@@ -36,9 +36,35 @@ is excluded via source-root origin):
 
 To add a check: add a method to `ConventionChecks.run(CtModel)` that emits `Finding`s.
 
+## 1b. Immutability + equality checks (`ImmutabilityChecks`)
+
+Backed by `ImmutabilityCheck`, a recursive, memoized deep-immutability judgment over the Spoon
+model: a type is immutable when every instance field is final and of an immutable type — a
+primitive, a whitelisted leaf (`String`, boxed primitives, `Pattern`, javapoet value types, …), an
+immutable collection (`compilerxyz.util.IList`/`IMap`/`ISet`, which copy on construction and expose
+no mutation methods) of immutable types, or another immutable type. Field-typed references must be
+closed (final, record, enum, or sealed with all permitted types immutable); the extends chain is
+exempt from closedness since the concrete type is known. Cycles are treated as immutable (results
+computed under a still-unresolved cycle assumption are not memoized, so a later mutable outcome is
+not masked). Everything unresolvable — external types off the whitelist, unbound type parameters,
+raw generics, arrays — is mutable, fail-closed.
+
+| Check | Rule |
+|-------|------|
+| `ImmutableAnnotationValid` | Every `@compilerxyz.annotations.Immutable` assertion is verified structurally; the annotation is never trusted. |
+| `ImmutableTypeValid` | Every implementer of `compilerxyz.eval.TypeImmutable` is verified — structurally, or (for the two-pass reflective-init protocol) by value analysis: every constructor and reflective-init call site's argument expression graph is evaluated (`checkValue` — constructions by record components / generic-class type-param substitution, I-collection and `TList.of` elements, `Opt.some/none`, single-assignment locals, `TList` accumulators bounded to add/addAll, final-field and trivial-factory look-through with parameter substitution). References to implementers are then immutable by verified contract. |
+| `StaticFieldImmutable` | Every global (static field, interface constant, enum value) is final and deeply immutable. For a final field whose declared type fails (e.g. an interface), the initializer's exact type is checked instead when it is a direct `new` or anonymous class — sound because the field is final, so the runtime type is exactly the initializer's. |
+| `MapKeyImmutable` | The key type argument of every map-typed reference (`TMap`/`TOrderedMap`/`IMap`/`java.util` maps) is immutable. Type parameters in scope at the reference are exempt — their concrete instantiations are checked at their own use sites. `IdentityHashMap`/`WeakHashMap` are exempt: they hash by reference identity, so key mutation cannot corrupt them. |
+| `NoReferenceEquality` | No `==`/`!=` on references (null checks and enums exempt); use the type's defined equality — identity aspects for types. |
+| `NoReflectiveEquals` | No equality that falls through to Object's reflective identity equals: `.equals` on model classes with no equals override, and `java.util.Objects.equals`/`deepEquals`. |
+
 ## 2. Reachability + single-use (`ReachabilityMain`)
 
-Class-hierarchy reachability over the same Spoon model. Roots are `main` methods, JUnit tests,
+Class-hierarchy reachability over the same Spoon model. The codegen module is excluded from the
+index (its external JavaPoet/JavaParser types break resolution of its internal call graph, and its
+members are findings-exempt), but every codegen body, field initializer, and static initializer
+block is traversed as an always-live edge *source*, so `util`/`runtime` members used only from
+codegen are correctly reachable. Roots are `main` methods, JUnit tests,
 `@CodegenDescriptor` methods, and everything generated code references. `@Builtin*` annotations are
 **not** roots themselves: they drive codegen, and the generated registrations
 (`TypeMethodDynamic`/`TypeFunctionDynamic`/`callStaticMethod` name literals in generated code) and

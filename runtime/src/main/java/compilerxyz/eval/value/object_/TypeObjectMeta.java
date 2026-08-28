@@ -2,7 +2,7 @@ package compilerxyz.eval.value.object_;
 
 import compilerxyz.eval.Unique;
 import compilerxyz.util.Opt;
-import compilerxyz.util.TList;
+import compilerxyz.util.IList;
 
 /**
  * Shared descriptor metadata between {@link TypeObjectDynamic} and
@@ -12,7 +12,7 @@ import compilerxyz.util.TList;
  */
 public record TypeObjectMeta(
     String typeDesc,
-    TList<Unique> trivialIdentityAspects,
-    TList<TypeObjectCastRule> castRules,
-    TList<TypeObjectCastFromRule> castFromRules,
+    IList<Unique> trivialIdentityAspects,
+    IList<TypeObjectCastRule> castRules,
+    IList<TypeObjectCastFromRule> castFromRules,
     Opt<ObjectAspectSource> aspectSource) {}

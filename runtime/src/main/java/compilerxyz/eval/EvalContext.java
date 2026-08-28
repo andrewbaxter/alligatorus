@@ -34,6 +34,9 @@ public final class EvalContext {
    */
   public final Counter dropStateCounter = new Counter();
 
+  /** Mints {@link ScopeLevel.Emission} lineage ids. */
+  public final Counter emissionCounter = new Counter();
+
   public final TList<LogEntry> logs = new TList<>();
 
   public String evalRootInternalName;

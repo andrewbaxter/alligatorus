@@ -32,7 +32,7 @@ public final class DefinitionSetBuilder {
     }
 
     public SourceFuncResult func(ExprContext xx, String name) {
-        var data = new SourceFunctionData(this.inner.defSetId, name, this.inner);
+        var data = new SourceFunctionData(this.inner.defSetId, name, this.inner, DynRuntime.freshUnique(xx));
         data.funcIdx = this.inner.functions.size();
         this.inner.functions.add(data);
         return new SourceFuncResult(new TypeSourceFunctionConst(data));

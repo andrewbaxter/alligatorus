@@ -72,7 +72,7 @@ import compilerxyz.gen.GenAspectFieldUseDynamic;
 import compilerxyz.util.MustCast;
 
 @BuiltinLight(uniqueId = 6117L)
-public final class TypeListBoxedDynamic
+public final class TypeListBoxedDynamic<T extends Type>
     implements
         ListDynamic,
         AspectFieldUseDynamic,
@@ -89,11 +89,11 @@ public final class TypeListBoxedDynamic
         AspectStackValueDynamic,
         ExporterAny {
 
-  public final Type elementType;
+  public final T elementType;
   public final ArtifactIdHolder artifactIdCell =
       new ArtifactIdHolder();
 
-  public TypeListBoxedDynamic(Type elementType) {
+  public TypeListBoxedDynamic(T elementType) {
     this.elementType = elementType;
   }
 

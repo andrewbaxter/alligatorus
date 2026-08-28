@@ -47,11 +47,7 @@ public sealed interface ScopeLevel {
     public long dropState;
     final Emission emission;
 
-    public Entry(Opt<ConstKey> name, Binding binding, boolean stackOnly, long state, long dropState) {
-      this(name, binding, stackOnly, state, dropState, new Emission());
-    }
-
-    Entry(
+    public Entry(
         Opt<ConstKey> name,
         Binding binding,
         boolean stackOnly,
@@ -84,11 +80,7 @@ public sealed interface ScopeLevel {
     public long dropState;
     final Emission emission;
 
-    public Temp(Binding binding, long state, long dropState) {
-      this(binding, state, dropState, new Emission());
-    }
-
-    Temp(Binding binding, long state, long dropState, Emission emission) {
+    public Temp(Binding binding, long state, long dropState, Emission emission) {
       this.binding = binding;
       this.state = state;
       this.dropState = dropState;
@@ -115,11 +107,7 @@ public sealed interface ScopeLevel {
     public final TList<Arrival> arrivals;
     final Emission emission;
 
-    public Labeled(Opt<String> label, JumpKey end) {
-      this(label, end, new TList<>(), new Emission());
-    }
-
-    Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
+    public Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
       this.label = label;
       this.end = end;
       this.arrivals = arrivals;
@@ -141,11 +129,7 @@ public sealed interface ScopeLevel {
     public final JumpKey handler;
     final Emission emission;
 
-    public Catch(JumpKey handler) {
-      this(handler, new Emission());
-    }
-
-    Catch(JumpKey handler, Emission emission) {
+    public Catch(JumpKey handler, Emission emission) {
       this.handler = handler;
       this.emission = emission;
     }
@@ -170,11 +154,7 @@ public sealed interface ScopeLevel {
     public final TList<Pending> pending;
     final Emission emission;
 
-    public Finally() {
-      this(new TList<>(), new Emission());
-    }
-
-    Finally(TList<Pending> pending, Emission emission) {
+    public Finally(TList<Pending> pending, Emission emission) {
       this.pending = pending;
       this.emission = emission;
     }
@@ -195,20 +175,20 @@ public sealed interface ScopeLevel {
    * chain passed through, the destination discriminator (none = exceptional
    * chain; some = a return trampoline chain), the next node's key (none only
    * for the exceptional root, which rethrows), and the carried value's type
-   * for trampolines whose value rides the stack (types compare by reference
-   * identity, which is exactly the sharing we want).
+   * for trampolines whose value rides the stack, interned per emission via
+   * typeIsEqual so equal carry types share a node.
    */
   final class DestKey {
     public final long dropState;
     public final Opt<String> label;
     public final Opt<JumpKey> next;
-    public final Opt<Type> carryType;
+    public final int carryTypeIdx;
 
-    public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, Opt<Type> carryType) {
+    public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int carryTypeIdx) {
       this.dropState = dropState;
       this.label = label;
       this.next = next;
-      this.carryType = carryType;
+      this.carryTypeIdx = carryTypeIdx;
     }
 
     public Opt<String> label() {
@@ -219,51 +199,38 @@ public sealed interface ScopeLevel {
       return next;
     }
 
-    public Opt<Type> carryType() {
-      return carryType;
-    }
-
-    private static <T> boolean optIdentityEquals(Opt<T> a, Opt<T> b) {
-      switch (a) {
-        case Opt.Some<T> as -> {
-          return switch (b) {
-            case Opt.Some<T> bs -> as.value() == bs.value();
-            case Opt.None<T> ignored -> false;
-          };
-        }
-        case Opt.None<T> ignored -> {
-          return switch (b) {
-            case Opt.Some<T> ignored2 -> false;
-            case Opt.None<T> ignored2 -> true;
-          };
-        }
-      }
-    }
-
-    private static <T> int optIdentityHash(Opt<T> o) {
-      return switch (o) {
-        case Opt.Some<T> some -> System.identityHashCode(some.value());
-        case Opt.None<T> ignored -> 0;
-      };
+    public Opt<Type> carryType(Emission emission) {
+      if (carryTypeIdx < 0) return Opt.none();
+      return Opt.some(emission.carryTypes.get(carryTypeIdx));
     }
 
     @Override
     public boolean equals(Object other) {
-      // Types and jump keys compare by reference identity — never
-      // structurally; type object graphs are cyclic.
       return other instanceof DestKey d
           && d.dropState == dropState
           && d.label.equals(label)
-          && optIdentityEquals(d.next, next)
-          && optIdentityEquals(d.carryType, carryType);
+          && switch (d.next) {
+            case Opt.Some<JumpKey> as ->
+                switch (next) {
+                  case Opt.Some<JumpKey> bs -> as.value() == bs.value();
+                  case Opt.None<JumpKey> ignored -> false;
+                };
+            case Opt.None<JumpKey> ignored -> next.optIsNone();
+          }
+          && d.carryTypeIdx == carryTypeIdx;
     }
 
     @Override
     public int hashCode() {
       int h = Long.hashCode(dropState);
       h = h * 31 + label.hashCode();
-      h = h * 31 + optIdentityHash(next);
-      h = h * 31 + optIdentityHash(carryType);
+      h =
+          h * 31
+              + switch (next) {
+                case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
+                case Opt.None<JumpKey> ignored -> 0;
+              };
+      h = h * 31 + carryTypeIdx;
       return h;
     }
   }
@@ -274,6 +241,13 @@ public sealed interface ScopeLevel {
    * code, spliced in by the construct that owns the level at its close.
    */
   final class Emission {
+    /** Lineage id: fork copies of a level share the Emission, so equal ids mean same lineage. */
+    public final long id;
+
+    public Emission(long id) {
+      this.id = id;
+    }
+
     /**
      * Resolved destination per chain key. A level whose cleanup is empty at
      * the keyed state resolves to its parent's dest (pass-through, no node);
@@ -281,5 +255,20 @@ public sealed interface ScopeLevel {
      */
     public final TMap<DestKey, Opt<JumpKey>> dests = new TMap<>();
     public final TList<Code> blocks = new TList<>();
+    /** Carry types interned by {@link #carryTypeIntern}; {@link DestKey#carryTypeIdx} indexes. */
+    public final TList<Type> carryTypes = new TList<>();
+
+    public int carryTypeIntern(ExprContext xx, Opt<Type> carryType) {
+      return switch (carryType) {
+        case Opt.None<Type> ignored -> -1;
+        case Opt.Some<Type> some -> {
+          for (int i = 0; i < carryTypes.size(); i++) {
+            if (carryTypes.get(i).typeIsEqual(xx, some.value())) yield i;
+          }
+          carryTypes.add(some.value());
+          yield carryTypes.size() - 1;
+        }
+      };
+    }
   }
 }

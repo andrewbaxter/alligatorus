@@ -25,7 +25,6 @@ public record ValueObjectConst(Type type, Object data) implements Value, Exporte
     return new TypeObjectConst(
         td.meta(),
         td.hostClass(),
-        Opt.<Type>none(),
         Opt.<ExporterRoot>none());
   }
 

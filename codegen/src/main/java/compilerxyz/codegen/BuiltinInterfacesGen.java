@@ -72,6 +72,7 @@ public final class BuiltinInterfacesGen {
 
   private static final ClassName TYPE_OBJECT_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectDynamic");
+  private static final ClassName ILIST = ClassName.get("compilerxyz.util", "IList");
   private static final ClassName TYPE_OBJECT_META =
       ClassName.get("compilerxyz.eval.value.object_", "TypeObjectMeta");
   private static final ClassName TYPE_OBJECT_CAST_RULE =
@@ -93,17 +94,12 @@ public final class BuiltinInterfacesGen {
   private static final ClassName JAVA_DATA_DESCRIPTOR =
       ClassName.get("compilerxyz.eval.dynamic", "JavaDataDescriptor");
 
-  private static Opt<TMap<ClassName, CodeBlock>> scannedLeafDescriptors = Opt.none();
-
-  public static void setScannedLeafDescriptors(TMap<ClassName, CodeBlock> scanned) {
-    scannedLeafDescriptors = Opt.some(scanned);
-  }
-
   public static void run(
       Path outRoot,
       Formatter formatter,
       TSet<Long> aspectIds,
-      TList<BuiltinSpec> specs)
+      TList<BuiltinSpec> specs,
+      TMap<ClassName, CodeBlock> leafDescriptors)
       throws IOException {
     var seenNames = new TSet<String>();
     var identityIds = new TSet<Long>();
@@ -119,11 +115,13 @@ public final class BuiltinInterfacesGen {
         throw new IllegalStateException(
             "duplicate aspect identity id " + spec.identityId + " (in builtins)");
       }
-      writeCompanion(outRoot, formatter, spec);
+      writeCompanion(outRoot, formatter, spec, leafDescriptors);
     }
   }
 
-  private static void writeCompanion(Path outRoot, Formatter formatter, BuiltinSpec spec)
+  private static void writeCompanion(
+      Path outRoot, Formatter formatter, BuiltinSpec spec,
+      TMap<ClassName, CodeBlock> leafDescriptors)
       throws IOException {
     var companionName = "Gen" + spec.simpleName;
     var self = ClassName.get(GEN_PACKAGE, companionName);
@@ -168,7 +166,7 @@ public final class BuiltinInterfacesGen {
     cls.addMethod(
         MethodSpec.methodBuilder("dynamicType")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .returns(spec.isAspect ? TYPE_OBJECT_DYNAMIC : TYPE)
+            .returns(TYPE_OBJECT_DYNAMIC)
             .addStatement("return Holder.INSTANCE")
             .build());
 
@@ -182,7 +180,7 @@ public final class BuiltinInterfacesGen {
     holder.addMethod(buildBuild(spec, self, interfaceRef));
     cls.addType(holder.build());
 
-    cls.addMethod(buildLink(spec, interfaceRef));
+    cls.addMethod(buildLink(spec, interfaceRef, leafDescriptors));
 
     var file = JavaFile.builder(GEN_PACKAGE, cls.build()).build();
     GenMain.write(outRoot, file, formatter);
@@ -199,45 +197,43 @@ public final class BuiltinInterfacesGen {
 
     b.addStatement("var jvmClass = $T.fromClass($T.class)", JAVA_INTERNAL_NAME, interfaceRef);
     b.addStatement("var jvmClassDesc = $T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, interfaceRef);
-    b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
-    b.addStatement("var dataFields = new $T<$T>()", TLIST, OBJECT_DATA_FIELD);
     b.addStatement("var castRules = new $T<$T>()", TLIST, TYPE_OBJECT_CAST_RULE);
     b.addStatement("var trivialIdentityAspects = new $T<$T>()", TLIST, UNIQUE);
     if (spec.isAspect) {
       b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
       b.addStatement(
-          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
               + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)))",
           TYPE_OBJECT_META, typeDesc,
-          TLIST, TYPE_OBJECT_CAST_FROM_RULE,
+          ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
           OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC, self, self);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "dataFields, methods, $T.DYNAMIC, $T.some(jvmClass))",
+              + "$T.DYNAMIC, $T.some(jvmClass))",
           TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
     } else if (spec.isRecord) {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
       emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
-          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
               + "$T.<$T>none())",
           TYPE_OBJECT_META, typeDesc,
-          TLIST, TYPE_OBJECT_CAST_FROM_RULE,
+          ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
           OPT, OBJECT_ASPECT_SOURCE);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "dataFields, methods, $T.DYNAMIC_LIGHT, $T.<$T>none())",
+              + "$T.DYNAMIC_LIGHT, $T.<$T>none())",
           TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT, JAVA_INTERNAL_NAME);
     } else {
       b.addStatement(
           "trivialIdentityAspects.add(new $T($LL))", UNIQUE_BUILTIN, spec.uniqueId);
       emitTypeHostRestamp(b, interfaceRef);
       b.addStatement(
-          "var meta = new $T($S, trivialIdentityAspects, castRules, new $T<$T>(), "
+          "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
               + "$T.<$T>some(new $T(new $T($LL), new $T($LL))))",
           TYPE_OBJECT_META, typeDesc,
-          TLIST, TYPE_OBJECT_CAST_FROM_RULE,
+          ILIST, ILIST, ILIST, TYPE_OBJECT_CAST_FROM_RULE,
           OPT, OBJECT_ASPECT_SOURCE, OBJECT_ASPECT_SOURCE_STATIC,
           UNIQUE_BUILTIN,
           spec.uniqueId,
@@ -245,7 +241,7 @@ public final class BuiltinInterfacesGen {
           spec.uniqueId);
       b.addStatement(
           "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-              + "dataFields, methods, $T.DYNAMIC_LIGHT, $T.some(jvmClass))",
+              + "$T.DYNAMIC_LIGHT, $T.some(jvmClass))",
           TYPE_OBJECT_DYNAMIC, interfaceRef, OBJECT_DROP_KIND, OPT);
     }
 
@@ -265,52 +261,51 @@ public final class BuiltinInterfacesGen {
     b.endControlFlow();
   }
 
-  private static MethodSpec buildLink(BuiltinSpec spec, ClassName interfaceRef) {
+  private static MethodSpec buildLink(
+      BuiltinSpec spec, ClassName interfaceRef, TMap<ClassName, CodeBlock> leafDescriptors) {
     var b = MethodSpec.methodBuilder("link")
         .addModifiers(Modifier.PUBLIC, Modifier.STATIC);
     b.addStatement("var instance = Holder.INSTANCE");
-    b.addStatement("var methods = instance.methods()");
-    b.addStatement("var dataFields = instance.dataFields()");
-    b.beginControlFlow("if (!methods.isEmpty() || !dataFields.isEmpty())");
+    b.beginControlFlow("if (instance.methods() != null)");
     b.addStatement("return");
     b.endControlFlow();
-    if (scannedLeafDescriptors.optIsSome()) {
-      var leafDescriptors = scannedLeafDescriptors.optUnwrap();
-      for (var m : spec.methods) {
-        BuiltinMethodEmit.emitObjectMethod(
-            b, interfaceRef, "instance", "methods", m, leafDescriptors);
-      }
-      for (var f : spec.dataFields) {
-        var descExprOpt = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, leafDescriptors);
-        if (descExprOpt.optIsNone()) continue;
-        var descExpr = descExprOpt.optUnwrap();
-        var rawClassOpt = BuiltinMethodEmit.rawClass(f.fieldJavaType);
-        if (rawClassOpt.optIsNone()) continue;
-        var rawClass = rawClassOpt.optUnwrap();
-        if (spec.isRecord) {
-          b.addStatement(
-              "dataFields.add(new $T($S, new $T($S, $T.fromParts($T.fromClass($T.class), $T.of())), $L))",
-              OBJECT_DATA_FIELD,
-              f.langName,
-              ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField", "Access", "MethodCall"),
-              f.jvmFieldName,
-              ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor"),
-              JAVA_DATA_DESCRIPTOR,
-              rawClass,
-              TLIST,
-              descExpr);
-        } else {
-          b.addStatement(
-              "dataFields.add($T.ofField($S, $S, $T.fromClass($T.class), $L))",
-              OBJECT_DATA_FIELD,
-              f.langName,
-              f.jvmFieldName,
-              JAVA_DATA_DESCRIPTOR,
-              rawClass,
-              descExpr);
-        }
+    b.addStatement("var methods = new $T<$T>()", TLIST, OBJECT_METHOD);
+    b.addStatement("var dataFields = new $T<$T>()", TLIST, OBJECT_DATA_FIELD);
+    for (var m : spec.methods) {
+      BuiltinMethodEmit.emitObjectMethod(
+          b, interfaceRef, "instance", "methods", m, leafDescriptors);
+    }
+    for (var f : spec.dataFields) {
+      var descExprOpt = BuiltinMethodEmit.resolveDescriptor(f.fieldJavaType, leafDescriptors);
+      if (descExprOpt.optIsNone()) continue;
+      var descExpr = descExprOpt.optUnwrap();
+      var rawClassOpt = BuiltinMethodEmit.rawClass(f.fieldJavaType);
+      if (rawClassOpt.optIsNone()) continue;
+      var rawClass = rawClassOpt.optUnwrap();
+      if (spec.isRecord) {
+        b.addStatement(
+            "dataFields.add(new $T($S, new $T($S, $T.fromParts($T.fromClass($T.class), $T.of())), $L))",
+            OBJECT_DATA_FIELD,
+            f.langName,
+            ClassName.get("compilerxyz.eval.value.object_", "ObjectDataField", "Access", "MethodCall"),
+            f.jvmFieldName,
+            ClassName.get("compilerxyz.eval.dynamic", "JavaMethodDescriptor"),
+            JAVA_DATA_DESCRIPTOR,
+            rawClass,
+            TLIST,
+            descExpr);
+      } else {
+        b.addStatement(
+            "dataFields.add($T.ofField($S, $S, $T.fromClass($T.class), $L))",
+            OBJECT_DATA_FIELD,
+            f.langName,
+            f.jvmFieldName,
+            JAVA_DATA_DESCRIPTOR,
+            rawClass,
+            descExpr);
       }
     }
+    b.addStatement("instance.linkInit($T.from(dataFields), $T.from(methods))", ILIST, ILIST);
     return b.build();
   }
 

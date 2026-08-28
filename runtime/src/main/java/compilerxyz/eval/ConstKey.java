@@ -8,7 +8,13 @@ public sealed interface ConstKey {
 
   record Uint(long value) implements ConstKey {}
 
-  Comparator<ConstKey> CANONICAL_ORDER = Comparator.comparing(ConstKey::constKeyToCanonical);
+  Comparator<ConstKey> CANONICAL_ORDER =
+      new Comparator<>() {
+        @Override
+        public int compare(ConstKey a, ConstKey b) {
+          return a.constKeyToCanonical().compareTo(b.constKeyToCanonical());
+        }
+      };
 
   default String constKeyToCanonical() {
     return switch (this) {

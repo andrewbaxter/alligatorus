@@ -32,6 +32,8 @@ import compilerxyz.codegen.util.BuiltinMethodEmit.Param;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import compilerxyz.codegen.util.NameDerivation;
 import java.util.HashSet;
+import compilerxyz.util.IMap;
+import compilerxyz.util.Pair;
 
 public final class JavaAspectExtractor {
   private JavaAspectExtractor() {}
@@ -267,21 +269,23 @@ public final class JavaAspectExtractor {
     return sb.toString();
   }
 
-  private static final Map<String, ClassName> COMPOSITE_WRAPPERS = Map.of(
-      "compilerxyz.eval.EResult",
-          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic"),
-      "compilerxyz.util.Opt",
-          ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic"),
-      "compilerxyz.util.TList",
-          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic"),
-      "compilerxyz.util.TMap",
-          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic"));
+  private static final IMap<String, ClassName> COMPOSITE_WRAPPERS =
+      IMap.ofEntries(
+      new Pair<>("compilerxyz.eval.EResult",
+          ClassName.get("compilerxyz.eval.value.eresult", "TypeEResultDynamic")),
+      new Pair<>("compilerxyz.util.Opt",
+          ClassName.get("compilerxyz.eval.value.option", "TypeOptionDynamic")),
+      new Pair<>("compilerxyz.util.TList",
+          ClassName.get("compilerxyz.eval.value.list", "TypeListBoxedDynamic")),
+      new Pair<>("compilerxyz.util.TMap",
+          ClassName.get("compilerxyz.eval.value.map", "TypeMapDynamic")));
 
-  private static final Map<String, ClassName> VALUE_CLASS_DESCRIPTORS = Map.of(
-      "java.lang.String",
-          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic"),
-      "compilerxyz.eval.Unique",
-          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic"));
+  private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS =
+      IMap.ofEntries(
+      new Pair<>("java.lang.String",
+          ClassName.get("compilerxyz.eval.value.string", "TypeStringDynamic")),
+      new Pair<>("compilerxyz.eval.Unique",
+          ClassName.get("compilerxyz.eval.value.unique", "TypeUniqueDynamic")));
 
   private static final ClassName TYPE_BOOL_DYNAMIC =
       ClassName.get("compilerxyz.eval.value.bool_", "TypeBoolDynamic");

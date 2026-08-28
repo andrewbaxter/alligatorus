@@ -32,6 +32,7 @@ import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 import java.util.LinkedHashSet;
+import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 
 /**
@@ -55,7 +56,7 @@ public final class ReachabilityMain {
     this.generatedFiles = generatedFiles;
   }
 
-  private static final Set<String> JUNIT =
+  private final Set<String> junit =
       Set.of(
           "Test", "RepeatedTest", "TestFactory", "ParameterizedTest",
           "BeforeEach", "AfterEach", "BeforeAll", "AfterAll");
@@ -79,9 +80,12 @@ public final class ReachabilityMain {
     for (CtType<?> t : model.getAllTypes()) {
       collectTypes(t, types);
     }
+    List<CtType<?>> codegenTypes = new ArrayList<>();
     types.removeIf(t -> {
       String qn = t.getQualifiedName();
-      return qn == null || qn.startsWith("compilerxyz.codegen.");
+      boolean cg = qn == null || qn.startsWith("compilerxyz.codegen.");
+      if (cg) codegenTypes.add(t);
+      return cg;
     });
     // Index all executables.
     for (CtType<?> t : types) {
@@ -145,6 +149,54 @@ public final class ReachabilityMain {
           genReferenced.add(k);
           if (reachable.add(k)) work.add(k);
         }
+      }
+    }
+    // Codegen members are excluded from the index above (external JavaPoet/JavaParser types break
+    // resolution of its internal call graph, and its members are findings-exempt), but calls FROM
+    // codegen into runtime/util are real edges: every codegen body and field initializer is an
+    // always-live source. Unresolvable external targets yield no candidates and are harmless.
+    for (CtType<?> t : codegenTypes) {
+      for (CtField<?> f : t.getFields()) {
+        var init = f.getDefaultExpression();
+        if (init == null) continue;
+        for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
+          onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+        }
+        for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+          onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+        }
+      }
+      if (t instanceof CtClass<?> cgClass) {
+        for (CtAnonymousExecutable ab : cgClass.getAnonymousExecutables()) {
+          for (CtInvocation<?> inv : ab.getElements(new TypeFilter<>(CtInvocation.class))) {
+            onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+          }
+          for (CtConstructorCall<?> cc : ab.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+            onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+          }
+        }
+      }
+      for (CtExecutable<?> ex : executablesOf(t)) {
+        for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
+          onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
+        }
+        for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+          onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
+        }
+        for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
+          if (fr.getVariable() != null) {
+            fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+          }
+        }
+        for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
+          if (fw.getVariable() != null) {
+            fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+          }
+        }
+      }
+      for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
+        String cgQn = tr.getQualifiedName();
+        if (cgQn != null && !cgQn.isEmpty()) referencedTypes.add(cgQn);
       }
     }
     // Fixpoint. Calls made from generated code mark their target genReferenced: the generated
@@ -211,6 +263,7 @@ public final class ReachabilityMain {
 
     List<String> deadClasses = new ArrayList<>();
     List<String> deadMethods = new ArrayList<>();
+    List<String> deadFields = new ArrayList<>();
     List<String> singleUseMethods = new ArrayList<>();
     List<String> singleUseFields = new ArrayList<>();
 
@@ -230,7 +283,7 @@ public final class ReachabilityMain {
         boolean concrete = m.getBody() != null;
         boolean _iam = false;
         for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
-          if (_iamTop != m && _iamTop.isAbstract()) {
+          if (!key(_iamTop).equals(key(m)) && _iamTop.isAbstract()) {
             _iam = true;
             break;
           }
@@ -238,6 +291,7 @@ public final class ReachabilityMain {
         boolean inlinable =
             !isRoot(ex)
                 && !rooted
+                && !"compilerxyz.util.Assert".equals(qn)
                 && m.getBody() != null
                 && !overridesExternal(m)
                 && !_iam
@@ -263,6 +317,13 @@ public final class ReachabilityMain {
       if (!recordOrEnum) {
         for (CtField<?> f : t.getFields()) {
           if (f.getModifiers().contains(ModifierKind.PRIVATE)
+              && !rooted
+              && !f.getSimpleName().equals("serialVersionUID")
+              && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
+              && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0) {
+            deadFields.add(qn + "#" + f.getSimpleName());
+          }
+          if (f.getModifiers().contains(ModifierKind.PRIVATE)
               && !f.getModifiers().contains(ModifierKind.FINAL)
               && !f.getModifiers().contains(ModifierKind.VOLATILE)
               && fieldWrites.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0
@@ -285,13 +346,21 @@ public final class ReachabilityMain {
     section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
     section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
     section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
+    section(out, "#1 DEAD PRIVATE FIELDS (0 reads)", deadFields);
     section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
-    int total = deadClasses.size() + deadMethods.size() + singleUseMethods.size() + singleUseFields.size();
+    int total =
+        deadClasses.size()
+            + deadMethods.size()
+            + deadFields.size()
+            + singleUseMethods.size()
+            + singleUseFields.size();
     line(
         out,
         String.format(
-            "TOT:  dead classes=%d  dead methods=%d  single-use methods=%d  single-use fields=%d",
-            deadClasses.size(), deadMethods.size(), singleUseMethods.size(), singleUseFields.size()));
+            "TOT:  dead classes=%d  dead methods=%d  dead fields=%d  single-use methods=%d"
+                + "  single-use fields=%d",
+            deadClasses.size(), deadMethods.size(), deadFields.size(), singleUseMethods.size(),
+            singleUseFields.size()));
 
     System.out.print(out);
     Path reportPath = Path.of("analysis/target/reachability-report.txt");
@@ -350,7 +419,7 @@ public final class ReachabilityMain {
 
   private static boolean isDirect(CtExecutableReference<?> ref, CtExecutable<?> cex) {
     CtExecutable<?> decl = ref.getExecutableDeclaration();
-    return decl != null && cex == decl;
+    return decl != null && key(cex).equals(key(decl));
   }
 
   private boolean subtypeOf(CtExecutable<?> cex, CtTypeReference<?> superRef) {
@@ -363,7 +432,7 @@ public final class ReachabilityMain {
     if (ex.getAnnotations().stream()
         .anyMatch(
             a ->
-                JUNIT.contains(a.getAnnotationType().getSimpleName())
+                junit.contains(a.getAnnotationType().getSimpleName())
                     || a.getAnnotationType().getSimpleName().equals(CODEGEN_DESCRIPTOR))) {
       return true;
     }

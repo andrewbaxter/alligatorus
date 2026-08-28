@@ -275,7 +275,7 @@ public record TypeExpr()
   @Override
   public EResult<Artifact> artifactableExportArtifact(
       ExprContext xx, QExprId loc) {
-    return Value.super.artifactableExportArtifact(xx, loc);
+    return Type.super.artifactableExportArtifact(xx, loc);
   }
 
   @Override

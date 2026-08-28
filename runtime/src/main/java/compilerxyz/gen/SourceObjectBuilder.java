@@ -17,8 +17,8 @@ import compilerxyz.eval.value.source_object_new.TypeSourceObjectNewDynamic;
 import java.lang.IllegalStateException;
 import java.lang.Object;
 import java.lang.String;
+import compilerxyz.util.TOrderedMap;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 @BuiltinPushStruct
 public final class SourceObjectBuilder {
@@ -57,22 +57,10 @@ public final class SourceObjectBuilder {
         return new SourceObjectMethodResult(method);
     }
 
-    public void impl_interface(ExprContext xx, InterfaceData ifaceRef, Map<Object, Object> record) {
+    public void impl_interface(ExprContext xx, InterfaceData ifaceRef, TOrderedMap<ConstKey, StagedExprCell> record) {
         var recordMap = new LinkedHashMap<ConstKey, Expr>();
         for (var entry : record.entrySet()) {
-            var ckey = mustCast(ConstKey.class, entry.getKey());
-            var v = entry.getValue();
-            Expr expr;
-            if (v instanceof Expr e) {
-                expr = e;
-            } else if (v instanceof StagedExprCell cell) {
-                expr = mustCast(Expr.class, cell.value());
-            } else {
-                throw new IllegalStateException(
-                        "impl_interface: expected Expr or StagedExprCell value, got "
-                                + (v == null ? "null" : v.getClass()));
-            }
-            recordMap.put(ckey, expr);
+            recordMap.put(entry.getKey(), mustCast(Expr.class, entry.getValue().value()));
         }
         var dtData = this.type_;
         var impl = new SourceObjectInterfaceImplData(ifaceRef);

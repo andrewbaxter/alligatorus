@@ -54,7 +54,7 @@ public final class ScopeChains {
               loc,
               cleanups.get(i),
               new ScopeLevel.DestKey(
-                  levelDropState(cleanups.get(i)), Opt.<String>none(), parent, Opt.<Type>none()));
+                  levelDropState(cleanups.get(i)), Opt.<String>none(), parent, -1));
       if (resolved.hasErrors()) return resolved.reerr();
       parent = resolved.requireValue("ScopeChains.excDest node");
     }
@@ -113,7 +113,7 @@ public final class ScopeChains {
       if (key.label().optIsSome()) {
         nodeRes =
             xx.target.targetExitTrampoline(
-                xx, loc, self, key.carryType(), cleanup,
+                xx, loc, self, key.carryType(emission), cleanup,
                 key.next().optUnwrap());
       } else {
         nodeRes = xx.target.targetExcCleanup(xx, loc, self, cleanup, key.next());

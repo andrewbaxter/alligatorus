@@ -10,6 +10,7 @@ import com.github.javaparser.ast.type.Type;
 import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.util.IList;
 import compilerxyz.util.TList;
 import compilerxyz.util.TMap;
 import compilerxyz.util.TSet;
@@ -164,8 +165,8 @@ public final class CodegenDescriptorScanner {
     throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);
   }
 
-  private static final TList<String> JAVA_LANG =
-      TList.of(
+  private static final IList<String> JAVA_LANG =
+      IList.of(
           "String", "Object", "Integer", "Long", "Short", "Byte", "Boolean", "Float", "Double",
           "Character", "CharSequence", "Number");
 

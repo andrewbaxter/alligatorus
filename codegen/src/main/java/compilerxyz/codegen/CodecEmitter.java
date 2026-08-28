@@ -19,6 +19,8 @@ import java.io.IOException;
 import javax.lang.model.element.Modifier;
 import java.util.Arrays;
 import java.util.Map;
+import compilerxyz.util.IMap;
+import compilerxyz.util.Pair;
 
 final class CodecEmitter {
   private CodecEmitter() {}
@@ -50,28 +52,28 @@ final class CodecEmitter {
 
   record CodecTarget(String klass, Opt<String> castTo) {}
 
-  private static final Map<String, CodecTarget> HAND_CODED_REFS =
-      Map.ofEntries(
-          Map.entry(
+  private static final IMap<String, CodecTarget> HAND_CODED_REFS =
+      IMap.ofEntries(
+          new Pair<>(
               "compilerxyz.safejson.JsonValue",
               new CodecTarget("compilerxyz.safejson.JsonValues", Opt.none())),
-          Map.entry(
+          new Pair<>(
               "compilerxyz.artifact.Artifact",
               new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactCodec", Opt.none())),
-          Map.entry(
+          new Pair<>(
               "compilerxyz.artifact.Artifact.Body",
               new CodecTarget(
                   ARTIFACT_CODECS_REF + ".ArtifactCodec",
                   Opt.some("compilerxyz.artifact.Artifact.Body"))),
-          Map.entry(
+          new Pair<>(
               "compilerxyz.artifact.Artifact.Ref",
               new CodecTarget(
                   ARTIFACT_CODECS_REF + ".ArtifactCodec",
                   Opt.some("compilerxyz.artifact.Artifact.Ref"))),
-          Map.entry(
+          new Pair<>(
               "compilerxyz.artifact.ArtifactBody",
               new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactBodyCodec", Opt.none())),
-          Map.entry(
+          new Pair<>(
               "compilerxyz.artifact.ArtifactIdSource",
               new CodecTarget(ARTIFACT_CODECS_REF + ".ArtifactIdSourceCodec", Opt.none())));
   private static void resolveNames(TypeInfo info, String ctxQname, TypeIndex index) {
@@ -704,7 +706,7 @@ final class CodecEmitter {
   }
 
   private static CodecTarget codecTargetFor(String qname) {
-    var hand = HAND_CODED_REFS.get(qname);
+    var hand = HAND_CODED_REFS.getOrNull(qname);
     if (hand != null) return hand;
     return new CodecTarget(
         CodecsGen.GEN_PACKAGE + "." + simpleNameOf(qname) + "Codec", Opt.none());
