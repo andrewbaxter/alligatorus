@@ -223,19 +223,19 @@ public final class Record
                         if (seq.children.isEmpty()) {
                             yield EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
                         }
-                        yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
+                        yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), accessedCv.outcome()));
                     }
                     if (accessedPushDyn != null) {
                         seq.add(accessedPushDyn);
                         yield EResult.ok(new CodeValue(
-                                Code.of(loc, new CodeDynamic(loc, seq)),
-                                EvalOutcome.ofValue(ValueDynamic.stack(accessedType, 1))));
+                                Code.of(new CodeDynamic(loc, seq)),
+                                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
                     }
                     yield EResult.err(
                             loc,
                             "Field '" + accessKey.optUnwrap().constKeyToCanonical() + "' not found on record value");
                 }
-                yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+                yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
             }
             case Opt.Some<RecordBaseDynamic> s -> {
                 var baseSource = s.value().source();
@@ -267,8 +267,8 @@ public final class Record
                                     CompositeClassEmitter.slotFieldName(slotIdx),
                                     CompositeClassEmitter.slotDescriptor(xx, t)));
                             var _cfdcChildCv = new CodeValue(
-                                    Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-                                    EvalOutcome.ofValue(ValueDynamic.stack(t, 1)));
+                                    Code.of(new CodeDynamic(loc, new JavaBytecodeSequence())),
+                                    EvalOutcome.ofValue(ValueDynamic.stack(xx, t)));
                             var _cfdcDropRes =
                                     _cfdcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _cfdcChildCv);
                             if (_cfdcDropRes.hasErrors()) yield _cfdcDropRes.reerr();
@@ -285,7 +285,7 @@ public final class Record
                         }
                     }
                     out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-                    yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
+                    yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
                 } else {
                     var accessedKey = accessKey.optUnwrap();
                     var f = record.fields.getOrNull(accessedKey);
@@ -453,7 +453,7 @@ public final class Record
         if (key.value().optIsNone()) {
             return EResult.err(loc, "Record::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         return accessOrDrop(xx, loc, self_, Opt.some(ckOpt.optUnwrap()));
     }
@@ -461,7 +461,7 @@ public final class Record
     @Override
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
-        var fieldCode = Code.of(loc, DynUtil.renderSource(xx, loc, source));
+        var fieldCode = Code.of(DynUtil.renderSource(xx, loc, source));
         var newFields = new TOrderedMap<ConstKey, RecordField>();
         for (var entry : fields.entrySet()) {
             var t =
@@ -649,7 +649,7 @@ public final class Record
             var sub = subRes.requireValue("Record::bindSub base.bindSub");
             var bound = xx.target.targetBind(xx, loc, sub);
             return EResult.ok(
-                    new BindResult(Code.of(loc, bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
+                    new BindResult(Code.of(bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
         }
 
         TList<ExprErr> errors = null;
@@ -764,8 +764,7 @@ public final class Record
         }
         var combined = xx.target.targetBindSubRecord(xx, loc, carry, targetFields);
         var bound = xx.target.targetBind(xx, loc, combined);
-        return EResult.ok(
-                new BindResult(Code.of(loc, bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
+        return EResult.ok(new BindResult(Code.of(bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
     }
 
     @Override
@@ -927,8 +926,7 @@ public final class Record
                     CompositeClassEmitter.slotFieldName(srcSlot),
                     CompositeClassEmitter.slotDescriptor(xx, srcFieldType)));
             var loadDyn = new CodeDynamic(loc, loadSeq);
-            var srcFieldCv =
-                    new CodeValue(Code.of(loc, loadDyn), EvalOutcome.ofValue(ValueDynamic.stack(srcFieldType, 1)));
+            var srcFieldCv = new CodeValue(Code.of(loadDyn), EvalOutcome.ofValue(ValueDynamic.stack(xx, srcFieldType)));
             var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destType, srcFieldCv));
             if (convOpt.optIsNone()) {
                 return EResult.errs(erb.errors());
@@ -960,9 +958,10 @@ public final class Record
         } else {
             finalDyn = instantiate;
         }
-        var newBase = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Expr(1)));
+        var newBase = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Expr(
+                JavaDataDescriptor.fromInternalName(destKlass).slotWidth())));
         var newRecord = new Record(newBase, asDynamicFields(fields));
-        return EResult.ok(new CodeValue(Code.of(loc, finalDyn), EvalOutcome.ofValue((Value) newRecord)));
+        return EResult.ok(new CodeValue(Code.of(finalDyn), EvalOutcome.ofValue((Value) newRecord)));
     }
 
     private static TOrderedMap<ConstKey, RecordField> asDynamicFields(TOrderedMap<ConstKey, RecordField> in) {
@@ -1320,9 +1319,9 @@ public final class Record
                 throw new AssertionError("No such method: " + Record.class.getName() + ".newDynamic");
             }
             callSeq.add(_csm);
-            var stackValue = ValueDynamic.stack(destType, 1);
+            var stackValue = ValueDynamic.stack(xx, destType);
             var withCarry = DynUtil.wrapWithCarry(loc, cv.code(), new CodeDynamic(loc, callSeq));
-            return EResult.ok(new CodeValue(Code.of(loc, withCarry), EvalOutcome.ofValue(stackValue)));
+            return EResult.ok(new CodeValue(Code.of(withCarry), EvalOutcome.ofValue(stackValue)));
         }
         return EResult.ok(cv);
     }

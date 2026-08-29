@@ -305,8 +305,7 @@ public final class TypeObjectDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -352,7 +351,7 @@ public final class TypeObjectDynamic
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(xx, this, loc, cv, sourceType);
+                return rule.typeObjectCastFromRuleApply(xx, this, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
@@ -388,7 +387,7 @@ public final class TypeObjectDynamic
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
             var call = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         for (var idAspect : trivialIdentityAspects()) {
             if (destType.typeAspect(xx, idAspect).optIsSome()) {
@@ -409,7 +408,7 @@ public final class TypeObjectDynamic
         if (key.value().optIsNone()) {
             return EResult.err(loc, typeDesc() + "::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         ConstKey.Str ckStr;
@@ -436,15 +435,15 @@ public final class TypeObjectDynamic
                                 JavaBytecodeUtils.callMethod(loc, jvmClass, mc.jvmMethodName(), mc.jvmMethodDesc()));
                 }
                 return EResult.ok(new CodeValue(
-                        Code.of(loc, new CodeDynamic(loc, loadSeq)),
-                        EvalOutcome.ofValue(ValueDynamic.stack(f.fieldType(), 1))));
+                        Code.of(new CodeDynamic(loc, loadSeq)),
+                        EvalOutcome.ofValue(ValueDynamic.stack(xx, f.fieldType()))));
             }
         }
         if (interfaceRepresented.optIsNone()) {
             for (var m : methods) {
                 if (m.langName().equals(keyStr)) {
                     return EResult.ok(
-                            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(m.funcType(), 1))));
+                            new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, m.funcType()))));
                 }
             }
         }
@@ -479,7 +478,7 @@ public final class TypeObjectDynamic
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+        return DynUtil.dynamicConsumeToDynamic(loc, cv);
     }
 
     @Override
@@ -489,12 +488,12 @@ public final class TypeObjectDynamic
 
     @Override
     public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -504,7 +503,7 @@ public final class TypeObjectDynamic
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -519,7 +518,7 @@ public final class TypeObjectDynamic
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override

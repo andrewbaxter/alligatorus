@@ -320,7 +320,7 @@ public record TypeUniqueDynamic()
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+        return DynUtil.dynamicConsumeToDynamic(loc, cv);
     }
 
     @Override
@@ -330,12 +330,12 @@ public record TypeUniqueDynamic()
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -384,7 +384,7 @@ public record TypeUniqueDynamic()
                         JavaDataDescriptor.DESC_BOOL, TList.of(JavaDataDescriptor.fromClass(Object.class)))));
         var call = new CodeDynamic(loc, _eueSeq);
         return EResult.ok(
-                new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+                new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
     }
 
     private static Opt<Unique> extractUnique(CodeValue cv) {
@@ -419,8 +419,7 @@ public record TypeUniqueDynamic()
         if (asp.optIsNone()) return EResult.ok(cv);
         var dynRes = asp.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        return EResult.ok(
-                new CodeValue(Code.of(loc, dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
+        return EResult.ok(new CodeValue(Code.of(dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
     }
 
     @Override
@@ -440,7 +439,7 @@ public record TypeUniqueDynamic()
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

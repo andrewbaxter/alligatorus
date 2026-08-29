@@ -24,7 +24,7 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
         Code useCode;
         Opt<TupleBaseDynamic> base;
         if (jsKey.optIsSome()) {
-            useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, jsKey.optUnwrap()));
+            useCode = Code.of(BindingCode.bindingUse(new CodeLoc.Some(loc), jsKey.optUnwrap()));
             base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap())));
         } else {
             useCode = Code.none(loc);

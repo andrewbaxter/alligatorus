@@ -22,8 +22,4 @@ public final class EmitCtx {
         this.nextSlot = nextSlot;
         this.fieldPrefix = fieldPrefix;
     }
-
-    public EmitCtx(String ownerInternalName, int xxSlotUnused, int nextSlot, String fieldPrefix) {
-        this(ownerInternalName, nextSlot, fieldPrefix);
-    }
 }

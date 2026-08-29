@@ -138,8 +138,7 @@ public final class TypeOptionDynamic<T extends Type>
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -149,7 +148,7 @@ public final class TypeOptionDynamic<T extends Type>
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -289,7 +288,7 @@ public final class TypeOptionDynamic<T extends Type>
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeOptionDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var ckStr =
@@ -316,8 +315,8 @@ public final class TypeOptionDynamic<T extends Type>
                 seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
             }
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
+                    Code.of(new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType))));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
             var selfDyn = self.code().codeDynamic();
@@ -328,8 +327,8 @@ public final class TypeOptionDynamic<T extends Type>
             seq.add(selfDyn);
             seq.add(JavaBytecodeUtils.instanceOf(loc, JavaInternalName.fromClass(Opt.Some.class)));
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+                    Code.of(new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
         }
         var spec = fieldSpecs().getOrNull(ck);
         if (spec == null) {
@@ -369,7 +368,7 @@ public final class TypeOptionDynamic<T extends Type>
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -399,7 +398,7 @@ public final class TypeOptionDynamic<T extends Type>
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

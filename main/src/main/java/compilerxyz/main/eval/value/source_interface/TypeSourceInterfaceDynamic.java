@@ -308,10 +308,10 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, data.identity).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
                 .optIsSome()) {
@@ -324,7 +324,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
             seq.add(JavaBytecodeUtils.callMethod(
                     loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
     }
@@ -351,7 +351,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

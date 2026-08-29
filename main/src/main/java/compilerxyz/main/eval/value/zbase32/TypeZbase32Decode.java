@@ -101,7 +101,7 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
             seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_STORE));
             var listType = GenLists.listDynamic(xx, new TypeByteDynamic());
             return EResult.ok(new CodeValue(
-                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(listType, 1))));
+                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, listType))));
         }
         return EResult.err(loc, "zbase32.decode: argument must be a string, got " + argType.typeDesc());
     }

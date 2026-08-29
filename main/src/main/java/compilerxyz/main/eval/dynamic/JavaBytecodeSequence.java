@@ -52,8 +52,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
     }
 
-    TMap<Integer, QExprId> renderInternal(
-            MethodVisitor out, TList<JavaBytecodeBindingKey> initialIndexes, TList<InitialSlot> initialSlotWidths) {
+    TMap<Integer, QExprId> renderInternal(MethodVisitor out, TList<InitialSlot> initialSlotWidths) {
         var locMap = new TMap<Integer, QExprId>();
         final int[] locCounter = {0};
         var flattened = new TList<JavaBytecode>();

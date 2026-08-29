@@ -92,19 +92,16 @@ public final class TargetDynamic implements Target {
         if (consumeOpt.optIsNone()) {
             return cv;
         }
-        var _acrConsume = consumeOpt.optUnwrap();
         var _acrValueOpt = cv.value();
         if (_acrValueOpt.optIsNone() || !(_acrValueOpt.optUnwrap() instanceof ValueDynamic _acrVd)) {
             return cv;
         }
-        var _acrDesc = _acrConsume.aspectConsumeDynamicJvmClass(xx).value();
-        var _acrWidth = _acrDesc.equals("J") || _acrDesc.equals("D") ? 2 : 1;
         return switch (_acrVd.source()) {
             case ValueDynamicSource.Expr ignored -> cv;
             case ValueDynamicSource.Binding ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(_acrVd.type_(), _acrWidth)));
+                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, _acrVd.type_())));
             case ValueDynamicSource.Field ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(_acrVd.type_(), _acrWidth)));
+                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, _acrVd.type_())));
         };
     }
 
@@ -142,7 +139,7 @@ public final class TargetDynamic implements Target {
             var clause = catch_.optUnwrap();
             var handler = catchHandler.optUnwrap();
             var joinKey = new JumpKey();
-            if (bodyHasValue) {
+            if (!body.controlEnded()) {
                 seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeJump(joinKey)));
             }
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(handler)));
@@ -185,7 +182,7 @@ public final class TargetDynamic implements Target {
                 seq.add(JavaBytecodeUtils.freshen(finDyn));
             }
         }
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, seq)));
     }
 
     @Override
@@ -201,17 +198,17 @@ public final class TargetDynamic implements Target {
         if (!any) {
             return EResult.ok(Code.none(loc));
         }
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, seq)));
     }
 
     @Override
     public EResult<Code> targetJump(QExprId loc, JumpKey dest) {
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, new JavaBytecodeJump(dest))));
+        return EResult.ok(Code.of(new CodeDynamic(loc, new JavaBytecodeJump(dest))));
     }
 
     @Override
     public EResult<Code> targetLand(QExprId loc, JumpKey dest) {
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, new JavaBytecodeLand(dest))));
+        return EResult.ok(Code.of(new CodeDynamic(loc, new JavaBytecodeLand(dest))));
     }
 
     @Override
@@ -220,7 +217,7 @@ public final class TargetDynamic implements Target {
         if (innerDyn == null) {
             return EResult.ok(inner);
         }
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, new JavaBytecodeGuarded(dest, innerDyn))));
+        return EResult.ok(Code.of(new CodeDynamic(loc, new JavaBytecodeGuarded(dest, innerDyn))));
     }
 
     @Override
@@ -240,7 +237,7 @@ public final class TargetDynamic implements Target {
         } else {
             seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
         }
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, seq)));
     }
 
     @Override
@@ -263,56 +260,79 @@ public final class TargetDynamic implements Target {
             seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, parkType), parkKey)));
         }
         seq.add(new CodeDynamic(loc, new JavaBytecodeJump(next)));
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, seq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, seq)));
     }
 
     @Override
     public EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_) {
         var erb = new Erb(loc);
+        boolean anyValue = false;
+        boolean anyNoValue = false;
+        boolean allControlEnded = true;
+        Type resultType = null;
+        for (var branch : conditions) {
+            switch (branch.body().outcome()) {
+                case EvalOutcome.HasValue h -> {
+                    anyValue = true;
+                    allControlEnded = false;
+                    if (resultType == null) resultType = h.value().valueType();
+                }
+                case EvalOutcome.NoValue n -> {
+                    anyNoValue = true;
+                    allControlEnded = false;
+                }
+                case EvalOutcome.ControlEnded c -> {}
+            }
+        }
+        if (else_.optIsSome()) {
+            switch (else_.optUnwrap().outcome()) {
+                case EvalOutcome.HasValue h -> {
+                    anyValue = true;
+                    allControlEnded = false;
+                    if (resultType == null) resultType = h.value().valueType();
+                }
+                case EvalOutcome.NoValue n -> {
+                    anyNoValue = true;
+                    allControlEnded = false;
+                }
+                case EvalOutcome.ControlEnded c -> {}
+            }
+        } else {
+            allControlEnded = false;
+        }
+        if (anyValue && anyNoValue) {
+            return EResult.err(loc, "If: some branches yield a value and some don't");
+        }
         var seq = new JavaBytecodeSequence();
         var endLabel = new LabelNode();
-        Type resultType = null;
-        boolean allControlEnded = true;
         for (var branch : conditions) {
             var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition());
             if (condDynOpt.optIsNone()) return EResult.errs(erb.errors());
             var bodyCv = branch.body();
-            boolean bodyControlEnded = bodyCv.value().optIsNone();
-            if (!bodyControlEnded) {
-                allControlEnded = false;
-                if (resultType == null) {
-                    resultType = bodyCv.value().optUnwrap().valueType();
-                }
-            }
             CodeDynamic bodyDyn;
-            if (bodyControlEnded) {
+            if (bodyCv.value().optIsSome()) {
+                var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
+                if (bodyDynOpt.optIsNone()) return EResult.errs(erb.errors());
+                bodyDyn = bodyDynOpt.optUnwrap();
+            } else {
                 bodyDyn = switch (bodyCv.code()) {
                     case Code.Target ct when ct.impl() instanceof CodeDynamic cd -> cd;
                     case Code.None n -> new CodeDynamic(loc, new JavaBytecodeSequence());
                     case Code.Target ct -> new CodeDynamic(loc, new JavaBytecodeSequence());
                 };
-            } else {
-                var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
-                if (bodyDynOpt.optIsNone()) return EResult.errs(erb.errors());
-                bodyDyn = bodyDynOpt.optUnwrap();
             }
             var nextLabel = new LabelNode();
             seq.add(condDynOpt.optUnwrap());
             seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextLabel)));
             seq.add(bodyDyn);
-            if (!bodyControlEnded) {
+            if (!bodyCv.controlEnded()) {
                 seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
             }
             seq.add(JavaBytecodeUtils.wrapObj(loc, nextLabel));
         }
         if (else_.optIsSome()) {
             var elseCv = else_.optUnwrap();
-            boolean elseControlEnded = elseCv.value().optIsNone();
-            if (!elseControlEnded) allControlEnded = false;
-            if (!elseControlEnded) {
-                if (resultType == null) {
-                    resultType = elseCv.value().optUnwrap().valueType();
-                }
+            if (elseCv.value().optIsSome()) {
                 var elseDynOpt = cvToDynamic(erb, xx, loc, elseCv);
                 if (elseDynOpt.optIsNone()) return EResult.errs(erb.errors());
                 seq.add(elseDynOpt.optUnwrap());
@@ -323,14 +343,16 @@ public final class TargetDynamic implements Target {
                     case Code.Target ct -> {}
                 }
             }
-        } else {
+        } else if (anyValue) {
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-            allControlEnded = false;
         }
         if (allControlEnded) {
-            return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.CONTROL_ENDED));
         }
         seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
+        if (!anyValue) {
+            return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+        }
         var finalType = resultType == null ? (Type) new TypeNullDynamic() : resultType;
         var stackOpt = erb.mustEr(GenAspectStackValueDynamic.get(xx, loc, finalType));
         if (stackOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -351,7 +373,40 @@ public final class TargetDynamic implements Target {
 
         var endLabel = new LabelNode();
         Type resultType = null;
+        boolean anyValue = false;
+        boolean anyNoValue = false;
         boolean allControlEnded = true;
+        for (var branch : cases) {
+            switch (branch.body().outcome()) {
+                case EvalOutcome.HasValue h -> {
+                    anyValue = true;
+                    allControlEnded = false;
+                    if (resultType == null) resultType = h.value().valueType();
+                }
+                case EvalOutcome.NoValue n -> {
+                    anyNoValue = true;
+                    allControlEnded = false;
+                }
+                case EvalOutcome.ControlEnded c -> {}
+            }
+        }
+        if (fallback.optIsSome()) {
+            switch (fallback.optUnwrap().body().outcome()) {
+                case EvalOutcome.HasValue h -> {
+                    anyValue = true;
+                    allControlEnded = false;
+                    if (resultType == null) resultType = h.value().valueType();
+                }
+                case EvalOutcome.NoValue n -> {
+                    anyNoValue = true;
+                    allControlEnded = false;
+                }
+                case EvalOutcome.ControlEnded c -> {}
+            }
+        }
+        if (anyValue && anyNoValue) {
+            return EResult.err(loc, "Match: some branches yield a value and some don't");
+        }
         var baseType = ((Opt.Some<Value>) base.value()).value().valueType();
         MatchDynamic md;
         if (baseType instanceof MatchDynamic direct) {
@@ -362,32 +417,25 @@ public final class TargetDynamic implements Target {
         } else {
             return EResult.err(loc, "Match: base type is not matchable: " + baseType.typeDesc());
         }
-        var prepRes = md.matchDynamicPrepare(xx, loc);
+        var prepRes = md.matchDynamicPrepare(xx);
         if (prepRes.hasErrors()) return prepRes.reerr();
         for (var branch : cases) {
             var bodyCv = branch.body();
-            boolean bodyControlEnded = bodyCv.value().optIsNone();
-            if (!bodyControlEnded) {
-                allControlEnded = false;
-                if (resultType == null) {
-                    resultType = bodyCv.value().optUnwrap().valueType();
-                }
-            }
             CodeDynamic bodyDyn;
-            if (bodyControlEnded) {
+            if (bodyCv.value().optIsSome()) {
+                var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
+                if (bodyDynOpt.optIsNone()) return EResult.errs(erb.errors());
+                bodyDyn = bodyDynOpt.optUnwrap();
+            } else {
                 bodyDyn = switch (bodyCv.code()) {
                     case Code.Target ct when ct.impl() instanceof CodeDynamic cd -> cd;
                     case Code.None n -> new CodeDynamic(loc, new JavaBytecodeSequence());
                     case Code.Target ct -> new CodeDynamic(loc, new JavaBytecodeSequence());
                 };
-            } else {
-                var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
-                if (bodyDynOpt.optIsNone()) return EResult.errs(erb.errors());
-                bodyDyn = bodyDynOpt.optUnwrap();
             }
             var nextCaseLabel = new LabelNode();
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
-            var testRes = md.matchDynamicTest(xx, loc, branch.variantIndex());
+            var testRes = md.matchDynamicTest(loc, branch.variantIndex());
             if (testRes.hasErrors()) return testRes.reerr();
             seq.add(testRes.requireValue("targetMatch variant test"));
             seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextCaseLabel)));
@@ -400,7 +448,7 @@ public final class TargetDynamic implements Target {
                     new JavaBytecodeStoreLoad(
                             Opcodes.ASTORE, branch.payloadBinding().key())));
             seq.add(bodyDyn);
-            if (!bodyControlEnded) {
+            if (!bodyCv.controlEnded()) {
                 seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
             }
             seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
@@ -413,12 +461,7 @@ public final class TargetDynamic implements Target {
                     new JavaBytecodeStoreLoad(
                             Opcodes.ASTORE,
                             fallback.optUnwrap().payloadBinding().key())));
-            boolean fallbackControlEnded = fallbackCv.value().optIsNone();
-            if (!fallbackControlEnded) allControlEnded = false;
-            if (!fallbackControlEnded) {
-                if (resultType == null) {
-                    resultType = fallbackCv.value().optUnwrap().valueType();
-                }
+            if (fallbackCv.value().optIsSome()) {
                 var fallbackDynOpt = cvToDynamic(erb, xx, loc, fallbackCv);
                 if (fallbackDynOpt.optIsNone()) return EResult.errs(erb.errors());
                 seq.add(fallbackDynOpt.optUnwrap());
@@ -436,11 +479,14 @@ public final class TargetDynamic implements Target {
                     JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID),
                     new CodeDynamic(loc, new JavaBytecodeSequence())));
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
-        } else {
+        } else if (anyValue) {
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
         }
         seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
         if (allControlEnded) {
+            return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.CONTROL_ENDED));
+        }
+        if (!anyValue) {
             return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
         }
         var finalType = resultType == null ? (Type) new TypeNullDynamic() : resultType;
@@ -482,7 +528,7 @@ public final class TargetDynamic implements Target {
                 xx.vx.externals.add(
                         new EvalContext.ExternalEntry(key, new TypeExpr(), new External(StagedExprCell.class, cell)));
                 restElements.add(JavaBytecodeUtils.literalNull(loc));
-                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
             } else {
                 if (cv.value().optIsNone()) {
                     return EResult.err(loc, "TargetDynamic::stage: dynamic lower CodeValue has no value");
@@ -498,7 +544,7 @@ public final class TargetDynamic implements Target {
                 if (consumeOpt.optIsNone()) return EResult.errs(erb.errors());
                 var innerJsOpt = erb.mustEr(consumeOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv));
                 if (innerJsOpt.optIsNone()) return EResult.errs(erb.errors());
-                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, liftId));
+                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), liftId));
                 restElements.add(innerJsOpt.optUnwrap());
             }
         }
@@ -510,7 +556,7 @@ public final class TargetDynamic implements Target {
                 var graftType = cv.value().optIsSome() ? cv.value().optUnwrap().valueType() : new TypeNullDynamic();
                 xx.vx.externals.add(
                         new EvalContext.ExternalEntry(key, graftType, new External(CodeValue.class, graftCv)));
-                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+                restElements.add(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
             } else {
                 if (cv.value().optIsNone()) {
                     return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
@@ -524,18 +570,13 @@ public final class TargetDynamic implements Target {
             }
         }
         var stageSeq = new JavaBytecodeSequence();
-        stageSeq.add(JavaBytecodeUtils.accessStaticField(
-                loc,
-                JavaInternalName.of(xx.vx.evalRootInternalName),
-                EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                EvalRootEmitter.DESC_EXPR_CONTEXT));
-        stageSeq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, treeId));
+        stageSeq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), treeId));
         stageSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, lowerValues.size()));
         stageSeq.add(JavaBytecodeUtils.buildObjectArray(loc, restElements));
         stageSeq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.DYN_RUNTIME_STAGE));
         var stageCall = new CodeDynamic(loc, stageSeq);
-        var resultValue = ValueDynamic.stack(new TypeExprStagedPlaceholder(), 1);
-        return EResult.ok(new CodeValue(Code.of(loc, stageCall), EvalOutcome.ofValue(resultValue)));
+        var resultValue = ValueDynamic.stack(xx, new TypeExprStagedPlaceholder());
+        return EResult.ok(new CodeValue(Code.of(stageCall), EvalOutcome.ofValue(resultValue)));
     }
 
     public void emit(JavaBytecodeSequence seq, EmitCtx ctx, CodeDynamic code) {
@@ -629,14 +670,14 @@ public final class TargetDynamic implements Target {
         } else {
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionInt(Opcodes.ATHROW)));
         }
-        return EResult.ok(Opt.some(Code.of(loc, new CodeDynamic(loc, seq))));
+        return EResult.ok(Opt.some(Code.of(new CodeDynamic(loc, seq))));
     }
 
     @Override
     public EResult<Code> targetFresh(QExprId loc, Code code) {
         var dyn = code.codeDynamic();
         if (dyn == null) return EResult.ok(code);
-        return EResult.ok(Code.of(loc, JavaBytecodeUtils.freshen(dyn)));
+        return EResult.ok(Code.of(JavaBytecodeUtils.freshen(dyn)));
     }
 
     private static <K> TList<TargetBindSub> sortBindSubs(
@@ -646,7 +687,7 @@ public final class TargetDynamic implements Target {
             typeEntries.put(e.getKey(), e.getValue().type());
         var sort = CompositeSlotSort.sort(xx, typeEntries, tiebreaker);
         var out = new TList<TargetBindSub>(entries.size());
-        for (var e : entries.entrySet()) out.add(null);
+        for (int _tbsI = 0; _tbsI < entries.size(); _tbsI++) out.add(null);
         for (var e : entries.entrySet()) {
             out.set(sort.slotOfKey().get(e.getKey()), e.getValue());
         }

@@ -2,6 +2,7 @@ package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
@@ -25,7 +26,7 @@ public final class SourceUnionBuilder {
         return GenObjectTypes.sourceUnionBuilder();
     }
 
-    public EResult<TypeSourceUnionNewDynamic> variant(ExprContext xx, String tag, Type typeRef) {
+    public EResult<TypeSourceUnionNewDynamic> variant(EvalContext vx, String tag, Type typeRef) {
         if (this.type_.set.finished) {
             return EResult.err(
                     new QExprId(new SourceId(-1L), -1L),
@@ -33,7 +34,7 @@ public final class SourceUnionBuilder {
         }
         var jsTag = Prefixes.TAG_PREFIX + this.type_.nextTagId.next();
         var variantIndex = this.type_.variants.size();
-        var payloadType = DynUtil.substituteBoxed(xx, typeRef);
+        var payloadType = DynUtil.substituteBoxed(ExprContext.freshRoot(vx.ix), typeRef);
         this.type_.variants.add(new SourceUnionVariant(new ConstKey.Str(tag), jsTag, payloadType));
         this.type_.active.add(variantIndex);
         return EResult.ok(new TypeSourceUnionNewDynamic(this.type_, variantIndex));

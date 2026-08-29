@@ -13,8 +13,6 @@ public final class EvalContext {
     public final CompileImportContext ix;
     public final Counter nextLocalId = new Counter();
 
-    public final Counter uniqueCounter = new Counter();
-
     public final Counter dropStateCounter = new Counter();
 
     public final Counter emissionCounter = new Counter();

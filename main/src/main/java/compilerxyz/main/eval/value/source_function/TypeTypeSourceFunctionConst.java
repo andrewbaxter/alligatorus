@@ -84,7 +84,7 @@ public final class TypeTypeSourceFunctionConst {
 
         @Override
         public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-            return DynUtil.bindDynamicDefault(xx, loc, cv);
+            return DynUtil.bindDynamicDefault(loc, cv);
         }
 
         @Override
@@ -94,12 +94,12 @@ public final class TypeTypeSourceFunctionConst {
 
         @Override
         public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-            return DynUtil.dropDefault(xx, loc, cv);
+            return DynUtil.dropDefault(loc, cv);
         }
 
         @Override
         public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-            return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+            return DynUtil.dynamicConsumeToDynamic(loc, cv);
         }
 
         @Override

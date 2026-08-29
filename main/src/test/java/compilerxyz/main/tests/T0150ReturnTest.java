@@ -360,10 +360,12 @@ public final class T0150ReturnTest {
                         mb.labeled(
                                 "outer",
                                 mb.tryCatchFinally(
-                                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.returnLabel("outer")),
+                                        mb.seqOf(
+                                                mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
+                                                mb.returnLabel("outer")),
                                         Opt.none(),
-                                        Opt.some(mb.call(mb.log(), mb.str("finally"))))),
-                        mb.call(mb.log(), mb.str("after")))));
+                                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("finally")), mb.tupleOf())))),
+                        mb.seqOf(mb.call(mb.log(), mb.str("after")), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes348;
@@ -394,14 +396,22 @@ public final class T0150ReturnTest {
                         mb.labeled(
                                 "outer",
                                 mb.tryCatchFinally(
-                                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.returnLabel("outer")),
+                                        mb.seqOf(
+                                                mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
+                                                mb.returnLabel("outer")),
                                         Opt.none(),
                                         Opt.some(mb.ifOf(
                                                 TList.of(
                                                         new TestMb.Branch(
-                                                                dynTrue, mb.call(mb.log(), mb.str("fin-then")))),
-                                                Opt.some(mb.call(mb.log(), mb.str("fin-else"))))))),
-                        mb.call(mb.log(), mb.str("after")))));
+                                                                dynTrue,
+                                                                mb.seqOf(
+                                                                        mb.call(mb.log(), mb.str("fin-then")),
+                                                                        mb.tupleOf()))),
+                                                Opt.some(
+                                                        mb.seqOf(
+                                                                mb.call(mb.log(), mb.str("fin-else")),
+                                                                mb.tupleOf())))))),
+                        mb.seqOf(mb.call(mb.log(), mb.str("after")), mb.tupleOf()))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes388;

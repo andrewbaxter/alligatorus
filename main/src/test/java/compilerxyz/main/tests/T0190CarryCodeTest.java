@@ -307,10 +307,12 @@ public final class T0190CarryCodeTest {
         assertPushed(run(
                 mb,
                 mb.tryExpr(
-                        mb.call(mb.log(), carrying(mb, "b", mb.str("try"))),
+                        mb.seqOf(mb.call(mb.log(), carrying(mb, "b", mb.str("try"))), mb.tupleOf()),
                         Opt.some(new SourceExpr.TryCatch(
-                                mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught")))),
-                        Opt.some(mb.call(mb.log(), mb.str("fin"))))));
+                                mb.str("err"),
+                                mb.typesString(),
+                                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("fin")), mb.tupleOf())))));
     }
 
     @Test
@@ -319,10 +321,12 @@ public final class T0190CarryCodeTest {
         assertPushed(run(
                 mb,
                 mb.tryExpr(
-                        mb.call(mb.log(), mb.str("body")),
+                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.some(new SourceExpr.TryCatch(
-                                mb.str("err"), mb.typesString(), mb.call(mb.log(), mb.str("caught")))),
-                        Opt.some(mb.call(mb.log(), carrying(mb, "b", mb.str("fin")))))));
+                                mb.str("err"),
+                                mb.typesString(),
+                                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
+                        Opt.some(mb.seqOf(mb.call(mb.log(), carrying(mb, "b", mb.str("fin"))), mb.tupleOf())))));
     }
 
     @Test
@@ -331,9 +335,9 @@ public final class T0190CarryCodeTest {
         assertPushed(run(
                 mb,
                 mb.tryExpr(
-                        mb.call(mb.log(), mb.str("body")),
+                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.none(),
-                        Opt.some(mb.call(mb.log(), carrying(mb, "b", mb.str("fin")))))));
+                        Opt.some(mb.seqOf(mb.call(mb.log(), carrying(mb, "b", mb.str("fin"))), mb.tupleOf())))));
     }
 
     @Test
@@ -348,9 +352,9 @@ public final class T0190CarryCodeTest {
         assertPushed(run(
                 mb,
                 mb.tryExpr(
-                        mb.call(mb.log(), carrying(mb, "b", mb.str("try"))),
+                        mb.seqOf(mb.call(mb.log(), carrying(mb, "b", mb.str("try"))), mb.tupleOf()),
                         Opt.none(),
-                        Opt.some(mb.call(mb.log(), mb.str("fin"))))));
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("fin")), mb.tupleOf())))));
     }
 
     private static SourceExpr defineUpperFunc(TestMb mb) {

@@ -46,7 +46,7 @@ public record TypeSourceMethodDynamic(
         String methodName,
         JavaMethodDescriptor descriptor,
         boolean isInterface,
-        boolean needsExprContext)
+        boolean needsEvalContext)
         implements Type,
                 AspectBind,
                 AspectConsumeDynamic,
@@ -103,7 +103,7 @@ public record TypeSourceMethodDynamic(
                 methodName,
                 descriptor,
                 isInterface,
-                needsExprContext);
+                needsEvalContext);
     }
 
     @Override
@@ -138,7 +138,7 @@ public record TypeSourceMethodDynamic(
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -161,7 +161,7 @@ public record TypeSourceMethodDynamic(
                 && klass.equals(oOpt.optUnwrap().klass)
                 && methodName.equals(oOpt.optUnwrap().methodName)
                 && isInterface == oOpt.optUnwrap().isInterface
-                && needsExprContext == oOpt.optUnwrap().needsExprContext;
+                && needsEvalContext == oOpt.optUnwrap().needsEvalContext;
     }
 
     @Override

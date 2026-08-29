@@ -3,7 +3,6 @@ package compilerxyz.codegen.experimental;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.type.Type;
@@ -88,7 +87,16 @@ public final class CodegenDescriptorScanner {
                 }
             }
             for (var m : t.getMethods()) {
-                if (!isAnnotated(m)) continue;
+                boolean _rIsAnnotated;
+                _isAnnotated:
+                {
+                    {
+                        _rIsAnnotated = m.getAnnotations().stream()
+                                .anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
+                        break _isAnnotated;
+                    }
+                }
+                if (!_rIsAnnotated) continue;
                 var typeParams = new TSet<String>();
                 typeParams.addAll(classTypeParams);
                 for (var tp : m.getTypeParameters()) typeParams.add(tp.getNameAsString());
@@ -116,10 +124,6 @@ public final class CodegenDescriptorScanner {
         }
     }
 
-    private static boolean isAnnotated(MethodDeclaration m) {
-        return m.getAnnotations().stream().anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
-    }
-
     private static TypeName typeNameOf(Type t, TMap<String, String> imports, String pkg, TSet<String> typeParams) {
         if (t.isVoidType()) return TypeName.VOID;
         if (t.isPrimitiveType()) {
@@ -141,7 +145,27 @@ public final class CodegenDescriptorScanner {
         if (t.isClassOrInterfaceType()) {
             var name = t.asClassOrInterfaceType().getNameAsString();
             if (typeParams.contains(name)) return ClassName.get(Object.class);
-            return ClassName.bestGuess(resolve(name, imports, pkg));
+            String _rResolve;
+            _resolve:
+            {
+                var head = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;
+                var fromImport = imports.get(head);
+                if (fromImport != null) {
+                    {
+                        _rResolve = name.contains(".") ? fromImport + name.substring(name.indexOf('.')) : fromImport;
+                        break _resolve;
+                    }
+                }
+                if (JAVA_LANG.contains(head)) {
+                    _rResolve = "java.lang." + name;
+                    break _resolve;
+                }
+                {
+                    _rResolve = pkg.isEmpty() ? name : pkg + "." + name;
+                    break _resolve;
+                }
+            }
+            return ClassName.bestGuess(_rResolve);
         }
         throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);
     }
@@ -159,16 +183,6 @@ public final class CodegenDescriptorScanner {
             "Character",
             "CharSequence",
             "Number");
-
-    private static String resolve(String name, TMap<String, String> imports, String pkg) {
-        var head = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;
-        var fromImport = imports.get(head);
-        if (fromImport != null) {
-            return name.contains(".") ? fromImport + name.substring(name.indexOf('.')) : fromImport;
-        }
-        if (JAVA_LANG.contains(head)) return "java.lang." + name;
-        return pkg.isEmpty() ? name : pkg + "." + name;
-    }
 
     private static String screamingSnake(String camel) {
         var sb = new StringBuilder();

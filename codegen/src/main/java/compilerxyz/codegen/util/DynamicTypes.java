@@ -12,7 +12,7 @@ public final class DynamicTypes {
 
     private record CompositeEntry(int arity, TypeName valueClass) {}
 
-    private static final IMap<ClassName, TypeName> NULLARY;
+    public static final IMap<ClassName, TypeName> NULLARY;
     private static final IMap<ClassName, CompositeEntry> COMPOSITES;
 
     private static void nullary(TMap<ClassName, TypeName> nullary, String pkg, String cls, TypeName valueClass) {
@@ -118,11 +118,6 @@ public final class DynamicTypes {
             return CodeBlock.of("$T.dynamicType()", descriptor);
         }
         throw new IllegalArgumentException("DynamicTypes has no descriptor for " + descriptor.canonicalName());
-    }
-
-    public static TypeName leafValueClass(ClassName descriptor) {
-        var value = NULLARY.getOrNull(descriptor);
-        return value != null ? value : descriptor;
     }
 
     public static CodeBlock composite(ClassName wrapper, CodeBlock... params) {

@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import spoon.reflect.CtModel;
 import spoon.reflect.code.BinaryOperatorKind;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtExpression;
@@ -24,7 +23,6 @@ import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtTypeReference;
-import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class ConventionChecks {
 
@@ -46,8 +44,8 @@ public final class ConventionChecks {
         this.generatedFiles = generatedFiles;
     }
 
-    public List<Finding> run(CtModel model) {
-        for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
+    public List<Finding> run(ModelIndex index) {
+        for (CtType<?> t : index.types) {
             if (t instanceof CtInterface<?> iface) {
                 String _cimName = iface.getSimpleName();
                 if (!_cimName.isEmpty()) {
@@ -66,7 +64,7 @@ public final class ConventionChecks {
                 }
             }
         }
-        for (CtBinaryOperator<?> op : model.getElements(new TypeFilter<>(CtBinaryOperator.class))) {
+        for (CtBinaryOperator<?> op : index.binaryOperators) {
             if (op.getKind() == BinaryOperatorKind.INSTANCEOF && !op.isImplicit()) {
                 CtTypeReference<?> _cisOperandType = op.getLeftHandOperand().getType();
                 if (_cisOperandType != null) {
@@ -86,7 +84,7 @@ public final class ConventionChecks {
             }
         }
         Set<String> _nulScanned = new HashSet<>();
-        for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
+        for (CtType<?> t : index.types) {
             var _nulPos = t.getPosition();
             if (_nulPos == null
                     || !_nulPos.isValidPosition()
@@ -110,7 +108,7 @@ public final class ConventionChecks {
                 }
             }
         }
-        for (CtTypeReference<?> tr : model.getElements(new TypeFilter<>(CtTypeReference.class))) {
+        for (CtTypeReference<?> tr : index.typeReferences) {
             String _ambQn = tr.getQualifiedName();
             if (_ambQn == null || !_ambQn.contains(".")) continue;
             CtElement _ambEl = tr;
@@ -126,7 +124,7 @@ public final class ConventionChecks {
                     .computeIfAbsent(tr.getSimpleName(), x -> new HashSet<>())
                     .add(_ambQn.replace('$', '.'));
         }
-        for (CtTypeReference<?> tr : model.getElements(new TypeFilter<>(CtTypeReference.class))) {
+        for (CtTypeReference<?> tr : index.typeReferences) {
             if (tr.isImplicit()) continue;
             var _ssTrPos = tr.getPosition();
             String _ssTrSnippet = snippetOf(_ssTrPos);
@@ -158,12 +156,12 @@ public final class ConventionChecks {
                 }
             }
         }
-        for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
+        for (CtInvocation<?> inv : index.invocations) {
             checkFqTarget(
                     inv.getTarget(),
                     inv.getExecutable() == null ? null : inv.getExecutable().getDeclaringType());
         }
-        for (CtFieldRead<?> fr : model.getElements(new TypeFilter<>(CtFieldRead.class))) {
+        for (CtFieldRead<?> fr : index.fieldReads) {
             checkFqTarget(
                     fr.getTarget(),
                     fr.getVariable() == null ? null : fr.getVariable().getDeclaringType());

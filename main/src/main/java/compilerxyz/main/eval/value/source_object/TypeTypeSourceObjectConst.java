@@ -338,7 +338,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
                             md.compiledBytecode = m.compiledBytecode();
                             dt.methods.add(md);
                         }
-                        for (var impl : body.interfaceImpls()) {}
 
                         var imported = new ImportedSourceObjectConst(dt);
                         var deps = new TList<Artifact>();
@@ -477,7 +476,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
         var selfCodeRes = aspectConsumeDynamicToDynamic(xx, loc, self);
         if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
         var selfCode = selfCodeRes.requireValue("TypeTypeSourceObjectConst::field toDynamic");
-        var selfDynamic = new CodeValue(Code.of(loc, selfCode), EvalOutcome.ofValue(ValueDynamic.stack(dynType, 1)));
+        var selfDynamic = new CodeValue(Code.of(selfCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType)));
         return dynType.aspectFieldField(xx, loc, selfDynamic, key);
     }
 
@@ -516,7 +515,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

@@ -217,13 +217,12 @@ public final class TypeSourceObjectDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -233,7 +232,7 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -256,7 +255,7 @@ public final class TypeSourceObjectDynamic
         var key = new JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(hostValue.getClass(), hostValue)));
-        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
 
     @Override
@@ -265,7 +264,7 @@ public final class TypeSourceObjectDynamic
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeSourceObjectDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         ConstKey.Str keyStr;
@@ -394,7 +393,7 @@ public final class TypeSourceObjectDynamic
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, identity).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             boolean hasTypeImpl = false;
@@ -410,7 +409,7 @@ public final class TypeSourceObjectDynamic
                 if (sourceCode == null) {
                     return EResult.err(loc, "cast " + typeDesc() + " -> any: source has no runtime code");
                 }
-                return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, GenType.dynamicType()));
+                return EResult.ok(emitBuiltinCast(xx, sourceCode, GenType.dynamicType()));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
@@ -426,8 +425,8 @@ public final class TypeSourceObjectDynamic
                     wrapSeq.add(JavaBytecodeUtils.callStaticMethod(
                             new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET));
                     return EResult.ok(new CodeValue(
-                            Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), wrapSeq)),
-                            EvalOutcome.ofValue(ValueDynamic.stack(GenCode.dynamicType(), 1))));
+                            Code.of(new CodeDynamic(new CodeLoc.Some(loc), wrapSeq)),
+                            EvalOutcome.ofValue(ValueDynamic.stack(xx, GenCode.dynamicType()))));
                 }
             }
             return EResult.err(loc, "cast " + typeDesc() + " -> code: object does not implement code_dyn");
@@ -450,11 +449,11 @@ public final class TypeSourceObjectDynamic
                     if (sourceCode == null) {
                         return EResult.err(loc, "cast " + typeDesc() + " -> interface: source has no runtime code");
                     }
-                    return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, resultType));
+                    return EResult.ok(emitBuiltinCast(xx, sourceCode, resultType));
                 }
                 return EResult.ok(new CodeValue(
                         cv.code(),
-                        EvalOutcome.ofValue(ValueDynamic.stack(new TypeSourceInterfaceDynamic(impl.interface_), 1))));
+                        EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
@@ -462,7 +461,7 @@ public final class TypeSourceObjectDynamic
             if (sourceCode == null) {
                 return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
             }
-            return EResult.ok(emitBuiltinCast(xx, loc, sourceCode, GenAspect.dynamicType()));
+            return EResult.ok(emitBuiltinCast(xx, sourceCode, GenAspect.dynamicType()));
         }
         return EResult.err(loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
     }
@@ -488,8 +487,8 @@ public final class TypeSourceObjectDynamic
         return false;
     }
 
-    private CodeValue emitBuiltinCast(ExprContext xx, QExprId loc, CodeDynamic sourceCode, Type resultType) {
-        return new CodeValue(Code.of(loc, sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(resultType, 1)));
+    private CodeValue emitBuiltinCast(ExprContext xx, CodeDynamic sourceCode, Type resultType) {
+        return new CodeValue(Code.of(sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
     }
 
     @Override
@@ -504,7 +503,7 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -529,8 +528,8 @@ public final class TypeSourceObjectDynamic
         unwrapSeq.add(JavaBytecodeUtils.wrapObj(
                 new CodeLoc.Some(loc), new TypeInsnNode(Opcodes.CHECKCAST, objectInternalName.value)));
         return EResult.ok(new CodeValue(
-                Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), unwrapSeq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+                Code.of(new CodeDynamic(new CodeLoc.Some(loc), unwrapSeq)),
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
 
     @Override

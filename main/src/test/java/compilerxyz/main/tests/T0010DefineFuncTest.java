@@ -85,7 +85,14 @@ public final class T0010DefineFuncTest {
                                                         TList.of(
                                                                 new TestMb.RecordPair("arg", mb.typesNull()),
                                                                 new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                        "ret",
+                                                                        mb.call(
+                                                                                mb.field(
+                                                                                        mb.call(
+                                                                                                mb.typesOption(),
+                                                                                                mb.evalType()),
+                                                                                        mb.str("none")),
+                                                                                mb.literalNull())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(
@@ -237,7 +244,11 @@ public final class T0010DefineFuncTest {
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.bind("y", mb.call(mb.scopeUse("inc"), mb.as_(mb.num(2.), mb.typesInt()))),
-                        mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("y"), mb.str("to_string")), mb.tupleOf())))));
+                        mb.seqOf(
+                                mb.call(
+                                        mb.log(),
+                                        mb.call(mb.field(mb.scopeUse("y"), mb.str("to_string")), mb.tupleOf())),
+                                mb.tupleOf()))));
         var ok = Helpers.compileCaptured(modules);
         assertEquals(1, ok.logs().size());
         assertEquals("3", ok.logs().get(0).message());
@@ -278,10 +289,10 @@ public final class T0010DefineFuncTest {
             INVOKESTATIC compilerxyz/main/eval/gen/Functions$0_0_0._0 (I)I
             ISTORE 0
             GETSTATIC compilerxyz/main/eval/gen/EvalRoot$1.__exprContext : Lcompilerxyz/main/eval/ExprContext;
+            GETFIELD compilerxyz/main/eval/ExprContext.vx : Lcompilerxyz/main/eval/EvalContext;
             ILOAD 0
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
-            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
-            POP
+            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
             NEW compilerxyz/main/eval/gen/Composite$0
             DUP
             INVOKESPECIAL compilerxyz/main/eval/gen/Composite$0.<init> ()V

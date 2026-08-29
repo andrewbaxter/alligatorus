@@ -8,7 +8,16 @@ import compilerxyz.prelude.util.TMap;
 public record TypeRef(TypeName path, CodeBlock dynamicType) {
 
     public static TypeRef leaf(ClassName descriptor, TMap<ClassName, CodeBlock> scannedLeaves) {
-        return new TypeRef(DynamicTypes.leafValueClass(descriptor), DynamicTypes.leaf(descriptor, scannedLeaves));
+        TypeName _rLeafValueClass;
+        _leafValueClass:
+        {
+            var value = DynamicTypes.NULLARY.getOrNull(descriptor);
+            {
+                _rLeafValueClass = value != null ? value : descriptor;
+                break _leafValueClass;
+            }
+        }
+        return new TypeRef(_rLeafValueClass, DynamicTypes.leaf(descriptor, scannedLeaves));
     }
 
     public static TypeRef composite1(ClassName wrapper, TypeRef inner) {

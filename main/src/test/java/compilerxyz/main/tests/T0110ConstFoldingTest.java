@@ -53,8 +53,8 @@ public final class T0110ConstFoldingTest {
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
                                         mb.operatorLt(mb.scopeUse("x"), mb.num(10.0)),
-                                        mb.call(mb.log(), mb.str("less")))),
-                                Opt.some(mb.call(mb.log(), mb.str("not less")))))));
+                                        mb.seqOf(mb.call(mb.log(), mb.str("less")), mb.tupleOf()))),
+                                Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("not less")), mb.tupleOf()))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
@@ -78,7 +78,11 @@ public final class T0110ConstFoldingTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("x", mb.as_(mb.operatorAdd(mb.num(1.), mb.num(2.)), mb.typesInt())),
-                        mb.call(mb.log(), mb.call(mb.field(mb.scopeUse("x"), mb.str("to_string")), mb.tupleOf())))));
+                        mb.seqOf(
+                                mb.call(
+                                        mb.log(),
+                                        mb.call(mb.field(mb.scopeUse("x"), mb.str("to_string")), mb.tupleOf())),
+                                mb.tupleOf()))));
         var ok = Helpers.compileCaptured(modules);
         assertEquals(1, ok.logs().size());
         assertEquals("3", ok.logs().get(0).message());
@@ -97,10 +101,10 @@ public final class T0110ConstFoldingTest {
             LDC 3
             ISTORE 0
             GETSTATIC compilerxyz/main/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/main/eval/ExprContext;
+            GETFIELD compilerxyz/main/eval/ExprContext.vx : Lcompilerxyz/main/eval/EvalContext;
             ILOAD 0
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
-            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
-            POP
+            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
             NEW compilerxyz/main/eval/gen/Composite$0
             DUP
             INVOKESPECIAL compilerxyz/main/eval/gen/Composite$0.<init> ()V

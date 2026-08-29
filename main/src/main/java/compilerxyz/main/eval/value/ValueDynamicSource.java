@@ -33,7 +33,7 @@ public sealed interface ValueDynamicSource
 
         @Override
         public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
-            return BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, key);
+            return BindingCode.bindingUse(new CodeLoc.Some(loc), key);
         }
 
         @Override
@@ -58,7 +58,7 @@ public sealed interface ValueDynamicSource
         @Override
         public Code valueDynamicSourceDrop(QExprId loc) {
             int popOp = stackSize == 2 ? Opcodes.POP2 : Opcodes.POP;
-            return Code.of(loc, JavaBytecodeUtils.inst(loc, popOp));
+            return Code.of(JavaBytecodeUtils.inst(loc, popOp));
         }
     }
 

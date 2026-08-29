@@ -7,9 +7,9 @@ import compilerxyz.main.eval.Type;
 
 public interface MatchDynamic {
 
-    EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc);
+    EResult<Void> matchDynamicPrepare(ExprContext xx);
 
-    EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex);
+    EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex);
 
     EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType);
 }

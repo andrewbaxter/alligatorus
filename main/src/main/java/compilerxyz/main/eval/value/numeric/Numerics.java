@@ -500,7 +500,7 @@ public final class Numerics {
             cmpSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
             cmpSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(endLabel)));
             seq.add(new CodeDynamic(loc, cmpSeq));
-            resultValue = ValueDynamic.stack(new TypeBoolDynamic(), 1);
+            resultValue = ValueDynamic.stack(xx, new TypeBoolDynamic());
         } else if (compute.unsigned() && (op == Op.DIV || op == Op.MOD)) {
             seq.add(
                     compute == NumericKind.UINT
@@ -518,7 +518,7 @@ public final class Numerics {
                                     "J",
                                     "J",
                                     "J"));
-            resultValue = ValueDynamic.stack(dynamicType(compute), compute.slots());
+            resultValue = ValueDynamic.stack(xx, dynamicType(compute));
         } else {
             int opcode =
                     switch (compute) {
@@ -597,7 +597,7 @@ public final class Numerics {
                         case UBYTE, USHORT -> throw new IllegalStateException("compute kind not promoted: " + compute);
                     };
             seq.add(JavaBytecodeUtils.inst(loc, opcode));
-            resultValue = ValueDynamic.stack(dynamicType(compute), compute.slots());
+            resultValue = ValueDynamic.stack(xx, dynamicType(compute));
         }
         return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(resultValue)));
     }
@@ -662,8 +662,7 @@ public final class Numerics {
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
         }
         return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(dynamicType(compute), compute.slots()))));
+                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dynamicType(compute)))));
     }
 
     public static boolean isNumeric(ExprContext xx, Type type) {
@@ -758,8 +757,8 @@ public final class Numerics {
             seq.add(consumed.requireValue("Numerics::cast consume"));
             convert(seq, loc, src.kind(), to);
         }
-        return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(dest, to.slots()))));
+        return EResult.ok(
+                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dest))));
     }
 
     private static EResult<JavaBytecodeSequence> pushConverted(

@@ -340,8 +340,9 @@ public final class T0085UnionVariantSetTest {
                                         TList.of(
                                                 new TestMb.Branch(
                                                         mb.field(mb.scopeUse("late"), mb.str("has_errors")),
-                                                        mb.call(mb.log(), mb.str("guarded")))),
-                                        Opt.some(mb.call(mb.log(), mb.str("unguarded")))))))))));
+                                                        mb.seqOf(mb.call(mb.log(), mb.str("guarded")), mb.tupleOf()))),
+                                        Opt.some(
+                                                mb.seqOf(mb.call(mb.log(), mb.str("unguarded")), mb.tupleOf()))))))))));
         var ok = compileOk(modules);
         assertEquals(1, ok.logs().size());
         assertEquals("guarded", ok.logs().get(0).message());

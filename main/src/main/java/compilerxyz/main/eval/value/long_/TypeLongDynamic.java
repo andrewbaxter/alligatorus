@@ -235,20 +235,19 @@ public record TypeLongDynamic()
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+        return DynUtil.dynamicConsumeToDynamic(loc, cv);
     }
 
     @Override
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -264,7 +263,7 @@ public record TypeLongDynamic()
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 2);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -273,7 +272,7 @@ public record TypeLongDynamic()
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeLongDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var fieldTypeOpt = aspectFieldTypeOpt(xx, ck);
@@ -281,7 +280,7 @@ public record TypeLongDynamic()
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on dynamic long");
         }
         return EResult.ok(
-                new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(fieldTypeOpt.optUnwrap(), 2))));
+                new CodeValue(self_.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeOpt.optUnwrap()))));
     }
 
     @Override
@@ -477,7 +476,7 @@ public record TypeLongDynamic()
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

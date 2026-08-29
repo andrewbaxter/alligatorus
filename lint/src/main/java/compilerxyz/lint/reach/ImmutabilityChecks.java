@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import spoon.reflect.CtModel;
 import spoon.reflect.code.BinaryOperatorKind;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtConstructorCall;
@@ -58,8 +57,8 @@ public final class ImmutabilityChecks {
         this.generatedFiles = generatedFiles;
     }
 
-    public List<ConventionChecks.Finding> run(CtModel model) {
-        for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
+    public List<ConventionChecks.Finding> run(ModelIndex index) {
+        for (CtType<?> t : index.types) {
             boolean tokenAnnotated = t.getAnnotations().stream()
                     .anyMatch(a -> a.getAnnotationType().getSimpleName().equals("IdentityToken"));
             if (tokenAnnotated) {
@@ -79,7 +78,7 @@ public final class ImmutabilityChecks {
             if (!(t instanceof CtInterface) && ImmutabilityCheck.typeImmutableImplementer(t, new HashSet<>())) {
                 var tokenRes = immutability.checkType(t);
                 if (!tokenRes.immutable()) {
-                    var alt = valueVerify(t, model);
+                    var alt = valueVerify(t, index);
                     if (!alt.immutable()) {
                         report(
                                 "ImmutableTypeValid",
@@ -100,7 +99,7 @@ public final class ImmutabilityChecks {
                         "'" + t.getQualifiedName() + "' is annotated @Immutable but is not immutable: " + res.reason());
             }
         }
-        for (CtField<?> f : model.getElements(new TypeFilter<>(CtField.class))) {
+        for (CtField<?> f : index.fields) {
             boolean enumValue = f instanceof CtEnumValue;
             boolean interfaceConstant = f.getDeclaringType() instanceof CtInterface;
             if (!f.hasModifier(ModifierKind.STATIC) && !enumValue && !interfaceConstant) continue;
@@ -128,7 +127,7 @@ public final class ImmutabilityChecks {
                         "static field '" + name + "' has a non-immutable type: " + res.reason());
             }
         }
-        for (CtTypeReference<?> tr : model.getElements(new TypeFilter<>(CtTypeReference.class))) {
+        for (CtTypeReference<?> tr : index.typeReferences) {
             if (!mapTypes.contains(tr.getQualifiedName())) continue;
             List<CtTypeReference<?>> args = tr.getActualTypeArguments();
             if (args.size() < 2) continue;
@@ -157,7 +156,7 @@ public final class ImmutabilityChecks {
                 report("MapKeyImmutable", tr, "map key type '" + args.get(0) + "' is not immutable: " + res.reason());
             }
         }
-        for (CtBinaryOperator<?> op : model.getElements(new TypeFilter<>(CtBinaryOperator.class))) {
+        for (CtBinaryOperator<?> op : index.binaryOperators) {
             if (op.getKind() != BinaryOperatorKind.EQ && op.getKind() != BinaryOperatorKind.NE) continue;
             CtExpression<?> l = op.getLeftHandOperand();
             CtExpression<?> r = op.getRightHandOperand();
@@ -182,7 +181,7 @@ public final class ImmutabilityChecks {
                             + "' on references compares object identity; use the type's defined equality"
                             + " (identity aspects for types).");
         }
-        for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
+        for (CtInvocation<?> inv : index.invocations) {
             var ex = inv.getExecutable();
             if (ex == null) continue;
             CtTypeReference<?> declaring = ex.getDeclaringType();
@@ -233,7 +232,7 @@ public final class ImmutabilityChecks {
         return findings;
     }
 
-    public ImmutabilityCheck.Res valueVerify(CtType<?> t, CtModel model) {
+    public ImmutabilityCheck.Res valueVerify(CtType<?> t, ModelIndex index) {
         if (!(t instanceof CtClass) || !t.hasModifier(ModifierKind.FINAL)) {
             return new ImmutabilityCheck.Res(false, "not a final class");
         }
@@ -254,7 +253,7 @@ public final class ImmutabilityChecks {
             return new ImmutabilityCheck.Res(false, "no reflective two-pass init methods to value-verify");
         }
         String qn = t.getQualifiedName();
-        for (CtConstructorCall<?> cc : model.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+        for (CtConstructorCall<?> cc : index.constructorCalls) {
             if (cc.getType() == null || !qn.equals(cc.getType().getQualifiedName())) continue;
             if (cc instanceof CtNewClass) {
                 return new ImmutabilityCheck.Res(false, "anonymous subclass construction");
@@ -271,7 +270,7 @@ public final class ImmutabilityChecks {
                 }
             }
         }
-        for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
+        for (CtInvocation<?> inv : index.invocations) {
             var ex = inv.getExecutable();
             if (ex == null || !initMethods.contains(ex.getSimpleName())) continue;
             if (ex.getDeclaringType() == null

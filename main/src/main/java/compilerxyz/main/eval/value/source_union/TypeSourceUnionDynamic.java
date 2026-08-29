@@ -201,18 +201,17 @@ public final class TypeSourceUnionDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -236,25 +235,25 @@ public final class TypeSourceUnionDynamic
         return out;
     }
 
-    private JavaInternalName variantInternal(QExprId loc, int variantIndex) {
+    private JavaInternalName variantInternal(int variantIndex) {
         return JavaInternalName.of(SourceUnionEmitter.variantBinaryNameFor(set.defSetId, unionIdx, variantIndex)
                 .replace('.', '/'));
     }
 
     @Override
-    public EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
+    public EResult<Void> matchDynamicPrepare(ExprContext xx) {
         xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
         return EResult.ok(null);
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
-        return EResult.ok(JavaBytecodeUtils.instanceOf(loc, variantInternal(loc, variantIndex)));
+    public EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex) {
+        return EResult.ok(JavaBytecodeUtils.instanceOf(loc, variantInternal(variantIndex)));
     }
 
     @Override
     public EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
-        var internal = variantInternal(loc, variantIndex);
+        var internal = variantInternal(variantIndex);
         var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, variantType);
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(internal)));
@@ -274,7 +273,7 @@ public final class TypeSourceUnionDynamic
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

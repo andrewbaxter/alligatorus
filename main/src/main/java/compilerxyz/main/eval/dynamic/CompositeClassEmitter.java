@@ -3,8 +3,6 @@ package compilerxyz.main.eval.dynamic;
 import compilerxyz.main.eval.DefinitionSetClassLoader;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.ClassWriter;
@@ -28,12 +26,7 @@ public final class CompositeClassEmitter {
     }
 
     public static JavaDataDescriptor slotDescriptor(ExprContext xx, Type t) {
-        return switch (GenAspectConsumeDynamic.getMaybe(xx, t)) {
-            case Opt.Some<AspectConsumeDynamic> some -> some.value().aspectConsumeDynamicJvmClass(xx);
-            case Opt.None<AspectConsumeDynamic> n ->
-                throw new IllegalStateException(
-                        "CompositeClassEmitter: type (" + t.typeDesc() + ") does not implement AspectConsumeDynamic");
-        };
+        return JvmSort.descriptor(xx, t);
     }
 
     public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
@@ -117,28 +110,10 @@ public final class CompositeClassEmitter {
         int localSlot = 1;
         for (int i = 0; i < slotDescs.size(); i++) {
             var desc = slotDescs.get(i);
-            int loadOp;
-            {
-                var _lofV = desc.value();
-                loadOp = (_lofV.isEmpty())
-                        ? Opcodes.ALOAD
-                        : switch (_lofV.charAt(0)) {
-                            case 'D' -> Opcodes.DLOAD;
-                            case 'J' -> Opcodes.LLOAD;
-                            case 'F' -> Opcodes.FLOAD;
-                            case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.ILOAD;
-                            default -> Opcodes.ALOAD;
-                        };
-            }
             seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-            seq.add(JavaBytecodeUtils.varInsn(loc, loadOp, localSlot));
+            seq.add(JavaBytecodeUtils.varInsn(loc, desc.loadOpcode(), localSlot));
             seq.add(JavaBytecodeUtils.setField(loc, ownName, slotFieldName(i), desc));
-            localSlot += desc.value().isEmpty()
-                    ? 1
-                    : switch (desc.value().charAt(0)) {
-                        case 'D', 'J' -> 2;
-                        default -> 1;
-                    };
+            localSlot += desc.slotWidth();
         }
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.RETURN));
         JavaBytecodeUtils.renderMethod(seq, ctor, TList.of());

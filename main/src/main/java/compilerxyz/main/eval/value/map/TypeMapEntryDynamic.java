@@ -17,7 +17,6 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.DropChild;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
@@ -26,6 +25,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
@@ -94,12 +94,9 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
             var _ddcSeq = new JavaBytecodeSequence();
             _ddcSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
             _ddcSeq.add(_ddcChild.access());
-            var _ddcChildDesc = CompositeClassEmitter.slotDescriptor(xx, _ddcChild.childType())
-                    .value();
-            var _ddcChildWidth = _ddcChildDesc.equals("J") || _ddcChildDesc.equals("D") ? 2 : 1;
             var _ddcChildCv = new CodeValue(
-                    Code.of(loc, new CodeDynamic(loc, _ddcSeq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(_ddcChild.childType(), _ddcChildWidth)));
+                    Code.of(new CodeDynamic(loc, _ddcSeq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, _ddcChild.childType())));
             var _ddcChildDropRes = _ddcDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _ddcChildCv);
             if (_ddcChildDropRes.hasErrors()) return _ddcChildDropRes.reerr();
             var _ddcChildDyn = _ddcChildDropRes
@@ -112,7 +109,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         if (!_ddcStackRooted) _ddcOut.add(_ddcSource.valueDynamicSourceRealize(xx, loc));
         for (var _ddcD : _ddcChildDrops) _ddcOut.add(_ddcD);
         _ddcOut.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, _ddcOut)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, _ddcOut)));
     }
 
     @Override
@@ -146,7 +143,7 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeMapEntryDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var spec = fieldSpecs().getOrNull(ck);
@@ -164,19 +161,12 @@ public record TypeMapEntryDynamic(Type keyType, Type valueType)
                 MAP_ENTRY_INAME,
                 spec.jvmGetter(),
                 JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
-        var fieldConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, spec.type());
-        if (fieldConsumeOpt.optIsSome()) {
-            var fieldDesc = fieldConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-            var d = fieldDesc.value();
-            if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
-                char c = d.charAt(0);
-                if (c == 'L' || c == '[') {
-                    seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
-                }
-            }
+        var fieldDesc = JvmSort.descriptor(xx, spec.type());
+        if (fieldDesc.isReference() && !fieldDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+            seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
         }
         return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(spec.type(), 1))));
+                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, spec.type()))));
     }
 
     @Override

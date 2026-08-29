@@ -92,7 +92,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
                     JavaMethodDescriptor.fromParts(
                             JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
                             TList.of(JvmConstants.DESC_OBJECT))));
-            return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, okSeq), resultType, 1));
+            return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, okSeq), resultType));
         }
         if (kind == Kind.ERRS) {
             var errsArgType = new TypeListBoxedDynamic(GenExprErr.dynamicType());
@@ -114,7 +114,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
                             JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
                             TList.of(JavaDataDescriptor.fromInternalName(
                                     JavaInternalName.fromClass(compilerxyz.prelude.util.TList.class))))));
-            return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errsSeq), resultType, 1));
+            return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, errsSeq), resultType));
         }
         var argTupleType = new Tuple(
                 Opt.none(),
@@ -144,7 +144,7 @@ public record TypeEResultVariantConstructorDynamic(Type elementType, Kind kind)
                         TList.of(
                                 JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(QExprId.class)),
                                 JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(String.class))))));
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, new CodeDynamic(loc, errSeq), resultType, 1));
+        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, errSeq), resultType));
     }
 
     @Override

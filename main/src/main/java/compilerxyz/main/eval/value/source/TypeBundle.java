@@ -63,7 +63,7 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
                 return EResult.err(loc, "bundle: field key has no compile-time value");
             }
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, keySome.value()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, keySome.value()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         ConstKey.Str s;
         switch (ckOpt.optUnwrap()) {
@@ -113,7 +113,7 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

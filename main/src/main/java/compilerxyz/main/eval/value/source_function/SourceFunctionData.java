@@ -120,7 +120,7 @@ public final class SourceFunctionData {
             var elemBindings = new TList<Binding>();
             for (var et : elemTypes) {
                 var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
-                argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
+                argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
                     return EResult.err(
@@ -136,7 +136,7 @@ public final class SourceFunctionData {
             for (var entry : fieldTypes.entrySet()) {
                 var et = entry.getValue();
                 var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
-                argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, et)));
+                argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
                     return EResult.err(
@@ -150,7 +150,7 @@ public final class SourceFunctionData {
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
         } else {
             var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
-            argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, rootLoc, argT)));
+            argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
             var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
             if (ibMaybe.optIsSome()) {
                 bodyScope.pushNamed(new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
@@ -223,7 +223,7 @@ public final class SourceFunctionData {
         return EResult.ok(null);
     }
 
-    private static JavaDataDescriptor jvmDescFor(ExprContext xx, QExprId loc, Type t) {
+    private static JavaDataDescriptor jvmDescFor(ExprContext xx, Type t) {
         var consumeOpt = GenAspectConsumeDynamic.getMaybe(xx, t);
         if (consumeOpt.optIsSome()) {
             return consumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);

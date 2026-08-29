@@ -134,7 +134,7 @@ public record TypeFunctionMustReinterpretConst() implements Type, AspectFunction
         seq.add(sourceCodeOpt.optUnwrap());
         seq.add(JavaBytecodeUtils.cast(loc, targetJvmClass));
         var out = new CodeDynamic(loc, seq);
-        return EResult.ok(new CodeValue(Code.of(loc, out), EvalOutcome.ofValue(ValueDynamic.stack(targetType, 1))));
+        return EResult.ok(new CodeValue(Code.of(out), EvalOutcome.ofValue(ValueDynamic.stack(xx, targetType))));
     }
 
     @Override

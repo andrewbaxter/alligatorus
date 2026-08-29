@@ -35,7 +35,7 @@ public final class TypeMethodShared {
             String methodName,
             JavaMethodDescriptor descriptor,
             boolean isInterface,
-            boolean needsExprContext) {
+            boolean needsEvalContext) {
         var receiverDyn = self.code().codeDynamic();
         if (receiverDyn == null) {
             return EResult.err(loc, what + "::call: receiver has no dynamic code");
@@ -52,12 +52,8 @@ public final class TypeMethodShared {
         }
         var seq = new JavaBytecodeSequence();
         seq.add(receiverDyn);
-        if (needsExprContext) {
-            seq.add(JavaBytecodeUtils.accessStaticField(
-                    loc,
-                    JavaInternalName.of(xx.vx.evalRootInternalName),
-                    EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                    EvalRootEmitter.DESC_EXPR_CONTEXT));
+        if (needsEvalContext) {
+            seq.add(EvalRootEmitter.loadEvalContext(loc, xx));
         }
         var args = argsDynRes.requireValue(what + "::call args");
         var paramDescs = new TList<JavaDataDescriptor>();
@@ -80,7 +76,7 @@ public final class TypeMethodShared {
                 paramDescs.add(JavaDataDescriptor.create(_pd.substring(_pdStart, _pdi)));
             }
         }
-        var paramOffset = needsExprContext ? 1 : 0;
+        var paramOffset = needsEvalContext ? 1 : 0;
         for (int i = 0; i < args.size(); i++) {
             seq.add(args.get(i));
             var pi = i + paramOffset;
@@ -98,7 +94,7 @@ public final class TypeMethodShared {
         }
         var seqCode = new CodeDynamic(loc, seq);
         if (ret.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.of(loc, seqCode), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.of(seqCode), EvalOutcome.NO_VALUE));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();

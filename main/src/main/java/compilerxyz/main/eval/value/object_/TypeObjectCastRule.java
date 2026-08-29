@@ -32,7 +32,7 @@ public sealed interface TypeObjectCastRule {
         @Override
         public EResult<CodeValue> typeObjectCastRuleApply(
                 ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
     }
 
@@ -64,7 +64,7 @@ public sealed interface TypeObjectCastRule {
                                 JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
             }
             var call = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.of(loc, call), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
     }
 }

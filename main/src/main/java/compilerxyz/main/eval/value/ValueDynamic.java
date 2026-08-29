@@ -5,17 +5,17 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinPath;
 
 public record ValueDynamic(ValueDynamicSource source, Type type_) implements Value {
     public Type valueType() {
         return type_;
     }
 
-    @BuiltinPath(value = "eval.stack", scopeId = 5013L)
-    public static Value stack(Type type, long width) {
-        return new ValueDynamic(new ValueDynamicSource.Expr((int) width), type);
+    public static Value stack(ExprContext xx, Type type) {
+        return new ValueDynamic(
+                new ValueDynamicSource.Expr(JvmSort.descriptor(xx, type).slotWidth()), type);
     }
 
     @Override

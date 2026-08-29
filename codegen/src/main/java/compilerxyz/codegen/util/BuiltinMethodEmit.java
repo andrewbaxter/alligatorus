@@ -2,7 +2,6 @@ package compilerxyz.codegen.util;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import compilerxyz.prelude.util.IMap;
@@ -20,27 +19,20 @@ public final class BuiltinMethodEmit {
             String sourceName, String hostMethodName, TList<Param> params, TypeName ret, boolean sourceVisible) {}
 
     private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
-    private static final ClassName CONST_KEY = ClassName.get("compilerxyz.main.eval", "ConstKey");
-    private static final ClassName CONST_KEY_STR = ClassName.get("compilerxyz.main.eval", "ConstKey", "Str");
-    private static final ClassName RECORD_CLASS = ClassName.get("compilerxyz.main.eval.value.record", "Record");
-    private static final ClassName FUNCTION_PARAM =
+    public static final ClassName FUNCTION_PARAM =
             ClassName.get("compilerxyz.main.eval.value.function", "FunctionParam");
-    private static final ClassName RECORD_FIELD = ClassName.get("compilerxyz.main.eval.value.record", "RecordField");
-    private static final ClassName RECORD_FIELD_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.record", "RecordField", "Dynamic");
-    private static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
-    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
-    private static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
-    private static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
-    private static final ClassName JAVA_METHOD_DESCRIPTOR =
+    public static final ClassName OPT = ClassName.get("compilerxyz.prelude.util", "Opt");
+    public static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    public static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
+    public static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
+    public static final ClassName JAVA_METHOD_DESCRIPTOR =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaMethodDescriptor");
-    private static final ClassName JAVA_DATA_DESCRIPTOR =
+    public static final ClassName JAVA_DATA_DESCRIPTOR =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
-    private static final ClassName TYPE_METHOD_DYNAMIC =
+    public static final ClassName TYPE_METHOD_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.function", "TypeMethodDynamic");
-    private static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
+    public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
     private static final ClassName ERESULT = ClassName.get("compilerxyz.main.eval", "EResult");
-    private static final ClassName CODE_VALUE = ClassName.get("compilerxyz.main.eval", "CodeValue");
 
     private static final ClassName TYPE_ERESULT_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.eresult", "TypeEResultDynamic");
@@ -52,8 +44,6 @@ public final class BuiltinMethodEmit {
             ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic");
     private static final ClassName TYPE_BOOL_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
     private static final ClassName TYPE_NULL_DYNAMIC =
@@ -63,82 +53,8 @@ public final class BuiltinMethodEmit {
             new Pair<>(ERESULT, TYPE_ERESULT_DYNAMIC),
             new Pair<>(OPT, TYPE_OPTION_DYNAMIC),
             new Pair<>(TLIST, TYPE_LIST_DYNAMIC),
-            new Pair<>(ClassName.get("compilerxyz.prelude.util", "TMap"), TYPE_MAP_DYNAMIC));
-
-    public static boolean emitObjectMethod(
-            MethodSpec.Builder b,
-            ClassName hostClass,
-            String receiverVar,
-            String methodsVar,
-            Method method,
-            TMap<ClassName, CodeBlock> leafDescriptors) {
-        var retDescOpt = resolveDescriptor(method.ret, leafDescriptors);
-        if (retDescOpt.optIsNone()) return false;
-        var retDesc = retDescOpt.optUnwrap();
-        var paramDescs = new TList<CodeBlock>();
-        var paramRawClasses = new TList<TypeName>();
-        for (var p : method.params) {
-            var pdOpt = resolveDescriptor(p.type, leafDescriptors);
-            if (pdOpt.optIsNone()) return false;
-            paramDescs.add(pdOpt.optUnwrap());
-            var rawOpt = rawClass(p.type);
-            if (rawOpt.optIsNone()) return false;
-            paramRawClasses.add(rawOpt.optUnwrap());
-        }
-        var retRawOpt = rawClass(method.ret);
-        if (retRawOpt.optIsNone()) return false;
-        var retRaw = retRawOpt.optUnwrap();
-
-        var suffix = method.hostMethodName;
-
-        var argRecordName = "params_" + suffix;
-        var paramsExpr = CodeBlock.builder();
-        paramsExpr.add("$T.<$T>of(", ILIST, FUNCTION_PARAM);
-        for (int i = 0; i < method.params.size(); i++) {
-            var p = method.params.get(i);
-            if (i > 0) paramsExpr.add(", ");
-            paramsExpr.add("new $T($S, $L)", FUNCTION_PARAM, p.name, paramDescs.get(i));
-        }
-        paramsExpr.add(")");
-        b.addStatement("var $L = $L", argRecordName, paramsExpr.build());
-
-        var retTypeName = "retType_" + suffix;
-        b.addStatement("var $L = $T.<$T>some($L)", retTypeName, OPT, TYPE, retDesc);
-
-        var descName = "desc_" + suffix;
-        var argClassBuilder = CodeBlock.builder();
-        for (int i = 0; i < paramRawClasses.size(); i++) {
-            if (i > 0) argClassBuilder.add(", ");
-            argClassBuilder.add("$T.fromClass($T.class)", JAVA_DATA_DESCRIPTOR, paramRawClasses.get(i));
-        }
-        b.addStatement(
-                "var $L = $T.fromParts($T.fromClass($T.class), $T.of($L))",
-                descName,
-                JAVA_METHOD_DESCRIPTOR,
-                JAVA_DATA_DESCRIPTOR,
-                retRaw,
-                TLIST,
-                argClassBuilder.build());
-
-        var jvmClassExpr = CodeBlock.of(
-                "$T.fromClass($T.class)",
-                ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName"),
-                hostClass);
-        var methodVar = "method_" + suffix;
-        b.addStatement(
-                "var $L = new $T($N, $L, $L, $L, $S, $L, $T.class.isInterface(), false)",
-                methodVar,
-                TYPE_METHOD_DYNAMIC,
-                receiverVar,
-                argRecordName,
-                retTypeName,
-                jvmClassExpr,
-                method.hostMethodName,
-                descName,
-                hostClass);
-        b.addStatement("$L.add(new $T($S, $L))", methodsVar, OBJECT_METHOD, method.sourceName, methodVar);
-        return true;
-    }
+            new Pair<>(ClassName.get("compilerxyz.prelude.util", "TMap"), TYPE_MAP_DYNAMIC),
+            new Pair<>(TORDERED_MAP, TYPE_MAP_DYNAMIC));
 
     public static Opt<CodeBlock> resolveDescriptor(TypeName tn, TMap<ClassName, CodeBlock> leafDescriptors) {
         if (tn.equals(TypeName.BOOLEAN)) return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));

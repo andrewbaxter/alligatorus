@@ -2,11 +2,6 @@ package compilerxyz.codegen.experimental;
 
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.Modifier;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.MemberValuePair;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
@@ -15,18 +10,10 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
-import compilerxyz.codegen.PushStructsGen;
-import compilerxyz.codegen.util.NamedTypeRef;
-import compilerxyz.codegen.util.PushMethod;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.prelude.util.IMap;
 import compilerxyz.prelude.util.Pair;
-import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.stream.Stream;
 
 public final class BuiltinPushStructScanner {
     private BuiltinPushStructScanner() {}
@@ -35,9 +22,6 @@ public final class BuiltinPushStructScanner {
         StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
     }
 
-    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
-
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
     private static final ClassName TYPE_STRING_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic");
     private static final ClassName TYPE_BOOL_DYNAMIC =
@@ -54,114 +38,7 @@ public final class BuiltinPushStructScanner {
             new Pair<>("compilerxyz.main.eval.ConstKey", TYPE_CONSTKEY_DYNAMIC),
             new Pair<>("compilerxyz.main.eval.expr.StagedExprCell", TYPE_EXPR));
 
-    public static TList<PushStructsGen.PushStructSpec> scanRoot(
-            Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves) throws IOException {
-        var out = new TList<PushStructsGen.PushStructSpec>();
-        try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
-            var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
-            for (var file : files) {
-                var src = Files.readString(file);
-                if (!src.contains("BuiltinPushStruct")) continue;
-                var cu = StaticJavaParser.parse(file);
-                var imports = buildImportMap(cu);
-                var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-                for (var t : cu.getTypes()) {
-                    if (!(t instanceof ClassOrInterfaceDeclaration c) || c.isInterface()) continue;
-                    AnnotationExpr ann = null;
-                    for (var a : c.getAnnotations()) {
-                        var n = a.getNameAsString();
-                        if (n.equals("BuiltinPushStruct")
-                                || n.equals("compilerxyz.prelude.annotations.BuiltinPushStruct")) {
-                            ann = a;
-                            break;
-                        }
-                    }
-                    if (ann == null) continue;
-                    out.add(extractStruct(c, ann, imports, pkg, scannedLeaves));
-                }
-            }
-        }
-        return out;
-    }
-
-    private static PushStructsGen.PushStructSpec extractStruct(
-            ClassOrInterfaceDeclaration cls,
-            AnnotationExpr ann,
-            TMap<String, String> imports,
-            String pkg,
-            TMap<ClassName, CodeBlock> scannedLeaves) {
-        var name = cls.getNameAsString();
-
-        var dataFields = new TList<NamedTypeRef>();
-        var ctors = cls.getConstructors();
-        if (!ctors.isEmpty()) {
-            var ctor = ctors.get(0);
-            for (var p : ctor.getParameters()) {
-                var srcName = snakeStripTrailing(p.getNameAsString());
-                dataFields.add(new NamedTypeRef(srcName, typeRefOf(p.getType(), imports, pkg, scannedLeaves)));
-            }
-        }
-
-        var fields = new TList<PushStructsGen.PushField>();
-        for (var f : cls.getFields()) {
-            if (f.isStatic() || !f.hasModifier(Modifier.Keyword.PUBLIC) || !f.isFinal()) continue;
-            for (var v : f.getVariables()) {
-                var javaName = v.getNameAsString();
-                var srcName = snakeStripTrailing(javaName);
-                var tr = typeRefOf(f.getElementType(), imports, pkg, scannedLeaves);
-                fields.add(new PushStructsGen.PushField(srcName, javaName, tr, CodeBlock.of("")));
-            }
-        }
-
-        var methods = new TList<PushMethod>();
-        for (var m : cls.getMethods()) {
-            if (m.isStatic() || !m.hasModifier(Modifier.Keyword.PUBLIC)) continue;
-            var params = m.getParameters();
-            if (params.isEmpty()) continue;
-            var first = params.get(0);
-            if (!isExprContext(first.getType(), imports, pkg)) continue;
-            var srcMethodName = snakeStripTrailing(m.getNameAsString());
-            var args = new TList<NamedTypeRef>();
-            for (int i = 1; i < params.size(); i++) {
-                var p = params.get(i);
-                var argSrcName = snakeStripTrailing(p.getNameAsString());
-                args.add(new NamedTypeRef(argSrcName, typeRefOf(p.getType(), imports, pkg, scannedLeaves)));
-            }
-            var retExpr = returnExpr(m.getType(), imports, pkg, scannedLeaves);
-            var retClass = returnTypeRef(m.getType(), imports, pkg, scannedLeaves);
-            methods.add(new PushMethod(srcMethodName, args, retExpr, CodeBlock.of(""), "", retClass));
-        }
-
-        return new PushStructsGen.PushStructSpec(name, dataFields, fields, methods);
-    }
-
-    private static boolean isExprContext(Type t, TMap<String, String> imports, String pkg) {
-        if (!(t instanceof ClassOrInterfaceType c)) return false;
-        var simple = c.getNameAsString();
-        var fqn = resolve(simple, imports, pkg);
-        return fqn.equals("compilerxyz.main.eval.ExprContext");
-    }
-
-    private static String returnExpr(
-            Type t, TMap<String, String> imports, String pkg, TMap<ClassName, CodeBlock> scannedLeaves) {
-        if (t instanceof VoidType) return "()";
-        var tr = typeRefOf(t, imports, pkg, scannedLeaves);
-        return tr.dynamicType().toString();
-    }
-
-    private static TypeRef returnTypeRef(
-            Type t, TMap<String, String> imports, String pkg, TMap<ClassName, CodeBlock> scannedLeaves) {
-        if (t instanceof VoidType) return TypeRef.opaque(TypeName.VOID);
-        return typeRefOf(t, imports, pkg, scannedLeaves);
-    }
-
-    private static long literalLong(MemberValuePair p) {
-        var raw = p.getValue().toString();
-        if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
-        return Long.parseLong(raw);
-    }
-
-    private static String snakeStripTrailing(String name) {
+    public static String snakeStripTrailing(String name) {
         var sb = new StringBuilder();
         for (int i = 0; i < name.length(); i++) {
             var c = name.charAt(i);
@@ -173,7 +50,7 @@ public final class BuiltinPushStructScanner {
         return s;
     }
 
-    private static TypeRef typeRefOf(
+    public static TypeRef typeRefOf(
             Type t, TMap<String, String> imports, String pkg, TMap<ClassName, CodeBlock> scannedLeaves) {
         if (t instanceof ClassOrInterfaceType cit
                 && cit.getNameAsString().equals("Opt")
@@ -231,7 +108,19 @@ public final class BuiltinPushStructScanner {
         }
         if (t instanceof VoidType) return TypeName.VOID;
         if (t instanceof ClassOrInterfaceType c) {
-            var raw = classNameOf(c.getNameAsString(), imports, pkg);
+            String simple = c.getNameAsString();
+            ClassName _rClassNameOf;
+            _classNameOf:
+            {
+                var fqn = resolve(simple, imports, pkg);
+                var idx = fqn.lastIndexOf('.');
+                {
+                    _rClassNameOf = ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
+                    break _classNameOf;
+                }
+            }
+            ClassName raw = _rClassNameOf;
+
             if (c.getTypeArguments().isPresent() && !c.getTypeArguments().get().isEmpty()) {
                 var argsList = c.getTypeArguments().get();
                 var argNames = new TypeName[argsList.size()];
@@ -245,13 +134,7 @@ public final class BuiltinPushStructScanner {
         throw new IllegalStateException("Unhandled type: " + t + " (" + t.getClass() + ")");
     }
 
-    private static ClassName classNameOf(String simple, TMap<String, String> imports, String pkg) {
-        var fqn = resolve(simple, imports, pkg);
-        var idx = fqn.lastIndexOf('.');
-        return ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
-    }
-
-    private static String resolve(String simple, TMap<String, String> imports, String pkg) {
+    public static String resolve(String simple, TMap<String, String> imports, String pkg) {
         var fqn = imports.getOrNull(simple);
         if (fqn != null) return fqn;
         try {
@@ -259,15 +142,5 @@ public final class BuiltinPushStructScanner {
         } catch (ClassNotFoundException e) {
             return pkg + "." + simple;
         }
-    }
-
-    private static TMap<String, String> buildImportMap(CompilationUnit cu) {
-        var m = new TMap<String, String>();
-        for (var imp : cu.getImports()) {
-            var full = imp.getNameAsString();
-            var simple = full.substring(full.lastIndexOf('.') + 1);
-            m.put(simple, full);
-        }
-        return m;
     }
 }

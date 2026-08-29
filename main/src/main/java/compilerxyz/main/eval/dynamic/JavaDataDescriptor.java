@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.prelude.annotations.BuiltinFull;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6014L)
 public final class JavaDataDescriptor {
@@ -53,6 +54,63 @@ public final class JavaDataDescriptor {
         }
         if (t.isArray()) return new JavaDataDescriptor("[" + fromClass(t.getComponentType()).value);
         return fromJVMName(JavaInternalName.fromClass(t));
+    }
+
+    private char sortChar() {
+        if (value.isEmpty()) throw new IllegalStateException("JavaDataDescriptor: empty descriptor");
+        return value.charAt(0);
+    }
+
+    public boolean isWide() {
+        return switch (sortChar()) {
+            case 'D', 'J' -> true;
+            default -> false;
+        };
+    }
+
+    public int slotWidth() {
+        return isWide() ? 2 : 1;
+    }
+
+    public boolean isReference() {
+        return switch (sortChar()) {
+            case 'L', '[' -> true;
+            default -> false;
+        };
+    }
+
+    public int loadOpcode() {
+        return switch (sortChar()) {
+            case 'D' -> Opcodes.DLOAD;
+            case 'J' -> Opcodes.LLOAD;
+            case 'F' -> Opcodes.FLOAD;
+            case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.ILOAD;
+            case 'L', '[' -> Opcodes.ALOAD;
+            default -> throw new IllegalStateException("JavaDataDescriptor: no load opcode for (" + value + ")");
+        };
+    }
+
+    public int storeOpcode() {
+        return switch (sortChar()) {
+            case 'D' -> Opcodes.DSTORE;
+            case 'J' -> Opcodes.LSTORE;
+            case 'F' -> Opcodes.FSTORE;
+            case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.ISTORE;
+            case 'L', '[' -> Opcodes.ASTORE;
+            default -> throw new IllegalStateException("JavaDataDescriptor: no store opcode for (" + value + ")");
+        };
+    }
+
+    public int returnOpcode() {
+        return switch (sortChar()) {
+            case 'V' -> Opcodes.RETURN;
+            case 'D' -> Opcodes.DRETURN;
+            case 'J' -> Opcodes.LRETURN;
+            case 'F' -> Opcodes.FRETURN;
+            case 'I', 'Z', 'B', 'S', 'C' -> Opcodes.IRETURN;
+            case 'L', '[' -> Opcodes.ARETURN;
+            default -> throw new IllegalStateException("JavaDataDescriptor: no return opcode for (" + value + ")");
+        };
     }
 
     @Override

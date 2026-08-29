@@ -125,11 +125,6 @@ public class JavaBytecodeUtils {
         return fieldOp(loc, GETSTATIC, klass, field, fieldDesc);
     }
 
-    public static CodeDynamic accessStaticField(
-            QExprId loc, JavaInternalName klass, String field, JavaDataDescriptor fieldDesc) {
-        return accessStaticField(lc(loc), klass, field, fieldDesc);
-    }
-
     private static CodeDynamic methodCall(
             CodeLoc loc,
             int opcode,
@@ -413,16 +408,14 @@ public class JavaBytecodeUtils {
             JavaBytecodeSequence seq, MethodVisitor mv, TList<JavaBytecodeBindingKey> initialIndexes) {
         var _rSlots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var _rK : initialIndexes) _rSlots.add(new JavaBytecodeSequence.InitialSlot(_rK));
-        seq.renderInternal(mv, initialIndexes, _rSlots);
+        seq.renderInternal(mv, _rSlots);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
 
     public static void renderMethodTyped(
             JavaBytecodeSequence seq, MethodVisitor mv, TList<JavaBytecodeSequence.InitialSlot> initialSlots) {
-        var _rtNarrowKeys = new TList<JavaBytecodeBindingKey>();
-        for (var _rtS : initialSlots) _rtNarrowKeys.add(_rtS.key());
-        seq.renderInternal(mv, _rtNarrowKeys, initialSlots);
+        seq.renderInternal(mv, initialSlots);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }

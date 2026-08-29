@@ -24,10 +24,6 @@ public enum NumericKind {
         return this == LONG || this == DOUBLE || this == ULONG;
     }
 
-    public long slots() {
-        return wide() ? 2 : 1;
-    }
-
     public int intWidth() {
         return switch (this) {
             case BYTE, UBYTE -> 8;

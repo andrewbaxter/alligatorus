@@ -136,8 +136,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -177,7 +176,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeListSpecializedDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         if (ck.equals(new ConstKey.Str("new"))) {
@@ -188,7 +187,8 @@ public final class TypeListSpecializedDynamic<T extends Type>
         }
         if (ck.equals(new ConstKey.Str("push"))) {
             return EResult.ok(new CodeValue(
-                    self.code(), EvalOutcome.ofValue(ValueDynamic.stack(new TypeListSpecializedPushDynamic(this), 1))));
+                    self.code(),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeListSpecializedPushDynamic(this)))));
         }
         return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on list");
     }
@@ -216,7 +216,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -258,7 +258,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
                 var seq = new JavaBytecodeSequence();
                 if (bodyDyn != null) seq.add(bodyDyn);
                 if (dropDyn != null) seq.add(dropDyn);
-                bodyCode = Code.of(loc, new CodeDynamic(loc, seq));
+                bodyCode = Code.of(new CodeDynamic(loc, seq));
             }
         } else {
             bodyCode = body.code();
@@ -296,17 +296,17 @@ public final class TypeListSpecializedDynamic<T extends Type>
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
+        return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
     }
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

@@ -3,9 +3,6 @@ package compilerxyz.main.eval.dynamic;
 import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.prelude.util.Opt;
 
 public final class SourceUnionEmitter {
     private SourceUnionEmitter() {}
@@ -29,9 +26,6 @@ public final class SourceUnionEmitter {
     public static final String PAYLOAD_FIELD = "payload";
 
     public static JavaDataDescriptor payloadDescriptor(ExprContext xx, Type type) {
-        return switch (GenAspectConsumeDynamic.getMaybe(xx, type)) {
-            case Opt.Some<AspectConsumeDynamic> some -> some.value().aspectConsumeDynamicJvmClass(xx);
-            case Opt.None<AspectConsumeDynamic> n -> JvmConstants.DESC_OBJECT;
-        };
+        return JvmSort.descriptor(xx, type);
     }
 }

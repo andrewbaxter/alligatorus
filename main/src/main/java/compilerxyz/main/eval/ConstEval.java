@@ -72,7 +72,7 @@ public final class ConstEval {
                 if (keyOpt.optIsNone()) yield EResult.errs(erb.errors());
                 var key = keyOpt.optUnwrap();
                 var keyVal = (Opt.Some<Value>) key.value();
-                var keyConstRes = Eval.extractConstKey(xx, loc, keyVal.value());
+                var keyConstRes = Eval.extractConstKey(xx, keyVal.value());
                 var keyConstOpt = erb.mustRes(keyConstRes);
                 if (keyConstOpt.optIsNone()) yield EResult.errs(erb.errors());
                 var ck = keyConstOpt.optUnwrap();
@@ -287,7 +287,7 @@ public final class ConstEval {
                             yield EResult.errs(erb.errors());
                         }
                         var ckOpt = erb.mustRes(
-                                Eval.extractConstKey(xx, sub.loc(), base.value().optUnwrap()));
+                                Eval.extractConstKey(xx, base.value().optUnwrap()));
                         if (ckOpt.optIsNone()) yield EResult.errs(erb.errors());
                         codes.add(base.code());
                         if (value.value().optIsNone()) {
@@ -449,7 +449,7 @@ public final class ConstEval {
                                 loc, TList.of(new ExprSubErr.Opaque("Record: key has no compile-time value"))));
                         continue;
                     }
-                    var _keyRes = Eval.extractConstKey(xx, loc, _kCv.value().optUnwrap());
+                    var _keyRes = Eval.extractConstKey(xx, _kCv.value().optUnwrap());
                     switch (_keyRes) {
                         case Result.Ok<ConstKey, String> _ok -> {
                             var _valRes = elementResult(xx, constEvalOperand(xx, _entry.value()));
@@ -617,7 +617,7 @@ public final class ConstEval {
                     var base = bopt.optUnwrap();
                     var ekCv = ekopt.optUnwrap();
                     var ekv = (Opt.Some<Value>) ekCv.value();
-                    var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
+                    var ekOpt = erb.mustRes(Eval.extractConstKey(xx, ekv.value()));
                     if (ekOpt.optIsNone()) {
                         _foreachRes = EResult.errs(erb.errors());
                         break foreachCompute;
@@ -712,7 +712,7 @@ public final class ConstEval {
                     var base = bopt.optUnwrap();
                     var ekCv = ekopt.optUnwrap();
                     var ekv = (Opt.Some<Value>) ekCv.value();
-                    var ekOpt = erb.mustRes(Eval.extractConstKey(xx, loc, ekv.value()));
+                    var ekOpt = erb.mustRes(Eval.extractConstKey(xx, ekv.value()));
                     if (ekOpt.optIsNone()) {
                         _matchRes = EResult.errs(erb.errors());
                         break matchCompute;
@@ -742,7 +742,7 @@ public final class ConstEval {
                             break matchCompute;
                         }
                         var cv = (Opt.Some<Value>) condOpt.optUnwrap().value();
-                        var tagOpt = erb.mustRes(Eval.extractConstKey(xx, loc, cv.value()));
+                        var tagOpt = erb.mustRes(Eval.extractConstKey(xx, cv.value()));
                         if (tagOpt.optIsNone()) {
                             _matchRes = EResult.errs(erb.errors());
                             break matchCompute;
@@ -1161,8 +1161,7 @@ public final class ConstEval {
                     if (bnCvOpt.optIsNone()) yield EResult.errs(erb.errors());
                     var bnCv = bnCvOpt.optUnwrap();
                     var bnv = (Opt.Some<Value>) bnCv.value();
-                    var bnCkOpt = erb.mustRes(
-                            Eval.extractConstKey(xx, catchObj.bindingName().loc(), bnv.value()));
+                    var bnCkOpt = erb.mustRes(Eval.extractConstKey(xx, bnv.value()));
                     if (bnCkOpt.optIsNone()) yield EResult.errs(erb.errors());
                     var bindingId = BindingId.localFresh();
                     var catchScope = xx.scope.fork();

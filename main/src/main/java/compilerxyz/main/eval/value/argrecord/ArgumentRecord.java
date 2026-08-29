@@ -60,7 +60,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
         if (key.value().optIsNone()) {
             return EResult.err(loc, "ArgumentRecord::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var entry = fields.getOrNull(ck);

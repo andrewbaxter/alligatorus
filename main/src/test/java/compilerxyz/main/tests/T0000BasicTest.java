@@ -119,6 +119,5 @@ public final class T0000BasicTest {
                     case Result.Err<?, ?> e -> false;
                 },
                 () -> "compile failed: " + res);
-        var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
     }
 }

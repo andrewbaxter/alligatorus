@@ -5,33 +5,24 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.Opt;
-import org.objectweb.asm.Opcodes;
 
 public final class JvmSort {
     private JvmSort() {}
 
+    public static JavaDataDescriptor descriptor(ExprContext xx, Type type) {
+        return switch (GenAspectConsumeDynamic.getMaybe(xx, type)) {
+            case Opt.Some<AspectConsumeDynamic> some -> some.value().aspectConsumeDynamicJvmClass(xx);
+            case Opt.None<AspectConsumeDynamic> n ->
+                throw new IllegalStateException(
+                        "JvmSort: type (" + type.typeDesc() + ") does not implement AspectConsumeDynamic");
+        };
+    }
+
     public static int loadOpcode(ExprContext xx, Type type) {
-        return typedOpcode(xx, type, Opcodes.ILOAD, Opcodes.LLOAD, Opcodes.FLOAD, Opcodes.DLOAD, Opcodes.ALOAD);
+        return descriptor(xx, type).loadOpcode();
     }
 
     public static int storeOpcode(ExprContext xx, Type type) {
-        return typedOpcode(xx, type, Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.FSTORE, Opcodes.DSTORE, Opcodes.ASTORE);
-    }
-
-    private static int typedOpcode(ExprContext xx, Type type, int iOp, int jOp, int fOp, int dOp, int aOp) {
-        return switch (GenAspectConsumeDynamic.getMaybe(xx, type)) {
-            case Opt.Some<AspectConsumeDynamic> some -> {
-                var desc = some.value().aspectConsumeDynamicJvmClass(xx).value();
-                if (desc.isEmpty()) yield aOp;
-                yield switch (desc.charAt(0)) {
-                    case 'D' -> dOp;
-                    case 'J' -> jOp;
-                    case 'F' -> fOp;
-                    case 'I', 'Z', 'B', 'S', 'C' -> iOp;
-                    default -> aOp;
-                };
-            }
-            case Opt.None<AspectConsumeDynamic> n -> aOp;
-        };
+        return descriptor(xx, type).storeOpcode();
     }
 }

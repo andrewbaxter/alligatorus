@@ -216,17 +216,17 @@ public final class Tuple
                         if (accessedDyn != null) seq.add(accessedDyn);
                         if (seq.children.isEmpty())
                             yield EResult.ok(new CodeValue(accessedCv.code(), accessedCv.outcome()));
-                        yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), accessedCv.outcome()));
+                        yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), accessedCv.outcome()));
                     }
                     if (accessedPushDyn != null) {
                         seq.add(accessedPushDyn);
                         yield EResult.ok(new CodeValue(
-                                Code.of(loc, new CodeDynamic(loc, seq)),
-                                EvalOutcome.ofValue(ValueDynamic.stack(accessedType, 1))));
+                                Code.of(new CodeDynamic(loc, seq)),
+                                EvalOutcome.ofValue(ValueDynamic.stack(xx, accessedType))));
                     }
                     yield EResult.err(loc, "Tuple element " + accessIndex.optUnwrap() + " not found");
                 }
-                yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+                yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
             }
             case Opt.Some<TupleBaseDynamic> s -> {
                 var baseSource = s.value().source();
@@ -263,8 +263,8 @@ public final class Tuple
                                     CompositeClassEmitter.slotFieldName(slotIdx),
                                     CompositeClassEmitter.slotDescriptor(xx, t)));
                             var _tcChildCv = new CodeValue(
-                                    Code.of(loc, new CodeDynamic(loc, new JavaBytecodeSequence())),
-                                    EvalOutcome.ofValue(ValueDynamic.stack(t, 1)));
+                                    Code.of(new CodeDynamic(loc, new JavaBytecodeSequence())),
+                                    EvalOutcome.ofValue(ValueDynamic.stack(xx, t)));
                             var _tcDropRes = _tcFullDropOpt.optUnwrap().aspectDropDynamicDrop(xx, loc, _tcChildCv);
                             if (_tcDropRes.hasErrors()) yield _tcDropRes.reerr();
                             var _tcD = _tcDropRes
@@ -280,7 +280,7 @@ public final class Tuple
                         }
                     }
                     out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-                    yield EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
+                    yield EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, out)), EvalOutcome.NO_VALUE));
                 } else {
                     int accessedIdx = accessIndex.optUnwrap();
                     if (accessedIdx < 0 || accessedIdx >= tuple.elements.size()) {
@@ -429,8 +429,7 @@ public final class Tuple
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, JavaBytecodeUtils.literalNull(loc)),
-                EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+                Code.of(JavaBytecodeUtils.literalNull(loc)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
     }
 
     @Override
@@ -480,7 +479,7 @@ public final class Tuple
         }
         var cvValue = cv.value().optUnwrap();
         if (cvValue instanceof ValueDynamic) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         if (!(cvValue instanceof Tuple tuple)) {
             throw new IllegalStateException("Tuple::typeCastFrom: expected Tuple value, got " + cvValue.getClass());
@@ -742,7 +741,7 @@ public final class Tuple
             var sub = subRes.requireValue("Tuple::bindSub base.bindSub");
             var bound = xx.target.targetBind(xx, loc, sub);
             return EResult.ok(
-                    new BindResult(Code.of(loc, bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
+                    new BindResult(Code.of(bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
         }
 
         TList<ExprErr> errors = null;
@@ -860,8 +859,7 @@ public final class Tuple
         }
         var combined = xx.target.targetBindSubTuple(xx, loc, carry, targetSlots);
         var bound = xx.target.targetBind(xx, loc, combined);
-        return EResult.ok(
-                new BindResult(Code.of(loc, bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
+        return EResult.ok(new BindResult(Code.of(bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
     }
 
     @Override
@@ -872,7 +870,7 @@ public final class Tuple
         }
         var someValue = cv.value().optUnwrap();
         if (someValue instanceof ValueDynamic) {
-            return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+            return DynUtil.dynamicConsumeToDynamic(loc, cv);
         }
         if (!(someValue instanceof Tuple tuple)) {
             throw new IllegalStateException("Tuple::toDynamic: expected Tuple value, got " + someValue.getClass());
@@ -951,9 +949,10 @@ public final class Tuple
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        var source = new ValueDynamicSource.Expr(1);
+        var source =
+                new ValueDynamicSource.Expr(aspectConsumeDynamicJvmClass(xx).slotWidth());
         return new CodeValue(
-                Code.of(loc, value), EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));
+                Code.of(value), EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), elements)));
     }
 
     @Override

@@ -7,6 +7,7 @@ import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -48,7 +49,7 @@ import compilerxyz.prelude.util.TList;
 
 @BuiltinLight(uniqueId = 6110L)
 public record TypeFunctionDynamic(
-        TList<FunctionParam> params, Opt<Type> ret, JavaInternalName klass, String methodName, boolean needsExprContext)
+        TList<FunctionParam> params, Opt<Type> ret, JavaInternalName klass, String methodName, boolean needsEvalContext)
         implements Type,
                 AspectBind,
                 AspectConsumeDynamic,
@@ -63,9 +64,9 @@ public record TypeFunctionDynamic(
     }
 
     public static EResult<JavaMethodDescriptor> descriptorFor(
-            ExprContext xx, QExprId loc, Type arg, Opt<Type> ret, boolean needsExprContext) {
+            ExprContext xx, QExprId loc, Type arg, Opt<Type> ret, boolean needsEvalContext) {
         var argDescs = new TList<JavaDataDescriptor>();
-        if (needsExprContext) argDescs.add(JavaDataDescriptor.fromClass(ExprContext.class));
+        if (needsEvalContext) argDescs.add(JavaDataDescriptor.fromClass(EvalContext.class));
         var tupleOpt = GenAspectTuple.getMaybe(xx, arg);
         if (tupleOpt.optIsSome()) {
             for (var elem : tupleOpt.optUnwrap().aspectTupleElementTypes()) {
@@ -104,15 +105,11 @@ public record TypeFunctionDynamic(
             JavaInternalName klass,
             String methodName,
             JavaMethodDescriptor desc,
-            boolean needsExprContext,
+            boolean needsEvalContext,
             TList<CodeDynamic> args) {
         var seq = new JavaBytecodeSequence();
-        if (needsExprContext) {
-            seq.add(JavaBytecodeUtils.accessStaticField(
-                    loc,
-                    JavaInternalName.of(xx.vx.evalRootInternalName),
-                    EvalRootEmitter.EXPR_CONTEXT_FIELD,
-                    EvalRootEmitter.DESC_EXPR_CONTEXT));
+        if (needsEvalContext) {
+            seq.add(EvalRootEmitter.loadEvalContext(loc, xx));
         }
         for (var argCode : args) {
             seq.add(argCode);
@@ -172,7 +169,7 @@ public record TypeFunctionDynamic(
         for (var c : argsDynRes.requireValue("TypeFunctionDynamic::call positional args")) {
             argList.add(c);
         }
-        var descRes = descriptorFor(xx, loc, arg(), ret, needsExprContext);
+        var descRes = descriptorFor(xx, loc, arg(), ret, needsEvalContext);
         if (descRes.hasErrors()) return descRes.reerr();
         var invocationRes = emitStaticInvocation(
                 xx,
@@ -180,12 +177,12 @@ public record TypeFunctionDynamic(
                 klass,
                 methodName,
                 descRes.requireValue("TypeFunctionDynamic::emit desc"),
-                needsExprContext,
+                needsEvalContext,
                 argList);
         if (invocationRes.hasErrors()) return invocationRes.reerr();
         var invocation = invocationRes.requireValue("TypeFunctionDynamic::call invocation");
         if (ret.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.of(invocation), EvalOutcome.NO_VALUE));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -228,7 +225,7 @@ public record TypeFunctionDynamic(
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -246,7 +243,7 @@ public record TypeFunctionDynamic(
                 && retEqual(xx, ret, oOpt.optUnwrap().ret)
                 && klass.equals(oOpt.optUnwrap().klass)
                 && methodName.equals(oOpt.optUnwrap().methodName)
-                && needsExprContext == oOpt.optUnwrap().needsExprContext;
+                && needsEvalContext == oOpt.optUnwrap().needsEvalContext;
     }
 
     static boolean paramsEqual(ExprContext xx, TList<FunctionParam> a, TList<FunctionParam> b) {

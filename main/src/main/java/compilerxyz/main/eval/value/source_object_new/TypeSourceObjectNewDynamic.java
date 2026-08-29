@@ -67,7 +67,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -112,7 +112,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
                 .aspectConsumeDynamicJvmClass(xx);
         var ctorDesc = JavaMethodDescriptor.fromConstructorParts(TList.of(underlyingDesc));
         var newInstance = JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newInstance, resultType, 1));
+        return EResult.ok(DynUtil.dynamicStackToValue(xx, newInstance, resultType));
     }
 
     @Override

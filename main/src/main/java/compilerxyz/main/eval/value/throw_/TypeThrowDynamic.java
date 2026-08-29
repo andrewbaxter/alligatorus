@@ -93,9 +93,9 @@ public record TypeThrowDynamic() implements Type, AspectFunction, AspectInitialB
         var dest = destRes.requireValue("throw exc dest");
         Code outCode;
         if (dest.optIsSome()) {
-            outCode = Code.of(loc, new CodeDynamic(loc, new JavaBytecodeGuarded(dest.optUnwrap(), throwCode)));
+            outCode = Code.of(new CodeDynamic(loc, new JavaBytecodeGuarded(dest.optUnwrap(), throwCode)));
         } else {
-            outCode = Code.of(loc, throwCode);
+            outCode = Code.of(throwCode);
         }
         return EResult.ok(new CodeValue(outCode, EvalOutcome.CONTROL_ENDED));
     }

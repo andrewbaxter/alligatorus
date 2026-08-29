@@ -70,14 +70,18 @@ public final class T0080UnionTest {
                                 mb.scopeUse("x"),
                                 mb.str("y"),
                                 TList.of(
-                                        new TestMb.Branch(mb.str("strtag"), mb.call(mb.log(), mb.scopeUse("y"))),
+                                        new TestMb.Branch(
+                                                mb.str("strtag"),
+                                                mb.seqOf(mb.call(mb.log(), mb.scopeUse("y")), mb.tupleOf())),
                                         new TestMb.Branch(
                                                 mb.str("numtag"),
-                                                mb.call(
-                                                        mb.log(),
+                                                mb.seqOf(
                                                         mb.call(
-                                                                mb.field(mb.scopeUse("y"), mb.str("to_string")),
-                                                                mb.tupleOf())))),
+                                                                mb.log(),
+                                                                mb.call(
+                                                                        mb.field(mb.scopeUse("y"), mb.str("to_string")),
+                                                                        mb.tupleOf())),
+                                                        mb.tupleOf()))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));

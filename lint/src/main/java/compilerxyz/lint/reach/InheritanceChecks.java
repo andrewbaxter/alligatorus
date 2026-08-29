@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import spoon.reflect.CtModel;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtInterface;
@@ -13,7 +12,6 @@ import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtTypeReference;
-import spoon.reflect.visitor.filter.TypeFilter;
 
 public final class InheritanceChecks {
 
@@ -33,8 +31,8 @@ public final class InheritanceChecks {
         this.generatedFiles = generatedFiles;
     }
 
-    public List<ConventionChecks.Finding> run(CtModel model) {
-        for (CtClass<?> c : model.getElements(new TypeFilter<>(CtClass.class))) {
+    public List<ConventionChecks.Finding> run(ModelIndex index) {
+        for (CtClass<?> c : index.classes) {
             if (c.hasModifier(ModifierKind.ABSTRACT) && !c.isEnum()) {
                 report(
                         "NoClassInheritance",
@@ -62,7 +60,7 @@ public final class InheritanceChecks {
                             + "'; class inheritance is banned — compose via delegation and shared utility"
                             + " methods.");
         }
-        for (CtInterface<?> i : model.getElements(new TypeFilter<>(CtInterface.class))) {
+        for (CtInterface<?> i : index.interfaces) {
             for (CtMethod<?> m : i.getMethods()) {
                 if (!m.isDefaultMethod()) continue;
                 report(

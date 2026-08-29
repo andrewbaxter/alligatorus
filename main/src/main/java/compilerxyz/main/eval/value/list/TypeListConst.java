@@ -300,7 +300,7 @@ public final class TypeListConst<T extends Type>
         var dynType = GenLists.listDynamic(xx, elementType);
         return EResult.ok(new CodeValue(
                 Code.of(dynRes.requireValue("TypeListConst::dynamicCv")),
-                EvalOutcome.ofValue(ValueDynamic.stack(dynType, 1))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType))));
     }
 
     @Override
@@ -363,7 +363,7 @@ public final class TypeListConst<T extends Type>
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

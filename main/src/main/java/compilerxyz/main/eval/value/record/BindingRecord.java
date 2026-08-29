@@ -27,7 +27,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
         Opt<RecordBaseDynamic> base;
         switch (jsKey) {
             case Opt.Some<BindingId> some -> {
-                useCode = Code.of(loc, BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, some.value()));
+                useCode = Code.of(BindingCode.bindingUse(new CodeLoc.Some(loc), some.value()));
                 base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
             }
             case Opt.None<BindingId> none -> {

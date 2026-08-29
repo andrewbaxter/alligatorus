@@ -90,7 +90,7 @@ public record TypeUniqueConst()
         var key = new JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(Unique.class, u)));
-        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
 
     @Override
@@ -145,7 +145,7 @@ public record TypeUniqueConst()
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

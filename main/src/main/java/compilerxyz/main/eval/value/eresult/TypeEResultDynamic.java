@@ -107,12 +107,12 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
     }
 
     @Override
-    public EResult<Void> matchDynamicPrepare(ExprContext xx, QExprId loc) {
+    public EResult<Void> matchDynamicPrepare(ExprContext xx) {
         return EResult.ok(null);
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicTest(ExprContext xx, QExprId loc, int variantIndex) {
+    public EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex) {
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
         if (variantIndex == 0) {
@@ -152,7 +152,7 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -162,7 +162,7 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     private sealed interface FieldSpec {
@@ -198,7 +198,7 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeEResultDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var ckStr =
@@ -215,8 +215,8 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
             seq.add(selfDyn);
             seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(new TypeBoolDynamic(), 1))));
+                    Code.of(new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
             var selfDyn = self.code().codeDynamic();
@@ -236,8 +236,8 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
                 seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
             }
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1))));
+                    Code.of(new CodeDynamic(new Some(loc), seq)),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType))));
         }
         var spec = fieldSpecs().getOrNull(ck);
         if (spec == null) {

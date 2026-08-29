@@ -4,7 +4,6 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.Expr;
-import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_interface.InterfaceData;
@@ -33,21 +32,21 @@ public final class SourceObjectBuilder {
         return GenObjectTypes.sourceObjectBuilder();
     }
 
-    public void set_description(ExprContext xx, String description) {
+    public void set_description(String description) {
         if (this.type_.description.optIsSome()) {
             throw new IllegalStateException("Object already has a description");
         }
         this.type_.description = Opt.some(description);
     }
 
-    public void set_inner(ExprContext xx, Type typeRef) {
+    public void set_inner(Type typeRef) {
         if (this.type_.underlyingType.optIsSome()) {
             throw new IllegalStateException("Object already has an inner type");
         }
         this.type_.underlyingType = Opt.some(typeRef);
     }
 
-    public SourceObjectMethodResult func(ExprContext xx, String name) {
+    public SourceObjectMethodResult func(String name) {
         var dtData = this.type_;
         var method = new SourceDataMethodData(name);
         method.methodIdx = dtData.methods.size();
@@ -55,7 +54,7 @@ public final class SourceObjectBuilder {
         return new SourceObjectMethodResult(method);
     }
 
-    public void impl_interface(ExprContext xx, InterfaceData ifaceRef, TOrderedMap<ConstKey, StagedExprCell> record) {
+    public void impl_interface(InterfaceData ifaceRef, TOrderedMap<ConstKey, StagedExprCell> record) {
         var recordMap = new LinkedHashMap<ConstKey, Expr>();
         for (var entry : record.entrySet()) {
             recordMap.put(entry.getKey(), mustCast(Expr.class, entry.getValue().value()));

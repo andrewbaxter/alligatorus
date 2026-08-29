@@ -545,7 +545,14 @@ public final class T0030DefineInterfaceTest {
                                                                         "arg",
                                                                         mb.field(mb.scopeUse("iface"), mb.str("type"))),
                                                                 new TestMb.RecordPair(
-                                                                        "ret", mb.optSomeType(mb.typesNull())),
+                                                                        "ret",
+                                                                        mb.call(
+                                                                                mb.field(
+                                                                                        mb.call(
+                                                                                                mb.typesOption(),
+                                                                                                mb.evalType()),
+                                                                                        mb.str("none")),
+                                                                                mb.literalNull())),
                                                                 new TestMb.RecordPair(
                                                                         "impl_body",
                                                                         mb.stage(

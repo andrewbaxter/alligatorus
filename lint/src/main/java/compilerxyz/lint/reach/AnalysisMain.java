@@ -70,11 +70,13 @@ public final class AnalysisMain {
         launcher.buildModel();
         CtModel model = launcher.getModel();
 
+        var index = new ModelIndex(model);
         List<ConventionChecks.Finding> conventionFindings = new ArrayList<>();
-        conventionFindings.addAll(new ConventionChecks(generatedFiles).run(model));
-        conventionFindings.addAll(new ImmutabilityChecks(generatedFiles).run(model));
-        conventionFindings.addAll(new StateChecks(generatedFiles).run(model));
-        conventionFindings.addAll(new InheritanceChecks(generatedFiles).run(model));
+        conventionFindings.addAll(new ConventionChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new ImmutabilityChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new StateChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new InheritanceChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new VariableChecks(generatedFiles).run(index));
         conventionFindings.addAll(new StructureChecks(base).run());
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (var f : conventionFindings) counts.merge(f.check(), 1, Integer::sum);
@@ -98,7 +100,7 @@ public final class AnalysisMain {
         System.out.println("  (per-location detail in " + conventionsReport + ")");
         System.out.println();
 
-        int reachabilityFindings = new ReachabilityMain(generatedFiles).run(model);
+        int reachabilityFindings = new ReachabilityMain(generatedFiles).run(model, index);
 
         int total = conventionFindings.size() + reachabilityFindings;
         if (total > 0) {

@@ -1,41 +1,30 @@
 package compilerxyz.codegen;
 
-import com.palantir.javaformat.java.Formatter;
-import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.FieldSpec;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeName;
-import com.squareup.javapoet.TypeSpec;
 import compilerxyz.prelude.util.IList;
-import compilerxyz.prelude.util.TList;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Locale;
-import javax.lang.model.element.Modifier;
 
 public final class ListsGen {
     private ListsGen() {}
 
-    private static final String GEN_PACKAGE = "compilerxyz.main.gen";
-    private static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
-    private static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
-    private static final ClassName JAVA_INTERNAL_NAME =
+    public static final String GEN_PACKAGE = "compilerxyz.main.gen";
+    public static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
+    public static final ClassName EXPR_CONTEXT = ClassName.get("compilerxyz.main.eval", "ExprContext");
+    public static final ClassName JAVA_INTERNAL_NAME =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
-    private static final ClassName LIST_SPECIALIZED =
+    public static final ClassName LIST_SPECIALIZED =
             ClassName.get("compilerxyz.main.eval.value.list", "TypeListSpecializedDynamic");
-    private static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.main.eval.value.list", "ListDynamic");
-    private static final ClassName LIST_BOXED =
+    public static final ClassName LIST_DYNAMIC = ClassName.get("compilerxyz.main.eval.value.list", "ListDynamic");
+    public static final ClassName LIST_BOXED =
             ClassName.get("compilerxyz.main.eval.value.list", "TypeListBoxedDynamic");
-    private static final ClassName GEN_IDENTITIES = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
+    public static final ClassName GEN_IDENTITIES = ClassName.get(GEN_PACKAGE, "GenTrivialIdentityAspects");
 
-    private record Store(String simple, TypeName javaPrim) {}
+    public record Store(String simple, TypeName javaPrim) {}
 
-    private record Prim(String name, String storeSimple, ClassName elementClass, long uniqueId) {}
+    public record Prim(String name, String storeSimple, ClassName elementClass, long uniqueId) {}
 
-    private static final IList<Store> STORES = IList.of(
+    public static final IList<Store> STORES = IList.of(
             new Store("ListStoreInt", TypeName.INT),
             new Store("ListStoreLong", TypeName.LONG),
             new Store("ListStoreShort", TypeName.SHORT),
@@ -44,7 +33,7 @@ public final class ListsGen {
             new Store("ListStoreDouble", TypeName.DOUBLE),
             new Store("ListStoreBool", TypeName.BOOLEAN));
 
-    private static final IList<Prim> PRIMS = IList.of(
+    public static final IList<Prim> PRIMS = IList.of(
             new Prim("Int", "ListStoreInt", ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic"), 6200L),
             new Prim(
                     "Uint",
@@ -97,102 +86,11 @@ public final class ListsGen {
                     ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic"),
                     6210L));
 
-    public static TList<IdentitiesGen.IdentitySpec> identitySpecs() {
-        var out = new TList<IdentitiesGen.IdentitySpec>();
-        for (var prim : PRIMS) {
-            out.add(new IdentitiesGen.IdentitySpec(snake(typeSimple(prim)), prim.uniqueId(), true));
-        }
-        return out;
-    }
-
-    public static void run(Path outRoot, Formatter formatter) throws IOException {
-        for (var store : STORES) {
-            GenMain.write(
-                    outRoot, JavaFile.builder(GEN_PACKAGE, storeClass(store)).build(), formatter);
-        }
-        GenMain.write(outRoot, JavaFile.builder(GEN_PACKAGE, factoryClass()).build(), formatter);
-    }
-
-    private static TypeSpec storeClass(Store store) {
-        var arrayType = ArrayTypeName.of(store.javaPrim());
-        return TypeSpec.classBuilder(store.simple())
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addField(FieldSpec.builder(arrayType, "EMPTY", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                        .initializer("new $T[0]", store.javaPrim())
-                        .build())
-                .addField(FieldSpec.builder(arrayType, "data", Modifier.PRIVATE)
-                        .initializer("EMPTY")
-                        .build())
-                .addField(FieldSpec.builder(TypeName.INT, "size", Modifier.PRIVATE)
-                        .build())
-                .addMethod(MethodSpec.methodBuilder("push")
-                        .addModifiers(Modifier.PUBLIC)
-                        .addParameter(store.javaPrim(), "value")
-                        .beginControlFlow("if (size == data.length)")
-                        .addStatement("data = $T.copyOf(data, $T.max(8, data.length * 2))", Arrays.class, Math.class)
-                        .endControlFlow()
-                        .addStatement("data[size] = value")
-                        .addStatement("size += 1")
-                        .build())
-                .addMethod(MethodSpec.methodBuilder("pop")
-                        .addModifiers(Modifier.PUBLIC)
-                        .returns(store.javaPrim())
-                        .addStatement("size -= 1")
-                        .addStatement("return data[size]")
-                        .build())
-                .addMethod(MethodSpec.methodBuilder("get")
-                        .addModifiers(Modifier.PUBLIC)
-                        .returns(store.javaPrim())
-                        .addParameter(TypeName.INT, "index")
-                        .beginControlFlow("if (index >= size)")
-                        .addStatement("throw new $T(index)", ArrayIndexOutOfBoundsException.class)
-                        .endControlFlow()
-                        .addStatement("return data[index]")
-                        .build())
-                .addMethod(MethodSpec.methodBuilder("size")
-                        .addModifiers(Modifier.PUBLIC)
-                        .returns(TypeName.INT)
-                        .addStatement("return size")
-                        .build())
-                .build();
-    }
-
-    private static String typeSimple(Prim prim) {
+    public static String typeSimple(Prim prim) {
         return "TypeList" + prim.name() + "Dynamic";
     }
 
-    private static TypeSpec factoryClass() {
-        var method = MethodSpec.methodBuilder("listDynamic")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(LIST_DYNAMIC)
-                .addParameter(EXPR_CONTEXT, "xx")
-                .addParameter(TYPE, "elementType");
-        for (var prim : PRIMS) {
-            method.beginControlFlow(
-                    "if (elementType.typeAspect(xx, $T.$L).optIsSome())",
-                    GEN_IDENTITIES,
-                    constantName(snake(prim.elementClass().simpleName())));
-            method.addStatement(
-                    "return new $T(new $T(), $T.fromClass($T.class), $T.$L)",
-                    LIST_SPECIALIZED,
-                    prim.elementClass(),
-                    JAVA_INTERNAL_NAME,
-                    ClassName.get(GEN_PACKAGE, prim.storeSimple()),
-                    GEN_IDENTITIES,
-                    constantName(snake(typeSimple(prim))));
-            method.endControlFlow();
-        }
-        method.addStatement("return new $T(elementType)", LIST_BOXED);
-        return TypeSpec.classBuilder("GenLists")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addMethod(MethodSpec.constructorBuilder()
-                        .addModifiers(Modifier.PRIVATE)
-                        .build())
-                .addMethod(method.build())
-                .build();
-    }
-
-    private static String snake(String camel) {
+    public static String snake(String camel) {
         var sb = new StringBuilder();
         for (int i = 0; i < camel.length(); i++) {
             var c = camel.charAt(i);
@@ -202,7 +100,7 @@ public final class ListsGen {
         return sb.toString();
     }
 
-    private static String constantName(String snake) {
+    public static String constantName(String snake) {
         return snake.toUpperCase(Locale.ROOT) + "_IDENTITY";
     }
 }

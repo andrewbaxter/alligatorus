@@ -61,7 +61,7 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
         var receiverDyn = receiverDynRes.requireValue("TypeInterfaceMethodBuiltin receiver toDynamic");
         return method.aspectFunctionCall(
-                xx, loc, new CodeValue(Code.of(loc, receiverDyn), receiverCv.outcome()), split.methodArgs());
+                xx, loc, new CodeValue(Code.of(receiverDyn), receiverCv.outcome()), split.methodArgs());
     }
 
     @Override

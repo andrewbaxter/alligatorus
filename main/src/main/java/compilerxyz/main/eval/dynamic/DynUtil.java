@@ -76,7 +76,6 @@ public final class DynUtil {
     }
 
     public static CodeValue foreachSkeleton(
-            ExprContext xx,
             QExprId loc,
             CodeDynamic iteratorSetup,
             CodeDynamic elementDecode,
@@ -113,7 +112,7 @@ public final class DynUtil {
                 loc, new JavaBytecodeInstructionObj(new JumpInsnNode(org.objectweb.asm.Opcodes.GOTO, loopLabel))));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-        return new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE);
+        return new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE);
     }
 
     public static CodeDynamic renderSource(ExprContext xx, QExprId loc, ValueDynamicSource src) {
@@ -149,12 +148,12 @@ public final class DynUtil {
             return EResult.err(loc, "Type (" + vtype.typeDesc() + ") returned None from AspectBindDynamic");
         }
         var bound = xx.target.targetBind(xx, loc, subOpt.optUnwrap());
-        Code wrappingCode = Code.of(loc, bound.code());
+        Code wrappingCode = Code.of(bound.code());
         Binding binding = new BindingDynamicBinding(bound.id(), vtype);
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
     }
 
-    public static EResult<Opt<TargetBindSub>> bindDynamicDefault(ExprContext xx, QExprId loc, CodeValue cv) {
+    public static EResult<Opt<TargetBindSub>> bindDynamicDefault(QExprId loc, CodeValue cv) {
         if (cv.code().codeIsNone()) {
             return EResult.ok(Opt.none());
         }
@@ -163,7 +162,7 @@ public final class DynUtil {
                     "bind_dynamic_default called with absent value in CodeValue; Rust unwraps unconditionally");
         }
         var vtype = cv.value().optUnwrap().valueType();
-        var dynRes = dynamicConsumeToDynamic(xx, loc, cv);
+        var dynRes = dynamicConsumeToDynamic(loc, cv);
         if (dynRes.hasErrors()) {
             return dynRes.reerr();
         }
@@ -173,7 +172,7 @@ public final class DynUtil {
 
     public record DropChild(Type childType, CodeDynamic access) {}
 
-    public static EResult<Code> dropDefault(ExprContext xx, QExprId loc, CodeValue cv) {
+    public static EResult<Code> dropDefault(QExprId loc, CodeValue cv) {
         if (cv.value().optIsNone()) {
             return EResult.ok(Code.none(loc));
         }
@@ -191,7 +190,7 @@ public final class DynUtil {
         };
     }
 
-    public static EResult<CodeDynamic> dynamicConsumeToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+    public static EResult<CodeDynamic> dynamicConsumeToDynamic(QExprId loc, CodeValue cv) {
         var dyn = cv.code().codeDynamic();
         if (dyn == null) {
             return EResult.err(loc, "Expression resulted in empty code");
@@ -206,10 +205,9 @@ public final class DynUtil {
         };
     }
 
-    public static CodeValue dynamicStackToValue(
-            ExprContext xx, QExprId loc, CodeDynamic value, Type type_, int stackSize) {
-        var dynValue = ValueDynamic.stack(type_, stackSize);
-        return new CodeValue(Code.of(loc, value), EvalOutcome.ofValue(dynValue));
+    public static CodeValue dynamicStackToValue(ExprContext xx, CodeDynamic value, Type type_) {
+        var dynValue = ValueDynamic.stack(xx, type_);
+        return new CodeValue(Code.of(value), EvalOutcome.ofValue(dynValue));
     }
 
     public static CodeDynamic wrapWithCarry(QExprId loc, Code carry, CodeDynamic dynamicCode) {
@@ -257,7 +255,6 @@ public final class DynUtil {
             return valueCodeRes.reerr();
         }
         var valueCode = valueCodeRes.requireValue("DynUtil::dynamicSet consume.toDynamic");
-        var selfCode = self_.code().codeDynamic();
         var nullStackRes = GenAspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
         if (nullStackRes.hasErrors()) {
             return nullStackRes.reerr();

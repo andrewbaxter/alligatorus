@@ -2,7 +2,6 @@ package compilerxyz.codegen.experimental;
 
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
@@ -14,6 +13,7 @@ import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
+import com.github.javaparser.ast.type.VoidType;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
@@ -25,10 +25,6 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.stream.Stream;
 
 public final class BuiltinPathScanner {
     private BuiltinPathScanner() {}
@@ -48,33 +44,12 @@ public final class BuiltinPathScanner {
             long scopeId,
             String methodName,
             String ownerInternalName,
-            boolean needsExprContext,
+            boolean needsEvalContext,
             TList<NamedTypeRef> args,
-            TypeRef retType)
+            Opt<TypeRef> retType)
             implements Entry {}
 
-    public static TList<Entry> scanRoot(Path runtimeSourceRoot, TMap<ClassName, CodeBlock> scannedLeaves)
-            throws IOException {
-        var out = new TList<Entry>();
-        try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
-            var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
-            for (var file : files) {
-                var src = Files.readString(file);
-                if (!src.contains("BuiltinPath")) continue;
-                var cu = StaticJavaParser.parse(file);
-                var pkg = cu.getPackageDeclaration()
-                        .map(pd -> pd.getNameAsString())
-                        .orElse("");
-                var imports = buildImportMap(cu);
-                for (var t : cu.getTypes()) {
-                    walkType(pkg, pkg, "", t, imports, out, scannedLeaves);
-                }
-            }
-        }
-        return out;
-    }
-
-    private static void walkType(
+    public static void walkType(
             String pkg,
             String sourcePkg,
             String enclosing,
@@ -95,27 +70,72 @@ public final class BuiltinPathScanner {
                 var mpathOpt = pathFromAnnotation(m);
                 if (mpathOpt.optIsNone()) continue;
                 var mpath = mpathOpt.optUnwrap();
-                var scopeId = scopeIdFromAnnotation(m);
+                NodeWithAnnotations<?> node = m;
+                long _rScopeIdFromAnnotation;
+                _scopeIdFromAnnotation:
+                {
+                    var opt = findBuiltinPath(node);
+                    if (opt.optIsNone()) {
+                        _rScopeIdFromAnnotation = 0L;
+                        break _scopeIdFromAnnotation;
+                    }
+                    var ann = opt.optUnwrap();
+                    if (ann instanceof NormalAnnotationExpr n) {
+                        for (var p : n.getPairs()) {
+                            if (p.getNameAsString().equals("scopeId")) {
+                                var raw = p.getValue().toString();
+                                if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
+                                {
+                                    _rScopeIdFromAnnotation = Long.parseLong(raw);
+                                    break _scopeIdFromAnnotation;
+                                }
+                            }
+                        }
+                    }
+                    {
+                        _rScopeIdFromAnnotation = 0L;
+                        break _scopeIdFromAnnotation;
+                    }
+                }
+                long scopeId = _rScopeIdFromAnnotation;
+
                 var args = new TList<NamedTypeRef>();
                 var params = m.getParameters();
-                var needsExprContext = false;
+                var needsEvalContext = false;
                 var firstArgIndex = 0;
                 if (!params.isEmpty()
+                        && params.get(0).getNameAsString().equals("vx")
                         && typeNameOf(params.get(0).getType(), imports, sourcePkg) instanceof ClassName ficn
-                        && ficn.canonicalName().equals("compilerxyz.main.eval.ExprContext")) {
-                    needsExprContext = true;
+                        && ficn.canonicalName().equals("compilerxyz.main.eval.EvalContext")) {
+                    needsEvalContext = true;
                     firstArgIndex = 1;
                 }
                 for (int i = firstArgIndex; i < params.size(); i++) {
                     var p = params.get(i);
-                    args.add(new NamedTypeRef(
-                            snakeCase(p.getNameAsString()), typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
+                    String s = p.getNameAsString();
+                    String _rSnakeCase;
+                    _snakeCase:
+                    {
+                        var sb = new StringBuilder();
+                        for (int ci = 0; ci < s.length(); ci++) {
+                            var c = s.charAt(ci);
+                            if (Character.isUpperCase(c) && ci > 0) sb.append('_');
+                            sb.append(Character.toLowerCase(c));
+                        }
+                        {
+                            _rSnakeCase = sb.toString();
+                            break _snakeCase;
+                        }
+                    }
+                    args.add(new NamedTypeRef(_rSnakeCase, typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
                 }
                 var ownerSimple = enclosing.isEmpty() ? simple : enclosing.replace('.', '$') + "$" + simple;
                 var ownerInternalName = pkg.replace('.', '/') + "/" + ownerSimple;
-                var retType = typeRefOf(m.getType(), imports, sourcePkg, scannedLeaves);
+                Opt<TypeRef> retType = m.getType() instanceof VoidType
+                        ? Opt.none()
+                        : Opt.some(typeRefOf(m.getType(), imports, sourcePkg, scannedLeaves));
                 out.add(new FunctionLeaf(
-                        mpath, scopeId, m.getNameAsString(), ownerInternalName, needsExprContext, args, retType));
+                        mpath, scopeId, m.getNameAsString(), ownerInternalName, needsEvalContext, args, retType));
             }
         }
         for (var member : t.getMembers()) {
@@ -157,32 +177,6 @@ public final class BuiltinPathScanner {
         throw new IllegalStateException("@BuiltinPath missing value");
     }
 
-    private static long scopeIdFromAnnotation(NodeWithAnnotations<?> node) {
-        var opt = findBuiltinPath(node);
-        if (opt.optIsNone()) return 0L;
-        var ann = opt.optUnwrap();
-        if (ann instanceof NormalAnnotationExpr n) {
-            for (var p : n.getPairs()) {
-                if (p.getNameAsString().equals("scopeId")) {
-                    var raw = p.getValue().toString();
-                    if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
-                    return Long.parseLong(raw);
-                }
-            }
-        }
-        return 0L;
-    }
-
-    private static String snakeCase(String s) {
-        var sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            var c = s.charAt(i);
-            if (Character.isUpperCase(c) && i > 0) sb.append('_');
-            sb.append(Character.toLowerCase(c));
-        }
-        return sb.toString();
-    }
-
     private static final IMap<String, ClassName> COMPOSITE_WRAPPERS = IMap.ofEntries(
             new Pair<>(
                     "compilerxyz.main.eval.EResult",
@@ -214,8 +208,6 @@ public final class BuiltinPathScanner {
 
     private static final ClassName TYPE_BOOL_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
-    private static final ClassName TYPE_INT_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.int_", "TypeIntDynamic");
 
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
@@ -302,15 +294,5 @@ public final class BuiltinPathScanner {
         }
         var idx = fqn.lastIndexOf('.');
         return ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
-    }
-
-    private static TMap<String, String> buildImportMap(CompilationUnit cu) {
-        var m = new TMap<String, String>();
-        for (var imp : cu.getImports()) {
-            var full = imp.getNameAsString();
-            var simple = full.substring(full.lastIndexOf('.') + 1);
-            m.put(simple, full);
-        }
-        return m;
     }
 }

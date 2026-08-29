@@ -2948,20 +2948,21 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                 .of(
                                                                                                                                                                                         new TestMb
                                                                                                                                                                                                 .RecordPair(
+                                                                                                                                                                                                "xx_",
+                                                                                                                                                                                                mb
+                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                "xx"))),
+                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                .RecordPair(
                                                                                                                                                                                                 "type",
                                                                                                                                                                                                 mb
                                                                                                                                                                                                         .scopeUse(
-                                                                                                                                                                                                                "outer")),
-                                                                                                                                                                                        new TestMb
-                                                                                                                                                                                                .RecordPair(
-                                                                                                                                                                                                "width",
-                                                                                                                                                                                                mb
-                                                                                                                                                                                                        .as_(
-                                                                                                                                                                                                                mb
-                                                                                                                                                                                                                        .num(
-                                                                                                                                                                                                                                1.),
-                                                                                                                                                                                                                mb
-                                                                                                                                                                                                                        .typesLong())))))))))),
+                                                                                                                                                                                                                "outer")))))))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "fork",
                                                                                                 mb.scopeUse("outer")),

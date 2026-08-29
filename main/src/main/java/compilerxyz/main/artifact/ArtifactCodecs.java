@@ -29,7 +29,7 @@ public final class ArtifactCodecs {
                 }
                 case Artifact.Ref r -> {
                     writer.name("ref");
-                    ArtifactIdSourceCodec.encode(writer, r.id(), style);
+                    ArtifactIdSourceCodec.encode(writer, r.id());
                 }
             }
             writer.endObject();
@@ -175,7 +175,7 @@ public final class ArtifactCodecs {
                 }
                 case ArtifactBodyExporter.SourceRef sr -> {
                     writer.name("source_ref");
-                    ArtifactIdSourceCodec.encode(writer, sr.id(), style);
+                    ArtifactIdSourceCodec.encode(writer, sr.id());
                 }
             }
             writer.endObject();
@@ -185,7 +185,7 @@ public final class ArtifactCodecs {
     public static final class ArtifactIdSourceCodec {
         private ArtifactIdSourceCodec() {}
 
-        public static void encode(JsonWriter writer, ArtifactIdSource value, Style style) throws IOException {
+        public static void encode(JsonWriter writer, ArtifactIdSource value) throws IOException {
             writer.beginObject();
 
             writer.name("compile_id");

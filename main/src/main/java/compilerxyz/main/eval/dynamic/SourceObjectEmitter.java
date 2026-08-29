@@ -12,7 +12,6 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import compilerxyz.prelude.util.TOrderedSet;
-import org.objectweb.asm.Opcodes;
 
 public final class SourceObjectEmitter {
     private SourceObjectEmitter() {}
@@ -60,21 +59,6 @@ public final class SourceObjectEmitter {
 
     public static final String SOURCE_OBJECT_DATA_FIELD = "_sourceObjectData";
 
-    public static int slotWidth(JavaDataDescriptor d) {
-        var v = d.value();
-        return (v.equals("D") || v.equals("J")) ? 2 : 1;
-    }
-
-    public static int storeOpcodeFor(JavaDataDescriptor d) {
-        return switch (d.value().charAt(0)) {
-            case 'J' -> Opcodes.LSTORE;
-            case 'D' -> Opcodes.DSTORE;
-            case 'F' -> Opcodes.FSTORE;
-            case 'I', 'B', 'C', 'S', 'Z' -> Opcodes.ISTORE;
-            default -> Opcodes.ASTORE;
-        };
-    }
-
     public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {
         var staticFieldValues = new TOrderedMap<String, Object>();
         var seen = new TOrderedSet<String>();
@@ -105,17 +89,6 @@ public final class SourceObjectEmitter {
         }
         staticFieldValues.put(SOURCE_OBJECT_DATA_FIELD, data);
         return staticFieldValues;
-    }
-
-    public static int returnOpcodeFor(char retChar) {
-        return switch (retChar) {
-            case 'Z', 'B', 'C', 'S', 'I' -> Opcodes.IRETURN;
-            case 'J' -> Opcodes.LRETURN;
-            case 'F' -> Opcodes.FRETURN;
-            case 'D' -> Opcodes.DRETURN;
-            case 'V' -> Opcodes.RETURN;
-            default -> Opcodes.ARETURN;
-        };
     }
 
     public static JavaMethodDescriptor interfaceMethodMethodDescriptor(

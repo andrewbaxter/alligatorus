@@ -212,7 +212,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
                     var dynRes = aspectConsumeDynamicToDynamic(xx, loc, cv);
                     if (dynRes.hasErrors()) return dynRes.reerr();
                     materialized = new CodeValue(
-                            Code.of(loc, dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
+                            Code.of(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
                 }
                 return rule.typeObjectCastRuleApply(xx, null, loc, materialized, destType);
             }
@@ -234,7 +234,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(xx, null, loc, cv, sourceType);
+                return rule.typeObjectCastFromRuleApply(xx, null, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
@@ -259,7 +259,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
         var key = new JavaBytecodeBindingKey();
         var id = new BindingId.Local(key);
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(externalHostClass, hostValue)));
-        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, id));
+        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
 
     @Override
@@ -276,7 +276,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
         if (cv.value().optIsSome()) {
             return EResult.ok(Opt.none());
         }
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -286,7 +286,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -316,7 +316,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
         if (innerRes.hasErrors()) return innerRes.reerr();
         var inner = innerRes.requireValue(typeDesc() + "::field inner");
         if (key.value().optIsSome()) {
-            var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+            var ckRes = Eval.extractConstKey(xx, key.value().optUnwrap());
             switch (ckRes) {
                 case Result.Ok<ConstKey, String> ok -> {
                     if (GenType.Holder.INSTANCE
@@ -327,7 +327,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
                             var liftRes = aspectConsumeDynamicToDynamic(xx, loc, self);
                             if (liftRes.hasErrors()) return liftRes.reerr();
                             selfLifted = new CodeValue(
-                                    Code.of(loc, liftRes.requireValue(typeDesc() + "::field lift")), self.outcome());
+                                    Code.of(liftRes.requireValue(typeDesc() + "::field lift")), self.outcome());
                         }
                         return GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
                     }
@@ -339,7 +339,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
             if (key.value().optIsNone()) {
                 return EResult.err(loc, typeDesc() + "::field: key has no compile-time value");
             }
-            var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+            var ckRes = Eval.extractConstKey(xx, key.value().optUnwrap());
             ConstKey ck;
             switch (ckRes) {
                 case Result.Ok<ConstKey, String> ok -> ck = ok.value();

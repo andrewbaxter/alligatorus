@@ -13,7 +13,7 @@ public final class Eval {
 
     private Eval() {}
 
-    public static Result<ConstKey, String> extractConstKey(ExprContext xx, QExprId loc, Value v) {
+    public static Result<ConstKey, String> extractConstKey(ExprContext xx, Value v) {
         var typeRes = v.valueType();
         var stringConst = GenAspectStringConst.getMaybe(xx, typeRes);
         if (stringConst.optIsSome()) {

@@ -63,9 +63,11 @@ public final class T0070ForeachTest {
                         mb.foreach(
                                 mb.scopeUse("my_list"),
                                 mb.str("e"),
-                                mb.seqOf(mb.call(
-                                        mb.log(),
-                                        mb.call(mb.field(mb.scopeUse("e"), mb.str("to_string")), mb.tupleOf())))))));
+                                mb.seqOf(mb.seqOf(
+                                        mb.call(
+                                                mb.log(),
+                                                mb.call(mb.field(mb.scopeUse("e"), mb.str("to_string")), mb.tupleOf())),
+                                        mb.tupleOf()))))));
         var ok = Helpers.compileCaptured(modules);
         assertEquals(3, ok.logs().size());
         assertEquals(
@@ -107,10 +109,10 @@ public final class T0070ForeachTest {
             INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.get (I)I
             ISTORE 2
             GETSTATIC compilerxyz/main/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/main/eval/ExprContext;
+            GETFIELD compilerxyz/main/eval/ExprContext.vx : Lcompilerxyz/main/eval/EvalContext;
             ILOAD 2
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
-            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/ExprContext;Ljava/lang/String;)Ljava/lang/Object;
-            POP
+            INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
             ILOAD 1
             LDC 1
             IADD

@@ -670,7 +670,7 @@ public final class T0170NodejsTest {
                                                                                                 mb.recordOf(
                                                                                                         TList.of(
                                                                                                                 rp(
-                                                                                                                        "loc",
+                                                                                                                        "xx_",
                                                                                                                         mb
                                                                                                                                 .field(
                                                                                                                                         mb
@@ -678,7 +678,7 @@ public final class T0170NodejsTest {
                                                                                                                                                         "arg"),
                                                                                                                                         mb
                                                                                                                                                 .str(
-                                                                                                                                                        "loc"))),
+                                                                                                                                                        "xx"))),
                                                                                                                 rp(
                                                                                                                         "value",
                                                                                                                         mb
@@ -768,10 +768,10 @@ public final class T0170NodejsTest {
                                                                 mb.recordOf(
                                                                         TList.of(
                                                                                 rp(
-                                                                                        "loc",
+                                                                                        "xx_",
                                                                                         mb.field(
                                                                                                 mb.scopeUse("arg"),
-                                                                                                mb.str("loc"))),
+                                                                                                mb.str("xx"))),
                                                                                 rp(
                                                                                         "value",
                                                                                         mb.field(
@@ -1140,39 +1140,53 @@ public final class T0170NodejsTest {
                                                                                                                                         mb
                                                                                                                                                 .typesInt())))))),
                                                                                 mb.bind(
-                                                                                        "sc",
-                                                                                        mb.call(
-                                                                                                mb.builtin(
-                                                                                                        "eval",
-                                                                                                        "scope"),
-                                                                                                mb.call(
-                                                                                                        mb.field(
-                                                                                                                mb.call(
-                                                                                                                        mb
-                                                                                                                                .typesMap(),
-                                                                                                                        mb
-                                                                                                                                .tupleOf(
-                                                                                                                                        mb
-                                                                                                                                                .typesConstkey(),
-                                                                                                                                        mb
-                                                                                                                                                .evalBinding())),
-                                                                                                                mb.str(
-                                                                                                                        "new")),
-                                                                                                        mb.recordOf(
-                                                                                                                TList
-                                                                                                                        .of(
-                                                                                                                                rp(
-                                                                                                                                        "console",
-                                                                                                                                        mb
-                                                                                                                                                .scopeUse(
-                                                                                                                                                        "console_entry"))))))),
-                                                                                mb.bind(
                                                                                         "vx2",
                                                                                         mb.call(
                                                                                                 mb.builtin(
                                                                                                         "eval",
                                                                                                         "eval_context"),
                                                                                                 mb.tupleOf())),
+                                                                                mb.bind(
+                                                                                        "sc",
+                                                                                        mb.call(
+                                                                                                mb.builtin(
+                                                                                                        "eval",
+                                                                                                        "scope"),
+                                                                                                mb.recordOf(
+                                                                                                        TList.of(
+                                                                                                                rp(
+                                                                                                                        "vx_",
+                                                                                                                        mb
+                                                                                                                                .scopeUse(
+                                                                                                                                        "vx2")),
+                                                                                                                rp(
+                                                                                                                        "entries",
+                                                                                                                        mb
+                                                                                                                                .call(
+                                                                                                                                        mb
+                                                                                                                                                .field(
+                                                                                                                                                        mb
+                                                                                                                                                                .call(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .typesMap(),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .tupleOf(
+                                                                                                                                                                                        mb
+                                                                                                                                                                                                .typesConstkey(),
+                                                                                                                                                                                        mb
+                                                                                                                                                                                                .evalBinding())),
+                                                                                                                                                        mb
+                                                                                                                                                                .str(
+                                                                                                                                                                        "new")),
+                                                                                                                                        mb
+                                                                                                                                                .recordOf(
+                                                                                                                                                        TList
+                                                                                                                                                                .of(
+                                                                                                                                                                        rp(
+                                                                                                                                                                                "console",
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                "console_entry")))))))))),
                                                                                 mb.bind(
                                                                                         "ctx",
                                                                                         mb.call(

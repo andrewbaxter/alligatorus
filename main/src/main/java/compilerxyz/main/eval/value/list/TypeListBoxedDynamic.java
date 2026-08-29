@@ -28,6 +28,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
@@ -107,8 +108,7 @@ public final class TypeListBoxedDynamic<T extends Type>
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(loc, DynUtil.renderSource(xx, loc, source)),
-                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -181,7 +181,7 @@ public final class TypeListBoxedDynamic<T extends Type>
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeListBoxedDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var spec = fieldSpecs(xx).getOrNull(ck);
@@ -194,7 +194,7 @@ public final class TypeListBoxedDynamic<T extends Type>
                         self.code(),
                         EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
             case FieldSpec.Method m ->
-                EResult.ok(new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(m.type(), 1))));
+                EResult.ok(new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, m.type()))));
         };
     }
 
@@ -216,7 +216,7 @@ public final class TypeListBoxedDynamic<T extends Type>
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -278,34 +278,27 @@ public final class TypeListBoxedDynamic<T extends Type>
                 var seq = new JavaBytecodeSequence();
                 if (bodyDyn != null) seq.add(bodyDyn);
                 if (dropDyn != null) seq.add(dropDyn);
-                bodyCode = Code.of(loc, new CodeDynamic(loc, seq));
+                bodyCode = Code.of(new CodeDynamic(loc, seq));
             }
         } else {
             bodyCode = body.code();
         }
         return EResult.ok(
-                DynUtil.foreachSkeleton(xx, loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
+                DynUtil.foreachSkeleton(loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
     }
 
     private CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
         var decodeSeq = new JavaBytecodeSequence();
-        var elemConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, elementType);
-        if (elemConsumeOpt.optIsSome()) {
-            var elemDesc = elemConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-            var d = elemDesc.value();
-            if (!d.equals(JvmConstants.DESC_OBJECT.value())) {
-                char c = d.charAt(0);
-                if (c == 'L' || c == '[') {
-                    decodeSeq.add(JavaBytecodeUtils.cast(loc, elemDesc));
-                }
-            }
+        var elemDesc = JvmSort.descriptor(xx, elementType);
+        if (elemDesc.isReference() && !elemDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+            decodeSeq.add(JavaBytecodeUtils.cast(loc, elemDesc));
         }
         return new CodeDynamic(loc, decodeSeq);
     }
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -320,7 +313,7 @@ public final class TypeListBoxedDynamic<T extends Type>
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -333,8 +326,7 @@ public final class TypeListBoxedDynamic<T extends Type>
         }
         var elementSlot = new BindingId.Local(new JavaBytecodeBindingKey());
         var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot.key()));
-        var elementCv =
-                new CodeValue(Code.of(loc, loadElement), EvalOutcome.ofValue(ValueDynamic.stack(elementType, 1)));
+        var elementCv = new CodeValue(Code.of(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
         var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
         if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
         var elemDropCode = elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop");
@@ -349,13 +341,13 @@ public final class TypeListBoxedDynamic<T extends Type>
 
         var elementDecode = elementDecodeCast(xx, loc);
 
-        var loop = DynUtil.foreachSkeleton(
-                xx, loc, iteratorSetup, elementDecode, elementSlot, Opcodes.ASTORE, elemDropCode);
+        var loop =
+                DynUtil.foreachSkeleton(loc, iteratorSetup, elementDecode, elementSlot, Opcodes.ASTORE, elemDropCode);
         var loopCode = loop.code().codeDynamic();
         var finalSeq = new JavaBytecodeSequence();
         if (loopCode != null) finalSeq.add(loopCode);
         finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, finalSeq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, finalSeq)));
     }
 
     @Override

@@ -205,20 +205,21 @@ public final class T0130DropThrowTest {
                                                                                                                                                 .of(
                                                                                                                                                         new TestMb
                                                                                                                                                                 .RecordPair(
+                                                                                                                                                                "xx_",
+                                                                                                                                                                mb
+                                                                                                                                                                        .field(
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .str(
+                                                                                                                                                                                                "xx"))),
+                                                                                                                                                        new TestMb
+                                                                                                                                                                .RecordPair(
                                                                                                                                                                 "type",
                                                                                                                                                                 mb
                                                                                                                                                                         .scopeUse(
-                                                                                                                                                                                "outer")),
-                                                                                                                                                        new TestMb
-                                                                                                                                                                .RecordPair(
-                                                                                                                                                                "width",
-                                                                                                                                                                mb
-                                                                                                                                                                        .as_(
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .num(
-                                                                                                                                                                                                1.),
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .typesLong()))))))))))),
+                                                                                                                                                                                "outer"))))))))))),
                                                                 new TestMb.RecordPair(
                                                                         "desc", mb.seqOf(mb.return_(mb.str(name)))),
                                                                 new TestMb.RecordPair(
@@ -534,20 +535,21 @@ public final class T0130DropThrowTest {
                                                                                                                                         .of(
                                                                                                                                                 new TestMb
                                                                                                                                                         .RecordPair(
+                                                                                                                                                        "xx_",
+                                                                                                                                                        mb
+                                                                                                                                                                .field(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                        "arg"),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .str(
+                                                                                                                                                                                        "xx"))),
+                                                                                                                                                new TestMb
+                                                                                                                                                        .RecordPair(
                                                                                                                                                         "type",
                                                                                                                                                         mb
                                                                                                                                                                 .scopeUse(
-                                                                                                                                                                        "outer")),
-                                                                                                                                                new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "width",
-                                                                                                                                                        mb
-                                                                                                                                                                .as_(
-                                                                                                                                                                        mb
-                                                                                                                                                                                .num(
-                                                                                                                                                                                        1.),
-                                                                                                                                                                        mb
-                                                                                                                                                                                .typesLong())))))))))),
+                                                                                                                                                                        "outer")))))))))),
                                                                 new TestMb.RecordPair("fork", mb.scopeUse("outer")),
                                                                 new TestMb.RecordPair(
                                                                         "merge",
@@ -849,9 +851,9 @@ public final class T0130DropThrowTest {
         modules.put(
                 "main",
                 new SourceModule.V1(mb.tryCatchFinally(
-                        mb.call(mb.log(), mb.str("body")),
+                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.none(),
-                        Opt.some(mb.call(mb.log(), mb.str("finally"))))));
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("finally")), mb.tupleOf())))));
         var res = compileOk(modules);
         assertEquals(TList.of("body", "finally"), messages(res));
     }
@@ -1012,9 +1014,11 @@ public final class T0130DropThrowTest {
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
-                                mb.call(mb.scopeUse("my_func"), mb.tupleOf()),
+                                mb.seqOf(mb.call(mb.scopeUse("my_func"), mb.tupleOf()), mb.tupleOf()),
                                 Opt.some(new TestMb.Catch(
-                                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.scopeUse("e")))),
+                                        "e",
+                                        mb.builtin("types", "string"),
+                                        mb.seqOf(mb.call(mb.log(), mb.scopeUse("e")), mb.tupleOf()))),
                                 Opt.none()))));
         var res = compileOk(modules);
         assertEquals(TList.of("x"), messages(res));
@@ -1029,8 +1033,10 @@ public final class T0130DropThrowTest {
                 new SourceModule.V1(mb.tryCatchFinally(
                         mb.throw_(mb.str("boom")),
                         Opt.some(new TestMb.Catch(
-                                "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
-                        Opt.some(mb.call(mb.log(), mb.str("always"))))));
+                                "e",
+                                mb.builtin("types", "string"),
+                                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
+                        Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("always")), mb.tupleOf())))));
         var res = compileOk(modules);
         assertEquals(TList.of("caught", "always"), messages(res));
     }
@@ -1044,14 +1050,18 @@ public final class T0130DropThrowTest {
                 Opt.some(new TestMb.Catch(
                         "e",
                         mb.builtin("types", "string"),
-                        mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.throw_(mb.str("rethrown"))))),
-                Opt.some(mb.call(mb.log(), mb.str("always"))));
+                        mb.seqOf(
+                                mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()),
+                                mb.throw_(mb.str("rethrown"))))),
+                Opt.some(mb.seqOf(mb.call(mb.log(), mb.str("always")), mb.tupleOf())));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.tryExpr(
                         inner,
                         Opt.some(new SourceExpr.TryCatch(
-                                mb.str("e2"), mb.builtin("types", "string"), mb.call(mb.log(), mb.str("outer")))),
+                                mb.str("e2"),
+                                mb.builtin("types", "string"),
+                                mb.seqOf(mb.call(mb.log(), mb.str("outer")), mb.tupleOf()))),
                         Opt.none())));
         var res = compileOk(modules);
         assertEquals(TList.of("caught", "always", "outer"), messages(res));
@@ -1219,11 +1229,13 @@ public final class T0130DropThrowTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.tryCatchFinally(
-                                mb.call(mb.log(), mb.str("body")),
+                                mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                                 Opt.some(new TestMb.Catch(
-                                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
+                                        "e",
+                                        mb.builtin("types", "string"),
+                                        mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
                                 Opt.none()),
-                        mb.call(mb.log(), mb.str("after")))));
+                        mb.seqOf(mb.call(mb.log(), mb.str("after")), mb.tupleOf()))));
         var res = compileOk(modules);
         assertEquals(TList.of("body", "after"), messages(res));
     }
@@ -1235,7 +1247,7 @@ public final class T0130DropThrowTest {
         modules.put(
                 "main",
                 new SourceModule.V1(mb.tryCatchFinally(
-                        mb.call(mb.log(), mb.str("body")),
+                        mb.seqOf(mb.call(mb.log(), mb.str("body")), mb.tupleOf()),
                         Opt.some(new TestMb.Catch("e", mb.builtin("types", "string"), mb.scopeUse("e"))),
                         Opt.none())));
         var gx = Helpers.newGx(modules);

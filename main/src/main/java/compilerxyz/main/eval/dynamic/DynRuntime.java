@@ -5,6 +5,7 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
@@ -21,7 +22,7 @@ public final class DynRuntime {
     private DynRuntime() {}
 
     @CodegenDescriptor
-    public static StagedExprCell stage(ExprContext xx, StagedExprCell treeCell, int lowerCount, Object[] rest) {
+    public static StagedExprCell stage(StagedExprCell treeCell, int lowerCount, Object[] rest) {
         var tree = mustCast(Expr.class, treeCell.value());
         var values = new TList<StageLowerValue>(lowerCount);
         var i = 0;
@@ -85,10 +86,10 @@ public final class DynRuntime {
         return new StagedExprCell(newTree);
     }
 
-    public static Unique freshUnique(ExprContext xx) {
-        var vx = xx.vx;
-        var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
-        return new Unique.Source(compileId, vx.uniqueCounter.next());
+    public static Unique freshUnique(EvalContext vx) {
+        var ix = vx.ix;
+        var compileId = new CompileId(ix.importState, ix.sourceId);
+        return new Unique.Source(compileId, ix.uniqueCounter.next());
     }
 
     private sealed interface StageLowerValue {

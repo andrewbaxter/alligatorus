@@ -65,18 +65,11 @@ public final class ReachabilityMain {
     private final Set<String> referencedTypes = new HashSet<>();
     private final Set<String> genReferenced = new HashSet<>();
 
-    public int run(CtModel model) throws IOException {
+    public int run(CtModel model, ModelIndex index) throws IOException {
         List<CtType<?>> types = new ArrayList<>();
         for (CtType<?> t : model.getAllTypes()) {
             collectTypes(t, types);
         }
-        List<CtType<?>> codegenTypes = new ArrayList<>();
-        types.removeIf(t -> {
-            String qn = t.getQualifiedName();
-            boolean cg = qn == null || qn.startsWith("compilerxyz.codegen.");
-            if (cg) codegenTypes.add(t);
-            return cg;
-        });
         for (CtType<?> t : types) {
             for (CtExecutable<?> ex : executablesOf(t)) {
                 String k = key(ex);
@@ -97,31 +90,29 @@ public final class ReachabilityMain {
             }
         }
         Set<String> dynMethodNames = new HashSet<>();
-        for (CtType<?> t : types) {
-            for (CtConstructorCall<?> cc : t.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-                String ctorType = cc.getType().getSimpleName();
-                int nameIdx;
-                switch (ctorType) {
-                    case "TypeMethodDynamic" -> nameIdx = 4;
-                    case "TypeFunctionDynamic" -> nameIdx = 3;
-                    default -> {
-                        continue;
-                    }
-                }
-                List<CtExpression<?>> args = cc.getArguments();
-                if (args.size() > nameIdx
-                        && args.get(nameIdx) instanceof CtLiteral<?> lit
-                        && lit.getValue() instanceof String n) {
-                    dynMethodNames.add(n);
+        for (CtConstructorCall<?> cc : index.constructorCalls) {
+            String ctorType = cc.getType().getSimpleName();
+            int nameIdx;
+            switch (ctorType) {
+                case "TypeMethodDynamic" -> nameIdx = 4;
+                case "TypeFunctionDynamic" -> nameIdx = 3;
+                default -> {
+                    continue;
                 }
             }
-            for (CtInvocation<?> inv : t.getElements(new TypeFilter<>(CtInvocation.class))) {
-                String invName = inv.getExecutable().getSimpleName();
-                if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
-                List<CtExpression<?>> args = inv.getArguments();
-                if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
-                    dynMethodNames.add(n);
-                }
+            List<CtExpression<?>> args = cc.getArguments();
+            if (args.size() > nameIdx
+                    && args.get(nameIdx) instanceof CtLiteral<?> lit
+                    && lit.getValue() instanceof String n) {
+                dynMethodNames.add(n);
+            }
+        }
+        for (CtInvocation<?> inv : index.invocations) {
+            String invName = inv.getExecutable().getSimpleName();
+            if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
+            List<CtExpression<?>> args = inv.getArguments();
+            if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+                dynMethodNames.add(n);
             }
         }
         for (CtType<?> t : types) {
@@ -131,51 +122,6 @@ public final class ReachabilityMain {
                     genReferenced.add(k);
                     if (reachable.add(k)) work.add(k);
                 }
-            }
-        }
-        for (CtType<?> t : codegenTypes) {
-            for (CtField<?> f : t.getFields()) {
-                var init = f.getDefaultExpression();
-                if (init == null) continue;
-                for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
-                    onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
-                }
-                for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-                    onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-                }
-            }
-            if (t instanceof CtClass<?> cgClass) {
-                for (CtAnonymousExecutable ab : cgClass.getAnonymousExecutables()) {
-                    for (CtInvocation<?> inv : ab.getElements(new TypeFilter<>(CtInvocation.class))) {
-                        onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
-                    }
-                    for (CtConstructorCall<?> cc : ab.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-                        onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-                    }
-                }
-            }
-            for (CtExecutable<?> ex : executablesOf(t)) {
-                for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
-                    onCall(inv.getExecutable(), inv.getArguments().size(), work, false);
-                }
-                for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-                    onCall(cc.getExecutable(), cc.getArguments().size(), work, false);
-                }
-                scanMethodRefs(ex, work, false);
-                for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
-                    if (fr.getVariable() != null) {
-                        fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
-                    }
-                }
-                for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
-                    if (fw.getVariable() != null) {
-                        fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
-                    }
-                }
-            }
-            for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
-                String cgQn = tr.getQualifiedName();
-                if (cgQn != null && !cgQn.isEmpty()) referencedTypes.add(cgQn);
             }
         }
         Set<String> fieldInitDone = new HashSet<>();
@@ -189,47 +135,90 @@ public final class ReachabilityMain {
             if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
                 String tn = tm.getDeclaringType().getQualifiedName();
                 if (fieldInitDone.add(tn)) {
-                    for (CtField<?> f : tm.getDeclaringType().getFields()) {
-                        var init = f.getDefaultExpression();
-                        if (init == null) continue;
-                        for (CtInvocation<?> inv : init.getElements(new TypeFilter<>(CtInvocation.class))) {
-                            onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+                    var _fiAcc = index.initializerAccessesOf(tm.getDeclaringType());
+                    for (CtInvocation<?> inv : _fiAcc.invocations) {
+                        onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+                    }
+                    for (CtConstructorCall<?> cc : _fiAcc.constructorCalls) {
+                        onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+                    }
+                    scanMethodRefs(_fiAcc.executableRefs, work, fromGenerated);
+                    if (tm.getDeclaringType() instanceof CtClass<?> liveClass) {
+                        for (CtAnonymousExecutable ab : liveClass.getAnonymousExecutables()) {
+                            var _abAcc = index.accessesOf(ab);
+                            for (CtInvocation<?> inv : _abAcc.invocations) {
+                                onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
+                            }
+                            for (CtConstructorCall<?> cc : _abAcc.constructorCalls) {
+                                onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+                            }
+                            scanMethodRefs(_abAcc.executableRefs, work, fromGenerated);
+                            for (CtFieldRead<?> fr : _abAcc.fieldReads) {
+                                if (fr.getVariable() != null) {
+                                    fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+                                }
+                            }
+                            for (CtFieldWrite<?> fw : _abAcc.fieldWrites) {
+                                if (fw.getVariable() != null) {
+                                    fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                                }
+                            }
                         }
-                        for (CtConstructorCall<?> cc : init.getElements(new TypeFilter<>(CtConstructorCall.class))) {
-                            onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
+                    }
+                    for (CtFieldRead<?> fr : _fiAcc.fieldReads) {
+                        if (fr.getVariable() != null) {
+                            fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
+                        }
+                    }
+                    for (CtFieldWrite<?> fw : _fiAcc.fieldWrites) {
+                        if (fw.getVariable() != null) {
+                            fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
                         }
                     }
                 }
             }
-            for (CtTypeReference<?> _artTr : ex.getElements(new TypeFilter<>(CtTypeReference.class))) {
+            var _wlAcc = index.accessesOf(ex);
+            for (CtTypeReference<?> _artTr : _wlAcc.typeReferences) {
                 String _artQn = _artTr.getQualifiedName();
                 if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
             }
-            for (CtInvocation<?> inv : ex.getElements(new TypeFilter<>(CtInvocation.class))) {
+            for (CtInvocation<?> inv : _wlAcc.invocations) {
                 onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
             }
-            for (CtConstructorCall<?> cc : ex.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+            for (CtConstructorCall<?> cc : _wlAcc.constructorCalls) {
                 onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
             }
-            scanMethodRefs(ex, work, fromGenerated);
-            for (CtFieldRead<?> fr : ex.getElements(new TypeFilter<>(CtFieldRead.class))) {
+            scanMethodRefs(_wlAcc.executableRefs, work, fromGenerated);
+            for (CtFieldRead<?> fr : _wlAcc.fieldReads) {
                 if (fr.getVariable() != null) {
                     fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
                 }
             }
-            for (CtFieldWrite<?> fw : ex.getElements(new TypeFilter<>(CtFieldWrite.class))) {
+            for (CtFieldWrite<?> fw : _wlAcc.fieldWrites) {
                 if (fw.getVariable() != null) {
                     fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
                 }
             }
         }
+        Set<String> liveTypes = new HashSet<>();
         for (CtType<?> t : types) {
-            boolean live = executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)));
-            if (live) {
-                for (CtTypeReference<?> tr : t.getElements(new TypeFilter<>(CtTypeReference.class))) {
-                    String qn = tr.getQualifiedName();
-                    if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
+            if (executablesOf(t).stream().anyMatch(e -> reachable.contains(key(e)))) {
+                liveTypes.add(t.getQualifiedName());
+            }
+        }
+        for (CtTypeReference<?> tr : index.typeReferences) {
+            CtElement enclosing = tr;
+            boolean live = false;
+            while (enclosing != null && enclosing.isParentInitialized()) {
+                enclosing = enclosing.getParent();
+                if (enclosing instanceof CtType<?> et && liveTypes.contains(et.getQualifiedName())) {
+                    live = true;
+                    break;
                 }
+            }
+            if (live) {
+                String qn = tr.getQualifiedName();
+                if (qn != null && !qn.isEmpty()) referencedTypes.add(qn);
             }
         }
 
@@ -347,9 +336,9 @@ public final class ReachabilityMain {
         return total;
     }
 
-    private void scanMethodRefs(CtElement el, Deque<String> work, boolean fromGenerated) {
-        for (CtExecutableReferenceExpression<?, ?> mr :
-                el.getElements(new TypeFilter<>(CtExecutableReferenceExpression.class))) {
+    private void scanMethodRefs(
+            List<CtExecutableReferenceExpression<?, ?>> refs, Deque<String> work, boolean fromGenerated) {
+        for (CtExecutableReferenceExpression<?, ?> mr : refs) {
             CtExecutableReference<?> r = mr.getExecutable();
             onCall(r, r == null ? 0 : r.getParameters().size(), work, fromGenerated);
         }

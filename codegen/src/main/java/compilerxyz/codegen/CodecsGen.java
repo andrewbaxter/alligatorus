@@ -1,6 +1,5 @@
 package compilerxyz.codegen;
 
-import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
@@ -10,8 +9,8 @@ import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.nodeTypes.NodeWithImplements;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
-import com.palantir.javaformat.java.Formatter;
-import com.palantir.javaformat.java.FormatterException;
+import compilerxyz.codegen.CodecsGen.Component;
+import compilerxyz.codegen.CodecsGen.TypeKind;
 import compilerxyz.prelude.util.ISet;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -21,7 +20,6 @@ import compilerxyz.prelude.util.TOrderedSet;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -30,7 +28,7 @@ public final class CodecsGen {
 
     static final String GEN_PACKAGE = "compilerxyz.main.gen.codec";
 
-    private static final ISet<String> HAND_CODED = ISet.of(
+    public static final ISet<String> HAND_CODED = ISet.of(
             "compilerxyz.main.safejson.JsonValue",
             "compilerxyz.main.artifact.Artifact",
             "compilerxyz.main.artifact.ArtifactBody",
@@ -42,37 +40,7 @@ public final class CodecsGen {
 
     private static final String MARKER = "compilerxyz.main.safejson.SafeJsonSerializable";
 
-    static void run(Path outRoot, Formatter formatter, Path runtimeSourceRoot) throws IOException {
-        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
-        var index = new TypeIndex();
-        index.scan(runtimeSourceRoot);
-
-        var roots = new TList<String>();
-        for (var entry : index.byQname.entrySet()) {
-            if (entry.getValue().implementsMarker) {
-                roots.add(entry.getKey());
-            }
-        }
-        var sortedRoots = TList.from(roots);
-        sortedRoots.sort(String::compareTo);
-
-        var closure = new TOrderedSet<String>();
-        for (var root : sortedRoots) {
-            walk(root, index, closure);
-        }
-
-        for (var qname : closure) {
-            if (HAND_CODED.contains(qname)) continue;
-            var t = index.byQname.get(qname);
-            if (t == null) continue;
-            if (t.kind == TypeKind.RECORD || t.kind == TypeKind.SEALED || t.kind == TypeKind.ENUM) {
-                var src = CodecEmitter.emit(qname, t, index);
-                writeFormatted(outRoot, formatter, qname, src);
-            }
-        }
-    }
-
-    private static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {
+    public static void walk(String qname, TypeIndex index, TOrderedSet<String> seen) {
         if (!seen.add(qname)) return;
         if (HAND_CODED.contains(qname)) return;
         var t = index.byQname.get(qname);
@@ -100,30 +68,6 @@ public final class CodecsGen {
             }
         }
         return out;
-    }
-
-    private static void writeFormatted(Path outRoot, Formatter formatter, String qname, String source)
-            throws IOException {
-        var className = CodecEmitter.simpleNameOf(qname) + "Codec";
-        var fqcn = GEN_PACKAGE + "." + className;
-        writeFormattedRaw(outRoot, formatter, fqcn, source);
-    }
-
-    private static void writeFormattedRaw(Path outRoot, Formatter formatter, String fqcn, String source)
-            throws IOException {
-        String formatted;
-        try {
-            formatted = formatter.formatSource(source);
-        } catch (FormatterException e) {
-            throw new IOException("palantir-java-format failed for " + fqcn + "\n--- source ---\n" + source, e);
-        }
-        var slash = fqcn.lastIndexOf('.');
-        var pkg = fqcn.substring(0, slash);
-        var simple = fqcn.substring(slash + 1);
-        var pkgDir = outRoot.resolve(pkg.replace('.', '/'));
-        Files.createDirectories(pkgDir);
-        var path = pkgDir.resolve(simple + ".java");
-        Files.writeString(path, formatted, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     enum TypeKind {
@@ -193,45 +137,44 @@ public final class CodecsGen {
             try (Stream<Path> walk = Files.walk(runtimeSourceRoot)) {
                 var files = walk.filter(p -> p.toString().endsWith(".java")).toList();
                 for (var p : files) {
-                    parseFile(p);
-                }
-            }
-        }
+                    Path file = p;
 
-        private void parseFile(Path file) throws IOException {
-            CompilationUnit cu;
-            try {
-                cu = StaticJavaParser.parse(file);
-            } catch (Exception e) {
-                throw new IOException("JavaParser failed on " + file, e);
-            }
-            var pkgDecl =
-                    cu.getPackageDeclaration().map(p -> p.getNameAsString()).orElse("");
+                    CompilationUnit cu;
+                    try {
+                        cu = StaticJavaParser.parse(file);
+                    } catch (Exception e) {
+                        throw new IOException("JavaParser failed on " + file, e);
+                    }
+                    var pkgDecl = cu.getPackageDeclaration()
+                            .map(pd -> pd.getNameAsString())
+                            .orElse("");
 
-            var importMap = new TMap<String, String>();
-            for (var imp : cu.getImports()) {
-                if (imp.isAsterisk() || imp.isStatic()) continue;
-                var full = imp.getNameAsString();
-                var dot = full.lastIndexOf('.');
-                var simple = dot < 0 ? full : full.substring(dot + 1);
-                importMap.put(simple, full);
-            }
-            var cuRegistered = new TList<String>();
-            for (var td : cu.getTypes()) {
-                registerType(td, pkgDecl, pkgDecl, importMap, cuRegistered);
-            }
+                    var importMap = new TMap<String, String>();
+                    for (var imp : cu.getImports()) {
+                        if (imp.isAsterisk() || imp.isStatic()) continue;
+                        var full = imp.getNameAsString();
+                        var dot = full.lastIndexOf('.');
+                        var simple = dot < 0 ? full : full.substring(dot + 1);
+                        importMap.put(simple, full);
+                    }
+                    var cuRegistered = new TList<String>();
+                    for (var td : cu.getTypes()) {
+                        registerType(td, pkgDecl, pkgDecl, importMap, cuRegistered);
+                    }
 
-            for (var sealedQname : cuRegistered) {
-                var sealedInfo = byQname.get(sealedQname);
-                if (sealedInfo == null || sealedInfo.kind != TypeKind.SEALED) continue;
-                if (!sealedInfo.permittedSubclasses.isEmpty()) continue;
-                var sealedSimple = sealedQname.substring(sealedQname.lastIndexOf('.') + 1);
-                for (var otherQname : cuRegistered) {
-                    if (otherQname.equals(sealedQname)) continue;
-                    var other = byQname.get(otherQname);
-                    if (other == null) continue;
-                    if (other.implementedSimpleNames.contains(sealedSimple)) {
-                        sealedInfo.permittedSubclasses.add(otherQname);
+                    for (var sealedQname : cuRegistered) {
+                        var sealedInfo = byQname.get(sealedQname);
+                        if (sealedInfo == null || sealedInfo.kind != TypeKind.SEALED) continue;
+                        if (!sealedInfo.permittedSubclasses.isEmpty()) continue;
+                        var sealedSimple = sealedQname.substring(sealedQname.lastIndexOf('.') + 1);
+                        for (var otherQname : cuRegistered) {
+                            if (otherQname.equals(sealedQname)) continue;
+                            var other = byQname.get(otherQname);
+                            if (other == null) continue;
+                            if (other.implementedSimpleNames.contains(sealedSimple)) {
+                                sealedInfo.permittedSubclasses.add(otherQname);
+                            }
+                        }
                     }
                 }
             }
@@ -277,7 +220,38 @@ public final class CodecsGen {
                     if (info.permittedSubclasses.isEmpty()) {
                         for (var member : cid.getMembers()) {
                             if (member instanceof TypeDeclaration<?> nested) {
-                                var implementedBy = isImplementedBy(nested, cid.getNameAsString());
+                                String parentSimpleName = cid.getNameAsString();
+                                boolean _rIsImplementedBy;
+                                _isImplementedBy:
+                                {
+                                    if (nested instanceof RecordDeclaration rd) {
+                                        for (var iface : rd.getImplementedTypes()) {
+                                            if (iface.getNameAsString().equals(parentSimpleName)) {
+                                                _rIsImplementedBy = true;
+                                                break _isImplementedBy;
+                                            }
+                                        }
+                                    } else if (nested instanceof ClassOrInterfaceDeclaration coid) {
+                                        for (var iface : coid.getImplementedTypes()) {
+                                            if (iface.getNameAsString().equals(parentSimpleName)) {
+                                                _rIsImplementedBy = true;
+                                                break _isImplementedBy;
+                                            }
+                                        }
+                                        for (var iface : coid.getExtendedTypes()) {
+                                            if (iface.getNameAsString().equals(parentSimpleName)) {
+                                                _rIsImplementedBy = true;
+                                                break _isImplementedBy;
+                                            }
+                                        }
+                                    }
+                                    {
+                                        _rIsImplementedBy = false;
+                                        break _isImplementedBy;
+                                    }
+                                }
+                                boolean implementedBy = _rIsImplementedBy;
+
                                 if (implementedBy) {
                                     info.permittedSubclasses.add(qname + "." + nested.getNameAsString());
                                 }
@@ -317,22 +291,6 @@ public final class CodecsGen {
                 for (var iface : cid.getExtendedTypes()) {
                     var qn = resolveSimpleName(iface.getNameAsString(), importMap, pkg);
                     if (qn.equals(MARKER)) return true;
-                }
-            }
-            return false;
-        }
-
-        private boolean isImplementedBy(TypeDeclaration<?> nested, String parentSimpleName) {
-            if (nested instanceof RecordDeclaration rd) {
-                for (var iface : rd.getImplementedTypes()) {
-                    if (iface.getNameAsString().equals(parentSimpleName)) return true;
-                }
-            } else if (nested instanceof ClassOrInterfaceDeclaration cid) {
-                for (var iface : cid.getImplementedTypes()) {
-                    if (iface.getNameAsString().equals(parentSimpleName)) return true;
-                }
-                for (var iface : cid.getExtendedTypes()) {
-                    if (iface.getNameAsString().equals(parentSimpleName)) return true;
                 }
             }
             return false;
@@ -413,46 +371,60 @@ public final class CodecsGen {
             }
             var ctx = byQname.get(contextQname);
             if (ctx == null) return Opt.none();
-            return ctx.imports.containsKey(headOf(name))
-                    ? Opt.some(ctx.imports.get(headOf(name)) + tailOf(name))
-                    : sameCuOrPackageResolve(name, ctx.packageName, contextQname);
-        }
+            String pkg = ctx.packageName;
+            Opt<String> _rSameCuOrPackageResolve;
+            _sameCuOrPackageResolve:
+            {
+                var head = headOf(name);
+                var tail = tailOf(name);
 
-        private Opt<String> sameCuOrPackageResolve(String name, String pkg, String contextQname) {
-            var head = headOf(name);
-            var tail = tailOf(name);
+                var current = contextQname;
+                while (current.contains(".")) {
+                    var candidate = current + "." + name;
+                    if (byQname.containsKey(candidate)) {
+                        _rSameCuOrPackageResolve = Opt.some(candidate);
+                        break _sameCuOrPackageResolve;
+                    }
+                    current = current.substring(0, current.lastIndexOf('.'));
+                }
 
-            var current = contextQname;
-            while (current.contains(".")) {
-                var candidate = current + "." + name;
-                if (byQname.containsKey(candidate)) return Opt.some(candidate);
-                current = current.substring(0, current.lastIndexOf('.'));
-            }
+                var samePackage = byPackage.get(pkg);
+                if (samePackage != null) {
+                    for (var qn : samePackage) {
+                        var last = qn.lastIndexOf('.');
+                        var simple = last < 0 ? qn : qn.substring(last + 1);
+                        if (simple.equals(head)) {
+                            _rSameCuOrPackageResolve = Opt.some(qn + tail);
+                            break _sameCuOrPackageResolve;
+                        }
+                    }
+                }
 
-            var samePackage = byPackage.get(pkg);
-            if (samePackage != null) {
-                for (var qn : samePackage) {
-                    var last = qn.lastIndexOf('.');
-                    var simple = last < 0 ? qn : qn.substring(last + 1);
-                    if (simple.equals(head)) return Opt.some(qn + tail);
+                if (Set.of(
+                                "String",
+                                "Integer",
+                                "Long",
+                                "Double",
+                                "Float",
+                                "Boolean",
+                                "Short",
+                                "Byte",
+                                "Character",
+                                "Object")
+                        .contains(head)) {
+                    {
+                        _rSameCuOrPackageResolve = Opt.some("java.lang." + name);
+                        break _sameCuOrPackageResolve;
+                    }
+                }
+                {
+                    _rSameCuOrPackageResolve = Opt.none();
+                    break _sameCuOrPackageResolve;
                 }
             }
-
-            if (Set.of(
-                            "String",
-                            "Integer",
-                            "Long",
-                            "Double",
-                            "Float",
-                            "Boolean",
-                            "Short",
-                            "Byte",
-                            "Character",
-                            "Object")
-                    .contains(head)) {
-                return Opt.some("java.lang." + name);
-            }
-            return Opt.none();
+            return ctx.imports.containsKey(headOf(name))
+                    ? Opt.some(ctx.imports.get(headOf(name)) + tailOf(name))
+                    : _rSameCuOrPackageResolve;
         }
 
         private static String headOf(String n) {

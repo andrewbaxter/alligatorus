@@ -109,12 +109,12 @@ public record TypeByteDynamicBox()
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dynamicConsumeToDynamic(xx, loc, cv);
+        return DynUtil.dynamicConsumeToDynamic(loc, cv);
     }
 
     @Override
@@ -124,7 +124,7 @@ public record TypeByteDynamicBox()
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -158,7 +158,7 @@ public record TypeByteDynamicBox()
         if (dyn != null) seq.add(dyn);
         seq.add(Numerics.box(loc, NumericKind.BYTE));
         return EResult.ok(
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
 
     @Override
@@ -171,7 +171,7 @@ public record TypeByteDynamicBox()
         seq.add(selfDyn);
         seq.add(Numerics.unbox(loc, NumericKind.BYTE));
         var unboxed = new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(new TypeByteDynamic(), 1)));
+                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeByteDynamic())));
         var kkOpt = Numerics.kindOf(xx, destType);
         if (kkOpt.optIsSome()) {
             return Numerics.castTo(xx, loc, unboxed, kkOpt.optUnwrap(), destType);
@@ -190,7 +190,7 @@ public record TypeByteDynamicBox()
         seq.add(selfDyn);
         seq.add(Numerics.unbox(loc, NumericKind.BYTE));
         var unboxedSelf =
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(unboxed, 1)));
+                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, unboxed)));
         return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
     }
 
@@ -206,7 +206,7 @@ public record TypeByteDynamicBox()
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

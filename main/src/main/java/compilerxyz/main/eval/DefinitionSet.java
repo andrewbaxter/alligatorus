@@ -23,6 +23,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
@@ -141,13 +142,7 @@ public final class DefinitionSet implements ExporterAny {
                         null,
                         JvmConstants.INTNAME_OBJECT.value(),
                         _soeInterfacesArr);
-                JavaDataDescriptor _soeDataFieldDesc;
-                var _soeUnderlyingTypeMaybe = obj.underlyingType.optUnwrapOr(null);
-                if (_soeUnderlyingTypeMaybe instanceof AspectConsumeDynamic _soeUnderlyingConsume) {
-                    _soeDataFieldDesc = _soeUnderlyingConsume.aspectConsumeDynamicJvmClass(xx);
-                } else {
-                    _soeDataFieldDesc = JvmConstants.DESC_OBJECT;
-                }
+                var _soeDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
                 _soeCw.visitField(
                                 Opcodes.ACC_PUBLIC,
                                 SourceObjectEmitter.DATA_INSTANCE_FIELD,
@@ -180,18 +175,8 @@ public final class DefinitionSet implements ExporterAny {
                         "<init>",
                         JavaMethodDescriptor.VOID_NOARGS));
                 _soeRealCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                {
-                    var _soeC = _soeDataFieldDesc.value().charAt(0);
-                    int _soeLoadOp =
-                            switch (_soeC) {
-                                case 'J' -> Opcodes.LLOAD;
-                                case 'D' -> Opcodes.DLOAD;
-                                case 'F' -> Opcodes.FLOAD;
-                                case 'I', 'B', 'C', 'S', 'Z' -> Opcodes.ILOAD;
-                                default -> Opcodes.ALOAD;
-                            };
-                    _soeRealCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, _soeLoadOp, 1));
-                }
+                _soeRealCtorSeq.add(
+                        JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, _soeDataFieldDesc.loadOpcode(), 1));
                 _soeRealCtorSeq.add(JavaBytecodeUtils.setField(
                         CodeLoc.Infallible.INSTANCE,
                         _soeInternalName,
@@ -273,7 +258,6 @@ public final class DefinitionSet implements ExporterAny {
                     }
                     {
                         var _emmBodyCode = _soeMethod.compiledBodyCode.optUnwrap();
-                        var _emmUnderlyingType = obj.underlyingType.optUnwrapOr(null);
                         var _emmMethodName = SourceObjectEmitter.methodMethodName(_soeMethodIdx);
                         var _emmPrefix = SourceObjectEmitter.methodFieldPrefix(_soeMethodIdx);
                         JavaDataDescriptor _emmRetDesc;
@@ -300,8 +284,8 @@ public final class DefinitionSet implements ExporterAny {
                         var _emmTarget = new TargetDynamic(new Counter());
                         int _emmTotalArgSlots = 0;
                         for (var _emmS : _emmArgSlots)
-                            _emmTotalArgSlots += SourceObjectEmitter.slotWidth(_emmS.jvmDesc());
-                        var _emmCtx = new EmitCtx(_soeInternalName.value(), 1, 1 + _emmTotalArgSlots, _emmPrefix);
+                            _emmTotalArgSlots += _emmS.jvmDesc().slotWidth();
+                        var _emmCtx = new EmitCtx(_soeInternalName.value(), 1 + _emmTotalArgSlots, _emmPrefix);
                         if (_soeMethod.innerBindingId.optIsNone()) {
                             throw new IllegalStateException("SourceObjectEmitter.emit: method '" + _soeMethod.name
                                     + "' has no innerBindingId (finish ordering violation)");
@@ -310,31 +294,19 @@ public final class DefinitionSet implements ExporterAny {
                         var _emmSeq = new JavaBytecodeSequence();
                         var _emmLoc = CodeLoc.Infallible.INSTANCE;
                         var _emmSelfLocal = mustCast(BindingId.Local.class, _emmSelfId);
-                        JavaDataDescriptor _emmDataFieldDesc =
-                                switch (GenAspectConsumeDynamic.getMaybe(xx, _emmUnderlyingType)) {
-                                    case Opt.Some<AspectConsumeDynamic> s ->
-                                        s.value().aspectConsumeDynamicJvmClass(xx);
-                                    case Opt.None<AspectConsumeDynamic> n ->
-                                        throw new IllegalStateException(
-                                                "SourceObjectEmitter.emit: underlyingType "
-                                                        + _emmUnderlyingType.typeDesc()
-                                                        + " does not implement AspectConsumeDynamic; cannot emit data field access");
-                                };
+                        var _emmDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
                         _emmSeq.add(JavaBytecodeUtils.varInsn(_emmLoc, Opcodes.ALOAD, 0));
                         _emmSeq.add(JavaBytecodeUtils.accessField(
                                 _emmLoc, _soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, _emmDataFieldDesc));
                         _emmSeq.add(new CodeDynamic(
                                 _emmLoc,
-                                new JavaBytecodeStoreLoad(
-                                        SourceObjectEmitter.storeOpcodeFor(_emmDataFieldDesc), _emmSelfLocal.key())));
+                                new JavaBytecodeStoreLoad(_emmDataFieldDesc.storeOpcode(), _emmSelfLocal.key())));
                         var _emmInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
                         _emmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new JavaBytecodeBindingKey()));
                         for (int _emmI = 0; _emmI < _emmArgSlots.size(); _emmI++) {
                             _emmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
                                     _emmArgSlotIds.get(_emmI).key(),
-                                    SourceObjectEmitter.slotWidth(
-                                                    _emmArgSlots.get(_emmI).jvmDesc())
-                                            == 2));
+                                    _emmArgSlots.get(_emmI).jvmDesc().isWide()));
                         }
                         for (int _emmI = 0; _emmI < _soeMethod.capturedExternals.size(); _emmI++) {
                             var _emmEntry = _soeMethod.capturedExternals.get(_emmI);
@@ -347,10 +319,7 @@ public final class DefinitionSet implements ExporterAny {
                                     _emmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, _emmEntry.key())));
                         }
                         _emmTarget.emit(_emmSeq, _emmCtx, _emmBodyCode);
-                        _emmSeq.add(JavaBytecodeUtils.inst(
-                                _emmLoc,
-                                SourceObjectEmitter.returnOpcodeFor(
-                                        _emmRetDesc.value().charAt(0))));
+                        _emmSeq.add(JavaBytecodeUtils.inst(_emmLoc, _emmRetDesc.returnOpcode()));
                         JavaBytecodeUtils.renderMethodTyped(_emmSeq, _emmMv, _emmInitialSlots);
                     }
                 }
@@ -396,14 +365,14 @@ public final class DefinitionSet implements ExporterAny {
                                 }
                                 var _eimArgDesc = _eimArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
                                 _eimJvmParamKeys.add(_eimArgParamIds.get(_eimI).key());
-                                _eimJvmParamWides.add(SourceObjectEmitter.slotWidth(_eimArgDesc) == 2);
+                                _eimJvmParamWides.add(_eimArgDesc.isWide());
                             }
                             var _eimMv = _soeCw.visitMethod(
                                     Opcodes.ACC_PUBLIC, _eimMethodName, _eimDescriptor.value(), null, null);
                             var _eimTarget = new TargetDynamic(new Counter());
                             int _eimTotalParamSlots = 0;
                             for (var _eimWide : _eimJvmParamWides) _eimTotalParamSlots += (_eimWide ? 2 : 1);
-                            var _eimCtx = new EmitCtx(_soeInternalName.value(), 1, 1 + _eimTotalParamSlots, _eimPrefix);
+                            var _eimCtx = new EmitCtx(_soeInternalName.value(), 1 + _eimTotalParamSlots, _eimPrefix);
                             var _eimSeq = new JavaBytecodeSequence();
                             var _eimLoc = CodeLoc.Infallible.INSTANCE;
                             if (_soeM.outerBindingId.optIsSome()) {
@@ -415,17 +384,12 @@ public final class DefinitionSet implements ExporterAny {
                                     }
                                 }
                             }
-                            JavaDataDescriptor _eimInnerDesc = obj.underlyingType.optUnwrapOr(null)
-                                            instanceof AspectConsumeDynamic underlyingConsume
-                                    ? underlyingConsume.aspectConsumeDynamicJvmClass(xx)
-                                    : JvmConstants.DESC_OBJECT;
+                            var _eimInnerDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
                             _eimSeq.add(JavaBytecodeUtils.varInsn(_eimLoc, Opcodes.ALOAD, 0));
                             _eimSeq.add(JavaBytecodeUtils.accessField(
                                     _eimLoc, _soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, _eimInnerDesc));
                             _eimSeq.add(new CodeDynamic(
-                                    _eimLoc,
-                                    new JavaBytecodeStoreLoad(
-                                            SourceObjectEmitter.storeOpcodeFor(_eimInnerDesc), _eimSelfId.key())));
+                                    _eimLoc, new JavaBytecodeStoreLoad(_eimInnerDesc.storeOpcode(), _eimSelfId.key())));
                             var _eimInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
                             _eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new JavaBytecodeBindingKey()));
                             for (int _eimI = 0; _eimI < _eimJvmParamKeys.size(); _eimI++) {
@@ -445,18 +409,12 @@ public final class DefinitionSet implements ExporterAny {
                             _eimTarget.emit(_eimSeq, _eimCtx, _soeM.compiledBodyCode.optUnwrap());
                             {
                                 var _ercDescStr = _eimDescriptor.value();
-                                var _ercRetDesc = _ercDescStr.substring(_ercDescStr.indexOf(')') + 1);
-                                var _ercRetChar = _ercRetDesc.charAt(0);
-                                if (_ercRetChar == 'L') {
-                                    var _ercRetInternal =
-                                            JavaInternalName.of(_ercRetDesc.substring(1, _ercRetDesc.length() - 1));
-                                    _eimSeq.add(JavaBytecodeUtils.cast(
-                                            _eimLoc, JavaDataDescriptor.fromInternalName(_ercRetInternal)));
-                                    _eimSeq.add(JavaBytecodeUtils.inst(_eimLoc, Opcodes.ARETURN));
-                                } else {
-                                    _eimSeq.add(JavaBytecodeUtils.inst(
-                                            _eimLoc, SourceObjectEmitter.returnOpcodeFor(_ercRetChar)));
+                                var _ercRetDesc =
+                                        JavaDataDescriptor.create(_ercDescStr.substring(_ercDescStr.indexOf(')') + 1));
+                                if (_ercRetDesc.value().charAt(0) == 'L') {
+                                    _eimSeq.add(JavaBytecodeUtils.cast(_eimLoc, _ercRetDesc));
                                 }
+                                _eimSeq.add(JavaBytecodeUtils.inst(_eimLoc, _ercRetDesc.returnOpcode()));
                             }
                             JavaBytecodeUtils.renderMethodTyped(_eimSeq, _eimMv, _eimInitialSlots);
                         }
@@ -528,12 +486,11 @@ public final class DefinitionSet implements ExporterAny {
                                                 _ehaArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
                                         var _ehaHostParam = _ehaHostParams.get(_ehaArgIdx);
                                         if (!_ehaHostParam.equals(_ehaArgDesc.value())
-                                                && (_ehaArgDesc.value().startsWith("L")
-                                                        || _ehaArgDesc.value().startsWith("["))
-                                                && !_ehaArgDesc.value().equals("Ljava/lang/Object;")) {
+                                                && _ehaArgDesc.isReference()
+                                                && !_ehaArgDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
                                             _ehaSeq.add(JavaBytecodeUtils.cast(_ehaLoc, _ehaArgDesc));
                                         }
-                                        _ehaHostSlot += SourceObjectEmitter.slotWidth(_ehaArgDesc);
+                                        _ehaHostSlot += _ehaArgDesc.slotWidth();
                                         _ehaArgIdx++;
                                     }
                                 }
@@ -542,9 +499,9 @@ public final class DefinitionSet implements ExporterAny {
                                         _soeInternalName,
                                         SourceObjectEmitter.interfaceMethodMethodName(_ehiImplIdx, _ehiMIdx),
                                         _ehaCalleeDescriptor));
-                                var _ehaRetChar = _ehaHostDescStr.charAt(_ehaHostDescStr.indexOf(')') + 1);
-                                _ehaSeq.add(JavaBytecodeUtils.inst(
-                                        _ehaLoc, SourceObjectEmitter.returnOpcodeFor(_ehaRetChar)));
+                                var _ehaRetDesc = JavaDataDescriptor.create(
+                                        _ehaHostDescStr.substring(_ehaHostDescStr.indexOf(')') + 1));
+                                _ehaSeq.add(JavaBytecodeUtils.inst(_ehaLoc, _ehaRetDesc.returnOpcode()));
                                 JavaBytecodeUtils.renderMethod(_ehaSeq, _ehaMv, TList.of());
                             }
                         }
@@ -622,15 +579,7 @@ public final class DefinitionSet implements ExporterAny {
                         _evCtor.visitVarInsn(Opcodes.ALOAD, 0);
                         _evCtor.visitMethodInsn(Opcodes.INVOKESPECIAL, _seuBaseInternalName, "<init>", "()V", false);
                         _evCtor.visitVarInsn(Opcodes.ALOAD, 0);
-                        int _evLoadOp =
-                                switch (_seuPayloadDesc.value().charAt(0)) {
-                                    case 'Z', 'B', 'C', 'S', 'I' -> Opcodes.ILOAD;
-                                    case 'J' -> Opcodes.LLOAD;
-                                    case 'F' -> Opcodes.FLOAD;
-                                    case 'D' -> Opcodes.DLOAD;
-                                    default -> Opcodes.ALOAD;
-                                };
-                        _evCtor.visitVarInsn(_evLoadOp, 1);
+                        _evCtor.visitVarInsn(_seuPayloadDesc.loadOpcode(), 1);
                         _evCtor.visitFieldInsn(
                                 Opcodes.PUTFIELD,
                                 _evVariantInternalName,
@@ -778,10 +727,8 @@ public final class DefinitionSet implements ExporterAny {
                     null);
             var _efmTarget = new TargetDynamic(new Counter());
             int _efmReservedLocals = 0;
-            for (var _efmSlot : _dsfSpec.argSlots()) {
-                var _efmSlotDesc = _efmSlot.jvmDesc().value();
-                _efmReservedLocals += (_efmSlotDesc.equals("D") || _efmSlotDesc.equals("J")) ? 2 : 1;
-            }
+            for (var _efmSlot : _dsfSpec.argSlots())
+                _efmReservedLocals += _efmSlot.jvmDesc().slotWidth();
             var _efmCtx = new EmitCtx(_dsfInternalName, Math.max(1, _efmReservedLocals), _efmPrefix);
             var _efmLoc = CodeLoc.Infallible.INSTANCE;
             var _efmSeq = JavaBytecodeUtils.seq();
@@ -796,22 +743,11 @@ public final class DefinitionSet implements ExporterAny {
                 _efmSeq.add(new CodeDynamic(_efmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, _efmEntry.key())));
             }
             _efmTarget.emit(_efmSeq, _efmCtx, _dsfSpec.bodyCode());
-            int _efmRetOpcode =
-                    switch (_dsfSpec.retDesc().value()) {
-                        case "V" -> Opcodes.RETURN;
-                        case "I", "Z", "B", "S", "C" -> Opcodes.IRETURN;
-                        case "J" -> Opcodes.LRETURN;
-                        case "F" -> Opcodes.FRETURN;
-                        case "D" -> Opcodes.DRETURN;
-                        default -> Opcodes.ARETURN;
-                    };
-            _efmSeq.add(JavaBytecodeUtils.inst(_efmLoc, _efmRetOpcode));
+            _efmSeq.add(JavaBytecodeUtils.inst(_efmLoc, _dsfSpec.retDesc().returnOpcode()));
             var _efmInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
             for (var _efmSlot : _dsfSpec.argSlots()) {
-                var _efmSlotDesc = _efmSlot.jvmDesc().value();
-                boolean _efmIsWide = _efmSlotDesc.equals("D") || _efmSlotDesc.equals("J");
-                _efmInitialSlots.add(
-                        new JavaBytecodeSequence.InitialSlot(_efmSlot.id().key(), _efmIsWide));
+                _efmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
+                        _efmSlot.id().key(), _efmSlot.jvmDesc().isWide()));
             }
             JavaBytecodeUtils.renderMethodTyped(_efmSeq, _efmMv, _efmInitialSlots);
         }

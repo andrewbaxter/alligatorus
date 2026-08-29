@@ -7,7 +7,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import spoon.reflect.CtModel;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtConditional;
 import spoon.reflect.code.CtConstructorCall;
@@ -59,9 +58,9 @@ public final class StateChecks {
         this.generatedFiles = generatedFiles;
     }
 
-    public List<ConventionChecks.Finding> run(CtModel model) {
+    public List<ConventionChecks.Finding> run(ModelIndex index) {
         Set<String> dynMethodNames = new HashSet<>();
-        for (CtConstructorCall<?> cc : model.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+        for (CtConstructorCall<?> cc : index.constructorCalls) {
             String _dynCtor = cc.getType() == null ? "" : cc.getType().getSimpleName();
             int _dynIdx;
             switch (_dynCtor) {
@@ -78,7 +77,7 @@ public final class StateChecks {
                 dynMethodNames.add(n);
             }
         }
-        for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
+        for (CtInvocation<?> inv : index.invocations) {
             String _dynName =
                     inv.getExecutable() == null ? "" : inv.getExecutable().getSimpleName();
             if (!"callStaticMethod".equals(_dynName) && !"callStaticInterfaceMethod".equals(_dynName)) {
@@ -92,18 +91,40 @@ public final class StateChecks {
             }
         }
 
-        for (CtInvocation<?> inv : model.getElements(new TypeFilter<>(CtInvocation.class))) {
-            recordCall(
-                    inv.getExecutable() == null ? null : inv.getExecutable().getExecutableDeclaration(),
-                    inv.getArguments());
+        Map<String, List<CtMethod<?>>> methodsByName = new HashMap<>();
+        for (CtMethod<?> m : index.methods) {
+            methodsByName
+                    .computeIfAbsent(m.getSimpleName(), x -> new ArrayList<>())
+                    .add(m);
         }
-        for (CtConstructorCall<?> cc : model.getElements(new TypeFilter<>(CtConstructorCall.class))) {
+        for (CtInvocation<?> inv : index.invocations) {
+            CtExecutable<?> decl =
+                    inv.getExecutable() == null ? null : inv.getExecutable().getExecutableDeclaration();
+            if (decl == null && inv.getExecutable() != null) {
+                var ref = inv.getExecutable();
+                var declType = ref.getDeclaringType();
+                if (declType != null) {
+                    String owner = declType.getQualifiedName();
+                    CtMethod<?> found = null;
+                    boolean ambiguous = false;
+                    for (CtMethod<?> m : methodsByName.getOrDefault(ref.getSimpleName(), List.of())) {
+                        if (m.getParameters().size() != inv.getArguments().size()) continue;
+                        if (m.getDeclaringType() == null
+                                || !m.getDeclaringType().getQualifiedName().equals(owner)) continue;
+                        if (found != null) ambiguous = true;
+                        found = m;
+                    }
+                    if (!ambiguous) decl = found;
+                }
+            }
+            recordCall(decl, inv.getArguments());
+        }
+        for (CtConstructorCall<?> cc : index.constructorCalls) {
             recordCall(
                     cc.getExecutable() == null ? null : cc.getExecutable().getExecutableDeclaration(),
                     cc.getArguments());
         }
-        for (CtExecutableReferenceExpression<?, ?> mr :
-                model.getElements(new TypeFilter<>(CtExecutableReferenceExpression.class))) {
+        for (CtExecutableReferenceExpression<?, ?> mr : index.executableRefExpressions) {
             CtExecutable<?> decl =
                     mr.getExecutable() == null ? null : mr.getExecutable().getExecutableDeclaration();
             for (CtExecutable<?> target : targetsOf(decl)) {
@@ -115,7 +136,7 @@ public final class StateChecks {
             }
         }
 
-        for (CtField<?> f : model.getElements(new TypeFilter<>(CtField.class))) {
+        for (CtField<?> f : index.fields) {
             Kind kind = kindOf(f.getType());
             if (kind == null) continue;
             if (f.getDefaultExpression() != null) {
@@ -124,7 +145,7 @@ public final class StateChecks {
                 fieldFlows.merge(fieldKey(f), STATE_B, (a, b) -> a | b);
             }
         }
-        for (CtAssignment<?, ?> a : model.getElements(new TypeFilter<>(CtAssignment.class))) {
+        for (CtAssignment<?, ?> a : index.assignments) {
             if (!(a.getAssigned() instanceof CtFieldWrite<?> fw) || fw.getVariable() == null) continue;
             CtField<?> f = fw.getVariable().getFieldDeclaration();
             if (f == null) continue;
@@ -133,7 +154,7 @@ public final class StateChecks {
             fieldFlows.merge(fieldKey(f), classify(kind, a.getAssignment(), Map.of(), 0), (x, y) -> x | y);
         }
 
-        for (CtType<?> t : model.getElements(new TypeFilter<>(CtType.class))) {
+        for (CtType<?> t : index.types) {
             List<CtExecutable<?>> execs = new ArrayList<>(t.getMethods());
             if (t instanceof CtClass<?> c) execs.addAll(c.getConstructors());
             for (CtExecutable<?> ex : execs) {
@@ -179,7 +200,7 @@ public final class StateChecks {
                 }
             }
         }
-        for (CtField<?> f : model.getElements(new TypeFilter<>(CtField.class))) {
+        for (CtField<?> f : index.fields) {
             Kind kind = kindOf(f.getType());
             if (kind == null) continue;
             Integer mask = fieldFlows.get(fieldKey(f));

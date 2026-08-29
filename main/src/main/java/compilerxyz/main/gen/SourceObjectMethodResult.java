@@ -1,6 +1,5 @@
 package compilerxyz.main.gen;
 
-import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_object.SourceDataMethodData;
@@ -19,7 +18,7 @@ public final class SourceObjectMethodResult {
         return GenObjectTypes.sourceObjectMethodResult();
     }
 
-    public void impl(ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    public void impl(Type arg, Opt<Type> ret, StagedExprCell implBody) {
         if (this.method.argType.optIsSome()) {
             throw new IllegalStateException("Method already has an arg type");
         }

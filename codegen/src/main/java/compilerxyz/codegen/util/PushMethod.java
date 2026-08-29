@@ -5,12 +5,18 @@ import com.squareup.javapoet.CodeBlock;
 import compilerxyz.prelude.util.TList;
 
 public record PushMethod(
-        String name, TList<NamedTypeRef> args, String ret, CodeBlock body, String dynRuntimeMethod, TypeRef retClass) {
+        String name,
+        TList<NamedTypeRef> args,
+        String ret,
+        CodeBlock body,
+        String dynRuntimeMethod,
+        TypeRef retClass,
+        boolean needsEvalContext) {
     public PushMethod(String name, TList<NamedTypeRef> args, String ret, CodeBlock body) {
-        this(name, args, ret, body, null, TypeRef.opaque(ClassName.OBJECT));
+        this(name, args, ret, body, null, TypeRef.opaque(ClassName.OBJECT), false);
     }
 
     public PushMethod(String name, TList<NamedTypeRef> args, String ret, CodeBlock body, String dynRuntimeMethod) {
-        this(name, args, ret, body, dynRuntimeMethod, TypeRef.opaque(ClassName.OBJECT));
+        this(name, args, ret, body, dynRuntimeMethod, TypeRef.opaque(ClassName.OBJECT), false);
     }
 }

@@ -46,10 +46,6 @@ public sealed interface Code permits Code.None, Code.Target {
         return new Target(dynamic);
     }
 
-    static Code of(QExprId loc, CodeDynamic dynamic) {
-        return new Target(dynamic);
-    }
-
     @CodegenDescriptor
     static Code target(TargetCode impl) {
         return new Target(impl);
@@ -63,7 +59,7 @@ public sealed interface Code permits Code.None, Code.Target {
         var seq = new JavaBytecodeSequence();
         seq.add(firstDyn);
         seq.add(secondDyn);
-        return of(loc, new CodeDynamic(loc, seq));
+        return of(new CodeDynamic(loc, seq));
     }
 
     @CodegenDescriptor

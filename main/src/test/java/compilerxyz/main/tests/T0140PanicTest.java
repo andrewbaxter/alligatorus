@@ -108,7 +108,9 @@ public final class T0140PanicTest {
                         mb.tryCatchFinally(
                                 mb.call(mb.scopeUse("f"), mb.tupleOf()),
                                 Opt.some(new TestMb.Catch(
-                                        "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
+                                        "e",
+                                        mb.builtin("types", "string"),
+                                        mb.seqOf(mb.call(mb.log(), mb.str("caught")), mb.tupleOf()))),
                                 Opt.none()))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));

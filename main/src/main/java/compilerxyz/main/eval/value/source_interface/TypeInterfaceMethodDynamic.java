@@ -22,6 +22,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -111,18 +112,12 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
         seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
         if (retType.optIsNone()) {
             seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
-            return EResult.ok(new CodeValue(Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
         }
         var retTypeVal = retType.optUnwrap();
-        var retConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, retTypeVal);
-        if (retConsumeOpt.optIsSome()) {
-            var retDesc = retConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-            if (!retDesc.value().equals(descObject.value())) {
-                var c = retDesc.value().charAt(0);
-                if (c == 'L' || c == '[') {
-                    seq.add(JavaBytecodeUtils.cast(loc, retDesc));
-                }
-            }
+        var retDesc = JvmSort.descriptor(xx, retTypeVal);
+        if (retDesc.isReference() && !retDesc.value().equals(descObject.value())) {
+            seq.add(JavaBytecodeUtils.cast(loc, retDesc));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retTypeVal);
         if (retStackRes.hasErrors()) return retStackRes.reerr();

@@ -31,7 +31,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
                         new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, type_), local.key()));
         };
         Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey, setter), type_);
-        return new CodeValue(Code.of(loc, dyn), EvalOutcome.ofValue(value));
+        return new CodeValue(Code.of(dyn), EvalOutcome.ofValue(value));
     }
 
     @Override

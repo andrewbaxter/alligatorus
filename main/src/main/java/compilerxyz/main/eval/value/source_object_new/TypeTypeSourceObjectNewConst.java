@@ -104,7 +104,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     private static Artifact nullArtifact() {

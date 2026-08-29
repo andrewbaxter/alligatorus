@@ -113,7 +113,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
         } else {
             newOpt = JavaBytecodeUtils.callStaticMethod(new Some(loc), GenCodegenDescriptors.OPT_NONE);
         }
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, loc, newOpt, resultType, 1));
+        return EResult.ok(DynUtil.dynamicStackToValue(xx, newOpt, resultType));
     }
 
     @Override

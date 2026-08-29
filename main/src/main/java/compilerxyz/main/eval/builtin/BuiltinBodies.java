@@ -21,6 +21,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.expr.StagedExprCell;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.DefinitionSetBuilder;
@@ -37,25 +38,48 @@ import java.io.StringWriter;
 public final class BuiltinBodies {
     private BuiltinBodies() {}
 
+    @BuiltinPath(value = "eval.stack", scopeId = 5013L)
+    public static Value stack(ExprContext xx_, Type type) {
+        return ValueDynamic.stack(xx_, type);
+    }
+
     @BuiltinPath(value = "log", scopeId = 5001L)
-    public static Object log(ExprContext xx, String message) {
-        long timestampMs = System.currentTimeMillis();
-        xx.vx.logs.add(new LogEntry(timestampMs, message));
-        return null;
+    public static void log(EvalContext vx, String message) {
+        vx.logs.add(new LogEntry(System.currentTimeMillis(), message));
     }
 
     @BuiltinPath(value = "define", scopeId = 5002L)
-    public static DefinitionSetBuilder define(ExprContext xx) {
-        var ex = xx.vx;
-        var compileId = new CompileId(ex.ix.importState, ex.ix.sourceId);
-        var defSetId = new DefSetId(compileId, ex.ix.defSetCounter.next());
+    public static DefinitionSetBuilder define(EvalContext vx) {
+        var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
+        var defSetId = new DefSetId(compileId, vx.ix.defSetCounter.next());
         var inner = new DefinitionSet(defSetId);
-        ex.definitionSets.put(defSetId, inner);
+        vx.definitionSets.put(defSetId, inner);
         return new DefinitionSetBuilder(inner);
     }
 
+    @BuiltinPath(value = "eval.scope", scopeId = 5006L)
+    public static Scope scope(EvalContext vx_, TOrderedMap<ConstKey, Binding> entries) {
+        var scope = new Scope(vx_);
+        var named = new TMap<ConstKey, Binding>();
+        for (var entry : entries.entrySet()) {
+            named.put(entry.getKey(), entry.getValue());
+        }
+        scope.pushAll(named);
+        return scope;
+    }
+
+    @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
+    public static EvalContext evalContext(EvalContext vx) {
+        return new EvalContext(vx.ix);
+    }
+
+    @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
+    public static Unique freshUnique(EvalContext vx) {
+        return DynRuntime.freshUnique(vx);
+    }
+
     @BuiltinPath(value = "eval.str_to_json", scopeId = 5003L)
-    public static String strToJson(ExprContext xx, String s) {
+    public static String strToJson(String s) {
         try {
             var stringWriter = new StringWriter();
             var writer = new JsonWriter(stringWriter);
@@ -68,7 +92,7 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.constkey_to_str", scopeId = 5004L)
-    public static String constkeyToStr(ExprContext xx, ConstKey key) {
+    public static String constkeyToStr(ConstKey key) {
         return switch (key) {
             case ConstKey.Str s -> s.value();
             case ConstKey.Uint u -> Long.toUnsignedString(u.value());
@@ -76,36 +100,18 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.codevalue", scopeId = 5005L)
-    public static CodeValue codevalue(ExprContext xx, Code code, Value value) {
+    public static CodeValue codevalue(Code code, Value value) {
         return new CodeValue(code, EvalOutcome.ofValue(value));
     }
 
-    @BuiltinPath(value = "eval.scope", scopeId = 5006L)
-    public static Scope scope(ExprContext xx, TOrderedMap<ConstKey, Binding> entries) {
-        var scope = new Scope(xx.vx);
-        var named = new TMap<ConstKey, Binding>();
-        for (var entry : entries.entrySet()) {
-            named.put(entry.getKey(), entry.getValue());
-        }
-        scope.pushAll(named);
-        return scope;
-    }
-
     @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
-    public static EResult<CodeValue> constEval(ExprContext xx, ExprContext xx_, StagedExprCell staged) {
-        ExprContext targetXx;
-        if (xx_ instanceof ExprContext raw) {
-            targetXx = raw;
-        } else {
-            throw new AssertionError(
-                    "builtin 5008 (const_eval): xx is not ExprContext, got " + (xx_ == null ? "null" : xx_.getClass()));
-        }
+    public static EResult<CodeValue> constEval(ExprContext xx_, StagedExprCell staged) {
         Object exprValue = staged.value();
         if (!(exprValue instanceof Expr exprAst)) {
             throw new AssertionError(
                     "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
         }
-        var _constEvalResult = ConstEval.constEval(targetXx, exprAst);
+        var _constEvalResult = ConstEval.constEval(xx_, exprAst);
         if (_constEvalResult.valueOrNull().optIsNone()) return _constEvalResult.reerr();
         var _cv = _constEvalResult.requireValue("const_eval map").cv();
         var _errs = _constEvalResult.errorsOrNull();
@@ -113,25 +119,19 @@ public final class BuiltinBodies {
         return EResult.mixed(_cv, _errs.optUnwrap());
     }
 
-    @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
-    public static EvalContext evalContext(ExprContext xx) {
-        return new EvalContext(xx.vx.ix);
-    }
-
     @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
-    public static ExprContext exprContext(
-            ExprContext xx, Scope scope, Target target, EvalContext vx, Type exception_type) {
+    public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exception_type) {
         return new ExprContext(scope, target, vx, vx.ix.importState, Opt.some(exception_type));
     }
 
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
-    public static Code codeNone(ExprContext xx, QExprId loc) {
+    public static Code codeNone(QExprId loc) {
         return Code.none(loc);
     }
 
     @BuiltinPath(value = "eval.extract_constkey", scopeId = 5019L)
-    public static ConstKey extractConstkey(ExprContext xx, QExprId loc, Value value) {
-        var res = Eval.extractConstKey(xx, loc, value);
+    public static ConstKey extractConstkey(ExprContext xx_, Value value) {
+        var res = Eval.extractConstKey(xx_, value);
         return switch (res) {
             case Result.Err<ConstKey, String> err ->
                 throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
@@ -140,17 +140,12 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)
-    public static AspectBind.BindResult bindResult(ExprContext xx, Code code, Binding binding) {
+    public static AspectBind.BindResult bindResult(Code code, Binding binding) {
         return new AspectBind.BindResult(code, binding);
     }
 
-    @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
-    public static Unique freshUnique(ExprContext xx) {
-        return DynRuntime.freshUnique(xx);
-    }
-
     @BuiltinPath(value = "eval.drop_value", scopeId = 5020L)
-    public static EResult<Code> dropValue(ExprContext xx, ExprContext xx_, QExprId loc, CodeValue cv) {
+    public static EResult<Code> dropValue(ExprContext xx_, QExprId loc, CodeValue cv) {
         return Eval.dropValue(xx_, loc, cv);
     }
 }

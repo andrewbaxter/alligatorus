@@ -82,7 +82,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -236,7 +236,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var funcData = new SourceFunctionData(body.name(), DynRuntime.freshUnique(xx));
+                        var funcData = new SourceFunctionData(body.name(), DynRuntime.freshUnique(xx.vx));
                         funcData.artifactIdCell.set(idValue);
                         funcData.compiledClassName = body.compiledClassName();
                         funcData.compiledBytecode = body.compiledBytecode();
@@ -287,7 +287,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -324,7 +324,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         if (invocationRes.hasErrors()) return invocationRes.reerr();
         var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
         if (retType.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.of(loc, invocation), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.of(invocation), EvalOutcome.NO_VALUE));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();

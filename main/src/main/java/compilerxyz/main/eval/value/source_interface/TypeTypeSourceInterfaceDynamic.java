@@ -107,7 +107,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
                 .optIsSome()) {
@@ -120,7 +120,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
             seq.add(JavaBytecodeUtils.callMethod(
                     loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
             return EResult.ok(new CodeValue(
-                    Code.of(loc, new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(destType, 1))));
+                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         return EResult.err(loc, "Cannot cast interface to " + destType.typeDesc());
     }
@@ -154,7 +154,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::field: key has no compile-time value");
         }
-        var ckRes = Eval.extractConstKey(xx, loc, key.value().optUnwrap());
+        var ckRes = Eval.extractConstKey(xx, key.value().optUnwrap());
         ConstKey ck;
         switch (ckRes) {
             case Result.Ok<ConstKey, String> ok -> ck = ok.value();
@@ -183,14 +183,14 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         var refType = new TypeInterfaceMethodDynamic(type.data(), match);
         Code carry = self.code();
         if (carry.codeDynamic() != null) {
-            var dropRes = DynUtil.dropDefault(xx, loc, self);
+            var dropRes = DynUtil.dropDefault(loc, self);
             if (dropRes.hasErrors()) return dropRes.reerr();
             var seq = new JavaBytecodeSequence();
             seq.add(carry.codeDynamic());
             var dropDyn = dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop")
                     .codeDynamic();
             if (dropDyn != null) seq.add(dropDyn);
-            carry = Code.of(loc, new CodeDynamic(loc, seq));
+            carry = Code.of(new CodeDynamic(loc, seq));
         }
         return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
     }
@@ -235,7 +235,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override

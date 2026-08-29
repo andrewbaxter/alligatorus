@@ -1,6 +1,5 @@
 package compilerxyz.main.gen;
 
-import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
@@ -19,14 +18,14 @@ public final class SourceFuncResult {
         return GenObjectTypes.sourceFuncResult();
     }
 
-    public void set_description(ExprContext xx, String description) {
+    public void set_description(String description) {
         if (this.func.data().description.optIsSome()) {
             throw new IllegalStateException("Function already has a description");
         }
         this.func.data().description = Opt.some(description);
     }
 
-    public void impl(ExprContext xx, Type arg, Opt<Type> ret, StagedExprCell implBody) {
+    public void impl(Type arg, Opt<Type> ret, StagedExprCell implBody) {
         var data = this.func.data();
         if (data.argType.optIsSome()) {
             throw new IllegalStateException("Function already has an arg type");
@@ -42,7 +41,7 @@ public final class SourceFuncResult {
         data.implExpr = Opt.some((Value) implBody.value());
     }
 
-    public void set_exception_type(ExprContext xx, Type exceptionType) {
+    public void set_exception_type(Type exceptionType) {
         if (this.func.data().exceptionType.optIsSome()) {
             throw new IllegalStateException("Function already has an exception type");
         }

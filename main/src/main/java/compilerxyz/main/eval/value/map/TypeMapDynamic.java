@@ -176,7 +176,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         if (key.value().optIsNone()) {
             return EResult.err(loc, "TypeMapDynamic::field: key has no compile-time value");
         }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, loc, key.value().optUnwrap()));
+        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         var spec = fieldSpecs().getOrNull(ck);
@@ -195,8 +195,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
                     }
                     yield EResult.ok(new CodeValue(
-                            Code.of(loc, selfDyn),
-                            EvalOutcome.ofValue(new ValueDynamic(fnSelfVdg.source(), g.type()))));
+                            Code.of(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdg.source(), g.type()))));
                 }
                 case FieldSpec.PutFn p -> {
                     var selfDyn = self.code().codeDynamic();
@@ -207,8 +206,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
                     }
                     yield EResult.ok(new CodeValue(
-                            Code.of(loc, selfDyn),
-                            EvalOutcome.ofValue(new ValueDynamic(fnSelfVdp.source(), p.type()))));
+                            Code.of(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdp.source(), p.type()))));
                 }
             };
         }
@@ -249,7 +247,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
 
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(xx, loc, cv);
+        return DynUtil.bindDynamicDefault(loc, cv);
     }
 
     @Override
@@ -317,18 +315,18 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                 var combinedSeq = new JavaBytecodeSequence();
                 if (bodyDyn != null) combinedSeq.add(bodyDyn);
                 if (dropDyn != null) combinedSeq.add(dropDyn);
-                bodyCode = Code.of(loc, new CodeDynamic(loc, combinedSeq));
+                bodyCode = Code.of(new CodeDynamic(loc, combinedSeq));
             }
         } else {
             bodyCode = body.code();
         }
         return EResult.ok(
-                DynUtil.foreachSkeleton(xx, loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
+                DynUtil.foreachSkeleton(loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
     }
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, loc, value, this, 1);
+        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -432,7 +430,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
         }
         return EResult.ok(
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(this, 1))));
+                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
 
     @Override
@@ -447,7 +445,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(xx, loc, cv);
+        return DynUtil.dropDefault(loc, cv);
     }
 
     @Override
@@ -471,8 +469,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                     "getKey",
                     JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
             var keyCv = new CodeValue(
-                    Code.of(loc, new CodeDynamic(loc, loadKeySeq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(keyType, 1)));
+                    Code.of(new CodeDynamic(loc, loadKeySeq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, keyType)));
             var keyDropRes = keyDropSome.aspectDropDynamicDrop(xx, loc, keyCv);
             if (keyDropRes.hasErrors()) return keyDropRes.reerr();
             var keyDropDyn = keyDropRes.requireValue("map key drop").codeDynamic();
@@ -488,8 +485,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                     "getValue",
                     JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
             var valCv = new CodeValue(
-                    Code.of(loc, new CodeDynamic(loc, loadValSeq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(valueType, 1)));
+                    Code.of(new CodeDynamic(loc, loadValSeq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, valueType)));
             var valDropRes = valDropSome.aspectDropDynamicDrop(xx, loc, valCv);
             if (valDropRes.hasErrors()) return valDropRes.reerr();
             var valDropDyn = valDropRes.requireValue("map value drop").codeDynamic();
@@ -512,18 +508,12 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         var elementDecode = new CodeDynamic(loc, decodeSeq);
 
         var loop = DynUtil.foreachSkeleton(
-                xx,
-                loc,
-                iteratorSetup,
-                elementDecode,
-                entrySlot,
-                Opcodes.ASTORE,
-                Code.of(loc, new CodeDynamic(loc, bodySeq)));
+                loc, iteratorSetup, elementDecode, entrySlot, Opcodes.ASTORE, Code.of(new CodeDynamic(loc, bodySeq)));
         var loopCode = loop.code().codeDynamic();
         var finalSeq = new JavaBytecodeSequence();
         if (loopCode != null) finalSeq.add(loopCode);
         finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.of(loc, new CodeDynamic(loc, finalSeq)));
+        return EResult.ok(Code.of(new CodeDynamic(loc, finalSeq)));
     }
 
     @Override

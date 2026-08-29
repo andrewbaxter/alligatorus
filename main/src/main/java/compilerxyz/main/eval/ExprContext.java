@@ -1,5 +1,7 @@
 package compilerxyz.main.eval;
 
+import compilerxyz.main.eval.dynamic.TargetDynamic;
+import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.gen.Target;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -19,5 +21,12 @@ public final class ExprContext {
         this.vx = vx;
         this.importState = importState;
         this.currentExceptionType = currentExceptionType;
+    }
+
+    public static ExprContext freshRoot(CompileImportContext ix) {
+        var vx = new EvalContext(ix);
+        var scope = new Scope(vx);
+        var target = new TargetDynamic(vx.nextLocalId);
+        return new ExprContext(scope, target, vx, ix.importState, Opt.some(new TypeStringConst()));
     }
 }

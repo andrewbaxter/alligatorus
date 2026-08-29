@@ -129,7 +129,7 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
         var uniqueKey = new JavaBytecodeBindingKey();
         var uniqueId = new BindingId.Local(uniqueKey);
         xx.vx.externals.add(new EvalContext.ExternalEntry(uniqueKey, this, new External(Unique.class, auq)));
-        var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), xx.vx, uniqueId);
+        var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), uniqueId);
 
         var seq = new JavaBytecodeSequence();
         seq.add(subjectDyn);
@@ -138,8 +138,9 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
         seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, INTNAME_TYPE, "typeAspect", DESC_TYPE_ASPECT));
 
         return EResult.ok(new CodeValue(
-                Code.of(loc, new CodeDynamic(new CodeLoc.Some(loc), seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(new TypeOptionDynamic(DynUtil.substituteBoxed(xx, aspTa)), 1))));
+                Code.of(new CodeDynamic(new CodeLoc.Some(loc), seq)),
+                EvalOutcome.ofValue(
+                        ValueDynamic.stack(xx, new TypeOptionDynamic(DynUtil.substituteBoxed(xx, aspTa))))));
     }
 
     @Override
