@@ -87,16 +87,15 @@ public final class DynUtil {
         var seq = new JavaBytecodeSequence();
         seq.add(iteratorSetup);
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         seq.add(JavaBytecodeUtils.callInterfaceMethod(
                 loc,
                 iteratorName,
                 "hasNext",
                 JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
-        seq.add(new CodeDynamic(
-                loc, new JavaBytecodeInstructionObj(new JumpInsnNode(org.objectweb.asm.Opcodes.IFEQ, doneLabel))));
-        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
         seq.add(JavaBytecodeUtils.callInterfaceMethod(
                 loc,
                 iteratorName,
@@ -108,10 +107,9 @@ public final class DynUtil {
         if (bodyDyn != null) {
             seq.add(bodyDyn);
         }
-        seq.add(new CodeDynamic(
-                loc, new JavaBytecodeInstructionObj(new JumpInsnNode(org.objectweb.asm.Opcodes.GOTO, loopLabel))));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
         return new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE);
     }
 

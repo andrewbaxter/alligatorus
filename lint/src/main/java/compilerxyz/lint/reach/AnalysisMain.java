@@ -2,6 +2,7 @@ package compilerxyz.lint.reach;
 
 import compilerxyz.lint.convention.Pom;
 import compilerxyz.lint.convention.StructureChecks;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +41,8 @@ public final class AnalysisMain {
             Path _ssSrc = base.resolve(_ssRoot);
             if (!Files.isDirectory(_ssSrc)) continue;
             try (var walk = Files.walk(_ssSrc)) {
-                for (Path _ssP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
+                for (Path _ssP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java")
+                        && !x.getFileName().toString().equals("module-info.java"))::iterator) {
                     Path _ssTarget = staged.resolve(_ssSrc.relativize(_ssP));
                     Files.createDirectories(_ssTarget.getParent());
                     Files.copy(_ssP, _ssTarget, StandardCopyOption.REPLACE_EXISTING);
@@ -61,9 +64,22 @@ public final class AnalysisMain {
             }
         }
 
+        Set<String> classpath = new LinkedHashSet<>();
+        for (String module : modules) {
+            Path cpFile = base.resolve(module + "/target/analysis-classpath.txt");
+            if (!Files.exists(cpFile)) {
+                throw new IllegalStateException("missing " + cpFile + "; run the full build so the"
+                        + " analysis-classpath execution has written every module's classpath");
+            }
+            for (String entry : Files.readString(cpFile).trim().split(File.pathSeparator)) {
+                if (!entry.isBlank()) classpath.add(entry);
+            }
+        }
+
         Launcher launcher = new Launcher();
         launcher.getEnvironment().setComplianceLevel(21);
-        launcher.getEnvironment().setNoClasspath(true);
+        launcher.getEnvironment().setNoClasspath(false);
+        launcher.getEnvironment().setSourceClasspath(classpath.toArray(new String[0]));
         launcher.getEnvironment().setCommentEnabled(false);
         launcher.getEnvironment().setIgnoreDuplicateDeclarations(true);
         launcher.addInputResource(staged.toString());

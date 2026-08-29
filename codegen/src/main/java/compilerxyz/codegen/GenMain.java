@@ -332,7 +332,6 @@ public final class GenMain {
                                                 uniqueId,
                                                 identityId,
                                                 isAspect,
-                                                false,
                                                 true,
                                                 methods,
                                                 new TList<BuiltinInterfacesGen.DataField>()));
@@ -364,7 +363,6 @@ public final class GenMain {
                                                 pkg,
                                                 uniqueId,
                                                 0L,
-                                                false,
                                                 false,
                                                 false,
                                                 new TList<Method>(),

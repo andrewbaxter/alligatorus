@@ -57,6 +57,7 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6017L)
 public record TypeEResultDynamic<T extends Type>(T elementType)
@@ -116,8 +117,8 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
         if (variantIndex == 0) {
-            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.ICONST_1));
-            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.IXOR));
+            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_1));
+            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
         }
         return EResult.ok(new CodeDynamic(loc, seq));
     }

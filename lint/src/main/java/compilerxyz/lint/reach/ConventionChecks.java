@@ -145,12 +145,12 @@ public final class ConventionChecks {
                     boolean _fqnWritten = _ssTrSnippet.equals(_fqnQnDot)
                             || _ssTrSnippet.startsWith(_fqnQnDot + "<")
                             || _ssTrSnippet.startsWith(_fqnQnDot + "[");
+                    CtTypeReference<?> _fqnTop = tr;
+                    while (_fqnTop.getDeclaringType() != null) _fqnTop = _fqnTop.getDeclaringType();
                     if (_fqnWritten
                             && _fqnQnDot.contains(".")
                             && FQN.matcher(_fqnQnDot).matches()
-                            && !ambiguous(_ssTrPos.getFile().getPath(), tr.getSimpleName())) {
-                        CtTypeReference<?> _fqnTop = tr;
-                        while (_fqnTop.getDeclaringType() != null) _fqnTop = _fqnTop.getDeclaringType();
+                            && !ambiguous(_ssTrPos.getFile().getPath(), _fqnTop.getSimpleName())) {
                         report("UnnecessaryFullyQualifiedName", tr, fqnMessage(_fqnTop, _fqnQnDot));
                     }
                 }
@@ -181,9 +181,9 @@ public final class ConventionChecks {
         String qnDot = qn.replace('$', '.');
         if (!snippet.equals(qnDot)) return;
         if (!qnDot.contains(".") || !FQN.matcher(qnDot).matches()) return;
-        if (ambiguous(pos.getFile().getPath(), declaring.getSimpleName())) return;
         CtTypeReference<?> top = declaring;
         while (top.getDeclaringType() != null) top = top.getDeclaringType();
+        if (ambiguous(pos.getFile().getPath(), top.getSimpleName())) return;
         report("UnnecessaryFullyQualifiedName", target, fqnMessage(top, qnDot));
     }
 

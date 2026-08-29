@@ -28,7 +28,6 @@ public final class BuiltinInterfacesGen {
                 long uniqueId,
                 long identityId,
                 boolean isAspect,
-                boolean isRecord,
                 boolean isInterface,
                 TList<BuiltinMethodEmit.Method> methods,
                 TList<DataField> dataFields) {
@@ -38,7 +37,7 @@ public final class BuiltinInterfacesGen {
                     uniqueId,
                     identityId,
                     isAspect,
-                    isRecord,
+                    false,
                     isInterface,
                     methods,
                     dataFields,

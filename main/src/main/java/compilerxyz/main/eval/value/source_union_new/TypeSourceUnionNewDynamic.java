@@ -38,6 +38,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
@@ -107,7 +108,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
         var ctorDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
-        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
         seq.add(underlyingJs);
         seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
         var newObject = new CodeDynamic(loc, seq);

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.LabelNode;
@@ -230,13 +231,12 @@ public class JavaBytecodeUtils {
         var _boaLoc = lc(loc);
         var _boaSeq = new JavaBytecodeSequence();
         _boaSeq.add(literalIntShortByte(_boaLoc, elements.size()));
-        _boaSeq.add(wrapObj(
-                _boaLoc, new TypeInsnNode(org.objectweb.asm.Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
+        _boaSeq.add(wrapObj(_boaLoc, new TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
         for (int _boaI = 0; _boaI < elements.size(); _boaI++) {
             _boaSeq.add(inst(_boaLoc, DUP));
             _boaSeq.add(literalIntShortByte(_boaLoc, _boaI));
             _boaSeq.add(elements.get(_boaI));
-            _boaSeq.add(inst(_boaLoc, org.objectweb.asm.Opcodes.AASTORE));
+            _boaSeq.add(inst(_boaLoc, Opcodes.AASTORE));
         }
         return new CodeDynamic(_boaLoc, _boaSeq);
     }

@@ -91,33 +91,10 @@ public final class StateChecks {
             }
         }
 
-        Map<String, List<CtMethod<?>>> methodsByName = new HashMap<>();
-        for (CtMethod<?> m : index.methods) {
-            methodsByName
-                    .computeIfAbsent(m.getSimpleName(), x -> new ArrayList<>())
-                    .add(m);
-        }
         for (CtInvocation<?> inv : index.invocations) {
-            CtExecutable<?> decl =
-                    inv.getExecutable() == null ? null : inv.getExecutable().getExecutableDeclaration();
-            if (decl == null && inv.getExecutable() != null) {
-                var ref = inv.getExecutable();
-                var declType = ref.getDeclaringType();
-                if (declType != null) {
-                    String owner = declType.getQualifiedName();
-                    CtMethod<?> found = null;
-                    boolean ambiguous = false;
-                    for (CtMethod<?> m : methodsByName.getOrDefault(ref.getSimpleName(), List.of())) {
-                        if (m.getParameters().size() != inv.getArguments().size()) continue;
-                        if (m.getDeclaringType() == null
-                                || !m.getDeclaringType().getQualifiedName().equals(owner)) continue;
-                        if (found != null) ambiguous = true;
-                        found = m;
-                    }
-                    if (!ambiguous) decl = found;
-                }
-            }
-            recordCall(decl, inv.getArguments());
+            recordCall(
+                    inv.getExecutable() == null ? null : inv.getExecutable().getExecutableDeclaration(),
+                    inv.getArguments());
         }
         for (CtConstructorCall<?> cc : index.constructorCalls) {
             recordCall(

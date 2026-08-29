@@ -44,6 +44,7 @@ import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6015L)
 @BuiltinPath("types.constkey")
@@ -128,7 +129,7 @@ public record TypeConstkeyDynamic()
         var ctorDesc = JavaMethodDescriptor.fromConstructorParts(TList.of(JavaDataDescriptor.fromClass(String.class)));
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.newInstance(loc, strInternal));
-        seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
         seq.add(JavaBytecodeUtils.literalString(loc, s));
         seq.add(JavaBytecodeUtils.invokeSpecial(loc, strInternal, "<init>", ctorDesc));
         return EResult.ok(new CodeValue(

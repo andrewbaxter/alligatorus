@@ -38,6 +38,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.Opcodes;
 
 @BuiltinLight(uniqueId = 6136L)
 public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodData method)
@@ -111,7 +112,7 @@ public record TypeInterfaceMethodDynamic(InterfaceData iface, InterfaceMethodDat
         var hostName = method.hostMethodName.optUnwrapOr(method.name);
         seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
         if (retType.optIsNone()) {
-            seq.add(JavaBytecodeUtils.inst(loc, org.objectweb.asm.Opcodes.POP));
+            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
             return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
         }
         var retTypeVal = retType.optUnwrap();
