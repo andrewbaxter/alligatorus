@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -36,7 +36,6 @@ import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -48,7 +47,6 @@ import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectSet;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -62,7 +60,6 @@ import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
@@ -79,7 +76,6 @@ public final class TypeOptionDynamic<T extends Type>
         implements AspectSet,
                 AspectFieldUseDynamic,
                 Type,
-                AspectArtifact,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
@@ -87,8 +83,7 @@ public final class TypeOptionDynamic<T extends Type>
                 AspectField,
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
@@ -114,7 +109,6 @@ public final class TypeOptionDynamic<T extends Type>
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY)
-                || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -169,8 +163,8 @@ public final class TypeOptionDynamic<T extends Type>
     }
 
     @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.OPTION_DYNAMIC;
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.OPTION_DYNAMIC);
     }
 
     private static Artifact nullArtifact() {
@@ -180,7 +174,7 @@ public final class TypeOptionDynamic<T extends Type>
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeOptionDynamic<?> option)) {
                 return EResult.err(
                         loc,
@@ -191,11 +185,9 @@ public final class TypeOptionDynamic<T extends Type>
             var cell = option.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var elementArtRes = option.elementType().artifactableExportArtifact(xx, loc);
+                var elementArtRes = Artifactable.exportArtifact(xx, loc, option.elementType());
                 elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOrNull() != null
-                        ? elementArtRes.requireValue("TypeOptionDynamic::exporterExport element")
-                        : nullArtifact();
+                var elementArt = elementArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                 var body = new ArtifactOptionType(elementArt);
                 return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
             });
@@ -204,7 +196,7 @@ public final class TypeOptionDynamic<T extends Type>
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeOptionDynamic requires an artifact id to deserialize");
@@ -226,26 +218,6 @@ public final class TypeOptionDynamic<T extends Type>
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var holder = new ExporterAny[] {null};
-                        ExporterAny stub = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException(
-                                            "TypeOptionDynamic import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsType();
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException(
-                                            "TypeOptionDynamic import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsValue();
-                            }
-                        };
                         var deps = new TList<Artifact>();
                         deps.add(body.elementType());
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
@@ -254,9 +226,9 @@ public final class TypeOptionDynamic<T extends Type>
                             var elementT = elementRes.requireValue("TypeOptionDynamic::finalizer element type");
                             var out = new TypeOptionDynamic(elementT);
                             out.artifactIdCell.set(idValue);
-                            holder[0] = out;
+                            return out;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
@@ -387,16 +359,6 @@ public final class TypeOptionDynamic<T extends Type>
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -415,10 +377,5 @@ public final class TypeOptionDynamic<T extends Type>
     @Override
     public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
     }
 }

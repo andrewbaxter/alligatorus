@@ -2,6 +2,7 @@ package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
@@ -33,6 +34,14 @@ public final class SourceInterfaceResult {
         var method = new InterfaceMethodData(name);
         ifaceData.methods.add(method);
         return new SourceInterfaceMethodResult(method);
+    }
+
+    public Unique aspect_id() {
+        var data = this.type_.getInterfaceData();
+        if (data.aspectId.optIsNone()) {
+            throw new IllegalStateException("Interface is not an aspect (set_is_aspect was not called)");
+        }
+        return data.aspectId.optUnwrap();
     }
 
     public void set_is_aspect(EvalContext vx, boolean isAspect) {

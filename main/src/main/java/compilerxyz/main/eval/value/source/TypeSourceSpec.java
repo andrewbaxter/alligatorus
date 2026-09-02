@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -12,18 +11,16 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6154L)
-public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLight, ExporterAny {
+@BuiltinFull(uniqueId = 6154L)
+public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLight {
 
     @Override
     public String typeDesc() {
@@ -56,16 +53,6 @@ public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLig
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
         return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_SOURCE_SPEC_IDENTITY)
                 .optIsSome();
@@ -94,7 +81,7 @@ public record TypeSourceSpec() implements Type, AspectBind, AspectDropDynamicLig
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

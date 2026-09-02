@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -25,15 +24,14 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectListConst;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.HashValue;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.sha256")
-@BuiltinLight(uniqueId = 6159L)
-public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+@BuiltinFull(uniqueId = 6159L)
+public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public String typeDesc() {
@@ -98,16 +96,6 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -136,7 +124,7 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

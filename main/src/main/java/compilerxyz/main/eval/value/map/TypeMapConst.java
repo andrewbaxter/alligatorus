@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
@@ -19,20 +19,20 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectArtifact;
+import compilerxyz.main.gen.AspectDynamicConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinLight(uniqueId = 6162L)
-public final class TypeMapConst<K extends Type, V extends Type> implements Type, AspectArtifact, ExporterAny {
+@BuiltinFull(uniqueId = 6162L)
+public final class TypeMapConst<K extends Type, V extends Type> implements Type, AspectArtifact {
 
     public final K keyType;
     public final V valueType;
@@ -68,8 +68,9 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             TypeMapConst map;
+            if (self instanceof AspectDynamicConst dc) self = dc.aspectDynamicConstConstForm();
             if (self instanceof TypeMapConst<?, ?> t) {
                 map = t;
             } else if (self instanceof ValueObjectConst v && v.type() instanceof TypeMapConst<?, ?> t) {
@@ -82,16 +83,12 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
             var cell = map.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var keyArtRes = map.keyType.artifactableExportArtifact(xx, loc);
+                var keyArtRes = Artifactable.exportArtifact(xx, loc, map.keyType);
                 keyArtRes.drainInto(errors);
-                var keyArt = keyArtRes.valueOrNull() != null
-                        ? keyArtRes.requireValue("TypeMapConst::exporterExport key")
-                        : nullArtifact();
-                var valueArtRes = map.valueType.artifactableExportArtifact(xx, loc);
+                var keyArt = keyArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                var valueArtRes = Artifactable.exportArtifact(xx, loc, map.valueType);
                 valueArtRes.drainInto(errors);
-                var valueArt = valueArtRes.valueOrNull() != null
-                        ? valueArtRes.requireValue("TypeMapConst::exporterExport value")
-                        : nullArtifact();
+                var valueArt = valueArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                 var body = new ArtifactMapType(keyArt, valueArt);
                 return makeBody.apply(ArtifactMapTypeCodec.toValue(body));
             });
@@ -100,7 +97,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeMapConst requires an artifact id to deserialize");
@@ -122,24 +119,6 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var holder = new ExporterAny[] {null};
-                        ExporterAny stub = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("TypeMapConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsType();
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("TypeMapConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsValue();
-                            }
-                        };
                         var deps = new TList<Artifact>();
                         deps.add(body.keyType());
                         deps.add(body.valueType());
@@ -152,22 +131,12 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
                             var valueT = valueRes.requireValue("TypeMapConst::finalizer value type");
                             var out = new TypeMapDynamic(keyT, valueT);
                             out.artifactIdCell.set(idValue);
-                            holder[0] = out;
+                            return out;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
@@ -201,7 +170,7 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

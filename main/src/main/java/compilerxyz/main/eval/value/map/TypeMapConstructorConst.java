@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.map;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -27,13 +26,13 @@ import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.map")
-@BuiltinLight(uniqueId = 6121L)
-public record TypeMapConstructorConst() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+@BuiltinFull(uniqueId = 6121L)
+public record TypeMapConstructorConst() implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public String typeDesc() {
@@ -127,16 +126,6 @@ public record TypeMapConstructorConst() implements Type, AspectFunction, AspectI
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -165,7 +154,7 @@ public record TypeMapConstructorConst() implements Type, AspectFunction, AspectI
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

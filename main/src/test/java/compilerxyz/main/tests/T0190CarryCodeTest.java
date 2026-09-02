@@ -423,4 +423,10 @@ public final class T0190CarryCodeTest {
         var tup = mb.tupleOf(carrying(mb, "b", mb.str("elem")), mb.str("other"));
         assertPushed(run(mb, mb.call(mb.log(), mb.field(tup, mb.num(0.0)))));
     }
+
+    @Test
+    public void test00900UnitToNullCastKeepsCarry() {
+        var mb = new TestMb();
+        assertPushed(run(mb, mb.as_(carrying(mb, "b", mb.tupleOf()), mb.typesNull())));
+    }
 }

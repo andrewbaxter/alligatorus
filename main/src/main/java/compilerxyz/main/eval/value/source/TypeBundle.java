@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -27,13 +26,13 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinLight(uniqueId = 6161L)
+@BuiltinFull(uniqueId = 6161L)
 public record TypeBundle(SourceSpecAbsolute.Remote base)
-        implements Type, AspectBind, AspectDropDynamicLight, AspectField, ExporterAny {
+        implements Type, AspectBind, AspectDropDynamicLight, AspectField {
 
     @Override
     public String typeDesc() {
@@ -117,16 +116,6 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
         return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_BUNDLE_IDENTITY)
                 .optIsSome();
@@ -155,7 +144,7 @@ public record TypeBundle(SourceSpecAbsolute.Remote base)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

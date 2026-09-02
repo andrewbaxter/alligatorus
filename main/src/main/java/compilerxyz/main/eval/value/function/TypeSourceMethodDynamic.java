@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.function;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -19,7 +18,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
@@ -32,12 +30,11 @@ import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinLight(uniqueId = 6321L)
+@BuiltinFull(uniqueId = 6321L)
 public record TypeSourceMethodDynamic(
         Type receiver,
         TList<FunctionParam> params,
@@ -47,13 +44,7 @@ public record TypeSourceMethodDynamic(
         JavaMethodDescriptor descriptor,
         boolean isInterface,
         boolean needsEvalContext)
-        implements Type,
-                AspectBind,
-                AspectConsumeDynamic,
-                AspectDropDynamicLight,
-                AspectFunction,
-                AspectInitialBind,
-                ExporterAny {
+        implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectFunction, AspectInitialBind {
 
     @Override
     public String toString() {
@@ -127,16 +118,6 @@ public record TypeSourceMethodDynamic(
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -181,7 +162,7 @@ public record TypeSourceMethodDynamic(
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

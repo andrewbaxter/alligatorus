@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source_object_new;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -20,7 +19,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
@@ -41,7 +39,7 @@ import compilerxyz.prelude.util.TList;
 
 @BuiltinLight(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
-        implements Type, AspectBind, AspectBindDynamic, AspectFunction, ExporterAny {
+        implements Type, AspectBind, AspectBindDynamic, AspectFunction {
 
     public static Type dynamicType() {
         return GenType.dynamicType();
@@ -120,16 +118,6 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
         return Opt.none();
     }
 
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(new TypeTypeSourceObjectNewConst(type_()), this));
-    }
-
     private record SourceObjectNewConstBinding(Value value) implements Binding {
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
@@ -198,7 +186,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

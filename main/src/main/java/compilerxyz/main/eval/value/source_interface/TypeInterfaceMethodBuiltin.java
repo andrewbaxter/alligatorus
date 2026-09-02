@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source_interface;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -17,20 +16,18 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
 import compilerxyz.main.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6197L)
+@BuiltinFull(uniqueId = 6197L)
 public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String name, TypeMethodDynamic method)
-        implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+        implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public String typeDesc() {
@@ -75,16 +72,6 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
         var oOpt = AspectLookup.getMaybe(
                 xx,
@@ -119,7 +106,7 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

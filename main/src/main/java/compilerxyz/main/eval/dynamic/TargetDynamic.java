@@ -23,7 +23,6 @@ import compilerxyz.main.eval.value.expr.TypeExprStagedPlaceholder;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
-import compilerxyz.main.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleBaseDynamic;
 import compilerxyz.main.eval.value.tuple.TupleElement;
@@ -271,7 +270,7 @@ public final class TargetDynamic implements Target {
         boolean allControlEnded = true;
         Type resultType = null;
         for (var branch : conditions) {
-            switch (branch.body().outcome()) {
+            switch (branch.body.outcome()) {
                 case EvalOutcome.HasValue h -> {
                     anyValue = true;
                     allControlEnded = false;
@@ -306,9 +305,9 @@ public final class TargetDynamic implements Target {
         var seq = new JavaBytecodeSequence();
         var endLabel = new LabelNode();
         for (var branch : conditions) {
-            var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition());
+            var condDynOpt = cvToDynamic(erb, xx, loc, branch.condition);
             if (condDynOpt.optIsNone()) return EResult.errs(erb.errors());
-            var bodyCv = branch.body();
+            var bodyCv = branch.body;
             CodeDynamic bodyDyn;
             if (bodyCv.value().optIsSome()) {
                 var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
@@ -411,9 +410,6 @@ public final class TargetDynamic implements Target {
         MatchDynamic md;
         if (baseType instanceof MatchDynamic direct) {
             md = direct;
-        } else if (baseType instanceof TypeTypeSourceUnionConst wrapped
-                && wrapped.type_() instanceof MatchDynamic wrappedMd) {
-            md = wrappedMd;
         } else {
             return EResult.err(loc, "Match: base type is not matchable: " + baseType.typeDesc());
         }

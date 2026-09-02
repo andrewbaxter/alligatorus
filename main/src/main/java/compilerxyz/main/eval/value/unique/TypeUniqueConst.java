@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.unique;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -32,14 +31,13 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6148L)
+@BuiltinFull(uniqueId = 6148L)
 public record TypeUniqueConst()
-        implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectOperatorEq, ExporterAny {
+        implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectOperatorEq {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -149,17 +147,7 @@ public record TypeUniqueConst()
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(new TypeUniqueConst());
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

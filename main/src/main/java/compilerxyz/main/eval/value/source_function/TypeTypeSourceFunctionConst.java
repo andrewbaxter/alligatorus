@@ -1,6 +1,6 @@
 package compilerxyz.main.eval.value.source_function;
 
-import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -152,8 +152,8 @@ public final class TypeTypeSourceFunctionConst {
         }
 
         @Override
-        public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-            return Type.exportArtifact(xx, loc, this);
+        public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+            return EResult.err(loc, typeDesc() + " is not exportable");
         }
     }
 }

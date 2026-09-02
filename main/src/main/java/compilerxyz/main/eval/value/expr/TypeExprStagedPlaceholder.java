@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.expr;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -16,7 +16,6 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.object_.TypeObjectConst;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectLift;
@@ -25,12 +24,12 @@ import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinLight(uniqueId = 6107L)
+@BuiltinFull(uniqueId = 6107L)
 public record TypeExprStagedPlaceholder()
-        implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift, ExporterAny {
+        implements Type, Value, AspectConsumeDynamic, AspectDropDynamicLight, AspectLift {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -92,16 +91,6 @@ public record TypeExprStagedPlaceholder()
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -135,7 +124,7 @@ public record TypeExprStagedPlaceholder()
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Value.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 }

@@ -126,10 +126,9 @@ public final class ImportRun {
         }
         var exporterRes = erb.mustEr(ArtifactSupport.importArtifact(xx, loc, artifact));
         if (exporterRes.optIsNone()) return EResult.errs(erb.errors());
-        var valueRes = erb.mustEr(exporterRes.optUnwrap().exporterAnyAsValue());
-        if (valueRes.optIsNone()) return EResult.errs(erb.errors());
-        var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(valueRes.optUnwrap()));
-        var valueType = valueRes.optUnwrap().valueType();
+        var value = ArtifactSupport.importedAsValue(exporterRes.optUnwrap());
+        var cv = new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
+        var valueType = value.valueType();
         var pdRes = erb.mustEr(GenAspectPostDeserialize.get(xx, loc, valueType));
         if (pdRes.optIsNone()) return EResult.errs(erb.errors());
         var finalRes = erb.mustEr(pdRes.optUnwrap().aspectPostDeserializePostDeserialize(xx, loc, cv));

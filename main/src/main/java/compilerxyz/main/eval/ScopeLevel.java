@@ -55,14 +55,16 @@ public sealed interface ScopeLevel {
 
     final class Labeled implements ScopeLevel {
         public final Opt<String> label;
+        public final boolean isBlock;
         public final JumpKey end;
-        public final TList<Arrival> arrivals;
+        public final Landing landing;
         final Emission emission;
 
-        public Labeled(Opt<String> label, JumpKey end, TList<Arrival> arrivals, Emission emission) {
+        public Labeled(Opt<String> label, boolean isBlock, JumpKey end, Landing landing, Emission emission) {
             this.label = label;
+            this.isBlock = isBlock;
             this.end = end;
-            this.arrivals = arrivals;
+            this.landing = landing;
             this.emission = emission;
         }
 
@@ -106,6 +108,11 @@ public sealed interface ScopeLevel {
     }
 
     record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {}
+
+    final class Landing {
+        public final TList<Arrival> arrivals = new TList<>();
+        public Opt<Type> resultType = Opt.none();
+    }
 
     final class DestKey {
         public final long dropState;

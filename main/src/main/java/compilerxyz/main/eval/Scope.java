@@ -36,7 +36,22 @@ public final class Scope {
 
     public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
         var level = new ScopeLevel.Labeled(
-                label, new JumpKey(), new TList<>(), new ScopeLevel.Emission(vx.emissionCounter.next()));
+                label,
+                true,
+                new JumpKey(),
+                new ScopeLevel.Landing(),
+                new ScopeLevel.Emission(vx.emissionCounter.next()));
+        levels.add(level);
+        return level;
+    }
+
+    public ScopeLevel.Labeled pushMergeLabeled() {
+        var level = new ScopeLevel.Labeled(
+                Opt.none(),
+                false,
+                new JumpKey(),
+                new ScopeLevel.Landing(),
+                new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(level);
         return level;
     }
@@ -63,7 +78,8 @@ public final class Scope {
                         case ScopeLevel.Temp temp ->
                             new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
                         case ScopeLevel.Labeled labeled ->
-                            new ScopeLevel.Labeled(labeled.label, labeled.end, labeled.arrivals, labeled.emission);
+                            new ScopeLevel.Labeled(
+                                    labeled.label, labeled.isBlock, labeled.end, labeled.landing, labeled.emission);
                         case ScopeLevel.Catch catch_ -> new ScopeLevel.Catch(catch_.handler, catch_.emission);
                         case ScopeLevel.Finally finally_ -> {
                             var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);

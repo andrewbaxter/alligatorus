@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.zbase32;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -36,14 +35,14 @@ import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenLists;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 @BuiltinPath("zbase32.decode")
-@BuiltinLight(uniqueId = 6153L)
-public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+@BuiltinFull(uniqueId = 6153L)
+public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public String typeDesc() {
@@ -117,16 +116,6 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -155,7 +144,7 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

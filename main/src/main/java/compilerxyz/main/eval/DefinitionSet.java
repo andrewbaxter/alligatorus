@@ -4,9 +4,10 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.definition_set.ArtifactDataDefSet;
@@ -35,13 +36,10 @@ import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.main.eval.value.source_interface.InterfaceData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
-import compilerxyz.main.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.main.eval.value.source_union.TypeTypeSourceUnionConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenType;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.util.Opt;
@@ -54,7 +52,7 @@ import java.util.function.Function;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-public final class DefinitionSet implements ExporterAny {
+public final class DefinitionSet implements Artifactable {
     public static Type dynamicType() {
         return GenType.dynamicType();
     }
@@ -764,65 +762,58 @@ public final class DefinitionSet implements ExporterAny {
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        throw new UnsupportedOperationException("DefinitionSet is neither a Type nor a Value");
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        throw new UnsupportedOperationException("DefinitionSet is neither a Type nor a Value");
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.DEFINITION_SET);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var set = mustCast(DefinitionSet.class, self);
             var errors = new TList<ExprErr>();
             var artifact =
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, set.artifactIdCell, () -> {
                         var objects = new TList<Artifact>(set.objects.size());
                         for (var dt : set.objects) {
-                            var dtConst = new TypeTypeSourceObjectConst(dt);
-                            var artRes = dtConst.artifactableExportArtifact(xx, loc);
+                            var artRes = Artifactable.exportArtifact(xx, loc, dt);
                             artRes.drainInto(errors);
-                            if (artRes.valueOrNull() != null) {
-                                objects.add(artRes.requireValue("DefinitionSet::exporterExport object"));
+                            if (artRes.valueOrNull().optIsSome()) {
+                                objects.add(artRes.valueOrNull().optUnwrap());
                             }
                         }
                         var functions = new TList<Artifact>(set.functions.size());
                         for (var f : set.functions) {
                             var fConst = new TypeSourceFunctionConst(f);
-                            var artRes = fConst.artifactableExportArtifact(xx, loc);
+                            var artRes = Artifactable.exportArtifact(xx, loc, fConst);
                             artRes.drainInto(errors);
-                            if (artRes.valueOrNull() != null) {
-                                functions.add(artRes.requireValue("DefinitionSet::exporterExport function"));
+                            if (artRes.valueOrNull().optIsSome()) {
+                                functions.add(artRes.valueOrNull().optUnwrap());
                             }
                         }
                         var interfaces = new TList<Artifact>(set.interfaces.size());
                         for (var i : set.interfaces) {
                             var iConst = new TypeSourceInterfaceDynamic(i);
-                            var artRes = iConst.artifactableExportArtifact(xx, loc);
+                            var artRes = Artifactable.exportArtifact(xx, loc, iConst);
                             artRes.drainInto(errors);
-                            if (artRes.valueOrNull() != null) {
-                                interfaces.add(artRes.requireValue("DefinitionSet::exporterExport interface"));
+                            if (artRes.valueOrNull().optIsSome()) {
+                                interfaces.add(artRes.valueOrNull().optUnwrap());
                             }
                         }
                         var unions = new TList<Artifact>(set.unions.size());
                         for (var u : set.unions) {
-                            var uConst = new TypeTypeSourceUnionConst(u);
-                            var artRes = uConst.artifactableExportArtifact(xx, loc);
+                            var artRes = Artifactable.exportArtifact(xx, loc, u);
                             artRes.drainInto(errors);
-                            if (artRes.valueOrNull() != null) {
-                                unions.add(artRes.requireValue("DefinitionSet::exporterExport union"));
+                            if (artRes.valueOrNull().optIsSome()) {
+                                unions.add(artRes.valueOrNull().optUnwrap());
                             }
                         }
                         var dependencies = new TList<Artifact>(set.dependencies.size());
                         for (var entry : set.dependencies.entrySet()) {
-                            var depRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, entry.getValue());
+                            var depRes = Artifactable.exportArtifact(xx, loc, entry.getValue());
                             depRes.drainInto(errors);
-                            if (depRes.valueOrNull() != null) {
-                                dependencies.add(depRes.requireValue("DefinitionSet::exporterExport dependency"));
+                            if (depRes.valueOrNull().optIsSome()) {
+                                dependencies.add(depRes.valueOrNull().optUnwrap());
                             }
                         }
                         var body = new ArtifactDataDefSet(
@@ -841,7 +832,7 @@ public final class DefinitionSet implements ExporterAny {
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "DefinitionSet requires an artifact id to deserialize");
@@ -876,14 +867,7 @@ public final class DefinitionSet implements ExporterAny {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, dtArt);
                                 var v = any.requireValue("DefinitionSet::finalizer object artifact");
                                 TypeSourceObjectDynamic dtData;
-                                if (v instanceof TypeTypeSourceObjectConst dtConst) {
-                                    dtData = dtConst.type_();
-                                } else if (v instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst impDt) {
-                                    dtData = impDt.type_();
-                                } else {
-                                    throw new IllegalStateException(
-                                            "def-set object artifact had wrong type: " + v.getClass());
-                                }
+                                dtData = mustCast(TypeSourceObjectDynamic.class, v);
                                 dtData.objIdx = set.objects.size();
                                 set.objects.add(dtData);
                             }
@@ -891,14 +875,8 @@ public final class DefinitionSet implements ExporterAny {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, fArt);
                                 var v = any.requireValue("DefinitionSet::finalizer function artifact");
                                 SourceFunctionData fData;
-                                if (v instanceof TypeSourceFunctionConst fConst) {
-                                    fData = fConst.data();
-                                } else if (v instanceof TypeSourceFunctionConst.ImportedSourceFunctionConst impFn) {
-                                    fData = impFn.data();
-                                } else {
-                                    throw new IllegalStateException(
-                                            "def-set function artifact had wrong type: " + v.getClass());
-                                }
+                                fData = mustCast(TypeSourceFunctionConst.class, v)
+                                        .data();
                                 fData.funcIdx = set.functions.size();
                                 set.functions.add(fData);
                             }
@@ -906,28 +884,15 @@ public final class DefinitionSet implements ExporterAny {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, iArt);
                                 var v = any.requireValue("DefinitionSet::finalizer interface artifact");
                                 InterfaceData iData;
-                                if (v instanceof TypeSourceInterfaceDynamic iConst) {
-                                    iData = iConst.data();
-                                } else if (v instanceof TypeSourceInterfaceDynamic.ImportedInterfaceConst impIc) {
-                                    iData = impIc.data();
-                                } else {
-                                    throw new IllegalStateException(
-                                            "def-set interface artifact had wrong type: " + v.getClass());
-                                }
+                                iData = mustCast(TypeSourceInterfaceDynamic.class, v)
+                                        .data();
                                 set.interfaces.add(iData);
                             }
                             for (var uArt : body.unions()) {
                                 var any = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, uArt);
                                 var v = any.requireValue("DefinitionSet::finalizer union artifact");
                                 TypeSourceUnionDynamic uData;
-                                if (v instanceof TypeTypeSourceUnionConst uConst) {
-                                    uData = uConst.type_();
-                                } else if (v instanceof TypeTypeSourceUnionConst.ImportedSourceUnionConst impU) {
-                                    uData = impU.type_();
-                                } else {
-                                    throw new IllegalStateException(
-                                            "def-set union artifact had wrong type: " + v.getClass());
-                                }
+                                uData = mustCast(TypeSourceUnionDynamic.class, v);
                                 uData.unionIdx = set.unions.size();
                                 set.unions.add(uData);
                             }
@@ -938,8 +903,9 @@ public final class DefinitionSet implements ExporterAny {
                                 set.dependencies.putIfAbsent(depSet.defSetId, depSet);
                             }
                             set.finished = true;
+                            return set;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(set, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.some(set), deps, fin));
                     });
         }
     };

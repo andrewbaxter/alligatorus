@@ -603,7 +603,7 @@ public final class ConstEval {
             }
             case Expr.Foreach e -> {
                 int baseLevelCount = xx.scope.levelCount();
-                var level = xx.scope.pushLabeled(Opt.<String>none());
+                var level = xx.scope.pushMergeLabeled();
                 EResult<EvalRes> _foreachRes;
                 foreachCompute:
                 {
@@ -698,7 +698,7 @@ public final class ConstEval {
             }
             case Expr.Match e -> {
                 int baseLevelCount = xx.scope.levelCount();
-                var level = xx.scope.pushLabeled(Opt.<String>none());
+                var level = xx.scope.pushMergeLabeled();
                 EResult<EvalRes> _matchRes;
                 matchCompute:
                 {
@@ -927,7 +927,7 @@ public final class ConstEval {
             }
             case Expr.If e -> {
                 int baseLevelCount = xx.scope.levelCount();
-                var level = xx.scope.pushLabeled(Opt.<String>none());
+                var level = xx.scope.pushMergeLabeled();
                 EResult<EvalRes> _ifRes;
                 ifCompute:
                 {
@@ -1315,7 +1315,7 @@ public final class ConstEval {
                                         && lb.label.optUnwrap().equals(e.label().optUnwrap())) {
                                     target = lb;
                                 }
-                            } else {
+                            } else if (lb.isBlock) {
                                 target = lb;
                             }
                         }
@@ -1332,6 +1332,23 @@ public final class ConstEval {
                                             + e.label().optUnwrap() + "'"
                                     : "return: no enclosing control scope");
                     yield EResult.errs(erb.errors());
+                }
+                if (target.landing.resultType.optIsNone()) {
+                    target.landing.resultType = Opt.some(someVal.value().valueType());
+                } else {
+                    var convOpt = erb.mustEr(Eval.typecheckConvert(
+                            xx,
+                            loc,
+                            target.landing.resultType.optUnwrap(),
+                            new CodeValue(valCv.code(), EvalOutcome.ofValue(someVal.value()))));
+                    if (convOpt.optIsNone()) yield EResult.errs(erb.errors());
+                    var converted = convOpt.optUnwrap();
+                    switch (converted.outcome()) {
+                        case EvalOutcome.HasValue hv -> someVal = hv;
+                        case EvalOutcome.NoValue nv -> throw new AssertionError("return conversion lost value");
+                        case EvalOutcome.ControlEnded ce -> throw new AssertionError("return conversion lost value");
+                    }
+                    valCv = converted;
                 }
                 boolean stackCarried = someVal.value() instanceof ValueDynamic;
                 Opt<Type> carryType =
@@ -1387,7 +1404,8 @@ public final class ConstEval {
                     yield EResult.errs(erb.errors());
                 }
                 var dest = _destRes.requireValue("constEvalReturn dest");
-                target.arrivals.add(new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
+                target.landing.arrivals.add(
+                        new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
                 var jumpOpt = erb.mustEr(xx.target.targetJump(loc, dest));
                 if (jumpOpt.optIsNone()) yield EResult.errs(erb.errors());
                 var cv = new CodeValue(Code.concat(loc, valCv.code(), jumpOpt.optUnwrap()), EvalOutcome.CONTROL_ENDED);
@@ -1459,7 +1477,17 @@ public final class ConstEval {
         }
         xx.scope.levels.remove(xx.scope.levels.size() - 1);
         var innerCv = inner.cv();
-        var arrivals = level.arrivals;
+        var arrivals = level.landing.arrivals;
+        if (!arrivals.isEmpty()
+                && level.landing.resultType.optIsSome()
+                && innerCv.value().optIsSome()) {
+            var fallConvRes = Eval.typecheckConvert(xx, loc, level.landing.resultType.optUnwrap(), innerCv);
+            if (fallConvRes.hasErrors()) {
+                fallConvRes.drainInto(erb.errors());
+                return EResult.errs(erb.errors());
+            }
+            innerCv = fallConvRes.requireValue("labeledConsume fallthrough convert");
+        }
         var blocks = level.scopeLevelEmission().blocks;
         boolean fallsThrough =
                 switch (innerCv.outcome()) {
@@ -1467,6 +1495,13 @@ public final class ConstEval {
                     case EvalOutcome.NoValue nv -> true;
                     case EvalOutcome.HasValue hv -> true;
                 };
+        if (!arrivals.isEmpty()
+                && fallsThrough
+                && arrivals.get(0).stackCarried()
+                && innerCv.value().optIsNone()) {
+            erb.errPush("block: return sites yield a value but the end of the block is reachable without one");
+            return EResult.errs(erb.errors());
+        }
         if (!arrivals.isEmpty()) {
             var arrivalScopes = new TList<Scope>(arrivals.size());
             for (var a : arrivals) {

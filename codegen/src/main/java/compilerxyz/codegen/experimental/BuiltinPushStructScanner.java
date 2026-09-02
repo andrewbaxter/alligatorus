@@ -34,6 +34,8 @@ public final class BuiltinPushStructScanner {
 
     private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
             new Pair<>("java.lang.String", TYPE_STRING_DYNAMIC),
+            new Pair<>(
+                    "compilerxyz.main.eval.Code", ClassName.get("compilerxyz.main.eval.value.code", "TypeCodeDynamic")),
             new Pair<>("java.lang.Boolean", TYPE_BOOL_DYNAMIC),
             new Pair<>("compilerxyz.main.eval.ConstKey", TYPE_CONSTKEY_DYNAMIC),
             new Pair<>("compilerxyz.main.eval.expr.StagedExprCell", TYPE_EXPR));

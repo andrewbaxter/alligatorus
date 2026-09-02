@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.list;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -21,7 +20,6 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectInitialBind;
@@ -31,16 +29,15 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.List;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6120L)
+@BuiltinFull(uniqueId = 6120L)
 public record TypeListPushDynamic(Type elementType)
-        implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind, ExporterAny {
+        implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -119,16 +116,6 @@ public record TypeListPushDynamic(Type elementType)
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -158,7 +145,7 @@ public record TypeListPushDynamic(Type elementType)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

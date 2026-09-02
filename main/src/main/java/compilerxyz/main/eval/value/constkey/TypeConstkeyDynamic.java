@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.constkey;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -23,7 +22,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
@@ -39,7 +37,6 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
@@ -55,8 +52,7 @@ public record TypeConstkeyDynamic()
                 AspectDropDynamicLight,
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -138,16 +134,6 @@ public record TypeConstkeyDynamic()
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(new TypeConstkeyDynamic());
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeConstkeyDynamic()));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -174,7 +160,7 @@ public record TypeConstkeyDynamic()
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

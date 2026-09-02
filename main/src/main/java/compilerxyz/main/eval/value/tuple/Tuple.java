@@ -7,7 +7,7 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactJson;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -37,7 +37,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -76,7 +75,7 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -86,7 +85,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6147L)
+@BuiltinFull(uniqueId = 6147L)
 public final class Tuple
         implements Type,
                 Value,
@@ -98,8 +97,7 @@ public final class Tuple
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
                 AspectStackValueDynamic,
-                AspectTuple,
-                ExporterAny {
+                AspectTuple {
 
     public final Opt<TupleBaseDynamic> base;
     public final TList<TupleElement> elements;
@@ -429,7 +427,8 @@ public final class Tuple
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         return EResult.ok(new CodeValue(
-                Code.of(JavaBytecodeUtils.literalNull(loc)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+                Code.concat(loc, cv.code(), Code.of(JavaBytecodeUtils.literalNull(loc))),
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
     }
 
     @Override
@@ -573,7 +572,7 @@ public final class Tuple
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof Tuple tuple)) {
                 return EResult.err(
                         loc, "Tuple::exporterRootDelegateSelfExport: expected Tuple self, got " + self.getClass());
@@ -610,10 +609,10 @@ public final class Tuple
                         }
                         default -> throw new IllegalStateException();
                     }
-                    var artRes = elemType.artifactableExportArtifact(xx, loc);
+                    var artRes = Artifactable.exportArtifact(xx, loc, elemType);
                     artRes.drainInto(errors);
-                    if (artRes.valueOrNull() != null) {
-                        elementArtifacts.add(artRes.requireValue("Tuple::exporterExport element artifact"));
+                    if (artRes.valueOrNull().optIsSome()) {
+                        elementArtifacts.add(artRes.valueOrNull().optUnwrap());
                     } else {
                         elementArtifacts.add(new Artifact.Body(
                                 new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root())));
@@ -630,13 +629,12 @@ public final class Tuple
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Tuple requires an artifact id to deserialize");
             }
             var idValue = id.optUnwrap();
-            var holder = new Tuple[] {null};
             var elementArtifactsHolder = new TList<TList<Artifact>>();
             return ArtifactSupport.implImportIndependentArtifact(
                     xx,
@@ -675,25 +673,6 @@ public final class Tuple
                     },
                     (elementArts) -> {
                         elementArtifactsHolder.add(elementArts);
-                        var holderProxy = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                var t = holder[0];
-                                if (t == null) {
-                                    throw new IllegalStateException("Tuple holder not populated");
-                                }
-                                return EResult.ok(t);
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                var t = holder[0];
-                                if (t == null) {
-                                    throw new IllegalStateException("Tuple holder not populated");
-                                }
-                                return EResult.ok(t);
-                            }
-                        };
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var slots = new TList<TupleElement>(elementArts.size());
                             for (var ea : elementArts) {
@@ -705,10 +684,10 @@ public final class Tuple
                             }
                             var out = new Tuple(Opt.none(), slots);
                             out.artifactIdCell.set(idValue);
-                            holder[0] = out;
+                            return out;
                         };
                         return new Result.Ok<>(
-                                new ArtifactSupport.ImportIndependentResult(holderProxy, elementArts, fin));
+                                new ArtifactSupport.ImportIndependentResult(Opt.none(), elementArts, fin));
                     });
         }
     };
@@ -1045,16 +1024,6 @@ public final class Tuple
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
         if (key.value().optIsNone()) {
             return EResult.err(loc, "Tuple::field: key has no compile-time value");
@@ -1114,8 +1083,8 @@ public final class Tuple
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Value.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 
     @Override

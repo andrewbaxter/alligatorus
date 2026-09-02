@@ -54,7 +54,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Stream;
 import javax.lang.model.element.Modifier;
 
@@ -156,6 +155,9 @@ public final class GenMain {
         }
 
         TMap<ClassName, CodeBlock> scannedLeaves = _rScanRoot1;
+        scannedLeaves.put(
+                ClassName.get("compilerxyz.main.eval", "Code"),
+                CodeBlock.of("new $T()", ClassName.get("compilerxyz.main.eval.value.code", "TypeCodeDynamic")));
         {
             var cls = TypeSpec.classBuilder("GenDynamicTypes").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
             cls.addMethod(MethodSpec.constructorBuilder()
@@ -1387,8 +1389,6 @@ public final class GenMain {
 
             TList<BuiltinPathScanner.Entry> scannedPathEntries = pathEntries;
 
-            Set<String> builtinInterfaceHostNames = hostNames;
-
             BuiltinTreeGen.NodeSpec _rCanonicalSpec;
             _canonicalSpec:
             {
@@ -1397,10 +1397,7 @@ public final class GenMain {
                     BuiltinTreeGen.LeafSpec spec =
                             switch (entry) {
                                 case BuiltinPathScanner.TypeLeaf tl -> {
-                                    var host = tl.typeClass().canonicalName();
-                                    var wrapper = builtinInterfaceHostNames.contains(host)
-                                            ? BuiltinTreeGen.TOD_SELF_TYPE_EXPR
-                                            : BuiltinTreeGen.TYPE_WRAPPER_EXPR;
+                                    var wrapper = BuiltinTreeGen.TYPE_OF_TYPES_EXPR;
                                     yield BuiltinTreeGen.LeafSpec.of(
                                             DynamicTypes.leaf(tl.typeClass(), scannedLeaves), wrapper);
                                 }
@@ -1443,7 +1440,7 @@ public final class GenMain {
                                             fl.ownerInternalName(),
                                             fl.methodName(),
                                             fl.needsEvalContext());
-                                    yield new BuiltinTreeGen.LeafSpec(innerExpr, BuiltinTreeGen.TYPE_WRAPPER_EXPR);
+                                    yield new BuiltinTreeGen.LeafSpec(innerExpr, BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                                 }
                             };
                     if (pathToLeaf.put(entry.entryPath(), spec) != null) {
@@ -1455,28 +1452,28 @@ public final class GenMain {
                         "eval.aspect_drop_dynamic_light",
                         CodeBlock.of(
                                 "$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
-                        BuiltinTreeGen.TOD_SELF_TYPE_EXPR);
+                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
                         "eval.aspect_initial_bind",
                         CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
-                        BuiltinTreeGen.TOD_SELF_TYPE_EXPR);
+                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
                         "eval.aspect_lift",
                         CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectLift")),
-                        BuiltinTreeGen.TOD_SELF_TYPE_EXPR);
+                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
                         "eval.aspect_bind_dynamic",
                         CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectBindDynamic")),
-                        BuiltinTreeGen.TOD_SELF_TYPE_EXPR);
+                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
                         "eval.aspect_consume_dynamic",
                         CodeBlock.of(
                                 "$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectConsumeDynamic")),
-                        BuiltinTreeGen.TOD_SELF_TYPE_EXPR);
+                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
                         "eval.aspect_string_dynamic",
@@ -1521,6 +1518,11 @@ public final class GenMain {
                         pathToLeaf,
                         "eval.aspect_operator_add_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorAdd")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_lt_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorLt")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

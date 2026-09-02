@@ -1,8 +1,7 @@
 package compilerxyz.main.eval.value.list;
 
-import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
-import compilerxyz.main.artifact.ExporterAny;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -61,8 +60,7 @@ import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -70,7 +68,7 @@ import compilerxyz.prelude.util.TMap;
 import java.util.Iterator;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6117L)
+@BuiltinFull(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type>
         implements ListDynamic,
                 AspectFieldUseDynamic,
@@ -84,8 +82,7 @@ public final class TypeListBoxedDynamic<T extends Type>
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
                 AspectIterable,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     public final T elementType;
     public final ArtifactIdHolder artifactIdCell = new ArtifactIdHolder();
@@ -302,16 +299,6 @@ public final class TypeListBoxedDynamic<T extends Type>
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -384,7 +371,7 @@ public final class TypeListBoxedDynamic<T extends Type>
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return aspectDynamicConstConstForm().artifactableExporter(xx, loc);
     }
 }

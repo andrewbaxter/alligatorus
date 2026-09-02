@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.argrecord;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -15,7 +15,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.AspectField;
@@ -23,15 +22,14 @@ import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.stream.Collectors;
 
-@BuiltinLight(uniqueId = 6100L)
-public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
-        implements Type, Value, AspectField, ExporterAny {
+@BuiltinFull(uniqueId = 6100L)
+public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields) implements Type, Value, AspectField {
 
     @Override
     public String typeDesc() {
@@ -78,16 +76,6 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     @Override
     public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
         return Opt.none();
-    }
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
     }
 
     @Override
@@ -157,7 +145,7 @@ public record ArgumentRecord(TOrderedMap<ConstKey, ArgumentEntry> fields)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Value.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 }

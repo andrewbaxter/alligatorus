@@ -1,7 +1,13 @@
 package compilerxyz.main.eval.value.source_interface;
 
 import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactBody;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -24,6 +30,7 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
+import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
@@ -32,6 +39,7 @@ import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
@@ -43,24 +51,33 @@ import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.main.gen.codec.ArtifactDataSourceInterfaceTypeCodec;
+import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.function.Function;
 
-@BuiltinLight(uniqueId = 6196L)
+@BuiltinFull(uniqueId = 6196L)
 public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type_)
         implements Type,
+                AspectArtifact,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectField,
                 AspectInitialBind,
                 AspectLift,
-                AspectType,
-                ExporterAny {
+                AspectType {
 
     public static final TypeTypeSourceInterfaceDynamic GENERIC = new TypeTypeSourceInterfaceDynamic(Opt.none());
+
+    @Override
+    public ArtifactExporter aspectArtifactExporter() {
+        return ExporterRoot.OBJECT_CONST;
+    }
 
     private TypeSourceInterfaceDynamic require(String op) {
         if (type_.optIsSome()) return type_.optUnwrap();
@@ -84,6 +101,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                 || key.equals(GenAspectDropDynamicLight.AspectId)
                 || key.equals(GenAspectField.AspectId)
                 || key.equals(GenAspectInitialBind.AspectId)
+                || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
         }
@@ -239,16 +257,6 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -276,7 +284,43 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.SOURCE_INTERFACE_TYPE_DYNAMIC);
     }
+
+    public static final ExporterRootDelegate TYPE_DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var tt = MustCast.mustCast(TypeTypeSourceInterfaceDynamic.class, self);
+            Opt<Artifact> ifaceArt = Opt.none();
+            if (tt.type_.optIsSome()) {
+                var iRes = Artifactable.exportArtifact(xx, loc, tt.type_.optUnwrap());
+                if (iRes.hasErrors()) return iRes.reerr();
+                ifaceArt = Opt.some(iRes.requireValue("TypeTypeSourceInterfaceDynamic::export interface"));
+            }
+            var body = new ArtifactDataSourceInterfaceType(ifaceArt);
+            return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataSourceInterfaceTypeCodec.toValue(body))));
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            ArtifactDataSourceInterfaceType body;
+            try {
+                body = ArtifactDataSourceInterfaceTypeCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(
+                        loc,
+                        "TypeTypeSourceInterfaceDynamic data: failed to parse ArtifactDataSourceInterfaceType: "
+                                + e.getMessage());
+            }
+            if (body.interface_().optIsNone()) return EResult.ok(GENERIC);
+            var iRes = ArtifactSupport.importArtifact(xx, loc, body.interface_().optUnwrap());
+            if (iRes.hasErrors()) return iRes.reerr();
+            return EResult.ok(new TypeTypeSourceInterfaceDynamic(Opt.some(MustCast.mustCast(
+                    TypeSourceInterfaceDynamic.class,
+                    iRes.requireValue("TypeTypeSourceInterfaceDynamic::import interface")))));
+        }
+    };
 }

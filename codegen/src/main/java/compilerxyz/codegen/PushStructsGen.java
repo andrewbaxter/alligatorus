@@ -67,6 +67,7 @@ public final class PushStructsGen {
 
     public static final ISet<String> HANDWRITTEN_STRUCTS = ISet.of(
             "DefinitionSetBuilder",
+            "IfBranch",
             "SourceFuncResult",
             "SourceInterfaceMethodResult",
             "SourceInterfaceResult",

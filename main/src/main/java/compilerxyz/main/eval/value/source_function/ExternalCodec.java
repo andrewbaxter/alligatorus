@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.value.source_function;
 
 import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
@@ -44,7 +45,7 @@ public final class ExternalCodec {
                 var exprArt = exprArtRes.requireValue("ExternalCodec::export StagedExpr artifact");
                 out.add(new ArtifactExternal.StagedExpr(exprArt));
             } else if (host instanceof StageLiftCell liftCell) {
-                var srcTypeArtRes = liftCell.sourceType().artifactableExportArtifact(xx, loc);
+                var srcTypeArtRes = Artifactable.exportArtifact(xx, loc, liftCell.sourceType());
                 if (srcTypeArtRes.hasErrors()) {
                     srcTypeArtRes.drainInto(errors);
                     return EResult.errs(errors);
@@ -52,7 +53,7 @@ public final class ExternalCodec {
                 var srcTypeArt = srcTypeArtRes.requireValue("ExternalCodec::export StageLift source type artifact");
                 out.add(new ArtifactExternal.StageLift(srcTypeArt));
             } else if (host instanceof Type wrappedType) {
-                var typeArtRes = wrappedType.artifactableExportArtifact(xx, loc);
+                var typeArtRes = Artifactable.exportArtifact(xx, loc, wrappedType);
                 if (typeArtRes.hasErrors()) {
                     typeArtRes.drainInto(errors);
                     return EResult.errs(errors);

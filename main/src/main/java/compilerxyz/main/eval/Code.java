@@ -3,11 +3,9 @@ package compilerxyz.main.eval;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.prelude.annotations.BuiltinFull;
-import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 
 @BuiltinFull(uniqueId = 6016L)
-@BuiltinPath("types.code")
 public sealed interface Code permits Code.None, Code.Target {
 
     record None(QExprId loc) implements Code {

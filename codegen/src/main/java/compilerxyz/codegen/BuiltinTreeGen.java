@@ -33,13 +33,8 @@ public final class BuiltinTreeGen {
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecord");
     private static final ClassName ARGUMENT_RECORD_BINDING =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecordBinding");
-    private static final ClassName TYPE_OBJECT_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
-    private static final ClassName TYPE_OBJECT_CONST_CLS =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectConst");
-    public static final CodeBlock TOD_SELF_TYPE_EXPR = CodeBlock.of("$T.constType()", TYPE_OBJECT_DYNAMIC);
-    public static final CodeBlock TYPE_WRAPPER_EXPR = CodeBlock.of(
-            "$T.metaOf($T.class, $S)", TYPE_OBJECT_CONST_CLS, ClassName.get("compilerxyz.main.eval", "Type"), "type");
+    public static final CodeBlock TYPE_OF_TYPES_EXPR = CodeBlock.of(
+            "$T.plainTypeType()", ClassName.get("compilerxyz.main.eval.value.object_", "ValueObjectConst"));
     private static final ClassName TYPE_UNIQUE_CONST =
             ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueConst");
     public static final CodeBlock TUC_TYPE_EXPR = CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);
@@ -178,6 +173,8 @@ public final class BuiltinTreeGen {
                             "aspect_bind_dynamic_id",
                             "aspect_set_id",
                             "aspect_operator_add_id",
+                            "aspect_operator_lt_id",
+                            "operator_lt",
                             "aspect_drop_dynamic_light_id",
                             "aspect_stack_value_dynamic_id",
                             "aspect_field_use_dynamic",

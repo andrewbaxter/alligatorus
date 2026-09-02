@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.source_union_new;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -23,7 +23,6 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectFunction;
@@ -42,7 +41,7 @@ import org.objectweb.asm.Opcodes;
 
 @BuiltinLight(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
-        implements Type, AspectBind, AspectFunction, ExporterAny {
+        implements Type, AspectBind, AspectFunction {
 
     public static Type dynamicType() {
         return GenType.dynamicType();
@@ -121,13 +120,8 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionNewConst(type_(), variantIndex()), this));
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.SOURCE_UNION_NEW_CONST);
     }
 
     private record SourceUnionNewConstBinding(Value value) implements Binding {
@@ -197,10 +191,5 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
     }
 }

@@ -12,9 +12,12 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.ArgSignatureSlot;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecord;
@@ -24,6 +27,7 @@ import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
@@ -185,6 +189,18 @@ public final class SourceDataMethodData {
                 return EResult.err(
                         rootLoc,
                         "Data type '" + dtName + "' method '" + name + "' body produced no compile-time value");
+            }
+            if (retT.optIsSome()) {
+                if (GenAspectNull.getMaybe(methodXx, retT.optUnwrap()).optIsNone()) {
+                    return EResult.err(
+                            rootLoc,
+                            "Data type '" + dtName + "' method '" + name
+                                    + "' body produces no value but declares a non-null return type");
+                }
+                var padded = new JavaBytecodeSequence();
+                padded.add(bodyCode);
+                padded.add(JavaBytecodeUtils.literalNull(rootLoc));
+                bodyCode = new CodeDynamic(new CodeLoc.Some(rootLoc), padded);
             }
         }
 

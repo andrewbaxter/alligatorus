@@ -1,7 +1,7 @@
 package compilerxyz.main.eval.value.argrecord;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -10,18 +10,16 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.stream.Collectors;
 
-@BuiltinLight(uniqueId = 6101L)
-public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
-        implements Type, Value, Aspect, ExporterAny {
+@BuiltinFull(uniqueId = 6101L)
+public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) implements Type, Value, Aspect {
 
     @Override
     public String typeDesc() {
@@ -39,16 +37,6 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
             return Opt.some(this);
         }
         return Opt.none();
-    }
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
     }
 
     @Override
@@ -87,7 +75,7 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Value.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 }

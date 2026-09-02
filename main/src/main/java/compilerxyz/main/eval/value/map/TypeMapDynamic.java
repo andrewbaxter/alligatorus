@@ -1,8 +1,7 @@
 package compilerxyz.main.eval.value.map;
 
-import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -59,8 +58,7 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
@@ -72,7 +70,7 @@ import java.util.Map;
 import java.util.Set;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6122L)
+@BuiltinFull(uniqueId = 6122L)
 public final class TypeMapDynamic<K extends Type, V extends Type>
         implements Type,
                 AspectDynamicConst,
@@ -85,8 +83,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
                 AspectIterable,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     public final K keyType;
     public final V valueType;
@@ -434,16 +431,6 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -533,7 +520,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return aspectDynamicConstConstForm().artifactableExporter(xx, loc);
     }
 }

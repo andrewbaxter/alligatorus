@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -25,6 +25,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.CompositeSlotSort;
@@ -65,6 +66,7 @@ import compilerxyz.main.gen.GenAspectFieldUseConst;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
@@ -75,7 +77,7 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -86,7 +88,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6134L)
+@BuiltinFull(uniqueId = 6134L)
 public final class Record
         implements Type,
                 Value,
@@ -99,8 +101,7 @@ public final class Record
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
                 AspectRecord,
-                AspectType,
-                ExporterAny {
+                AspectType {
 
     public final Opt<RecordBaseDynamic> base;
     public final TOrderedMap<ConstKey, RecordField> fields;
@@ -424,6 +425,9 @@ public final class Record
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
         }
+        if (key.equals(GenAspectPostDeserialize.AspectId)) {
+            return Opt.some(PostDeserializeIdentity.INSTANCE);
+        }
         if (key.equals(GenAspectLift.AspectId)) {
             var entryLifts = new TList<RecordLift.Entry>(fields.size());
             for (var entry : fields.entrySet()) {
@@ -433,7 +437,21 @@ public final class Record
                 switch (f) {
                     case RecordField.Dynamic df -> d = df;
                     case RecordField.EvalRes er -> {
-                        return Opt.none();
+                        var inner = er.result();
+                        if (inner.hasErrors() || inner.valueOrNull().optIsNone()) {
+                            return Opt.none();
+                        }
+                        var cv = inner.requireValue("Record::typeAspect lift field");
+                        if (cv.value().optIsNone()) {
+                            return Opt.none();
+                        }
+                        var fv = cv.value().optUnwrap();
+                        if (!(fv instanceof ValueDynamic)) {
+                            entryLifts.add(
+                                    new RecordLift.Entry(k, (xx2, loc2, host) -> EResult.ok(fv), fv.valueType()));
+                            continue;
+                        }
+                        d = new RecordField.Dynamic(fv.valueType());
                     }
                 }
                 var entryLiftOpt = GenAspectLift.getMaybe(xx, d.type());
@@ -507,7 +525,7 @@ public final class Record
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof Record record)) {
                 return EResult.err(
                         loc, "Record::exporterRootDelegateSelfExport: expected Record, got " + self.getClass());
@@ -515,44 +533,46 @@ public final class Record
             var cell = record.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var fieldArts = new TOrderedMap<ConstKey, Artifact>();
+                var fieldArts = new TOrderedMap<ConstKey, ArtifactRecordField>();
                 for (var entry : record.fields.entrySet()) {
                     var key = entry.getKey();
                     var field = entry.getValue();
-                    Type fieldType;
                     switch (field) {
-                        case RecordField.Dynamic d -> fieldType = d.type();
+                        case RecordField.Dynamic d -> {
+                            var artRes = Artifactable.exportArtifact(xx, loc, d.type());
+                            artRes.drainInto(errors);
+                            fieldArts.put(
+                                    key,
+                                    new ArtifactRecordField(
+                                            false, artRes.valueOrNull().optUnwrapOr(nullArtifact())));
+                        }
                         case RecordField.EvalRes r -> {
                             var inner = r.result();
                             if (inner.hasErrors()) {
                                 inner.drainInto(errors);
                             }
-                            if (inner.valueOrNull() == null) {
+                            if (inner.valueOrNull().optIsNone()
+                                    || inner.requireValue("Record::exporterExport field")
+                                            .value()
+                                            .optIsNone()) {
                                 errors.add(new ExprErr(
                                         loc,
                                         TList.of(new ExprSubErr.Opaque("Record field has no value to serialize"))));
-                                fieldArts.put(key, nullArtifact());
+                                fieldArts.put(key, new ArtifactRecordField(true, nullArtifact()));
                                 continue;
                             }
-                            var cv = inner.requireValue("Record::exporterExport field");
-                            if (cv.value().optIsNone()) {
-                                errors.add(new ExprErr(
-                                        loc,
-                                        TList.of(new ExprSubErr.Opaque("Record field has no value to serialize"))));
-                                fieldArts.put(key, nullArtifact());
-                                continue;
-                            }
-                            fieldType = cv.value().optUnwrap().valueType();
+                            var fieldValue = inner.requireValue("Record::exporterExport field")
+                                    .value()
+                                    .optUnwrap();
+                            var artRes = Artifactable.exportArtifact(xx, loc, fieldValue);
+                            artRes.drainInto(errors);
+                            fieldArts.put(
+                                    key,
+                                    new ArtifactRecordField(
+                                            true, artRes.valueOrNull().optUnwrapOr(nullArtifact())));
                         }
                         default -> throw new IllegalStateException();
                     }
-                    var artRes = fieldType.artifactableExportArtifact(xx, loc);
-                    artRes.drainInto(errors);
-                    fieldArts.put(
-                            key,
-                            artRes.valueOrNull() != null
-                                    ? artRes.requireValue("Record::exporterExport field artifact")
-                                    : nullArtifact());
                 }
                 var body = new ArtifactRecordType(fieldArts);
                 return makeBody.apply(ArtifactRecordTypeCodec.toValue(body));
@@ -562,7 +582,7 @@ public final class Record
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "Record requires an artifact id to deserialize");
@@ -584,39 +604,33 @@ public final class Record
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var holder = new ExporterAny[] {null};
-                        ExporterAny stub = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("Record import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsType();
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("Record import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsValue();
-                            }
-                        };
                         var deps = new TList<Artifact>();
-                        for (var entry : body.fields().entrySet()) deps.add(entry.getValue());
+                        for (var entry : body.fields().entrySet())
+                            deps.add(entry.getValue().artifact());
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var fields = new TOrderedMap<ConstKey, RecordField>();
                             for (var entry : body.fields().entrySet()) {
-                                var tRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
-                                        xx2, loc2, entry.getValue());
-                                var t = tRes.requireValue("Record::finalizer field type");
-                                fields.put(entry.getKey(), new RecordField.Dynamic(t));
+                                if (entry.getValue().isValue()) {
+                                    var eRes = ArtifactSupport.independentFinalizeImportArtifact(
+                                            xx2, loc2, entry.getValue().artifact());
+                                    var ea = eRes.requireValue("Record::finalizer field exporter");
+                                    var v = ArtifactSupport.importedAsValue(ea);
+                                    fields.put(
+                                            entry.getKey(),
+                                            new RecordField.EvalRes(EResult.ok(
+                                                    new CodeValue(Code.none(loc2), EvalOutcome.ofValue(v)))));
+                                } else {
+                                    var tRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                            xx2, loc2, entry.getValue().artifact());
+                                    var t = tRes.requireValue("Record::finalizer field type");
+                                    fields.put(entry.getKey(), new RecordField.Dynamic(t));
+                                }
                             }
                             var out = new Record(Opt.none(), fields);
                             out.artifactIdCell.set(idValue);
-                            holder[0] = out;
+                            return out;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
@@ -1103,16 +1117,6 @@ public final class Record
         return new BindingRecord(scopeFields, Opt.some(dynamicKey));
     }
 
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
     public static final class RecordLift implements AspectLift {
         public record Entry(ConstKey key, AspectLift lift, Type type) {}
 
@@ -1341,8 +1345,8 @@ public final class Record
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Value.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return Artifactable.exporterOfType(xx, loc, valueType());
     }
 
     @Override

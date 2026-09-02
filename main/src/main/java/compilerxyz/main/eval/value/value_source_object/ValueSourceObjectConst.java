@@ -4,7 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -15,12 +15,12 @@ import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
-import compilerxyz.main.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ValueSourceObjectConstArtifactValueSourceObjectCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.SafeJsonSerializable;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.lang.reflect.Constructor;
@@ -35,7 +35,7 @@ public final class ValueSourceObjectConst {
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof ValueObjectConst inst)) {
                 return EResult.err(
                         loc,
@@ -49,7 +49,6 @@ public final class ValueSourceObjectConst {
                                 + inst.type().getClass());
             }
             var tsod = tsoc.dynamic();
-            var instType = new TypeTypeSourceObjectConst(tsod);
             Object underlyingHost;
             try {
                 var field = inst.data().getClass().getField(SourceObjectEmitter.DATA_INSTANCE_FIELD);
@@ -76,13 +75,13 @@ public final class ValueSourceObjectConst {
             Value underlying = underlyingLiftRes2.requireValue(
                     "ValueSourceObjectConst::exporterRootDelegateSelfExport underlying lift");
             var errors = new TList<ExprErr>();
-            var typeArtRes = instType.aspectArtifactExporter().artifactExporterExport(xx, loc, instType);
+            var typeArtRes = Artifactable.exportArtifact(xx, loc, tsod);
             if (typeArtRes.hasErrors()) {
                 typeArtRes.drainInto(errors);
                 return EResult.errs(errors);
             }
             var typeArt = typeArtRes.requireValue("ValueSourceObjectConst::exporterExport type artifact");
-            var underArtRes = underlying.artifactableExportArtifact(xx, loc);
+            var underArtRes = Artifactable.exportArtifact(xx, loc, underlying);
             if (underArtRes.hasErrors()) {
                 underArtRes.drainInto(errors);
                 return EResult.errs(errors);
@@ -96,7 +95,7 @@ public final class ValueSourceObjectConst {
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             ArtifactValueSourceObject body;
             try {
@@ -115,29 +114,15 @@ public final class ValueSourceObjectConst {
                 return EResult.errs(errors);
             }
             var typeAny = typeRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData type any");
-            TypeSourceObjectDynamic dt;
-            if (typeAny instanceof TypeTypeSourceObjectConst tc) {
-                dt = tc.type_();
-            } else if (typeAny instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst imported) {
-                dt = imported.type_();
-            } else {
-                return EResult.err(
-                        loc,
-                        "ValueSourceObjectConst::exporterRootDelegateSelfFromArtifactData: type artifact resolved to "
-                                + typeAny.getClass());
-            }
+            var dt = MustCast.mustCast(TypeSourceObjectDynamic.class, typeAny);
             var underRes = ArtifactSupport.importArtifact(xx, loc, body.underlying());
             if (underRes.hasErrors()) {
                 underRes.drainInto(errors);
                 return EResult.errs(errors);
             }
             var underAny = underRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData underlying any");
-            var underVal = underAny.exporterAnyAsValue();
-            if (underVal.hasErrors()) {
-                underVal.drainInto(errors);
-                return EResult.errs(errors);
-            }
-            var underlying = underVal.requireValue("ValueSourceObjectConst::exporterFromArtifactData underlying value");
+            var underVal = ArtifactSupport.importedAsValue(underAny);
+            var underlying = underVal;
             var installRes = ImportInstall.installDefSetToDynamic(xx, loc, dt.set);
             if (installRes.hasErrors()) {
                 installRes.drainInto(errors);
@@ -188,7 +173,7 @@ public final class ValueSourceObjectConst {
                         loc,
                         "ValueSourceObjectConst::finalizer: cannot instantiate " + binaryName + ": " + e.getMessage());
             }
-            ExporterAny out = new ValueObjectConst(new TypeTypeSourceObjectConst(dt), instance);
+            Artifactable out = new ValueObjectConst(new TypeSourceObjectConst(dt), instance);
             if (errors.isEmpty()) return EResult.ok(out);
             return EResult.mixed(out, errors);
         }

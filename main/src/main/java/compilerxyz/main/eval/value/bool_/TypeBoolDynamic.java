@@ -4,7 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -24,9 +24,9 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectBoolDynamic;
@@ -34,11 +34,11 @@ import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicBoxed;
 import compilerxyz.main.gen.AspectElementUseDynamicBind;
+import compilerxyz.main.gen.AspectFieldUseDynamic;
 import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectBoolConst;
@@ -47,6 +47,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -61,16 +62,15 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @BuiltinPath("types.bool")
-@BuiltinLight(uniqueId = 6103L)
+@BuiltinFull(uniqueId = 6103L)
 public record TypeBoolDynamic()
         implements Type,
-                AspectArtifact,
                 AspectBind,
                 AspectBindDynamic,
                 AspectBoolDynamic,
@@ -78,10 +78,10 @@ public record TypeBoolDynamic()
                 AspectDropDynamicLight,
                 AspectDynamicBoxed,
                 AspectElementUseDynamicBind,
+                AspectFieldUseDynamic,
                 AspectInitialBind,
                 AspectLift,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     @Override
     public String typeDesc() {
@@ -112,8 +112,8 @@ public record TypeBoolDynamic()
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectElementUseDynamicBind.AspectId)
-                || key.equals(GenAspectLift.AspectId)
-                || key.equals(GenAspectArtifact.AspectId)) {
+                || key.equals(GenAspectFieldUseDynamic.AspectId)
+                || key.equals(GenAspectLift.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -123,8 +123,8 @@ public record TypeBoolDynamic()
     }
 
     @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.BOOL_DYNAMIC;
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.BOOL_DYNAMIC);
     }
 
     @Override
@@ -135,6 +135,13 @@ public record TypeBoolDynamic()
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.bindDynamicDefault(loc, cv);
+    }
+
+    @Override
+    public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
+            ExprContext xx, QExprId loc, ValueDynamicSource source) {
+        return EResult.ok(new CodeValue(
+                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -165,16 +172,6 @@ public record TypeBoolDynamic()
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
         return DynUtil.dynamicStackToValue(xx, value, this);
-    }
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
     }
 
     @Override
@@ -224,7 +221,7 @@ public record TypeBoolDynamic()
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeBoolDynamic)) {
                 return EResult.err(
                         loc,
@@ -234,7 +231,7 @@ public record TypeBoolDynamic()
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueNull n -> EResult.ok(new TypeBoolDynamic());
@@ -270,10 +267,5 @@ public record TypeBoolDynamic()
     @Override
     public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
     }
 }

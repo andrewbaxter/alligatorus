@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.ArtifactExternal;
@@ -31,7 +31,6 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.function.TypeFunctionDynamic;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
@@ -72,8 +71,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                 AspectDropDynamicLight,
                 AspectInitialBind,
                 AspectFunction,
-                AspectType,
-                ExporterAny {
+                AspectType {
 
     @Override
     public BindingDynamicBinding aspectInitialBindInitialBind(BindingId dynamicKey) {
@@ -118,7 +116,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeSourceFunctionConst fc)) {
                 return EResult.err(
                         loc,
@@ -166,31 +164,23 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
             var errors = new TList<ExprErr>();
             var artifact =
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, data.artifactIdCell, () -> {
-                        var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull() != null
-                                ? defSetArtRes.requireValue("TypeSourceFunctionConst::exporterExport defSet")
-                                : nullArtifact();
-                        var argArtRes = argType.artifactableExportArtifact(xx, loc);
+                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var argArtRes = Artifactable.exportArtifact(xx, loc, argType);
                         argArtRes.drainInto(errors);
-                        var argArt = argArtRes.valueOrNull() != null
-                                ? argArtRes.requireValue("TypeSourceFunctionConst::exporterExport arg")
-                                : nullArtifact();
+                        var argArt = argArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                         Artifact retArt;
                         if (retType.optIsSome()) {
-                            var retArtRes = retType.optUnwrap().artifactableExportArtifact(xx, loc);
+                            var retArtRes = Artifactable.exportArtifact(xx, loc, retType.optUnwrap());
                             retArtRes.drainInto(errors);
-                            retArt = retArtRes.valueOrNull() != null
-                                    ? retArtRes.requireValue("TypeSourceFunctionConst::exporterExport ret")
-                                    : nullArtifact();
+                            retArt = retArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                         } else {
                             retArt = nullArtifact();
                         }
                         var externalsRes = ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
                         externalsRes.drainInto(errors);
-                        var externals = externalsRes.valueOrNull() != null
-                                ? externalsRes.requireValue("TypeSourceFunctionConst::exporterExport externals")
-                                : TList.<ArtifactExternal>of();
+                        var externals = externalsRes.valueOrNull().optUnwrapOr(TList.<ArtifactExternal>of());
                         var body = new ArtifactDataDefSetFunction(
                                 defSetArt,
                                 set.defSetId,
@@ -213,7 +203,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceFunctionConst requires an artifact id to deserialize");
@@ -240,7 +230,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                         funcData.artifactIdCell.set(idValue);
                         funcData.compiledClassName = body.compiledClassName();
                         funcData.compiledBytecode = body.compiledBytecode();
-                        var fc = new ImportedSourceFunctionConst(funcData);
+                        var fc = new TypeSourceFunctionConst(funcData);
                         var deps = new TList<Artifact>();
                         deps.add(body.defSet());
                         deps.add(body.argType());
@@ -270,8 +260,9 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                             var extRes = ExternalCodec.importExternals(xx2, loc2, body.capturedExternals());
                             var extVal = extRes.requireValue("TypeSourceFunctionConst::finalizer externals");
                             funcData.capturedExternals.addAll(extVal);
+                            return fc;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(fc, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.some(fc), deps, fin));
                     });
         }
     };
@@ -343,16 +334,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         return new TypeSourceFunctionConst(data);
     }
 
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
     private record SourceFunctionConstBinding(Value value) implements Binding {
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
@@ -385,19 +366,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         @Override
         public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
             return Binding.elementUseDynamicBind(dynamicKey);
-        }
-    }
-
-    public record ImportedSourceFunctionConst(SourceFunctionData data) implements ExporterAny {
-        @Override
-        public EResult<Type> exporterAnyAsType() {
-            return EResult.ok(new TypeSourceFunctionConst(data));
-        }
-
-        @Override
-        public EResult<Value> exporterAnyAsValue() {
-            return EResult.ok(
-                    new ValueObjectConst(ValueObjectConst.plainTypeType(), new TypeSourceFunctionConst(data)));
         }
     }
 
@@ -434,7 +402,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

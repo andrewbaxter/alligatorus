@@ -4,7 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -30,7 +30,6 @@ import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.numeric.Numerics;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -64,7 +63,6 @@ import compilerxyz.main.gen.AspectOperatorXor;
 import compilerxyz.main.gen.AspectSet;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -121,7 +119,6 @@ import java.util.function.Function;
 @BuiltinPath("types.ushort")
 public record TypeUshortDynamic()
         implements Type,
-                AspectArtifact,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
@@ -153,8 +150,7 @@ public record TypeUshortDynamic()
                 AspectOperatorGt,
                 AspectOperatorGe,
                 AspectOperatorNeg,
-                AspectOperatorBitNot,
-                ExporterAny {
+                AspectOperatorBitNot {
 
     private static final IMap<ConstKey, TypeUshortToStringDynamic> METHOD_FIELDS =
             IMap.ofEntries(new Pair<>(new ConstKey.Str("to_string"), new TypeUshortToStringDynamic()));
@@ -195,7 +191,6 @@ public record TypeUshortDynamic()
                 || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
-                || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectOperatorAdd.AspectId)
                 || key.equals(GenAspectOperatorSub.AspectId)
                 || key.equals(GenAspectOperatorMul.AspectId)
@@ -224,8 +219,8 @@ public record TypeUshortDynamic()
     }
 
     @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.USHORT_DYNAMIC;
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.USHORT_DYNAMIC);
     }
 
     @Override
@@ -394,16 +389,6 @@ public record TypeUshortDynamic()
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
         return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_USHORT_DYNAMIC_IDENTITY)
                 .optIsSome();
@@ -436,7 +421,7 @@ public record TypeUshortDynamic()
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeUshortDynamic)) {
                 return EResult.err(
                         loc,
@@ -446,7 +431,7 @@ public record TypeUshortDynamic()
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueNull n -> EResult.ok(new TypeUshortDynamic());
@@ -482,10 +467,5 @@ public record TypeUshortDynamic()
     @Override
     public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
     }
 }

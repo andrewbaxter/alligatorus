@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -29,7 +28,7 @@ import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -40,8 +39,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @BuiltinPath("import")
-@BuiltinLight(uniqueId = 6160L)
-public record TypeImport() implements Type, AspectFunction, AspectInitialBind, ExporterAny {
+@BuiltinFull(uniqueId = 6160L)
+public record TypeImport() implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public String typeDesc() {
@@ -169,16 +168,6 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -207,7 +196,7 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind, E
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

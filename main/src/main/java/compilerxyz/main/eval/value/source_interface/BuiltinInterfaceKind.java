@@ -13,6 +13,7 @@ public enum BuiltinInterfaceKind {
     ASPECT_LIFT,
     ASPECT_FUNCTION,
     ASPECT_OPERATOR_ADD,
+    ASPECT_OPERATOR_LT,
     ASPECT_OPERATOR_MOD,
     ASPECT_SET,
     BINDING,

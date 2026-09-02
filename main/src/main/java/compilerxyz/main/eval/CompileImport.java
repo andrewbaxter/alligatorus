@@ -5,7 +5,7 @@ import static compilerxyz.prelude.util.MustCast.mustCast;
 import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactBodyExporter;
-import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.CodeLoc.Some;
@@ -27,7 +27,6 @@ import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenBuiltinTree;
@@ -379,18 +378,7 @@ public final class CompileImport {
                         var target = new TargetDynamic(vx.nextLocalId);
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
                         var exportErrors = new TList<ExprErr>();
-                        var exportAsp =
-                                GenAspectArtifact.get(xx, rootLoc, ok.value().valueType());
-                        if (exportAsp.hasErrors()) {
-                            exportAsp.drainInto(exportErrors);
-                            return new CompileImportResult(
-                                    new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
-                                    cix.localDependencies);
-                        }
-                        var exportAspVal = exportAsp.requireValue("ArtifactSupport::exportArtifact aspect");
-                        var exportArt = exportAspVal
-                                .aspectArtifactExporter()
-                                .artifactExporterExport(xx, rootLoc, ArtifactSupport.valueAsExporterAny(ok.value()));
+                        var exportArt = Artifactable.exportArtifact(xx, rootLoc, ok.value());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileImportResult(

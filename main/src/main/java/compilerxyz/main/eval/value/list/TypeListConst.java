@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -38,6 +38,7 @@ import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
+import compilerxyz.main.gen.AspectDynamicConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.AspectListConst;
@@ -56,14 +57,14 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6152L)
+@BuiltinFull(uniqueId = 6152L)
 public final class TypeListConst<T extends Type>
         implements Type,
                 AspectArtifact,
@@ -72,8 +73,7 @@ public final class TypeListConst<T extends Type>
                 AspectDropDynamicLight,
                 AspectField,
                 AspectIterable,
-                AspectListConst,
-                ExporterAny {
+                AspectListConst {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
@@ -141,7 +141,8 @@ public final class TypeListConst<T extends Type>
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (self instanceof AspectDynamicConst dc) self = dc.aspectDynamicConstConstForm();
             TypeListConst list;
             if (self instanceof TypeListConst<?> t) {
                 list = t;
@@ -156,11 +157,9 @@ public final class TypeListConst<T extends Type>
             var cell = list.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var elementArtRes = list.elementType().artifactableExportArtifact(xx, loc);
+                var elementArtRes = Artifactable.exportArtifact(xx, loc, list.elementType());
                 elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOrNull() != null
-                        ? elementArtRes.requireValue("TypeListConst::exporterExport element")
-                        : nullArtifact();
+                var elementArt = elementArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                 var body = new ArtifactListType(elementArt);
                 return makeBody.apply(ArtifactListTypeCodec.toValue(body));
             });
@@ -169,7 +168,7 @@ public final class TypeListConst<T extends Type>
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeListConst requires an artifact id to deserialize");
@@ -191,24 +190,6 @@ public final class TypeListConst<T extends Type>
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var holder = new ExporterAny[] {null};
-                        ExporterAny stub = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("TypeListConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsType();
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException("TypeListConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsValue();
-                            }
-                        };
                         var deps = new TList<Artifact>();
                         deps.add(body.elementType());
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
@@ -217,9 +198,9 @@ public final class TypeListConst<T extends Type>
                             var elementT = elementRes.requireValue("TypeListConst::finalizer element type");
                             var out = GenLists.listDynamic(xx2, elementT);
                             out.listDynamicArtifactIdCell().set(idValue);
-                            holder[0] = out;
+                            return out;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
@@ -352,16 +333,6 @@ public final class TypeListConst<T extends Type>
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -397,7 +368,7 @@ public final class TypeListConst<T extends Type>
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

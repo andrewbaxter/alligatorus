@@ -7,8 +7,8 @@ import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.util.Opt;
 
 public interface ArtifactExporter {
-    EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, ExporterAny self);
+    EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, Artifactable self);
 
-    EResult<ExporterAny> artifactExporterImportFromData(
+    EResult<Artifactable> artifactExporterImportFromData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data);
 }

@@ -1,6 +1,6 @@
 package compilerxyz.main.eval.value.byte_;
 
-import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -46,11 +46,11 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinLight(uniqueId = 6151L)
+@BuiltinFull(uniqueId = 6151L)
 public record TypeByteDynamicBox()
         implements Type,
                 AspectBind,
@@ -215,7 +215,7 @@ public record TypeByteDynamicBox()
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

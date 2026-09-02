@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -31,7 +31,6 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -73,8 +72,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                 AspectDropDynamicLight,
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
-                AspectType,
-                ExporterAny {
+                AspectType {
 
     @Override
     public Unique typeAspectId() {
@@ -139,14 +137,8 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!(self instanceof TypeSourceInterfaceDynamic ic)) {
-                return EResult.err(
-                        loc,
-                        "TypeSourceInterfaceDynamic::exporterRootDelegateSelfExport: expected"
-                                + " TypeSourceInterfaceDynamic, got " + self.getClass());
-            }
-            var iface = ic.data;
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var iface = MustCast.mustCast(TypeSourceInterfaceDynamic.class, self).data;
             var set = iface.set;
             if (set == null) {
                 return EResult.err(
@@ -157,30 +149,24 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
             var errors = new TList<ExprErr>();
             var artifact =
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, iface.artifactIdCell, () -> {
-                        var defSetArtRes = ExporterRoot.DEFINITION_SET.artifactExporterExport(xx, loc, set);
+                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull() != null
-                                ? defSetArtRes.requireValue("TypeSourceInterfaceDynamic::exporterExport defSet")
-                                : nullArtifact();
+                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                         var methodsOut = new TList<ArtifactDataDefSetInterfaceMethodData>();
                         for (var m : iface.methods) {
                             var argT = m.argType;
                             var retT = m.retType;
                             Artifact argArt;
                             {
-                                var res = argT.artifactableExportArtifact(xx, loc);
+                                var res = Artifactable.exportArtifact(xx, loc, argT);
                                 res.drainInto(errors);
-                                argArt = res.valueOrNull() != null
-                                        ? res.requireValue("TypeSourceInterfaceDynamic::exporterExport method arg")
-                                        : nullArtifact();
+                                argArt = res.valueOrNull().optUnwrapOr(nullArtifact());
                             }
                             Artifact retArt;
                             if (retT.optIsSome()) {
-                                var res = retT.optUnwrap().artifactableExportArtifact(xx, loc);
+                                var res = Artifactable.exportArtifact(xx, loc, retT.optUnwrap());
                                 res.drainInto(errors);
-                                retArt = res.valueOrNull() != null
-                                        ? res.requireValue("TypeSourceInterfaceDynamic::exporterExport method ret")
-                                        : nullArtifact();
+                                retArt = res.valueOrNull().optUnwrapOr(nullArtifact());
                             } else {
                                 retArt = nullArtifact();
                             }
@@ -205,7 +191,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeSourceInterfaceDynamic requires an artifact id to deserialize");
@@ -240,7 +226,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             md.dataFieldNames.addAll(m.dataFieldNames());
                             iface.methods.add(md);
                         }
-                        var imported = new ImportedInterfaceConst(iface);
+                        var imported = new TypeSourceInterfaceDynamic(iface);
                         var deps = new TList<Artifact>();
                         deps.add(body.defSet());
                         for (var m : body.methods()) {
@@ -264,25 +250,13 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                                 md.retType = Opt.some(
                                         retRes.requireValue("TypeSourceInterfaceDynamic::finalizer method ret"));
                             }
+                            return imported;
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(imported, deps, fin));
+                        return new Result.Ok<>(
+                                new ArtifactSupport.ImportIndependentResult(Opt.some(imported), deps, fin));
                     });
         }
     };
-
-    public record ImportedInterfaceConst(InterfaceData data) implements ExporterAny {
-        @Override
-        public EResult<Type> exporterAnyAsType() {
-            return EResult.ok(new TypeSourceInterfaceDynamic(data));
-        }
-
-        @Override
-        public EResult<Value> exporterAnyAsValue() {
-            return EResult.ok(new ValueObjectConst(
-                    new TypeTypeSourceInterfaceDynamic(Opt.some(new TypeSourceInterfaceDynamic(data))),
-                    new TypeSourceInterfaceDynamic(data)));
-        }
-    }
 
     @Override
     public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -340,16 +314,6 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(this)), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -376,7 +340,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

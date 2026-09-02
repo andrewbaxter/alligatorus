@@ -4,7 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.Code;
@@ -83,12 +83,12 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinLight(uniqueId = 6185L)
+@BuiltinFull(uniqueId = 6185L)
 public record TypeUshortConst()
         implements Type,
                 AspectArtifact,
@@ -116,8 +116,7 @@ public record TypeUshortConst()
                 AspectOperatorGt,
                 AspectOperatorGe,
                 AspectOperatorNeg,
-                AspectOperatorBitNot,
-                ExporterAny {
+                AspectOperatorBitNot {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -195,7 +194,7 @@ public record TypeUshortConst()
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             JsonValue data;
             if (self instanceof ValueObjectConst v && v.data() instanceof Number dv) {
                 data = new JsonValueNumber(dv.doubleValue());
@@ -210,7 +209,7 @@ public record TypeUshortConst()
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
                 case JsonValueNull ignored -> EResult.ok(new TypeUshortConst());
@@ -349,16 +348,6 @@ public record TypeUshortConst()
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(new TypeUshortConst());
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -395,7 +384,7 @@ public record TypeUshortConst()
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

@@ -1,8 +1,15 @@
 package compilerxyz.main.eval.value.source_union;
 
 import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
+import compilerxyz.main.artifact.ArtifactBodyExporter;
+import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.ArtifactSupport.ArtifactIdHolder;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -11,6 +18,7 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -28,7 +36,6 @@ import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -51,12 +58,17 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.main.gen.Value;
+import compilerxyz.main.gen.codec.ArtifactDataSourceUnionCodec;
+import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
+import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6021L)
 public final class TypeSourceUnionDynamic
@@ -71,8 +83,7 @@ public final class TypeSourceUnionDynamic
                 AspectSet,
                 AspectStackValueDynamic,
                 AspectUnion,
-                MatchDynamic,
-                ExporterAny {
+                MatchDynamic {
 
     @SuppressWarnings("NullAway.Init")
     public final DefinitionSet set;
@@ -129,11 +140,7 @@ public final class TypeSourceUnionDynamic
     public static Opt<TypeSourceUnionDynamic> unionOf(ExprContext xx, Type t) {
         var dynOpt = AspectLookup.getMaybe(
                 xx, t, GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY, TypeSourceUnionDynamic.class);
-        if (dynOpt.optIsSome()) return dynOpt;
-        var constOpt = AspectLookup.getMaybe(
-                xx, t, GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY, TypeTypeSourceUnionConst.class);
-        if (constOpt.optIsSome()) return Opt.some(constOpt.optUnwrap().type_());
-        return Opt.none();
+        return dynOpt;
     }
 
     public void initSetReflectively(DefinitionSet set) {
@@ -169,8 +176,8 @@ public final class TypeSourceUnionDynamic
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return new TypeTypeSourceUnionConst(this).artifactableExportArtifact(xx, loc);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.SOURCE_UNION_CONST);
     }
 
     @Override
@@ -262,16 +269,6 @@ public final class TypeSourceUnionDynamic
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(new TypeTypeSourceUnionConst(this), this));
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -337,5 +334,111 @@ public final class TypeSourceUnionDynamic
     @Override
     public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
         return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var tu = MustCast.mustCast(TypeSourceUnionDynamic.class, self);
+            var set = tu.set;
+            if (set == null) {
+                return EResult.err(
+                        loc,
+                        "TypeTypeSourceUnionConst::exporterRootDelegateSelfExport: union not attached to a"
+                                + " definition set");
+            }
+            var errors = new TList<ExprErr>();
+            var artifact =
+                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, tu.artifactIdCell, () -> {
+                        var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
+                        defSetArtRes.drainInto(errors);
+                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
+                        for (var v : tu.variants) {
+                            var tArtRes = Artifactable.exportArtifact(xx, loc, v.type);
+                            tArtRes.drainInto(errors);
+                            var tArt = tArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                            variantsOut.add(new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt));
+                        }
+                        var body = new ArtifactDataSourceUnion(
+                                defSetArt,
+                                set.defSetId,
+                                tu.identity,
+                                variantsOut,
+                                tu.compiled.baseBinaryName,
+                                tu.compiled.variantBinaryNames,
+                                tu.compiled.baseBytecode,
+                                tu.compiled.variantBytecode);
+                        return makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body));
+                    });
+            if (errors.isEmpty()) return EResult.ok(artifact);
+            return EResult.mixed(artifact, errors);
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeTypeSourceUnionConst requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactDataSourceUnion body;
+                        try {
+                            body = ArtifactDataSourceUnionCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>("TypeTypeSourceUnionConst data: failed to parse "
+                                    + "ArtifactDataSourceUnion: " + e.getMessage());
+                        }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var tu = new TypeSourceUnionDynamic(body.identity());
+                        tu.artifactIdCell.set(idValue);
+                        tu.compiled.baseBinaryName = body.compiledBaseBinaryName();
+                        tu.compiled.variantBinaryNames = body.compiledVariantBinaryNames();
+                        tu.compiled.baseBytecode = body.compiledBaseBytecode();
+                        tu.compiled.variantBytecode = body.compiledVariantBytecode();
+                        for (var v : body.variants()) {
+                            tu.active.add(tu.variants.size());
+                            tu.variants.add(new SourceUnionVariant(v.tag(), v.jsTag(), GenType.dynamicType()));
+                        }
+                        var deps = new TList<Artifact>();
+                        deps.add(body.defSet());
+                        for (var v : body.variants()) deps.add(v.type_());
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
+                            var defSetVal =
+                                    defSetAny.requireValue("TypeTypeSourceUnionConst::finalizer defSet artifact");
+                            if (!(defSetVal instanceof DefinitionSet set)) {
+                                throw new IllegalStateException(
+                                        "TypeTypeSourceUnionConst finalizer: defSet artifact resolved to "
+                                                + defSetVal.getClass());
+                            }
+                            tu.initSetReflectively(set);
+                            var variantsIt = body.variants().iterator();
+                            for (int i = 0; i < tu.variants.size(); i++) {
+                                var v = tu.variants.get(i);
+                                var artV = variantsIt.next();
+                                var tRes =
+                                        ArtifactSupport.independentFinalizeImportTypeArtifact(xx2, loc2, artV.type_());
+                                var tVal = tRes.requireValue("TypeTypeSourceUnionConst::finalizer variant type");
+                                tu.variants.set(i, new SourceUnionVariant(v.tag, v.jsTag, tVal));
+                            }
+                            return tu;
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.some(tu), deps, fin));
+                    });
+        }
+    };
+
+    private static Artifact nullArtifact() {
+        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root()));
     }
 }

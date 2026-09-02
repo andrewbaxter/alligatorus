@@ -15,8 +15,11 @@ import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
+import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
@@ -28,6 +31,7 @@ import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
@@ -152,9 +156,10 @@ public final class SourceFunctionData {
             var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
             argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
             var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
-            if (ibMaybe.optIsSome()) {
-                bodyScope.pushNamed(new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
+            if (ibMaybe.optIsNone()) {
+                return EResult.err(rootLoc, "arg type " + argT.typeDesc() + " missing AspectInitialBind");
             }
+            bodyScope.pushNamed(new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
         }
         var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
 
@@ -189,6 +194,18 @@ public final class SourceFunctionData {
             if (bodyCode == null) {
                 return EResult.err(
                         rootLoc, "Definition set function '" + nameStr + "' body produced no compile-time value");
+            }
+            if (retT.optIsSome()) {
+                if (GenAspectNull.getMaybe(xx, retT.optUnwrap()).optIsNone()) {
+                    return EResult.err(
+                            rootLoc,
+                            "Definition set function '" + nameStr
+                                    + "' body produces no value but declares a non-null return type");
+                }
+                var padded = new JavaBytecodeSequence();
+                padded.add(bodyCode);
+                padded.add(JavaBytecodeUtils.literalNull(rootLoc));
+                bodyCode = new CodeDynamic(new CodeLoc.Some(rootLoc), padded);
             }
         }
 

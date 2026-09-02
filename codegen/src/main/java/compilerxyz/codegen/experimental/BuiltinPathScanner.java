@@ -197,6 +197,8 @@ public final class BuiltinPathScanner {
     private static final IMap<String, ClassName> VALUE_CLASS_DESCRIPTORS = IMap.ofEntries(
             new Pair<>("java.lang.String", ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic")),
             new Pair<>(
+                    "compilerxyz.main.eval.Code", ClassName.get("compilerxyz.main.eval.value.code", "TypeCodeDynamic")),
+            new Pair<>(
                     "compilerxyz.main.eval.Unique",
                     ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueDynamic")),
             new Pair<>(

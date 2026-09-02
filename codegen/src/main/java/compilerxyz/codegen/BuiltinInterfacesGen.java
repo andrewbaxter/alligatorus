@@ -89,6 +89,14 @@ public final class BuiltinInterfacesGen {
         b.addStatement("trivialIdentityAspects.add($T.TYPE_IDENTITY)", genTrivial);
         b.addStatement("castRules.add(new $T.RestampToIdentity($T.TYPE_IDENTITY))", TYPE_OBJECT_CAST_RULE, genTrivial);
         b.endControlFlow();
+        if (interfaceRef.equals(TYPE)) {
+            b.addStatement(
+                    "castRules.add(new $T.InvokeVirtualByDestIdentity($T.INTERFACE_DATA_IDENTITY,"
+                            + " $T.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA))",
+                    TYPE_OBJECT_CAST_RULE,
+                    genTrivial,
+                    ClassName.get(GEN_PACKAGE, "GenCodegenDescriptors"));
+        }
     }
 
     public static String snake(String camel) {

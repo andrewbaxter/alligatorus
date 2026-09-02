@@ -25,6 +25,7 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.DefinitionSetBuilder;
+import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -127,6 +128,16 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
     public static Code codeNone(QExprId loc) {
         return Code.none(loc);
+    }
+
+    @BuiltinPath(value = "eval.const_numeric_to_str", scopeId = 5031L)
+    public static String constNumericToStr(ExprContext xx_, Value value) {
+        var aspOpt = GenAspectNumericConst.getMaybe(xx_, value.valueType());
+        if (aspOpt.optIsNone()) {
+            throw new IllegalStateException("const_numeric_to_str: value type "
+                    + value.valueType().typeDesc() + " has no const numeric aspect");
+        }
+        return aspOpt.optUnwrap().aspectNumericConstGet(value).toString();
     }
 
     @BuiltinPath(value = "eval.extract_constkey", scopeId = 5019L)

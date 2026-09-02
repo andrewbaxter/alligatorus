@@ -4,7 +4,7 @@ import compilerxyz.main.artifact.Artifact;
 import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
@@ -35,7 +35,6 @@ import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceKind;
 import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceRegistry;
 import compilerxyz.main.eval.value.source_interface.InterfaceData;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectAspect;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
@@ -49,7 +48,6 @@ import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectAspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
@@ -74,7 +72,7 @@ import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
@@ -83,12 +81,11 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
-@BuiltinLight(uniqueId = 6130L)
+@BuiltinFull(uniqueId = 6130L)
 public final class TypeObjectDynamic
         implements TypeImmutable,
                 AspectFieldUseDynamic,
                 TypeAspect,
-                AspectArtifact,
                 AspectAspect,
                 AspectField,
                 AspectConsumeDynamic,
@@ -99,8 +96,7 @@ public final class TypeObjectDynamic
                 AspectElementUseDynamicBind,
                 AspectInitialBind,
                 AspectLift,
-                AspectStackValueDynamic,
-                ExporterAny {
+                AspectStackValueDynamic {
 
     private final TypeObjectMeta meta;
     private final JavaInternalName jvmClass;
@@ -205,24 +201,14 @@ public final class TypeObjectDynamic
     }
 
     @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.OBJECT_DYNAMIC;
-    }
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.OBJECT_DYNAMIC);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeObjectDynamic obj)) {
                 return EResult.err(
                         loc,
@@ -234,7 +220,7 @@ public final class TypeObjectDynamic
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             JsonValueString s;
             switch (data) {
@@ -260,7 +246,7 @@ public final class TypeObjectDynamic
                 return EResult.err(
                         loc, "TypeObjectDynamic::import: no registered dynamic type for host class " + s.value());
             }
-            return EResult.ok(MustCast.mustCast(ExporterAny.class, found.optUnwrap()));
+            return EResult.ok(MustCast.mustCast(Artifactable.class, found.optUnwrap()));
         }
     };
 
@@ -269,8 +255,7 @@ public final class TypeObjectDynamic
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)
+        if (key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectElementUseDynamicBind.AspectId)
@@ -523,7 +508,7 @@ public final class TypeObjectDynamic
 
     @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        var pairedConst = new TypeObjectConst(meta, hostClass, Opt.<ExporterRoot>none());
+        var pairedConst = new TypeObjectConst(meta, hostClass);
         return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue.optUnwrap()));
     }
 
@@ -551,6 +536,7 @@ public final class TypeObjectDynamic
         else if (_v == 1039L) kind = BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC;
         else if (_v == 1017L) kind = BuiltinInterfaceKind.ASPECT_SET;
         else if (_v == 1018L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_ADD;
+        else if (_v == 1020L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_LT;
         else if (_v == 1042L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_MOD;
         else if (_v == 1022L) kind = BuiltinInterfaceKind.ASPECT_BIND;
         else if (_v == 1023L) kind = BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC;
@@ -567,35 +553,5 @@ public final class TypeObjectDynamic
         else if (_v == 2007L) kind = BuiltinInterfaceKind.CODE_DYN;
         else throw new IllegalStateException(typeDesc() + "::getInterfaceData: unrecognized builtin id " + _v);
         return BuiltinInterfaceRegistry.resolve(kind);
-    }
-
-    public static Type constType() {
-        return SelfConstType.INSTANCE;
-    }
-
-    private static final class SelfConstType {
-        static final TypeObjectConst INSTANCE;
-
-        static {
-            var _trivialIdentityAspects = new TList<Unique>();
-            _trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
-            var _castRules = new TList<TypeObjectCastRule>();
-            _castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
-            _castRules.add(new TypeObjectCastRule.InvokeVirtualByDestIdentity(
-                    GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY,
-                    GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
-            var _meta = new TypeObjectMeta(
-                    "type_object_dynamic",
-                    IList.from(_trivialIdentityAspects),
-                    IList.from(_castRules),
-                    IList.<TypeObjectCastFromRule>of(),
-                    Opt.<ObjectAspectSource>none());
-            INSTANCE = new TypeObjectConst(_meta, Type.class, Opt.<ExporterRoot>none());
-        }
-    }
-
-    @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
     }
 }

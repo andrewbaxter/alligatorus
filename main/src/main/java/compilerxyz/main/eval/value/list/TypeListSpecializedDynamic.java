@@ -1,6 +1,6 @@
 package compilerxyz.main.eval.value.list;
 
-import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
@@ -55,7 +55,6 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -310,16 +309,6 @@ public final class TypeListSpecializedDynamic<T extends Type>
     }
 
     @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
-
-    @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
         return other.typeAspect(xx, identity).optIsSome();
     }
@@ -346,7 +335,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return aspectDynamicConstConstForm().artifactableExporter(xx, loc);
     }
 }

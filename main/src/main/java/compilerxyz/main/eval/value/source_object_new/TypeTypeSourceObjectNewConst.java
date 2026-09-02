@@ -6,7 +6,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.Code;
@@ -23,7 +23,6 @@ import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
-import compilerxyz.main.eval.value.source_object.TypeTypeSourceObjectConst;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectDropDynamicLight;
@@ -40,15 +39,16 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectNewCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
-@BuiltinLight(uniqueId = 6140L)
+@BuiltinFull(uniqueId = 6140L)
 public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
-        implements Type, AspectArtifact, AspectBind, AspectDropDynamicLight, AspectFunction, AspectLift, ExporterAny {
+        implements Type, AspectArtifact, AspectBind, AspectDropDynamicLight, AspectFunction, AspectLift {
 
     private TypeSourceObjectNewDynamic asCtor() {
         return new TypeSourceObjectNewDynamic(type_);
@@ -114,7 +114,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, ExporterAny self, Function<JsonValue, ArtifactBody> makeBody) {
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (!(self instanceof TypeTypeSourceObjectNewConst oc)) {
                 return EResult.err(
                         loc,
@@ -125,13 +125,9 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
             var errors = new TList<ExprErr>();
             var artifact =
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, dt.newArtifactIdCell, () -> {
-                        var parentConst = new TypeTypeSourceObjectConst(dt);
-                        var objectArtRes = parentConst.artifactableExportArtifact(xx, loc);
+                        var objectArtRes = Artifactable.exportArtifact(xx, loc, dt);
                         objectArtRes.drainInto(errors);
-                        var objectArt = objectArtRes.valueOrNull() != null
-                                ? objectArtRes.requireValue(
-                                        "TypeTypeSourceObjectNewConst::exporterExport parent object")
-                                : nullArtifact();
+                        var objectArt = objectArtRes.valueOrNull().optUnwrapOr(nullArtifact());
                         var body = new ArtifactDataSourceObjectNew(objectArt);
                         return makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body));
                     });
@@ -140,7 +136,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
         }
 
         @Override
-        public EResult<ExporterAny> exporterRootDelegateSelfFromArtifactData(
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             if (id.optIsNone()) {
                 return EResult.err(loc, "TypeTypeSourceObjectNewConst requires an artifact id to deserialize");
@@ -163,59 +159,20 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                     },
                     (body) -> {
                         var objectArt = body.object();
-                        var holder = new ExporterAny[] {null};
-                        ExporterAny stub = new ExporterAny() {
-                            @Override
-                            public EResult<Type> exporterAnyAsType() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException(
-                                            "TypeTypeSourceObjectNewConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsType();
-                            }
-
-                            @Override
-                            public EResult<Value> exporterAnyAsValue() {
-                                if (holder[0] == null) {
-                                    throw new IllegalStateException(
-                                            "TypeTypeSourceObjectNewConst import stub accessed pre-finalize");
-                                }
-                                return holder[0].exporterAnyAsValue();
-                            }
-                        };
                         var deps = new TList<Artifact>();
                         deps.add(objectArt);
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
                             var parentAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, objectArt);
                             var parentVal =
                                     parentAny.requireValue("TypeTypeSourceObjectNewConst::finalizer parent object");
-                            TypeSourceObjectDynamic dtData;
-                            if (parentVal instanceof TypeTypeSourceObjectConst pConst) {
-                                dtData = pConst.type_();
-                            } else if (parentVal instanceof TypeTypeSourceObjectConst.ImportedSourceObjectConst imp) {
-                                dtData = imp.type_();
-                            } else {
-                                throw new IllegalStateException(
-                                        "TypeTypeSourceObjectNewConst finalizer: parent object artifact resolved to "
-                                                + parentVal.getClass());
-                            }
+                            var dtData = MustCast.mustCast(TypeSourceObjectDynamic.class, parentVal);
                             dtData.newArtifactIdCell.set(idValue);
-                            holder[0] = new TypeTypeSourceObjectNewConst(dtData);
+                            return new TypeTypeSourceObjectNewConst(dtData);
                         };
-                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(stub, deps, fin));
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
-
-    @Override
-    public EResult<Type> exporterAnyAsType() {
-        return EResult.ok(this);
-    }
-
-    @Override
-    public EResult<Value> exporterAnyAsValue() {
-        return EResult.ok(new ValueObjectConst(ValueObjectConst.plainTypeType(), this));
-    }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -250,7 +207,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(aspectArtifactExporter());
     }
 }

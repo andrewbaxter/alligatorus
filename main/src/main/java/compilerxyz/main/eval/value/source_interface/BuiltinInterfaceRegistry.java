@@ -20,6 +20,7 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorAdd;
+import compilerxyz.main.gen.GenAspectOperatorLt;
 import compilerxyz.main.gen.GenAspectOperatorMod;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenBinding;
@@ -50,6 +51,7 @@ public final class BuiltinInterfaceRegistry {
                     case ASPECT_LIFT -> GenAspectLift.dynamicType();
                     case ASPECT_SET -> GenAspectSet.dynamicType();
                     case ASPECT_OPERATOR_ADD -> GenAspectOperatorAdd.dynamicType();
+                    case ASPECT_OPERATOR_LT -> GenAspectOperatorLt.dynamicType();
                     case ASPECT_OPERATOR_MOD -> GenAspectOperatorMod.dynamicType();
                     case BINDING -> GenBinding.dynamicType();
                     case TARGET -> GenTarget.dynamicType();
@@ -80,6 +82,7 @@ public final class BuiltinInterfaceRegistry {
                         if (_v == 1039L) yield Opt.some(BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC);
                         if (_v == 1017L) yield Opt.some(BuiltinInterfaceKind.ASPECT_SET);
                         if (_v == 1018L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_ADD);
+                        if (_v == 1020L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_LT);
                         if (_v == 1042L) yield Opt.some(BuiltinInterfaceKind.ASPECT_OPERATOR_MOD);
                         if (_v == 1022L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND);
                         if (_v == 1023L) yield Opt.some(BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC);

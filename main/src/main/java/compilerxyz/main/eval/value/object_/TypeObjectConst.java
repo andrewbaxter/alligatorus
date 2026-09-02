@@ -1,10 +1,12 @@
 package compilerxyz.main.eval.value.object_;
 
 import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.ExporterAny;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -57,24 +59,32 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenDynamicTypes;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.main.safejson.JsonValueArray;
+import compilerxyz.main.safejson.JsonValueBoolean;
+import compilerxyz.main.safejson.JsonValueNull;
+import compilerxyz.main.safejson.JsonValueNumber;
+import compilerxyz.main.safejson.JsonValueObject;
+import compilerxyz.main.safejson.JsonValueString;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.IList;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
+import java.util.function.Function;
 
 @SuppressWarnings("rawtypes")
-@BuiltinLight(uniqueId = 6129L)
-public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<ExporterRoot> exporter)
+@BuiltinFull(uniqueId = 6129L)
+public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
         implements Type,
                 TypeAspect,
                 AspectArtifact,
-                ArtifactExporter,
                 AspectAspect,
                 AspectBind,
                 AspectBindDynamic,
@@ -97,7 +107,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
                 IList.from(castRules),
                 IList.<TypeObjectCastFromRule>of(),
                 Opt.<ObjectAspectSource>none());
-        return new TypeObjectConst(meta, hostClass, Opt.<ExporterRoot>none());
+        return new TypeObjectConst(meta, hostClass);
     }
 
     public String typeDesc() {
@@ -291,23 +301,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
 
     @Override
     public ArtifactExporter aspectArtifactExporter() {
-        return exporter.optIsSome() ? exporter.optUnwrap() : this;
-    }
-
-    @Override
-    public EResult<Artifact> artifactExporterExport(ExprContext xx, QExprId loc, ExporterAny self) {
-        if (self instanceof ValueObjectConst wrapper && wrapper.data() instanceof Type innerType) {
-            return innerType.artifactableExportArtifact(xx, loc);
-        }
-        return EResult.err(
-                loc,
-                typeDesc() + "::artifactExporterExport: expected ValueObjectConst-of-Type, got " + self.getClass());
-    }
-
-    @Override
-    public EResult<ExporterAny> artifactExporterImportFromData(
-            ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-        return EResult.err(loc, typeDesc() + "::artifactExporterImportFromData: should not be invoked");
+        return ExporterRoot.OBJECT_CONST;
     }
 
     @Override
@@ -437,7 +431,47 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass, Opt<
     }
 
     @Override
-    public EResult<Artifact> artifactableExportArtifact(ExprContext xx, QExprId loc) {
-        return Type.exportArtifact(xx, loc, this);
+    public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
+        return EResult.ok(ExporterRoot.TYPE_OBJECT_CONST);
     }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            var type = MustCast.mustCast(TypeObjectConst.class, self);
+            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueString(type.externalHostClass.getName()))));
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            String className;
+            switch (data) {
+                case JsonValueString s -> className = s.value();
+                case JsonValueNull ignored -> {
+                    return EResult.err(loc, "TypeObjectConst::import: expected host class name string, got " + data);
+                }
+                case JsonValueBoolean ignored -> {
+                    return EResult.err(loc, "TypeObjectConst::import: expected host class name string, got " + data);
+                }
+                case JsonValueNumber ignored -> {
+                    return EResult.err(loc, "TypeObjectConst::import: expected host class name string, got " + data);
+                }
+                case JsonValueArray ignored -> {
+                    return EResult.err(loc, "TypeObjectConst::import: expected host class name string, got " + data);
+                }
+                case JsonValueObject ignored -> {
+                    return EResult.err(loc, "TypeObjectConst::import: expected host class name string, got " + data);
+                }
+            }
+            var found = GenDynamicTypes.byClassName(className);
+            if (found.optIsNone()) {
+                return EResult.err(
+                        loc, "TypeObjectConst::import: no registered dynamic type for host class " + className);
+            }
+            var td = MustCast.mustCast(TypeObjectDynamic.class, found.optUnwrap());
+            return EResult.ok(new TypeObjectConst(td.meta(), td.hostClass()));
+        }
+    };
 }

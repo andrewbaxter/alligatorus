@@ -1,7 +1,7 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.gen.GenAspectArtifact;
+import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -125,12 +125,7 @@ public final class ExprArtifacts {
                     return EResult.errs(errors);
                 }
                 var exporterAny = imported.requireValue("ExprArtifacts::exprFromArtifact Literal imported");
-                var asVal = exporterAny.exporterAnyAsValue();
-                if (asVal.hasErrors()) {
-                    asVal.drainInto(errors);
-                    return EResult.errs(errors);
-                }
-                var litVal = asVal.requireValue("ExprArtifacts::exprFromArtifact Literal value");
+                var litVal = ArtifactSupport.importedAsValue(exporterAny);
                 var expr = new Expr(loc, new Expr.Literal(Expr.LitValue.shared(litVal)));
                 return EResult.ok(expr);
             }
@@ -406,15 +401,7 @@ public final class ExprArtifacts {
                 }
                 var value = peeked.optUnwrap();
                 var errors = new TList<ExprErr>();
-                var type = value.valueType();
-                var aspRes = GenAspectArtifact.get(xx, expr.loc(), type);
-                if (aspRes.hasErrors()) {
-                    aspRes.drainInto(errors);
-                    return EResult.errs(errors);
-                }
-                var asp = aspRes.requireValue("ExprArtifacts::exprToArtifact Literal aspect");
-                var artRes = asp.aspectArtifactExporter()
-                        .artifactExporterExport(xx, expr.loc(), ArtifactSupport.valueAsExporterAny(value));
+                var artRes = Artifactable.exportArtifact(xx, expr.loc(), value);
                 if (artRes.hasErrors()) {
                     artRes.drainInto(errors);
                     return EResult.errs(errors);
