@@ -3,6 +3,7 @@ package compilerxyz.main.eval.value.source_function;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.ArtifactExternal;
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.Expr;
@@ -13,7 +14,6 @@ import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.StageLiftCell;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.expr.TypeExpr;
@@ -87,7 +87,7 @@ public final class ExternalCodec {
                     var expr = exprRes.requireValue("ExternalCodec::import StagedExpr expr");
                     var cell = new StagedExprCell(expr);
                     out.add(new EvalContext.ExternalEntry(
-                            new JavaBytecodeBindingKey(), new TypeExpr(), new External(StagedExprCell.class, cell)));
+                            new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell)));
                 }
                 case ArtifactExternal.StageLift sl -> {
                     var typeRes =
@@ -100,7 +100,7 @@ public final class ExternalCodec {
                     var liftCell = new StageLiftCell(
                             loc, xx.vx, xx.importState, xx.scope, sourceType, xx.currentExceptionType, xx.target);
                     out.add(new EvalContext.ExternalEntry(
-                            new JavaBytecodeBindingKey(), sourceType, new External(StageLiftCell.class, liftCell)));
+                            new BindingId(), sourceType, new External(StageLiftCell.class, liftCell)));
                 }
                 case ArtifactExternal.Type te -> {
                     var typeRes = ArtifactSupport.independentFinalizeImportTypeArtifact(xx, loc, te.typeArtifact());
@@ -109,14 +109,11 @@ public final class ExternalCodec {
                         return EResult.errs(errors);
                     }
                     var type = typeRes.requireValue("ExternalCodec::import Type external");
-                    out.add(new EvalContext.ExternalEntry(
-                            new JavaBytecodeBindingKey(), type, new External(Type.class, type)));
+                    out.add(new EvalContext.ExternalEntry(new BindingId(), type, new External(Type.class, type)));
                 }
                 case ArtifactExternal.UniqueRef uq -> {
                     out.add(new EvalContext.ExternalEntry(
-                            new JavaBytecodeBindingKey(),
-                            new TypeUniqueDynamic(),
-                            new External(Unique.class, uq.unique())));
+                            new BindingId(), new TypeUniqueDynamic(), new External(Unique.class, uq.unique())));
                 }
             }
         }

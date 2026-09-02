@@ -1,9 +1,12 @@
 package compilerxyz.main.gen;
 
-import compilerxyz.main.eval.Type;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
-public record TupleBindSlot(TargetBindSub sub) {
-    public static Type dynamicType() {
-        return GenType.dynamicType();
+@BuiltinFull(uniqueId = 6354L)
+public final class TupleBindSlot {
+    public final TargetBindSub sub;
+
+    public TupleBindSlot(TargetBindSub sub) {
+        this.sub = sub;
     }
 }

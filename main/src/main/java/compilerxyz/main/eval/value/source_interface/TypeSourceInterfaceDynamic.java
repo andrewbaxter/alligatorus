@@ -151,7 +151,7 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, iface.artifactIdCell, () -> {
                         var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var methodsOut = new TList<ArtifactDataDefSetInterfaceMethodData>();
                         for (var m : iface.methods) {
                             var argT = m.argType;
@@ -160,13 +160,13 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
                             {
                                 var res = Artifactable.exportArtifact(xx, loc, argT);
                                 res.drainInto(errors);
-                                argArt = res.valueOrNull().optUnwrapOr(nullArtifact());
+                                argArt = res.valueOpt().optUnwrapOr(nullArtifact());
                             }
                             Artifact retArt;
                             if (retT.optIsSome()) {
                                 var res = Artifactable.exportArtifact(xx, loc, retT.optUnwrap());
                                 res.drainInto(errors);
-                                retArt = res.valueOrNull().optUnwrapOr(nullArtifact());
+                                retArt = res.valueOpt().optUnwrapOr(nullArtifact());
                             } else {
                                 retArt = nullArtifact();
                             }

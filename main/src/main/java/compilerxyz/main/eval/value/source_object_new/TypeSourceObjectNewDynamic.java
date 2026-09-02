@@ -30,20 +30,15 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinLight(uniqueId = 6139L)
+@BuiltinFull(uniqueId = 6139L)
 public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
         implements Type, AspectBind, AspectBindDynamic, AspectFunction {
-
-    public static Type dynamicType() {
-        return GenType.dynamicType();
-    }
 
     @Override
     public String typeDesc() {

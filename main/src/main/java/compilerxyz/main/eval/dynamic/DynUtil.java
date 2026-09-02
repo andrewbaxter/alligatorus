@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.BindingId.Local;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -79,7 +78,7 @@ public final class DynUtil {
             QExprId loc,
             CodeDynamic iteratorSetup,
             CodeDynamic elementDecode,
-            Local elementSlot,
+            BindingId elementSlot,
             int elementStoreOp,
             Code body) {
         var loopLabel = new LabelNode();
@@ -102,7 +101,7 @@ public final class DynUtil {
                 "next",
                 JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
         seq.add(elementDecode);
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(elementStoreOp, elementSlot.key())));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(elementStoreOp, elementSlot)));
         var bodyDyn = body.codeDynamic();
         if (bodyDyn != null) {
             seq.add(bodyDyn);
@@ -146,8 +145,8 @@ public final class DynUtil {
             return EResult.err(loc, "Type (" + vtype.typeDesc() + ") returned None from AspectBindDynamic");
         }
         var bound = xx.target.targetBind(xx, loc, subOpt.optUnwrap());
-        Code wrappingCode = Code.of(bound.code());
-        Binding binding = new BindingDynamicBinding(bound.id(), vtype);
+        Code wrappingCode = Code.of(bound.code);
+        Binding binding = new BindingDynamicBinding(bound.id, vtype);
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
     }
 
@@ -261,14 +260,10 @@ public final class DynUtil {
         return switch (selfDyn.source()) {
             case ValueDynamicSource.Binding bindingSrc -> {
                 var seq = new JavaBytecodeSequence();
-                switch (bindingSrc.key()) {
-                    case BindingId.Local local -> {
-                        seq.add(valueCode);
-                        seq.add(new CodeDynamic(
-                                new CodeLoc.Some(loc),
-                                new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, targetType), local.key())));
-                    }
-                }
+                seq.add(valueCode);
+                seq.add(new CodeDynamic(
+                        new CodeLoc.Some(loc),
+                        new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, targetType), bindingSrc.key())));
                 seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
                 var setJs = new CodeDynamic(loc, seq);
                 yield EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));

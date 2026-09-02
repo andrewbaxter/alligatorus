@@ -33,7 +33,6 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -270,8 +269,8 @@ public final class TypeSourceObjectDynamic
         if (set != null) {
             xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
         }
-        var key = new JavaBytecodeBindingKey();
-        var id = new BindingId.Local(key);
+        var key = new BindingId();
+        var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(hostValue.getClass(), hostValue)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
@@ -568,10 +567,10 @@ public final class TypeSourceObjectDynamic
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, dt.artifactIdCell, () -> {
                         var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var underlyingArtRes = Artifactable.exportArtifact(xx, loc, underlyingFinal);
                         underlyingArtRes.drainInto(errors);
-                        var underlyingArt = underlyingArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var underlyingArt = underlyingArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var methods = new TList<ArtifactDataDefSetMethod>();
                         for (var m : dt.methods) {
                             var argT = m.argType;
@@ -607,18 +606,18 @@ public final class TypeSourceObjectDynamic
                             }
                             var argArtRes = Artifactable.exportArtifact(xx, loc, argT.optUnwrap());
                             argArtRes.drainInto(errors);
-                            var argArt = argArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                            var argArt = argArtRes.valueOpt().optUnwrapOr(nullArtifact());
                             Artifact retArt;
                             if (retT.optIsSome()) {
                                 var retArtRes = Artifactable.exportArtifact(xx, loc, retT.optUnwrap());
                                 retArtRes.drainInto(errors);
-                                retArt = retArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                                retArt = retArtRes.valueOpt().optUnwrapOr(nullArtifact());
                             } else {
                                 retArt = nullArtifact();
                             }
                             var extRes = ExternalCodec.exportExternals(xx, loc, m.capturedExternals);
                             extRes.drainInto(errors);
-                            var ext = extRes.valueOrNull().optUnwrapOr(TList.<ArtifactExternal>of());
+                            var ext = extRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
                             methods.add(new ArtifactDataDefSetMethod(
                                     m.name, argArt, retArt, m.compiledClassName, m.compiledBytecode, ext));
                         }
@@ -630,7 +629,7 @@ public final class TypeSourceObjectDynamic
                                 var ifaceConst = new TypeSourceInterfaceDynamic(impl.interface_);
                                 var ifaceArtRes = Artifactable.exportArtifact(xx, loc, ifaceConst);
                                 ifaceArtRes.drainInto(errors);
-                                userIface = Opt.some(ifaceArtRes.valueOrNull().optUnwrapOr(nullArtifact()));
+                                userIface = Opt.some(ifaceArtRes.valueOpt().optUnwrapOr(nullArtifact()));
                             }
                             var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
                             for (var mi : impl.methodImpls) {
@@ -650,7 +649,7 @@ public final class TypeSourceObjectDynamic
                                 }
                                 var extRes = ExternalCodec.exportExternals(xx, loc, mi.capturedExternals);
                                 extRes.drainInto(errors);
-                                var ext = extRes.valueOrNull().optUnwrapOr(TList.<ArtifactExternal>of());
+                                var ext = extRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
                                 methodImpls.add(new ArtifactDataDefSetInterfaceMethodImpl(
                                         mi.interfaceMethodIndex, mi.compiledClassName, mi.compiledBytecode, ext));
                             }

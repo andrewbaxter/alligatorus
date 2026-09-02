@@ -353,12 +353,12 @@ public final class TypeSourceUnionDynamic
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, tu.artifactIdCell, () -> {
                         var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var variantsOut = new TList<ArtifactDataSourceUnionVariant>();
                         for (var v : tu.variants) {
                             var tArtRes = Artifactable.exportArtifact(xx, loc, v.type);
                             tArtRes.drainInto(errors);
-                            var tArt = tArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                            var tArt = tArtRes.valueOpt().optUnwrapOr(nullArtifact());
                             variantsOut.add(new ArtifactDataSourceUnionVariant(v.jsTag, v.tag, tArt));
                         }
                         var body = new ArtifactDataSourceUnion(

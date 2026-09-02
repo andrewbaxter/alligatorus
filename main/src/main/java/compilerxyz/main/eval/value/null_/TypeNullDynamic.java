@@ -1,12 +1,7 @@
 package compilerxyz.main.eval.value.null_;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -50,17 +45,9 @@ import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueArray;
-import compilerxyz.main.safejson.JsonValueBoolean;
-import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.main.safejson.JsonValueNumber;
-import compilerxyz.main.safejson.JsonValueObject;
-import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
-import java.util.function.Function;
 
 @BuiltinPath("types.null")
 @BuiltinFull(uniqueId = 6128L)
@@ -189,47 +176,6 @@ public record TypeNullDynamic()
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
-
-    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
-        @Override
-        public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!(self instanceof TypeNullDynamic)) {
-                return EResult.err(
-                        loc,
-                        "TypeNullDynamic::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
-            }
-            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
-        }
-
-        @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
-                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            return switch (data) {
-                case JsonValueNull ignored -> EResult.ok(new TypeNullDynamic());
-                case JsonValueBoolean ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeNullDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueNumber ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeNullDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueString ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeNullDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueArray ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeNullDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueObject ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeNullDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-            };
-        }
-    };
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {

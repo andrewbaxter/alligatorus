@@ -1,10 +1,12 @@
 package compilerxyz.main.eval.dynamic;
 
+import compilerxyz.main.eval.BindingId;
+
 public class JavaBytecodeStoreLoad implements JavaBytecode {
     public final int code;
-    public final JavaBytecodeBindingKey key;
+    public final BindingId key;
 
-    public JavaBytecodeStoreLoad(int code, JavaBytecodeBindingKey key) {
+    public JavaBytecodeStoreLoad(int code, BindingId key) {
         if (key == null) {
             throw new AssertionError();
         }

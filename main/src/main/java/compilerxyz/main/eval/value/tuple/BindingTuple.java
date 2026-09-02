@@ -95,7 +95,7 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                     } else {
                         var mres = s.binding().bindingMerge(xx, loc, otherSubs);
                         mres.drainInto(errors);
-                        var mv = mres.valueOrNull();
+                        var mv = mres.valueOpt();
                         if (mv.optIsSome()) {
                             mergedElements.add(new TupleScopeField.Scope(mv.optUnwrap()));
                         } else {

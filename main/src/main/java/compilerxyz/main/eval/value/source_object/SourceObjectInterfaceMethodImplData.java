@@ -12,7 +12,6 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
@@ -44,7 +43,7 @@ public final class SourceObjectInterfaceMethodImplData {
     public final TList<EvalContext.ExternalEntry> capturedExternals;
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
-    public Opt<TList<BindingId.Local>> compiledArgParamIds = Opt.none();
+    public Opt<TList<BindingId>> compiledArgParamIds = Opt.none();
 
     public Opt<TList<Type>> compiledArgParamTypes = Opt.none();
 
@@ -74,9 +73,9 @@ public final class SourceObjectInterfaceMethodImplData {
         var innerVx = new EvalContext(xx.vx.ix);
         innerVx.evalRootInternalName = SourceObjectEmitter.internalNameFor(dtData.setId, dtData.objIdx);
         var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-        var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
+        var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
-        var outerId = new BindingId.Local(new JavaBytecodeBindingKey());
+        var outerId = new BindingId();
         outerBindingId = Opt.some(outerId);
 
         var bodyScope = new Scope(innerVx);
@@ -98,7 +97,7 @@ public final class SourceObjectInterfaceMethodImplData {
         var dataFieldNames = ifaceMethod.dataFieldNames;
         var tupleOpt = GenAspectTuple.getMaybe(xx, methodArgType);
         TList<Type> paramTypes;
-        var argParamIds = new TList<BindingId.Local>();
+        var argParamIds = new TList<BindingId>();
         if (methodArgType instanceof Record rec) {
             if (dataFieldNames.size() != rec.fields().size()) {
                 throw new AssertionError("Record method '"
@@ -123,7 +122,7 @@ public final class SourceObjectInterfaceMethodImplData {
                         throw new AssertionError("Record method arg_type field '" + fieldName + "' is not Dynamic");
                 }
                 paramTypes.add(fd.type());
-                var pid = new BindingId.Local(new JavaBytecodeBindingKey());
+                var pid = new BindingId();
                 argParamIds.add(pid);
                 var ibResult = GenAspectInitialBind.get(xx, rootLoc, fd.type());
                 if (ibResult.hasErrors()) {
@@ -148,7 +147,7 @@ public final class SourceObjectInterfaceMethodImplData {
             var elemBindings = new TList<Binding>(elemTypes.size());
             for (var elemType : elemTypes) {
                 paramTypes.add(elemType);
-                var pid = new BindingId.Local(new JavaBytecodeBindingKey());
+                var pid = new BindingId();
                 argParamIds.add(pid);
                 var ibResult = GenAspectInitialBind.get(xx, rootLoc, elemType);
                 if (ibResult.hasErrors()) {
@@ -168,7 +167,7 @@ public final class SourceObjectInterfaceMethodImplData {
                         + dataFieldNames);
             }
             paramTypes = TList.of(methodArgType);
-            var argId = new BindingId.Local(new JavaBytecodeBindingKey());
+            var argId = new BindingId();
             argParamIds.add(argId);
             var argIbMaybe = GenAspectInitialBind.getMaybe(xx, methodArgType);
             if (argIbMaybe.optIsSome()) {

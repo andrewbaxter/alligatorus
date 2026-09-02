@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.expr;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -15,7 +14,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.expr.StagedExprCell;
-import compilerxyz.main.eval.value.object_.TypeObjectConst;
+import compilerxyz.main.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectLift;
@@ -23,6 +22,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.GenTypeExprStagedPlaceholder;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -41,11 +41,8 @@ public record TypeExprStagedPlaceholder()
         return "stage result";
     }
 
-    private static final TypeObjectConst META =
-            TypeObjectConst.metaOf(TypeExprStagedPlaceholder.class, "expr_staged_placeholder");
-
     public Type valueType() {
-        return META;
+        return ((TypeObjectDynamic) GenTypeExprStagedPlaceholder.dynamicType()).pairedConst();
     }
 
     @Override
@@ -125,6 +122,6 @@ public record TypeExprStagedPlaceholder()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return Artifactable.exporterOfType(xx, loc, valueType());
+        return EResult.err(loc, typeDesc() + " is not exportable");
     }
 }

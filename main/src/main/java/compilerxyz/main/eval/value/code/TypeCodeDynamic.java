@@ -1,12 +1,7 @@
 package compilerxyz.main.eval.value.code;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -23,7 +18,6 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -55,18 +49,10 @@ import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueArray;
-import compilerxyz.main.safejson.JsonValueBoolean;
-import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.main.safejson.JsonValueNumber;
-import compilerxyz.main.safejson.JsonValueObject;
-import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinPath("types.code")
@@ -159,8 +145,8 @@ public record TypeCodeDynamic()
         if (!(cv.value().optUnwrap() instanceof ValueObjectConst voc) || !(voc.data() instanceof Code codeObj)) {
             return EResult.err(loc, "TypeCodeDynamic::toDynamic: value is not a compile-time Code");
         }
-        var key = new JavaBytecodeBindingKey();
-        var id = new BindingId.Local(key);
+        var key = new BindingId();
+        var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(Code.class, codeObj)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
@@ -207,42 +193,6 @@ public record TypeCodeDynamic()
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.CODE_DYNAMIC);
     }
-
-    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
-        @Override
-        public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
-        }
-
-        @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
-                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            return switch (data) {
-                case JsonValueNull ignored -> EResult.ok(new TypeCodeDynamic());
-                case JsonValueBoolean ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeCodeDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueNumber ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeCodeDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueString ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeCodeDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueArray ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeCodeDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-                case JsonValueObject ignored ->
-                    EResult.err(
-                            loc,
-                            "TypeCodeDynamic::exporterRootDelegateSelfFromArtifactData: expected null, got " + data);
-            };
-        }
-    };
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {

@@ -109,7 +109,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
                     } else {
                         var mres = s.binding().bindingMerge(xx, loc, otherSubs);
                         mres.drainInto(errors);
-                        var mv = mres.valueOrNull();
+                        var mv = mres.valueOpt();
                         if (mv.optIsSome()) {
                             mergedFields.put(key, new RecordScopeField.Scope(mv.optUnwrap()));
                         } else {

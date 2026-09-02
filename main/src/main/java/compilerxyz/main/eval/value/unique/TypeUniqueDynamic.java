@@ -121,16 +121,10 @@ public record TypeUniqueDynamic()
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            JsonValue data;
-            if (self instanceof ValueObjectConst v && v.data() instanceof Unique u) {
-                data = encodeUnique(u);
-            } else if (self instanceof TypeUniqueDynamic) {
-                data = new JsonValueNull();
-            } else {
-                return EResult.err(
-                        loc,
-                        "TypeUniqueDynamic::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
-            }
+            var u = MustCast.mustCast(
+                    Unique.class,
+                    MustCast.mustCast(ValueObjectConst.class, self).data());
+            JsonValue data = encodeUnique(u);
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
@@ -138,7 +132,6 @@ public record TypeUniqueDynamic()
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNull n -> EResult.ok(new TypeUniqueDynamic());
                 case JsonValueObject obj -> {
                     var decoded = decodeUnique(loc, obj);
                     if (decoded.hasErrors()) {
@@ -150,6 +143,8 @@ public record TypeUniqueDynamic()
                             decoded.requireValue(
                                     "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData decoded")));
                 }
+                case JsonValueNull ignored ->
+                    EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
                 case JsonValueBoolean b ->
                     EResult.err(loc, "TypeUniqueDynamic::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
                 case JsonValueNumber n ->
@@ -443,6 +438,6 @@ public record TypeUniqueDynamic()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.UNIQUE_TYPE);
     }
 }

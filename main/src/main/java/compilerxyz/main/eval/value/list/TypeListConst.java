@@ -34,7 +34,6 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
@@ -43,7 +42,6 @@ import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.AspectListConst;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
@@ -58,6 +56,7 @@ import compilerxyz.main.gen.codec.ArtifactListTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -67,7 +66,6 @@ import org.objectweb.asm.Opcodes;
 @BuiltinFull(uniqueId = 6152L)
 public final class TypeListConst<T extends Type>
         implements Type,
-                AspectArtifact,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
@@ -97,7 +95,6 @@ public final class TypeListConst<T extends Type>
             return Opt.some(this);
         }
         if (key.equals(GenAspectListConst.AspectId)
-                || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
@@ -129,11 +126,6 @@ public final class TypeListConst<T extends Type>
         return elementType;
     }
 
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.LIST_CONST;
-    }
-
     private static Artifact nullArtifact() {
         return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
     }
@@ -143,23 +135,13 @@ public final class TypeListConst<T extends Type>
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (self instanceof AspectDynamicConst dc) self = dc.aspectDynamicConstConstForm();
-            TypeListConst list;
-            if (self instanceof TypeListConst<?> t) {
-                list = t;
-            } else if (self instanceof ValueObjectConst v && v.type() instanceof TypeListConst<?> t) {
-                list = t;
-            } else {
-                return EResult.err(
-                        loc,
-                        "TypeListConst::exporterRootDelegateSelfExport: expected TypeListConst, got "
-                                + self.getClass());
-            }
+            var list = MustCast.mustCast(TypeListConst.class, self);
             var cell = list.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, list.elementType());
                 elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
                 var body = new ArtifactListType(elementArt);
                 return makeBody.apply(ArtifactListTypeCodec.toValue(body));
             });
@@ -369,6 +351,6 @@ public final class TypeListConst<T extends Type>
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.LIST_CONST);
     }
 }

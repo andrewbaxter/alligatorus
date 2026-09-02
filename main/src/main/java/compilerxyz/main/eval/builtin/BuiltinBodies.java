@@ -113,9 +113,9 @@ public final class BuiltinBodies {
                     "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
         }
         var _constEvalResult = ConstEval.constEval(xx_, exprAst);
-        if (_constEvalResult.valueOrNull().optIsNone()) return _constEvalResult.reerr();
+        if (_constEvalResult.valueOpt().optIsNone()) return _constEvalResult.reerr();
         var _cv = _constEvalResult.requireValue("const_eval map").cv();
-        var _errs = _constEvalResult.errorsOrNull();
+        var _errs = _constEvalResult.errorsOpt();
         if (_errs.optIsNone() || _errs.optUnwrap().isEmpty()) return EResult.ok(_cv);
         return EResult.mixed(_cv, _errs.optUnwrap());
     }

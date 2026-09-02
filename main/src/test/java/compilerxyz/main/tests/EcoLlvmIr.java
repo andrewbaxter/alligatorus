@@ -952,7 +952,9 @@ public final class EcoLlvmIr {
                     e.p("bind", targetPanic(e, "bind")),
                     e.p(
                             "maybe_bind_sub",
-                            e.eresultOk(e.call(e.mb.typesOption(), e.mb.evalType()), e.optNone(e.mb.evalType()))),
+                            e.eresultOk(
+                                    e.call(e.mb.typesOption(), e.mb.builtin("types", "target_bind_sub")),
+                                    e.optNone(e.mb.builtin("types", "target_bind_sub")))),
                     e.p("code_to_bind_sub", targetPanic(e, "code_to_bind_sub")),
                     e.p("bind_sub_record", targetPanic(e, "bind_sub_record")),
                     e.p("bind_sub_tuple", targetPanic(e, "bind_sub_tuple")),

@@ -41,8 +41,8 @@ import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueBoolean;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
@@ -88,15 +88,10 @@ public record TypeBoolConst()
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            JsonValue data;
-            if (self instanceof ValueObjectConst v && v.data() instanceof Boolean bv) {
-                data = new JsonValueBoolean(bv);
-            } else if (self instanceof TypeBoolConst) {
-                data = new JsonValueNull();
-            } else {
-                return EResult.err(
-                        loc, "TypeBoolConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
-            }
+            var bv = MustCast.mustCast(
+                    Boolean.class,
+                    MustCast.mustCast(ValueObjectConst.class, self).data());
+            JsonValue data = new JsonValueBoolean(bv);
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
@@ -104,7 +99,6 @@ public record TypeBoolConst()
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNull ignored -> EResult.ok(new TypeBoolConst());
                 case JsonValueBoolean b -> EResult.ok(new ValueObjectConst(new TypeBoolConst(), b.value()));
                 default ->
                     EResult.err(loc, "TypeBoolConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
@@ -182,6 +176,6 @@ public record TypeBoolConst()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.BOOL_CONST_TYPE);
     }
 }

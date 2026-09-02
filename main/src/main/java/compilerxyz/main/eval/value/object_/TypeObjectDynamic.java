@@ -140,14 +140,6 @@ public final class TypeObjectDynamic
         }
     }
 
-    public TypeObjectMeta meta() {
-        return meta;
-    }
-
-    public Class hostClass() {
-        return hostClass;
-    }
-
     public IList<ObjectMethod> methods() {
         return methods;
     }
@@ -508,8 +500,11 @@ public final class TypeObjectDynamic
 
     @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        var pairedConst = new TypeObjectConst(meta, hostClass);
-        return EResult.ok(new ValueObjectConst(pairedConst, externalHostValue.optUnwrap()));
+        return EResult.ok(new ValueObjectConst(pairedConst(), externalHostValue.optUnwrap()));
+    }
+
+    public TypeObjectConst pairedConst() {
+        return new TypeObjectConst(meta, hostClass);
     }
 
     @CodegenDescriptor

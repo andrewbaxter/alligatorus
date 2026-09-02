@@ -964,9 +964,13 @@ public final class T0170NodejsTest {
                                 "maybe_bind_sub",
                                 eresultOk(
                                         mb,
-                                        mb.call(mb.typesOption(), mb.evalType()),
+                                        mb.call(mb.typesOption(), mb.builtin("types", "target_bind_sub")),
                                         mb.call(
-                                                mb.field(mb.call(mb.typesOption(), mb.evalType()), mb.str("none")),
+                                                mb.field(
+                                                        mb.call(
+                                                                mb.typesOption(),
+                                                                mb.builtin("types", "target_bind_sub")),
+                                                        mb.str("none")),
                                                 mb.literalNull()))),
                         rp("code_to_bind_sub", targetPanic(mb, "code_to_bind_sub")),
                         rp("bind_sub_record", targetPanic(mb, "bind_sub_record")),

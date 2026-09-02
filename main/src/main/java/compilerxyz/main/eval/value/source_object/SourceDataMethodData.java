@@ -15,7 +15,6 @@ import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.ArgSignatureSlot;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
@@ -53,7 +52,7 @@ public final class SourceDataMethodData {
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
     public Opt<TList<ArgSignatureSlot>> compiledArgSlots = Opt.none();
-    public Opt<TList<BindingId.Local>> compiledArgSlotIds = Opt.none();
+    public Opt<TList<BindingId>> compiledArgSlotIds = Opt.none();
 
     public SourceDataMethodData(String name) {
         this.name = name;
@@ -83,10 +82,10 @@ public final class SourceDataMethodData {
         var innerVx = new EvalContext(xx.vx.ix);
         innerVx.evalRootInternalName = objectInternalName;
         var innerTarget = new TargetDynamic(innerVx.nextLocalId);
-        var selfId = new BindingId.Local(new JavaBytecodeBindingKey());
+        var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
 
-        var outerId = new BindingId.Local(new JavaBytecodeBindingKey());
+        var outerId = new BindingId();
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
         var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
@@ -98,7 +97,7 @@ public final class SourceDataMethodData {
             bodyScope.pushNamed(new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindInitialBind(selfId));
         }
         TList<ArgSignatureSlot> argSlots = null;
-        TList<BindingId.Local> argSlotIds = null;
+        TList<BindingId> argSlotIds = null;
         if (argType.optIsSome()) {
             var argT = argType.optUnwrap();
             var slotsRes = DynUtil.argSignatureSlots(xx, rootLoc, argT);
@@ -110,7 +109,7 @@ public final class SourceDataMethodData {
             if (tupleOpt.optIsSome()) {
                 var elemBindings = new TList<Binding>(argSlots.size());
                 for (var slot : argSlots) {
-                    var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+                    var slotId = new BindingId();
                     argSlotIds.add(slotId);
                     var ibMaybe = GenAspectInitialBind.getMaybe(xx, slot.elementType());
                     if (ibMaybe.optIsNone()) {
@@ -128,7 +127,7 @@ public final class SourceDataMethodData {
                 var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
                 int i = 0;
                 for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
-                    var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+                    var slotId = new BindingId();
                     argSlotIds.add(slotId);
                     var ibMaybe = GenAspectInitialBind.getMaybe(xx, entry.getValue());
                     if (ibMaybe.optIsNone()) {
@@ -146,7 +145,7 @@ public final class SourceDataMethodData {
                 var argRec = new ArgumentRecord(fields);
                 bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
             } else {
-                var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+                var slotId = new BindingId();
                 argSlotIds.add(slotId);
                 var argIbMaybe = GenAspectInitialBind.getMaybe(xx, argT);
                 if (argIbMaybe.optIsSome()) {

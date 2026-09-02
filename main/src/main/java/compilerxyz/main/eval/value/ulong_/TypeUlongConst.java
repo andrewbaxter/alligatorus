@@ -81,9 +81,9 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
@@ -195,15 +195,10 @@ public record TypeUlongConst()
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            JsonValue data;
-            if (self instanceof ValueObjectConst v && v.data() instanceof Number dv) {
-                data = new JsonValueNumber(dv.doubleValue());
-            } else if (self instanceof TypeUlongConst) {
-                data = new JsonValueNull();
-            } else {
-                return EResult.err(
-                        loc, "TypeUlongConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
-            }
+            var dv = MustCast.mustCast(
+                    Number.class,
+                    MustCast.mustCast(ValueObjectConst.class, self).data());
+            JsonValue data = new JsonValueNumber(dv.doubleValue());
             return EResult.ok(new Artifact.Body(makeBody.apply(data)));
         }
 
@@ -211,7 +206,6 @@ public record TypeUlongConst()
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
             return switch (data) {
-                case JsonValueNull ignored -> EResult.ok(new TypeUlongConst());
                 case JsonValueNumber n -> EResult.ok(new ValueObjectConst(new TypeUlongConst(), (long) n.value()));
                 default ->
                     EResult.err(loc, "TypeUlongConst::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
@@ -384,6 +378,6 @@ public record TypeUlongConst()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.ULONG_CONST_TYPE);
     }
 }

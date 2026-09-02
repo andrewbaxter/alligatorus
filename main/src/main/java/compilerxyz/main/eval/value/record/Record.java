@@ -30,7 +30,6 @@ import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.CompositeSlotSort;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
@@ -159,7 +158,7 @@ public final class Record
                         }
                         continue;
                     }
-                    var _erCv = res.valueOrNull();
+                    var _erCv = res.valueOpt();
                     if (!res.hasErrors()
                             && _erCv.optIsSome()
                             && _erCv.optUnwrap().value().optIsNone()) {
@@ -438,7 +437,7 @@ public final class Record
                     case RecordField.Dynamic df -> d = df;
                     case RecordField.EvalRes er -> {
                         var inner = er.result();
-                        if (inner.hasErrors() || inner.valueOrNull().optIsNone()) {
+                        if (inner.hasErrors() || inner.valueOpt().optIsNone()) {
                             return Opt.none();
                         }
                         var cv = inner.requireValue("Record::typeAspect lift field");
@@ -544,14 +543,14 @@ public final class Record
                             fieldArts.put(
                                     key,
                                     new ArtifactRecordField(
-                                            false, artRes.valueOrNull().optUnwrapOr(nullArtifact())));
+                                            false, artRes.valueOpt().optUnwrapOr(nullArtifact())));
                         }
                         case RecordField.EvalRes r -> {
                             var inner = r.result();
                             if (inner.hasErrors()) {
                                 inner.drainInto(errors);
                             }
-                            if (inner.valueOrNull().optIsNone()
+                            if (inner.valueOpt().optIsNone()
                                     || inner.requireValue("Record::exporterExport field")
                                             .value()
                                             .optIsNone()) {
@@ -569,7 +568,7 @@ public final class Record
                             fieldArts.put(
                                     key,
                                     new ArtifactRecordField(
-                                            true, artRes.valueOrNull().optUnwrapOr(nullArtifact())));
+                                            true, artRes.valueOpt().optUnwrapOr(nullArtifact())));
                         }
                         default -> throw new IllegalStateException();
                     }
@@ -662,8 +661,7 @@ public final class Record
             if (subRes.hasErrors()) return subRes.reerr();
             var sub = subRes.requireValue("Record::bindSub base.bindSub");
             var bound = xx.target.targetBind(xx, loc, sub);
-            return EResult.ok(
-                    new BindResult(Code.of(bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
+            return EResult.ok(new BindResult(Code.of(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));
         }
 
         TList<ExprErr> errors = null;
@@ -724,7 +722,7 @@ public final class Record
                 if (bindRes.hasErrors()) {
                     scopeFields.put(
                             br.key(),
-                            new RecordScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
+                            new RecordScopeField.Error(bindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var bind = bindRes.requireValue("Record::bindSub AspectBind");
@@ -732,8 +730,7 @@ public final class Record
                 if (fieldBindRes.hasErrors()) {
                     scopeFields.put(
                             br.key(),
-                            new RecordScopeField.Error(
-                                    fieldBindRes.errorsOrNull().optUnwrap()));
+                            new RecordScopeField.Error(fieldBindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
@@ -746,8 +743,7 @@ public final class Record
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 scopeFields.put(
-                        br.key(),
-                        new RecordScopeField.Dynamic(br.targetSub().optUnwrap().type()));
+                        br.key(), new RecordScopeField.Dynamic(br.targetSub().optUnwrap().type));
                 targetFields.add(new RecordBindField(br.key(), br.targetSub().optUnwrap()));
             } else if (br.constCv().optIsSome()) {
                 var fieldCv = br.constCv().optUnwrap();
@@ -758,7 +754,7 @@ public final class Record
                 if (bindRes.hasErrors()) {
                     scopeFields.put(
                             br.key(),
-                            new RecordScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
+                            new RecordScopeField.Error(bindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var bind = bindRes.requireValue("Record::bindSub AspectBind");
@@ -766,8 +762,7 @@ public final class Record
                 if (fieldBindRes.hasErrors()) {
                     scopeFields.put(
                             br.key(),
-                            new RecordScopeField.Error(
-                                    fieldBindRes.errorsOrNull().optUnwrap()));
+                            new RecordScopeField.Error(fieldBindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
@@ -778,7 +773,7 @@ public final class Record
         }
         var combined = xx.target.targetBindSubRecord(xx, loc, carry, targetFields);
         var bound = xx.target.targetBind(xx, loc, combined);
-        return EResult.ok(new BindResult(Code.of(bound.code()), new BindingRecord(scopeFields, Opt.some(bound.id()))));
+        return EResult.ok(new BindResult(Code.of(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));
     }
 
     @Override
@@ -852,7 +847,7 @@ public final class Record
                     convertedFields.put(
                             key,
                             new RecordField.EvalRes(
-                                    EResult.errs(srcFieldRes.errorsOrNull().optUnwrapOr(new TList<>()))));
+                                    EResult.errs(srcFieldRes.errorsOpt().optUnwrapOr(new TList<>()))));
                     continue;
                 }
                 var srcFieldCv = srcFieldRes.requireValue("Record::typeCastFrom source field");
@@ -898,14 +893,14 @@ public final class Record
         ValueDynamicSource srcAccessSource;
         if (carryDyn != null) {
             var bindResult = xx.target.targetBind(xx, loc, new TargetBindSub(carryDyn, srcType));
-            sourceLoadCarry = bindResult.code();
-            srcAccessSource = new ValueDynamicSource.Binding(bindResult.id());
+            sourceLoadCarry = bindResult.code;
+            srcAccessSource = new ValueDynamicSource.Binding(bindResult.id);
         } else {
             switch (sourcedSource) {
                 case ValueDynamicSource.Expr e -> {
-                    var srcKey = new JavaBytecodeBindingKey();
+                    var srcKey = new BindingId();
                     sourceLoadCarry = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, srcKey));
-                    srcAccessSource = new ValueDynamicSource.Binding(new BindingId.Local(srcKey));
+                    srcAccessSource = new ValueDynamicSource.Binding(srcKey);
                 }
                 case ValueDynamicSource.Binding b -> {
                     sourceLoadCarry = null;

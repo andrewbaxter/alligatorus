@@ -1,12 +1,7 @@
 package compilerxyz.main.eval.value.expr;
 
-import compilerxyz.main.artifact.Artifact;
-import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.artifact.ArtifactIdSource;
-import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
@@ -24,13 +19,11 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.TypeObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
+import compilerxyz.main.eval.value.object_.TypeObjectDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -40,7 +33,6 @@ import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -50,26 +42,18 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.GenTypeExpr;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
-import compilerxyz.main.safejson.JsonValue;
-import compilerxyz.main.safejson.JsonValueArray;
-import compilerxyz.main.safejson.JsonValueBoolean;
-import compilerxyz.main.safejson.JsonValueNull;
-import compilerxyz.main.safejson.JsonValueNumber;
-import compilerxyz.main.safejson.JsonValueObject;
-import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
-import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6013L)
 @BuiltinPath("types.expr")
 public record TypeExpr()
         implements Type,
                 Value,
-                AspectArtifact,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
@@ -90,16 +74,13 @@ public record TypeExpr()
         return "expr";
     }
 
-    private static final TypeObjectConst META = TypeObjectConst.metaOf(TypeExpr.class, "expr");
-
     public Type valueType() {
-        return META;
+        return ((TypeObjectDynamic) GenTypeExpr.dynamicType()).pairedConst();
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
-                || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -112,45 +93,6 @@ public record TypeExpr()
         }
         return Opt.none();
     }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.EXPR;
-    }
-
-    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
-        @Override
-        public EResult<Artifact> exporterRootDelegateSelfExport(
-                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (self instanceof TypeExpr) {
-                return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
-            }
-            return EResult.err(
-                    loc,
-                    "TypeExpr::exporterRootDelegateSelfExport: Expr-value artifact path needs the deferred expr.rs port"
-                            + " (got "
-                            + self.getClass()
-                            + ")");
-        }
-
-        @Override
-        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
-                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            return switch (data) {
-                case JsonValueNull ignored -> EResult.ok(new TypeExpr());
-                case JsonValueBoolean ignored ->
-                    EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
-                case JsonValueNumber ignored ->
-                    EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
-                case JsonValueString ignored ->
-                    EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
-                case JsonValueArray ignored ->
-                    EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
-                case JsonValueObject ignored ->
-                    EResult.err(loc, "TypeExpr::exporterRootDelegateSelfFromArtifactData: unexpected " + data);
-            };
-        }
-    };
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
@@ -222,8 +164,8 @@ public record TypeExpr()
             return EResult.err(loc, "TypeExpr::toDynamic: CodeValue has no value to stage");
         }
         var cell = new StagedExprCell(cv.value().optUnwrap());
-        var key = new JavaBytecodeBindingKey();
-        var id = new BindingId.Local(key);
+        var key = new BindingId();
+        var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(StagedExprCell.class, cell)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
@@ -256,7 +198,7 @@ public record TypeExpr()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.EXPR);
     }
 
     @Override

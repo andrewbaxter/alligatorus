@@ -19,7 +19,6 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -124,8 +123,8 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
             return EResult.err(loc, "aspect_lookup: xx has no runtime code");
         }
 
-        var uniqueKey = new JavaBytecodeBindingKey();
-        var uniqueId = new BindingId.Local(uniqueKey);
+        var uniqueKey = new BindingId();
+        var uniqueId = uniqueKey;
         xx.vx.externals.add(new EvalContext.ExternalEntry(uniqueKey, this, new External(Unique.class, auq)));
         var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), uniqueId);
 

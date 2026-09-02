@@ -135,7 +135,7 @@ public record TypeEResultDynamic<T extends Type>(T elementType)
                 seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
             }
         } else {
-            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_ERRORS_OR_NULL));
+            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_ERRORS_OPT));
             seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.OPT_OPT_UNWRAP));
             seq.add(JavaBytecodeUtils.cast(
                     loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(TList.class))));

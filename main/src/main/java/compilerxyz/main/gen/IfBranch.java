@@ -1,10 +1,9 @@
 package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.Type;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6342L)
 public final class IfBranch {
     public final CodeValue condition;
     public final CodeValue body;
@@ -12,9 +11,5 @@ public final class IfBranch {
     public IfBranch(CodeValue condition, CodeValue body) {
         this.condition = condition;
         this.body = body;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.ifBranch();
     }
 }

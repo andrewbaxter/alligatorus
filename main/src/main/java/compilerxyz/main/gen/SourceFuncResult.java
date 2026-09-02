@@ -3,19 +3,15 @@ package compilerxyz.main.gen;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6344L)
 public final class SourceFuncResult {
     public final TypeSourceFunctionConst func;
 
     public SourceFuncResult(TypeSourceFunctionConst func) {
         this.func = func;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.sourceFuncResult();
     }
 
     public void set_description(String description) {

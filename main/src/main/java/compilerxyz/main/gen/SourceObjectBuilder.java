@@ -12,12 +12,12 @@ import compilerxyz.main.eval.value.source_object.SourceObjectInterfaceImplData;
 import compilerxyz.main.eval.value.source_object.SourceObjectInterfaceMethodImplData;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_object_new.TypeSourceObjectNewDynamic;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.LinkedHashMap;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6347L)
 public final class SourceObjectBuilder {
     public final TypeSourceObjectDynamic type_;
 
@@ -26,10 +26,6 @@ public final class SourceObjectBuilder {
     public SourceObjectBuilder(TypeSourceObjectDynamic type_) {
         this.type_ = type_;
         this.new_ = new TypeSourceObjectNewDynamic(type_);
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.sourceObjectBuilder();
     }
 
     public void set_description(String description) {

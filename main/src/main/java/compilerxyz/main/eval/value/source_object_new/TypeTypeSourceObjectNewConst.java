@@ -127,7 +127,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, dt.newArtifactIdCell, () -> {
                         var objectArtRes = Artifactable.exportArtifact(xx, loc, dt);
                         objectArtRes.drainInto(errors);
-                        var objectArt = objectArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var objectArt = objectArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var body = new ArtifactDataSourceObjectNew(objectArt);
                         return makeBody.apply(ArtifactDataSourceObjectNewCodec.toValue(body));
                     });

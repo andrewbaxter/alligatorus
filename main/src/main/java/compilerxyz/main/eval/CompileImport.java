@@ -108,7 +108,7 @@ public final class CompileImport {
                         evalRootScope, evalTarget, evalVx, importState, Opt.some(new TypeStringConst()));
                 var _bindingRes = GenBuiltinTree.installRoot(evalXx, evalRootLoc, importState);
                 if (_bindingRes.hasErrors()) {
-                    evalResult = new EvalOutcome.Err(_bindingRes.errorsOrNull().optUnwrap());
+                    evalResult = new EvalOutcome.Err(_bindingRes.errorsOpt().optUnwrap());
                     break evalBlock;
                 }
                 var _rootBinding = _bindingRes.requireValue("Eval::eval installRoot");
@@ -122,7 +122,7 @@ public final class CompileImport {
                 evalVx.evalRootInternalName = EvalRootEmitter.toInternalName(evalBinaryName);
                 var cvRes = ConstEval.constEval(evalXx, rootExpr);
                 if (cvRes.hasErrors()) {
-                    evalResult = new EvalOutcome.Err(cvRes.errorsOrNull().optUnwrap());
+                    evalResult = new EvalOutcome.Err(cvRes.errorsOpt().optUnwrap());
                     break evalBlock;
                 }
                 var evalRes = cvRes.requireValue("Eval::eval constEval");
@@ -155,15 +155,15 @@ public final class CompileImport {
                     } else {
                         var consumeRes = GenAspectConsumeDynamic.get(evalXx, evalRootLoc, valueType);
                         if (consumeRes.hasErrors()) {
-                            evalResult = new EvalOutcome.Err(
-                                    consumeRes.errorsOrNull().optUnwrap());
+                            evalResult =
+                                    new EvalOutcome.Err(consumeRes.errorsOpt().optUnwrap());
                             break evalBlock;
                         }
                         var consume = consumeRes.requireValue("Eval::eval consume aspect");
                         var dynamicRes = consume.aspectConsumeDynamicToDynamic(evalXx, evalRootLoc, cv);
                         if (dynamicRes.hasErrors()) {
-                            evalResult = new EvalOutcome.Err(
-                                    dynamicRes.errorsOrNull().optUnwrap());
+                            evalResult =
+                                    new EvalOutcome.Err(dynamicRes.errorsOpt().optUnwrap());
                             break evalBlock;
                         }
                         var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
@@ -194,8 +194,8 @@ public final class CompileImport {
                         }
                         var installRes = ImportInstall.installDefSetToDynamic(evalXx, evalRootLoc, ds);
                         if (installRes.hasErrors()) {
-                            evalResult = new EvalOutcome.Err(
-                                    installRes.errorsOrNull().optUnwrap());
+                            evalResult =
+                                    new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());
                             break evalBlock;
                         }
                         var installedLoader = installRes.requireValue("Eval::eval installDefSetToDynamic");
@@ -343,14 +343,13 @@ public final class CompileImport {
                 } else {
                     var liftRes = GenAspectLift.get(evalXx, evalRootLoc, valueType);
                     if (liftRes.hasErrors()) {
-                        evalResult = new EvalOutcome.Err(liftRes.errorsOrNull().optUnwrap());
+                        evalResult = new EvalOutcome.Err(liftRes.errorsOpt().optUnwrap());
                         break evalBlock;
                     }
                     var liftAspect = liftRes.requireValue("Eval::eval lift aspect");
                     var liftedRes = liftAspect.aspectLiftLift(evalXx, evalRootLoc, Opt.ofNullable(rawResult));
                     if (liftedRes.hasErrors()) {
-                        evalResult =
-                                new EvalOutcome.Err(liftedRes.errorsOrNull().optUnwrap());
+                        evalResult = new EvalOutcome.Err(liftedRes.errorsOpt().optUnwrap());
                         break evalBlock;
                     }
                     finalValue = liftedRes.requireValue("Eval::eval lift result");

@@ -18,7 +18,6 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.bool_.TypeBoolConst;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
@@ -85,8 +84,8 @@ public record TypeUniqueConst()
             hostValue = wrap.data();
         }
         var u = MustCast.mustCast(Unique.class, hostValue);
-        var key = new JavaBytecodeBindingKey();
-        var id = new BindingId.Local(key);
+        var key = new BindingId();
+        var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(Unique.class, u)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }

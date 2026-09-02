@@ -18,7 +18,6 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.binding.BindingIteratorStack;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeInstructionObj;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
@@ -55,7 +54,6 @@ import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
@@ -262,36 +260,36 @@ public final class TypeListSpecializedDynamic<T extends Type>
         } else {
             bodyCode = body.code();
         }
-        var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
+        var localBinding = (elementScopeId);
         var storeOp = JvmSort.storeOpcode(xx, elementType);
         var getDesc = JavaMethodDescriptor.fromParts(elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
         var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
-        var indexSlot = new BindingId.Local(new JavaBytecodeBindingKey());
+        var indexSlot = new BindingId();
         var loopLabel = new LabelNode();
         var doneLabel = new LabelNode();
         var loopSeq = new JavaBytecodeSequence();
         loopSeq.add(baseDyn);
         loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot)));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
         loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "size", sizeDesc));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
         loopSeq.add(
                 new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IF_ICMPGE, doneLabel))));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
         loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "get", getDesc));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOp, localBinding.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOp, localBinding)));
         var bodyDyn = bodyCode.codeDynamic();
         if (bodyDyn != null) {
             loopSeq.add(bodyDyn);
         }
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
         loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.IADD));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot.key())));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot)));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));

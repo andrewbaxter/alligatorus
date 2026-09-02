@@ -16,7 +16,12 @@ public final class BuiltinMethodEmit {
     public record Param(String name, TypeName type) {}
 
     public record Method(
-            String sourceName, String hostMethodName, TList<Param> params, TypeName ret, boolean sourceVisible) {}
+            String sourceName,
+            String hostMethodName,
+            TList<Param> params,
+            TypeName ret,
+            boolean sourceVisible,
+            boolean needsEvalContext) {}
 
     private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
     public static final ClassName FUNCTION_PARAM =
@@ -64,6 +69,13 @@ public final class BuiltinMethodEmit {
             if (cn.equals(ClassName.get(String.class))) {
                 return Opt.some(CodeBlock.of(
                         "new $T()", ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic")));
+            }
+            if (cn.equals(ClassName.get(Boolean.class))) {
+                return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
+            }
+            if (cn.equals(ClassName.get("compilerxyz.main.eval.expr", "StagedExprCell"))) {
+                return Opt.some(
+                        CodeBlock.of("new $T()", ClassName.get("compilerxyz.main.eval.value.expr", "TypeExpr")));
             }
             return Opt.ofNullable(leafDescriptors.get(cn));
         }

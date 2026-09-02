@@ -119,7 +119,6 @@ public final class ImportRun {
         switch (compileRes.result()) {
             case CompileResResult.Ok okRes -> artifact = okRes.artifact();
             case CompileResResult.Err errRes -> {
-                for (var ee : errRes.errors()) erb.errors().add(ee);
                 erb.errPush("Import failed");
                 return EResult.errs(erb.errors());
             }

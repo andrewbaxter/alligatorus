@@ -90,7 +90,8 @@ public final class JavaAspectExtractor {
                     m.getNameAsString(),
                     new TList<Param>(),
                     typeNameOf(m.getType(), importMap, pkg),
-                    true));
+                    true,
+                    false));
         }
         return Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                 simpleName,

@@ -8,9 +8,7 @@ public final class BindingCode {
     private BindingCode() {}
 
     public static CodeDynamic bindingUse(CodeLoc loc, BindingId id) {
-        return switch (id) {
-            case BindingId.Local local -> new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, local.key()));
-        };
+        return new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, id));
     }
 
     public static CodeDynamic bindingUse(QExprId loc, BindingId id) {

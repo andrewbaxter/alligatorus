@@ -5,10 +5,6 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.type.ClassOrInterfaceType;
-import com.github.javaparser.ast.type.Type;
-import com.github.javaparser.ast.type.VoidType;
 import com.palantir.javaformat.java.Formatter;
 import com.palantir.javaformat.java.FormatterException;
 import com.palantir.javaformat.java.JavaFormatterOptions;
@@ -26,7 +22,6 @@ import compilerxyz.codegen.CodecsGen.Component;
 import compilerxyz.codegen.CodecsGen.TypeKind;
 import compilerxyz.codegen.experimental.BuiltinIdentityScanner;
 import compilerxyz.codegen.experimental.BuiltinPathScanner;
-import compilerxyz.codegen.experimental.BuiltinPushStructScanner;
 import compilerxyz.codegen.experimental.CodegenDescriptorScanner;
 import compilerxyz.codegen.experimental.DynamicTypeScanner;
 import compilerxyz.codegen.experimental.JavaAspectExtractor;
@@ -35,9 +30,6 @@ import compilerxyz.codegen.util.BuiltinMethodEmit.Method;
 import compilerxyz.codegen.util.BuiltinMethodEmit.Param;
 import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.util.NameDerivation;
-import compilerxyz.codegen.util.NamedTypeRef;
-import compilerxyz.codegen.util.PushMethod;
-import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -325,7 +317,8 @@ public final class GenMain {
                                                 m.getNameAsString(),
                                                 params,
                                                 JavaAspectExtractor.typeNameOf(m.getType(), effectiveImports, pkg),
-                                                true));
+                                                true,
+                                                false));
                                     }
                                     {
                                         _rExtractBuiltinSpecInterface = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
@@ -359,6 +352,44 @@ public final class GenMain {
                                                 "@Builtin on " + simpleName + " missing required uniqueId");
                                     }
                                     var uniqueId = Long.parseLong(uniqueIdStr);
+                                    var classImports = JavaAspectExtractor.buildImportMap(cu);
+                                    var classFields = new TList<BuiltinInterfacesGen.DataField>();
+                                    for (var f : clsDecl.getFields()) {
+                                        if (f.isStatic() || !f.isPublic() || !f.isFinal()) continue;
+                                        for (var v : f.getVariables()) {
+                                            classFields.add(new BuiltinInterfacesGen.DataField(
+                                                    NameDerivation.snakeCase(v.getNameAsString()),
+                                                    v.getNameAsString(),
+                                                    JavaAspectExtractor.typeNameOf(
+                                                            f.getElementType(), classImports, pkg)));
+                                        }
+                                    }
+                                    var classMethods = new TList<Method>();
+                                    for (var m : clsDecl.getMethods()) {
+                                        if (m.isStatic() || !m.isPublic()) continue;
+                                        var params = m.getParameters();
+                                        var needsEvalContext = !params.isEmpty()
+                                                && params.get(0)
+                                                        .getNameAsString()
+                                                        .equals("vx")
+                                                && JavaAspectExtractor.typeNameOf(
+                                                                params.get(0).getType(), classImports, pkg)
+                                                        .equals(ClassName.get("compilerxyz.main.eval", "EvalContext"));
+                                        var methodParams = new TList<Param>();
+                                        for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
+                                            var p = params.get(i);
+                                            methodParams.add(new Param(
+                                                    NameDerivation.snakeCase(p.getNameAsString()),
+                                                    JavaAspectExtractor.typeNameOf(p.getType(), classImports, pkg)));
+                                        }
+                                        classMethods.add(new Method(
+                                                NameDerivation.snakeCase(m.getNameAsString()),
+                                                m.getNameAsString(),
+                                                methodParams,
+                                                JavaAspectExtractor.typeNameOf(m.getType(), classImports, pkg),
+                                                true,
+                                                needsEvalContext));
+                                    }
                                     {
                                         _rExtractBuiltinSpecClass = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                                                 simpleName,
@@ -367,8 +398,8 @@ public final class GenMain {
                                                 0L,
                                                 false,
                                                 false,
-                                                new TList<Method>(),
-                                                new TList<BuiltinInterfacesGen.DataField>()));
+                                                classMethods,
+                                                classFields));
                                         break _extractBuiltinSpecClass;
                                     }
                                 }
@@ -695,8 +726,14 @@ public final class GenMain {
 
                             var descName = "desc_" + suffix;
                             var argClassBuilder = CodeBlock.builder();
+                            if (method.needsEvalContext()) {
+                                argClassBuilder.add(
+                                        "$T.fromClass($T.class)",
+                                        BuiltinMethodEmit.JAVA_DATA_DESCRIPTOR,
+                                        ClassName.get("compilerxyz.main.eval", "EvalContext"));
+                            }
                             for (int i = 0; i < paramRawClasses.size(); i++) {
-                                if (i > 0) argClassBuilder.add(", ");
+                                if (i > 0 || method.needsEvalContext()) argClassBuilder.add(", ");
                                 argClassBuilder.add(
                                         "$T.fromClass($T.class)",
                                         BuiltinMethodEmit.JAVA_DATA_DESCRIPTOR,
@@ -717,7 +754,7 @@ public final class GenMain {
                                     hostClass);
                             var methodVar = "method_" + suffix;
                             b.addStatement(
-                                    "var $L = new $T($N, $L, $L, $L, $S, $L, $T.class.isInterface(), false)",
+                                    "var $L = new $T($N, $L, $L, $L, $S, $L, $T.class.isInterface(), $L)",
                                     methodVar,
                                     BuiltinMethodEmit.TYPE_METHOD_DYNAMIC,
                                     receiverVar,
@@ -726,7 +763,8 @@ public final class GenMain {
                                     jvmClassExpr,
                                     method.hostMethodName(),
                                     descName,
-                                    hostClass);
+                                    hostClass,
+                                    method.needsEvalContext());
                             b.addStatement(
                                     "$L.add(new $T($S, $L))",
                                     methodsVar,
@@ -1018,372 +1056,6 @@ public final class GenMain {
                     formatter);
         }
 
-        TList<PushStructsGen.PushStructSpec> _rScanRoot;
-
-        _scanRoot:
-        {
-            var out = new TList<PushStructsGen.PushStructSpec>();
-            try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
-                var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
-                for (var file : files) {
-                    var src = Files.readString(file);
-                    if (!src.contains("BuiltinPushStruct")) continue;
-                    var cu = StaticJavaParser.parse(file);
-                    TMap<String, String> _rBuildImportMap;
-                    _buildImportMap:
-                    {
-                        var m = new TMap<String, String>();
-                        for (var imp : cu.getImports()) {
-                            var full = imp.getNameAsString();
-                            var simple = full.substring(full.lastIndexOf('.') + 1);
-                            m.put(simple, full);
-                        }
-                        {
-                            _rBuildImportMap = m;
-                            break _buildImportMap;
-                        }
-                    }
-                    TMap<String, String> imports = _rBuildImportMap;
-
-                    var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
-                    for (var t : cu.getTypes()) {
-                        if (!(t instanceof ClassOrInterfaceDeclaration c) || c.isInterface()) continue;
-                        AnnotationExpr ann = null;
-                        for (var a : c.getAnnotations()) {
-                            var n = a.getNameAsString();
-                            if (n.equals("BuiltinPushStruct")
-                                    || n.equals("compilerxyz.prelude.annotations.BuiltinPushStruct")) {
-                                ann = a;
-                                break;
-                            }
-                        }
-                        if (ann == null) continue;
-                        ClassOrInterfaceDeclaration cls = c;
-                        PushStructsGen.PushStructSpec _rExtractStruct;
-                        _extractStruct:
-                        {
-                            var name = cls.getNameAsString();
-
-                            var dataFields = new TList<NamedTypeRef>();
-                            var ctors = cls.getConstructors();
-                            if (!ctors.isEmpty()) {
-                                var ctor = ctors.get(0);
-                                for (var p : ctor.getParameters()) {
-                                    var srcName = BuiltinPushStructScanner.snakeStripTrailing(p.getNameAsString());
-                                    dataFields.add(new NamedTypeRef(
-                                            srcName,
-                                            BuiltinPushStructScanner.typeRefOf(
-                                                    p.getType(), imports, pkg, scannedLeaves)));
-                                }
-                            }
-
-                            var fields = new TList<PushStructsGen.PushField>();
-                            for (var f : cls.getFields()) {
-                                if (f.isStatic()
-                                        || !f.hasModifier(com.github.javaparser.ast.Modifier.Keyword.PUBLIC)
-                                        || !f.isFinal()) continue;
-                                for (var v : f.getVariables()) {
-                                    var javaName = v.getNameAsString();
-                                    var srcName = BuiltinPushStructScanner.snakeStripTrailing(javaName);
-                                    var tr = BuiltinPushStructScanner.typeRefOf(
-                                            f.getElementType(), imports, pkg, scannedLeaves);
-                                    fields.add(new PushStructsGen.PushField(srcName, javaName, tr, CodeBlock.of("")));
-                                }
-                            }
-
-                            var methods = new TList<PushMethod>();
-                            for (var m : cls.getMethods()) {
-                                if (m.isStatic() || !m.hasModifier(com.github.javaparser.ast.Modifier.Keyword.PUBLIC))
-                                    continue;
-                                var params = m.getParameters();
-                                var srcMethodName = BuiltinPushStructScanner.snakeStripTrailing(m.getNameAsString());
-                                var needsEvalContext = false;
-                                if (!params.isEmpty()
-                                        && params.get(0).getNameAsString().equals("vx")) {
-                                    Type pt = params.get(0).getType();
-                                    boolean _rIsEvalContext;
-                                    _isEvalContext:
-                                    {
-                                        if (!(pt instanceof ClassOrInterfaceType cit)) {
-                                            _rIsEvalContext = false;
-                                            break _isEvalContext;
-                                        }
-                                        var fqn = BuiltinPushStructScanner.resolve(cit.getNameAsString(), imports, pkg);
-                                        _rIsEvalContext = fqn.equals("compilerxyz.main.eval.EvalContext");
-                                    }
-                                    needsEvalContext = _rIsEvalContext;
-                                }
-                                var methodArgs = new TList<NamedTypeRef>();
-                                for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
-                                    var p = params.get(i);
-                                    var argSrcName = BuiltinPushStructScanner.snakeStripTrailing(p.getNameAsString());
-                                    methodArgs.add(new NamedTypeRef(
-                                            argSrcName,
-                                            BuiltinPushStructScanner.typeRefOf(
-                                                    p.getType(), imports, pkg, scannedLeaves)));
-                                }
-                                Type rt = m.getType();
-                                String _rReturnExpr;
-                                _returnExpr:
-                                {
-                                    if (rt instanceof VoidType) {
-                                        _rReturnExpr = "()";
-                                        break _returnExpr;
-                                    }
-                                    var tr = BuiltinPushStructScanner.typeRefOf(rt, imports, pkg, scannedLeaves);
-                                    {
-                                        _rReturnExpr = tr.dynamicType().toString();
-                                        break _returnExpr;
-                                    }
-                                }
-                                String retExpr = _rReturnExpr;
-
-                                TypeRef _rReturnTypeRef;
-
-                                _returnTypeRef:
-                                {
-                                    if (rt instanceof VoidType) {
-                                        _rReturnTypeRef = TypeRef.opaque(TypeName.VOID);
-                                        break _returnTypeRef;
-                                    }
-                                    {
-                                        _rReturnTypeRef =
-                                                BuiltinPushStructScanner.typeRefOf(rt, imports, pkg, scannedLeaves);
-                                        break _returnTypeRef;
-                                    }
-                                }
-
-                                TypeRef retClass = _rReturnTypeRef;
-
-                                methods.add(new PushMethod(
-                                        srcMethodName,
-                                        methodArgs,
-                                        retExpr,
-                                        CodeBlock.of(""),
-                                        "",
-                                        retClass,
-                                        needsEvalContext));
-                            }
-
-                            {
-                                _rExtractStruct = new PushStructsGen.PushStructSpec(name, dataFields, fields, methods);
-                                break _extractStruct;
-                            }
-                        }
-                        out.add(_rExtractStruct);
-                    }
-                }
-            }
-            {
-                _rScanRoot = out;
-                break _scanRoot;
-            }
-        }
-
-        TList<PushStructsGen.PushStructSpec> scannedPushStructs = _rScanRoot;
-
-        TList<PushStructsGen.PushStructSpec> _rSpecs;
-        _specs:
-        {
-            {
-                _rSpecs = TList.of();
-                break _specs;
-            }
-        }
-        {
-            TList<PushStructsGen.PushStructSpec> specs = _rSpecs;
-            TList<PushStructsGen.PushStructSpec> extraSpecs = scannedPushStructs;
-
-            var all = new TList<PushStructsGen.PushStructSpec>();
-            all.addAll(specs);
-            all.addAll(extraSpecs);
-            var names = new TSet<String>();
-            for (var spec : all) {
-                if (!names.add(spec.name())) {
-                    throw new IllegalStateException("duplicate push struct name: " + spec.name());
-                }
-                var memberNames = new TSet<String>();
-                for (var f : spec.fields()) {
-                    if (!memberNames.add(PushStructsGen.pushMethodName(f.name()))) {
-                        throw new IllegalStateException(
-                                "duplicate field/method name on " + spec.name() + ": " + f.name());
-                    }
-                }
-                for (var m : spec.methods()) {
-                    if (!memberNames.add(PushStructsGen.pushMethodName(m.name()))) {
-                        throw new IllegalStateException(
-                                "duplicate field/method name on " + spec.name() + ": " + m.name());
-                    }
-                }
-            }
-
-            for (var spec : all) {
-                if (PushStructsGen.HANDWRITTEN_STRUCTS.contains(spec.name())) continue;
-
-                var chars = spec.name().toCharArray();
-                chars[0] = Character.toLowerCase(chars[0]);
-                var factoryName = new String(chars);
-                var genObjectTypes = ClassName.get(PushStructsGen.GEN_PACKAGE, "GenObjectTypes");
-                var cls = TypeSpec.classBuilder(spec.name()).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-
-                var ctor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
-                for (var df : spec.dataFields()) {
-                    cls.addField(FieldSpec.builder(df.type().path(), df.name(), Modifier.PUBLIC, Modifier.FINAL)
-                            .build());
-                    if (df.derivedFrom().optIsSome()) {
-                        ctor.addStatement(
-                                "this.$N = $L", df.name(), df.derivedFrom().optUnwrap());
-                    } else {
-                        ctor.addParameter(ParameterSpec.builder(df.type().path(), df.name())
-                                .build());
-                        ctor.addStatement("this.$N = $N", df.name(), df.name());
-                    }
-                }
-                cls.addMethod(ctor.build());
-
-                cls.addMethod(MethodSpec.methodBuilder("dynamicType")
-                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                        .returns(PushStructsGen.TYPE_OBJECT_DYNAMIC)
-                        .addStatement("return $T.$L()", genObjectTypes, factoryName)
-                        .build());
-
-                var file = JavaFile.builder(PushStructsGen.GEN_PACKAGE, cls.build())
-                        .build();
-                GenMain.write(outRoot, file, formatter);
-            }
-            var cls = TypeSpec.classBuilder("GenObjectTypes").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-            cls.addMethod(MethodSpec.constructorBuilder()
-                    .addModifiers(Modifier.PRIVATE)
-                    .build());
-            for (var spec : all) {
-                var chars = spec.name().toCharArray();
-                chars[0] = Character.toLowerCase(chars[0]);
-                var fieldName = new String(chars) + "_instance";
-                cls.addField(FieldSpec.builder(
-                                PushStructsGen.TYPE_OBJECT_DYNAMIC, fieldName, Modifier.PRIVATE, Modifier.STATIC)
-                        .build());
-                MethodSpec _rBuildObjectTypeFactory;
-                _buildObjectTypeFactory:
-                {
-                    var nameChars = spec.name().toCharArray();
-                    nameChars[0] = Character.toLowerCase(nameChars[0]);
-                    var factoryName = new String(nameChars);
-                    var specClass = ClassName.get(PushStructsGen.GEN_PACKAGE, spec.name());
-                    var jvmInternal = specClass.canonicalName().replace('.', '/');
-
-                    var dataFieldsList = CodeBlock.builder();
-                    dataFieldsList.add("$T.<$T>of(", PushStructsGen.TLIST, PushStructsGen.OBJECT_DATA_FIELD);
-                    for (int i = 0; i < spec.fields().size(); i++) {
-                        var f = spec.fields().get(i);
-                        if (i > 0) dataFieldsList.add(", ");
-                        dataFieldsList.add(
-                                "$T.ofField($S, $S, $T.fromClass($T.class), $L)",
-                                PushStructsGen.OBJECT_DATA_FIELD,
-                                PushStructsGen.pushMethodName(f.name()),
-                                f.javaFieldName(),
-                                PushStructsGen.JAVA_DATA_DESCRIPTOR,
-                                PushStructsGen.rawTypeName(f.ret().path()),
-                                f.ret().dynamicType());
-                    }
-                    dataFieldsList.add(")");
-
-                    var isSelfReferential = PushStructsGen.INSTANCE_METHOD_STRUCTS.contains(spec.name());
-                    var methodsList = CodeBlock.builder();
-                    if (isSelfReferential) {
-                        methodsList.add("$N", "__methods");
-                    } else {
-                        methodsList.add("$T.<$T>of(", PushStructsGen.TLIST, PushStructsGen.OBJECT_METHOD);
-                        for (int i = 0; i < spec.methods().size(); i++) {
-                            var meth = spec.methods().get(i);
-                            var dynRuntimeMethod = meth.dynRuntimeMethod();
-                            if (dynRuntimeMethod == null
-                                    && !PushStructsGen.INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
-                                throw new IllegalStateException(
-                                        "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
-                            }
-                            if (i > 0) methodsList.add(", ");
-                            methodsList.add(
-                                    "new $T($S, $L)",
-                                    PushStructsGen.OBJECT_METHOD,
-                                    PushStructsGen.pushMethodName(meth.name()),
-                                    PushStructsGen.methodFunctionType(spec, specClass, meth, dynRuntimeMethod));
-                        }
-                        methodsList.add(")");
-                    }
-
-                    var builder = MethodSpec.methodBuilder(factoryName)
-                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                            .returns(PushStructsGen.TYPE_OBJECT_DYNAMIC)
-                            .beginControlFlow("if ($N == null)", fieldName);
-                    if (isSelfReferential) {
-                        builder.addStatement(
-                                "var __methods = new $T<$T>()", PushStructsGen.TLIST, PushStructsGen.OBJECT_METHOD);
-                    }
-                    builder.addStatement(
-                            "var __meta = new $T($S, $T.<$T>of(), $T.<$T>of(), $T.<$T>of(), $T.none())",
-                            PushStructsGen.TYPE_OBJECT_META,
-                            spec.name(),
-                            PushStructsGen.ILIST,
-                            PushStructsGen.UNIQUE,
-                            PushStructsGen.ILIST,
-                            PushStructsGen.TYPE_OBJECT_CAST_RULE,
-                            PushStructsGen.ILIST,
-                            PushStructsGen.TYPE_OBJECT_CAST_FROM_RULE,
-                            PushStructsGen.OPT);
-                    builder.addStatement(
-                            "$N = new $T(__meta, $T.of($S), $T.fromClass($T.class), $T.class, "
-                                    + "$T.DYNAMIC, $T.none())",
-                            fieldName,
-                            PushStructsGen.TYPE_OBJECT_DYNAMIC,
-                            PushStructsGen.JAVA_INTERNAL_NAME,
-                            jvmInternal,
-                            PushStructsGen.JAVA_DATA_DESCRIPTOR,
-                            specClass,
-                            specClass,
-                            PushStructsGen.OBJECT_DROP_KIND,
-                            PushStructsGen.OPT);
-                    if (!isSelfReferential) {
-                        builder.addStatement(
-                                "$N.linkInit($T.from($L), $T.from($L))",
-                                fieldName,
-                                PushStructsGen.ILIST,
-                                dataFieldsList.build(),
-                                PushStructsGen.ILIST,
-                                methodsList.build());
-                    }
-                    if (isSelfReferential) {
-                        for (var meth : spec.methods()) {
-                            var dynRuntimeMethod = meth.dynRuntimeMethod();
-                            if (dynRuntimeMethod == null
-                                    && !PushStructsGen.INSTANCE_METHOD_STRUCTS.contains(spec.name())) {
-                                throw new IllegalStateException(
-                                        "PushMethod '" + meth.name() + "' has no dynRuntimeMethod set");
-                            }
-                            builder.addStatement(
-                                    "__methods.add(new $T($S, $L))",
-                                    PushStructsGen.OBJECT_METHOD,
-                                    PushStructsGen.pushMethodName(meth.name()),
-                                    PushStructsGen.methodFunctionType(spec, specClass, meth, dynRuntimeMethod));
-                        }
-                        builder.addStatement(
-                                "$N.linkInit($T.from($L), $T.from(__methods))",
-                                fieldName,
-                                PushStructsGen.ILIST,
-                                dataFieldsList.build(),
-                                PushStructsGen.ILIST);
-                    }
-                    {
-                        _rBuildObjectTypeFactory = builder.endControlFlow()
-                                .addStatement("return $N", fieldName)
-                                .build();
-                        break _buildObjectTypeFactory;
-                    }
-                }
-                cls.addMethod(_rBuildObjectTypeFactory);
-            }
-            var file = JavaFile.builder(PushStructsGen.GEN_PACKAGE, cls.build()).build();
-            GenMain.write(outRoot, file, formatter);
-        }
         {
             TList<String> linkClassNames = links;
 

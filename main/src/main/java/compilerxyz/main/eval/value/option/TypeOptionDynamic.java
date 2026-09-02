@@ -187,7 +187,7 @@ public final class TypeOptionDynamic<T extends Type>
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
                 var elementArtRes = Artifactable.exportArtifact(xx, loc, option.elementType());
                 elementArtRes.drainInto(errors);
-                var elementArt = elementArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
                 var body = new ArtifactOptionType(elementArt);
                 return makeBody.apply(ArtifactOptionTypeCodec.toValue(body));
             });

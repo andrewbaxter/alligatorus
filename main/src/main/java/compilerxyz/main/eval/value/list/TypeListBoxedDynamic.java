@@ -19,7 +19,6 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.binding.BindingIteratorStack;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
@@ -61,7 +60,6 @@ import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.prelude.annotations.BuiltinFull;
-import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -259,7 +257,7 @@ public final class TypeListBoxedDynamic<T extends Type>
         setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-        var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
+        var localBinding = (elementScopeId);
 
         var elementDecode = elementDecodeCast(xx, loc);
         Code bodyCode;
@@ -311,8 +309,8 @@ public final class TypeListBoxedDynamic<T extends Type>
         if (cv.value().optIsNone() || !(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
             return EResult.ok(Code.none(loc));
         }
-        var elementSlot = new BindingId.Local(new JavaBytecodeBindingKey());
-        var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot.key()));
+        var elementSlot = new BindingId();
+        var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot));
         var elementCv = new CodeValue(Code.of(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
         var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
         if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();

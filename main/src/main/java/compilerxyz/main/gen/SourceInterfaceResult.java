@@ -1,24 +1,19 @@
 package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6346L)
 public final class SourceInterfaceResult {
     public final TypeSourceInterfaceDynamic type_;
 
     public SourceInterfaceResult(TypeSourceInterfaceDynamic type_) {
         this.type_ = type_;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.sourceInterfaceResult();
     }
 
     public void set_description(String description) {

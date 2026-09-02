@@ -43,6 +43,7 @@ import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
@@ -87,11 +88,7 @@ public record TypeNullConst()
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!((self instanceof ValueObjectConst voc && voc.type() instanceof TypeNullConst)
-                    || self instanceof TypeNullConst)) {
-                return EResult.err(
-                        loc, "TypeNullConst::exporterRootDelegateSelfExport: unexpected self type " + self.getClass());
-            }
+            MustCast.mustCast(ValueObjectConst.class, self);
             return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
         }
 
@@ -168,6 +165,6 @@ public record TypeNullConst()
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.NULL_CONST_TYPE);
     }
 }

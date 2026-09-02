@@ -3,19 +3,15 @@ package compilerxyz.main.gen;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.source_object.SourceDataMethodData;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6348L)
 public final class SourceObjectMethodResult {
     public final SourceDataMethodData method;
 
     public SourceObjectMethodResult(SourceDataMethodData method) {
         this.method = method;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.sourceObjectMethodResult();
     }
 
     public void impl(Type arg, Opt<Type> ret, StagedExprCell implBody) {

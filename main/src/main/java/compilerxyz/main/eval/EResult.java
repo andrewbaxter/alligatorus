@@ -32,7 +32,7 @@ public final class EResult<T> {
         return new EResult<>(Opt.some(value), Opt.some(errors));
     }
 
-    public Opt<T> valueOrNull() {
+    public Opt<T> valueOpt() {
         return value;
     }
 
@@ -48,7 +48,7 @@ public final class EResult<T> {
     }
 
     @CodegenDescriptor
-    public Opt<TList<ExprErr>> errorsOrNull() {
+    public Opt<TList<ExprErr>> errorsOpt() {
         return errors;
     }
 

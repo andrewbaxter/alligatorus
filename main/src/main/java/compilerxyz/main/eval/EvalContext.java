@@ -1,6 +1,5 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -25,5 +24,5 @@ public final class EvalContext {
         this.ix = ix;
     }
 
-    public record ExternalEntry(JavaBytecodeBindingKey key, Type type, External external) {}
+    public record ExternalEntry(BindingId key, Type type, External external) {}
 }

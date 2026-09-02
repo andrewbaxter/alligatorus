@@ -117,7 +117,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                     xx.vx.ix.gx.artifacts, variant.newArtifactIdCell, () -> {
                         var tuArtRes = Artifactable.exportArtifact(xx, loc, tu);
                         tuArtRes.drainInto(errors);
-                        var tuArt = tuArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var tuArt = tuArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var body = new ArtifactDataSourceUnionNew(tuArt, variantIndex);
                         return makeBody.apply(ArtifactDataSourceUnionNewCodec.toValue(body));
                     });

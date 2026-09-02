@@ -15,6 +15,7 @@ import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
 import static org.objectweb.asm.Opcodes.NEW;
 import static org.objectweb.asm.Opcodes.PUTFIELD;
 
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.prelude.util.TList;
@@ -404,8 +405,7 @@ public class JavaBytecodeUtils {
         return mapped == null ? l : mapped;
     }
 
-    public static void renderMethod(
-            JavaBytecodeSequence seq, MethodVisitor mv, TList<JavaBytecodeBindingKey> initialIndexes) {
+    public static void renderMethod(JavaBytecodeSequence seq, MethodVisitor mv, TList<BindingId> initialIndexes) {
         var _rSlots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var _rK : initialIndexes) _rSlots.add(new JavaBytecodeSequence.InitialSlot(_rK));
         seq.renderInternal(mv, _rSlots);

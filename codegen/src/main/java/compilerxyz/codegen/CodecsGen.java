@@ -11,7 +11,7 @@ import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import compilerxyz.codegen.CodecsGen.Component;
 import compilerxyz.codegen.CodecsGen.TypeKind;
-import compilerxyz.prelude.util.ISet;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -28,7 +28,7 @@ public final class CodecsGen {
 
     static final String GEN_PACKAGE = "compilerxyz.main.gen.codec";
 
-    public static final ISet<String> HAND_CODED = ISet.of(
+    public static final IList<String> HAND_CODED = IList.of(
             "compilerxyz.main.safejson.JsonValue",
             "compilerxyz.main.artifact.Artifact",
             "compilerxyz.main.artifact.ArtifactBody",

@@ -12,18 +12,14 @@ import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.value.source_union.SourceUnionVariant;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.source_union_new.TypeSourceUnionNewDynamic;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6349L)
 public final class SourceUnionBuilder {
     public final TypeSourceUnionDynamic type_;
 
     public SourceUnionBuilder(TypeSourceUnionDynamic type_) {
         this.type_ = type_;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.sourceUnionBuilder();
     }
 
     public EResult<TypeSourceUnionNewDynamic> variant(EvalContext vx, String tag, Type typeRef) {

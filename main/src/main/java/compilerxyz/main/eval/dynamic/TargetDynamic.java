@@ -106,12 +106,12 @@ public final class TargetDynamic implements Target {
 
     @Override
     public BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub) {
-        var key = new JavaBytecodeBindingKey();
-        var local = new BindingId.Local(key);
+        var key = new BindingId();
+        var local = key;
         var seq = new JavaBytecodeSequence();
-        seq.add(sub.data());
+        seq.add(sub.data);
         seq.add(new CodeDynamic(
-                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, sub.type()), key)));
+                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, sub.type), key)));
         return new BindResult(new CodeDynamic(loc, seq), local);
     }
 
@@ -154,7 +154,7 @@ public final class TargetDynamic implements Target {
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeInstructionObj(isExc)));
             seq.add(JavaBytecodeUtils.cast(loc, new JavaDataDescriptor("L" + INTNAME_DYN_EXCEPTION.value() + ";")));
             seq.add(JavaBytecodeUtils.accessField(loc, INTNAME_DYN_EXCEPTION, "payload", JvmConstants.DESC_OBJECT));
-            var payloadConsumeRes = GenAspectConsumeDynamic.get(xx, loc, clause.excType());
+            var payloadConsumeRes = GenAspectConsumeDynamic.get(xx, loc, clause.excType);
             if (payloadConsumeRes.hasErrors()) return payloadConsumeRes.reerr();
             var payloadDesc = payloadConsumeRes
                     .requireValue("try/catch payload AspectConsumeDynamic")
@@ -163,14 +163,13 @@ public final class TargetDynamic implements Target {
                 seq.add(JavaBytecodeUtils.cast(loc, payloadDesc));
             }
             seq.add(new CodeDynamic(
-                    new CodeLoc.Some(loc),
-                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, clause.binding().key())));
-            if (clause.body().value().optIsSome()) {
-                var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body());
+                    new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, (clause.binding))));
+            if (clause.body.value().optIsSome()) {
+                var catchDynOpt = cvToDynamic(erb, xx, loc, clause.body);
                 if (catchDynOpt.optIsNone()) return EResult.errs(erb.errors());
                 seq.add(catchDynOpt.optUnwrap());
             } else {
-                var catchDyn = clause.body().code().codeDynamic();
+                var catchDyn = clause.body.code().codeDynamic();
                 if (catchDyn != null) seq.add(catchDyn);
             }
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(joinKey)));
@@ -224,7 +223,7 @@ public final class TargetDynamic implements Target {
             ExprContext xx, QExprId loc, JumpKey self, Code cleanup, Opt<JumpKey> parent) {
         var seq = new JavaBytecodeSequence();
         seq.add(new CodeDynamic(loc, new JavaBytecodeLand(self)));
-        var excKey = new JavaBytecodeBindingKey();
+        var excKey = new BindingId();
         seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, excKey)));
         var cleanupDyn = cleanup.codeDynamic();
         if (cleanupDyn != null) {
@@ -245,11 +244,11 @@ public final class TargetDynamic implements Target {
         var seq = new JavaBytecodeSequence();
         seq.add(new CodeDynamic(loc, new JavaBytecodeLand(self)));
         var cleanupDyn = cleanup.codeDynamic();
-        JavaBytecodeBindingKey parkKey = null;
+        BindingId parkKey = null;
         Type parkType = null;
         if (carryType.optIsSome() && cleanupDyn != null) {
             parkType = carryType.optUnwrap();
-            parkKey = new JavaBytecodeBindingKey();
+            parkKey = new BindingId();
             seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, parkType), parkKey)));
         }
         if (cleanupDyn != null) {
@@ -364,7 +363,7 @@ public final class TargetDynamic implements Target {
         var erb = new Erb(loc);
         var baseDynOpt = cvToDynamic(erb, xx, loc, base);
         if (baseDynOpt.optIsNone()) return EResult.errs(erb.errors());
-        var baseKey = new JavaBytecodeBindingKey();
+        var baseKey = new BindingId();
 
         var seq = new JavaBytecodeSequence();
         seq.add(baseDynOpt.optUnwrap());
@@ -376,7 +375,7 @@ public final class TargetDynamic implements Target {
         boolean anyNoValue = false;
         boolean allControlEnded = true;
         for (var branch : cases) {
-            switch (branch.body().outcome()) {
+            switch (branch.body.outcome()) {
                 case EvalOutcome.HasValue h -> {
                     anyValue = true;
                     allControlEnded = false;
@@ -390,7 +389,7 @@ public final class TargetDynamic implements Target {
             }
         }
         if (fallback.optIsSome()) {
-            switch (fallback.optUnwrap().body().outcome()) {
+            switch (fallback.optUnwrap().body.outcome()) {
                 case EvalOutcome.HasValue h -> {
                     anyValue = true;
                     allControlEnded = false;
@@ -416,7 +415,7 @@ public final class TargetDynamic implements Target {
         var prepRes = md.matchDynamicPrepare(xx);
         if (prepRes.hasErrors()) return prepRes.reerr();
         for (var branch : cases) {
-            var bodyCv = branch.body();
+            var bodyCv = branch.body;
             CodeDynamic bodyDyn;
             if (bodyCv.value().optIsSome()) {
                 var bodyDynOpt = cvToDynamic(erb, xx, loc, bodyCv);
@@ -431,18 +430,16 @@ public final class TargetDynamic implements Target {
             }
             var nextCaseLabel = new LabelNode();
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
-            var testRes = md.matchDynamicTest(loc, branch.variantIndex());
+            var testRes = md.matchDynamicTest(loc, branch.variantIndex);
             if (testRes.hasErrors()) return testRes.reerr();
             seq.add(testRes.requireValue("targetMatch variant test"));
             seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IFEQ, nextCaseLabel)));
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
-            var extractRes = md.matchDynamicExtract(xx, loc, branch.variantIndex(), branch.variantType());
+            var extractRes = md.matchDynamicExtract(xx, loc, branch.variantIndex, branch.variantType);
             if (extractRes.hasErrors()) return extractRes.reerr();
             seq.add(extractRes.requireValue("targetMatch variant extract"));
             seq.add(new CodeDynamic(
-                    new CodeLoc.Some(loc),
-                    new JavaBytecodeStoreLoad(
-                            Opcodes.ASTORE, branch.payloadBinding().key())));
+                    new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, (branch.payloadBinding))));
             seq.add(bodyDyn);
             if (!bodyCv.controlEnded()) {
                 seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));
@@ -450,13 +447,11 @@ public final class TargetDynamic implements Target {
             seq.add(JavaBytecodeUtils.wrapObj(loc, nextCaseLabel));
         }
         if (fallback.optIsSome()) {
-            var fallbackCv = fallback.optUnwrap().body();
+            var fallbackCv = fallback.optUnwrap().body;
             seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ALOAD, baseKey)));
             seq.add(new CodeDynamic(
                     new CodeLoc.Some(loc),
-                    new JavaBytecodeStoreLoad(
-                            Opcodes.ASTORE,
-                            fallback.optUnwrap().payloadBinding().key())));
+                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, (fallback.optUnwrap().payloadBinding))));
             if (fallbackCv.value().optIsSome()) {
                 var fallbackDynOpt = cvToDynamic(erb, xx, loc, fallbackCv);
                 if (fallbackDynOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -507,8 +502,8 @@ public final class TargetDynamic implements Target {
             ExprContext xx, QExprId loc, Expr tree, TList<CodeValue> lowerValues, TList<CodeValue> graftValues) {
         var erb = new Erb(loc);
         var treeCell = new StagedExprCell(tree);
-        var treeKey = new JavaBytecodeBindingKey();
-        var treeId = new BindingId.Local(treeKey);
+        var treeKey = new BindingId();
+        var treeId = treeKey;
         var treeExprType = new TypeExpr();
         xx.vx.externals.add(
                 new EvalContext.ExternalEntry(treeKey, treeExprType, new External(StagedExprCell.class, treeCell)));
@@ -519,8 +514,8 @@ public final class TargetDynamic implements Target {
                     return EResult.err(loc, "TargetDynamic::stage: lower CodeValue has no value");
                 }
                 var cell = new StagedExprCell(cv.value().optUnwrap());
-                var key = new JavaBytecodeBindingKey();
-                var id = new BindingId.Local(key);
+                var key = new BindingId();
+                var id = key;
                 xx.vx.externals.add(
                         new EvalContext.ExternalEntry(key, new TypeExpr(), new External(StagedExprCell.class, cell)));
                 restElements.add(JavaBytecodeUtils.literalNull(loc));
@@ -532,8 +527,8 @@ public final class TargetDynamic implements Target {
                 var vtype = cv.value().optUnwrap().valueType();
                 var liftCell =
                         new StageLiftCell(loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
-                var liftKey = new JavaBytecodeBindingKey();
-                var liftId = new BindingId.Local(liftKey);
+                var liftKey = new BindingId();
+                var liftId = liftKey;
                 xx.vx.externals.add(
                         new EvalContext.ExternalEntry(liftKey, vtype, new External(StageLiftCell.class, liftCell)));
                 var consumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, vtype));
@@ -547,8 +542,8 @@ public final class TargetDynamic implements Target {
         for (var cv : graftValues) {
             if (cv.code().codeIsNone()) {
                 var graftCv = new CodeValue(Code.none(loc), cv.outcome());
-                var key = new JavaBytecodeBindingKey();
-                var id = new BindingId.Local(key);
+                var key = new BindingId();
+                var id = key;
                 var graftType = cv.value().optIsSome() ? cv.value().optUnwrap().valueType() : new TypeNullDynamic();
                 xx.vx.externals.add(
                         new EvalContext.ExternalEntry(key, graftType, new External(CodeValue.class, graftCv)));
@@ -615,11 +610,11 @@ public final class TargetDynamic implements Target {
     @Override
     public TargetBindSub targetBindSubRecord(ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields) {
         var entries = new TOrderedMap<ConstKey, TargetBindSub>();
-        for (var f : fields) entries.put(f.key(), f.sub());
+        for (var f : fields) entries.put(f.key, f.sub);
         var sortedSubs = sortBindSubs(xx, entries, ConstKey.CANONICAL_ORDER);
         var dynamicFields = new TOrderedMap<ConstKey, RecordField>();
         for (var f : fields) {
-            dynamicFields.put(f.key(), new RecordField.Dynamic(f.sub().type()));
+            dynamicFields.put(f.key, new RecordField.Dynamic(f.sub.type));
         }
         Type recordType = new Record(Opt.none(), dynamicFields);
         var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
@@ -629,11 +624,11 @@ public final class TargetDynamic implements Target {
     @Override
     public TargetBindSub targetBindSubTuple(ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots) {
         var entries = new TOrderedMap<Integer, TargetBindSub>();
-        for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub());
+        for (int i = 0; i < slots.size(); i++) entries.put(i, slots.get(i).sub);
         var sortedSubs = sortBindSubs(xx, entries, Integer::compare);
         var dynamicElements = new TList<TupleElement>(slots.size());
         for (var slot : slots) {
-            dynamicElements.add(new TupleElement.Dynamic(slot.sub().type()));
+            dynamicElements.add(new TupleElement.Dynamic(slot.sub.type));
         }
         Type tupleType = new Tuple(Opt.<TupleBaseDynamic>none(), dynamicElements);
         var dynamicCode = emitCompositeInstantiation(xx, loc, carry, sortedSubs);
@@ -644,7 +639,7 @@ public final class TargetDynamic implements Target {
     public EResult<Opt<Code>> targetCastException(
             ExprContext xx, QExprId loc, JumpKey self, Type calleeExc, Type callerExc, Opt<JumpKey> next) {
         var erb = new Erb(loc);
-        var catchBinding = BindingId.localFresh();
+        var catchBinding = new BindingId();
         var initialBindOpt = erb.mustEr(GenAspectInitialBind.get(xx, loc, calleeExc));
         if (initialBindOpt.optIsNone()) return EResult.errs(erb.errors());
         var binding = initialBindOpt.optUnwrap().aspectInitialBindInitialBind(catchBinding);
@@ -657,7 +652,7 @@ public final class TargetDynamic implements Target {
         }
         var seq = new JavaBytecodeSequence();
         seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeLand(self)));
-        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, catchBinding.key())));
+        seq.add(new CodeDynamic(new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(Opcodes.ASTORE, catchBinding)));
         var castDynOpt = cvToDynamic(erb, xx, loc, castCv);
         if (castDynOpt.optIsNone()) return EResult.errs(erb.errors());
         seq.add(castDynOpt.optUnwrap());
@@ -679,8 +674,7 @@ public final class TargetDynamic implements Target {
     private static <K> TList<TargetBindSub> sortBindSubs(
             ExprContext xx, TOrderedMap<K, TargetBindSub> entries, Comparator<K> tiebreaker) {
         var typeEntries = new TOrderedMap<K, Type>();
-        for (var e : entries.entrySet())
-            typeEntries.put(e.getKey(), e.getValue().type());
+        for (var e : entries.entrySet()) typeEntries.put(e.getKey(), e.getValue().type);
         var sort = CompositeSlotSort.sort(xx, typeEntries, tiebreaker);
         var out = new TList<TargetBindSub>(entries.size());
         for (int _tbsI = 0; _tbsI < entries.size(); _tbsI++) out.add(null);
@@ -695,8 +689,8 @@ public final class TargetDynamic implements Target {
         var sortedTypes = new TList<Type>(sortedSubs.size());
         var argSeq = new JavaBytecodeSequence();
         for (var sub : sortedSubs) {
-            sortedTypes.add(sub.type());
-            argSeq.add(sub.data());
+            sortedTypes.add(sub.type);
+            argSeq.add(sub.data);
         }
         var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
         var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);

@@ -272,7 +272,7 @@ public final class ConstEval {
                         var bind = bindOpt.optUnwrap();
                         var bopt = erb.mustCv(xx, constEvalOperand(xx, bind.base()));
                         var vres = constEval(xx, bind.value());
-                        if (vres.valueOrNull().optIsNone()) {
+                        if (vres.valueOpt().optIsNone()) {
                             vres.drainInto(erb.errors());
                             yield EResult.errs(erb.errors());
                         }
@@ -309,7 +309,7 @@ public final class ConstEval {
                         lastVal = Opt.some(new Tuple(Opt.none(), new TList<>()));
                     } else {
                         var rres = constEval(xx, sub);
-                        if (rres.valueOrNull().optIsNone()) {
+                        if (rres.valueOpt().optIsNone()) {
                             rres.drainInto(erb.errors());
                             yield EResult.errs(erb.errors());
                         }
@@ -415,8 +415,8 @@ public final class ConstEval {
                 for (var elExpr : t.elements()) {
                     var elRes = elementResult(xx, constEvalOperand(xx, elExpr));
                     if (!elRes.hasErrors()
-                            && elRes.valueOrNull().optIsSome()
-                            && elRes.valueOrNull().optUnwrap().value().optIsNone()) {
+                            && elRes.valueOpt().optIsSome()
+                            && elRes.valueOpt().optUnwrap().value().optIsNone()) {
                         erb.errors()
                                 .add(new ExprErr(
                                         elExpr.loc(),
@@ -454,8 +454,8 @@ public final class ConstEval {
                         case Result.Ok<ConstKey, String> _ok -> {
                             var _valRes = elementResult(xx, constEvalOperand(xx, _entry.value()));
                             if (!_valRes.hasErrors()
-                                    && _valRes.valueOrNull().optIsSome()
-                                    && _valRes.valueOrNull().optUnwrap().value().optIsNone()) {
+                                    && _valRes.valueOpt().optIsSome()
+                                    && _valRes.valueOpt().optUnwrap().value().optIsNone()) {
                                 _errors.add(new ExprErr(
                                         _entry.value().loc(),
                                         TList.of(new ExprSubErr.Opaque(
@@ -636,7 +636,7 @@ public final class ConstEval {
                         _foreachRes = elemBindRes.reerr();
                         break foreachCompute;
                     }
-                    var elementScopeId = BindingId.localFresh();
+                    var elementScopeId = new BindingId();
                     var elementBinding = elemBindRes
                             .requireValue("Foreach: AspectElementUseDynamicBind")
                             .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
@@ -653,7 +653,7 @@ public final class ConstEval {
                     var elemEntry = bodyScope.pushNamed(ekOpt.optUnwrap(), elementBinding);
                     var bodyXx = new ExprContext(bodyScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                     var bodyResult = constEval(bodyXx, e.body());
-                    if (bodyResult.valueOrNull().optIsNone()) {
+                    if (bodyResult.valueOpt().optIsNone()) {
                         bodyResult.drainInto(erb.errors());
                         _foreachRes = EResult.errs(erb.errors());
                         break foreachCompute;
@@ -798,7 +798,7 @@ public final class ConstEval {
                     for (int i = 0; i < e.cases().size(); i++) {
                         int variantIdx = caseIndices.get(i);
                         var variant = variants.get(variantIdx);
-                        var payloadBinding = BindingId.localFresh();
+                        var payloadBinding = new BindingId();
                         var caseScope = initialScope.fork();
                         ScopeLevel.Entry payloadEntry = null;
                         var ibMaybe = GenAspectInitialBind.getMaybe(xx, variant.type());
@@ -809,7 +809,7 @@ public final class ConstEval {
                         var caseXx =
                                 new ExprContext(caseScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var bodyResult = constEval(caseXx, e.cases().get(i).body());
-                        if (bodyResult.valueOrNull().optIsNone()) {
+                        if (bodyResult.valueOpt().optIsNone()) {
                             bodyResult.drainInto(erb.errors());
                             _matchRes = EResult.errs(erb.errors());
                             break matchCompute;
@@ -853,7 +853,7 @@ public final class ConstEval {
                         }
                         Type fallbackType =
                                 unionInst.optIsSome() ? unionInst.optUnwrap().withActiveVariants(remaining) : baseType;
-                        var fallbackBinding = BindingId.localFresh();
+                        var fallbackBinding = new BindingId();
                         var fallbackScope = initialScope.fork();
                         ScopeLevel.Entry fallbackEntry = null;
                         var fibMaybe = GenAspectInitialBind.getMaybe(xx, fallbackType);
@@ -864,7 +864,7 @@ public final class ConstEval {
                         var fallbackXx = new ExprContext(
                                 fallbackScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var fallbackResult = constEval(fallbackXx, e.fallback().optUnwrap());
-                        if (fallbackResult.valueOrNull().optIsNone()) {
+                        if (fallbackResult.valueOpt().optIsNone()) {
                             fallbackResult.drainInto(erb.errors());
                             _matchRes = EResult.errs(erb.errors());
                             break matchCompute;
@@ -958,7 +958,7 @@ public final class ConstEval {
                             carried = Code.concat(loc, carried, ie.cond.code());
                             if (ie.val) {
                                 var bodyResult = constEval(xx, ie.body);
-                                if (bodyResult.valueOrNull().optIsNone()) {
+                                if (bodyResult.valueOpt().optIsNone()) {
                                     bodyResult.drainInto(erb.errors());
                                     _ifRes = EResult.errs(erb.errors());
                                     break ifCompute;
@@ -977,7 +977,7 @@ public final class ConstEval {
                         }
                         if (e.else_().optIsSome()) {
                             var elseResult = constEval(xx, e.else_().optUnwrap());
-                            if (elseResult.valueOrNull().optIsNone()) {
+                            if (elseResult.valueOpt().optIsNone()) {
                                 elseResult.drainInto(erb.errors());
                                 _ifRes = EResult.errs(erb.errors());
                                 break ifCompute;
@@ -1007,7 +1007,7 @@ public final class ConstEval {
                         var branchXx = new ExprContext(
                                 initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var bodyResult = constEval(branchXx, ie.body);
-                        if (bodyResult.valueOrNull().optIsNone()) {
+                        if (bodyResult.valueOpt().optIsNone()) {
                             bodyResult.drainInto(erb.errors());
                             _ifRes = EResult.errs(erb.errors());
                             break ifCompute;
@@ -1035,7 +1035,7 @@ public final class ConstEval {
                         var elseXx = new ExprContext(
                                 initialScope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var elseResult = constEval(elseXx, e.else_().optUnwrap());
-                        if (elseResult.valueOrNull().optIsNone()) {
+                        if (elseResult.valueOpt().optIsNone()) {
                             elseResult.drainInto(erb.errors());
                             _ifRes = EResult.errs(erb.errors());
                             break ifCompute;
@@ -1135,7 +1135,7 @@ public final class ConstEval {
                 }
                 var bodyXx = new ExprContext(xx.scope.fork(), xx.target, xx.vx, xx.importState, bodyExcType);
                 var bodyResult = constEval(bodyXx, e.body());
-                if (bodyResult.valueOrNull().optIsNone()) {
+                if (bodyResult.valueOpt().optIsNone()) {
                     bodyResult.drainInto(erb.errors());
                     yield EResult.errs(erb.errors());
                 }
@@ -1163,7 +1163,7 @@ public final class ConstEval {
                     var bnv = (Opt.Some<Value>) bnCv.value();
                     var bnCkOpt = erb.mustRes(Eval.extractConstKey(xx, bnv.value()));
                     if (bnCkOpt.optIsNone()) yield EResult.errs(erb.errors());
-                    var bindingId = BindingId.localFresh();
+                    var bindingId = new BindingId();
                     var catchScope = xx.scope.fork();
                     ScopeLevel.Entry payloadEntry = null;
                     var ibMaybe = GenAspectInitialBind.getMaybe(xx, bodyExcType.optUnwrap());
@@ -1174,7 +1174,7 @@ public final class ConstEval {
                     var catchXx =
                             new ExprContext(catchScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                     var catchResult = constEval(catchXx, catchObj.body());
-                    if (catchResult.valueOrNull().optIsNone()) {
+                    if (catchResult.valueOpt().optIsNone()) {
                         catchResult.drainInto(erb.errors());
                         yield EResult.errs(erb.errors());
                     }
@@ -1282,7 +1282,7 @@ public final class ConstEval {
                 CodeValue valCv;
                 if (e.value().optIsSome()) {
                     var vres = constEval(xx, e.value().optUnwrap());
-                    if (vres.valueOrNull().optIsNone()) yield vres;
+                    if (vres.valueOpt().optIsNone()) yield vres;
                     vres.drainInto(erb.errors());
                     var vev = vres.requireValue("constEvalReturn value");
                     xx.scope.adopt(vev.scope());
@@ -1416,11 +1416,11 @@ public final class ConstEval {
     }
 
     private static EResult<CodeValue> elementResult(ExprContext xx, EResult<EvalRes> r) {
-        var vOpt = r.valueOrNull();
+        var vOpt = r.valueOpt();
         if (vOpt.optIsNone()) return r.reerr();
         var v = vOpt.optUnwrap();
         xx.scope.adopt(v.scope());
-        var errs = r.errorsOrNull();
+        var errs = r.errorsOpt();
         if (errs.optIsNone() || errs.optUnwrap().isEmpty()) return EResult.ok(v.cv());
         var copied = new TList<ExprErr>();
         copied.addAll(errs.optUnwrap());
@@ -1455,7 +1455,7 @@ public final class ConstEval {
 
     private static EResult<EvalRes> labeledConsume(
             ExprContext xx, QExprId loc, ScopeLevel.Labeled level, int baseLevelCount, EResult<EvalRes> innerResult) {
-        if (innerResult.valueOrNull().optIsNone()) {
+        if (innerResult.valueOpt().optIsNone()) {
             xx.scope.popToLevelCount(baseLevelCount);
             return innerResult;
         }

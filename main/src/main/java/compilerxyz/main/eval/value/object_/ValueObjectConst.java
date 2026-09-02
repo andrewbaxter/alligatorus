@@ -28,8 +28,7 @@ public record ValueObjectConst(Type type, Object data) implements Value {
     }
 
     public static Type plainTypeType() {
-        var td = (TypeObjectDynamic) GenType.dynamicType();
-        return new TypeObjectConst(td.meta(), td.hostClass());
+        return ((TypeObjectDynamic) GenType.dynamicType()).pairedConst();
     }
 
     @Override

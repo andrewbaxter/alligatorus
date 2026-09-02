@@ -69,8 +69,7 @@ public final class ImmutabilityCheck {
             "com.squareup.javapoet.MethodSpec",
             "com.squareup.javapoet.ParameterSpec",
             "com.squareup.javapoet.TypeSpec");
-    private final Set<String> containers =
-            Set.of("compilerxyz.prelude.util.IList", "compilerxyz.prelude.util.IMap", "compilerxyz.prelude.util.ISet");
+    private final Set<String> containers = Set.of("compilerxyz.prelude.util.IList", "compilerxyz.prelude.util.IMap");
 
     private final Map<String, Res> memo = new HashMap<>();
     private final Set<String> inProgress = new HashSet<>();

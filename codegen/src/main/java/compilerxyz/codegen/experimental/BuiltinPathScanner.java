@@ -18,6 +18,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
+import compilerxyz.codegen.util.DynamicTypes;
 import compilerxyz.codegen.util.NamedTypeRef;
 import compilerxyz.codegen.util.TypeRef;
 import compilerxyz.prelude.util.IMap;
@@ -237,16 +238,23 @@ public final class BuiltinPathScanner {
         if (tn instanceof ParameterizedTypeName pt) {
             var wrapper = COMPOSITE_WRAPPERS.getOrNull(pt.rawType.canonicalName());
             if (wrapper != null && pt.typeArguments.size() == 1 && pt.typeArguments.get(0) instanceof ClassName inner) {
-                return TypeRef.composite1(wrapper, TypeRef.leaf(inner, scannedLeaves));
+                var innerRef = TypeRef.leaf(inner, scannedLeaves);
+                return new TypeRef(
+                        DynamicTypes.compositeValueClass(wrapper, innerRef.path()),
+                        DynamicTypes.composite(wrapper, innerRef.dynamicType()));
             }
             if (wrapper != null
                     && pt.typeArguments.size() == 2
                     && pt.typeArguments.get(0) instanceof ClassName k
                     && pt.typeArguments.get(1) instanceof ClassName v) {
-                return TypeRef.composite2(wrapper, TypeRef.leaf(k, scannedLeaves), TypeRef.leaf(v, scannedLeaves));
+                var kRef = TypeRef.leaf(k, scannedLeaves);
+                var vRef = TypeRef.leaf(v, scannedLeaves);
+                return new TypeRef(
+                        DynamicTypes.compositeValueClass(wrapper, kRef.path(), vRef.path()),
+                        DynamicTypes.composite(wrapper, kRef.dynamicType(), vRef.dynamicType()));
             }
         }
-        return TypeRef.opaque(tn);
+        throw new IllegalStateException("BuiltinPathScanner: no descriptor for builtin parameter/return type " + tn);
     }
 
     private static TypeName typeNameOf(Type t, TMap<String, String> imports, String sourcePkg) {

@@ -150,7 +150,7 @@ public final class Tuple
                         if (isAccessed) yield EResult.err(loc, "Tuple element " + i + " evaluated to error");
                         continue;
                     }
-                    var _erCv = res.valueOrNull();
+                    var _erCv = res.valueOpt();
                     if (!res.hasErrors()
                             && _erCv.optIsSome()
                             && _erCv.optUnwrap().value().optIsNone()) {
@@ -464,7 +464,7 @@ public final class Tuple
             case TupleElement.Dynamic d -> Opt.some(d.type());
             case TupleElement.EvalRes er -> {
                 if (er.result().hasErrors()) yield Opt.none();
-                var cvOpt = er.result().valueOrNull();
+                var cvOpt = er.result().valueOpt();
                 if (cvOpt.optIsNone() || cvOpt.optUnwrap().value().optIsNone()) yield Opt.none();
                 yield Opt.some(cvOpt.optUnwrap().value().optUnwrap().valueType());
             }
@@ -510,7 +510,7 @@ public final class Tuple
                     var innerRes = elemRes.result();
                     if (innerRes.hasErrors()) {
                         converted = new TupleElement.EvalRes(
-                                EResult.errs(innerRes.errorsOrNull().optUnwrapOr(new TList<>())));
+                                EResult.errs(innerRes.errorsOpt().optUnwrapOr(new TList<>())));
                     } else {
                         var elemCv = innerRes.requireValue("Tuple::typeCastFrom source element");
                         var convOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, destElemType, elemCv));
@@ -611,8 +611,8 @@ public final class Tuple
                     }
                     var artRes = Artifactable.exportArtifact(xx, loc, elemType);
                     artRes.drainInto(errors);
-                    if (artRes.valueOrNull().optIsSome()) {
-                        elementArtifacts.add(artRes.valueOrNull().optUnwrap());
+                    if (artRes.valueOpt().optIsSome()) {
+                        elementArtifacts.add(artRes.valueOpt().optUnwrap());
                     } else {
                         elementArtifacts.add(new Artifact.Body(
                                 new ArtifactBody(new JsonValueNull(), new ArtifactBodyExporter.Root())));
@@ -719,8 +719,7 @@ public final class Tuple
             if (subRes.hasErrors()) return subRes.reerr();
             var sub = subRes.requireValue("Tuple::bindSub base.bindSub");
             var bound = xx.target.targetBind(xx, loc, sub);
-            return EResult.ok(
-                    new BindResult(Code.of(bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
+            return EResult.ok(new BindResult(Code.of(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));
         }
 
         TList<ExprErr> errors = null;
@@ -790,14 +789,14 @@ public final class Tuple
                 var bindRes = GenAspectBind.get(xx, loc, elemType);
                 if (bindRes.hasErrors()) {
                     scopeFields.add(
-                            new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
+                            new TupleScopeField.Error(bindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
                 var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
                 if (elemBindRes.hasErrors()) {
                     scopeFields.add(
-                            new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap()));
+                            new TupleScopeField.Error(elemBindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
@@ -810,7 +809,7 @@ public final class Tuple
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 var targetSome = br.targetSub().optUnwrap();
-                scopeFields.add(new TupleScopeField.Dynamic(targetSome.type()));
+                scopeFields.add(new TupleScopeField.Dynamic(targetSome.type));
                 targetSlots.add(new TupleBindSlot(targetSome));
             } else if (br.constCv().optIsSome()) {
                 var elemCv = br.constCv().optUnwrap();
@@ -820,14 +819,14 @@ public final class Tuple
                 var bindRes = GenAspectBind.get(xx, loc, elemType);
                 if (bindRes.hasErrors()) {
                     scopeFields.add(
-                            new TupleScopeField.Error(bindRes.errorsOrNull().optUnwrap()));
+                            new TupleScopeField.Error(bindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var bind = bindRes.requireValue("Tuple::bindSub AspectBind");
                 var elemBindRes = bind.aspectBindBind(xx, loc, elemCv);
                 if (elemBindRes.hasErrors()) {
                     scopeFields.add(
-                            new TupleScopeField.Error(elemBindRes.errorsOrNull().optUnwrap()));
+                            new TupleScopeField.Error(elemBindRes.errorsOpt().optUnwrap()));
                     continue;
                 }
                 var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
@@ -838,7 +837,7 @@ public final class Tuple
         }
         var combined = xx.target.targetBindSubTuple(xx, loc, carry, targetSlots);
         var bound = xx.target.targetBind(xx, loc, combined);
-        return EResult.ok(new BindResult(Code.of(bound.code()), new BindingTuple(scopeFields, Opt.some(bound.id()))));
+        return EResult.ok(new BindResult(Code.of(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));
     }
 
     @Override

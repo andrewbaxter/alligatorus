@@ -5,7 +5,6 @@ import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.dynamic.SourceInterfaceEmitter;
@@ -15,19 +14,15 @@ import compilerxyz.main.eval.value.source_interface.InterfaceData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.prelude.annotations.BuiltinPushStruct;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinPushStruct
+@BuiltinFull(uniqueId = 6341L)
 public final class DefinitionSetBuilder {
     public final DefinitionSet inner;
 
     public DefinitionSetBuilder(DefinitionSet inner) {
         this.inner = inner;
-    }
-
-    public static Type dynamicType() {
-        return GenObjectTypes.definitionSetBuilder();
     }
 
     public SourceFuncResult func(EvalContext vx, String name) {
@@ -66,7 +61,7 @@ public final class DefinitionSetBuilder {
         var _loc = new QExprId(new SourceId(-1L), -1L);
         var _r = this.inner.finish(ExprContext.freshRoot(vx.ix), _loc);
         if (_r.hasErrors()) {
-            var _errs = _r.errorsOrNull();
+            var _errs = _r.errorsOpt();
             throw new DynCompileErrors(_errs.optUnwrapOr(new TList<>()));
         }
     }

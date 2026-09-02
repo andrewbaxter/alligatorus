@@ -19,7 +19,6 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.binding.BindingIteratorStack;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
@@ -59,7 +58,6 @@ import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.prelude.annotations.BuiltinFull;
-import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TList;
@@ -293,7 +291,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-        var localBinding = MustCast.mustCast(BindingId.Local.class, elementScopeId);
+        var localBinding = (elementScopeId);
         var decodeSeq = new JavaBytecodeSequence();
         decodeSeq.add(JavaBytecodeUtils.cast(
                 loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.Entry.class))));
@@ -442,14 +440,14 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         if (cv.value().optIsNone() || !(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
             return EResult.ok(Code.none(loc));
         }
-        var entrySlot = new BindingId.Local(new JavaBytecodeBindingKey());
+        var entrySlot = new BindingId();
         var entryClassName = JavaInternalName.fromClass(Map.Entry.class);
 
         var bodySeq = new JavaBytecodeSequence();
         if (keyDropOpt.optIsSome()) {
             var keyDropSome = keyDropOpt.optUnwrap();
             var loadKeySeq = new JavaBytecodeSequence();
-            loadKeySeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot.key())));
+            loadKeySeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot)));
             loadKeySeq.add(JavaBytecodeUtils.callInterfaceMethod(
                     loc,
                     entryClassName,
@@ -465,7 +463,7 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         if (valDropOpt.optIsSome()) {
             var valDropSome = valDropOpt.optUnwrap();
             var loadValSeq = new JavaBytecodeSequence();
-            loadValSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot.key())));
+            loadValSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot)));
             loadValSeq.add(JavaBytecodeUtils.callInterfaceMethod(
                     loc,
                     entryClassName,

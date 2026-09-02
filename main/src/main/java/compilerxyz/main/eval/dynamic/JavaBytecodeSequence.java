@@ -14,6 +14,7 @@ import static org.objectweb.asm.Opcodes.ISTORE;
 import static org.objectweb.asm.Opcodes.LLOAD;
 import static org.objectweb.asm.Opcodes.LSTORE;
 
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.prelude.util.TList;
@@ -46,8 +47,8 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
     }
 
-    public record InitialSlot(JavaBytecodeBindingKey key, boolean wide) {
-        public InitialSlot(JavaBytecodeBindingKey key) {
+    public record InitialSlot(BindingId key, boolean wide) {
+        public InitialSlot(BindingId key) {
             this(key, false);
         }
     }
@@ -155,7 +156,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
         }
         TList<JavaBytecode> emitList;
         {
-            var loadedKeys = new TSet<JavaBytecodeBindingKey>();
+            var loadedKeys = new TSet<BindingId>();
             for (var n : flattened) {
                 if (n instanceof JavaBytecodeStoreLoad sl
                         && (sl.code == ALOAD
@@ -184,7 +185,7 @@ public class JavaBytecodeSequence implements JavaBytecode {
             }
         }
         {
-            var slotIndexes = new TMap<JavaBytecodeBindingKey, Integer>();
+            var slotIndexes = new TMap<BindingId, Integer>();
             final int[] nextSlot = {0};
             for (var s : initialSlotWidths) {
                 slotIndexes.put(s.key(), nextSlot[0]);

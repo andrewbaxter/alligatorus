@@ -29,7 +29,6 @@ import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
@@ -95,20 +94,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
                 AspectInitialBind,
                 AspectLift,
                 AspectType {
-
-    public static TypeObjectConst metaOf(Class<?> hostClass, String descSuffix) {
-        var trivialIdentityAspects = new TList<Unique>();
-        trivialIdentityAspects.add(GenTrivialIdentityAspects.TYPE_IDENTITY);
-        var castRules = new TList<TypeObjectCastRule>();
-        castRules.add(new TypeObjectCastRule.RestampToIdentity(GenTrivialIdentityAspects.TYPE_IDENTITY));
-        var meta = new TypeObjectMeta(
-                "type<" + descSuffix + ">",
-                IList.from(trivialIdentityAspects),
-                IList.from(castRules),
-                IList.<TypeObjectCastFromRule>of(),
-                Opt.<ObjectAspectSource>none());
-        return new TypeObjectConst(meta, hostClass);
-    }
 
     public String typeDesc() {
         return meta.typeDesc();
@@ -266,8 +251,8 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
         if (hostValue instanceof ValueObjectConst wrap) {
             hostValue = wrap.data();
         }
-        var key = new JavaBytecodeBindingKey();
-        var id = new BindingId.Local(key);
+        var key = new BindingId();
+        var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, this, new External(externalHostClass, hostValue)));
         return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
     }
@@ -471,7 +456,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
                         loc, "TypeObjectConst::import: no registered dynamic type for host class " + className);
             }
             var td = MustCast.mustCast(TypeObjectDynamic.class, found.optUnwrap());
-            return EResult.ok(new TypeObjectConst(td.meta(), td.hostClass()));
+            return EResult.ok(td.pairedConst());
         }
     };
 }

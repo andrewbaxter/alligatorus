@@ -6,6 +6,7 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.bool_.TypeBoolConst;
 import compilerxyz.main.eval.value.bool_.TypeBoolDynamic;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
@@ -63,24 +64,13 @@ import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public enum ExporterRoot implements ArtifactExporter, Artifactable {
     BOOL_CONST("bool_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeBoolConst.DELEGATE;
-        }
-    },
-    BOOL_DYNAMIC("bool_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeBoolDynamic.DELEGATE;
-        }
-    },
-    EXPR("expr") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeExpr.DELEGATE;
         }
     },
     LIST_CONST("list_const") {
@@ -101,22 +91,10 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeNullConst.DELEGATE;
         }
     },
-    NULL_DYNAMIC("null_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeNullDynamic.DELEGATE;
-        }
-    },
     BYTE_CONST("byte_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeByteConst.DELEGATE;
-        }
-    },
-    BYTE_DYNAMIC("byte_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeByteDynamic.DELEGATE;
         }
     },
     INT_CONST("int_const") {
@@ -125,22 +103,10 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeIntConst.DELEGATE;
         }
     },
-    INT_DYNAMIC("int_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeIntDynamic.DELEGATE;
-        }
-    },
     SHORT_CONST("short_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeShortConst.DELEGATE;
-        }
-    },
-    SHORT_DYNAMIC("short_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeShortDynamic.DELEGATE;
         }
     },
     LONG_CONST("long_const") {
@@ -149,22 +115,10 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeLongConst.DELEGATE;
         }
     },
-    LONG_DYNAMIC("long_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeLongDynamic.DELEGATE;
-        }
-    },
     FLOAT_CONST("float_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeFloatConst.DELEGATE;
-        }
-    },
-    FLOAT_DYNAMIC("float_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeFloatDynamic.DELEGATE;
         }
     },
     DOUBLE_CONST("double_const") {
@@ -173,22 +127,10 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeDoubleConst.DELEGATE;
         }
     },
-    DOUBLE_DYNAMIC("double_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeDoubleDynamic.DELEGATE;
-        }
-    },
     UBYTE_CONST("ubyte_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeUbyteConst.DELEGATE;
-        }
-    },
-    UBYTE_DYNAMIC("ubyte_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeUbyteDynamic.DELEGATE;
         }
     },
     USHORT_CONST("ushort_const") {
@@ -197,34 +139,16 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeUshortConst.DELEGATE;
         }
     },
-    USHORT_DYNAMIC("ushort_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeUshortDynamic.DELEGATE;
-        }
-    },
     UINT_CONST("uint_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeUintConst.DELEGATE;
         }
     },
-    UINT_DYNAMIC("uint_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeUintDynamic.DELEGATE;
-        }
-    },
     ULONG_CONST("ulong_const") {
         @Override
         ExporterRootDelegate delegate() {
             return TypeUlongConst.DELEGATE;
-        }
-    },
-    ULONG_DYNAMIC("ulong_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeUlongDynamic.DELEGATE;
         }
     },
     OBJECT_DYNAMIC("object_dynamic") {
@@ -255,12 +179,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeStringConst.DELEGATE;
-        }
-    },
-    STRING_DYNAMIC("string_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeStringDynamic.DELEGATE;
         }
     },
     TUPLE("tuple") {
@@ -317,12 +235,6 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
             return TypeTypeSourceUnionNewConst.DELEGATE;
         }
     },
-    CODE_DYNAMIC("code_dynamic") {
-        @Override
-        ExporterRootDelegate delegate() {
-            return TypeCodeDynamic.DELEGATE;
-        }
-    },
     OBJECT_CONST("object_const") {
         @Override
         ExporterRootDelegate delegate() {
@@ -351,6 +263,180 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeTypeSourceInterfaceDynamic.TYPE_DELEGATE;
+        }
+    },
+    BOOL_CONST_TYPE("bool_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeBoolConst::new);
+        }
+    },
+    BOOL_DYNAMIC("bool_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeBoolDynamic::new);
+        }
+    },
+    BYTE_CONST_TYPE("byte_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeByteConst::new);
+        }
+    },
+    BYTE_DYNAMIC("byte_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeByteDynamic::new);
+        }
+    },
+    CODE_DYNAMIC("code_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeCodeDynamic::new);
+        }
+    },
+    DOUBLE_CONST_TYPE("double_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeDoubleConst::new);
+        }
+    },
+    DOUBLE_DYNAMIC("double_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeDoubleDynamic::new);
+        }
+    },
+    EXPR("expr") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeExpr::new);
+        }
+    },
+    FLOAT_CONST_TYPE("float_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeFloatConst::new);
+        }
+    },
+    FLOAT_DYNAMIC("float_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeFloatDynamic::new);
+        }
+    },
+    INT_CONST_TYPE("int_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeIntConst::new);
+        }
+    },
+    INT_DYNAMIC("int_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeIntDynamic::new);
+        }
+    },
+    LONG_CONST_TYPE("long_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeLongConst::new);
+        }
+    },
+    LONG_DYNAMIC("long_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeLongDynamic::new);
+        }
+    },
+    NULL_CONST_TYPE("null_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeNullConst::new);
+        }
+    },
+    NULL_DYNAMIC("null_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeNullDynamic::new);
+        }
+    },
+    SHORT_CONST_TYPE("short_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeShortConst::new);
+        }
+    },
+    SHORT_DYNAMIC("short_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeShortDynamic::new);
+        }
+    },
+    STRING_CONST_TYPE("string_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeStringConst::new);
+        }
+    },
+    STRING_DYNAMIC("string_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeStringDynamic::new);
+        }
+    },
+    UBYTE_CONST_TYPE("ubyte_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUbyteConst::new);
+        }
+    },
+    UBYTE_DYNAMIC("ubyte_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUbyteDynamic::new);
+        }
+    },
+    UINT_CONST_TYPE("uint_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUintConst::new);
+        }
+    },
+    UINT_DYNAMIC("uint_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUintDynamic::new);
+        }
+    },
+    ULONG_CONST_TYPE("ulong_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUlongConst::new);
+        }
+    },
+    ULONG_DYNAMIC("ulong_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUlongDynamic::new);
+        }
+    },
+    UNIQUE_TYPE("unique_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUniqueDynamic::new);
+        }
+    },
+    USHORT_CONST_TYPE("ushort_const_type") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUshortConst::new);
+        }
+    },
+    USHORT_DYNAMIC("ushort_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return nullaryType(TypeUshortDynamic::new);
         }
     },
     DEFINITION_SET("definition_set") {
@@ -406,6 +492,29 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
     public EResult<Artifactable> artifactExporterImportFromData(
             ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
         return delegate().exporterRootDelegateSelfFromArtifactData(xx, loc, id, data);
+    }
+
+    private static ExporterRootDelegate nullaryType(Supplier<Type> make) {
+        return new ExporterRootDelegate() {
+            @Override
+            public EResult<Artifact> exporterRootDelegateSelfExport(
+                    ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+                return EResult.ok(new Artifact.Body(makeBody.apply(new JsonValueNull())));
+            }
+
+            @Override
+            public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                    ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+                return switch (data) {
+                    case JsonValueNull ignored -> EResult.ok(make.get());
+                    case JsonValueBoolean ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
+                    case JsonValueNumber ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
+                    case JsonValueString ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
+                    case JsonValueArray ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
+                    case JsonValueObject ignored -> EResult.err(loc, "nullary type: expected null, got " + data);
+                };
+            }
+        };
     }
 
     private static final ExporterRootDelegate ROOT_DELEGATE = new ExporterRootDelegate() {

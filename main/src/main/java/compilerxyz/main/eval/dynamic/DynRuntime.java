@@ -51,7 +51,7 @@ public final class DynRuntime {
                     throw new IllegalStateException("__stage: AspectLift lookup failed for source type "
                             + liftCell.sourceType().typeDesc()
                             + ": "
-                            + liftRes.errorsOrNull().optUnwrapOr(new TList<>()));
+                            + liftRes.errorsOpt().optUnwrapOr(new TList<>()));
                 }
                 var liftAspect = liftRes.requireValue("DynRuntime::__stage AspectLift.get");
                 var liftedRes = liftAspect.aspectLiftLift(liftXx, liftCell.loc(), Opt.ofNullable(valArg));
@@ -59,7 +59,7 @@ public final class DynRuntime {
                     throw new IllegalStateException("__stage: AspectLift.lift failed for source type "
                             + liftCell.sourceType().typeDesc()
                             + ": "
-                            + liftedRes.errorsOrNull().optUnwrapOr(new TList<>()));
+                            + liftedRes.errorsOpt().optUnwrapOr(new TList<>()));
                 }
                 var lifted = liftedRes.requireValue("DynRuntime::__stage AspectLift.lift");
                 values.add(new StageLowerValue.Val(lifted));

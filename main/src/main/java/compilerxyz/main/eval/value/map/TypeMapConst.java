@@ -17,22 +17,20 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectDynamicConst;
-import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6162L)
-public final class TypeMapConst<K extends Type, V extends Type> implements Type, AspectArtifact {
+public final class TypeMapConst<K extends Type, V extends Type> implements Type, Aspect {
 
     public final K keyType;
     public final V valueType;
@@ -50,15 +48,10 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY) || key.equals(GenAspectArtifact.AspectId)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_CONST_IDENTITY)) {
             return Opt.some(this);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.MAP_CONST;
     }
 
     private static Artifact nullArtifact() {
@@ -69,26 +62,17 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            TypeMapConst map;
             if (self instanceof AspectDynamicConst dc) self = dc.aspectDynamicConstConstForm();
-            if (self instanceof TypeMapConst<?, ?> t) {
-                map = t;
-            } else if (self instanceof ValueObjectConst v && v.type() instanceof TypeMapConst<?, ?> t) {
-                map = t;
-            } else {
-                return EResult.err(
-                        loc,
-                        "TypeMapConst::exporterRootDelegateSelfExport: expected TypeMapConst, got " + self.getClass());
-            }
+            var map = MustCast.mustCast(TypeMapConst.class, self);
             var cell = map.artifactIdCell;
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
                 var keyArtRes = Artifactable.exportArtifact(xx, loc, map.keyType);
                 keyArtRes.drainInto(errors);
-                var keyArt = keyArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                var keyArt = keyArtRes.valueOpt().optUnwrapOr(nullArtifact());
                 var valueArtRes = Artifactable.exportArtifact(xx, loc, map.valueType);
                 valueArtRes.drainInto(errors);
-                var valueArt = valueArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                var valueArt = valueArtRes.valueOpt().optUnwrapOr(nullArtifact());
                 var body = new ArtifactMapType(keyArt, valueArt);
                 return makeBody.apply(ArtifactMapTypeCodec.toValue(body));
             });
@@ -171,6 +155,6 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(ExporterRoot.MAP_CONST);
     }
 }

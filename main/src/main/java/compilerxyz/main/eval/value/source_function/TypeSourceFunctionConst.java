@@ -166,21 +166,21 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, data.artifactIdCell, () -> {
                         var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
-                        var defSetArt = defSetArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         var argArtRes = Artifactable.exportArtifact(xx, loc, argType);
                         argArtRes.drainInto(errors);
-                        var argArt = argArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                        var argArt = argArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         Artifact retArt;
                         if (retType.optIsSome()) {
                             var retArtRes = Artifactable.exportArtifact(xx, loc, retType.optUnwrap());
                             retArtRes.drainInto(errors);
-                            retArt = retArtRes.valueOrNull().optUnwrapOr(nullArtifact());
+                            retArt = retArtRes.valueOpt().optUnwrapOr(nullArtifact());
                         } else {
                             retArt = nullArtifact();
                         }
                         var externalsRes = ExternalCodec.exportExternals(xx, loc, data.capturedExternals);
                         externalsRes.drainInto(errors);
-                        var externals = externalsRes.valueOrNull().optUnwrapOr(TList.<ArtifactExternal>of());
+                        var externals = externalsRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
                         var body = new ArtifactDataDefSetFunction(
                                 defSetArt,
                                 set.defSetId,

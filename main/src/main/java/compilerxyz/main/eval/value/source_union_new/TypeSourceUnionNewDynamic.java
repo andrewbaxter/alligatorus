@@ -32,20 +32,15 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.annotations.BuiltinLight;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinLight(uniqueId = 6142L)
+@BuiltinFull(uniqueId = 6142L)
 public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
         implements Type, AspectBind, AspectFunction {
-
-    public static Type dynamicType() {
-        return GenType.dynamicType();
-    }
 
     @Override
     public String typeDesc() {

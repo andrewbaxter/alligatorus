@@ -17,7 +17,6 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
-import compilerxyz.main.eval.dynamic.JavaBytecodeBindingKey;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -123,7 +122,7 @@ public final class SourceFunctionData {
             var elemTypes = tupleOpt.optUnwrap().aspectTupleElementTypes();
             var elemBindings = new TList<Binding>();
             for (var et : elemTypes) {
-                var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+                var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
@@ -139,7 +138,7 @@ public final class SourceFunctionData {
             var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
             for (var entry : fieldTypes.entrySet()) {
                 var et = entry.getValue();
-                var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+                var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
                 var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
@@ -153,7 +152,7 @@ public final class SourceFunctionData {
             var argRec = new ArgumentRecord(fields);
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
         } else {
-            var slotId = new BindingId.Local(new JavaBytecodeBindingKey());
+            var slotId = new BindingId();
             argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
             var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
             if (ibMaybe.optIsNone()) {

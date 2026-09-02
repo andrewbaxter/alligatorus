@@ -25,11 +25,8 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
         CodeDynamic dyn;
-        dyn = switch (dynamicKey) {
-            case BindingId.Local local ->
-                new CodeDynamic(
-                        new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, type_), local.key()));
-        };
+        dyn = new CodeDynamic(
+                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, type_), dynamicKey));
         Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey, setter), type_);
         return new CodeValue(Code.of(dyn), EvalOutcome.ofValue(value));
     }
@@ -45,7 +42,7 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
         boolean merged = false;
         for (var other : others) {
             if (this.equals(other)) continue;
-            if (!(other instanceof BindingDynamicBinding ob) || !dynamicKey.equals(ob.dynamicKey)) {
+            if (!(other instanceof BindingDynamicBinding ob) || dynamicKey != ob.dynamicKey) {
                 return EResult.err(
                         loc,
                         "cannot merge " + getClass().getSimpleName()

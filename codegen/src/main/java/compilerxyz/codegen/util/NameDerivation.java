@@ -10,6 +10,7 @@ public final class NameDerivation {
             if (Character.isUpperCase(c) && i > 0) sb.append('_');
             sb.append(Character.toLowerCase(c));
         }
-        return sb.toString();
+        var out = sb.toString();
+        return out.endsWith("_") ? out.substring(0, out.length() - 1) : out;
     }
 }

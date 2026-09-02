@@ -1,10 +1,15 @@
 package compilerxyz.main.gen;
 
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.Type;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
-public record RecordBindField(ConstKey key, TargetBindSub sub) {
-    public static Type dynamicType() {
-        return GenType.dynamicType();
+@BuiltinFull(uniqueId = 6343L)
+public final class RecordBindField {
+    public final ConstKey key;
+    public final TargetBindSub sub;
+
+    public RecordBindField(ConstKey key, TargetBindSub sub) {
+        this.key = key;
+        this.sub = sub;
     }
 }

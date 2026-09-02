@@ -9,7 +9,7 @@ import compilerxyz.prelude.util.TOrderedMap;
 public final class DefSetFunctionsEmitter {
     private DefSetFunctionsEmitter() {}
 
-    public record ArgSlot(BindingId.Local id, JavaDataDescriptor jvmDesc) {}
+    public record ArgSlot(BindingId id, JavaDataDescriptor jvmDesc) {}
 
     public record FunctionSpec(
             long funcIdx,
