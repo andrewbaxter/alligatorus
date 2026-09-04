@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.dynamic;
 
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -74,13 +73,20 @@ public final class DynUtil {
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
-    public static CodeValue foreachSkeleton(
-            QExprId loc,
-            CodeDynamic iteratorSetup,
-            CodeDynamic elementDecode,
-            BindingId elementSlot,
-            int elementStoreOp,
-            Code body) {
+    public static CodeDynamic iteratorNext(QExprId loc, CodeDynamic elementDecode) {
+        var seq = new JavaBytecodeSequence();
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+        seq.add(JavaBytecodeUtils.callInterfaceMethod(
+                loc,
+                JavaInternalName.fromClass(Iterator.class),
+                "next",
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
+        seq.add(elementDecode);
+        return new CodeDynamic(loc, seq);
+    }
+
+    public static EResult<CodeValue> foreachSkeleton(
+            QExprId loc, CodeDynamic iteratorSetup, CodeDynamic elementBind, Code body) {
         var loopLabel = new LabelNode();
         var doneLabel = new LabelNode();
         var seq = new JavaBytecodeSequence();
@@ -94,22 +100,17 @@ public final class DynUtil {
                 "hasNext",
                 JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(
-                loc,
-                iteratorName,
-                "next",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
-        seq.add(elementDecode);
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(elementStoreOp, elementSlot)));
-        var bodyDyn = body.codeDynamic();
-        if (bodyDyn != null) {
-            seq.add(bodyDyn);
+        seq.add(elementBind);
+        var bodyDynCast = CodeDynamic.castOpt(loc, body);
+        if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
+        var bodyDyn = bodyDynCast.requireValue("bodyDyn");
+        if (bodyDyn.optIsSome()) {
+            seq.add(bodyDyn.optUnwrap());
         }
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE);
+        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
 
     public static CodeDynamic renderSource(ExprContext xx, QExprId loc, ValueDynamicSource src) {
@@ -119,6 +120,11 @@ public final class DynUtil {
             case ValueDynamicSource.Binding b -> b.valueDynamicSourceRealize(xx, loc);
             case ValueDynamicSource.Field f -> f.valueDynamicSourceRealize(xx, loc);
         };
+    }
+
+    public static EResult<TargetDynamic> jvmTarget(ExprContext xx, QExprId loc) {
+        if (xx.target instanceof TargetDynamic t) return EResult.ok(t);
+        return EResult.err(loc, "Value with a JVM representation is being bound under a non-JVM target");
     }
 
     public static EResult<AspectBind.BindResult> bindViaTarget(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -144,8 +150,10 @@ public final class DynUtil {
         if (subOpt.optIsNone()) {
             return EResult.err(loc, "Type (" + vtype.typeDesc() + ") returned None from AspectBindDynamic");
         }
-        var bound = xx.target.targetBind(xx, loc, subOpt.optUnwrap());
-        Code wrappingCode = Code.of(bound.code);
+        var targetRes = jvmTarget(xx, loc);
+        if (targetRes.hasErrors()) return targetRes.reerr();
+        var bound = targetRes.requireValue("DynUtil::bindViaTarget jvm target").bindSlot(xx, loc, subOpt.optUnwrap());
+        Code wrappingCode = Code.target(bound.code);
         Binding binding = new BindingDynamicBinding(bound.id, vtype);
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
     }
@@ -188,10 +196,9 @@ public final class DynUtil {
     }
 
     public static EResult<CodeDynamic> dynamicConsumeToDynamic(QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn == null) {
-            return EResult.err(loc, "Expression resulted in empty code");
-        }
+        var dynRes = CodeDynamic.castRequired(loc, cv.code(), "Expression resulted in empty code");
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        var dyn = dynRes.requireValue("dyn");
         return EResult.ok(dyn);
     }
 
@@ -204,14 +211,16 @@ public final class DynUtil {
 
     public static CodeValue dynamicStackToValue(ExprContext xx, CodeDynamic value, Type type_) {
         var dynValue = ValueDynamic.stack(xx, type_);
-        return new CodeValue(Code.of(value), EvalOutcome.ofValue(dynValue));
+        return new CodeValue(Code.target(value), EvalOutcome.ofValue(dynValue));
     }
 
-    public static CodeDynamic wrapWithCarry(QExprId loc, Code carry, CodeDynamic dynamicCode) {
-        var carryDyn = carry.codeDynamic();
-        if (carryDyn == null) {
-            return dynamicCode;
+    public static EResult<CodeDynamic> wrapWithCarry(QExprId loc, Code carry, CodeDynamic dynamicCode) {
+        var carryDynCast = CodeDynamic.castOpt(loc, carry);
+        if (carryDynCast.hasErrors()) return carryDynCast.reerr();
+        if (carryDynCast.requireValue("carryDyn").optIsNone()) {
+            return EResult.ok(dynamicCode);
         }
+        var carryDyn = carryDynCast.requireValue("carryDyn").optUnwrap();
         var seq = new JavaBytecodeSequence();
         if (carryDyn.code() instanceof JavaBytecodeSequence carrySeq) {
             for (var child : carrySeq.children) seq.add(child);
@@ -219,7 +228,7 @@ public final class DynUtil {
             seq.add(carryDyn);
         }
         seq.add(dynamicCode);
-        return new CodeDynamic(loc, seq);
+        return EResult.ok(new CodeDynamic(loc, seq));
     }
 
     public static EResult<CodeValue> dynamicSet(ExprContext xx, QExprId loc, CodeValue self_, CodeValue value) {

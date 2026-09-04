@@ -1,8 +1,7 @@
-package compilerxyz.main.gen;
+package compilerxyz.main.eval.dynamic;
 
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.main.gen.TargetBindSub;
 
-@BuiltinFull(uniqueId = 6354L)
 public final class TupleBindSlot {
     public final TargetBindSub sub;
 

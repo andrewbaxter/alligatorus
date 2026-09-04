@@ -142,10 +142,6 @@ public final class Helpers {
         return new JsonValueNumber(value);
     }
 
-    public static JsonValueNull jsonNull() {
-        return new JsonValueNull();
-    }
-
     public static CompileResult compileCaptured(TMap<String, SourceModule> modules) {
         var gx = newGx(modules);
         gx.captureBytecode = true;

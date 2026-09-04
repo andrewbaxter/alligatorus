@@ -32,7 +32,7 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
-import compilerxyz.main.eval.value.source_interface.InterfaceData;
+import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodBuiltin;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectAspect;
@@ -42,7 +42,7 @@ import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
@@ -54,7 +54,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
@@ -82,6 +82,7 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6129L)
 public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
         implements Type,
+                AspectInitialBindDynamic,
                 TypeAspect,
                 AspectArtifact,
                 AspectAspect,
@@ -91,7 +92,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
                 AspectDropDynamicLight,
                 AspectField,
                 AspectFunction,
-                AspectInitialBind,
                 AspectLift,
                 AspectType {
 
@@ -138,13 +138,20 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
     }
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_CONST_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
                 || key.equals(GenAspectType.AspectId)
@@ -167,7 +174,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
     }
 
     @Override
-    public Unique aspectAspectGetUnique(InterfaceData value) {
+    public Unique aspectAspectGetUnique(InterfaceCell value) {
         var aspSrcOpt2 = aspectSource();
         if (aspSrcOpt2.optIsNone()) {
             throw new IllegalStateException(typeDesc() + "::getUnique: no aspect source");
@@ -179,7 +186,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
     }
 
     @Override
-    public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
+    public InterfaceCell aspectAspectGetIfaceCell(InterfaceCell value) {
         var aspSrcOpt3 = aspectSource();
         if (aspSrcOpt3.optIsNone()) {
             throw new UnsupportedOperationException(typeDesc() + "::getIfaceData: no aspect source");
@@ -187,7 +194,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
         return switch (aspSrcOpt3.optUnwrap()) {
             case ObjectAspectSource.Static ignored ->
                 throw new UnsupportedOperationException(
-                        typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
+                        typeDesc() + "::getIfaceCell: static aspect has no interface cell");
             case ObjectAspectSource.FromInterfaceData ignored -> value;
         };
     }
@@ -203,11 +210,13 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
         for (var rule : castRules()) {
             if (rule.typeObjectCastRuleMatches(xx, destType)) {
                 CodeValue materialized = cv;
-                if (cv.code().codeDynamic() == null) {
+                var codeCast = CodeDynamic.castOpt(loc, cv.code());
+                if (codeCast.hasErrors()) return codeCast.reerr();
+                if (codeCast.requireValue("code").optIsNone()) {
                     var dynRes = aspectConsumeDynamicToDynamic(xx, loc, cv);
                     if (dynRes.hasErrors()) return dynRes.reerr();
                     materialized = new CodeValue(
-                            Code.of(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
+                            Code.target(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
                 }
                 return rule.typeObjectCastRuleApply(xx, null, loc, materialized, destType);
             }
@@ -242,8 +251,10 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         if (cv.value().optIsNone()) {
             return EResult.err(loc, typeDesc() + "::toDynamic: no compile-time value");
         }
@@ -275,11 +286,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -306,7 +312,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass)
                             var liftRes = aspectConsumeDynamicToDynamic(xx, loc, self);
                             if (liftRes.hasErrors()) return liftRes.reerr();
                             selfLifted = new CodeValue(
-                                    Code.of(liftRes.requireValue(typeDesc() + "::field lift")), self.outcome());
+                                    Code.target(liftRes.requireValue(typeDesc() + "::field lift")), self.outcome());
                         }
                         return GenType.Holder.INSTANCE.aspectFieldField(xx, loc, selfLifted, key);
                     }

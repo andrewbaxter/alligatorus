@@ -9,7 +9,6 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -262,7 +261,7 @@ public final class TypeListConst<T extends Type>
         if (dynRes.hasErrors()) return dynRes.reerr();
         var dynType = GenLists.listDynamic(xx, elementType);
         return EResult.ok(new CodeValue(
-                Code.of(dynRes.requireValue("TypeListConst::dynamicCv")),
+                Code.target(dynRes.requireValue("TypeListConst::dynamicCv")),
                 EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType))));
     }
 
@@ -303,15 +302,23 @@ public final class TypeListConst<T extends Type>
     }
 
     @Override
+    public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
+        var iterRes = GenAspectIterable.get(xx, loc, GenLists.listDynamic(xx, elementType));
+        if (iterRes.hasErrors()) return iterRes.reerr();
+        return iterRes.requireValue("TypeListConst::element access AspectIterable")
+                .aspectIterableElementAccess(xx, loc, loop);
+    }
+
+    @Override
     public EResult<CodeValue> aspectIterableForeach(
-            ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
+            ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
         var dynRes = dynamicCv(xx, loc, base);
         if (dynRes.hasErrors()) return dynRes.reerr();
         var iterRes = GenAspectIterable.get(xx, loc, GenLists.listDynamic(xx, elementType));
         if (iterRes.hasErrors()) return iterRes.reerr();
         return iterRes.requireValue("TypeListConst::foreach AspectIterable")
                 .aspectIterableForeach(
-                        xx, loc, dynRes.requireValue("TypeListConst::foreach self"), elementScopeId, body);
+                        xx, loc, dynRes.requireValue("TypeListConst::foreach self"), loop, elementBind, body);
     }
 
     @Override

@@ -23,13 +23,12 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
-import compilerxyz.main.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
@@ -51,7 +50,8 @@ public final class SourceFunctionData {
     public Opt<Value> implExpr = Opt.none();
     public Opt<Type> argType = Opt.none();
     public Opt<Type> retType = Opt.none();
-    public int funcIdx;
+    public final String jvmMethodName;
+
     public Opt<String> compiledClassName = Opt.none();
     public Opt<byte[]> compiledBytecode = Opt.none();
 
@@ -60,7 +60,8 @@ public final class SourceFunctionData {
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
     public final TList<EvalContext.ExternalEntry> capturedExternals;
 
-    public SourceFunctionData(String name, DefinitionSet set, Unique identity) {
+    public SourceFunctionData(String name, DefinitionSet set, Unique identity, String jvmMethodName) {
+        this.jvmMethodName = jvmMethodName;
         this.set = set;
         this.name = Opt.some(name);
         this.identity = identity;
@@ -68,7 +69,8 @@ public final class SourceFunctionData {
     }
 
     @SuppressWarnings("NullAway")
-    public SourceFunctionData(Opt<String> name, Unique identity) {
+    public SourceFunctionData(Opt<String> name, Unique identity, String jvmMethodName) {
+        this.jvmMethodName = jvmMethodName;
         this.identity = identity;
         this.set = (DefinitionSet) null;
         this.name = name;
@@ -124,12 +126,12 @@ public final class SourceFunctionData {
             for (var et : elemTypes) {
                 var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
-                var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
+                var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
                     return EResult.err(
-                            rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBind");
+                            rootLoc, "arg tuple element type " + et.typeDesc() + " missing AspectInitialBindDynamic");
                 }
-                elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
+                elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
             }
             var argTuple = new ArgumentTuple(elemBindings, elemTypes);
             bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
@@ -140,25 +142,25 @@ public final class SourceFunctionData {
                 var et = entry.getValue();
                 var slotId = new BindingId();
                 argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, et)));
-                var ibMaybe = GenAspectInitialBind.getMaybe(xx, et);
+                var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, et);
                 if (ibMaybe.optIsNone()) {
                     return EResult.err(
-                            rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBind");
+                            rootLoc, "arg record field type " + et.typeDesc() + " missing AspectInitialBindDynamic");
                 }
                 fields.put(
                         entry.getKey(),
-                        new ArgumentEntry(ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId), et));
+                        new ArgumentEntry(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId), et));
             }
-            var argRec = new ArgumentRecord(fields);
-            bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
+            bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
         } else {
             var slotId = new BindingId();
             argSlots.add(new DefSetFunctionsEmitter.ArgSlot(slotId, jvmDescFor(xx, argT)));
-            var ibMaybe = GenAspectInitialBind.getMaybe(xx, argT);
+            var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
             if (ibMaybe.optIsNone()) {
-                return EResult.err(rootLoc, "arg type " + argT.typeDesc() + " missing AspectInitialBind");
+                return EResult.err(rootLoc, "arg type " + argT.typeDesc() + " missing AspectInitialBindDynamic");
             }
-            bodyScope.pushNamed(new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
+            bodyScope.pushNamed(
+                    new ConstKey.Str("arg"), ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
         }
         var funcXx = new ExprContext(bodyScope, innerTarget, innerVx, xx.importState, exceptionType);
 
@@ -189,11 +191,12 @@ public final class SourceFunctionData {
             }
             bodyCode = dynResult.requireValue("SourceFunctionData::compile consume.toDynamic");
         } else {
-            bodyCode = convertedCv.code().codeDynamic();
-            if (bodyCode == null) {
-                return EResult.err(
-                        rootLoc, "Definition set function '" + nameStr + "' body produced no compile-time value");
-            }
+            var bodyCodeRes = CodeDynamic.castRequired(
+                    rootLoc,
+                    convertedCv.code(),
+                    "Definition set function '" + nameStr + "' body produced no compile-time value");
+            if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
+            bodyCode = bodyCodeRes.requireValue("bodyCode");
             if (retT.optIsSome()) {
                 if (GenAspectNull.getMaybe(xx, retT.optUnwrap()).optIsNone()) {
                     return EResult.err(
@@ -208,17 +211,7 @@ public final class SourceFunctionData {
             }
         }
 
-        for (var entry : innerVx.definitionSets.entrySet()) {
-            xx.vx.definitionSets.putIfAbsent(entry.getKey(), entry.getValue());
-        }
-
-        var owningSet = set;
-        for (var entry : innerVx.definitionSets.entrySet()) {
-            if (entry.getKey().equals(owningSet.defSetId)) {
-                continue;
-            }
-            owningSet.dependencies.putIfAbsent(entry.getKey(), entry.getValue());
-        }
+        set.absorbBodyContext(xx, innerVx);
 
         var captured = innerVx.externals;
         capturedExternals.addAll(captured);
@@ -234,8 +227,8 @@ public final class SourceFunctionData {
                 retDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
             }
         }
-        functionSpec = Opt.some(
-                new DefSetFunctionsEmitter.FunctionSpec(funcIdx, argSlots, retDesc, bodyCode, TList.from(captured)));
+        functionSpec = Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
+                jvmMethodName, argSlots, retDesc, bodyCode, TList.from(captured)));
         return EResult.ok(null);
     }
 

@@ -57,10 +57,9 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType) implements Type,
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn == null) {
-            return EResult.err(loc, "TypeMapPutFnDynamic::toDynamic: no dynamic code");
-        }
+        var dynRes = CodeDynamic.castRequired(loc, cv.code(), "TypeMapPutFnDynamic::toDynamic: no dynamic code");
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        var dyn = dynRes.requireValue("dyn");
         return EResult.ok(dyn);
     }
 
@@ -107,10 +106,10 @@ public record TypeMapPutFnDynamic(Type keyType, Type valueType) implements Type,
         if (valDynRes.hasErrors()) return valDynRes.reerr();
         var valDyn = valDynRes.requireValue("toDynamic value");
 
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeMapPutFnDynamic::call: self has no dynamic code");
-        }
+        var selfDynRes =
+                CodeDynamic.castRequired(loc, self.code(), "TypeMapPutFnDynamic::call: self has no dynamic code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
 
         var retType = new TypeNullDynamic();
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);

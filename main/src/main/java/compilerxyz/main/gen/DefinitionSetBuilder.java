@@ -7,14 +7,15 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynRuntime;
-import compilerxyz.main.eval.dynamic.SourceInterfaceEmitter;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
-import compilerxyz.main.eval.value.source_interface.InterfaceData;
+import compilerxyz.main.eval.value.source_interface.InterfaceBuilding;
+import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 6341L)
@@ -26,35 +27,47 @@ public final class DefinitionSetBuilder {
     }
 
     public SourceFuncResult func(EvalContext vx, String name) {
-        var data = new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(vx));
-        data.funcIdx = this.inner.functions.size();
+        var data =
+                new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(vx), "_" + this.inner.functions.size());
         this.inner.functions.add(data);
         return new SourceFuncResult(new TypeSourceFunctionConst(data));
     }
 
     public SourceObjectBuilder object(EvalContext vx, String name) {
         var identity = DynRuntime.freshUnique(vx);
-        var data = new TypeSourceObjectDynamic(this.inner.defSetId, name, identity, this.inner);
-        data.objIdx = this.inner.objects.size();
+        var data = new TypeSourceObjectDynamic(
+                this.inner.defSetId,
+                name,
+                identity,
+                this.inner,
+                "SourceObject$" + setNameSuffix() + this.inner.objects.size());
         this.inner.objects.add(data);
         return new SourceObjectBuilder(data);
     }
 
     public SourceUnionBuilder union(EvalContext vx) {
         var identity = DynRuntime.freshUnique(vx);
-        var data = new TypeSourceUnionDynamic(this.inner, identity);
-        data.unionIdx = this.inner.unions.size();
+        var data = new TypeSourceUnionDynamic(
+                this.inner, identity, "SourceUnion$" + setNameSuffix() + this.inner.unions.size());
         this.inner.unions.add(data);
         return new SourceUnionBuilder(data);
     }
 
     public SourceInterfaceResult interface_(EvalContext vx) {
         var identity = DynRuntime.freshUnique(vx);
-        var iface = new InterfaceData(this.inner.defSetId, identity, this.inner);
-        var ifaceIndex = (long) this.inner.interfaces.size();
+        var iface = new InterfaceCell(
+                Opt.some(this.inner),
+                identity,
+                "compilerxyz.main.eval.gen.Interface$" + setNameSuffix() + this.inner.interfaces.size(),
+                new InterfaceCell.State.Building(new InterfaceBuilding()));
         this.inner.interfaces.add(iface);
-        iface.compiledBinaryName = SourceInterfaceEmitter.binaryNameFor(this.inner.defSetId, ifaceIndex);
         return new SourceInterfaceResult(new TypeSourceInterfaceDynamic(iface));
+    }
+
+    private String setNameSuffix() {
+        var compileId = this.inner.defSetId.compileId();
+        return compileId.importState().value() + "_" + compileId.source().value() + "_" + this.inner.defSetId.index()
+                + "_";
     }
 
     public void finish(EvalContext vx) {

@@ -58,10 +58,10 @@ public record TypeMapGetFnDynamic(Type keyType, Type valueType) implements Type,
         if (keyDynRes.hasErrors()) return keyDynRes.reerr();
         var keyDyn = keyDynRes.requireValue("toDynamic key");
 
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeMapGetFnDynamic::call: self has no dynamic code");
-        }
+        var selfDynRes =
+                CodeDynamic.castRequired(loc, self.code(), "TypeMapGetFnDynamic::call: self has no dynamic code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
 
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, valueType);
         if (retStackRes.hasErrors()) return retStackRes.reerr();

@@ -182,7 +182,8 @@ public final class CodegenDescriptorScanner {
             "Double",
             "Character",
             "CharSequence",
-            "Number");
+            "Number",
+            "Class");
 
     private static String screamingSnake(String camel) {
         var sb = new StringBuilder();

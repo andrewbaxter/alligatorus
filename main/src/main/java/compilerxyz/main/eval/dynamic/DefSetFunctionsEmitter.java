@@ -12,7 +12,7 @@ public final class DefSetFunctionsEmitter {
     public record ArgSlot(BindingId id, JavaDataDescriptor jvmDesc) {}
 
     public record FunctionSpec(
-            long funcIdx,
+            String methodName,
             TList<ArgSlot> argSlots,
             JavaDataDescriptor retDesc,
             CodeDynamic bodyCode,
@@ -35,11 +35,7 @@ public final class DefSetFunctionsEmitter {
         return functionsBinaryName(defSet).replace('.', '/');
     }
 
-    public static String functionMethodName(long funcIdx) {
-        return "_" + funcIdx;
-    }
-
-    public static String functionFieldPrefix(long funcIdx) {
-        return "_" + funcIdx + "_";
+    public static String functionFieldPrefix(String methodName) {
+        return methodName + "_";
     }
 }

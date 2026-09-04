@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.binding;
 
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -9,20 +8,19 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
 
 public record BindingIteratorStack() implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         throw new IllegalStateException(
                 "BindingIteratorStack: iterator is a stack-only scope entry, never resolved by name");
     }
 
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
-        return EResult.ok(Code.of(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
+        return EResult.ok(Code.target(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
     }
 
     @Override
@@ -41,10 +39,5 @@ public record BindingIteratorStack() implements Binding {
             }
         }
         return EResult.ok(this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
     }
 }

@@ -81,17 +81,26 @@ public final class JavaAspectExtractor {
                     NameDerivation.snakeCase(compName), compName, typeNameOf(comp.getType(), importMap, pkg)));
         }
         for (var m : recDecl.getMethods()) {
-            if (m.isStatic()) continue;
-            if (!m.getParameters().isEmpty()) continue;
+            if (m.isStatic() || !m.isPublic()) continue;
             if (recordComponentNames.contains(m.getNameAsString())) continue;
-            var sourceName = NameDerivation.snakeCase(m.getNameAsString());
+            var params = m.getParameters();
+            var needsEvalContext = !params.isEmpty()
+                    && params.get(0).getNameAsString().equals("vx")
+                    && typeNameOf(params.get(0).getType(), importMap, pkg)
+                            .equals(ClassName.get("compilerxyz.main.eval", "EvalContext"));
+            var methodParams = new TList<Param>();
+            for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
+                var p = params.get(i);
+                methodParams.add(new Param(
+                        NameDerivation.snakeCase(p.getNameAsString()), typeNameOf(p.getType(), importMap, pkg)));
+            }
             methods.add(new Method(
-                    sourceName,
+                    NameDerivation.snakeCase(m.getNameAsString()),
                     m.getNameAsString(),
-                    new TList<Param>(),
+                    methodParams,
                     typeNameOf(m.getType(), importMap, pkg),
                     true,
-                    false));
+                    needsEvalContext));
         }
         return Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                 simpleName,

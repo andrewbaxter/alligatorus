@@ -19,13 +19,12 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
-import compilerxyz.main.eval.value.argrecord.ArgumentRecord;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectTuple;
@@ -41,21 +40,23 @@ public final class SourceDataMethodData {
     }
 
     public final String name;
+
+    public final String jvmMethodName;
+
     public Opt<Type> argType = Opt.none();
     public Opt<Type> retType = Opt.none();
     public Opt<Value> implExpr = Opt.none();
-    public Opt<String> compiledClassName = Opt.none();
-    public Opt<byte[]> compiledBytecode = Opt.none();
     public Opt<BindingId> innerBindingId = Opt.none();
-    public int methodIdx;
+    public Opt<BindingId> outerBindingId = Opt.none();
     public final TList<EvalContext.ExternalEntry> capturedExternals;
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
 
     public Opt<TList<ArgSignatureSlot>> compiledArgSlots = Opt.none();
     public Opt<TList<BindingId>> compiledArgSlotIds = Opt.none();
 
-    public SourceDataMethodData(String name) {
+    public SourceDataMethodData(String name, String jvmMethodName) {
         this.name = name;
+        this.jvmMethodName = jvmMethodName;
         this.capturedExternals = new TList<>();
     }
 
@@ -86,15 +87,18 @@ public final class SourceDataMethodData {
         innerBindingId = Opt.some(selfId);
 
         var outerId = new BindingId();
+        outerBindingId = Opt.some(outerId);
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
-        var outerIb = GenAspectInitialBind.getMaybe(xx, outerType);
+        var outerIb = GenAspectInitialBindDynamic.getMaybe(xx, outerType);
         if (outerIb.optIsSome()) {
-            bodyScope.pushNamed(new ConstKey.Str("outer"), outerIb.optUnwrap().aspectInitialBindInitialBind(outerId));
+            bodyScope.pushNamed(
+                    new ConstKey.Str("outer"), outerIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(outerId));
         }
-        var selfIb = GenAspectInitialBind.getMaybe(xx, underlyingType);
+        var selfIb = GenAspectInitialBindDynamic.getMaybe(xx, underlyingType);
         if (selfIb.optIsSome()) {
-            bodyScope.pushNamed(new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindInitialBind(selfId));
+            bodyScope.pushNamed(
+                    new ConstKey.Str("inner"), selfIb.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(selfId));
         }
         TList<ArgSignatureSlot> argSlots = null;
         TList<BindingId> argSlotIds = null;
@@ -111,14 +115,14 @@ public final class SourceDataMethodData {
                 for (var slot : argSlots) {
                     var slotId = new BindingId();
                     argSlotIds.add(slotId);
-                    var ibMaybe = GenAspectInitialBind.getMaybe(xx, slot.elementType());
+                    var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, slot.elementType());
                     if (ibMaybe.optIsNone()) {
                         return EResult.err(
                                 rootLoc,
                                 "SourceDataMethodData::finish tuple element type "
-                                        + slot.elementType().typeDesc() + " missing AspectInitialBind");
+                                        + slot.elementType().typeDesc() + " missing AspectInitialBindDynamic");
                     }
-                    elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
+                    elemBindings.add(ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
                 }
                 var argTuple =
                         new ArgumentTuple(elemBindings, tupleOpt.optUnwrap().aspectTupleElementTypes());
@@ -129,28 +133,29 @@ public final class SourceDataMethodData {
                 for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
                     var slotId = new BindingId();
                     argSlotIds.add(slotId);
-                    var ibMaybe = GenAspectInitialBind.getMaybe(xx, entry.getValue());
+                    var ibMaybe = GenAspectInitialBindDynamic.getMaybe(xx, entry.getValue());
                     if (ibMaybe.optIsNone()) {
                         return EResult.err(
                                 rootLoc,
                                 "SourceDataMethodData::finish record field type "
-                                        + entry.getValue().typeDesc() + " missing AspectInitialBind");
+                                        + entry.getValue().typeDesc() + " missing AspectInitialBindDynamic");
                     }
                     fields.put(
                             entry.getKey(),
                             new ArgumentEntry(
-                                    ibMaybe.optUnwrap().aspectInitialBindInitialBind(slotId), entry.getValue()));
+                                    ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId),
+                                    entry.getValue()));
                     i++;
                 }
-                var argRec = new ArgumentRecord(fields);
-                bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(argRec));
+                bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
             } else {
                 var slotId = new BindingId();
                 argSlotIds.add(slotId);
-                var argIbMaybe = GenAspectInitialBind.getMaybe(xx, argT);
+                var argIbMaybe = GenAspectInitialBindDynamic.getMaybe(xx, argT);
                 if (argIbMaybe.optIsSome()) {
                     bodyScope.pushNamed(
-                            new ConstKey.Str("arg"), argIbMaybe.optUnwrap().aspectInitialBindInitialBind(slotId));
+                            new ConstKey.Str("arg"),
+                            argIbMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId));
                 }
             }
         }
@@ -183,12 +188,12 @@ public final class SourceDataMethodData {
             }
             bodyCode = dynResult.requireValue("SourceDataMethodData::compile consume.toDynamic");
         } else {
-            bodyCode = convertedCv.code().codeDynamic();
-            if (bodyCode == null) {
-                return EResult.err(
-                        rootLoc,
-                        "Data type '" + dtName + "' method '" + name + "' body produced no compile-time value");
-            }
+            var bodyCodeRes = CodeDynamic.castRequired(
+                    rootLoc,
+                    convertedCv.code(),
+                    "Data type '" + dtName + "' method '" + name + "' body produced no compile-time value");
+            if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
+            bodyCode = bodyCodeRes.requireValue("bodyCode");
             if (retT.optIsSome()) {
                 if (GenAspectNull.getMaybe(methodXx, retT.optUnwrap()).optIsNone()) {
                     return EResult.err(
@@ -203,17 +208,7 @@ public final class SourceDataMethodData {
             }
         }
 
-        for (var entry : innerVx.definitionSets.entrySet()) {
-            xx.vx.definitionSets.putIfAbsent(entry.getKey(), entry.getValue());
-        }
-
-        var owningSet = outerType.set;
-        for (var entry : innerVx.definitionSets.entrySet()) {
-            if (entry.getKey().equals(owningSet.defSetId)) {
-                continue;
-            }
-            owningSet.dependencies.putIfAbsent(entry.getKey(), entry.getValue());
-        }
+        outerType.set.absorbBodyContext(xx, innerVx);
 
         var captured = innerVx.externals;
         capturedExternals.addAll(captured);

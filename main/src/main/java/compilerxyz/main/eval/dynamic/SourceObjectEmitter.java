@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.dynamic;
 
-import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_object.SourceObjectInstance;
@@ -19,38 +18,6 @@ public final class SourceObjectEmitter {
     public static final JavaInternalName INTNAME_SOURCE_OBJECT_INSTANCE =
             JavaInternalName.fromClass(SourceObjectInstance.class);
 
-    public static String binaryNameFor(DefSetId defSet, long objectIndex) {
-        var compileId = defSet.compileId();
-        return "SourceObject$"
-                + compileId.importState().value()
-                + "_"
-                + compileId.source().value()
-                + "_"
-                + defSet.index()
-                + "_"
-                + objectIndex;
-    }
-
-    public static String internalNameFor(DefSetId defSet, long objectIndex) {
-        return binaryNameFor(defSet, objectIndex).replace('.', '/');
-    }
-
-    public static String methodMethodName(long methodIdx) {
-        return "_" + methodIdx;
-    }
-
-    public static String methodFieldPrefix(long methodIdx) {
-        return "_" + methodIdx + "_";
-    }
-
-    public static String interfaceMethodMethodName(int implIdx, int methodImplIdx) {
-        return "_iface" + implIdx + "_method" + methodImplIdx;
-    }
-
-    public static String interfaceMethodFieldPrefix(int implIdx, int methodImplIdx) {
-        return "_iface" + implIdx + "_method" + methodImplIdx + "_";
-    }
-
     public static final String DATA_INSTANCE_FIELD = "_data";
 
     public static final String DATA_CTOR_DESCRIPTOR = JvmConstants.DESC_OBJECT.value();
@@ -62,11 +29,9 @@ public final class SourceObjectEmitter {
     public static TOrderedMap<String, Object> rebuildStaticFieldValues(TypeSourceObjectDynamic data) {
         var staticFieldValues = new TOrderedMap<String, Object>();
         var seen = new TOrderedSet<String>();
-        for (int implIdx = 0; implIdx < data.interfaceImpls.size(); implIdx++) {
-            var impl = data.interfaceImpls.get(implIdx);
-            for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
-                var m = impl.methodImpls.get(mIdx);
-                var prefix = interfaceMethodFieldPrefix(implIdx, mIdx);
+        for (var impl : data.interfaceImpls) {
+            for (var m : impl.methodImpls) {
+                var prefix = m.jvmMethodName + "_";
                 for (int i = 0; i < m.capturedExternals.size(); i++) {
                     var entry = m.capturedExternals.get(i);
                     var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
@@ -76,9 +41,8 @@ public final class SourceObjectEmitter {
                 }
             }
         }
-        for (long methodIdx = 0; methodIdx < data.methods.size(); methodIdx++) {
-            var method = data.methods.get((int) methodIdx);
-            var prefix = methodFieldPrefix(methodIdx);
+        for (var method : data.methods) {
+            var prefix = method.jvmMethodName + "_";
             for (int i = 0; i < method.capturedExternals.size(); i++) {
                 var entry = method.capturedExternals.get(i);
                 var name = prefix + Prefixes.EXTERNAL_PREFIX + i;

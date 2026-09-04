@@ -5,6 +5,7 @@ import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
+import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 
 public final class Eval {
@@ -20,6 +21,12 @@ public final class Eval {
             return Result.ok(new ConstKey.Str(stringConst.optUnwrap().aspectStringConstGet(v)));
         }
         return Result.err("TODO value type [X] must expose const key aspect [LIST] but doesn't");
+    }
+
+    public static EResult<Code> codeConcat(ExprContext xx, QExprId loc, Code first, Code second) {
+        if (first.codeIsNone()) return EResult.ok(second);
+        if (second.codeIsNone()) return EResult.ok(first);
+        return xx.target.targetSeq(loc, TList.of(first, second));
     }
 
     public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {

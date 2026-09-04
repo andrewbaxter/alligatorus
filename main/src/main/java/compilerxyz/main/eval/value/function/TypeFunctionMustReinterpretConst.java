@@ -20,12 +20,12 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
@@ -37,7 +37,12 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("must_reinterpret")
 @BuiltinFull(uniqueId = 6111L)
-public record TypeFunctionMustReinterpretConst() implements Type, AspectFunction, AspectInitialBind {
+public record TypeFunctionMustReinterpretConst() implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -46,10 +51,13 @@ public record TypeFunctionMustReinterpretConst() implements Type, AspectFunction
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_MUST_REINTERPRET_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -132,17 +140,12 @@ public record TypeFunctionMustReinterpretConst() implements Type, AspectFunction
         seq.add(sourceCodeOpt.optUnwrap());
         seq.add(JavaBytecodeUtils.cast(loc, targetJvmClass));
         var out = new CodeDynamic(loc, seq);
-        return EResult.ok(new CodeValue(Code.of(out), EvalOutcome.ofValue(ValueDynamic.stack(xx, targetType))));
+        return EResult.ok(new CodeValue(Code.target(out), EvalOutcome.ofValue(ValueDynamic.stack(xx, targetType))));
     }
 
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

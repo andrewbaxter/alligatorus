@@ -19,11 +19,13 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
+import compilerxyz.main.eval.binding.BindingSetterConsumed;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.DefinitionSetBuilder;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.Target;
@@ -148,6 +150,11 @@ public final class BuiltinBodies {
                 throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
             case Result.Ok<ConstKey, String> ok -> ok.value();
         };
+    }
+
+    @BuiltinPath(value = "eval.binding_setter_consumed", scopeId = 5032L)
+    public static BindingSetter bindingSetterConsumed() {
+        return new BindingSetterConsumed();
     }
 
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)

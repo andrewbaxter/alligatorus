@@ -27,9 +27,8 @@ import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicUnboxed;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectSet;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
@@ -38,9 +37,8 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -53,16 +51,20 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 6194L)
 public record TypeUlongDynamicBox()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectDynamicUnboxed,
                 AspectField,
-                AspectInitialBind,
-                AspectElementUseDynamicBind,
                 AspectSet,
                 AspectStackValueDynamic {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -81,6 +83,9 @@ public record TypeUlongDynamicBox()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_ULONG_DYNAMIC_BOX_IDENTITY)) {
             return Opt.some(this);
         }
@@ -91,9 +96,7 @@ public record TypeUlongDynamicBox()
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectField.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
-                || key.equals(GenAspectSet.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)) {
+                || key.equals(GenAspectSet.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -115,11 +118,6 @@ public record TypeUlongDynamicBox()
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dynamicConsumeToDynamic(loc, cv);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -154,24 +152,26 @@ public record TypeUlongDynamicBox()
         if (unboxedCast.hasErrors()) return unboxedCast.reerr();
         var castCv = unboxedCast.requireValue("TypeUlongDynamicBox::typeCastFrom cast");
         var seq = new JavaBytecodeSequence();
-        var dyn = castCv.code().codeDynamic();
-        if (dyn != null) seq.add(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, castCv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        var dyn = dynCast.requireValue("dyn");
+        if (dyn.optIsSome()) seq.add(dyn.optUnwrap());
         seq.add(Numerics.box(loc, NumericKind.ULONG));
-        return EResult.ok(
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        return EResult.ok(new CodeValue(
+                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        var selfDyn = cv.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeUlongDynamicBox::typeCastTo: receiver has no runtime code");
-        }
+        var selfDynRes = CodeDynamic.castRequired(
+                loc, cv.code(), "TypeUlongDynamicBox::typeCastTo: receiver has no runtime code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
         var seq = new JavaBytecodeSequence();
         seq.add(selfDyn);
         seq.add(Numerics.unbox(loc, NumericKind.ULONG));
         var unboxed = new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)),
+                Code.target(new CodeDynamic(loc, seq)),
                 EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeUlongDynamic())));
         var kkOpt = Numerics.kindOf(xx, destType);
         if (kkOpt.optIsSome()) {
@@ -183,15 +183,15 @@ public record TypeUlongDynamicBox()
     @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
         var unboxed = new TypeUlongDynamic();
-        var selfDyn = self_.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeUlongDynamicBox::field: receiver has no runtime code");
-        }
+        var selfDynRes =
+                CodeDynamic.castRequired(loc, self_.code(), "TypeUlongDynamicBox::field: receiver has no runtime code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
         var seq = new JavaBytecodeSequence();
         seq.add(selfDyn);
         seq.add(Numerics.unbox(loc, NumericKind.ULONG));
-        var unboxedSelf =
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, unboxed)));
+        var unboxedSelf = new CodeValue(
+                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, unboxed)));
         return unboxed.aspectFieldField(xx, loc, unboxedSelf, key);
     }
 
@@ -208,11 +208,6 @@ public record TypeUlongDynamicBox()
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

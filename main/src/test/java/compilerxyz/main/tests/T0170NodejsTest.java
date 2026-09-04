@@ -507,7 +507,29 @@ public final class T0170NodejsTest {
     }
 
     private static SourceExpr nvalueToCode(TestMb mb, SourceExpr cveExpr) {
-        return mb.as_(mb.field(cveExpr, mb.str("code")), mb.lower(mb.field(mb.scopeUse("code"), mb.str("type"))));
+        return codeToNodejs(mb, mb.field(cveExpr, mb.str("code")));
+    }
+
+    private static SourceExpr codeToNodejs(TestMb mb, SourceExpr codeExpr) {
+        return mb.matchOf(
+                codeExpr,
+                mb.str("__c"),
+                TList.of(
+                        new TestMb.Branch(
+                                mb.str("target"),
+                                mb.matchOf(
+                                        mb.call(
+                                                mb.field(mb.scopeUse("__c"), mb.str("cast")),
+                                                mb.lower(mb.field(mb.scopeUse("code"), mb.str("type")))),
+                                        mb.str("__r"),
+                                        TList.of(
+                                                new TestMb.Branch(mb.str("ok"), mb.scopeUse("__r")),
+                                                new TestMb.Branch(
+                                                        mb.str("errs"),
+                                                        mb.panic(mb.str("nodejs: code is not nodejs code")))),
+                                        Opt.none())),
+                        new TestMb.Branch(mb.str("none"), mb.panic(mb.str("nodejs: expected code, got none")))),
+                Opt.none());
     }
 
     private static SourceExpr eresultOk(TestMb mb, SourceExpr resultType, SourceExpr value) {
@@ -520,6 +542,71 @@ public final class T0170NodejsTest {
 
     private static SourceExpr targetPanic(TestMb mb, String method) {
         return mb.panic(mb.str("ntarget." + method + " not implemented"));
+    }
+
+    @Test
+    public void test00005NodejsCodeMiscastIsCapturedError() {
+        var mb = new TestMb();
+        var modules = new TMap<String, SourceModule>();
+        var dynStr = (java.util.function.Function<String, SourceExpr>) v -> mb.as_(mb.str(v), mb.typesString());
+        modules.put(
+                "main",
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind("code", mb.lower(buildNodejsCode(mb))),
+                        mb.bind(
+                                "other_t",
+                                mb.lower(mb.seqOf(
+                                        mb.bind("d2", mb.call(mb.define(), mb.tupleOf())),
+                                        mb.bind(
+                                                "other",
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("d2"), mb.str("object")),
+                                                        mb.str("other code"))),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("other"), mb.str("set_inner")),
+                                                mb.recordOf(TList.of(rp("tag", mb.typesString())))),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("other"), mb.str("impl_interface")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                rp("iface_ref", mb.builtin("eval", "code_dyn")),
+                                                                rp("record", ifaceMethods(mb, TList.of()))))),
+                                        mb.call(mb.field(mb.scopeUse("d2"), mb.str("finish")), mb.tupleOf()),
+                                        mb.return_(mb.field(mb.scopeUse("other"), mb.str("type")))))),
+                        mb.call(
+                                mb.log(),
+                                mb.matchOf(
+                                        mb.as_(codeOp(mb, "lit_str", mb.str("x")), mb.typesCode()),
+                                        mb.str("c"),
+                                        TList.of(
+                                                new TestMb.Branch(
+                                                        mb.str("target"),
+                                                        mb.matchOf(
+                                                                mb.call(
+                                                                        mb.field(mb.scopeUse("c"), mb.str("cast")),
+                                                                        mb.scopeUse("other_t")),
+                                                                mb.str("r"),
+                                                                TList.of(
+                                                                        new TestMb.Branch(
+                                                                                mb.str("ok"), dynStr.apply("ok")),
+                                                                        new TestMb.Branch(
+                                                                                mb.str("errs"), dynStr.apply("errs"))),
+                                                                Opt.none())),
+                                                new TestMb.Branch(mb.str("none"), dynStr.apply("none"))),
+                                        Opt.none())))));
+        var gx = Helpers.newGx(modules);
+        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
+        switch (res) {
+            case Result.Ok<Compile.CompileResult, TList<ExprErr>> o -> resOk = o;
+            case Result.Err<Compile.CompileResult, TList<ExprErr>> e -> {
+                assertTrue(false, () -> "compile failed: " + res);
+                return;
+            }
+        }
+        var ok = resOk.value();
+        assertEquals(1, ok.logs().size());
+        assertEquals("errs", ok.logs().get(0).message(), "casting nodejs code to another code type is an error value");
     }
 
     @Test
@@ -948,8 +1035,7 @@ public final class T0170NodejsTest {
                                                                                                                                         .str(
                                                                                                                                                 "type"))))))))))))),
                         rp("fork", mb.scopeUse("outer")),
-                        rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))),
-                        rp("equals", mb.seqOf(mb.return_(mb.operatorEq(mb.num(1.0), mb.num(1.0))))))));
+                        rp("merge", mb.panic(mb.str("nbinding.merge not implemented"))))));
         exprs.add(mb.bind("ntarget", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("nodejs target"))));
         exprs.add(mb.call(
                 mb.field(mb.scopeUse("ntarget"), mb.str("set_inner")),
@@ -959,22 +1045,6 @@ public final class T0170NodejsTest {
                 "ntarget",
                 mb.evalTarget(),
                 TList.of(
-                        rp("bind", targetPanic(mb, "bind")),
-                        rp(
-                                "maybe_bind_sub",
-                                eresultOk(
-                                        mb,
-                                        mb.call(mb.typesOption(), mb.builtin("types", "target_bind_sub")),
-                                        mb.call(
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.typesOption(),
-                                                                mb.builtin("types", "target_bind_sub")),
-                                                        mb.str("none")),
-                                                mb.literalNull()))),
-                        rp("code_to_bind_sub", targetPanic(mb, "code_to_bind_sub")),
-                        rp("bind_sub_record", targetPanic(mb, "bind_sub_record")),
-                        rp("bind_sub_tuple", targetPanic(mb, "bind_sub_tuple")),
                         rp(
                                 "cast_exception",
                                 eresultOk(
@@ -983,6 +1053,7 @@ public final class T0170NodejsTest {
                                         mb.call(
                                                 mb.field(mb.call(mb.typesOption(), mb.typesCode()), mb.str("none")),
                                                 mb.literalNull()))),
+                        rp("initial_bind", targetPanic(mb, "initial_bind")),
                         rp("seq", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("jump", targetPanic(mb, "jump")),
                         rp("land", targetPanic(mb, "land")),
@@ -1247,7 +1318,8 @@ public final class T0170NodejsTest {
                                                                                                                                 "code"),
                                                                                                                 mb.str(
                                                                                                                         "render"))),
-                                                                                                mb.as_(
+                                                                                                codeToNodejs(
+                                                                                                        mb,
                                                                                                         mb.field(
                                                                                                                 mb
                                                                                                                         .field(
@@ -1258,16 +1330,7 @@ public final class T0170NodejsTest {
                                                                                                                                         .str(
                                                                                                                                                 "value")),
                                                                                                                 mb.str(
-                                                                                                                        "code")),
-                                                                                                        mb.lower(
-                                                                                                                mb
-                                                                                                                        .field(
-                                                                                                                                mb
-                                                                                                                                        .scopeUse(
-                                                                                                                                                "code"),
-                                                                                                                                mb
-                                                                                                                                        .str(
-                                                                                                                                                "type"))))))))),
+                                                                                                                        "code")))))))),
                                                         Opt.some(mb.str("")))))))))));
         exprs.add(mb.bind("nodejs", mb.call(mb.field(mb.scopeUse("d"), mb.str("func")), mb.str("nodejs"))));
         exprs.add(mb.call(

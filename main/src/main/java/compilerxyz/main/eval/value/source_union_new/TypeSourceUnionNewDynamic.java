@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.source_union_new;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -81,8 +80,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
             return EResult.err(loc, "TypeSourceUnionNewDynamic::call: variant payload type not finalised");
         }
         xx.vx.definitionSets.putIfAbsent(type_.set.defSetId, type_.set);
-        var variantBinaryName =
-                SourceUnionEmitter.variantBinaryNameFor(type_.set.defSetId, type_.unionIdx, variantIndex);
+        var variantBinaryName = SourceUnionEmitter.variantBinaryNameFor(type_.baseBinaryName, variantIndex);
         var erb = new Erb(loc);
         var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
         if (convertedOpt.optIsNone()) {
@@ -121,7 +119,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
 
     private record SourceUnionNewConstBinding(Value value) implements Binding {
         @Override
-        public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+        public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
         }
 
@@ -146,11 +144,6 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
         @Override
         public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
             return Binding.bindingDrop(xx, loc, this);
-        }
-
-        @Override
-        public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-            return Binding.elementUseDynamicBind(dynamicKey);
         }
     }
 

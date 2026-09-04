@@ -131,14 +131,19 @@ public final class CompileImport {
                 Opt<Value> fallbackValue;
                 Type valueType;
                 if (cv.value().optIsNone()) {
-                    var codeDyn = cv.code().codeDynamic();
-                    if (codeDyn == null) {
+                    var codeDynCast = CodeDynamic.castOpt(evalRootLoc, cv.code());
+                    if (codeDynCast.hasErrors()) {
+                        evalResult = new EvalOutcome.Err(codeDynCast.errorsOpt().optUnwrap());
+                        break evalBlock;
+                    }
+                    if (codeDynCast.requireValue("codeDyn").optIsNone()) {
                         evalResult = new EvalOutcome.Err(TList.of(new ExprErr(
                                 evalRootLoc,
                                 TList.of(new ExprSubErr.Opaque(
                                         "eval: const_eval produced no compile-time value and no dynamic code")))));
                         break evalBlock;
                     }
+                    var codeDyn = codeDynCast.requireValue("codeDyn").optUnwrap();
                     var nullType = new TypeNullDynamic();
                     var seq = new JavaBytecodeSequence();
                     seq.add(codeDyn);
@@ -192,7 +197,7 @@ public final class CompileImport {
                         if (!seenSets.add(ds.defSetId)) {
                             continue;
                         }
-                        var installRes = ImportInstall.installDefSetToDynamic(evalXx, evalRootLoc, ds);
+                        var installRes = ds.install(evalXx, evalRootLoc);
                         if (installRes.hasErrors()) {
                             evalResult =
                                     new EvalOutcome.Err(installRes.errorsOpt().optUnwrap());

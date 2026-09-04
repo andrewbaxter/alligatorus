@@ -5,6 +5,7 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -23,11 +24,11 @@ import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
@@ -42,7 +43,12 @@ import compilerxyz.prelude.util.TList;
 
 @BuiltinPath("zbase32.decode")
 @BuiltinFull(uniqueId = 6153L)
-public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitialBind {
+public record TypeZbase32Decode() implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -51,10 +57,13 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_ZBASE32_DECODE_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -84,9 +93,10 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
                 elements.add(new ValueObjectConst(new TypeByteConst(), b));
             }
             var listType = new TypeListConst(new TypeByteDynamic());
+            var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
+            if (concatRes.hasErrors()) return concatRes.reerr();
             return EResult.ok(new CodeValue(
-                    Code.concat(loc, self.code(), argument.code()),
-                    EvalOutcome.ofValue(new ValueObjectConst(listType, elements))));
+                    concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueObjectConst(listType, elements))));
         }
         if (GenAspectStringDynamic.getMaybe(xx, argType).optIsSome()) {
             var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);
@@ -100,7 +110,7 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
             seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_STORE));
             var listType = GenLists.listDynamic(xx, new TypeByteDynamic());
             return EResult.ok(new CodeValue(
-                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, listType))));
+                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, listType))));
         }
         return EResult.err(loc, "zbase32.decode: argument must be a string, got " + argType.typeDesc());
     }
@@ -108,11 +118,6 @@ public record TypeZbase32Decode() implements Type, AspectFunction, AspectInitial
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

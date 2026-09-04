@@ -819,6 +819,36 @@ public final class GenMain {
                 }
 
                 cls.addMethod(_rBuildLink);
+                if (spec.isInterface()) {
+                    cls.addMethod(MethodSpec.methodBuilder("interfaceData")
+                            .addJavadoc(
+                                    "The interface contract of this builtin interface, built once from the linked type.\n")
+                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                            .returns(BuiltinInterfacesGen.INTERFACE_DATA)
+                            .addStatement("return InterfaceHolder.INSTANCE")
+                            .build());
+                    var ifaceHolder = TypeSpec.classBuilder("InterfaceHolder")
+                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+                    ifaceHolder.addField(FieldSpec.builder(
+                                    BuiltinInterfacesGen.INTERFACE_DATA,
+                                    "INSTANCE",
+                                    Modifier.PUBLIC,
+                                    Modifier.STATIC,
+                                    Modifier.FINAL)
+                            .initializer("build()")
+                            .build());
+                    ifaceHolder.addMethod(MethodSpec.constructorBuilder()
+                            .addModifiers(Modifier.PRIVATE)
+                            .build());
+                    ifaceHolder.addMethod(MethodSpec.methodBuilder("build")
+                            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                            .returns(BuiltinInterfacesGen.INTERFACE_DATA)
+                            .addStatement("link()")
+                            .addStatement(
+                                    "return $T.ofBuiltinType(Holder.INSTANCE)", BuiltinInterfacesGen.INTERFACE_DATA)
+                            .build());
+                    cls.addType(ifaceHolder.build());
+                }
 
                 var file = JavaFile.builder(BuiltinInterfacesGen.GEN_PACKAGE, cls.build())
                         .build();
@@ -830,6 +860,41 @@ public final class GenMain {
         for (var s : scan.builtins()) {
             hostNames.add(s.pkg() + "." + s.simpleName());
             links.add("Gen" + s.simpleName());
+        }
+        {
+            var cls = TypeSpec.classBuilder("GenBuiltinInterfaces").addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+            cls.addMethod(MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PRIVATE)
+                    .build());
+            var method = MethodSpec.methodBuilder("byIdentity")
+                    .addJavadoc("The builtin interface whose identity this is, if any.\n")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(ParameterizedTypeName.get(OPT, BuiltinInterfacesGen.INTERFACE_DATA))
+                    .addParameter(BuiltinInterfacesGen.UNIQUE, "identity");
+            method.beginControlFlow("if (!(identity instanceof $T b))", BuiltinInterfacesGen.UNIQUE_BUILTIN);
+            method.addStatement("return $T.none()", OPT);
+            method.endControlFlow();
+            method.beginControlFlow("switch ((int) b.id())");
+            var ifaceSpecs = new TList<BuiltinInterfacesGen.BuiltinSpec>();
+            for (var spec : scan.builtins()) {
+                if (spec.isInterface()) ifaceSpecs.add(spec);
+            }
+            ifaceSpecs.sort((a, c) -> Long.compare(
+                    a.isAspect() ? a.identityId() : a.uniqueId(), c.isAspect() ? c.identityId() : c.uniqueId()));
+            for (var spec : ifaceSpecs) {
+                var identityKey = spec.isAspect() ? spec.identityId() : spec.uniqueId();
+                method.addStatement(
+                        "case $L: return $T.some($T.interfaceData())",
+                        identityKey,
+                        OPT,
+                        ClassName.get(BuiltinInterfacesGen.GEN_PACKAGE, "Gen" + spec.simpleName()));
+            }
+            method.addStatement("default: return $T.none()", OPT);
+            method.endControlFlow();
+            cls.addMethod(method.build());
+            var file = JavaFile.builder(BuiltinInterfacesGen.GEN_PACKAGE, cls.build())
+                    .build();
+            GenMain.write(outRoot, file, formatter);
         }
         TList<BuiltinPathScanner.Entry> _rScanRoot3;
         _scanRoot:
@@ -1127,8 +1192,10 @@ public final class GenMain {
                         BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_initial_bind",
-                        CodeBlock.of("$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
+                        "eval.aspect_initial_bind_dynamic",
+                        CodeBlock.of(
+                                "$T.dynamicType()",
+                                ClassName.get("compilerxyz.main.gen", "GenAspectInitialBindDynamic")),
                         BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
@@ -1220,8 +1287,9 @@ public final class GenMain {
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_initial_bind_id",
-                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBind")),
+                        "eval.aspect_initial_bind_dynamic_id",
+                        CodeBlock.of(
+                                "$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectInitialBindDynamic")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

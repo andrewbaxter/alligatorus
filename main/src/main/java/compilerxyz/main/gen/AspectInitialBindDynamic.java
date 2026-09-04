@@ -5,6 +5,6 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.prelude.annotations.BuiltinFull;
 
 @BuiltinFull(uniqueId = 1021L, identityId = 4021L)
-public interface AspectInitialBind extends Aspect {
-    Binding aspectInitialBindInitialBind(BindingId dynamicKey);
+public interface AspectInitialBindDynamic extends Aspect {
+    Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey);
 }

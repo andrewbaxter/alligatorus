@@ -20,10 +20,10 @@ import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordBaseDynamic;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
@@ -40,7 +40,12 @@ import java.util.concurrent.Future;
 
 @BuiltinPath("import")
 @BuiltinFull(uniqueId = 6160L)
-public record TypeImport() implements Type, AspectFunction, AspectInitialBind {
+public record TypeImport() implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -49,10 +54,13 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind {
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_IMPORT_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -160,11 +168,6 @@ public record TypeImport() implements Type, AspectFunction, AspectInitialBind {
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

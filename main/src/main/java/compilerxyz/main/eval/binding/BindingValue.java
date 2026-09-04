@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.binding;
 
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -10,12 +9,11 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 public record BindingValue(Value value) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
@@ -40,10 +38,5 @@ public record BindingValue(Value value) implements Binding {
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         return Binding.bindingDrop(xx, loc, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
     }
 }

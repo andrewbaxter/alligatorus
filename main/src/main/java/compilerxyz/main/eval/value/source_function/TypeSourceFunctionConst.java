@@ -10,7 +10,6 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.ArtifactExternal;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
@@ -29,28 +28,22 @@ import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.function.TypeFunctionDynamic;
+import compilerxyz.main.eval.value.function.TypeFunctionConst;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetFunctionCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -64,19 +57,7 @@ import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6022L)
 public record TypeSourceFunctionConst(SourceFunctionData data)
-        implements Type,
-                AspectArtifact,
-                AspectBind,
-                AspectBindDynamic,
-                AspectDropDynamicLight,
-                AspectInitialBind,
-                AspectFunction,
-                AspectType {
-
-    @Override
-    public BindingDynamicBinding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
+        implements Type, AspectArtifact, AspectBind, AspectDropDynamicLight, AspectFunction, AspectType {
 
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -95,9 +76,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         }
         if (key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectFunction.AspectId)
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
@@ -187,6 +166,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                                 data.name,
                                 argArt,
                                 retArt,
+                                data.jvmMethodName,
                                 compiledClassName,
                                 compiledBytecode,
                                 externals);
@@ -226,7 +206,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var funcData = new SourceFunctionData(body.name(), DynRuntime.freshUnique(xx.vx));
+                        var funcData = new SourceFunctionData(
+                                body.name(), DynRuntime.freshUnique(xx.vx), body.jvmMethodName());
                         funcData.artifactIdCell.set(idValue);
                         funcData.compiledClassName = body.compiledClassName();
                         funcData.compiledBytecode = body.compiledBytecode();
@@ -241,6 +222,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
                                 case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
                                 case ArtifactExternal.StagedExpr ignored -> {}
                                 case ArtifactExternal.UniqueRef ignored -> {}
+                                case ArtifactExternal.Loc ignored -> {}
                             }
                         }
                         ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
@@ -277,11 +259,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
     }
 
     @Override
-    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(loc, cv);
-    }
-
-    @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
         var set = data.set;
         if (set == null) {
@@ -294,7 +271,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         var argType = data.argType.optUnwrap();
         var retType = data.retType;
         var klass = JavaInternalName.of(DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
-        var methodName = DefSetFunctionsEmitter.functionMethodName(data.funcIdx);
+        var methodName = data.jvmMethodName;
         var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
         if (convertedRes.hasErrors()) return convertedRes.reerr();
         var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
@@ -302,9 +279,9 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         if (argCodesRes.hasErrors()) return argCodesRes.reerr();
         var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
 
-        var descRes = TypeFunctionDynamic.descriptorFor(xx, loc, argType, retType, false);
+        var descRes = TypeFunctionConst.descriptorFor(xx, loc, argType, retType, false);
         if (descRes.hasErrors()) return descRes.reerr();
-        var invocationRes = TypeFunctionDynamic.emitStaticInvocation(
+        var invocationRes = TypeFunctionConst.emitStaticInvocation(
                 xx,
                 loc,
                 klass,
@@ -315,7 +292,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         if (invocationRes.hasErrors()) return invocationRes.reerr();
         var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
         if (retType.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.of(invocation), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.target(invocation), EvalOutcome.NO_VALUE));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -336,7 +313,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     private record SourceFunctionConstBinding(Value value) implements Binding {
         @Override
-        public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+        public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
         }
 
@@ -361,11 +338,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         @Override
         public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
             return Binding.bindingDrop(xx, loc, this);
-        }
-
-        @Override
-        public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-            return Binding.elementUseDynamicBind(dynamicKey);
         }
     }
 

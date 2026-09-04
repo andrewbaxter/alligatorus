@@ -22,11 +22,11 @@ import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -37,7 +37,7 @@ import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6120L)
 public record TypeListPushDynamic(Type elementType)
-        implements Type, AspectConsumeDynamic, AspectFunction, AspectInitialBind {
+        implements Type, AspectInitialBindDynamic, AspectConsumeDynamic, AspectFunction {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -46,9 +46,16 @@ public record TypeListPushDynamic(Type elementType)
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, "TypeListPushDynamic::toDynamic: CodeValue has no dynamic code");
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -58,12 +65,13 @@ public record TypeListPushDynamic(Type elementType)
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_PUSH_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -81,10 +89,10 @@ public record TypeListPushDynamic(Type elementType)
         if (argDynRes.hasErrors()) return argDynRes.reerr();
         var argDyn = argDynRes.requireValue("toDynamic");
 
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeListPushDynamic::call: self has no dynamic code");
-        }
+        var selfDynRes =
+                CodeDynamic.castRequired(loc, self.code(), "TypeListPushDynamic::call: self has no dynamic code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
 
         var retType = new TypeNullDynamic();
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
@@ -108,11 +116,6 @@ public record TypeListPushDynamic(Type elementType)
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

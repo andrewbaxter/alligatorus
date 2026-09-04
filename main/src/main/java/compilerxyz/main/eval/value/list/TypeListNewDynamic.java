@@ -19,11 +19,11 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -33,7 +33,12 @@ import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6119L)
-public record TypeListNewDynamic(Type elementType) implements Type, AspectFunction, AspectInitialBind {
+public record TypeListNewDynamic(Type elementType) implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -42,10 +47,13 @@ public record TypeListNewDynamic(Type elementType) implements Type, AspectFuncti
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_NEW_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -95,8 +103,10 @@ public record TypeListNewDynamic(Type elementType) implements Type, AspectFuncti
         var descObject = JavaDataDescriptor.fromClass(Object.class);
         var addDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of(descObject));
         var seq = new JavaBytecodeSequence();
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn != null) seq.add(selfDyn);
+        var selfDynCast = CodeDynamic.castOpt(loc, self.code());
+        if (selfDynCast.hasErrors()) return selfDynCast.reerr();
+        var selfDyn = selfDynCast.requireValue("selfDyn");
+        if (selfDyn.optIsSome()) seq.add(selfDyn.optUnwrap());
         seq.add(JavaBytecodeUtils.instantiate(
                 loc,
                 tlistIntname,
@@ -116,11 +126,6 @@ public record TypeListNewDynamic(Type elementType) implements Type, AspectFuncti
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

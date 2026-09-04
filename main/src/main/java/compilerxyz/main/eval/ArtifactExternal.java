@@ -11,4 +11,6 @@ public sealed interface ArtifactExternal extends SafeJsonSerializable {
     record Type(Artifact typeArtifact) implements ArtifactExternal {}
 
     record UniqueRef(Unique unique) implements ArtifactExternal {}
+
+    record Loc(ArtifactExpr.ArtifactQExprId loc) implements ArtifactExternal {}
 }

@@ -253,14 +253,10 @@ public final class TestMb {
                                                                 new RecordPair(
                                                                         "setter",
                                                                         call(
-                                                                                field(
-                                                                                        call(
-                                                                                                typesOption(),
-                                                                                                builtin(
-                                                                                                        "eval",
-                                                                                                        "binding_setter")),
-                                                                                        str("none")),
-                                                                                literalNull())),
+                                                                                builtin(
+                                                                                        "eval",
+                                                                                        "binding_setter_consumed"),
+                                                                                tupleOf())),
                                                                 new RecordPair(
                                                                         "code",
                                                                         call(
@@ -334,8 +330,8 @@ public final class TestMb {
         return builtin("eval", "aspect_bind");
     }
 
-    public SourceExpr evalAspectInitialBind() {
-        return builtin("eval", "aspect_initial_bind");
+    public SourceExpr evalAspectInitialBindDynamic() {
+        return builtin("eval", "aspect_initial_bind_dynamic");
     }
 
     public SourceExpr evalAspectLift() {

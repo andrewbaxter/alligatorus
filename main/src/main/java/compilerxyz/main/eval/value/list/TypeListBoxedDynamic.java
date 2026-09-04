@@ -37,10 +37,9 @@ import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicConst;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
@@ -50,10 +49,9 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringDynamic;
@@ -69,6 +67,7 @@ import org.objectweb.asm.Opcodes;
 @BuiltinFull(uniqueId = 6117L)
 public final class TypeListBoxedDynamic<T extends Type>
         implements ListDynamic,
+                AspectInitialBindDynamic,
                 AspectFieldUseDynamic,
                 AspectDynamicConst,
                 AspectBind,
@@ -77,8 +76,6 @@ public final class TypeListBoxedDynamic<T extends Type>
                 AspectDropDynamic,
                 AspectDropDynamicLight,
                 AspectField,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectIterable,
                 AspectStackValueDynamic {
 
@@ -103,7 +100,13 @@ public final class TypeListBoxedDynamic<T extends Type>
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -113,6 +116,9 @@ public final class TypeListBoxedDynamic<T extends Type>
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_BOXED_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
@@ -128,8 +134,6 @@ public final class TypeListBoxedDynamic<T extends Type>
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
                 || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectIterable.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(this);
@@ -216,17 +220,14 @@ public final class TypeListBoxedDynamic<T extends Type>
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn == null) {
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsNone()) {
             throw new IllegalStateException(
                     "TypeListBoxedDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
         }
+        var dyn = dynCast.requireValue("dyn").optUnwrap();
         return EResult.ok(dyn);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -240,8 +241,14 @@ public final class TypeListBoxedDynamic<T extends Type>
     }
 
     @Override
+    public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
+        return EResult.ok(
+                DynUtil.dynamicStackToValue(xx, DynUtil.iteratorNext(loc, elementDecodeCast(xx, loc)), elementType));
+    }
+
+    @Override
     public EResult<CodeValue> aspectIterableForeach(
-            ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
+            ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
         var baseConsumeRes = GenAspectConsumeDynamic.get(xx, loc, this);
         if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
         var baseDynRes =
@@ -257,29 +264,36 @@ public final class TypeListBoxedDynamic<T extends Type>
         setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-        var localBinding = (elementScopeId);
+        var elementBindCast = CodeDynamic.castOpt(loc, elementBind);
+        if (elementBindCast.hasErrors()) return elementBindCast.reerr();
+        var elementBindDyn = elementBindCast.requireValue("foreach element bind");
+        if (elementBindDyn.optIsNone()) {
+            return EResult.err(loc, "foreach: element bind produced no code");
+        }
 
-        var elementDecode = elementDecodeCast(xx, loc);
         Code bodyCode;
         if (body.value().optIsSome()) {
             var dropRes = xx.target.targetDrop(xx, loc, body);
             if (dropRes.hasErrors()) return dropRes.reerr();
             var dropCode = dropRes.requireValue("TypeListBoxedDynamic::foreach body drop");
-            var bodyDyn = body.code().codeDynamic();
-            var dropDyn = dropCode.codeDynamic();
-            if (bodyDyn == null && dropDyn == null) {
+            var bodyDynCast = CodeDynamic.castOpt(loc, body.code());
+            if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
+            var bodyDyn = bodyDynCast.requireValue("bodyDyn");
+            var dropDynCast = CodeDynamic.castOpt(loc, dropCode);
+            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
+            var dropDyn = dropDynCast.requireValue("dropDyn");
+            if (bodyDyn.optIsNone() && dropDyn.optIsNone()) {
                 bodyCode = Code.none(loc);
             } else {
                 var seq = new JavaBytecodeSequence();
-                if (bodyDyn != null) seq.add(bodyDyn);
-                if (dropDyn != null) seq.add(dropDyn);
-                bodyCode = Code.of(new CodeDynamic(loc, seq));
+                if (bodyDyn.optIsSome()) seq.add(bodyDyn.optUnwrap());
+                if (dropDyn.optIsSome()) seq.add(dropDyn.optUnwrap());
+                bodyCode = Code.target(new CodeDynamic(loc, seq));
             }
         } else {
             bodyCode = body.code();
         }
-        return EResult.ok(
-                DynUtil.foreachSkeleton(loc, iteratorSetup, elementDecode, localBinding, Opcodes.ASTORE, bodyCode));
+        return DynUtil.foreachSkeleton(loc, iteratorSetup, elementBindDyn.optUnwrap(), bodyCode);
     }
 
     private CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
@@ -311,7 +325,8 @@ public final class TypeListBoxedDynamic<T extends Type>
         }
         var elementSlot = new BindingId();
         var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot));
-        var elementCv = new CodeValue(Code.of(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
+        var elementCv =
+                new CodeValue(Code.target(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, elementType)));
         var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
         if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
         var elemDropCode = elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop");
@@ -324,15 +339,18 @@ public final class TypeListBoxedDynamic<T extends Type>
         setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
-        var elementDecode = elementDecodeCast(xx, loc);
-
-        var loop =
-                DynUtil.foreachSkeleton(loc, iteratorSetup, elementDecode, elementSlot, Opcodes.ASTORE, elemDropCode);
-        var loopCode = loop.code().codeDynamic();
+        var elementStoreSeq = new JavaBytecodeSequence();
+        elementStoreSeq.add(DynUtil.iteratorNext(loc, elementDecodeCast(xx, loc)));
+        elementStoreSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, elementSlot)));
+        var loopRes = DynUtil.foreachSkeleton(loc, iteratorSetup, new CodeDynamic(loc, elementStoreSeq), elemDropCode);
+        if (loopRes.hasErrors()) return loopRes.reerr();
+        var loopCodeCast = CodeDynamic.castOpt(loc, loopRes.requireValue("loop").code());
+        if (loopCodeCast.hasErrors()) return loopCodeCast.reerr();
+        var loopCode = loopCodeCast.requireValue("loopCode");
         var finalSeq = new JavaBytecodeSequence();
-        if (loopCode != null) finalSeq.add(loopCode);
+        if (loopCode.optIsSome()) finalSeq.add(loopCode.optUnwrap());
         finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.of(new CodeDynamic(loc, finalSeq)));
+        return EResult.ok(Code.target(new CodeDynamic(loc, finalSeq)));
     }
 
     @Override
@@ -361,11 +379,6 @@ public final class TypeListBoxedDynamic<T extends Type>
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

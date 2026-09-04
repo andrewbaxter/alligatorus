@@ -5,6 +5,7 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
@@ -74,8 +75,10 @@ public record TypeUniqueConst()
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeUniqueConst::toDynamic: no compile-time value");
         }
@@ -95,8 +98,10 @@ public record TypeUniqueConst()
         var b = extractUnique(base);
         var r = extractUnique(reference);
         if (b.optIsSome() && r.optIsSome()) {
+            var concatRes = Eval.codeConcat(xx, loc, base.code(), reference.code());
+            if (concatRes.hasErrors()) return concatRes.reerr();
             return EResult.ok(new CodeValue(
-                    Code.concat(loc, base.code(), reference.code()),
+                    concatRes.requireValue("concat"),
                     EvalOutcome.ofValue(new ValueObjectConst(
                             new TypeBoolConst(), b.optUnwrap().equals(r.optUnwrap())))));
         }

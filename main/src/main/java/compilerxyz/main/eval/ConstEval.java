@@ -8,13 +8,10 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
-import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBoolConst;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectOperatorAdd;
 import compilerxyz.main.gen.GenAspectOperatorAnd;
@@ -97,8 +94,7 @@ public final class ConstEval {
                     yield EResult.errs(erb.errors());
                 }
                 var setter = new ScopeEntrySetter(xx.scope, found);
-                yield EResult.ok(EvalRes.of(
-                        found.binding.bindingUse(xx, loc, Opt.<BindingSetter>some(setter), key.code()), xx.scope));
+                yield EResult.ok(EvalRes.of(found.binding.bindingUse(xx, loc, setter, key.code()), xx.scope));
             }
             case Expr.Call p -> {
                 var erb = new Erb(loc);
@@ -146,23 +142,25 @@ public final class ConstEval {
                                     if (_jumpOpt.optIsNone() || _landOpt.optIsNone()) {
                                         wrapped = Opt.none();
                                     } else {
-                                        var _trailer = Code.concat(
-                                                loc,
-                                                _jumpOpt.optUnwrap(),
-                                                Code.concat(
-                                                        loc,
-                                                        _siteBlockRes
-                                                                .optUnwrap()
-                                                                .optUnwrap(),
-                                                        _landOpt.optUnwrap()));
                                         var _wrappedOpt =
                                                 erb.mustEr(xx.target.targetGuarded(loc, _siteKey, _callCv.code()));
                                         if (_wrappedOpt.optIsNone()) {
                                             wrapped = Opt.none();
                                         } else {
-                                            wrapped = Opt.some(new CodeValue(
-                                                    Code.concat(loc, _wrappedOpt.optUnwrap(), _trailer),
-                                                    _callCv.outcome()));
+                                            var _fullOpt = seqCode(
+                                                    xx,
+                                                    loc,
+                                                    erb,
+                                                    TList.of(
+                                                            _wrappedOpt.optUnwrap(),
+                                                            _jumpOpt.optUnwrap(),
+                                                            _siteBlockRes
+                                                                    .optUnwrap()
+                                                                    .optUnwrap(),
+                                                            _landOpt.optUnwrap()));
+                                            wrapped = _fullOpt.optIsNone()
+                                                    ? Opt.none()
+                                                    : Opt.some(new CodeValue(_fullOpt.optUnwrap(), _callCv.outcome()));
                                         }
                                     }
                                 } else {
@@ -174,9 +172,8 @@ public final class ConstEval {
                                         if (_wrappedOpt.optIsNone()) {
                                             wrapped = Opt.none();
                                         } else {
-                                            wrapped = Opt.some(new CodeValue(
-                                                    Code.concat(loc, _wrappedOpt.optUnwrap(), Code.none(loc)),
-                                                    _callCv.outcome()));
+                                            wrapped =
+                                                    Opt.some(new CodeValue(_wrappedOpt.optUnwrap(), _callCv.outcome()));
                                         }
                                     }
                                 }
@@ -361,7 +358,8 @@ public final class ConstEval {
                     var _entryCode = _dropRes.requireValue("entryClose drop");
                     var _entrySplice = blocksSplice(xx, loc, current.scopeLevelEmission().blocks, erb);
                     if (_entrySplice == null) yield EResult.errs(erb.errors());
-                    codes.add(Code.concat(loc, _entryCode, _entrySplice));
+                    codes.add(_entryCode);
+                    codes.add(_entrySplice);
                     xx.scope.levels.remove(xx.scope.levels.size() - 1);
                 }
                 var seqOpt = erb.mustErMaybeUnreachable(xx.target.targetSeq(loc, codes));
@@ -471,8 +469,9 @@ public final class ConstEval {
                     }
                 }
                 if (!_errors.isEmpty()) yield EResult.errs(_errors);
-                Code _rCode = Code.none(loc);
-                for (var _c : _keyCodes) _rCode = Code.concat(loc, _rCode, _c);
+                var _rCodeRes = xx.target.targetSeq(loc, _keyCodes);
+                if (_rCodeRes.hasErrors()) yield _rCodeRes.reerr();
+                var _rCode = _rCodeRes.requireValue("record key codes");
                 var _fields = new TOrderedMap<ConstKey, RecordField>();
                 for (var _fe : _entries.entrySet()) _fields.put(_fe.getKey(), new RecordField.EvalRes(_fe.getValue()));
                 yield EResult.ok(EvalRes.of(
@@ -631,20 +630,31 @@ public final class ConstEval {
                     }
                     var iterable = iterOpt.optUnwrap();
                     var elementType = iterable.aspectIterableElementType();
-                    var elemBindRes = GenAspectElementUseDynamicBind.get(xx, loc, elementType);
+                    var loopBinding = iterable.aspectIterableLoopBinding(xx);
+                    var elemAccessRes = iterable.aspectIterableElementAccess(xx, loc, loopBinding);
+                    if (elemAccessRes.hasErrors()) {
+                        _foreachRes = elemAccessRes.reerr();
+                        break foreachCompute;
+                    }
+                    var elemBindAspectRes = GenAspectBind.get(xx, loc, elementType);
+                    if (elemBindAspectRes.hasErrors()) {
+                        _foreachRes = elemBindAspectRes.reerr();
+                        break foreachCompute;
+                    }
+                    var elemBindRes = elemBindAspectRes
+                            .requireValue("Foreach: element AspectBind")
+                            .aspectBindBind(xx, loc, elemAccessRes.requireValue("Foreach: element access"));
                     if (elemBindRes.hasErrors()) {
                         _foreachRes = elemBindRes.reerr();
                         break foreachCompute;
                     }
-                    var elementScopeId = new BindingId();
-                    var elementBinding = elemBindRes
-                            .requireValue("Foreach: AspectElementUseDynamicBind")
-                            .aspectElementUseDynamicBindElementUseDynamicBind(elementScopeId);
+                    var elemBind = elemBindRes.requireValue("Foreach: element bind");
+                    var elementBinding = elemBind.binding();
                     var bodyScope = xx.scope.fork();
                     var _pscId = bodyScope.vx.dropStateCounter.next();
                     var iterEntry = new ScopeLevel.Entry(
                             Opt.<ConstKey>none(),
-                            iterable.aspectIterableLoopBinding(xx),
+                            loopBinding,
                             true,
                             _pscId,
                             _pscId,
@@ -682,14 +692,18 @@ public final class ConstEval {
                     }
                     xx.scope.adopt(bodyRanScope);
                     var out = erb.mustErMaybeUnreachable(
-                            iterable.aspectIterableForeach(xx, loc, base, elementScopeId, bodyEv.cv()));
+                            iterable.aspectIterableForeach(xx, loc, base, loopBinding, elemBind.code(), bodyEv.cv()));
                     if (out.optIsNone()) {
                         _foreachRes = EResult.errs(erb.errors());
                         break foreachCompute;
                     }
                     var outCv = out.optUnwrap();
-                    outCv = new CodeValue(
-                            Code.concat(loc, outCv.code(), Code.concat(loc, elemSplice, iterSplice)), outCv.outcome());
+                    var outSeq = seqCode(xx, loc, erb, TList.of(outCv.code(), elemSplice, iterSplice));
+                    if (outSeq.optIsNone()) {
+                        _foreachRes = EResult.errs(erb.errors());
+                        break foreachCompute;
+                    }
+                    outCv = new CodeValue(outSeq.optUnwrap(), outCv.outcome());
                     var foreachRes = EvalRes.of(outCv, xx.scope);
                     _foreachRes =
                             erb.errors().isEmpty() ? EResult.ok(foreachRes) : EResult.mixed(foreachRes, erb.errors());
@@ -798,14 +812,14 @@ public final class ConstEval {
                     for (int i = 0; i < e.cases().size(); i++) {
                         int variantIdx = caseIndices.get(i);
                         var variant = variants.get(variantIdx);
-                        var payloadBinding = new BindingId();
                         var caseScope = initialScope.fork();
-                        ScopeLevel.Entry payloadEntry = null;
-                        var ibMaybe = GenAspectInitialBind.getMaybe(xx, variant.type());
-                        if (ibMaybe.optIsSome()) {
-                            payloadEntry = caseScope.pushNamed(
-                                    elementKey, ibMaybe.optUnwrap().aspectInitialBindInitialBind(payloadBinding));
+                        var payloadRes = xx.target.targetInitialBind(xx, loc, variant.type());
+                        if (payloadRes.hasErrors()) {
+                            _matchRes = payloadRes.reerr();
+                            break matchCompute;
                         }
+                        var payloadBinding = payloadRes.requireValue("Match: payload initial bind");
+                        var payloadEntry = caseScope.pushNamed(elementKey, payloadBinding);
                         var caseXx =
                                 new ExprContext(caseScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var bodyResult = constEval(caseXx, e.cases().get(i).body());
@@ -818,16 +832,18 @@ public final class ConstEval {
                         var bodyEv = bodyResult.requireValue("constEvalMatch case body");
                         var caseRanScope = bodyEv.scope();
                         var bodyCv = bodyEv.cv();
-                        if (payloadEntry != null) {
-                            var payloadSplice =
-                                    blocksSplice(caseXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
-                            if (payloadSplice == null) {
-                                _matchRes = EResult.errs(erb.errors());
-                                break matchCompute;
-                            }
-                            bodyCv = new CodeValue(Code.concat(loc, bodyCv.code(), payloadSplice), bodyCv.outcome());
-                            popByBox(caseRanScope, payloadEntry);
+                        var payloadSplice = blocksSplice(caseXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
+                        if (payloadSplice == null) {
+                            _matchRes = EResult.errs(erb.errors());
+                            break matchCompute;
                         }
+                        var bodySeq = seqCode(xx, loc, erb, TList.of(bodyCv.code(), payloadSplice));
+                        if (bodySeq.optIsNone()) {
+                            _matchRes = EResult.errs(erb.errors());
+                            break matchCompute;
+                        }
+                        bodyCv = new CodeValue(bodySeq.optUnwrap(), bodyCv.outcome());
+                        popByBox(caseRanScope, payloadEntry);
                         branchScopes.add(caseRanScope);
                         if (bodyCv.value().optIsSome()) {
                             allControlEnded = false;
@@ -853,14 +869,14 @@ public final class ConstEval {
                         }
                         Type fallbackType =
                                 unionInst.optIsSome() ? unionInst.optUnwrap().withActiveVariants(remaining) : baseType;
-                        var fallbackBinding = new BindingId();
                         var fallbackScope = initialScope.fork();
-                        ScopeLevel.Entry fallbackEntry = null;
-                        var fibMaybe = GenAspectInitialBind.getMaybe(xx, fallbackType);
-                        if (fibMaybe.optIsSome()) {
-                            fallbackEntry = fallbackScope.pushNamed(
-                                    elementKey, fibMaybe.optUnwrap().aspectInitialBindInitialBind(fallbackBinding));
+                        var fallbackBindRes = xx.target.targetInitialBind(xx, loc, fallbackType);
+                        if (fallbackBindRes.hasErrors()) {
+                            _matchRes = fallbackBindRes.reerr();
+                            break matchCompute;
                         }
+                        var fallbackBinding = fallbackBindRes.requireValue("Match: fallback initial bind");
+                        var fallbackEntry = fallbackScope.pushNamed(elementKey, fallbackBinding);
                         var fallbackXx = new ExprContext(
                                 fallbackScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                         var fallbackResult = constEval(fallbackXx, e.fallback().optUnwrap());
@@ -873,16 +889,19 @@ public final class ConstEval {
                         var fallbackEv = fallbackResult.requireValue("constEvalMatch fallback");
                         var fallbackRanScope = fallbackEv.scope();
                         var fbCv = fallbackEv.cv();
-                        if (fallbackEntry != null) {
-                            var fallbackSplice =
-                                    blocksSplice(fallbackXx, loc, fallbackEntry.scopeLevelEmission().blocks, erb);
-                            if (fallbackSplice == null) {
-                                _matchRes = EResult.errs(erb.errors());
-                                break matchCompute;
-                            }
-                            fbCv = new CodeValue(Code.concat(loc, fbCv.code(), fallbackSplice), fbCv.outcome());
-                            popByBox(fallbackRanScope, fallbackEntry);
+                        var fallbackSplice =
+                                blocksSplice(fallbackXx, loc, fallbackEntry.scopeLevelEmission().blocks, erb);
+                        if (fallbackSplice == null) {
+                            _matchRes = EResult.errs(erb.errors());
+                            break matchCompute;
                         }
+                        var fbSeq = seqCode(xx, loc, erb, TList.of(fbCv.code(), fallbackSplice));
+                        if (fbSeq.optIsNone()) {
+                            _matchRes = EResult.errs(erb.errors());
+                            break matchCompute;
+                        }
+                        fbCv = new CodeValue(fbSeq.optUnwrap(), fbCv.outcome());
+                        popByBox(fallbackRanScope, fallbackEntry);
                         branchScopes.add(fallbackRanScope);
                         if (fbCv.value().optIsSome()) {
                             allControlEnded = false;
@@ -953,9 +972,9 @@ public final class ConstEval {
                         }
                     }
                     if (allConst) {
-                        var carried = Code.none(loc);
+                        var carriedParts = new TList<Code>();
                         for (var ie : conditionsEvaluated) {
-                            carried = Code.concat(loc, carried, ie.cond.code());
+                            carriedParts.add(ie.cond.code());
                             if (ie.val) {
                                 var bodyResult = constEval(xx, ie.body);
                                 if (bodyResult.valueOpt().optIsNone()) {
@@ -966,9 +985,14 @@ public final class ConstEval {
                                 bodyResult.drainInto(erb.errors());
                                 var bodyEv = bodyResult.requireValue("constEvalIf const body");
                                 var body = bodyEv.cv();
-                                var constRes = EvalRes.of(
-                                        new CodeValue(Code.concat(loc, carried, body.code()), body.outcome()),
-                                        bodyEv.scope());
+                                carriedParts.add(body.code());
+                                var bodySeq = seqCode(xx, loc, erb, carriedParts);
+                                if (bodySeq.optIsNone()) {
+                                    _ifRes = EResult.errs(erb.errors());
+                                    break ifCompute;
+                                }
+                                var constRes =
+                                        EvalRes.of(new CodeValue(bodySeq.optUnwrap(), body.outcome()), bodyEv.scope());
                                 _ifRes = erb.errors().isEmpty()
                                         ? EResult.ok(constRes)
                                         : EResult.mixed(constRes, erb.errors());
@@ -985,17 +1009,28 @@ public final class ConstEval {
                             elseResult.drainInto(erb.errors());
                             var elseEv = elseResult.requireValue("constEvalIf const else");
                             var elseCv = elseEv.cv();
-                            var constRes = EvalRes.of(
-                                    new CodeValue(Code.concat(loc, carried, elseCv.code()), elseCv.outcome()),
-                                    elseEv.scope());
+                            carriedParts.add(elseCv.code());
+                            var elseSeq = seqCode(xx, loc, erb, carriedParts);
+                            if (elseSeq.optIsNone()) {
+                                _ifRes = EResult.errs(erb.errors());
+                                break ifCompute;
+                            }
+                            var constRes =
+                                    EvalRes.of(new CodeValue(elseSeq.optUnwrap(), elseCv.outcome()), elseEv.scope());
                             _ifRes = erb.errors().isEmpty()
                                     ? EResult.ok(constRes)
                                     : EResult.mixed(constRes, erb.errors());
                             break ifCompute;
                         }
+                        var carriedSeq = seqCode(xx, loc, erb, carriedParts);
+                        if (carriedSeq.optIsNone()) {
+                            _ifRes = EResult.errs(erb.errors());
+                            break ifCompute;
+                        }
                         _ifRes = EResult.ok(EvalRes.of(
                                 new CodeValue(
-                                        carried, EvalOutcome.ofValue(new ValueObjectConst(new TypeNullConst(), null))),
+                                        carriedSeq.optUnwrap(),
+                                        EvalOutcome.ofValue(new ValueObjectConst(new TypeNullConst(), null))),
                                 xx.scope));
                         break ifCompute;
                     }
@@ -1163,14 +1198,11 @@ public final class ConstEval {
                     var bnv = (Opt.Some<Value>) bnCv.value();
                     var bnCkOpt = erb.mustRes(Eval.extractConstKey(xx, bnv.value()));
                     if (bnCkOpt.optIsNone()) yield EResult.errs(erb.errors());
-                    var bindingId = new BindingId();
                     var catchScope = xx.scope.fork();
-                    ScopeLevel.Entry payloadEntry = null;
-                    var ibMaybe = GenAspectInitialBind.getMaybe(xx, bodyExcType.optUnwrap());
-                    if (ibMaybe.optIsSome()) {
-                        payloadEntry = catchScope.pushNamed(
-                                bnCkOpt.optUnwrap(), ibMaybe.optUnwrap().aspectInitialBindInitialBind(bindingId));
-                    }
+                    var catchBindRes = xx.target.targetInitialBind(xx, loc, bodyExcType.optUnwrap());
+                    if (catchBindRes.hasErrors()) yield catchBindRes.reerr();
+                    var catchBinding = catchBindRes.requireValue("Try: catch initial bind");
+                    var payloadEntry = catchScope.pushNamed(bnCkOpt.optUnwrap(), catchBinding);
                     var catchXx =
                             new ExprContext(catchScope, xx.target, xx.vx, xx.importState, xx.currentExceptionType);
                     var catchResult = constEval(catchXx, catchObj.body());
@@ -1182,12 +1214,12 @@ public final class ConstEval {
                     var catchEv = catchResult.requireValue("constEvalTry catch body");
                     var catchRanScope = catchEv.scope();
                     var catchCv = catchEv.cv();
-                    if (payloadEntry != null) {
-                        var payloadSplice = blocksSplice(catchXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
-                        if (payloadSplice == null) yield EResult.errs(erb.errors());
-                        catchCv = new CodeValue(Code.concat(loc, catchCv.code(), payloadSplice), catchCv.outcome());
-                        popByBox(catchRanScope, payloadEntry);
-                    }
+                    var payloadSplice = blocksSplice(catchXx, loc, payloadEntry.scopeLevelEmission().blocks, erb);
+                    if (payloadSplice == null) yield EResult.errs(erb.errors());
+                    var catchSeq = seqCode(xx, loc, erb, TList.of(catchCv.code(), payloadSplice));
+                    if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
+                    catchCv = new CodeValue(catchSeq.optUnwrap(), catchCv.outcome());
+                    popByBox(catchRanScope, payloadEntry);
                     var mergeOthers = new TList<Scope>();
                     mergeOthers.add(catchRanScope);
                     var mergeRes = bodyRanScope.merge(xx, loc, mergeOthers);
@@ -1200,7 +1232,7 @@ public final class ConstEval {
                     if (resultValue.optIsNone()) {
                         resultValue = catchCv.value();
                     }
-                    catch_ = Opt.some(new TryCatchClause(bindingId, bodyExcType.optUnwrap(), catchCv));
+                    catch_ = Opt.some(new TryCatchClause(catchBinding, bodyExcType.optUnwrap(), catchCv));
                 }
                 xx.scope.adopt(bodyRanScope);
                 Opt<Code> finallyNormal = Opt.none();
@@ -1259,12 +1291,16 @@ public final class ConstEval {
                 if (finallyLevel != null) {
                     var finSplice = blocksSplice(xx, loc, finallyLevel.scopeLevelEmission().blocks, erb);
                     if (finSplice == null) yield EResult.errs(erb.errors());
-                    tryCode = Code.concat(loc, tryCode, finSplice);
+                    var finSeq = seqCode(xx, loc, erb, TList.of(tryCode, finSplice));
+                    if (finSeq.optIsNone()) yield EResult.errs(erb.errors());
+                    tryCode = finSeq.optUnwrap();
                 }
                 if (catchLevel != null) {
                     var catchSplice = blocksSplice(xx, loc, catchLevel.scopeLevelEmission().blocks, erb);
                     if (catchSplice == null) yield EResult.errs(erb.errors());
-                    tryCode = Code.concat(loc, tryCode, catchSplice);
+                    var catchSeq = seqCode(xx, loc, erb, TList.of(tryCode, catchSplice));
+                    if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
+                    tryCode = catchSeq.optUnwrap();
                 }
                 var innerCv = new CodeValue(
                         tryCode,
@@ -1408,7 +1444,9 @@ public final class ConstEval {
                         new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
                 var jumpOpt = erb.mustEr(xx.target.targetJump(loc, dest));
                 if (jumpOpt.optIsNone()) yield EResult.errs(erb.errors());
-                var cv = new CodeValue(Code.concat(loc, valCv.code(), jumpOpt.optUnwrap()), EvalOutcome.CONTROL_ENDED);
+                var retSeq = seqCode(xx, loc, erb, TList.of(valCv.code(), jumpOpt.optUnwrap()));
+                if (retSeq.optIsNone()) yield EResult.errs(erb.errors());
+                var cv = new CodeValue(retSeq.optUnwrap(), EvalOutcome.CONTROL_ENDED);
                 var res = EvalRes.of(cv, xx.scope);
                 yield erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
             }
@@ -1441,16 +1479,23 @@ public final class ConstEval {
         }
     }
 
+    private static Opt<Code> seqCode(ExprContext xx, QExprId loc, Erb erb, TList<Code> parts) {
+        return erb.mustEr(xx.target.targetSeq(loc, parts));
+    }
+
     private static Code blocksSplice(ExprContext xx, QExprId loc, TList<Code> blocks, Erb erb) {
         if (blocks.isEmpty()) return Code.none(loc);
         var skip = new JumpKey();
         var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
         var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
         if (jumpOpt.optIsNone() || landOpt.optIsNone()) return null;
-        var code = jumpOpt.optUnwrap();
-        for (var b : blocks) code = Code.concat(loc, code, b);
+        var parts = new TList<Code>();
+        parts.add(jumpOpt.optUnwrap());
+        parts.addAll(blocks);
         blocks.clear();
-        return Code.concat(loc, code, landOpt.optUnwrap());
+        parts.add(landOpt.optUnwrap());
+        var res = seqCode(xx, loc, erb, parts);
+        return res.optIsNone() ? null : res.optUnwrap();
     }
 
     private static EResult<EvalRes> labeledConsume(
@@ -1528,16 +1573,21 @@ public final class ConstEval {
         }
         var code = innerCv.code();
         if (!arrivals.isEmpty() || !blocks.isEmpty()) {
+            var parts = new TList<Code>();
+            parts.add(code);
             if (fallsThrough && !blocks.isEmpty()) {
                 var jumpOpt = erb.mustEr(xx.target.targetJump(loc, level.end));
                 if (jumpOpt.optIsNone()) return EResult.errs(erb.errors());
-                code = Code.concat(loc, code, jumpOpt.optUnwrap());
+                parts.add(jumpOpt.optUnwrap());
             }
-            for (var b : blocks) code = Code.concat(loc, code, b);
+            parts.addAll(blocks);
             blocks.clear();
             var landOpt = erb.mustEr(xx.target.targetLand(loc, level.end));
             if (landOpt.optIsNone()) return EResult.errs(erb.errors());
-            code = Code.concat(loc, code, landOpt.optUnwrap());
+            parts.add(landOpt.optUnwrap());
+            var seqOpt = seqCode(xx, loc, erb, parts);
+            if (seqOpt.optIsNone()) return EResult.errs(erb.errors());
+            code = seqOpt.optUnwrap();
         }
         Opt<Value> resultValue =
                 arrivals.isEmpty() ? innerCv.value() : Opt.some(arrivals.get(0).value());

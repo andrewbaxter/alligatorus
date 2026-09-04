@@ -28,8 +28,7 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
@@ -37,8 +36,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -53,13 +51,12 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinPath("types.expr")
 public record TypeExpr()
         implements Type,
+                AspectInitialBindDynamic,
                 Value,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectLift,
                 AspectType {
 
@@ -67,6 +64,11 @@ public record TypeExpr()
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
         return JavaDataDescriptor.fromInternalName(
                 JavaInternalName.fromClass(compilerxyz.main.eval.expr.StagedExprCell.class));
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -80,13 +82,14 @@ public record TypeExpr()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_EXPR_IDENTITY)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
@@ -158,8 +161,10 @@ public record TypeExpr()
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeExpr::toDynamic: CodeValue has no value to stage");
         }
@@ -173,11 +178,6 @@ public record TypeExpr()
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.bindDynamicDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -199,10 +199,5 @@ public record TypeExpr()
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
         return EResult.ok(ExporterRoot.EXPR);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 }

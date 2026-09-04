@@ -1,0 +1,84 @@
+package compilerxyz.main.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import compilerxyz.main.langhelp.Compile;
+import compilerxyz.main.syntax.SourceExpr;
+import compilerxyz.main.syntax.SourceModule;
+import compilerxyz.main.syntax.SourceSpecAbsolute;
+import compilerxyz.prelude.util.Result;
+import compilerxyz.prelude.util.TMap;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+public final class T0031InterfaceCrossSetTest {
+    private static SourceExpr twoSets(EcoMb e) {
+        return e.lower(e.seq(
+                e.let("da", e.define()),
+                e.let("iface", e.callM0(e.v("da"), "interface")),
+                e.callM(
+                        e.callM(e.v("iface"), "func", e.s("to_string")),
+                        "impl",
+                        e.rec(e.p("arg", e.mb.typesNull()), e.p("ret", e.retSome(e.mb.typesString())))),
+                e.finish(e.v("da")),
+                e.let("db", e.define()),
+                e.let("upper", e.defObject(e.v("db"), "upper")),
+                e.callM(e.v("upper"), "set_inner", e.mb.typesString()),
+                e.implInterface(
+                        e.v("upper"),
+                        e.fld(e.v("iface"), "type"),
+                        e.p("to_string", e.call(e.fld(e.v("inner"), "toUpperCase"), e.tup()))),
+                e.let("mk", e.defFunc(e.v("db"), "make_upper")),
+                e.funcImpl(
+                        e.v("mk"),
+                        e.mb.typesString(),
+                        e.retSome(e.fld(e.v("upper"), "type")),
+                        e.stage(e.call(e.lower(e.fld(e.v("upper"), "new")), e.v("arg")))),
+                e.finish(e.v("db")),
+                e.ret(e.rec(
+                        e.p("make_upper", e.fld(e.v("mk"), "func")), e.p("iface_t", e.fld(e.v("iface"), "type"))))));
+    }
+
+    private static SourceExpr callViaInterface(EcoMb e, SourceExpr lib, SourceExpr value) {
+        return e.call(e.fld(lib, "iface_t", "to_string"), e.tup(value, e.tup()));
+    }
+
+    @Test
+    public void test00000CrossSetInterfaceCallInModule() {
+        var e = new EcoMb();
+        var modules = new TMap<String, SourceModule>();
+        modules.put(
+                "main",
+                new SourceModule.V1(e.seq(
+                        e.let("lib", twoSets(e)),
+                        e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
+                        e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u"))))));
+        var res = Compile.compile(Helpers.newGx(modules), new SourceSpecAbsolute.Virtual("main"));
+        Compile.CompileResult ok;
+        switch (res) {
+            case Result.Ok<Compile.CompileResult, ?> o -> ok = o.value();
+            case Result.Err<Compile.CompileResult, ?> err -> throw new AssertionError("compile failed: " + res);
+        }
+        assertEquals(1, ok.logs().size());
+        assertEquals("HELLO", ok.logs().get(0).message());
+    }
+
+    @Test
+    public void test00100CrossSetInterfaceCallThroughImport(@TempDir Path tmp) throws IOException {
+        var e = new EcoMb();
+        var src = tmp.resolve("src");
+        Files.createDirectories(src);
+        T0200EcosystemLlvmTest.writeModule(src.resolve("lib.at"), twoSets(e));
+        T0200EcosystemLlvmTest.writeModule(
+                src.resolve("main.at"),
+                e.seq(
+                        e.let("lib", e.importLocal("lib", "lib.at")),
+                        e.let("u", e.call(e.fld(e.v("lib"), "make_upper"), e.s("hello"))),
+                        e.call(e.mb.log(), callViaInterface(e, e.v("lib"), e.v("u")))));
+        var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
+        assertEquals("HELLO", ok.logs().get(0).message());
+    }
+}

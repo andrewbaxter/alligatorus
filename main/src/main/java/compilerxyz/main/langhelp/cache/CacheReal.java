@@ -61,7 +61,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public final class CacheReal implements Sources, Artifacts, Compiles, AutoCloseable {
-    private static final int SCHEMA_VERSION = 6;
+    private static final int SCHEMA_VERSION = 15;
     private static final QExprId DUMMY_LOC = new QExprId(new SourceId(0), 0);
 
     private final Connection conn;

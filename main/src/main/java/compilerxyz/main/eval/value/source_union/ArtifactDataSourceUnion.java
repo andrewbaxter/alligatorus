@@ -12,8 +12,7 @@ public record ArtifactDataSourceUnion(
         DefSetId defSetId,
         Unique identity,
         TList<ArtifactDataSourceUnionVariant> variants,
-        Opt<String> compiledBaseBinaryName,
-        Opt<TList<String>> compiledVariantBinaryNames,
+        String baseBinaryName,
         Opt<byte[]> compiledBaseBytecode,
         Opt<TList<byte[]>> compiledVariantBytecode)
         implements SafeJsonSerializable {}

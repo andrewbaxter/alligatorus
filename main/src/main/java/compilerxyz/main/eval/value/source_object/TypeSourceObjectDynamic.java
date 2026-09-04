@@ -49,18 +49,15 @@ import compilerxyz.main.eval.value.function.TypeSourceMethodDynamic;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_function.ExternalCodec;
-import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceRegistry;
-import compilerxyz.main.eval.value.source_interface.InterfaceData;
+import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.AspectType;
@@ -70,19 +67,15 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
-import compilerxyz.main.gen.GenBinding;
 import compilerxyz.main.gen.GenCodegenDescriptors;
-import compilerxyz.main.gen.GenTarget;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
-import compilerxyz.main.gen.GenValue;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetObjectCodec;
@@ -95,20 +88,17 @@ import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.function.Function;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.TypeInsnNode;
 
 @BuiltinFull(uniqueId = 6020L)
 public final class TypeSourceObjectDynamic
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectField,
                 AspectType,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectLift,
                 AspectStackValueDynamic,
                 AspectFieldUseDynamic {
@@ -122,33 +112,39 @@ public final class TypeSourceObjectDynamic
     public Opt<String> description = Opt.none();
     public Opt<Type> underlyingType = Opt.none();
     public final Unique identity;
-    public int objIdx;
+    public final String binaryName;
+
     public final TList<SourceDataMethodData> methods;
     public final TList<SourceObjectInterfaceImplData> interfaceImpls;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
     public final ArtifactSupport.ArtifactIdHolder newArtifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
-    public Opt<String> compiledBinaryName = Opt.none();
     public Opt<byte[]> compiledBytecode = Opt.none();
     public Opt<TOrderedMap<String, Object>> compiledStaticFieldValues = Opt.none();
 
-    public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set) {
+    public TypeSourceObjectDynamic(DefSetId setId, String name, Unique identity, DefinitionSet set, String binaryName) {
         this.setId = setId;
         this.set = set;
         this.name = Opt.some(name);
         this.identity = identity;
+        this.binaryName = binaryName;
         this.methods = new TList<>();
         this.interfaceImpls = new TList<>();
     }
 
     @SuppressWarnings("NullAway")
-    public TypeSourceObjectDynamic(DefSetId setId, Opt<String> name, Unique identity) {
+    public TypeSourceObjectDynamic(DefSetId setId, Opt<String> name, Unique identity, String binaryName) {
         this.setId = setId;
         this.set = (DefinitionSet) null;
         this.name = name;
         this.identity = identity;
+        this.binaryName = binaryName;
         this.methods = new TList<>();
         this.interfaceImpls = new TList<>();
+    }
+
+    public String internalName() {
+        return binaryName.replace('.', '/');
     }
 
     public void initSetReflectively(DefinitionSet set) {
@@ -167,8 +163,13 @@ public final class TypeSourceObjectDynamic
         if (set == null) {
             return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
         }
-        return JavaDataDescriptor.fromInternalName(
-                JavaInternalName.of(SourceObjectEmitter.internalNameFor(setId, objIdx)));
+        xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
+        return JavaDataDescriptor.fromInternalName(JavaInternalName.of(internalName()));
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -183,6 +184,9 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(identity)) {
             return Opt.some(this);
         }
@@ -192,40 +196,17 @@ public final class TypeSourceObjectDynamic
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)) {
+                || key.equals(GenAspectDropDynamicLight.AspectId)) {
             return Opt.some(this);
         }
 
         for (var impl : interfaceImpls) {
-            var kindOpt = impl.interface_.builtinKind;
-            if (kindOpt.optIsSome()) {
-                boolean exposes =
-                        switch (kindOpt.optUnwrap()) {
-                            case ASPECT_FIELD -> key.equals(GenAspectField.AspectId);
-                            case ASPECT_LIFT -> key.equals(GenAspectLift.AspectId);
-                            case TYPE -> key.equals(GenAspectType.AspectId);
-                            case ASPECT_BIND,
-                                    ASPECT_BIND_DYNAMIC,
-                                    ASPECT_CONSUME_DYNAMIC,
-                                    ASPECT_DROP_DYNAMIC_LIGHT,
-                                    ASPECT_FIELD_USE_DYNAMIC,
-                                    ASPECT_ELEMENT_USE_DYNAMIC,
-                                    ASPECT_INITIAL_BIND,
-                                    BINDING,
-                                    ASPECT_DROP_DYNAMIC,
-                                    ASPECT_FUNCTION,
-                                    ASPECT_OPERATOR_ADD,
-                                    ASPECT_OPERATOR_LT,
-                                    ASPECT_OPERATOR_MOD,
-                                    ASPECT_SET,
-                                    VALUE,
-                                    TARGET,
-                                    CODE_DYN -> false;
-                        };
-                if (exposes) return Opt.some(this);
-            }
+            var ifaceIdentity = impl.interface_.identity;
+            boolean exposes = (ifaceIdentity.equals(GenAspectField.IdentityId) && key.equals(GenAspectField.AspectId))
+                    || (ifaceIdentity.equals(GenAspectLift.IdentityId) && key.equals(GenAspectLift.AspectId))
+                    || (ifaceIdentity.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)
+                            && key.equals(GenAspectType.AspectId));
+            if (exposes) return Opt.some(this);
         }
         return Opt.none();
     }
@@ -234,7 +215,8 @@ public final class TypeSourceObjectDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -254,8 +236,10 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeSourceObjectDynamic::toDynamic: no compile-time value");
         }
@@ -299,12 +283,11 @@ public final class TypeSourceObjectDynamic
         String fieldName = null;
         Type argType = null;
         Opt<Type> retType = Opt.none();
-        for (int i = 0; i < methods.size(); i++) {
-            var m = methods.get(i);
+        for (var m : methods) {
             if (m.name.equals(keyName)) {
                 retType = m.retType;
                 argType = m.argType.optUnwrapOr(new TypeNullDynamic());
-                fieldName = SourceObjectEmitter.methodMethodName(i);
+                fieldName = m.jvmMethodName;
                 break;
             }
         }
@@ -338,7 +321,7 @@ public final class TypeSourceObjectDynamic
         var argDescs = new TList<JavaDataDescriptor>(slots.size());
         for (var s : slots) argDescs.add(s.jvmDesc());
         var descObjObj = JavaMethodDescriptor.fromParts(retJvmDesc, argDescs);
-        var objectInternalName = JavaInternalName.of(SourceObjectEmitter.internalNameFor(setId, objIdx));
+        var objectInternalName = JavaInternalName.of(internalName());
         var fieldType = new TypeSourceMethodDynamic(
                 this,
                 TList.of(new FunctionParam("arg", argType)),
@@ -366,11 +349,6 @@ public final class TypeSourceObjectDynamic
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
         return EResult.ok(new ValueObjectConst(new TypeSourceObjectConst(this), externalHostValue.optUnwrapOr(null)));
     }
@@ -387,16 +365,14 @@ public final class TypeSourceObjectDynamic
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
-                if (impl.interface_.builtinKind.optIsSome()
-                        && impl.interface_.builtinKind.optUnwrap() == BuiltinInterfaceKind.TYPE) {
+                if (impl.interface_.identity.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)) {
                     return true;
                 }
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
-                if (impl.interface_.builtinKind.optIsSome()
-                        && impl.interface_.builtinKind.optUnwrap() == BuiltinInterfaceKind.CODE_DYN) {
+                if (impl.interface_.identity.equals(GenTrivialIdentityAspects.CODE_DYN_IDENTITY)) {
                     return true;
                 }
             }
@@ -415,34 +391,32 @@ public final class TypeSourceObjectDynamic
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             boolean hasTypeImpl = false;
             for (var impl : interfaceImpls) {
-                if (impl.interface_.builtinKind.optIsSome()
-                        && impl.interface_.builtinKind.optUnwrap() == BuiltinInterfaceKind.TYPE) {
+                if (impl.interface_.identity.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)) {
                     hasTypeImpl = true;
                     break;
                 }
             }
             if (hasTypeImpl) {
-                var sourceCode = cv.code().codeDynamic();
-                if (sourceCode == null) {
-                    return EResult.err(loc, "cast " + typeDesc() + " -> any: source has no runtime code");
-                }
+                var sourceCodeRes = CodeDynamic.castRequired(
+                        loc, cv.code(), "cast " + typeDesc() + " -> any: source has no runtime code");
+                if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
+                var sourceCode = sourceCodeRes.requireValue("sourceCode");
                 return EResult.ok(emitBuiltinCast(xx, sourceCode, GenType.dynamicType()));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
-                if (impl.interface_.builtinKind.optIsSome()
-                        && impl.interface_.builtinKind.optUnwrap() == BuiltinInterfaceKind.CODE_DYN) {
-                    var codeSource = cv.code().codeDynamic();
-                    if (codeSource == null) {
-                        return EResult.err(loc, "cast " + typeDesc() + " -> code: source has no runtime code");
-                    }
+                if (impl.interface_.identity.equals(GenTrivialIdentityAspects.CODE_DYN_IDENTITY)) {
+                    var codeSourceRes = CodeDynamic.castRequired(
+                            loc, cv.code(), "cast " + typeDesc() + " -> code: source has no runtime code");
+                    if (codeSourceRes.hasErrors()) return codeSourceRes.reerr();
+                    var codeSource = codeSourceRes.requireValue("codeSource");
                     var wrapSeq = new JavaBytecodeSequence();
                     wrapSeq.add(codeSource);
                     wrapSeq.add(JavaBytecodeUtils.callStaticMethod(
                             new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET));
                     return EResult.ok(new CodeValue(
-                            Code.of(new CodeDynamic(new CodeLoc.Some(loc), wrapSeq)),
+                            Code.target(new CodeDynamic(new CodeLoc.Some(loc), wrapSeq)),
                             EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeCodeDynamic()))));
                 }
             }
@@ -450,22 +424,16 @@ public final class TypeSourceObjectDynamic
         }
         for (var impl : interfaceImpls) {
             if (destType.typeAspect(xx, impl.interface_.identity).optIsSome()) {
-                var builtinKind = impl.interface_.builtinKind;
+                var frozen = impl.interface_.frozen();
                 Type resultType = null;
-                if (builtinKind.optIsSome()) {
-                    resultType = switch (builtinKind.optUnwrap()) {
-                        case TYPE -> GenType.dynamicType();
-                        case TARGET -> GenTarget.dynamicType();
-                        case BINDING -> GenBinding.dynamicType();
-                        case VALUE -> GenValue.dynamicType();
-                        default -> null;
-                    };
+                if (frozen.builtinType.optIsSome() && !frozen.isAspect) {
+                    resultType = frozen.builtinType.optUnwrap();
                 }
                 if (resultType != null) {
-                    var sourceCode = cv.code().codeDynamic();
-                    if (sourceCode == null) {
-                        return EResult.err(loc, "cast " + typeDesc() + " -> interface: source has no runtime code");
-                    }
+                    var sourceCodeRes = CodeDynamic.castRequired(
+                            loc, cv.code(), "cast " + typeDesc() + " -> interface: source has no runtime code");
+                    if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
+                    var sourceCode = sourceCodeRes.requireValue("sourceCode");
                     return EResult.ok(emitBuiltinCast(xx, sourceCode, resultType));
                 }
                 return EResult.ok(new CodeValue(
@@ -474,10 +442,10 @@ public final class TypeSourceObjectDynamic
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
-            var sourceCode = cv.code().codeDynamic();
-            if (sourceCode == null) {
-                return EResult.err(loc, "cast " + typeDesc() + " -> aspect: source has no runtime code");
-            }
+            var sourceCodeRes = CodeDynamic.castRequired(
+                    loc, cv.code(), "cast " + typeDesc() + " -> aspect: source has no runtime code");
+            if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
+            var sourceCode = sourceCodeRes.requireValue("sourceCode");
             return EResult.ok(emitBuiltinCast(xx, sourceCode, GenAspect.dynamicType()));
         }
         return EResult.err(loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
@@ -490,22 +458,11 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        if (sourceType.typeAspect(xx, identity).optIsSome()) {
-            return true;
-        }
-        if (sourceType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
-            for (var impl : interfaceImpls) {
-                if (impl.interface_.builtinKind.optIsSome()
-                        && impl.interface_.builtinKind.optUnwrap() == BuiltinInterfaceKind.CODE_DYN) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return sourceType.typeAspect(xx, identity).optIsSome();
     }
 
     private CodeValue emitBuiltinCast(ExprContext xx, CodeDynamic sourceCode, Type resultType) {
-        return new CodeValue(Code.of(sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
+        return new CodeValue(Code.target(sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
     }
 
     @Override
@@ -520,25 +477,7 @@ public final class TypeSourceObjectDynamic
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        var codeSource = cv.code().codeDynamic();
-        if (codeSource == null) {
-            return EResult.err(loc, "cast code -> " + typeDesc() + ": source has no runtime code");
-        }
-        var objectInternalName = JavaInternalName.of(SourceObjectEmitter.internalNameFor(setId, objIdx));
-        var unwrapSeq = new JavaBytecodeSequence();
-        unwrapSeq.add(codeSource);
-        unwrapSeq.add(
-                JavaBytecodeUtils.callStaticMethod(new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET_IMPL));
-        unwrapSeq.add(JavaBytecodeUtils.wrapObj(
-                new CodeLoc.Some(loc), new TypeInsnNode(Opcodes.CHECKCAST, objectInternalName.value)));
-        return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(new CodeLoc.Some(loc), unwrapSeq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
+        return EResult.ok(cv);
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
@@ -585,8 +524,8 @@ public final class TypeSourceObjectDynamic
                                                 + "' missing arg/ret type"))));
                                 continue;
                             }
-                            if (m.compiledBodyCode.optIsNone() && m.compiledClassName.optIsNone()) {
-                                var objInternalName = SourceObjectEmitter.internalNameFor(dt.setId, dt.objIdx);
+                            if (m.compiledBodyCode.optIsNone()) {
+                                var objInternalName = dt.internalName();
                                 var finishRes = m.finish(
                                         xx,
                                         loc,
@@ -596,7 +535,7 @@ public final class TypeSourceObjectDynamic
                                         objInternalName);
                                 finishRes.drainInto(errors);
                             }
-                            if (m.compiledBodyCode.optIsNone() && m.compiledClassName.optIsNone()) {
+                            if (m.compiledBodyCode.optIsNone()) {
                                 errors.add(new ExprErr(
                                         loc,
                                         TList.of(new Opaque("TypeTypeSourceObjectConst::exporterExport: object method '"
@@ -618,44 +557,42 @@ public final class TypeSourceObjectDynamic
                             var extRes = ExternalCodec.exportExternals(xx, loc, m.capturedExternals);
                             extRes.drainInto(errors);
                             var ext = extRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
-                            methods.add(new ArtifactDataDefSetMethod(
-                                    m.name, argArt, retArt, m.compiledClassName, m.compiledBytecode, ext));
+                            methods.add(new ArtifactDataDefSetMethod(m.name, argArt, retArt, m.jvmMethodName, ext));
                         }
                         var ifaceImpls = new TList<ArtifactDataDefSetInterfaceImpl>();
                         for (var impl : dt.interfaceImpls) {
-                            var kindOpt = impl.interface_.builtinKind;
-                            Opt<Artifact> userIface = Opt.none();
-                            if (kindOpt.optIsNone()) {
-                                var ifaceConst = new TypeSourceInterfaceDynamic(impl.interface_);
-                                var ifaceArtRes = Artifactable.exportArtifact(xx, loc, ifaceConst);
-                                ifaceArtRes.drainInto(errors);
-                                userIface = Opt.some(ifaceArtRes.valueOpt().optUnwrapOr(nullArtifact()));
-                            }
+                            var ifaceArtRes = Artifactable.exportArtifact(
+                                    xx, loc, new TypeSourceInterfaceDynamic(impl.interface_));
+                            ifaceArtRes.drainInto(errors);
+                            var ifaceArt = ifaceArtRes.valueOpt().optUnwrapOr(nullArtifact());
                             var methodImpls = new TList<ArtifactDataDefSetInterfaceMethodImpl>();
                             for (var mi : impl.methodImpls) {
-                                var iface = impl.interface_;
-                                if (mi.compiledBodyCode.optIsNone() && mi.compiledClassName.optIsNone()) {
-                                    var finishRes = mi.finish(xx, loc, iface, dt, underlyingFinal);
+                                if (mi.compiledBodyCode.optIsNone()) {
+                                    var finishRes = mi.finish(xx, loc, dt, underlyingFinal);
                                     finishRes.drainInto(errors);
                                 }
-                                if (mi.compiledBodyCode.optIsNone() && mi.compiledClassName.optIsNone()) {
+                                if (mi.compiledBodyCode.optIsNone()) {
                                     errors.add(new ExprErr(
                                             loc,
                                             TList.of(new Opaque(
-                                                    "TypeTypeSourceObjectConst::exporterExport: iface method impl (idx="
-                                                            + mi.interfaceMethodIndex
-                                                            + ") has not been compiled"))));
+                                                    "TypeTypeSourceObjectConst::exporterExport: iface method impl '"
+                                                            + mi.interfaceMethod.name
+                                                            + "' has not been compiled"))));
                                     continue;
                                 }
+                                var methodArtRes = Artifactable.exportArtifact(
+                                        xx, loc, new TypeInterfaceMethodDynamic(impl.interface_, mi.interfaceMethod));
+                                methodArtRes.drainInto(errors);
+                                var methodArt = methodArtRes.valueOpt().optUnwrapOr(nullArtifact());
                                 var extRes = ExternalCodec.exportExternals(xx, loc, mi.capturedExternals);
                                 extRes.drainInto(errors);
                                 var ext = extRes.valueOpt().optUnwrapOr(TList.<ArtifactExternal>of());
-                                methodImpls.add(new ArtifactDataDefSetInterfaceMethodImpl(
-                                        mi.interfaceMethodIndex, mi.compiledClassName, mi.compiledBytecode, ext));
+                                methodImpls.add(
+                                        new ArtifactDataDefSetInterfaceMethodImpl(methodArt, mi.jvmMethodName, ext));
                             }
-                            ifaceImpls.add(new ArtifactDataDefSetInterfaceImpl(kindOpt, userIface, methodImpls));
+                            ifaceImpls.add(new ArtifactDataDefSetInterfaceImpl(ifaceArt, methodImpls));
                         }
-                        if (dt.compiledBinaryName.optIsNone() || dt.compiledBytecode == null) {
+                        if (dt.compiledBytecode.optIsNone()) {
                             errors.add(new ExprErr(
                                     loc,
                                     TList.of(new Opaque("TypeTypeSourceObjectConst::exporterExport: object '"
@@ -671,7 +608,7 @@ public final class TypeSourceObjectDynamic
                                 underlyingArt,
                                 methods,
                                 ifaceImpls,
-                                dt.compiledBinaryName,
+                                dt.binaryName,
                                 dt.compiledBytecode);
                         return makeBody.apply(ArtifactDataDefSetObjectCodec.toValue(body));
                     });
@@ -709,15 +646,12 @@ public final class TypeSourceObjectDynamic
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var dt = new TypeSourceObjectDynamic(body.defSetId(), body.name(), body.identity());
+                        var dt = new TypeSourceObjectDynamic(
+                                body.defSetId(), body.name(), body.identity(), body.binaryName());
                         dt.artifactIdCell.set(idValue);
-                        dt.compiledBinaryName = body.compiledBinaryName();
                         dt.compiledBytecode = body.compiledBytecode();
                         for (var m : body.methods()) {
-                            var md = new SourceDataMethodData(m.name());
-                            md.methodIdx = dt.methods.size();
-                            md.compiledClassName = m.compiledClassName();
-                            md.compiledBytecode = m.compiledBytecode();
+                            var md = new SourceDataMethodData(m.name(), m.jvmMethodName());
                             dt.methods.add(md);
                         }
 
@@ -733,20 +667,21 @@ public final class TypeSourceObjectDynamic
                                     case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
                                     case ArtifactExternal.StagedExpr ignored -> {}
                                     case ArtifactExternal.UniqueRef ignored -> {}
+                                    case ArtifactExternal.Loc ignored -> {}
                                 }
                             }
                         }
                         for (var impl : body.interfaceImpls()) {
-                            if (impl.userIface().optIsSome()) {
-                                deps.add(impl.userIface().optUnwrap());
-                            }
+                            deps.add(impl.iface());
                             for (var mi : impl.methodImpls()) {
+                                deps.add(mi.interfaceMethod());
                                 for (var ce : mi.capturedExternals()) {
                                     switch (ce) {
                                         case ArtifactExternal.StageLift sl -> deps.add(sl.sourceTypeArtifact());
                                         case ArtifactExternal.Type te -> deps.add(te.typeArtifact());
                                         case ArtifactExternal.StagedExpr ignored -> {}
                                         case ArtifactExternal.UniqueRef ignored -> {}
+                                        case ArtifactExternal.Loc ignored -> {}
                                     }
                                 }
                             }
@@ -782,31 +717,22 @@ public final class TypeSourceObjectDynamic
                                 md.capturedExternals.addAll(extVal);
                             }
                             for (var impl : body.interfaceImpls()) {
-                                InterfaceData iface;
-                                if (impl.builtinKind().optIsSome()) {
-                                    iface = BuiltinInterfaceRegistry.resolve(
-                                            impl.builtinKind().optUnwrap());
-                                } else {
-                                    if (impl.userIface().optIsNone()) {
-                                        throw new IllegalStateException(
-                                                "TypeTypeSourceObjectConst finalizer: non-builtin iface impl missing "
-                                                        + "user_iface artifact");
-                                    }
-                                    var ifaceArt = impl.userIface().optUnwrap();
-                                    var ifaceAny =
-                                            ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, ifaceArt);
-                                    var ifaceVal = ifaceAny.requireValue(
-                                            "TypeTypeSourceObjectConst::finalizer user iface artifact");
-                                    iface = MustCast.mustCast(TypeSourceInterfaceDynamic.class, ifaceVal)
-                                            .data();
-                                }
+                                var ifaceAny =
+                                        ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, impl.iface());
+                                var ifaceVal =
+                                        ifaceAny.requireValue("TypeTypeSourceObjectConst::finalizer iface artifact");
+                                var iface = MustCast.mustCast(TypeSourceInterfaceDynamic.class, ifaceVal)
+                                        .cell();
                                 var implData = new SourceObjectInterfaceImplData(iface);
-                                implData.implIdx = dt.interfaceImpls.size();
                                 for (var mi : impl.methodImpls()) {
-                                    var mid = new SourceObjectInterfaceMethodImplData(mi.interfaceMethodIndex());
-                                    mid.methodImplIdx = implData.methodImpls.size();
-                                    mid.compiledClassName = mi.compiledClassName();
-                                    mid.compiledBytecode = mi.compiledBytecode();
+                                    var methodAny = ArtifactSupport.independentFinalizeImportArtifact(
+                                            xx2, loc2, mi.interfaceMethod());
+                                    var methodVal = methodAny.requireValue(
+                                            "TypeTypeSourceObjectConst::finalizer iface method artifact");
+                                    var mid = new SourceObjectInterfaceMethodImplData(
+                                            MustCast.mustCast(TypeInterfaceMethodDynamic.class, methodVal)
+                                                    .method(),
+                                            mi.jvmMethodName());
                                     var extRes = ExternalCodec.importExternals(xx2, loc2, mi.capturedExternals());
                                     var extVal = extRes.requireValue(
                                             "TypeTypeSourceObjectConst::finalizer iface method externals");

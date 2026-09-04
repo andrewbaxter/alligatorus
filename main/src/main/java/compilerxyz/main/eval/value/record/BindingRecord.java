@@ -22,13 +22,13 @@ import compilerxyz.prelude.util.TOrderedMap;
 public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey) implements Binding {
 
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         Code useCode;
         Opt<RecordBaseDynamic> base;
         switch (jsKey) {
             case Opt.Some<BindingId> some -> {
-                useCode = Code.of(BindingCode.bindingUse(new CodeLoc.Some(loc), some.value()));
-                base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value())));
+                useCode = Code.target(BindingCode.bindingUse(new CodeLoc.Some(loc), some.value()));
+                base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value(), setter)));
             }
             case Opt.None<BindingId> none -> {
                 useCode = Code.none(loc);
@@ -40,8 +40,12 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
             RecordField rf =
                     switch (entry.getValue()) {
                         case RecordScopeField.Scope s ->
-                            new RecordField.EvalRes(EResult.ok(
-                                    s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
+                            new RecordField.EvalRes(EResult.ok(s.binding()
+                                    .bindingUse(
+                                            xx,
+                                            loc,
+                                            new BindingSetterRecordField(fields, entry.getKey(), jsKey, setter),
+                                            Code.none(loc))));
                         case RecordScopeField.Dynamic d -> new RecordField.Dynamic(d.type());
                         case RecordScopeField.Error e -> new RecordField.EvalRes(EResult.errs(e.errors()));
                     };
@@ -150,8 +154,18 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
         return Binding.bindingDrop(xx, loc, this);
     }
 
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
+    private record BindingSetterRecordField(
+            TOrderedMap<ConstKey, RecordScopeField> fields, ConstKey key, Opt<BindingId> jsKey, BindingSetter parent)
+            implements BindingSetter {
+        @Override
+        public boolean bindingSetterSet(ExprContext xx, QExprId loc, Binding newBinding, boolean dropModified) {
+            var replaced = new TOrderedMap<ConstKey, RecordScopeField>();
+            for (var entry : fields.entrySet()) {
+                replaced.put(
+                        entry.getKey(),
+                        entry.getKey().equals(key) ? new RecordScopeField.Scope(newBinding) : entry.getValue());
+            }
+            return parent.bindingSetterSet(xx, loc, new BindingRecord(replaced, jsKey), dropModified);
+        }
     }
 }

@@ -20,23 +20,25 @@ import compilerxyz.prelude.util.TList;
 public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey) implements Binding {
 
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         Code useCode;
         Opt<TupleBaseDynamic> base;
         if (jsKey.optIsSome()) {
-            useCode = Code.of(BindingCode.bindingUse(new CodeLoc.Some(loc), jsKey.optUnwrap()));
-            base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap())));
+            useCode = Code.target(BindingCode.bindingUse(new CodeLoc.Some(loc), jsKey.optUnwrap()));
+            base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap(), setter)));
         } else {
             useCode = Code.none(loc);
             base = Opt.none();
         }
         var resultElements = new TList<TupleElement>(elements.size());
-        for (var e : elements) {
+        for (int i = 0; i < elements.size(); i++) {
+            var e = elements.get(i);
+            var elementSetter = new BindingSetterTupleElement(elements, i, jsKey, setter);
             TupleElement te =
                     switch (e) {
                         case TupleScopeField.Scope s ->
-                            new TupleElement.EvalRes(EResult.ok(
-                                    s.binding().bindingUse(xx, loc, Opt.<BindingSetter>none(), Code.none(loc))));
+                            new TupleElement.EvalRes(
+                                    EResult.ok(s.binding().bindingUse(xx, loc, elementSetter, Code.none(loc))));
                         case TupleScopeField.Dynamic d -> new TupleElement.Dynamic(d.type());
                         case TupleScopeField.Error er -> new TupleElement.EvalRes(EResult.errs(er.errors()));
                     };
@@ -141,8 +143,16 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
         return Binding.bindingDrop(xx, loc, this);
     }
 
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
+    private record BindingSetterTupleElement(
+            TList<TupleScopeField> elements, int index, Opt<BindingId> jsKey, BindingSetter parent)
+            implements BindingSetter {
+        @Override
+        public boolean bindingSetterSet(ExprContext xx, QExprId loc, Binding newBinding, boolean dropModified) {
+            var replaced = new TList<TupleScopeField>(elements.size());
+            for (int i = 0; i < elements.size(); i++) {
+                replaced.add(i == index ? new TupleScopeField.Scope(newBinding) : elements.get(i));
+            }
+            return parent.bindingSetterSet(xx, loc, new BindingTuple(replaced, jsKey), dropModified);
+        }
     }
 }

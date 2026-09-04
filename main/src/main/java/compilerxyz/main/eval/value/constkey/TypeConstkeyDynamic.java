@@ -25,15 +25,13 @@ import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -47,16 +45,20 @@ import org.objectweb.asm.Opcodes;
 @BuiltinPath("types.constkey")
 public record TypeConstkeyDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectStackValueDynamic {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
         return JavaDataDescriptor.fromClass(compilerxyz.main.eval.ConstKey.class);
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -66,12 +68,13 @@ public record TypeConstkeyDynamic()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_CONSTKEY_DYNAMIC_IDENTITY)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(this);
         }
@@ -91,11 +94,6 @@ public record TypeConstkeyDynamic()
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dynamicConsumeToDynamic(loc, cv);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -129,7 +127,7 @@ public record TypeConstkeyDynamic()
         seq.add(JavaBytecodeUtils.literalString(loc, s));
         seq.add(JavaBytecodeUtils.invokeSpecial(loc, strInternal, "<init>", ctorDesc));
         return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(new Some(loc), seq)),
+                Code.target(new CodeDynamic(new Some(loc), seq)),
                 EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeConstkeyDynamic()))));
     }
 
@@ -152,11 +150,6 @@ public record TypeConstkeyDynamic()
         }
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastTo unreachable (typeCanCastTo returned false)");
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

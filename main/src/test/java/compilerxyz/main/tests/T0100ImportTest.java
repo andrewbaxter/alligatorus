@@ -2,7 +2,6 @@ package compilerxyz.main.tests;
 
 import static compilerxyz.main.tests.Helpers.jsonArr;
 import static compilerxyz.main.tests.Helpers.jsonField;
-import static compilerxyz.main.tests.Helpers.jsonNull;
 import static compilerxyz.main.tests.Helpers.jsonNum;
 import static compilerxyz.main.tests.Helpers.jsonObj;
 import static compilerxyz.main.tests.Helpers.jsonStr;
@@ -14,6 +13,7 @@ import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.langhelp.Compile;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.main.syntax.SourceModule;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
 import compilerxyz.prelude.util.Result;
@@ -331,28 +331,53 @@ public final class T0100ImportTest {
                                         jsonField("name", jsonStr("to_string")),
                                         jsonField("arg_type", typeArtifact("null_dynamic")),
                                         jsonField("ret_type", typeArtifact("string_dynamic")),
-                                        jsonField("compiled_class_name", jsonObj(jsonField("none", jsonNull()))),
-                                        jsonField("compiled_bytecode", jsonObj(jsonField("none", jsonNull()))),
+                                        jsonField("jvm_method_name", jsonStr("_0")),
                                         jsonField("captured_externals", jsonArr())))),
                         jsonField(
                                 "interface_impls",
                                 jsonArr(
                                         interfaceImpl(
-                                                "aspect_consume_dynamic",
-                                                methodImpl(0, externalType(), externalUnique(1024)),
-                                                methodImpl(1, externalType(), externalUnique(1024))),
+                                                4024,
+                                                methodImpl(
+                                                        4024,
+                                                        "to_dynamic",
+                                                        "_iface0_method0",
+                                                        externalType(),
+                                                        externalUnique(1024)),
+                                                methodImpl(
+                                                        4024,
+                                                        "jvm_class",
+                                                        "_iface0_method1",
+                                                        externalType(),
+                                                        externalUnique(1024))),
                                         interfaceImpl(
-                                                "aspect_bind", methodImpl(0, externalType(), externalUnique(1022))),
+                                                4022,
+                                                methodImpl(
+                                                        4022,
+                                                        "bind",
+                                                        "_iface1_method0",
+                                                        externalType(),
+                                                        externalUnique(1022))),
                                         interfaceImpl(
-                                                "aspect_bind_dynamic",
-                                                methodImpl(0, externalType(), externalUnique(1023))),
+                                                4023,
+                                                methodImpl(
+                                                        4023,
+                                                        "bind_dynamic",
+                                                        "_iface2_method0",
+                                                        externalType(),
+                                                        externalUnique(1023))),
                                         interfaceImpl(
-                                                "aspect_field",
-                                                methodImpl(0, externalType(), externalUnique(1015)),
-                                                methodImpl(1),
-                                                methodImpl(2)),
-                                        interfaceImpl("aspect_lift"))),
-                        jsonField("compiled_binary_name", jsonObj(jsonField("some", jsonStr("SourceObject$0_0_0_0")))),
+                                                4015,
+                                                methodImpl(
+                                                        4015,
+                                                        "field",
+                                                        "_iface3_method0",
+                                                        externalType(),
+                                                        externalUnique(1015)),
+                                                methodImpl(4015, "type_opt", "_iface3_method1"),
+                                                methodImpl(4015, "keys", "_iface3_method2")),
+                                        interfaceImpl(4026))),
+                        jsonField("binary_name", jsonStr("SourceObject$0_0_0_0")),
                         jsonField("compiled_bytecode", jsonObj(jsonField("some", jsonStr("BYTECODE"))))),
                 Helpers.jsonRedacted(objArt.data()));
         var defSetArt = Helpers.artifactByTag(gxa.artifacts(), "definition_set");
@@ -375,7 +400,7 @@ public final class T0100ImportTest {
         return jsonObj(jsonField(
                 "body",
                 jsonObj(
-                        jsonField("data", jsonNull()),
+                        jsonField("data", new JsonValueNull()),
                         jsonField(
                                 "exporter",
                                 jsonObj(jsonField(
@@ -416,18 +441,48 @@ public final class T0100ImportTest {
                         "unique", jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(builtinId)))))))));
     }
 
-    private static JsonValue methodImpl(long index, JsonValue... externals) {
+    private static JsonValue builtinUnique(long identityId) {
+        return jsonObj(jsonField("builtin", jsonObj(jsonField("id", jsonNum(identityId)))));
+    }
+
+    private static JsonValue bodyArtifact(String tag, JsonValue data) {
+        return jsonObj(jsonField(
+                "body",
+                jsonObj(
+                        jsonField("data", data),
+                        jsonField(
+                                "exporter",
+                                jsonObj(jsonField(
+                                        "body",
+                                        jsonObj(
+                                                jsonField("data", jsonStr(tag)),
+                                                jsonField("exporter", jsonObj(jsonField("root", jsonObj()))))))))));
+    }
+
+    private static JsonValue methodImpl(
+            long ifaceIdentityId, String name, String jvmMethodName, JsonValue... externals) {
         return jsonObj(
-                jsonField("interface_method_index", jsonNum(index)),
-                jsonField("compiled_class_name", jsonObj(jsonField("none", jsonNull()))),
-                jsonField("compiled_bytecode", jsonObj(jsonField("none", jsonNull()))),
+                jsonField(
+                        "interface_method",
+                        bodyArtifact(
+                                "source_interface_method",
+                                jsonObj(jsonField(
+                                        "builtin",
+                                        jsonObj(
+                                                jsonField("iface", builtinUnique(ifaceIdentityId)),
+                                                jsonField("name", jsonStr(name))))))),
+                jsonField("jvm_method_name", jsonStr(jvmMethodName)),
                 jsonField("captured_externals", jsonArr(externals)));
     }
 
-    private static JsonValue interfaceImpl(String kind, JsonValue... methodImpls) {
+    private static JsonValue interfaceImpl(long identityId, JsonValue... methodImpls) {
         return jsonObj(
-                jsonField("builtin_kind", jsonObj(jsonField("some", jsonStr(kind)))),
-                jsonField("user_iface", jsonObj(jsonField("none", jsonNull()))),
+                jsonField(
+                        "iface",
+                        bodyArtifact(
+                                "source_interface_dynamic",
+                                jsonObj(jsonField(
+                                        "builtin", jsonObj(jsonField("identity", builtinUnique(identityId))))))),
                 jsonField("method_impls", jsonArr(methodImpls)));
     }
 

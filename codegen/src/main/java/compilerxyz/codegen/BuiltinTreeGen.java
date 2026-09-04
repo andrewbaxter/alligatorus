@@ -29,8 +29,8 @@ public final class BuiltinTreeGen {
     private static final ClassName TORDERED_MAP = ClassName.get("compilerxyz.prelude.util", "TOrderedMap");
     private static final ClassName ARGUMENT_ENTRY =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentEntry");
-    private static final ClassName ARGUMENT_RECORD =
-            ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecord");
+    private static final ClassName TYPE_ARGUMENT_RECORD =
+            ClassName.get("compilerxyz.main.eval.value.argrecord", "TypeArgumentRecord");
     private static final ClassName ARGUMENT_RECORD_BINDING =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecordBinding");
     public static final CodeBlock TYPE_OF_TYPES_EXPR = CodeBlock.of(
@@ -39,7 +39,7 @@ public final class BuiltinTreeGen {
             ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueConst");
     public static final CodeBlock TUC_TYPE_EXPR = CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);
     public static final ClassName TYPE_FUNCTION_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionDynamic");
+            ClassName.get("compilerxyz.main.eval.value.function", "TypeFunctionConst");
     public static final ClassName IMPORT_STATE_ID = ClassName.get("compilerxyz.main.eval", "ImportStateId");
     public static final ClassName TYPE = ClassName.get("compilerxyz.main.eval", "Type");
     public static final ClassName TLIST = ClassName.get("compilerxyz.prelude.util", "TList");
@@ -83,12 +83,10 @@ public final class BuiltinTreeGen {
                             childVars[0],
                             childVars[1]);
                 }
-                var record = st.next("record");
                 var binding = st.next("binding");
                 var type = st.next("type");
-                st.body.addStatement("var $N = new $T($N)", record, ARGUMENT_RECORD, fields);
-                st.body.addStatement("$T $N = new $T($N)", BINDING, binding, ARGUMENT_RECORD_BINDING, record);
-                st.body.addStatement("$T $N = $N", TYPE, type, record);
+                st.body.addStatement("$T $N = new $T($N)", BINDING, binding, ARGUMENT_RECORD_BINDING, fields);
+                st.body.addStatement("$T $N = $T.of($N)", TYPE, type, TYPE_ARGUMENT_RECORD, fields);
                 yield new String[] {binding, type};
             }
             case LeafSpec ls -> {
@@ -162,7 +160,7 @@ public final class BuiltinTreeGen {
                             "aspect_consume_dynamic",
                             "bind_result",
                             "aspect_bind",
-                            "aspect_initial_bind",
+                            "aspect_initial_bind_dynamic",
                             "aspect_lift",
                             "aspect_string_dynamic",
                             "aspect_function_id",
@@ -181,7 +179,7 @@ public final class BuiltinTreeGen {
                             "aspect_element_use_dynamic",
                             "aspect_field_use_dynamic_id",
                             "aspect_element_use_dynamic_id",
-                            "aspect_initial_bind_id",
+                            "aspect_initial_bind_dynamic_id",
                             "binding",
                             "target",
                             "code_dyn",

@@ -1,63 +1,81 @@
 package compilerxyz.main.eval.value.source_interface;
 
-import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.eval.DefSetId;
-import compilerxyz.main.eval.DefinitionSet;
+import compilerxyz.main.eval.ConstKey;
+import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.main.eval.value.function.TypeMethodDynamic;
+import compilerxyz.main.eval.value.object_.ObjectAspectSource;
+import compilerxyz.main.eval.value.object_.TypeObjectDynamic;
+import compilerxyz.main.eval.value.record.Record;
+import compilerxyz.main.gen.GenType;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
-@BuiltinFull(uniqueId = 6005L)
 public final class InterfaceData {
-    public final Opt<DefSetId> setId;
-
-    @SuppressWarnings("NullAway.Init")
-    public final DefinitionSet set;
-
-    public final Unique identity;
-    public final Opt<BuiltinInterfaceKind> builtinKind;
-    public Opt<String> description;
-    public boolean isAspect;
-    public Opt<Unique> aspectId;
-    public final TList<InterfaceMethodData> methods;
-    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
-
-    @SuppressWarnings("NullAway.Init")
-    public String compiledBinaryName;
-
-    public Opt<byte[]> compiledBytecode;
-
-    public InterfaceData(DefSetId setId, Unique identity, DefinitionSet set) {
-        this.setId = Opt.some(setId);
-        this.set = set;
-        this.identity = identity;
-        this.builtinKind = Opt.none();
-        this.description = Opt.none();
-        this.aspectId = Opt.none();
-        this.compiledBytecode = Opt.none();
-        this.methods = new TList<>();
+    public static Type dynamicType() {
+        return GenType.dynamicType();
     }
 
-    @SuppressWarnings("NullAway")
-    public InterfaceData(Opt<DefSetId> setId, Unique identity, Opt<BuiltinInterfaceKind> builtinKind) {
-        this.setId = setId;
-        this.set = (DefinitionSet) null;
-        this.identity = identity;
-        this.builtinKind = builtinKind;
-        this.description = Opt.none();
-        this.aspectId = Opt.none();
-        this.compiledBytecode = Opt.none();
-        this.methods = new TList<>();
+    public final Opt<String> description;
+    public final boolean isAspect;
+    public final Opt<Unique> aspectId;
+    public final IList<InterfaceMethodData> methods;
+
+    public final Opt<TypeObjectDynamic> builtinType;
+
+    public InterfaceData(
+            Opt<String> description,
+            boolean isAspect,
+            Opt<Unique> aspectId,
+            IList<InterfaceMethodData> methods,
+            Opt<TypeObjectDynamic> builtinType) {
+        this.description = description;
+        this.isAspect = isAspect;
+        this.aspectId = aspectId;
+        this.methods = methods;
+        this.builtinType = builtinType;
     }
 
-    public void initSetReflectively(DefinitionSet set) {
-        try {
-            var f = InterfaceData.class.getDeclaredField("set");
-            f.setAccessible(true);
-            f.set(this, set);
-        } catch (ReflectiveOperationException e) {
-            throw new AssertionError("InterfaceData.initSetReflectively: failed to write final 'set' field", e);
+    public static InterfaceData ofBuiltinType(TypeObjectDynamic type) {
+        var aspSrcOpt = type.aspectSource();
+        if (aspSrcOpt.optIsNone()) {
+            throw new IllegalStateException(type.typeDesc() + "::ofBuiltinType: missing aspect source");
         }
+        ObjectAspectSource.Static staticSrc;
+        switch (aspSrcOpt.optUnwrap()) {
+            case ObjectAspectSource.Static st -> staticSrc = st;
+            case ObjectAspectSource.FromInterfaceData ignored ->
+                throw new IllegalStateException(type.typeDesc() + "::ofBuiltinType: missing static aspect source");
+        }
+        var methods = new TList<InterfaceMethodData>();
+        for (var m : type.methods()) {
+            if (!(m.funcType() instanceof TypeMethodDynamic mt)) {
+                throw new IllegalStateException(type.typeDesc() + "::ofBuiltinType: method " + m.langName()
+                        + " funcType is not TypeMethodDynamic");
+            }
+            var dataFieldNames = new TList<String>();
+            if (mt.arg() instanceof Record rec) {
+                for (var key : rec.fields().keySet()) {
+                    switch (key) {
+                        case ConstKey.Str str -> dataFieldNames.add(str.value());
+                        case ConstKey.Uint u -> dataFieldNames.add(key.constKeyToCanonical());
+                    }
+                }
+            }
+            methods.add(new InterfaceMethodData(
+                    m.langName(),
+                    mt.arg(),
+                    mt.ret(),
+                    IList.from(dataFieldNames),
+                    Opt.some(mt.methodName()),
+                    Opt.some(mt.descriptor())));
+        }
+        return new InterfaceData(
+                Opt.some(type.typeDesc()),
+                !staticSrc.identity().equals(staticSrc.id()),
+                Opt.some(staticSrc.id()),
+                IList.from(methods),
+                Opt.some(type));
     }
 }

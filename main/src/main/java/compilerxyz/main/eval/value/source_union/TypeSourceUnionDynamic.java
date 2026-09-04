@@ -40,9 +40,8 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectSet;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.AspectUnion;
@@ -51,9 +50,8 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
@@ -73,13 +71,12 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6021L)
 public final class TypeSourceUnionDynamic
         implements Type,
+                AspectInitialBindDynamic,
                 AspectFieldUseDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectSet,
                 AspectStackValueDynamic,
                 AspectUnion,
@@ -88,7 +85,8 @@ public final class TypeSourceUnionDynamic
     @SuppressWarnings("NullAway.Init")
     public final DefinitionSet set;
 
-    public int unionIdx;
+    public final String baseBinaryName;
+
     public final Unique identity;
     public final Counter nextTagId;
     public final TList<SourceUnionVariant> variants;
@@ -96,8 +94,9 @@ public final class TypeSourceUnionDynamic
     public final ArtifactIdHolder artifactIdCell;
     public final SourceUnionCompiled compiled;
 
-    public TypeSourceUnionDynamic(DefinitionSet set, Unique identity) {
+    public TypeSourceUnionDynamic(DefinitionSet set, Unique identity, String baseBinaryName) {
         this.set = set;
+        this.baseBinaryName = baseBinaryName;
         this.identity = identity;
         this.nextTagId = new Counter();
         this.variants = new TList<>();
@@ -107,8 +106,9 @@ public final class TypeSourceUnionDynamic
     }
 
     @SuppressWarnings("NullAway")
-    public TypeSourceUnionDynamic(Unique identity) {
+    public TypeSourceUnionDynamic(Unique identity, String baseBinaryName) {
         this.set = (DefinitionSet) null;
+        this.baseBinaryName = baseBinaryName;
         this.identity = identity;
         this.nextTagId = new Counter();
         this.variants = new TList<>();
@@ -119,7 +119,7 @@ public final class TypeSourceUnionDynamic
 
     private TypeSourceUnionDynamic(TypeSourceUnionDynamic base, TList<Integer> active) {
         this.set = base.set;
-        this.unionIdx = base.unionIdx;
+        this.baseBinaryName = base.baseBinaryName;
         this.identity = base.identity;
         this.nextTagId = base.nextTagId;
         this.variants = base.variants;
@@ -160,6 +160,11 @@ public final class TypeSourceUnionDynamic
     }
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public String typeDesc() {
         if (active.size() == variants.size()) {
             return "union_dyn";
@@ -182,14 +187,15 @@ public final class TypeSourceUnionDynamic
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(identity)
                 || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_UNION_DYNAMIC_IDENTITY)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectSet.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectFieldUseDynamic.AspectId)
@@ -208,7 +214,8 @@ public final class TypeSourceUnionDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -223,14 +230,11 @@ public final class TypeSourceUnionDynamic
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, "TypeSourceUnionDynamic::toDynamic: CodeValue has no dynamic code");
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -243,7 +247,7 @@ public final class TypeSourceUnionDynamic
     }
 
     private JavaInternalName variantInternal(int variantIndex) {
-        return JavaInternalName.of(SourceUnionEmitter.variantBinaryNameFor(set.defSetId, unionIdx, variantIndex)
+        return JavaInternalName.of(SourceUnionEmitter.variantBinaryNameFor(baseBinaryName, variantIndex)
                 .replace('.', '/'));
     }
 
@@ -287,11 +291,8 @@ public final class TypeSourceUnionDynamic
         var selfDyn = MustCast.mustCast(ValueDynamic.class, base.value().optUnwrap());
         return switch (selfDyn.source()) {
             case ValueDynamicSource.Binding b -> {
-                if (b.setter().optIsNone()) {
-                    yield EResult.err(loc, "set: union binding is not settable here");
-                }
                 var replacement = new BindingDynamicBinding(b.key(), withActiveVariants(newOpt.optUnwrap().active));
-                if (!b.setter().optUnwrap().bindingSetterSet(xx, loc, replacement, false)) {
+                if (!b.setter().bindingSetterSet(xx, loc, replacement, false)) {
                     yield EResult.err(loc, "set: union binding is no longer in scope");
                 }
                 yield out;
@@ -331,11 +332,6 @@ public final class TypeSourceUnionDynamic
         return new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), dest)));
     }
 
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
@@ -366,8 +362,7 @@ public final class TypeSourceUnionDynamic
                                 set.defSetId,
                                 tu.identity,
                                 variantsOut,
-                                tu.compiled.baseBinaryName,
-                                tu.compiled.variantBinaryNames,
+                                tu.baseBinaryName,
                                 tu.compiled.baseBytecode,
                                 tu.compiled.variantBytecode);
                         return makeBody.apply(ArtifactDataSourceUnionCodec.toValue(body));
@@ -399,10 +394,8 @@ public final class TypeSourceUnionDynamic
                         return new Result.Ok<>(body);
                     },
                     (body) -> {
-                        var tu = new TypeSourceUnionDynamic(body.identity());
+                        var tu = new TypeSourceUnionDynamic(body.identity(), body.baseBinaryName());
                         tu.artifactIdCell.set(idValue);
-                        tu.compiled.baseBinaryName = body.compiledBaseBinaryName();
-                        tu.compiled.variantBinaryNames = body.compiledVariantBinaryNames();
                         tu.compiled.baseBytecode = body.compiledBaseBytecode();
                         tu.compiled.variantBytecode = body.compiledVariantBytecode();
                         for (var v : body.variants()) {

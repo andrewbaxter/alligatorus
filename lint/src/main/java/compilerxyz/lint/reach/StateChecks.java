@@ -65,7 +65,7 @@ public final class StateChecks {
             int _dynIdx;
             switch (_dynCtor) {
                 case "TypeMethodDynamic" -> _dynIdx = 4;
-                case "TypeFunctionDynamic" -> _dynIdx = 3;
+                case "TypeFunctionConst" -> _dynIdx = 3;
                 default -> {
                     continue;
                 }

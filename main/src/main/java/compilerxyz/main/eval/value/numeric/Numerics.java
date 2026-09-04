@@ -3,6 +3,7 @@ package compilerxyz.main.eval.value.numeric;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.NumericKind;
@@ -441,8 +442,9 @@ public final class Numerics {
                 if (foldedRes.hasErrors()) return foldedRes.reerr();
                 result = foldedRes.requireValue("Numerics::foldArith");
             }
-            return EResult.ok(
-                    new CodeValue(Code.concat(loc, base.code(), reference.code()), EvalOutcome.ofValue(result)));
+            var concatRes = Eval.codeConcat(xx, loc, base.code(), reference.code());
+            if (concatRes.hasErrors()) return concatRes.reerr();
+            return EResult.ok(new CodeValue(concatRes.requireValue("concat"), EvalOutcome.ofValue(result)));
         }
 
         var seq = new JavaBytecodeSequence();
@@ -599,7 +601,7 @@ public final class Numerics {
             seq.add(JavaBytecodeUtils.inst(loc, opcode));
             resultValue = ValueDynamic.stack(xx, dynamicType(compute));
         }
-        return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(resultValue)));
+        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(resultValue)));
     }
 
     public static EResult<CodeValue> unary(ExprContext xx, QExprId loc, CodeValue base, Unary op) {
@@ -662,7 +664,8 @@ public final class Numerics {
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
         }
         return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dynamicType(compute)))));
+                Code.target(new CodeDynamic(loc, seq)),
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, dynamicType(compute)))));
     }
 
     public static boolean isNumeric(ExprContext xx, Type type) {
@@ -741,7 +744,8 @@ public final class Numerics {
         var seq = new JavaBytecodeSequence();
         if (src.isConst()) {
             var n = constNumber(xx, src.value());
-            addCarried(seq, cv);
+            var carriedRes = addCarried(loc, seq, cv);
+            if (carriedRes.hasErrors()) return carriedRes.reerr();
             seq.add(
                     switch (to) {
                         case BYTE, UBYTE -> JavaBytecodeUtils.literalIntShortByte(loc, (byte) n.longValue());
@@ -757,8 +761,8 @@ public final class Numerics {
             seq.add(consumed.requireValue("Numerics::cast consume"));
             convert(seq, loc, src.kind(), to);
         }
-        return EResult.ok(
-                new CodeValue(Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dest))));
+        return EResult.ok(new CodeValue(
+                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dest))));
     }
 
     private static EResult<JavaBytecodeSequence> pushConverted(
@@ -766,7 +770,8 @@ public final class Numerics {
         var seq = new JavaBytecodeSequence();
         if (op.isConst()) {
             var n = constNumber(xx, op.value());
-            addCarried(seq, cv);
+            var carriedRes = addCarried(loc, seq, cv);
+            if (carriedRes.hasErrors()) return carriedRes.reerr();
             seq.add(pushNatural(loc, op.kind(), n));
             convert(seq, loc, op.kind(), target);
         } else {
@@ -785,15 +790,19 @@ public final class Numerics {
         }
         var n = constNumber(xx, ((Opt.Some<Value>) vOpt).value());
         var seq = new JavaBytecodeSequence();
-        addCarried(seq, cv);
+        var carriedRes = addCarried(loc, seq, cv);
+        if (carriedRes.hasErrors()) return carriedRes.reerr();
         seq.add(pushNatural(loc, kind, n));
         seq.add(box(loc, kind));
         return EResult.ok(new CodeDynamic(loc, seq));
     }
 
-    private static void addCarried(JavaBytecodeSequence seq, CodeValue cv) {
-        var carried = cv.code().codeDynamic();
-        if (carried != null) seq.add(carried);
+    private static EResult<JavaBytecodeSequence> addCarried(QExprId loc, JavaBytecodeSequence seq, CodeValue cv) {
+        var carriedCast = CodeDynamic.castOpt(loc, cv.code());
+        if (carriedCast.hasErrors()) return carriedCast.reerr();
+        var carried = carriedCast.requireValue("carried");
+        if (carried.optIsSome()) seq.add(carried.optUnwrap());
+        return EResult.ok(seq);
     }
 
     private static EResult<CodeDynamic> consume(ExprContext xx, QExprId loc, CodeValue cv) {

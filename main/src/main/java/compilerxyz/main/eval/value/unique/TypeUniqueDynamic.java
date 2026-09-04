@@ -37,8 +37,7 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectOperatorEq;
 import compilerxyz.main.gen.AspectStackValueDynamic;
@@ -48,8 +47,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -73,12 +71,11 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6003L)
 public record TypeUniqueDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectArtifact,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectOperatorEq,
                 AspectStackValueDynamic,
                 AspectLift,
@@ -90,19 +87,25 @@ public record TypeUniqueDynamic()
     }
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, new TypeUniqueDynamic());
+    }
+
+    @Override
     public String typeDesc() {
         return "unique";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)
                 || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectOperatorEq.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectLift.AspectId)
@@ -318,11 +321,6 @@ public record TypeUniqueDynamic()
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, new TypeUniqueDynamic());
-    }
-
-    @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
         return DynUtil.dynamicStackToValue(xx, value, this);
     }
@@ -378,7 +376,7 @@ public record TypeUniqueDynamic()
                         JavaDataDescriptor.DESC_BOOL, TList.of(JavaDataDescriptor.fromClass(Object.class)))));
         var call = new CodeDynamic(loc, _eueSeq);
         return EResult.ok(
-                new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+                new CodeValue(Code.target(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
     }
 
     private static Opt<Unique> extractUnique(CodeValue cv) {
@@ -405,7 +403,9 @@ public record TypeUniqueDynamic()
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.code().codeDynamic() != null) return EResult.ok(cv);
+        var codeCast = CodeDynamic.castOpt(loc, cv.code());
+        if (codeCast.hasErrors()) return codeCast.reerr();
+        if (codeCast.requireValue("code").optIsSome()) return EResult.ok(cv);
         if (cv.value().optIsNone()) return EResult.ok(cv);
         var srcType = cv.value().optUnwrap().valueType();
         if (srcType instanceof TypeUniqueDynamic) return EResult.ok(cv);
@@ -413,7 +413,8 @@ public record TypeUniqueDynamic()
         if (asp.optIsNone()) return EResult.ok(cv);
         var dynRes = asp.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        return EResult.ok(new CodeValue(Code.of(dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
+        return EResult.ok(
+                new CodeValue(Code.target(dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
     }
 
     @Override
@@ -429,11 +430,6 @@ public record TypeUniqueDynamic()
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         return false;
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

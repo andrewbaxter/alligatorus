@@ -2,6 +2,7 @@ package compilerxyz.main.eval.value.source_function;
 
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.eval.ArtifactExpr;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.EResult;
@@ -12,12 +13,14 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.StageLiftCell;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.unique.TypeUniqueDynamic;
+import compilerxyz.main.gen.GenQExprId;
 import compilerxyz.prelude.util.TList;
 
 public final class ExternalCodec {
@@ -62,6 +65,9 @@ public final class ExternalCodec {
                 out.add(new ArtifactExternal.Type(typeArt));
             } else if (host instanceof Unique u) {
                 out.add(new ArtifactExternal.UniqueRef(u));
+            } else if (host instanceof QExprId q) {
+                out.add(new ArtifactExternal.Loc(
+                        new ArtifactExpr.ArtifactQExprId(q.source().value(), q.expr())));
             } else {
                 return EResult.err(
                         loc,
@@ -114,6 +120,11 @@ public final class ExternalCodec {
                 case ArtifactExternal.UniqueRef uq -> {
                     out.add(new EvalContext.ExternalEntry(
                             new BindingId(), new TypeUniqueDynamic(), new External(Unique.class, uq.unique())));
+                }
+                case ArtifactExternal.Loc l -> {
+                    var q = new QExprId(new SourceId(l.loc().source()), l.loc().expr());
+                    out.add(new EvalContext.ExternalEntry(
+                            new BindingId(), GenQExprId.dynamicType(), new External(QExprId.class, q)));
                 }
             }
         }

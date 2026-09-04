@@ -9,7 +9,6 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
-import compilerxyz.main.eval.ImportInstall;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
@@ -123,7 +122,7 @@ public final class ValueSourceObjectConst {
             var underAny = underRes.requireValue("ValueSourceObjectConst::exporterFromArtifactData underlying any");
             var underVal = ArtifactSupport.importedAsValue(underAny);
             var underlying = underVal;
-            var installRes = ImportInstall.installDefSetToDynamic(xx, loc, dt.set);
+            var installRes = dt.set.install(xx, loc);
             if (installRes.hasErrors()) {
                 installRes.drainInto(errors);
                 return EResult.errs(errors);
@@ -133,14 +132,7 @@ public final class ValueSourceObjectConst {
                         loc, "ValueSourceObjectConst::exporterFromArtifactData: classLoader missing after install");
             }
             var loader = xx.vx.ix.classLoader.optUnwrap();
-            if (dt.compiledBinaryName.optIsNone()) {
-                return EResult.err(
-                        loc,
-                        "ValueSourceObjectConst::exporterFromArtifactData: source object '"
-                                + dt.name.optUnwrapOr("(unnamed)")
-                                + "' has not been compiled");
-            }
-            var binaryName = dt.compiledBinaryName.optUnwrap();
+            var binaryName = dt.binaryName;
             Class<?> cls;
             try {
                 cls = Class.forName(binaryName, true, loader);

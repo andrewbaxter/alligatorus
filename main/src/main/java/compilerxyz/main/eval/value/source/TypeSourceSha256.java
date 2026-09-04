@@ -2,9 +2,9 @@ package compilerxyz.main.eval.value.source;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.NumericKind;
@@ -15,12 +15,12 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectListConst;
 import compilerxyz.main.gen.AspectNumericConst;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectListConst;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -31,7 +31,12 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("source.sha256")
 @BuiltinFull(uniqueId = 6159L)
-public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialBind {
+public record TypeSourceSha256() implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -40,10 +45,13 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_SHA256_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -80,19 +88,16 @@ public record TypeSourceSha256() implements Type, AspectFunction, AspectInitialB
         if (bytes.length != 32) {
             return EResult.err(loc, "source.sha256: expected 32 bytes, got " + bytes.length);
         }
+        var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
+        if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(
-                Code.concat(loc, self.code(), argument.code()),
+                concatRes.requireValue("concat"),
                 EvalOutcome.ofValue(new ValueObjectConst(new TypeHash(), new HashValue.Sha256(bytes)))));
     }
 
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

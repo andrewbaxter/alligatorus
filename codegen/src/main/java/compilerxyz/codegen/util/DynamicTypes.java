@@ -70,10 +70,10 @@ public final class DynamicTypes {
                 "compilerxyz.main.eval.value.expr",
                 "TypeExpr",
                 ClassName.get("compilerxyz.main.eval.expr", "StagedExprCell"));
-        nullary(nullary, "compilerxyz.main.eval.value.throw_", "TypeThrowDynamic");
-        nullary(nullary, "compilerxyz.main.eval.value.panic", "TypePanicDynamic");
-        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionAspectDynamic");
-        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionCastValueDynamic");
+        nullary(nullary, "compilerxyz.main.eval.value.throw_", "TypeThrowConst");
+        nullary(nullary, "compilerxyz.main.eval.value.panic", "TypePanicConst");
+        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionAspectConst");
+        nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionCastValueConst");
         nullary(nullary, "compilerxyz.main.eval.value.function", "TypeFunctionMustReinterpretConst");
         nullary(nullary, "compilerxyz.main.eval.value.list", "TypeListConstructorConst");
         nullary(nullary, "compilerxyz.main.eval.value.map", "TypeMapConstructorConst");

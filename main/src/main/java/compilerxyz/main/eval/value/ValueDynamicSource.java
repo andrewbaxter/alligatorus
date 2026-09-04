@@ -14,7 +14,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
-import compilerxyz.prelude.util.Opt;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 1043L)
@@ -26,10 +25,7 @@ public sealed interface ValueDynamicSource
 
     Code valueDynamicSourceDrop(QExprId loc);
 
-    record Binding(BindingId key, Opt<BindingSetter> setter) implements ValueDynamicSource {
-        public Binding(BindingId key) {
-            this(key, Opt.<BindingSetter>none());
-        }
+    record Binding(BindingId key, BindingSetter setter) implements ValueDynamicSource {
 
         @Override
         public CodeDynamic valueDynamicSourceRealize(ExprContext xx, QExprId loc) {
@@ -58,7 +54,7 @@ public sealed interface ValueDynamicSource
         @Override
         public Code valueDynamicSourceDrop(QExprId loc) {
             int popOp = stackSize == 2 ? Opcodes.POP2 : Opcodes.POP;
-            return Code.of(JavaBytecodeUtils.inst(loc, popOp));
+            return Code.target(JavaBytecodeUtils.inst(loc, popOp));
         }
     }
 

@@ -32,19 +32,16 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceKind;
-import compilerxyz.main.eval.value.source_interface.BuiltinInterfaceRegistry;
-import compilerxyz.main.eval.value.source_interface.InterfaceData;
+import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.gen.AspectAspect;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
@@ -54,12 +51,12 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenDynamicTypes;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -84,6 +81,7 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6130L)
 public final class TypeObjectDynamic
         implements TypeImmutable,
+                AspectInitialBindDynamic,
                 AspectFieldUseDynamic,
                 TypeAspect,
                 AspectAspect,
@@ -93,8 +91,6 @@ public final class TypeObjectDynamic
                 AspectDropDynamicLight,
                 AspectBind,
                 AspectBindDynamic,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectLift,
                 AspectStackValueDynamic {
 
@@ -243,15 +239,21 @@ public final class TypeObjectDynamic
     };
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectFieldUseDynamic.AspectId)) {
@@ -282,11 +284,12 @@ public final class TypeObjectDynamic
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
-    public Unique aspectAspectGetUnique(InterfaceData value) {
+    public Unique aspectAspectGetUnique(InterfaceCell value) {
         var aspSrcOpt3 = aspectSource();
         if (aspSrcOpt3.optIsNone()) {
             throw new IllegalStateException(typeDesc() + "::getUnique: TypeObjectDynamic does not represent an aspect");
@@ -298,7 +301,7 @@ public final class TypeObjectDynamic
     }
 
     @Override
-    public InterfaceData aspectAspectGetIfaceData(InterfaceData value) {
+    public InterfaceCell aspectAspectGetIfaceCell(InterfaceCell value) {
         var aspSrcOpt4 = aspectSource();
         if (aspSrcOpt4.optIsNone()) {
             throw new UnsupportedOperationException(
@@ -307,7 +310,7 @@ public final class TypeObjectDynamic
         return switch (aspSrcOpt4.optUnwrap()) {
             case ObjectAspectSource.Static ignored ->
                 throw new UnsupportedOperationException(
-                        typeDesc() + "::getIfaceData: static aspect has no InterfaceData");
+                        typeDesc() + "::getIfaceCell: static aspect has no interface cell");
             case ObjectAspectSource.FromInterfaceData ignored -> value;
         };
     }
@@ -337,7 +340,7 @@ public final class TypeObjectDynamic
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         if (interfaceRepresented.optIsSome()
-                && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+                && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()) {
             return true;
         }
@@ -353,18 +356,20 @@ public final class TypeObjectDynamic
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (interfaceRepresented.optIsSome()
-                && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+                && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()) {
-            var sourceCode = cv.code().codeDynamic();
-            if (sourceCode == null) {
+            var sourceCodeCast = CodeDynamic.castOpt(loc, cv.code());
+            if (sourceCodeCast.hasErrors()) return sourceCodeCast.reerr();
+            if (sourceCodeCast.requireValue("sourceCode").optIsNone()) {
                 return EResult.err(
                         loc, "cast " + typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
             }
+            var sourceCode = sourceCodeCast.requireValue("sourceCode").optUnwrap();
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
-            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA));
+            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_CELL));
             var call = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+            return EResult.ok(new CodeValue(Code.target(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         for (var idAspect : trivialIdentityAspects()) {
             if (destType.typeAspect(xx, idAspect).optIsSome()) {
@@ -396,10 +401,9 @@ public final class TypeObjectDynamic
             }
         }
         var keyStr = ckStr.value();
-        var dyn = self_.code().codeDynamic();
-        if (dyn == null) {
-            return EResult.err(loc, typeDesc() + ": self has no dynamic code");
-        }
+        var dynRes = CodeDynamic.castRequired(loc, self_.code(), typeDesc() + ": self has no dynamic code");
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        var dyn = dynRes.requireValue("dyn");
         for (var f : dataFields) {
             if (f.langName().equals(keyStr)) {
                 var loadSeq = new JavaBytecodeSequence();
@@ -412,7 +416,7 @@ public final class TypeObjectDynamic
                                 JavaBytecodeUtils.callMethod(loc, jvmClass, mc.jvmMethodName(), mc.jvmMethodDesc()));
                 }
                 return EResult.ok(new CodeValue(
-                        Code.of(new CodeDynamic(loc, loadSeq)),
+                        Code.target(new CodeDynamic(loc, loadSeq)),
                         EvalOutcome.ofValue(ValueDynamic.stack(xx, f.fieldType()))));
             }
         }
@@ -484,16 +488,6 @@ public final class TypeObjectDynamic
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
         return DynUtil.dynamicStackToValue(xx, value, this);
     }
@@ -508,45 +502,21 @@ public final class TypeObjectDynamic
     }
 
     @CodegenDescriptor
-    public InterfaceData getInterfaceData() {
+    public InterfaceCell getInterfaceCell() {
         var aspSrcOpt = aspectSource();
         if (aspSrcOpt.optIsNone()) {
-            throw new IllegalStateException(typeDesc() + "::getInterfaceData: missing aspect source");
+            throw new IllegalStateException(typeDesc() + "::getInterfaceCell: missing aspect source");
         }
         ObjectAspectSource.Static staticSrc;
         switch (aspSrcOpt.optUnwrap()) {
-            case ObjectAspectSource.Static s -> staticSrc = s;
+            case ObjectAspectSource.Static st -> staticSrc = st;
             case ObjectAspectSource.FromInterfaceData ignored ->
-                throw new IllegalStateException(typeDesc() + "::getInterfaceData: missing static aspect source");
+                throw new IllegalStateException(typeDesc() + "::getInterfaceCell: missing static aspect source");
         }
-        long _v =
-                switch (staticSrc.id()) {
-                    case Unique.Builtin b -> b.id();
-                    case Unique.Source s ->
-                        throw new IllegalStateException(typeDesc() + "::getInterfaceData: not a builtin interface");
-                };
-        BuiltinInterfaceKind kind;
-        if (_v == 1015L) kind = BuiltinInterfaceKind.ASPECT_FIELD;
-        else if (_v == 1037L) kind = BuiltinInterfaceKind.ASPECT_FIELD_USE_DYNAMIC;
-        else if (_v == 1039L) kind = BuiltinInterfaceKind.ASPECT_ELEMENT_USE_DYNAMIC;
-        else if (_v == 1017L) kind = BuiltinInterfaceKind.ASPECT_SET;
-        else if (_v == 1018L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_ADD;
-        else if (_v == 1020L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_LT;
-        else if (_v == 1042L) kind = BuiltinInterfaceKind.ASPECT_OPERATOR_MOD;
-        else if (_v == 1022L) kind = BuiltinInterfaceKind.ASPECT_BIND;
-        else if (_v == 1023L) kind = BuiltinInterfaceKind.ASPECT_BIND_DYNAMIC;
-        else if (_v == 1024L) kind = BuiltinInterfaceKind.ASPECT_CONSUME_DYNAMIC;
-        else if (_v == 1032L) kind = BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC;
-        else if (_v == 1035L) kind = BuiltinInterfaceKind.ASPECT_DROP_DYNAMIC_LIGHT;
-        else if (_v == 1021L) kind = BuiltinInterfaceKind.ASPECT_INITIAL_BIND;
-        else if (_v == 1026L) kind = BuiltinInterfaceKind.ASPECT_LIFT;
-        else if (_v == 1116L) kind = BuiltinInterfaceKind.ASPECT_FUNCTION;
-        else if (_v == 2001L) kind = BuiltinInterfaceKind.VALUE;
-        else if (_v == 2002L || _v == 6006L) kind = BuiltinInterfaceKind.TYPE;
-        else if (_v == 2005L) kind = BuiltinInterfaceKind.BINDING;
-        else if (_v == 2006L) kind = BuiltinInterfaceKind.TARGET;
-        else if (_v == 2007L) kind = BuiltinInterfaceKind.CODE_DYN;
-        else throw new IllegalStateException(typeDesc() + "::getInterfaceData: unrecognized builtin id " + _v);
-        return BuiltinInterfaceRegistry.resolve(kind);
+        var data = GenBuiltinInterfaces.byIdentity(staticSrc.identity());
+        if (data.optIsNone()) {
+            throw new IllegalStateException(typeDesc() + "::getInterfaceCell: not a builtin interface type");
+        }
+        return InterfaceCell.ofBuiltin(data.optUnwrap());
     }
 }

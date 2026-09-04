@@ -31,10 +31,9 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectSet;
 import compilerxyz.main.gen.AspectStackValueDynamic;
@@ -44,10 +43,9 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
@@ -69,13 +67,12 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 6145L)
 public record TypeStringDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectField,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectLift,
                 AspectSet,
                 AspectFieldUseDynamic,
@@ -91,6 +88,11 @@ public record TypeStringDynamic()
             new Pair<>(new ConstKey.Str("toUpperCase"), new TypeStringMethodDynamic("toUpperCase")));
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public String typeDesc() {
         return "dynamic string";
     }
@@ -102,6 +104,9 @@ public record TypeStringDynamic()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
@@ -112,8 +117,6 @@ public record TypeStringDynamic()
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectField.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
                 || key.equals(GenAspectSet.AspectId)
                 || key.equals(GenAspectFieldUseDynamic.AspectId)) {
@@ -146,11 +149,6 @@ public record TypeStringDynamic()
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
         var s = MustCast.mustCast(String.class, externalHostValue.optUnwrap());
         return EResult.ok(new ValueObjectConst(new TypeStringConst(), s));
@@ -170,7 +168,8 @@ public record TypeStringDynamic()
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -231,13 +230,15 @@ public record TypeStringDynamic()
             String strVal =
                     stringConstOpt.optUnwrap().aspectStringConstGet(cv.value().optUnwrap());
             var seq = new JavaBytecodeSequence();
-            var existingDyn = cv.code().codeDynamic();
-            if (existingDyn != null) {
-                seq.add(existingDyn);
+            var existingDynCast = CodeDynamic.castOpt(loc, cv.code());
+            if (existingDynCast.hasErrors()) return existingDynCast.reerr();
+            var existingDyn = existingDynCast.requireValue("existingDyn");
+            if (existingDyn.optIsSome()) {
+                seq.add(existingDyn.optUnwrap());
             }
             seq.add(JavaBytecodeUtils.literalString(loc, strVal));
             var result = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.of(result), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            return EResult.ok(new CodeValue(Code.target(result), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
@@ -250,10 +251,5 @@ public record TypeStringDynamic()
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 }

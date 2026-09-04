@@ -95,7 +95,7 @@ public final class ReachabilityMain {
             int nameIdx;
             switch (ctorType) {
                 case "TypeMethodDynamic" -> nameIdx = 4;
-                case "TypeFunctionDynamic" -> nameIdx = 3;
+                case "TypeFunctionConst" -> nameIdx = 3;
                 default -> {
                     continue;
                 }

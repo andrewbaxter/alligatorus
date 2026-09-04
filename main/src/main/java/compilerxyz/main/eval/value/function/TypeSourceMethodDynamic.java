@@ -22,13 +22,13 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -44,7 +44,12 @@ public record TypeSourceMethodDynamic(
         JavaMethodDescriptor descriptor,
         boolean isInterface,
         boolean needsEvalContext)
-        implements Type, AspectBind, AspectConsumeDynamic, AspectDropDynamicLight, AspectFunction, AspectInitialBind {
+        implements Type,
+                AspectInitialBindDynamic,
+                AspectBind,
+                AspectConsumeDynamic,
+                AspectDropDynamicLight,
+                AspectFunction {
 
     @Override
     public String toString() {
@@ -61,20 +66,27 @@ public record TypeSourceMethodDynamic(
     }
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public String typeDesc() {
         return "dynamic source method";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_METHOD_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)) {
+                || key.equals(GenAspectBind.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -113,11 +125,6 @@ public record TypeSourceMethodDynamic(
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
     }
@@ -137,8 +144,8 @@ public record TypeSourceMethodDynamic(
                 TypeSourceMethodDynamic.class);
         return oOpt.optIsSome()
                 && receiver.typeIsEqual(xx, oOpt.optUnwrap().receiver)
-                && TypeFunctionDynamic.paramsEqual(xx, params, oOpt.optUnwrap().params)
-                && TypeFunctionDynamic.retEqual(xx, ret, oOpt.optUnwrap().ret)
+                && TypeFunctionConst.paramsEqual(xx, params, oOpt.optUnwrap().params)
+                && TypeFunctionConst.retEqual(xx, ret, oOpt.optUnwrap().ret)
                 && klass.equals(oOpt.optUnwrap().klass)
                 && methodName.equals(oOpt.optUnwrap().methodName)
                 && isInterface == oOpt.optUnwrap().isInterface

@@ -28,27 +28,25 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectArtifact;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
-import compilerxyz.main.gen.GenInterfaceData;
+import compilerxyz.main.gen.GenInterfaceCell;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceCodec;
@@ -56,6 +54,7 @@ import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinLight;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -63,29 +62,29 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6004L)
-public record TypeSourceInterfaceDynamic(InterfaceData data)
+public record TypeSourceInterfaceDynamic(InterfaceCell cell)
         implements TypeAspect,
+                AspectInitialBindDynamic,
                 Type,
                 AspectArtifact,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectType {
 
     @Override
     public Unique typeAspectId() {
-        if (data.aspectId.optIsNone()) {
+        var aspectId = cell.aspectId();
+        if (aspectId.optIsNone()) {
             throw new IllegalStateException(
                     "TypeSourceInterfaceDynamic::typeAspectId: interface is not an aspect (no aspect id)");
         }
-        return data.aspectId.optUnwrap();
+        return aspectId.optUnwrap();
     }
 
     @CodegenDescriptor
-    public InterfaceData getInterfaceData() {
-        return data;
+    public InterfaceCell getInterfaceCell() {
+        return cell;
     }
 
     public static Type dynamicType() {
@@ -94,28 +93,30 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        var binaryName = data.compiledBinaryName;
-        if (binaryName == null) {
-            return JavaDataDescriptor.fromClass(TypeSourceInterfaceDynamic.class);
-        }
-        return JavaDataDescriptor.fromInternalName(JavaInternalName.of(binaryName.replace('.', '/')));
+        return JavaDataDescriptor.fromInternalName(cell.jvmInternalName(xx));
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
     public String typeDesc() {
-        return data.description.optUnwrapOr("interface");
+        return cell.description().optUnwrapOr("interface");
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(data.identity)
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
+        if (key.equals(cell.identity)
                 || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
                 || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
         }
@@ -138,51 +139,41 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            var iface = MustCast.mustCast(TypeSourceInterfaceDynamic.class, self).data;
-            var set = iface.set;
-            if (set == null) {
+            var cell = MustCast.mustCast(TypeSourceInterfaceDynamic.class, self).cell;
+            if (cell.set.optIsNone()) {
+                var body = new ArtifactDataDefSetInterface.Builtin(cell.identity);
+                return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body))));
+            }
+            var set = cell.set.optUnwrap();
+            var frozenOpt = cell.frozenOpt();
+            if (frozenOpt.optIsNone()) {
                 return EResult.err(
                         loc,
-                        "TypeSourceInterfaceDynamic::exporterRootDelegateSelfExport: interface not attached to a"
-                                + " definition set");
+                        "TypeSourceInterfaceDynamic::export: interface '"
+                                + cell.description().optUnwrapOr("(unnamed)") + "' definition set is not finished");
             }
+            var frozen = frozenOpt.optUnwrap();
             var errors = new TList<ExprErr>();
             var artifact =
-                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, iface.artifactIdCell, () -> {
+                    ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell.artifactIdCell, () -> {
                         var defSetArtRes = Artifactable.exportArtifact(xx, loc, set);
                         defSetArtRes.drainInto(errors);
                         var defSetArt = defSetArtRes.valueOpt().optUnwrapOr(nullArtifact());
-                        var methodsOut = new TList<ArtifactDataDefSetInterfaceMethodData>();
-                        for (var m : iface.methods) {
-                            var argT = m.argType;
-                            var retT = m.retType;
-                            Artifact argArt;
-                            {
-                                var res = Artifactable.exportArtifact(xx, loc, argT);
-                                res.drainInto(errors);
-                                argArt = res.valueOpt().optUnwrapOr(nullArtifact());
-                            }
-                            Artifact retArt;
-                            if (retT.optIsSome()) {
-                                var res = Artifactable.exportArtifact(xx, loc, retT.optUnwrap());
-                                res.drainInto(errors);
-                                retArt = res.valueOpt().optUnwrapOr(nullArtifact());
-                            } else {
-                                retArt = nullArtifact();
-                            }
-                            methodsOut.add(new ArtifactDataDefSetInterfaceMethodData(
-                                    m.name, argArt, retArt, TList.from(m.dataFieldNames)));
+                        var methodsOut = new TList<Artifact>();
+                        for (var m : frozen.methods) {
+                            var res = Artifactable.exportArtifact(xx, loc, new TypeInterfaceMethodDynamic(cell, m));
+                            res.drainInto(errors);
+                            methodsOut.add(res.valueOpt().optUnwrapOr(nullArtifact()));
                         }
-                        var body = new ArtifactDataDefSetInterface(
+                        var body = new ArtifactDataDefSetInterface.User(
                                 defSetArt,
                                 set.defSetId,
-                                iface.identity,
-                                iface.description,
-                                iface.isAspect,
-                                iface.aspectId,
-                                iface.builtinKind,
-                                iface.compiledBinaryName,
-                                iface.compiledBytecode,
+                                cell.identity,
+                                frozen.description,
+                                frozen.isAspect,
+                                frozen.aspectId,
+                                cell.binaryName,
+                                cell.compiledBytecode,
                                 methodsOut);
                         return makeBody.apply(ArtifactDataDefSetInterfaceCodec.toValue(body));
                     });
@@ -193,68 +184,75 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
         @Override
         public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
                 ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
-            if (id.optIsNone()) {
-                return EResult.err(loc, "TypeSourceInterfaceDynamic requires an artifact id to deserialize");
+            ArtifactDataDefSetInterface body;
+            try {
+                body = ArtifactDataDefSetInterfaceCodec.fromValue(data);
+            } catch (RuntimeException e) {
+                return EResult.err(
+                        loc,
+                        "TypeSourceInterfaceDynamic data: failed to parse ArtifactDataDefSetInterface: "
+                                + e.getMessage());
             }
-            var idValue = id.optUnwrap();
-            return ArtifactSupport.implImportIndependentArtifact(
-                    xx,
-                    loc,
-                    idValue,
-                    data,
-                    (raw) -> {
-                        ArtifactDataDefSetInterface body;
-                        try {
-                            body = ArtifactDataDefSetInterfaceCodec.fromValue(raw);
-                        } catch (RuntimeException e) {
-                            return new Result.Err<>(
-                                    "TypeSourceInterfaceDynamic data: failed to parse ArtifactDataDefSetInterface: "
-                                            + e.getMessage());
-                        }
-                        return new Result.Ok<>(body);
-                    },
-                    (body) -> {
-                        var iface = new InterfaceData(Opt.some(body.defSetId()), body.identity(), body.builtinKind());
-                        iface.compiledBinaryName = body.compiledBinaryName();
-                        iface.compiledBytecode = body.compiledBytecode();
-                        iface.description = body.description();
-                        iface.isAspect = body.isAspect();
-                        iface.aspectId = body.aspectId();
-                        iface.artifactIdCell.set(idValue);
-                        for (var m : body.methods()) {
-                            var md = new InterfaceMethodData(m.name());
-                            md.dataFieldNames.addAll(m.dataFieldNames());
-                            iface.methods.add(md);
-                        }
-                        var imported = new TypeSourceInterfaceDynamic(iface);
-                        var deps = new TList<Artifact>();
-                        deps.add(body.defSet());
-                        for (var m : body.methods()) {
-                            deps.add(m.argType());
-                            deps.add(m.retType());
-                        }
-                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
-                            var defSetAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, body.defSet());
-                            var defSetVal =
-                                    defSetAny.requireValue("TypeSourceInterfaceDynamic::finalizer defSet artifact");
-                            var set = MustCast.mustCast(DefinitionSet.class, defSetVal);
-                            iface.initSetReflectively(set);
-                            var methodsIt = body.methods().iterator();
-                            for (var md : iface.methods) {
-                                var mBody = methodsIt.next();
-                                var argRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
-                                        xx2, loc2, mBody.argType());
-                                md.argType = argRes.requireValue("TypeSourceInterfaceDynamic::finalizer method arg");
-                                var retRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
-                                        xx2, loc2, mBody.retType());
-                                md.retType = Opt.some(
-                                        retRes.requireValue("TypeSourceInterfaceDynamic::finalizer method ret"));
-                            }
-                            return imported;
-                        };
-                        return new Result.Ok<>(
-                                new ArtifactSupport.ImportIndependentResult(Opt.some(imported), deps, fin));
-                    });
+            return switch (body) {
+                case ArtifactDataDefSetInterface.Builtin b -> {
+                    if (id.optIsSome()) {
+                        yield EResult.err(loc, "TypeSourceInterfaceDynamic: builtin interface carries an artifact id");
+                    }
+                    var builtinData = GenBuiltinInterfaces.byIdentity(b.identity());
+                    if (builtinData.optIsNone()) {
+                        yield EResult.err(loc, "TypeSourceInterfaceDynamic: unknown builtin interface " + b.identity());
+                    }
+                    yield EResult.ok(new TypeSourceInterfaceDynamic(InterfaceCell.ofBuiltin(builtinData.optUnwrap())));
+                }
+                case ArtifactDataDefSetInterface.User u -> {
+                    if (id.optIsNone()) {
+                        yield EResult.err(loc, "TypeSourceInterfaceDynamic: source interface requires an artifact id");
+                    }
+                    var idValue = id.optUnwrap();
+                    yield ArtifactSupport.implImportIndependentArtifact(
+                            xx, loc, idValue, data, (raw) -> new Result.Ok<>(u), (user) -> {
+                                var building = new InterfaceBuilding();
+                                building.description = user.description();
+                                building.isAspect = user.isAspect();
+                                building.aspectId = user.aspectId();
+                                var cell = new InterfaceCell(
+                                        Opt.none(),
+                                        user.identity(),
+                                        user.binaryName(),
+                                        new InterfaceCell.State.Building(building));
+                                cell.compiledBytecode = user.compiledBytecode();
+                                cell.artifactIdCell.set(idValue);
+                                var imported = new TypeSourceInterfaceDynamic(cell);
+                                var deps = new TList<Artifact>();
+                                deps.add(user.defSet());
+                                deps.addAll(user.methods());
+                                ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                                    var defSetAny =
+                                            ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, user.defSet());
+                                    var defSetVal = defSetAny.requireValue(
+                                            "TypeSourceInterfaceDynamic::finalizer defSet artifact");
+                                    cell.initSetReflectively(MustCast.mustCast(DefinitionSet.class, defSetVal));
+                                    var methods = new TList<InterfaceMethodData>();
+                                    for (var mArt : user.methods()) {
+                                        var mAny = ArtifactSupport.independentFinalizeImportArtifact(xx2, loc2, mArt);
+                                        var mVal = mAny.requireValue(
+                                                "TypeSourceInterfaceDynamic::finalizer method artifact");
+                                        methods.add(MustCast.mustCast(TypeInterfaceMethodDynamic.class, mVal)
+                                                .method());
+                                    }
+                                    cell.freeze(new InterfaceData(
+                                            user.description(),
+                                            user.isAspect(),
+                                            user.aspectId(),
+                                            IList.from(methods),
+                                            Opt.none()));
+                                    return imported;
+                                };
+                                return new Result.Ok<>(
+                                        new ArtifactSupport.ImportIndependentResult(Opt.some(imported), deps, fin));
+                            });
+                }
+            };
         }
     };
 
@@ -265,15 +263,17 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, "TypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
     }
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, data.identity).optIsSome()
-                || destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        return destType.typeAspect(xx, cell.identity).optIsSome()
+                || destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()
                 || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY)
                         .optIsSome();
@@ -281,36 +281,31 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        if (destType.typeAspect(xx, data.identity).optIsSome()) {
+        if (destType.typeAspect(xx, cell.identity).optIsSome()) {
             return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
-        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceCode = cv.code().codeDynamic();
-            if (sourceCode == null) {
-                return EResult.err(loc, "cast source_interface_dynamic → interface_ref: source has no runtime code");
-            }
+            var sourceCodeRes = CodeDynamic.castRequired(
+                    loc, cv.code(), "cast source_interface_dynamic → interface_cell: source has no runtime code");
+            if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
+            var sourceCode = sourceCodeRes.requireValue("sourceCode");
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.callMethod(
-                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
+                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL));
             return EResult.ok(new CodeValue(
-                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, new TypeSourceInterfaceDynamic(data));
-    }
-
-    @Override
     public Type aspectTypeType(Value value) {
-        return GenInterfaceData.dynamicType();
+        return GenInterfaceCell.dynamicType();
     }
 
     @Override
@@ -326,17 +321,12 @@ public record TypeSourceInterfaceDynamic(InterfaceData data)
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        return other.typeAspect(xx, data.identity).optIsSome();
+        return other.typeAspect(xx, cell.identity).optIsSome();
     }
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
         return false;
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

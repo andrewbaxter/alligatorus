@@ -757,12 +757,27 @@ public final class EcoLlvmIr {
                                     new TestMb.Branch(e.s("none"), e.mb.as_(e.s(""), e.mb.typesString())),
                                     new TestMb.Branch(
                                             e.s("target"),
-                                            e.seq(
-                                                    e.callM(
-                                                            e.mb.as_(e.v("c"), e.lower(e.fld(e.v("lco"), "type"))),
-                                                            "append_to",
-                                                            e.fld(e.v("arg"), "out")),
-                                                    e.ret(e.s(""))))),
+                                            e.mb.matchOf(
+                                                    e.callM(e.v("c"), "cast", e.lower(e.fld(e.v("lco"), "type"))),
+                                                    e.s("r"),
+                                                    TList.of(
+                                                            new TestMb.Branch(
+                                                                    e.s("ok"),
+                                                                    e.seq(
+                                                                            e.callM(
+                                                                                    e.v("r"),
+                                                                                    "append_to",
+                                                                                    e.fld(e.v("arg"), "out")),
+                                                                            e.ret(
+                                                                                    e.mb.as_(
+                                                                                            e.s(""),
+                                                                                            e.mb.typesString())))),
+                                                            new TestMb.Branch(
+                                                                    e.s("errs"),
+                                                                    e.mb.panic(
+                                                                            e.s(
+                                                                                    "append_code: code is not llvm code")))),
+                                                    Opt.none()))),
                             Opt.none()))))));
 
             exprs.add(e.let("acl", e.callM0(e.v("d"), "interface")));
@@ -877,8 +892,7 @@ public final class EcoLlvmIr {
                                             e.p("code", e.fld(e.v("arg"), "code")),
                                             e.p("value", e.fld(e.v("inner"), "val"))))))),
                     e.p("fork", e.v("outer")),
-                    e.p("merge", e.mb.panic(e.s("lbinding.merge not implemented"))),
-                    e.p("equals", e.seq(e.ret(e.mb.operatorEq(e.n(1.), e.n(1.)))))));
+                    e.p("merge", e.mb.panic(e.s("lbinding.merge not implemented")))));
 
             exprs.add(e.let("ltarget", e.defObject(e.v("d"), "llvm target")));
             exprs.add(e.callM(
@@ -949,18 +963,10 @@ public final class EcoLlvmIr {
             exprs.add(e.implInterface(
                     e.v("ltarget"),
                     e.mb.evalTarget(),
-                    e.p("bind", targetPanic(e, "bind")),
-                    e.p(
-                            "maybe_bind_sub",
-                            e.eresultOk(
-                                    e.call(e.mb.typesOption(), e.mb.builtin("types", "target_bind_sub")),
-                                    e.optNone(e.mb.builtin("types", "target_bind_sub")))),
-                    e.p("code_to_bind_sub", targetPanic(e, "code_to_bind_sub")),
-                    e.p("bind_sub_record", targetPanic(e, "bind_sub_record")),
-                    e.p("bind_sub_tuple", targetPanic(e, "bind_sub_tuple")),
                     e.p(
                             "cast_exception",
                             e.eresultOk(e.call(e.mb.typesOption(), e.mb.typesCode()), e.optNone(e.mb.typesCode()))),
+                    e.p("initial_bind", targetPanic(e, "initial_bind")),
                     e.p(
                             "seq",
                             e.seq(

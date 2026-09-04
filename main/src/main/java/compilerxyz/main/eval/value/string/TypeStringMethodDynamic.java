@@ -20,11 +20,11 @@ import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -32,7 +32,7 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6320L)
 public record TypeStringMethodDynamic(String methodName)
-        implements TypeImmutable, AspectConsumeDynamic, AspectFunction, AspectInitialBind {
+        implements TypeImmutable, AspectInitialBindDynamic, AspectConsumeDynamic, AspectFunction {
 
     @Override
     public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
@@ -41,9 +41,16 @@ public record TypeStringMethodDynamic(String methodName)
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, "TypeStringMethodDynamic::toDynamic: CodeValue has no dynamic code");
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -53,12 +60,13 @@ public record TypeStringMethodDynamic(String methodName)
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_STRING_METHOD_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -66,10 +74,10 @@ public record TypeStringMethodDynamic(String methodName)
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn == null) {
-            return EResult.err(loc, "TypeStringMethodDynamic::call: self has no dynamic code");
-        }
+        var selfDynRes =
+                CodeDynamic.castRequired(loc, self.code(), "TypeStringMethodDynamic::call: self has no dynamic code");
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var selfDyn = selfDynRes.requireValue("selfDyn");
         var retType = new TypeStringDynamic();
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
         if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -89,11 +97,6 @@ public record TypeStringMethodDynamic(String methodName)
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

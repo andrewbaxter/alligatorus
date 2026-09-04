@@ -2,9 +2,9 @@ package compilerxyz.main.eval.value.list;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -15,10 +15,10 @@ import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenLists;
@@ -29,7 +29,12 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("types.list")
 @BuiltinFull(uniqueId = 6116L)
-public record TypeListConstructorConst() implements Type, AspectFunction, AspectInitialBind {
+public record TypeListConstructorConst() implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -38,10 +43,13 @@ public record TypeListConstructorConst() implements Type, AspectFunction, Aspect
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_CONSTRUCTOR_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -63,19 +71,16 @@ public record TypeListConstructorConst() implements Type, AspectFunction, Aspect
                 .requireValue("TypeListConstructorConst::call AspectType")
                 .aspectTypeType(argValue);
         Type listType = GenLists.listDynamic(xx, elementType);
+        var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
+        if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(
-                Code.concat(loc, self.code(), argument.code()),
+                concatRes.requireValue("concat"),
                 EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), listType))));
     }
 
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

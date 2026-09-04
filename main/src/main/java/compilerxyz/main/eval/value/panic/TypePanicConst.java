@@ -1,7 +1,6 @@
-package compilerxyz.main.eval.value.throw_;
+package compilerxyz.main.eval.value.panic;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -10,25 +9,20 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.ScopeChains;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynException;
-import compilerxyz.main.eval.dynamic.JavaBytecodeGuarded;
+import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
+import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -36,21 +30,21 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
 
-@BuiltinPath("throw")
-@BuiltinFull(uniqueId = 6146L)
-public record TypeThrowDynamic() implements Type, AspectFunction, AspectInitialBind {
+@BuiltinPath("panic")
+@BuiltinFull(uniqueId = 6133L)
+public record TypePanicConst() implements Type, AspectFunction {
 
     @Override
     public String typeDesc() {
-        return "throw";
+        return "panic";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenTrivialIdentityAspects.TYPE_THROW_DYNAMIC_IDENTITY)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_PANIC_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -58,53 +52,38 @@ public record TypeThrowDynamic() implements Type, AspectFunction, AspectInitialB
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
+        Type stringType = new TypeStringDynamic();
         var erb = new Erb(loc);
-        if (xx.currentExceptionType.optIsNone()) {
-            return EResult.err(loc, "throw not allowed: enclosing function did not declare an exception type");
-        }
-        var excType = xx.currentExceptionType.optUnwrap();
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, excType, argument));
+        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, stringType, argument));
         if (convertedOpt.optIsNone()) {
             return EResult.errs(erb.errors());
         }
         var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, excType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var valueDynRes = consumeRes
-                .requireValue("TypeThrowDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (valueDynRes.hasErrors()) return valueDynRes.reerr();
-        var valueCode = valueDynRes.requireValue("TypeThrowDynamic::call toDynamic");
-        var excInternal = JavaInternalName.fromClass(DynException.class);
+        var toDynamicOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, stringType));
+        if (toDynamicOpt.optIsNone()) {
+            return EResult.errs(erb.errors());
+        }
+        var msgCodeOpt = erb.mustEr(toDynamicOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, converted));
+        if (msgCodeOpt.optIsNone()) {
+            return EResult.errs(erb.errors());
+        }
+        var msgCode = msgCodeOpt.optUnwrap();
+        var panicInternal = JavaInternalName.fromClass(DynPanic.class);
         var ctorDesc = JavaMethodDescriptor.fromParts(
-                JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.fromClass(Object.class)));
+                JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.fromClass(String.class)));
         var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.newInstance(loc, excInternal));
+        seq.add(JavaBytecodeUtils.newInstance(loc, panicInternal));
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(valueCode);
-        seq.add(JavaBytecodeUtils.invokeSpecial(loc, excInternal, "<init>", ctorDesc));
+        seq.add(msgCode);
+        seq.add(JavaBytecodeUtils.invokeSpecial(loc, panicInternal, "<init>", ctorDesc));
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
         var throwCode = new CodeDynamic(loc, seq);
-        var destRes = ScopeChains.excDest(xx, loc);
-        if (destRes.hasErrors()) return destRes.reerr();
-        var dest = destRes.requireValue("throw exc dest");
-        Code outCode;
-        if (dest.optIsSome()) {
-            outCode = Code.of(new CodeDynamic(loc, new JavaBytecodeGuarded(dest.optUnwrap(), throwCode)));
-        } else {
-            outCode = Code.of(throwCode);
-        }
-        return EResult.ok(new CodeValue(outCode, EvalOutcome.CONTROL_ENDED));
+        return EResult.ok(new CodeValue(Code.target(throwCode), EvalOutcome.CONTROL_ENDED));
     }
 
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -115,7 +94,7 @@ public record TypeThrowDynamic() implements Type, AspectFunction, AspectInitialB
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_THROW_DYNAMIC_IDENTITY)
+        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_PANIC_CONST_IDENTITY)
                 .optIsSome();
     }
 

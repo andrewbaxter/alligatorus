@@ -18,17 +18,16 @@ import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         CodeDynamic dyn;
         dyn = new CodeDynamic(
                 new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, type_), dynamicKey));
         Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey, setter), type_);
-        return new CodeValue(Code.of(dyn), EvalOutcome.ofValue(value));
+        return new CodeValue(Code.target(dyn), EvalOutcome.ofValue(value));
     }
 
     @Override
@@ -74,10 +73,5 @@ public record BindingDynamicBinding(BindingId dynamicKey, Type type_) implements
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         return Binding.bindingDrop(xx, loc, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
     }
 }

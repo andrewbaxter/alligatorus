@@ -28,9 +28,8 @@ import compilerxyz.main.gen.AspectBoolDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicBoxed;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
@@ -41,9 +40,8 @@ import compilerxyz.main.gen.GenAspectBoolDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -58,17 +56,21 @@ import compilerxyz.prelude.util.Opt;
 @BuiltinFull(uniqueId = 6103L)
 public record TypeBoolDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectBoolDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectDynamicBoxed,
-                AspectElementUseDynamicBind,
                 AspectFieldUseDynamic,
-                AspectInitialBind,
                 AspectLift,
                 AspectStackValueDynamic {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -87,6 +89,9 @@ public record TypeBoolDynamic()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_BOOL_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
@@ -97,8 +102,6 @@ public record TypeBoolDynamic()
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectFieldUseDynamic.AspectId)
                 || key.equals(GenAspectLift.AspectId)) {
             return Opt.some(this);
@@ -128,17 +131,13 @@ public record TypeBoolDynamic()
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dynamicConsumeToDynamic(loc, cv);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -189,13 +188,15 @@ public record TypeBoolDynamic()
             boolean boolVal =
                     boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap());
             var seq = new JavaBytecodeSequence();
-            var existingDyn = cv.code().codeDynamic();
-            if (existingDyn != null) {
-                seq.add(existingDyn);
+            var existingDynCast = CodeDynamic.castOpt(loc, cv.code());
+            if (existingDynCast.hasErrors()) return existingDynCast.reerr();
+            var existingDyn = existingDynCast.requireValue("existingDyn");
+            if (existingDyn.optIsSome()) {
+                seq.add(existingDyn.optUnwrap());
             }
             seq.add(JavaBytecodeUtils.literalBool(loc, boolVal));
             return EResult.ok(new CodeValue(
-                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
         return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
     }
@@ -208,10 +209,5 @@ public record TypeBoolDynamic()
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 }

@@ -1,21 +1,21 @@
 package compilerxyz.main.eval.value.argrecord;
 
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
+import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
-import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TOrderedMap;
 
-public record ArgumentRecordBinding(ArgumentRecord record) implements Binding {
+public record ArgumentRecordBinding(TOrderedMap<ConstKey, ArgumentEntry> fields) implements Binding {
     @Override
-    public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
-        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(record));
+    public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
+        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new ArgumentRecord(fields, setter)));
     }
 
     @Override
@@ -39,10 +39,5 @@ public record ArgumentRecordBinding(ArgumentRecord record) implements Binding {
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
         return Binding.bindingDrop(xx, loc, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return Binding.elementUseDynamicBind(dynamicKey);
     }
 }

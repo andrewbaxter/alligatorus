@@ -1,5 +1,7 @@
 package compilerxyz.main.eval.value.list;
 
+import static compilerxyz.prelude.util.MustCast.mustCast;
+
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.eval.BindingId;
@@ -15,7 +17,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.binding.BindingIteratorStack;
+import compilerxyz.main.eval.binding.BindingIteratorIndexed;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeInstructionObj;
@@ -25,7 +27,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
@@ -35,10 +36,9 @@ import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicConst;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectIterable;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.Binding;
@@ -47,10 +47,9 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.TargetBindSub;
@@ -62,6 +61,7 @@ import org.objectweb.asm.tree.LabelNode;
 
 public final class TypeListSpecializedDynamic<T extends Type>
         implements ListDynamic,
+                AspectInitialBindDynamic,
                 AspectFieldUseDynamic,
                 AspectDynamicConst,
                 AspectBind,
@@ -69,8 +69,6 @@ public final class TypeListSpecializedDynamic<T extends Type>
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectField,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectIterable,
                 AspectStackValueDynamic {
 
@@ -121,11 +119,13 @@ public final class TypeListSpecializedDynamic<T extends Type>
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn == null) {
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsNone()) {
             throw new IllegalStateException(
                     "TypeListSpecializedDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
         }
+        var dyn = dynCast.requireValue("dyn").optUnwrap();
         return EResult.ok(dyn);
     }
 
@@ -133,7 +133,13 @@ public final class TypeListSpecializedDynamic<T extends Type>
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
+    }
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override
@@ -143,6 +149,9 @@ public final class TypeListSpecializedDynamic<T extends Type>
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(identity)) {
             return Opt.some(this);
         }
@@ -153,8 +162,6 @@ public final class TypeListSpecializedDynamic<T extends Type>
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
                 || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectIterable.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(this);
@@ -217,28 +224,29 @@ public final class TypeListSpecializedDynamic<T extends Type>
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public Type aspectIterableElementType() {
         return elementType;
     }
 
     @Override
     public Binding aspectIterableLoopBinding(ExprContext xx) {
-        return new BindingIteratorStack();
+        return new BindingIteratorIndexed(new BindingId());
+    }
+
+    @Override
+    public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
+        var indexSlot = mustCast(BindingIteratorIndexed.class, loop).indexSlot();
+        var getDesc = JavaMethodDescriptor.fromParts(elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
+        var seq = new JavaBytecodeSequence();
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
+        seq.add(JavaBytecodeUtils.callMethod(loc, storeName, "get", getDesc));
+        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), elementType));
     }
 
     @Override
     public EResult<CodeValue> aspectIterableForeach(
-            ExprContext xx, QExprId loc, CodeValue base, BindingId elementScopeId, CodeValue body) {
+            ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
         var baseDynRes = aspectConsumeDynamicToDynamic(xx, loc, base);
         if (baseDynRes.hasErrors()) return baseDynRes.reerr();
         var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
@@ -247,24 +255,28 @@ public final class TypeListSpecializedDynamic<T extends Type>
             var dropRes = xx.target.targetDrop(xx, loc, body);
             if (dropRes.hasErrors()) return dropRes.reerr();
             var dropCode = dropRes.requireValue("TypeListSpecializedDynamic::foreach body drop");
-            var bodyDyn = body.code().codeDynamic();
-            var dropDyn = dropCode.codeDynamic();
-            if (bodyDyn == null && dropDyn == null) {
+            var bodyDynCast = CodeDynamic.castOpt(loc, body.code());
+            if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
+            var bodyDyn = bodyDynCast.requireValue("bodyDyn");
+            var dropDynCast = CodeDynamic.castOpt(loc, dropCode);
+            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
+            var dropDyn = dropDynCast.requireValue("dropDyn");
+            if (bodyDyn.optIsNone() && dropDyn.optIsNone()) {
                 bodyCode = Code.none(loc);
             } else {
                 var seq = new JavaBytecodeSequence();
-                if (bodyDyn != null) seq.add(bodyDyn);
-                if (dropDyn != null) seq.add(dropDyn);
-                bodyCode = Code.of(new CodeDynamic(loc, seq));
+                if (bodyDyn.optIsSome()) seq.add(bodyDyn.optUnwrap());
+                if (dropDyn.optIsSome()) seq.add(dropDyn.optUnwrap());
+                bodyCode = Code.target(new CodeDynamic(loc, seq));
             }
         } else {
             bodyCode = body.code();
         }
-        var localBinding = (elementScopeId);
-        var storeOp = JvmSort.storeOpcode(xx, elementType);
-        var getDesc = JavaMethodDescriptor.fromParts(elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
+        var elementBindCast = CodeDynamic.castOpt(loc, elementBind);
+        if (elementBindCast.hasErrors()) return elementBindCast.reerr();
+        var elementBindDyn = elementBindCast.requireValue("foreach element bind");
         var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
-        var indexSlot = new BindingId();
+        var indexSlot = mustCast(BindingIteratorIndexed.class, loop).indexSlot();
         var loopLabel = new LabelNode();
         var doneLabel = new LabelNode();
         var loopSeq = new JavaBytecodeSequence();
@@ -278,13 +290,12 @@ public final class TypeListSpecializedDynamic<T extends Type>
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
         loopSeq.add(
                 new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IF_ICMPGE, doneLabel))));
-        loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
-        loopSeq.add(JavaBytecodeUtils.callMethod(loc, storeName, "get", getDesc));
-        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(storeOp, localBinding)));
-        var bodyDyn = bodyCode.codeDynamic();
-        if (bodyDyn != null) {
-            loopSeq.add(bodyDyn);
+        if (elementBindDyn.optIsSome()) loopSeq.add(elementBindDyn.optUnwrap());
+        var bodyDynCast = CodeDynamic.castOpt(loc, bodyCode);
+        if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
+        var bodyDyn = bodyDynCast.requireValue("bodyDyn");
+        if (bodyDyn.optIsSome()) {
+            loopSeq.add(bodyDyn.optUnwrap());
         }
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
         loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
@@ -293,7 +304,7 @@ public final class TypeListSpecializedDynamic<T extends Type>
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
         loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(new CodeValue(Code.of(new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
+        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
     }
 
     @Override

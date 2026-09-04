@@ -16,18 +16,10 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 2006L, scopeId = 3006)
 @BuiltinPath("eval.target")
 public interface Target {
-    BindResult targetBind(ExprContext xx, QExprId loc, TargetBindSub sub);
-
-    EResult<Opt<TargetBindSub>> targetMaybeBindSub(ExprContext xx, QExprId loc, CodeValue cv);
-
-    EResult<TargetBindSub> targetCodeToBindSub(QExprId loc, Code code, Type type_);
-
-    TargetBindSub targetBindSubRecord(ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields);
-
-    TargetBindSub targetBindSubTuple(ExprContext xx, QExprId loc, Code carry, TList<TupleBindSlot> slots);
-
     EResult<Opt<Code>> targetCastException(
             ExprContext xx, QExprId loc, JumpKey self, Type calleeExc, Type callerExc, Opt<JumpKey> next);
+
+    EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type_);
 
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 

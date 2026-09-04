@@ -45,12 +45,14 @@ public sealed interface TypeObjectCastRule {
         @Override
         public EResult<CodeValue> typeObjectCastRuleApply(
                 ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-            var sourceCode = cv.code().codeDynamic();
-            if (sourceCode == null) {
+            var sourceCodeCast = CodeDynamic.castOpt(loc, cv.code());
+            if (sourceCodeCast.hasErrors()) return sourceCodeCast.reerr();
+            if (sourceCodeCast.requireValue("sourceCode").optIsNone()) {
                 return EResult.err(
                         loc,
                         "cast " + source.typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
             }
+            var sourceCode = sourceCodeCast.requireValue("sourceCode").optUnwrap();
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(method.owner)));
@@ -64,7 +66,7 @@ public sealed interface TypeObjectCastRule {
                                 JavaInternalName.of(retDesc.substring(retStart + 1, retDesc.length() - 1)))));
             }
             var call = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.of(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+            return EResult.ok(new CodeValue(Code.target(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
     }
 }

@@ -30,10 +30,9 @@ import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectDynamicBoxed;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectNumericDynamic;
 import compilerxyz.main.gen.AspectOperatorAdd;
@@ -63,10 +62,9 @@ import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectNumericDynamic;
 import compilerxyz.main.gen.GenAspectOperatorAdd;
@@ -106,6 +104,7 @@ import compilerxyz.prelude.util.TList;
 @BuiltinPath("types.double")
 public record TypeDoubleDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
@@ -113,8 +112,6 @@ public record TypeDoubleDynamic()
                 AspectDynamicBoxed,
                 AspectField,
                 AspectFieldUseDynamic,
-                AspectInitialBind,
-                AspectElementUseDynamicBind,
                 AspectLift,
                 AspectNumericDynamic,
                 AspectSet,
@@ -143,6 +140,11 @@ public record TypeDoubleDynamic()
             IMap.ofEntries(new Pair<>(new ConstKey.Str("to_string"), new TypeDoubleToStringDynamic()));
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
+
+    @Override
     public String typeDesc() {
         return "dynamic double";
     }
@@ -164,6 +166,9 @@ public record TypeDoubleDynamic()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_DOUBLE_DYNAMIC_IDENTITY)
                 || key.equals(GenAspectNumericDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
@@ -175,8 +180,6 @@ public record TypeDoubleDynamic()
                 || key.equals(GenAspectFieldUseDynamic.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectSet.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
                 || key.equals(GenAspectOperatorAdd.AspectId)
                 || key.equals(GenAspectOperatorSub.AspectId)
@@ -229,12 +232,8 @@ public record TypeDoubleDynamic()
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
         return EResult.ok(new CodeValue(
-                Code.of(DynUtil.renderSource(xx, loc, source)), EvalOutcome.ofValue(new ValueDynamic(source, this))));
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
+                Code.target(DynUtil.renderSource(xx, loc, source)),
+                EvalOutcome.ofValue(new ValueDynamic(source, this))));
     }
 
     @Override
@@ -408,10 +407,5 @@ public record TypeDoubleDynamic()
     @Override
     public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 }

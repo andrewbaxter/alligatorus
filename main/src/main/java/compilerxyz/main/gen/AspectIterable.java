@@ -1,6 +1,6 @@
 package compilerxyz.main.gen;
 
-import compilerxyz.main.eval.BindingId;
+import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -15,6 +15,8 @@ public interface AspectIterable extends Aspect {
 
     Binding aspectIterableLoopBinding(ExprContext xx);
 
+    EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop);
+
     EResult<CodeValue> aspectIterableForeach(
-            ExprContext xx, QExprId loc, CodeValue base, BindingId elementKey, CodeValue body);
+            ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body);
 }

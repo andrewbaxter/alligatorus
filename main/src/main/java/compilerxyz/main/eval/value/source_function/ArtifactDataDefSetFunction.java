@@ -13,6 +13,7 @@ public record ArtifactDataDefSetFunction(
         Opt<String> name,
         Artifact argType,
         Artifact retType,
+        String jvmMethodName,
         Opt<String> compiledClassName,
         Opt<byte[]> compiledBytecode,
         TList<ArtifactExternal> capturedExternals)

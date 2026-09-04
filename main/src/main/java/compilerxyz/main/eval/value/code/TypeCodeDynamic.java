@@ -31,8 +31,7 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectElementUseDynamicBind;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectStackValueDynamic;
 import compilerxyz.main.gen.AspectUnion;
@@ -41,11 +40,11 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
-import compilerxyz.main.gen.GenAspectElementUseDynamicBind;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.Value;
@@ -59,18 +58,22 @@ import org.objectweb.asm.Opcodes;
 @BuiltinFull(uniqueId = 6300L)
 public record TypeCodeDynamic()
         implements Type,
+                AspectInitialBindDynamic,
                 AspectBind,
                 AspectBindDynamic,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
-                AspectElementUseDynamicBind,
-                AspectInitialBind,
                 AspectLift,
                 AspectStackValueDynamic,
                 AspectUnion,
                 MatchDynamic {
 
     private static final JavaInternalName CODE_INTNAME = JavaInternalName.fromClass(Code.class);
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -84,14 +87,15 @@ public record TypeCodeDynamic()
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_CODE_DYNAMIC_IDENTITY)
                 || key.equals(GenTrivialIdentityAspects.CODE_IDENTITY)
                 || key.equals(GenAspectBind.AspectId)
                 || key.equals(GenAspectBindDynamic.AspectId)
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectElementUseDynamicBind.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectLift.AspectId)
                 || key.equals(GenAspectStackValueDynamic.AspectId)
                 || key.equals(GenAspectUnion.AspectId)) {
@@ -104,7 +108,7 @@ public record TypeCodeDynamic()
     public TList<AspectUnion.Variant> aspectUnionVariants() {
         var out = new TList<AspectUnion.Variant>();
         out.add(new AspectUnion.Variant(new ConstKey.Str("none"), "none", new TypeNullDynamic()));
-        out.add(new AspectUnion.Variant(new ConstKey.Str("target"), "target", new TypeCodeDynamic()));
+        out.add(new AspectUnion.Variant(new ConstKey.Str("target"), "target", new TypeCodeTargetDynamic()));
         return out;
     }
 
@@ -131,14 +135,18 @@ public record TypeCodeDynamic()
         if (variantIndex == 0) {
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+        } else {
+            seq.add(JavaBytecodeUtils.callStaticMethod(new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET_IMPL));
         }
         return EResult.ok(new CodeDynamic(loc, seq));
     }
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeCodeDynamic::toDynamic: CodeValue has no value");
         }
@@ -159,16 +167,6 @@ public record TypeCodeDynamic()
     @Override
     public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         return DynUtil.bindDynamicDefault(loc, cv);
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
-    public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

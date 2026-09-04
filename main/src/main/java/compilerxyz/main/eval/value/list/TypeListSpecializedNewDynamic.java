@@ -15,11 +15,11 @@ import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -29,7 +29,12 @@ import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 6198L)
 public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
-        implements Type, AspectFunction, AspectInitialBind {
+        implements Type, AspectInitialBindDynamic, AspectFunction {
+
+    @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, this);
+    }
 
     @Override
     public String typeDesc() {
@@ -38,10 +43,13 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_SPECIALIZED_NEW_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -85,8 +93,10 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
             return retStackRes.reerr();
         }
         var seq = new JavaBytecodeSequence();
-        var selfDyn = self.code().codeDynamic();
-        if (selfDyn != null) seq.add(selfDyn);
+        var selfDynCast = CodeDynamic.castOpt(loc, self.code());
+        if (selfDynCast.hasErrors()) return selfDynCast.reerr();
+        var selfDyn = selfDynCast.requireValue("selfDyn");
+        if (selfDyn.optIsSome()) seq.add(selfDyn.optUnwrap());
         seq.add(listType.emitNew(xx, loc, dynamicElements));
         return EResult.ok(retStackRes
                 .requireValue("AspectStackValueDynamic.get")
@@ -96,11 +106,6 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
     @Override
     public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
     }
 
     @Override

@@ -60,6 +60,8 @@ public final class BuiltinInterfacesGen {
     public static final ClassName QEXPR_ID = ClassName.get("compilerxyz.main.eval", "QExprId");
     public static final ClassName ASPECT_LOOKUP = ClassName.get("compilerxyz.main.eval.aspect", "AspectLookup");
 
+    public static final ClassName INTERFACE_DATA =
+            ClassName.get("compilerxyz.main.eval.value.source_interface", "InterfaceData");
     public static final ClassName TYPE_OBJECT_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
     public static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
@@ -91,8 +93,8 @@ public final class BuiltinInterfacesGen {
         b.endControlFlow();
         if (interfaceRef.equals(TYPE)) {
             b.addStatement(
-                    "castRules.add(new $T.InvokeVirtualByDestIdentity($T.INTERFACE_DATA_IDENTITY,"
-                            + " $T.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_DATA))",
+                    "castRules.add(new $T.InvokeVirtualByDestIdentity($T.INTERFACE_CELL_IDENTITY,"
+                            + " $T.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_CELL))",
                     TYPE_OBJECT_CAST_RULE,
                     genTrivial,
                     ClassName.get(GEN_PACKAGE, "GenCodegenDescriptors"));

@@ -36,10 +36,9 @@ public final class TypeMethodShared {
             JavaMethodDescriptor descriptor,
             boolean isInterface,
             boolean needsEvalContext) {
-        var receiverDyn = self.code().codeDynamic();
-        if (receiverDyn == null) {
-            return EResult.err(loc, what + "::call: receiver has no dynamic code");
-        }
+        var receiverDynRes = CodeDynamic.castRequired(loc, self.code(), what + "::call: receiver has no dynamic code");
+        if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
+        var receiverDyn = receiverDynRes.requireValue("receiverDyn");
         EResult<TList<CodeDynamic>> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {
             argsDynRes = EResult.ok(new TList<>());
@@ -94,7 +93,7 @@ public final class TypeMethodShared {
         }
         var seqCode = new CodeDynamic(loc, seq);
         if (ret.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.of(seqCode), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.target(seqCode), EvalOutcome.NO_VALUE));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
         if (retStackRes.hasErrors()) return retStackRes.reerr();
@@ -103,8 +102,10 @@ public final class TypeMethodShared {
     }
 
     public static EResult<CodeDynamic> toDynamic(QExprId loc, CodeValue cv, String what) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, what + "::toDynamic: CodeValue has no dynamic code");
     }
 }

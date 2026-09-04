@@ -1,10 +1,11 @@
 package compilerxyz.main.eval.value.source_interface;
 
+import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenType;
+import compilerxyz.prelude.util.IList;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 public final class InterfaceMethodData {
     public static Type dynamicType() {
@@ -12,15 +13,25 @@ public final class InterfaceMethodData {
     }
 
     public final String name;
-    public final TList<String> dataFieldNames;
-    public Type argType;
-    public Opt<Type> retType = Opt.none();
+    public final Type argType;
+    public final Opt<Type> retType;
+    public final IList<String> dataFieldNames;
+    public final Opt<String> hostMethodName;
+    public final Opt<JavaMethodDescriptor> hostMethodDescriptor;
+    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
 
-    public Opt<String> hostMethodName = Opt.none();
-    public Opt<JavaMethodDescriptor> hostMethodDescriptor = Opt.none();
-
-    public InterfaceMethodData(String name) {
+    public InterfaceMethodData(
+            String name,
+            Type argType,
+            Opt<Type> retType,
+            IList<String> dataFieldNames,
+            Opt<String> hostMethodName,
+            Opt<JavaMethodDescriptor> hostMethodDescriptor) {
         this.name = name;
-        this.dataFieldNames = new TList<>();
+        this.argType = argType;
+        this.retType = retType;
+        this.dataFieldNames = dataFieldNames;
+        this.hostMethodName = hostMethodName;
+        this.hostMethodDescriptor = hostMethodDescriptor;
     }
 }

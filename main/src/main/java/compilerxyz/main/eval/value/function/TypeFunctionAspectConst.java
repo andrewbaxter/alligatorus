@@ -25,16 +25,12 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBind;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenAspectInitialBind;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenType;
@@ -44,7 +40,7 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("eval.aspect_lookup")
 @BuiltinFull(uniqueId = 6108L)
-public record TypeFunctionAspectDynamic() implements Type, AspectFunction, AspectInitialBind {
+public record TypeFunctionAspectConst() implements Type, AspectFunction {
 
     private static final JavaInternalName INTNAME_TYPE = JavaInternalName.fromClass(Type.class);
     private static final JavaMethodDescriptor DESC_TYPE_ASPECT = JavaMethodDescriptor.fromParts(
@@ -59,10 +55,10 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
-        if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_ASPECT_DYNAMIC_IDENTITY)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_FUNCTION_ASPECT_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectFunction.AspectId) || key.equals(GenAspectInitialBind.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         return Opt.none();
@@ -102,7 +98,7 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
             return EResult.err(
                     loc, "aspect_lookup: aspect_type must implement TypeAspect, got " + aspectTypeVal.getClass());
         }
-        if (aspectTypeVal instanceof TypeSourceInterfaceDynamic si && !si.data().isAspect) {
+        if (aspectTypeVal instanceof TypeSourceInterfaceDynamic si && !si.cell().isAspect()) {
             return EResult.err(loc, "aspect_lookup: interface is not an aspect (set_is_aspect was not called)");
         }
         var auq = aspTa.typeAspectId();
@@ -118,10 +114,9 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
                 .aspectConsumeDynamicToDynamic(xx, loc, subjectConverted);
         if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
         var subjectDyn = subjectDynRes.requireValue("aspect_lookup subject toDynamic");
-        var xxDyn = xxCv.code().codeDynamic();
-        if (xxDyn == null) {
-            return EResult.err(loc, "aspect_lookup: xx has no runtime code");
-        }
+        var xxDynRes = CodeDynamic.castRequired(loc, xxCv.code(), "aspect_lookup: xx has no runtime code");
+        if (xxDynRes.hasErrors()) return xxDynRes.reerr();
+        var xxDyn = xxDynRes.requireValue("xxDyn");
 
         var uniqueKey = new BindingId();
         var uniqueId = uniqueKey;
@@ -135,7 +130,7 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
         seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, INTNAME_TYPE, "typeAspect", DESC_TYPE_ASPECT));
 
         return EResult.ok(new CodeValue(
-                Code.of(new CodeDynamic(new CodeLoc.Some(loc), seq)),
+                Code.target(new CodeDynamic(new CodeLoc.Some(loc), seq)),
                 EvalOutcome.ofValue(
                         ValueDynamic.stack(xx, new TypeOptionDynamic(DynUtil.substituteBoxed(xx, aspTa))))));
     }
@@ -146,11 +141,6 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
     }
 
     @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -158,7 +148,7 @@ public record TypeFunctionAspectDynamic() implements Type, AspectFunction, Aspec
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_FUNCTION_ASPECT_DYNAMIC_IDENTITY)
+        return other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_FUNCTION_ASPECT_CONST_IDENTITY)
                 .optIsSome();
     }
 

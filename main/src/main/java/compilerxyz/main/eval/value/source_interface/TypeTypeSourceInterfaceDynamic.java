@@ -35,7 +35,7 @@ import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.AspectDropDynamicLight;
 import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.AspectInitialBind;
+import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
@@ -44,7 +44,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
-import compilerxyz.main.gen.GenAspectInitialBind;
+import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
@@ -63,12 +63,12 @@ import java.util.function.Function;
 @BuiltinFull(uniqueId = 6196L)
 public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type_)
         implements Type,
+                AspectInitialBindDynamic,
                 AspectArtifact,
                 AspectBind,
                 AspectConsumeDynamic,
                 AspectDropDynamicLight,
                 AspectField,
-                AspectInitialBind,
                 AspectLift,
                 AspectType {
 
@@ -86,6 +86,11 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     }
 
     @Override
+    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
+        return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceInterfaceDynamic(type_));
+    }
+
+    @Override
     public String typeDesc() {
         if (type_.optIsSome()) return type_.optUnwrap().typeDesc();
         return "interface";
@@ -93,6 +98,9 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
+            return Opt.some(this);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
                 || key.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)
                 || key.equals(GenAspectLift.AspectId)
@@ -100,12 +108,11 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                 || key.equals(GenAspectConsumeDynamic.AspectId)
                 || key.equals(GenAspectDropDynamicLight.AspectId)
                 || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectInitialBind.AspectId)
                 || key.equals(GenAspectArtifact.AspectId)
                 || key.equals(GenAspectType.AspectId)) {
             return Opt.some(this);
         }
-        if (type_.optIsSome() && key.equals(type_.optUnwrap().data().identity)) {
+        if (type_.optIsSome() && key.equals(type_.optUnwrap().cell().identity)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -116,7 +123,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        return destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()
                 || destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY)
                         .optIsSome();
@@ -127,18 +134,18 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
-        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_DATA_IDENTITY)
+        if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceCode = cv.code().codeDynamic();
-            if (sourceCode == null) {
-                return EResult.err(loc, "cast interface → interface_data: source has no runtime code");
-            }
+            var sourceCodeRes = CodeDynamic.castRequired(
+                    loc, cv.code(), "cast interface → interface_cell: source has no runtime code");
+            if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
+            var sourceCode = sourceCodeRes.requireValue("sourceCode");
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.callMethod(
-                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_DATA));
+                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL));
             return EResult.ok(new CodeValue(
-                    Code.of(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
         }
         return EResult.err(loc, "Cannot cast interface to " + destType.typeDesc());
     }
@@ -156,8 +163,10 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dyn = cv.code().codeDynamic();
-        if (dyn != null) return EResult.ok(dyn);
+        var dynCast = CodeDynamic.castOpt(loc, cv.code());
+        if (dynCast.hasErrors()) return dynCast.reerr();
+        if (dynCast.requireValue("dyn").optIsSome())
+            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
         return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
     }
 
@@ -189,7 +198,7 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         }
         var keyName = keyStr.value();
         InterfaceMethodData match = null;
-        for (var m : type.data().methods) {
+        for (var m : type.cell().frozen().methods) {
             if (m.name.equals(keyName)) {
                 match = m;
                 break;
@@ -198,17 +207,21 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         if (match == null) {
             return EResult.err(loc, "Method '" + keyName + "' not found on interface");
         }
-        var refType = new TypeInterfaceMethodDynamic(type.data(), match);
+        var refType = new TypeInterfaceMethodDynamic(type.cell(), match);
         Code carry = self.code();
-        if (carry.codeDynamic() != null) {
+        var carryDynCast = CodeDynamic.castOpt(loc, carry);
+        if (carryDynCast.hasErrors()) return carryDynCast.reerr();
+        if (carryDynCast.requireValue("carryDyn").optIsSome()) {
             var dropRes = DynUtil.dropDefault(loc, self);
             if (dropRes.hasErrors()) return dropRes.reerr();
             var seq = new JavaBytecodeSequence();
-            seq.add(carry.codeDynamic());
-            var dropDyn = dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop")
-                    .codeDynamic();
-            if (dropDyn != null) seq.add(dropDyn);
-            carry = Code.of(new CodeDynamic(loc, seq));
+            seq.add(carryDynCast.requireValue("carryDyn").optUnwrap());
+            var dropDynCast =
+                    CodeDynamic.castOpt(loc, dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop"));
+            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
+            var dropDyn = dropDynCast.requireValue("dropDyn");
+            if (dropDyn.optIsSome()) seq.add(dropDyn.optUnwrap());
+            carry = Code.target(new CodeDynamic(loc, seq));
         }
         return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
     }
@@ -230,17 +243,12 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                 return Opt.none();
             }
         }
-        for (var m : type_.optUnwrap().data().methods) {
+        for (var m : type_.optUnwrap().cell().frozen().methods) {
             if (m.name.equals(s.value())) {
-                return Opt.some(new TypeInterfaceMethodDynamic(type_.optUnwrap().data(), m));
+                return Opt.some(new TypeInterfaceMethodDynamic(type_.optUnwrap().cell(), m));
             }
         }
         return Opt.none();
-    }
-
-    @Override
-    public Binding aspectInitialBindInitialBind(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceInterfaceDynamic(type_));
     }
 
     @Override

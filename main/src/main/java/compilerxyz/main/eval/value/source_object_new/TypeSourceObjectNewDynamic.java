@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.source_object_new;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -18,7 +17,6 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.AspectBindDynamic;
@@ -98,7 +96,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
         var underlyingJs = underlyingJsRes.requireValue("TypeSourceObjectNewDynamic::call toDynamic");
         Type resultType = type_;
 
-        var objInternalName = SourceObjectEmitter.internalNameFor(set.defSetId, type_.objIdx);
+        var objInternalName = type_.internalName();
         var klass = JavaInternalName.of(objInternalName);
         var underlyingDesc = consumeRes
                 .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
@@ -115,7 +113,7 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
 
     private record SourceObjectNewConstBinding(Value value) implements Binding {
         @Override
-        public CodeValue bindingUse(ExprContext xx, QExprId loc, Opt<BindingSetter> setter, Code code) {
+        public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
         }
 
@@ -140,11 +138,6 @@ public record TypeSourceObjectNewDynamic(TypeSourceObjectDynamic type_)
         @Override
         public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
             return Binding.bindingDrop(xx, loc, this);
-        }
-
-        @Override
-        public Binding aspectElementUseDynamicBindElementUseDynamicBind(BindingId dynamicKey) {
-            return Binding.elementUseDynamicBind(dynamicKey);
         }
     }
 

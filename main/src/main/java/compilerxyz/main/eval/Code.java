@@ -1,19 +1,13 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.CodegenDescriptor;
+import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6016L)
 public sealed interface Code permits Code.None, Code.Target {
 
     record None(QExprId loc) implements Code {
-        @Override
-        public CodeDynamic codeDynamic() {
-            return null;
-        }
-
         @Override
         public boolean codeIsNone() {
             return true;
@@ -22,17 +16,10 @@ public sealed interface Code permits Code.None, Code.Target {
 
     record Target(TargetCode impl) implements Code {
         @Override
-        public CodeDynamic codeDynamic() {
-            return impl instanceof CodeDynamic cd ? cd : null;
-        }
-
-        @Override
         public boolean codeIsNone() {
             return false;
         }
     }
-
-    CodeDynamic codeDynamic();
 
     boolean codeIsNone();
 
@@ -40,24 +27,35 @@ public sealed interface Code permits Code.None, Code.Target {
         return new None(loc);
     }
 
-    static Code of(CodeDynamic dynamic) {
-        return new Target(dynamic);
-    }
-
     @CodegenDescriptor
     static Code target(TargetCode impl) {
         return new Target(impl);
     }
 
-    static Code concat(QExprId loc, Code first, Code second) {
-        var firstDyn = first.codeDynamic();
-        var secondDyn = second.codeDynamic();
-        if (firstDyn == null) return secondDyn == null ? first : second;
-        if (secondDyn == null) return first;
-        var seq = new JavaBytecodeSequence();
-        seq.add(firstDyn);
-        seq.add(secondDyn);
-        return of(new CodeDynamic(loc, seq));
+    static <T extends TargetCode> EResult<Opt<T>> codeCast(QExprId loc, Code code, Class<T> targetCode) {
+        return switch (code) {
+            case None n -> EResult.ok(Opt.none());
+            case Target t -> {
+                if (targetCode.isInstance(t.impl())) {
+                    yield EResult.ok(Opt.some(targetCode.cast(t.impl())));
+                }
+                yield EResult.err(
+                        loc,
+                        "code belongs to a different target (expected " + targetCode.getSimpleName() + ", got "
+                                + t.impl().getClass().getSimpleName() + ")");
+            }
+        };
+    }
+
+    @CodegenDescriptor
+    static EResult<TargetCode> castTargetCode(TargetCode impl, QExprId loc, Class<?> targetClass) {
+        if (targetClass.isInstance(impl)) {
+            return EResult.ok(impl);
+        }
+        return EResult.err(
+                loc,
+                "code belongs to a different target (expected " + targetClass.getSimpleName() + ", got "
+                        + impl.getClass().getSimpleName() + ")");
     }
 
     @CodegenDescriptor

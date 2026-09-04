@@ -1,9 +1,8 @@
-package compilerxyz.main.gen;
+package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.main.gen.TargetBindSub;
 
-@BuiltinFull(uniqueId = 6343L)
 public final class RecordBindField {
     public final ConstKey key;
     public final TargetBindSub sub;
