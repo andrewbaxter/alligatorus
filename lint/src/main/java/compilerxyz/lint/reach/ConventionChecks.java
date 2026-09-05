@@ -47,61 +47,58 @@ public final class ConventionChecks {
     public List<Finding> run(ModelIndex index) {
         for (CtType<?> t : index.types) {
             if (t instanceof CtInterface<?> iface) {
-                String _cimName = iface.getSimpleName();
-                if (!_cimName.isEmpty()) {
-                    String _cimPrefix = Character.toLowerCase(_cimName.charAt(0)) + _cimName.substring(1);
-                    for (CtMethod<?> _cimM : iface.getMethods()) {
-                        if (_cimM.hasModifier(ModifierKind.STATIC) || _cimM.hasModifier(ModifierKind.PRIVATE)) continue;
-                        if (objectMethods.contains(_cimM.getSimpleName())) continue;
-                        if (!_cimM.getTopDefinitions().isEmpty()) continue;
-                        if (_cimM.getSimpleName().startsWith(_cimPrefix)) continue;
+                String name = iface.getSimpleName();
+                if (!name.isEmpty()) {
+                    String prefix = Character.toLowerCase(name.charAt(0)) + name.substring(1);
+                    for (CtMethod<?> m : iface.getMethods()) {
+                        if (m.hasModifier(ModifierKind.STATIC) || m.hasModifier(ModifierKind.PRIVATE)) continue;
+                        if (objectMethods.contains(m.getSimpleName())) continue;
+                        if (!m.getTopDefinitions().isEmpty()) continue;
+                        if (m.getSimpleName().startsWith(prefix)) continue;
                         report(
                                 "InterfaceMethodNamePrefix",
-                                _cimM,
-                                "Method '" + _cimM.getSimpleName() + "' in interface '" + _cimName
-                                        + "' should be prefixed with '" + _cimPrefix + "'.");
+                                m,
+                                "Method '" + m.getSimpleName() + "' in interface '" + name
+                                        + "' should be prefixed with '" + prefix + "'.");
                     }
                 }
             }
         }
         for (CtBinaryOperator<?> op : index.binaryOperators) {
             if (op.getKind() == BinaryOperatorKind.INSTANCEOF && !op.isImplicit()) {
-                CtTypeReference<?> _cisOperandType = op.getLeftHandOperand().getType();
-                if (_cisOperandType != null) {
-                    CtType<?> _cisDecl = _cisOperandType.getTypeDeclaration();
-                    if (_cisDecl != null) {
-                        boolean _cisSealed = _cisDecl instanceof CtSealable _s
-                                && !_s.getPermittedTypes().isEmpty();
-                        if (_cisSealed) {
+                CtTypeReference<?> operandType = op.getLeftHandOperand().getType();
+                if (operandType != null) {
+                    CtType<?> decl = operandType.getTypeDeclaration();
+                    if (decl != null) {
+                        boolean sealed = decl instanceof CtSealable s
+                                && !s.getPermittedTypes().isEmpty();
+                        if (sealed) {
                             report(
                                     "NoInstanceofOnSealed",
                                     op,
-                                    "'" + _cisOperandType.getSimpleName()
+                                    "'" + operandType.getSimpleName()
                                             + "' is sealed; discriminate it with an exhaustive switch instead of instanceof.");
                         }
                     }
                 }
             }
         }
-        Set<String> _nulScanned = new HashSet<>();
+        Set<String> scanned = new HashSet<>();
         for (CtType<?> t : index.types) {
-            var _nulPos = t.getPosition();
-            if (_nulPos == null
-                    || !_nulPos.isValidPosition()
-                    || _nulPos.getCompilationUnit() == null
-                    || _nulPos.getFile() == null) {
+            var pos = t.getPosition();
+            if (pos == null || !pos.isValidPosition() || pos.getCompilationUnit() == null || pos.getFile() == null) {
                 continue;
             }
-            if (!_nulScanned.add(_nulPos.getFile().getPath())) continue;
-            String _nulSrc = _nulPos.getCompilationUnit().getOriginalSourceCode();
-            if (_nulSrc == null) continue;
-            String[] _nulLines = _nulSrc.split("\n", -1);
-            for (int i = 0; i < _nulLines.length; i++) {
-                if (NULLABLE_USE.matcher(_nulLines[i]).find()
-                        || NULLABLE_IMPORT.matcher(_nulLines[i]).find()) {
+            if (!scanned.add(pos.getFile().getPath())) continue;
+            String src = pos.getCompilationUnit().getOriginalSourceCode();
+            if (src == null) continue;
+            String[] lines = src.split("\n", -1);
+            for (int i = 0; i < lines.length; i++) {
+                if (NULLABLE_USE.matcher(lines[i]).find()
+                        || NULLABLE_IMPORT.matcher(lines[i]).find()) {
                     reportAt(
                             "NoNullableType",
-                            _nulPos.getFile(),
+                            pos.getFile(),
                             i + 1,
                             1,
                             "Do not use or import @" + "Nullable; model optional values with Opt<T>.");
@@ -109,49 +106,49 @@ public final class ConventionChecks {
             }
         }
         for (CtTypeReference<?> tr : index.typeReferences) {
-            String _ambQn = tr.getQualifiedName();
-            if (_ambQn == null || !_ambQn.contains(".")) continue;
-            CtElement _ambEl = tr;
-            while (_ambEl != null
-                    && (_ambEl.getPosition() == null
-                            || !_ambEl.getPosition().isValidPosition()
-                            || _ambEl.getPosition().getFile() == null)) {
-                _ambEl = _ambEl.isParentInitialized() ? _ambEl.getParent() : null;
+            String qn = tr.getQualifiedName();
+            if (qn == null || !qn.contains(".")) continue;
+            CtElement el = tr;
+            while (el != null
+                    && (el.getPosition() == null
+                            || !el.getPosition().isValidPosition()
+                            || el.getPosition().getFile() == null)) {
+                el = el.isParentInitialized() ? el.getParent() : null;
             }
-            if (_ambEl == null) continue;
+            if (el == null) continue;
             fileSimpleQns
-                    .computeIfAbsent(_ambEl.getPosition().getFile().getPath(), x -> new HashMap<>())
+                    .computeIfAbsent(el.getPosition().getFile().getPath(), x -> new HashMap<>())
                     .computeIfAbsent(tr.getSimpleName(), x -> new HashSet<>())
-                    .add(_ambQn.replace('$', '.'));
+                    .add(qn.replace('$', '.'));
         }
         for (CtTypeReference<?> tr : index.typeReferences) {
             if (tr.isImplicit()) continue;
-            var _ssTrPos = tr.getPosition();
-            String _ssTrSnippet = snippetOf(_ssTrPos);
+            var trPos = tr.getPosition();
+            String trSnippet = snippetOf(trPos);
             if (jdkOptional.contains(tr.getQualifiedName())
                     && tr.getRoleInParent() == CtRole.TYPE
-                    && _ssTrSnippet.contains("Optional")) {
+                    && trSnippet.contains("Optional")) {
                 report("AvoidJdkOptional", tr, "Use compilerxyz.prelude.util.Opt instead of java.util.Optional.");
             }
-            if (_ssTrPos != null
-                    && _ssTrPos.isValidPosition()
-                    && _ssTrPos.getCompilationUnit() != null
-                    && _ssTrPos.getFile() != null
+            if (trPos != null
+                    && trPos.isValidPosition()
+                    && trPos.getCompilationUnit() != null
+                    && trPos.getFile() != null
                     && tr.getParent(CtImport.class) == null
-                    && !_ssTrPos.getFile().getName().equals("module-info.java")) {
-                String _fqnQn = tr.getQualifiedName();
-                if (_fqnQn != null) {
-                    String _fqnQnDot = _fqnQn.replace('$', '.');
-                    boolean _fqnWritten = _ssTrSnippet.equals(_fqnQnDot)
-                            || _ssTrSnippet.startsWith(_fqnQnDot + "<")
-                            || _ssTrSnippet.startsWith(_fqnQnDot + "[");
-                    CtTypeReference<?> _fqnTop = tr;
-                    while (_fqnTop.getDeclaringType() != null) _fqnTop = _fqnTop.getDeclaringType();
-                    if (_fqnWritten
-                            && _fqnQnDot.contains(".")
-                            && FQN.matcher(_fqnQnDot).matches()
-                            && !ambiguous(_ssTrPos.getFile().getPath(), _fqnTop.getSimpleName())) {
-                        report("UnnecessaryFullyQualifiedName", tr, fqnMessage(_fqnTop, _fqnQnDot));
+                    && !trPos.getFile().getName().equals("module-info.java")) {
+                String fqnQn = tr.getQualifiedName();
+                if (fqnQn != null) {
+                    String qnDot = fqnQn.replace('$', '.');
+                    boolean written = trSnippet.equals(qnDot)
+                            || trSnippet.startsWith(qnDot + "<")
+                            || trSnippet.startsWith(qnDot + "[");
+                    CtTypeReference<?> top = tr;
+                    while (top.getDeclaringType() != null) top = top.getDeclaringType();
+                    if (written
+                            && qnDot.contains(".")
+                            && FQN.matcher(qnDot).matches()
+                            && !ambiguous(trPos.getFile().getPath(), top.getSimpleName())) {
+                        report("UnnecessaryFullyQualifiedName", tr, fqnMessage(top, qnDot));
                     }
                 }
             }

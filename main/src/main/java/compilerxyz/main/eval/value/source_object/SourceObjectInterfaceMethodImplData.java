@@ -70,7 +70,7 @@ public final class SourceObjectInterfaceMethodImplData {
         var retT = ifaceMethod.retType.optUnwrap();
         var innerVx = new EvalContext(xx.vx.ix);
         innerVx.evalRootInternalName = dtData.internalName();
-        var innerTarget = new TargetDynamic(innerVx.nextLocalId);
+        var innerTarget = new TargetDynamic();
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
         var outerId = new BindingId();

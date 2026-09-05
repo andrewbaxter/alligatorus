@@ -16,18 +16,17 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
-import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectField;
+import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.stream.Collectors;
 
 @BuiltinFull(uniqueId = 6100L)
-public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) implements Type, AspectField {
+public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) implements Aspect, Type {
     public static TypeArgumentRecord of(TOrderedMap<ConstKey, ArgumentEntry> fields) {
         var types = new TOrderedMap<ConstKey, Type>();
         for (var entry : fields.entrySet()) {
@@ -49,37 +48,8 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
             return Opt.some(this);
         }
         if (key.equals(GenAspectField.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(AspectFieldArgumentRecord.INSTANCE);
         }
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-        var erb = new Erb(loc);
-        if (key.value().optIsNone()) {
-            return EResult.err(loc, "ArgumentRecord::field: key has no compile-time value");
-        }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
-        if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
-        var ck = ckOpt.optUnwrap();
-        var record = MustCast.mustCast(ArgumentRecord.class, self.value().optUnwrap());
-        var entry = record.fields().getOrNull(ck);
-        if (entry == null) {
-            return EResult.err(loc, "Field '" + ck.constKeyToCanonical() + "' not found on argument record");
-        }
-        return EResult.ok(entry.binding()
-                .bindingUse(
-                        xx, loc, new BindingSetterArgumentField(record.fields(), ck, record.setter()), Code.none(loc)));
-    }
-
-    @Override
-    public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return new TList<>();
-    }
-
-    @Override
-    public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
         return Opt.none();
     }
 
@@ -131,7 +101,7 @@ public record TypeArgumentRecord(TOrderedMap<ConstKey, Type> fieldTypes) impleme
                     "ArgumentRecord::typeCastTo: dest is not a record type (typeCanCastTo returned true)");
         }
         var dest = destOpt.optUnwrap();
-        var destFieldTypes = dest.aspectRecordFieldTypes();
+        var destFieldTypes = GenAspectRecord.getMaybe(xx, dest).optUnwrap().aspectRecordFieldTypes();
         var record = MustCast.mustCast(ArgumentRecord.class, cv.value().optUnwrap());
         var erb = new Erb(loc);
         var convertedFields = new TOrderedMap<ConstKey, RecordField>();

@@ -82,7 +82,7 @@ public final class SourceDataMethodData {
         var retT = retType;
         var innerVx = new EvalContext(xx.vx.ix);
         innerVx.evalRootInternalName = objectInternalName;
-        var innerTarget = new TargetDynamic(innerVx.nextLocalId);
+        var innerTarget = new TargetDynamic();
         var selfId = new BindingId();
         innerBindingId = Opt.some(selfId);
 
@@ -129,7 +129,6 @@ public final class SourceDataMethodData {
                 bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentTupleBinding(argTuple));
             } else if (recordOpt.optIsSome()) {
                 var fields = new TOrderedMap<ConstKey, ArgumentEntry>();
-                int i = 0;
                 for (var entry : recordOpt.optUnwrap().aspectRecordFieldTypes().entrySet()) {
                     var slotId = new BindingId();
                     argSlotIds.add(slotId);
@@ -145,7 +144,6 @@ public final class SourceDataMethodData {
                             new ArgumentEntry(
                                     ibMaybe.optUnwrap().aspectInitialBindDynamicInitialBindDynamic(slotId),
                                     entry.getValue()));
-                    i++;
                 }
                 bodyScope.pushNamed(new ConstKey.Str("arg"), new ArgumentRecordBinding(fields));
             } else {

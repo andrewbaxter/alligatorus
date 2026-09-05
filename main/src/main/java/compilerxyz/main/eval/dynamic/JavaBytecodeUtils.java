@@ -229,17 +229,17 @@ public class JavaBytecodeUtils {
     }
 
     public static CodeDynamic buildObjectArray(QExprId loc, TList<CodeDynamic> elements) {
-        var _boaLoc = lc(loc);
-        var _boaSeq = new JavaBytecodeSequence();
-        _boaSeq.add(literalIntShortByte(_boaLoc, elements.size()));
-        _boaSeq.add(wrapObj(_boaLoc, new TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
-        for (int _boaI = 0; _boaI < elements.size(); _boaI++) {
-            _boaSeq.add(inst(_boaLoc, DUP));
-            _boaSeq.add(literalIntShortByte(_boaLoc, _boaI));
-            _boaSeq.add(elements.get(_boaI));
-            _boaSeq.add(inst(_boaLoc, Opcodes.AASTORE));
+        var boaLoc = lc(loc);
+        var seq = new JavaBytecodeSequence();
+        seq.add(literalIntShortByte(boaLoc, elements.size()));
+        seq.add(wrapObj(boaLoc, new TypeInsnNode(Opcodes.ANEWARRAY, JvmConstants.INTNAME_OBJECT.value())));
+        for (int i = 0; i < elements.size(); i++) {
+            seq.add(inst(boaLoc, DUP));
+            seq.add(literalIntShortByte(boaLoc, i));
+            seq.add(elements.get(i));
+            seq.add(inst(boaLoc, Opcodes.AASTORE));
         }
-        return new CodeDynamic(_boaLoc, _boaSeq);
+        return new CodeDynamic(boaLoc, seq);
     }
 
     public static CodeDynamic freshen(CodeDynamic code) {
@@ -363,41 +363,40 @@ public class JavaBytecodeUtils {
             IdentityHashMap<Label, Label> labelMap,
             FreshLabelNodes labelNodeMap,
             IdentityHashMap<JumpKey, JumpKey> keyMap) {
-        var _fbBc = cd.code();
-        JavaBytecode _fbResult;
-        if (_fbBc instanceof CodeDynamic _fbCd) {
-            _fbResult = freshenCode(_fbCd, labelMap, labelNodeMap, keyMap);
-        } else if (_fbBc instanceof JavaBytecodeSequence _fbSeq) {
-            var _fbOut = new JavaBytecodeSequence();
-            for (var _fbC : _fbSeq.children) _fbOut.add(freshenCode(_fbC, labelMap, labelNodeMap, keyMap));
-            _fbResult = _fbOut;
-        } else if (_fbBc instanceof JavaBytecodeInstructionObj _fbObj) {
-            _fbResult = new JavaBytecodeInstructionObj(_fbObj.node.clone(labelNodeMap));
-        } else if (_fbBc instanceof JavaBytecodeInstructionInt) {
-            _fbResult = _fbBc;
-        } else if (_fbBc instanceof JavaBytecodeInstructionTryCatch _fbTc) {
-            _fbResult = new JavaBytecodeInstructionTryCatch(
-                    freshenLabel(_fbTc.start, labelMap),
-                    freshenLabel(_fbTc.end, labelMap),
-                    freshenLabel(_fbTc.handler, labelMap),
-                    _fbTc.excType);
-        } else if (_fbBc instanceof JavaBytecodeStoreLoad) {
-            _fbResult = _fbBc;
-        } else if (_fbBc instanceof JavaBytecodeLand _fbLand) {
-            var _fbNk = keyMap.get(_fbLand.jumpKey);
-            _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeLand(_fbNk);
-        } else if (_fbBc instanceof JavaBytecodeJump _fbJump) {
-            var _fbNk = keyMap.get(_fbJump.jumpKey);
-            _fbResult = _fbNk == null ? _fbBc : new JavaBytecodeJump(_fbNk);
-        } else if (_fbBc instanceof JavaBytecodeGuarded _fbGuarded) {
-            var _fbNk = keyMap.get(_fbGuarded.dest);
-            _fbResult = new JavaBytecodeGuarded(
-                    _fbNk == null ? _fbGuarded.dest : _fbNk,
-                    freshenCode(_fbGuarded.inner, labelMap, labelNodeMap, keyMap));
+        var bc = cd.code();
+        JavaBytecode result;
+        if (bc instanceof CodeDynamic fbCd) {
+            result = freshenCode(fbCd, labelMap, labelNodeMap, keyMap);
+        } else if (bc instanceof JavaBytecodeSequence seq) {
+            var out = new JavaBytecodeSequence();
+            for (var c : seq.children) out.add(freshenCode(c, labelMap, labelNodeMap, keyMap));
+            result = out;
+        } else if (bc instanceof JavaBytecodeInstructionObj obj) {
+            result = new JavaBytecodeInstructionObj(obj.node.clone(labelNodeMap));
+        } else if (bc instanceof JavaBytecodeInstructionInt) {
+            result = bc;
+        } else if (bc instanceof JavaBytecodeInstructionTryCatch tc) {
+            result = new JavaBytecodeInstructionTryCatch(
+                    freshenLabel(tc.start, labelMap),
+                    freshenLabel(tc.end, labelMap),
+                    freshenLabel(tc.handler, labelMap),
+                    tc.excType);
+        } else if (bc instanceof JavaBytecodeStoreLoad) {
+            result = bc;
+        } else if (bc instanceof JavaBytecodeLand land) {
+            var nk = keyMap.get(land.jumpKey);
+            result = nk == null ? bc : new JavaBytecodeLand(nk);
+        } else if (bc instanceof JavaBytecodeJump jump) {
+            var fbNk = keyMap.get(jump.jumpKey);
+            result = fbNk == null ? bc : new JavaBytecodeJump(fbNk);
+        } else if (bc instanceof JavaBytecodeGuarded guarded) {
+            var nk = keyMap.get(guarded.dest);
+            result = new JavaBytecodeGuarded(
+                    nk == null ? guarded.dest : nk, freshenCode(guarded.inner, labelMap, labelNodeMap, keyMap));
         } else {
-            throw new AssertionError("freshen: unsupported bytecode node " + _fbBc.getClass());
+            throw new AssertionError("freshen: unsupported bytecode node " + bc.getClass());
         }
-        return new CodeDynamic(cd.loc(), _fbResult);
+        return new CodeDynamic(cd.loc(), result);
     }
 
     private static Label freshenLabel(Label l, IdentityHashMap<Label, Label> labelMap) {
@@ -406,9 +405,9 @@ public class JavaBytecodeUtils {
     }
 
     public static void renderMethod(JavaBytecodeSequence seq, MethodVisitor mv, TList<BindingId> initialIndexes) {
-        var _rSlots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
-        for (var _rK : initialIndexes) _rSlots.add(new JavaBytecodeSequence.InitialSlot(_rK));
-        seq.renderInternal(mv, _rSlots);
+        var slots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
+        for (var k : initialIndexes) slots.add(new JavaBytecodeSequence.InitialSlot(k));
+        seq.renderInternal(mv, slots);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }

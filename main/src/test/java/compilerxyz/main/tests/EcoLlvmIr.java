@@ -61,7 +61,7 @@ public final class EcoLlvmIr {
     }
 
     private static SourceExpr asCode(EcoMb e, SourceExpr lcoInst) {
-        return e.mb.as_(lcoInst, e.mb.typesCode());
+        return e.mb.as(lcoInst, e.mb.typesCode());
     }
 
     private static void operandStmts(EcoMb e, SourceExpr cve, String pfx, String outVar, TList<SourceExpr> body) {
@@ -91,7 +91,7 @@ public final class EcoLlvmIr {
                                                 e.call(
                                                         e.mb.builtin("eval", "const_numeric_to_str"),
                                                         e.rec(
-                                                                e.p("xx_", e.fld(e.v("arg"), "xx")),
+                                                                e.p("xx", e.fld(e.v("arg"), "xx")),
                                                                 e.p("value", e.v(pfx + "_val"))))))))));
         body.add(appendCode(e, e.fld(cve, "code"), e.v(outVar)));
     }
@@ -754,7 +754,7 @@ public final class EcoLlvmIr {
                             e.fld(e.v("arg"), "code"),
                             e.s("c"),
                             TList.of(
-                                    new TestMb.Branch(e.s("none"), e.mb.as_(e.s(""), e.mb.typesString())),
+                                    new TestMb.Branch(e.s("none"), e.mb.as(e.s(""), e.mb.typesString())),
                                     new TestMb.Branch(
                                             e.s("target"),
                                             e.mb.matchOf(
@@ -769,7 +769,7 @@ public final class EcoLlvmIr {
                                                                                     "append_to",
                                                                                     e.fld(e.v("arg"), "out")),
                                                                             e.ret(
-                                                                                    e.mb.as_(
+                                                                                    e.mb.as(
                                                                                             e.s(""),
                                                                                             e.mb.typesString())))),
                                                             new TestMb.Branch(
@@ -1053,7 +1053,7 @@ public final class EcoLlvmIr {
                                     e.call(
                                             e.mb.builtin("eval", "scope"),
                                             e.rec(
-                                                    e.p("vx_", e.v("vx2")),
+                                                    e.p("vx", e.v("vx2")),
                                                     e.p(
                                                             "entries",
                                                             e.callM(
@@ -1077,14 +1077,14 @@ public final class EcoLlvmIr {
                                             e.mb.builtin("eval", "expr_context"),
                                             e.rec(
                                                     e.p("scope", e.v("sc")),
-                                                    e.p("target", e.mb.as_(e.v("tgt"), e.mb.evalTarget())),
+                                                    e.p("target", e.mb.as(e.v("tgt"), e.mb.evalTarget())),
                                                     e.p("vx", e.v("vx2")),
                                                     e.p("exception_type", e.mb.typesString())))),
                             e.let(
                                     "res",
                                     e.call(
                                             e.mb.evalConstEval(),
-                                            e.rec(e.p("xx_", e.v("ctx")), e.p("staged", argF(e, "body"))))),
+                                            e.rec(e.p("xx", e.v("ctx")), e.p("staged", argF(e, "body"))))),
                             e.let("res_cve", e.fld(e.v("res"), "value")),
                             e.let("root_lines", e.listNew(e.mb.typesString())),
                             appendCode(e, e.fld(e.v("res_cve"), "code"), e.v("root_lines")),

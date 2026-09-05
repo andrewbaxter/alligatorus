@@ -24,7 +24,7 @@ module compilerxyz.main {
     exports compilerxyz.main.eval.value;
     exports compilerxyz.main.eval.value.argrecord;
     exports compilerxyz.main.eval.value.binding;
-    exports compilerxyz.main.eval.value.bool_;
+    exports compilerxyz.main.eval.value.bool;
     exports compilerxyz.main.eval.value.byte_;
     exports compilerxyz.main.eval.value.zbase32;
     exports compilerxyz.main.eval.value.constkey;
@@ -38,12 +38,12 @@ module compilerxyz.main {
     exports compilerxyz.main.eval.value.long_;
     exports compilerxyz.main.eval.value.float_;
     exports compilerxyz.main.eval.value.double_;
-    exports compilerxyz.main.eval.value.ubyte_;
-    exports compilerxyz.main.eval.value.ushort_;
-    exports compilerxyz.main.eval.value.uint_;
-    exports compilerxyz.main.eval.value.ulong_;
+    exports compilerxyz.main.eval.value.ubyte;
+    exports compilerxyz.main.eval.value.ushort;
+    exports compilerxyz.main.eval.value.uint;
+    exports compilerxyz.main.eval.value.ulong;
     exports compilerxyz.main.eval.value.numeric;
-    exports compilerxyz.main.eval.value.object_;
+    exports compilerxyz.main.eval.value.object;
     exports compilerxyz.main.eval.value.option;
     exports compilerxyz.main.eval.value.panic;
     exports compilerxyz.main.eval.value.record;

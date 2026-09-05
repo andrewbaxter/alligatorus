@@ -171,7 +171,7 @@ public final class T0120ImplTypeTest {
                                                                                 mb.recordOf(
                                                                                         TList.of(
                                                                                                 new TestMb.RecordPair(
-                                                                                                        "xx_",
+                                                                                                        "xx",
                                                                                                         mb.field(
                                                                                                                 mb
                                                                                                                         .scopeUse(
@@ -248,7 +248,7 @@ public final class T0120ImplTypeTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("upper", mb.lower(buildUpperType(mb))),
-                        mb.call(mb.log(), mb.as_(mb.as_(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
+                        mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;
@@ -271,7 +271,7 @@ public final class T0120ImplTypeTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("upper", mb.importExpr(mb.str("other"))),
-                        mb.call(mb.log(), mb.as_(mb.as_(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
+                        mb.call(mb.log(), mb.as(mb.as(mb.str("hello"), mb.typesString()), mb.scopeUse("upper"))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> resOk;

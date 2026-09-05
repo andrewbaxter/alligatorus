@@ -221,36 +221,36 @@ public final class CodecsGen {
                         for (var member : cid.getMembers()) {
                             if (member instanceof TypeDeclaration<?> nested) {
                                 String parentSimpleName = cid.getNameAsString();
-                                boolean _rIsImplementedBy;
+                                boolean isImplementedBy;
                                 _isImplementedBy:
                                 {
                                     if (nested instanceof RecordDeclaration rd) {
                                         for (var iface : rd.getImplementedTypes()) {
                                             if (iface.getNameAsString().equals(parentSimpleName)) {
-                                                _rIsImplementedBy = true;
+                                                isImplementedBy = true;
                                                 break _isImplementedBy;
                                             }
                                         }
                                     } else if (nested instanceof ClassOrInterfaceDeclaration coid) {
                                         for (var iface : coid.getImplementedTypes()) {
                                             if (iface.getNameAsString().equals(parentSimpleName)) {
-                                                _rIsImplementedBy = true;
+                                                isImplementedBy = true;
                                                 break _isImplementedBy;
                                             }
                                         }
                                         for (var iface : coid.getExtendedTypes()) {
                                             if (iface.getNameAsString().equals(parentSimpleName)) {
-                                                _rIsImplementedBy = true;
+                                                isImplementedBy = true;
                                                 break _isImplementedBy;
                                             }
                                         }
                                     }
                                     {
-                                        _rIsImplementedBy = false;
+                                        isImplementedBy = false;
                                         break _isImplementedBy;
                                     }
                                 }
-                                boolean implementedBy = _rIsImplementedBy;
+                                boolean implementedBy = isImplementedBy;
 
                                 if (implementedBy) {
                                     info.permittedSubclasses.add(qname + "." + nested.getNameAsString());
@@ -372,7 +372,7 @@ public final class CodecsGen {
             var ctx = byQname.get(contextQname);
             if (ctx == null) return Opt.none();
             String pkg = ctx.packageName;
-            Opt<String> _rSameCuOrPackageResolve;
+            Opt<String> sameCuOrPackageResolve;
             _sameCuOrPackageResolve:
             {
                 var head = headOf(name);
@@ -382,7 +382,7 @@ public final class CodecsGen {
                 while (current.contains(".")) {
                     var candidate = current + "." + name;
                     if (byQname.containsKey(candidate)) {
-                        _rSameCuOrPackageResolve = Opt.some(candidate);
+                        sameCuOrPackageResolve = Opt.some(candidate);
                         break _sameCuOrPackageResolve;
                     }
                     current = current.substring(0, current.lastIndexOf('.'));
@@ -394,7 +394,7 @@ public final class CodecsGen {
                         var last = qn.lastIndexOf('.');
                         var simple = last < 0 ? qn : qn.substring(last + 1);
                         if (simple.equals(head)) {
-                            _rSameCuOrPackageResolve = Opt.some(qn + tail);
+                            sameCuOrPackageResolve = Opt.some(qn + tail);
                             break _sameCuOrPackageResolve;
                         }
                     }
@@ -413,18 +413,18 @@ public final class CodecsGen {
                                 "Object")
                         .contains(head)) {
                     {
-                        _rSameCuOrPackageResolve = Opt.some("java.lang." + name);
+                        sameCuOrPackageResolve = Opt.some("java.lang." + name);
                         break _sameCuOrPackageResolve;
                     }
                 }
                 {
-                    _rSameCuOrPackageResolve = Opt.none();
+                    sameCuOrPackageResolve = Opt.none();
                     break _sameCuOrPackageResolve;
                 }
             }
             return ctx.imports.containsKey(headOf(name))
                     ? Opt.some(ctx.imports.get(headOf(name)) + tailOf(name))
-                    : _rSameCuOrPackageResolve;
+                    : sameCuOrPackageResolve;
         }
 
         private static String headOf(String n) {

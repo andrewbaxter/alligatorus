@@ -26,7 +26,7 @@ public final class ExprContext {
     public static ExprContext freshRoot(CompileImportContext ix) {
         var vx = new EvalContext(ix);
         var scope = new Scope(vx);
-        var target = new TargetDynamic(vx.nextLocalId);
+        var target = new TargetDynamic();
         return new ExprContext(scope, target, vx, ix.importState, Opt.some(new TypeStringConst()));
     }
 }

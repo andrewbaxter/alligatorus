@@ -30,64 +30,64 @@ public final class DynamicTypeScanner {
 
     public static void putDescriptor(
             TMap<ClassName, CodeBlock> out, ClassName cn, String companionSimple, TypeDeclaration<?> t) {
-        boolean _rHasBuiltinFullAnnotation;
+        boolean hasBuiltinFullAnnotation;
         _hasBuiltinFullAnnotation:
         {
             for (var a : t.getAnnotations()) {
                 var n = a.getNameAsString();
                 if (n.equals("BuiltinFull") || n.equals("compilerxyz.prelude.annotations.BuiltinFull")) {
                     {
-                        _rHasBuiltinFullAnnotation = true;
+                        hasBuiltinFullAnnotation = true;
                         break _hasBuiltinFullAnnotation;
                     }
                 }
             }
             {
-                _rHasBuiltinFullAnnotation = false;
+                hasBuiltinFullAnnotation = false;
                 break _hasBuiltinFullAnnotation;
             }
         }
-        boolean full = _rHasBuiltinFullAnnotation;
+        boolean full = hasBuiltinFullAnnotation;
 
-        boolean _rHasNullaryDynamicType;
+        boolean hasNullaryDynamicType;
 
         _hasNullaryDynamicType:
         {
             if (t instanceof ClassOrInterfaceDeclaration || t instanceof RecordDeclaration || t.isEnumDeclaration()) {
                 for (var m : t.getMethods()) {
-                    boolean _rIsNullaryStaticDynamicType;
+                    boolean isNullaryStaticDynamicType;
                     _isNullaryStaticDynamicType:
                     {
                         if (!m.getNameAsString().equals("dynamicType")) {
-                            _rIsNullaryStaticDynamicType = false;
+                            isNullaryStaticDynamicType = false;
                             break _isNullaryStaticDynamicType;
                         }
                         if (!m.isStatic()) {
-                            _rIsNullaryStaticDynamicType = false;
+                            isNullaryStaticDynamicType = false;
                             break _isNullaryStaticDynamicType;
                         }
                         if (!m.getParameters().isEmpty()) {
-                            _rIsNullaryStaticDynamicType = false;
+                            isNullaryStaticDynamicType = false;
                             break _isNullaryStaticDynamicType;
                         }
                         {
-                            _rIsNullaryStaticDynamicType = true;
+                            isNullaryStaticDynamicType = true;
                             break _isNullaryStaticDynamicType;
                         }
                     }
-                    if (_rIsNullaryStaticDynamicType) {
-                        _rHasNullaryDynamicType = true;
+                    if (isNullaryStaticDynamicType) {
+                        hasNullaryDynamicType = true;
                         break _hasNullaryDynamicType;
                     }
                 }
             }
             {
-                _rHasNullaryDynamicType = false;
+                hasNullaryDynamicType = false;
                 break _hasNullaryDynamicType;
             }
         }
 
-        boolean handWritten = _rHasNullaryDynamicType;
+        boolean handWritten = hasNullaryDynamicType;
 
         if (full && handWritten) {
             throw new IllegalStateException("@BuiltinFull type "

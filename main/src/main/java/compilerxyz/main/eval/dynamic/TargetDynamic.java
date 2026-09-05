@@ -4,7 +4,6 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
-import compilerxyz.main.eval.Counter;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.EvalContext;
@@ -56,12 +55,9 @@ import org.objectweb.asm.tree.TypeInsnNode;
 public final class TargetDynamic implements Target {
     private static final JavaInternalName INTNAME_DYN_EXCEPTION = JavaInternalName.fromClass(DynException.class);
 
-    private final Counter localIds;
     private final IdentityHashMap<Binding, BindingId> initialBindSlots = new IdentityHashMap<>();
 
-    public TargetDynamic(Counter localIds) {
-        this.localIds = localIds;
-    }
+    public TargetDynamic() {}
 
     @Override
     public EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv) {
@@ -91,22 +87,22 @@ public final class TargetDynamic implements Target {
         if (consumeOpt.optIsNone()) {
             return cv;
         }
-        var _acrValueOpt = cv.value();
-        if (_acrValueOpt.optIsNone() || !(_acrValueOpt.optUnwrap() instanceof ValueDynamic _acrVd)) {
+        var valueOpt = cv.value();
+        if (valueOpt.optIsNone() || !(valueOpt.optUnwrap() instanceof ValueDynamic vd)) {
             return cv;
         }
-        return switch (_acrVd.source()) {
+        return switch (vd.source()) {
             case ValueDynamicSource.Expr ignored -> cv;
             case ValueDynamicSource.Binding ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, _acrVd.type_())));
+                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type())));
             case ValueDynamicSource.Field ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, _acrVd.type_())));
+                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type())));
         };
     }
 
     @Override
-    public EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type_) {
-        var aspectRes = GenAspectInitialBindDynamic.get(xx, loc, type_);
+    public EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type) {
+        var aspectRes = GenAspectInitialBindDynamic.get(xx, loc, type);
         if (aspectRes.hasErrors()) return aspectRes.reerr();
         var key = new BindingId();
         var binding = aspectRes
@@ -631,11 +627,11 @@ public final class TargetDynamic implements Target {
         return bindDynOpt.optUnwrap().aspectBindDynamicBindDynamic(xx, loc, cv);
     }
 
-    public EResult<TargetBindSub> codeToBindSub(QExprId loc, Code code, Type type_) {
+    public EResult<TargetBindSub> codeToBindSub(QExprId loc, Code code, Type type) {
         var dynRes = CodeDynamic.castRequired(loc, code, "Target::codeToBindSub: code is not dynamic");
         if (dynRes.hasErrors()) return dynRes.reerr();
         var dyn = dynRes.requireValue("dyn");
-        return EResult.ok(new TargetBindSub(dyn, type_));
+        return EResult.ok(new TargetBindSub(dyn, type));
     }
 
     public EResult<TargetBindSub> bindSubRecord(
@@ -711,7 +707,7 @@ public final class TargetDynamic implements Target {
         for (var e : entries.entrySet()) typeEntries.put(e.getKey(), e.getValue().type);
         var sort = CompositeSlotSort.sort(xx, typeEntries, tiebreaker);
         var out = new TList<TargetBindSub>(entries.size());
-        for (int _tbsI = 0; _tbsI < entries.size(); _tbsI++) out.add(null);
+        for (int i = 0; i < entries.size(); i++) out.add(null);
         for (var e : entries.entrySet()) {
             out.set(sort.slotOfKey().get(e.getKey()), e.getValue());
         }

@@ -49,7 +49,7 @@ public final class T0110ConstFoldingTest {
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
-                        mb.bind("x", mb.as_(mb.num(7.0), mb.typesInt())),
+                        mb.bind("x", mb.as(mb.num(7.0), mb.typesInt())),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
                                         mb.operatorLt(mb.scopeUse("x"), mb.num(10.0)),
@@ -77,7 +77,7 @@ public final class T0110ConstFoldingTest {
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
-                        mb.bind("x", mb.as_(mb.operatorAdd(mb.num(1.), mb.num(2.)), mb.typesInt())),
+                        mb.bind("x", mb.as(mb.operatorAdd(mb.num(1.), mb.num(2.)), mb.typesInt())),
                         mb.seqOf(
                                 mb.call(
                                         mb.log(),

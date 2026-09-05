@@ -33,16 +33,16 @@ public final class DynamicTypes {
         var nullary = new TMap<ClassName, TypeName>();
         var composites = new TMap<ClassName, CompositeEntry>();
         nullary(nullary, "compilerxyz.main.eval.value.string", "TypeStringDynamic", ClassName.get(String.class));
-        nullary(nullary, "compilerxyz.main.eval.value.bool_", "TypeBoolDynamic", TypeName.BOOLEAN);
+        nullary(nullary, "compilerxyz.main.eval.value.bool", "TypeBoolDynamic", TypeName.BOOLEAN);
         nullary(nullary, "compilerxyz.main.eval.value.int_", "TypeIntDynamic", TypeName.INT);
         nullary(nullary, "compilerxyz.main.eval.value.short_", "TypeShortDynamic", TypeName.SHORT);
         nullary(nullary, "compilerxyz.main.eval.value.long_", "TypeLongDynamic", TypeName.LONG);
         nullary(nullary, "compilerxyz.main.eval.value.float_", "TypeFloatDynamic", TypeName.FLOAT);
         nullary(nullary, "compilerxyz.main.eval.value.double_", "TypeDoubleDynamic", TypeName.DOUBLE);
-        nullary(nullary, "compilerxyz.main.eval.value.ubyte_", "TypeUbyteDynamic", TypeName.BYTE);
-        nullary(nullary, "compilerxyz.main.eval.value.ushort_", "TypeUshortDynamic", TypeName.SHORT);
-        nullary(nullary, "compilerxyz.main.eval.value.uint_", "TypeUintDynamic", TypeName.INT);
-        nullary(nullary, "compilerxyz.main.eval.value.ulong_", "TypeUlongDynamic", TypeName.LONG);
+        nullary(nullary, "compilerxyz.main.eval.value.ubyte", "TypeUbyteDynamic", TypeName.BYTE);
+        nullary(nullary, "compilerxyz.main.eval.value.ushort", "TypeUshortDynamic", TypeName.SHORT);
+        nullary(nullary, "compilerxyz.main.eval.value.uint", "TypeUintDynamic", TypeName.INT);
+        nullary(nullary, "compilerxyz.main.eval.value.ulong", "TypeUlongDynamic", TypeName.LONG);
         nullary(nullary, "compilerxyz.main.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
         nullary(nullary, "compilerxyz.main.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
         nullary(

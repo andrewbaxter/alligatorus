@@ -9,35 +9,21 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Erb;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc.Some;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.JvmConstants;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
-import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
-import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6132L)
-public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome) implements Type, AspectFunction {
+public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSome) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -50,7 +36,7 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectFunctionOptionVariantConstructorDynamic(this));
         }
         return Opt.none();
     }
@@ -79,42 +65,6 @@ public record TypeOptionVariantConstructorDynamic(Type elementType, boolean isSo
                             + " import_type_artifact (eval/artifact.rs) port deferred");
         }
     };
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        Type underlyingType = isSome ? elementType : new TypeNullDynamic();
-        var erb = new Erb(loc);
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
-        if (convertedOpt.optIsNone()) {
-            return EResult.errs(erb.errors());
-        }
-        var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var underlyingJsRes = consumeRes
-                .requireValue("TypeOptionVariantConstructorDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-        var underlyingJs = underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
-
-        Type resultType = new TypeOptionDynamic(DynUtil.substituteBoxed(xx, elementType));
-        CodeDynamic newOpt;
-        if (isSome) {
-            newOpt = JavaBytecodeUtils.instantiate(
-                    loc,
-                    JavaInternalName.fromClass(Opt.Some.class),
-                    JavaMethodDescriptor.fromConstructorParts(TList.of(JvmConstants.DESC_OBJECT)),
-                    underlyingJs);
-        } else {
-            newOpt = JavaBytecodeUtils.callStaticMethod(new Some(loc), GenCodegenDescriptors.OPT_NONE);
-        }
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, newOpt, resultType));
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-        return Opt.none();
-    }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {

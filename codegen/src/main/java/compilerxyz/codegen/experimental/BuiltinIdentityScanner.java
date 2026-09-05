@@ -38,7 +38,7 @@ public final class BuiltinIdentityScanner {
                 var useChained = !enclosingChain.isEmpty();
                 var name = useChained ? enclosingChain + mySimple : mySimple;
                 String className = name;
-                String _rSnakeCase;
+                String snakeCase;
                 _snakeCase:
                 {
                     var sb = new StringBuilder();
@@ -52,11 +52,11 @@ public final class BuiltinIdentityScanner {
                         }
                     }
                     {
-                        _rSnakeCase = sb.toString();
+                        snakeCase = sb.toString();
                         break _snakeCase;
                     }
                 }
-                out.add(new IdentitySpec(_rSnakeCase, uniqueId, isIdentityOnly));
+                out.add(new IdentitySpec(snakeCase, uniqueId, isIdentityOnly));
             }
         }
         var nextChain = enclosingChain.isEmpty() ? mySimple : enclosingChain + mySimple;

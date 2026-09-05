@@ -7,50 +7,37 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
-import compilerxyz.main.eval.NumericKind;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectBindConstValue;
+import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.binding.BindingValue;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JvmConstants;
+import compilerxyz.main.eval.value.numeric.AspectOperatorAddNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorAndNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorBitNotNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorDivNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorEqNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorGeNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorGtNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorLeNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorLtNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorModNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorMulNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorNeNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorNegNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorOrNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorShlNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorShrNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorSubNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorUshrNumeric;
+import compilerxyz.main.eval.value.numeric.AspectOperatorXorNumeric;
 import compilerxyz.main.eval.value.numeric.Numerics;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.AspectInt;
-import compilerxyz.main.gen.AspectNumericConst;
-import compilerxyz.main.gen.AspectOperatorAdd;
-import compilerxyz.main.gen.AspectOperatorAnd;
-import compilerxyz.main.gen.AspectOperatorBitNot;
-import compilerxyz.main.gen.AspectOperatorDiv;
-import compilerxyz.main.gen.AspectOperatorEq;
-import compilerxyz.main.gen.AspectOperatorGe;
-import compilerxyz.main.gen.AspectOperatorGt;
-import compilerxyz.main.gen.AspectOperatorLe;
-import compilerxyz.main.gen.AspectOperatorLt;
-import compilerxyz.main.gen.AspectOperatorMod;
-import compilerxyz.main.gen.AspectOperatorMul;
-import compilerxyz.main.gen.AspectOperatorNe;
-import compilerxyz.main.gen.AspectOperatorNeg;
-import compilerxyz.main.gen.AspectOperatorOr;
-import compilerxyz.main.gen.AspectOperatorShl;
-import compilerxyz.main.gen.AspectOperatorShr;
-import compilerxyz.main.gen.AspectOperatorSub;
-import compilerxyz.main.gen.AspectOperatorUshr;
-import compilerxyz.main.gen.AspectOperatorXor;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -79,49 +66,15 @@ import compilerxyz.main.gen.GenAspectOperatorUshr;
 import compilerxyz.main.gen.GenAspectOperatorXor;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6168L)
-public record TypeShortConst()
-        implements Type,
-                AspectArtifact,
-                AspectBind,
-                AspectConsumeDynamic,
-                AspectDropDynamicLight,
-                AspectField,
-                AspectNumericConst,
-                AspectInt,
-                AspectOperatorAdd,
-                AspectOperatorSub,
-                AspectOperatorMul,
-                AspectOperatorDiv,
-                AspectOperatorMod,
-                AspectOperatorAnd,
-                AspectOperatorOr,
-                AspectOperatorXor,
-                AspectOperatorShl,
-                AspectOperatorShr,
-                AspectOperatorUshr,
-                AspectOperatorEq,
-                AspectOperatorNe,
-                AspectOperatorLt,
-                AspectOperatorLe,
-                AspectOperatorGt,
-                AspectOperatorGe,
-                AspectOperatorNeg,
-                AspectOperatorBitNot {
-
-    @Override
-    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
-    }
+public record TypeShortConst() implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -129,66 +82,95 @@ public record TypeShortConst()
     }
 
     @Override
-    public NumericKind aspectNumericConstKind() {
-        return NumericKind.SHORT;
-    }
-
-    @Override
-    public Number aspectNumericConstGet(Value value) {
-        if (value instanceof ValueObjectConst v && v.data() instanceof Number dv) return dv;
-        throw new IllegalArgumentException(
-                "TypeShortConst::get: expected short ValueObjectConst, got " + value.getClass());
-    }
-
-    @Override
-    public long aspectIntGet(Value value) {
-        if (value instanceof ValueObjectConst v && v.data() instanceof Number dv) return dv.longValue();
-        throw new IllegalArgumentException(
-                "TypeShortConst::get: expected short ValueObjectConst, got " + value.getClass());
-    }
-
-    @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_SHORT_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectNumericConst.AspectId)
-                || key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectInt.AspectId)
-                || key.equals(GenAspectOperatorAdd.AspectId)
-                || key.equals(GenAspectOperatorSub.AspectId)
-                || key.equals(GenAspectOperatorMul.AspectId)
-                || key.equals(GenAspectOperatorDiv.AspectId)
-                || key.equals(GenAspectOperatorMod.AspectId)
-                || key.equals(GenAspectOperatorAnd.AspectId)
-                || key.equals(GenAspectOperatorOr.AspectId)
-                || key.equals(GenAspectOperatorXor.AspectId)
-                || key.equals(GenAspectOperatorShl.AspectId)
-                || key.equals(GenAspectOperatorShr.AspectId)
-                || key.equals(GenAspectOperatorUshr.AspectId)
-                || key.equals(GenAspectOperatorEq.AspectId)
-                || key.equals(GenAspectOperatorNe.AspectId)
-                || key.equals(GenAspectOperatorLt.AspectId)
-                || key.equals(GenAspectOperatorLe.AspectId)
-                || key.equals(GenAspectOperatorGt.AspectId)
-                || key.equals(GenAspectOperatorGe.AspectId)
-                || key.equals(GenAspectOperatorNeg.AspectId)
-                || key.equals(GenAspectOperatorBitNot.AspectId)) {
+        if (key.equals(GenAspectOperatorBitNot.AspectId)) {
+            return Opt.some(AspectOperatorBitNotNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorNeg.AspectId)) {
+            return Opt.some(AspectOperatorNegNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorGe.AspectId)) {
+            return Opt.some(AspectOperatorGeNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorGt.AspectId)) {
+            return Opt.some(AspectOperatorGtNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorLe.AspectId)) {
+            return Opt.some(AspectOperatorLeNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorLt.AspectId)) {
+            return Opt.some(AspectOperatorLtNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorNe.AspectId)) {
+            return Opt.some(AspectOperatorNeNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorEq.AspectId)) {
+            return Opt.some(AspectOperatorEqNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorUshr.AspectId)) {
+            return Opt.some(AspectOperatorUshrNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorShr.AspectId)) {
+            return Opt.some(AspectOperatorShrNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorShl.AspectId)) {
+            return Opt.some(AspectOperatorShlNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorXor.AspectId)) {
+            return Opt.some(AspectOperatorXorNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorOr.AspectId)) {
+            return Opt.some(AspectOperatorOrNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorAnd.AspectId)) {
+            return Opt.some(AspectOperatorAndNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorMod.AspectId)) {
+            return Opt.some(AspectOperatorModNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorDiv.AspectId)) {
+            return Opt.some(AspectOperatorDivNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorMul.AspectId)) {
+            return Opt.some(AspectOperatorMulNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorSub.AspectId)) {
+            return Opt.some(AspectOperatorSubNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorAdd.AspectId)) {
+            return Opt.some(AspectOperatorAddNumeric.INSTANCE);
+        }
+        if (key.equals(GenAspectInt.AspectId)) {
+            return Opt.some(AspectIntShortConst.INSTANCE);
+        }
+        if (key.equals(GenAspectNumericConst.AspectId)) {
+            return Opt.some(AspectNumericConstShortConst.INSTANCE);
+        }
+        if (key.equals(GenAspectField.AspectId)) {
+            return Opt.some(AspectFieldShortConst.INSTANCE);
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(AspectConsumeDynamicShortConst.INSTANCE);
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(AspectBindConstValue.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactShortConst.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorNeg.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.SHORT_CONST;
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
@@ -212,138 +194,6 @@ public record TypeShortConst()
             };
         }
     };
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.value().optIsSome()) {
-            return EResult.ok(
-                    new BindResult(cv.code(), new BindingValue(cv.value().optUnwrap())));
-        }
-        return EResult.err(loc, "TypeShortConst::bind: CodeValue has no compile-time value");
-    }
-
-    @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return Numerics.constConsume(xx, loc, cv, NumericKind.SHORT);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key) {
-        var dyn = new TypeShortDynamic();
-        var convertedRes = Numerics.castTo(xx, loc, self_, NumericKind.SHORT, dyn);
-        if (convertedRes.hasErrors()) return convertedRes.reerr();
-        return dyn.aspectFieldField(xx, loc, convertedRes.requireValue("TypeShortConst::field cast"), key);
-    }
-
-    @Override
-    public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return new TypeShortDynamic().aspectFieldKeys(xx);
-    }
-
-    @Override
-    public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        return new TypeShortDynamic().aspectFieldTypeOpt(xx, key);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorAddAdd(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.ADD);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorSubSub(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.SUB);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorMulMul(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.MUL);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorDivDiv(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.DIV);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorModMod(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.MOD);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorAndAnd(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.AND);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorOrOr(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.OR);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorXorXor(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.XOR);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorShlShl(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.SHL);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorShrShr(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.SHR);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorUshrUshr(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.USHR);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorEqEq(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.EQ);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorNeNe(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.NE);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorLtLt(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.LT);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorLeLe(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.LE);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorGtGt(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.GT);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorGeGe(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        return Numerics.binary(xx, loc, base, reference, Numerics.Op.GE);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorNegNeg(ExprContext xx, QExprId loc, CodeValue base) {
-        return Numerics.unary(xx, loc, base, Numerics.Unary.NEG);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectOperatorBitNotBitNot(ExprContext xx, QExprId loc, CodeValue base) {
-        return Numerics.unary(xx, loc, base, Numerics.Unary.BITNOT);
-    }
-
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
-    }
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {

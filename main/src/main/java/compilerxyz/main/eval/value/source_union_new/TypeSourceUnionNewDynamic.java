@@ -5,8 +5,6 @@ import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Erb;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -14,39 +12,26 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6142L)
-public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int variantIndex)
-        implements Type, AspectBind, AspectFunction {
+public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type, int variantIndex) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        if (variantIndex < 0 || variantIndex >= type_.variants.size()) {
+        if (variantIndex < 0 || variantIndex >= type.variants.size()) {
             return "union_new(?)";
         }
-        return "union_new(" + type_.variants.get(variantIndex).tag.constKeyToCanonical() + ")";
+        return "union_new(" + type.variants.get(variantIndex).tag.constKeyToCanonical() + ")";
     }
 
     @Override
@@ -54,61 +39,15 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectBind.AspectId) || key.equals(GenAspectFunction.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
+            return Opt.some(new AspectFunctionSourceUnionNewDynamic(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(AspectBindSourceUnionNewDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(this);
         }
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.value().optIsNone()) {
-            return EResult.err(loc, "TypeSourceUnionNewDynamic::bind: CodeValue has no compile-time value");
-        }
-        Value v = cv.value().optUnwrap();
-        return EResult.ok(new BindResult(Code.none(loc), new SourceUnionNewConstBinding(v)));
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-        if (variantIndex < 0 || variantIndex >= type_.variants.size()) {
-            return EResult.err(loc, "TypeSourceUnionNewDynamic::call: variant index " + variantIndex + " out of range");
-        }
-        var variant = type_.variants.get(variantIndex);
-        Type underlyingType = variant.type;
-        if (underlyingType == null) {
-            return EResult.err(loc, "TypeSourceUnionNewDynamic::call: variant payload type not finalised");
-        }
-        xx.vx.definitionSets.putIfAbsent(type_.set.defSetId, type_.set);
-        var variantBinaryName = SourceUnionEmitter.variantBinaryNameFor(type_.baseBinaryName, variantIndex);
-        var erb = new Erb(loc);
-        var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, underlyingType, argument));
-        if (convertedOpt.optIsNone()) {
-            return EResult.errs(erb.errors());
-        }
-        var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var underlyingJsRes = consumeRes
-                .requireValue("TypeSourceUnionNewDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-        var underlyingJs = underlyingJsRes.requireValue("TypeSourceUnionNewDynamic::call toDynamic");
-        Type resultType = type_.withActiveVariants(TList.of(variantIndex));
-        var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
-        var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
-        var ctorDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(underlyingJs);
-        seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
-        var newObject = new CodeDynamic(loc, seq);
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, newObject, resultType));
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
     }
 
@@ -117,7 +56,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
         return EResult.ok(ExporterRoot.SOURCE_UNION_NEW_CONST);
     }
 
-    private record SourceUnionNewConstBinding(Value value) implements Binding {
+    record SourceUnionNewConstBinding(Value value) implements Binding {
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
@@ -161,7 +100,7 @@ public record TypeSourceUnionNewDynamic(TypeSourceUnionDynamic type_, int varian
                 GenTrivialIdentityAspects.TYPE_SOURCE_UNION_NEW_DYNAMIC_IDENTITY,
                 TypeSourceUnionNewDynamic.class);
         return oOpt.optIsSome()
-                && type_.typeIsEqual(xx, oOpt.optUnwrap().type_)
+                && type.typeIsEqual(xx, oOpt.optUnwrap().type)
                 && variantIndex == oOpt.optUnwrap().variantIndex;
     }
 

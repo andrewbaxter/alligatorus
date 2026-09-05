@@ -36,7 +36,7 @@ public final class BuiltinMethodEmit {
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
     public static final ClassName TYPE_METHOD_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.function", "TypeMethodDynamic");
-    public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
+    public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object", "ObjectMethod");
     private static final ClassName ERESULT = ClassName.get("compilerxyz.main.eval", "EResult");
 
     private static final ClassName TYPE_ERESULT_DYNAMIC =
@@ -48,7 +48,7 @@ public final class BuiltinMethodEmit {
     private static final ClassName TYPE_MAP_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.map", "TypeMapDynamic");
     private static final ClassName TYPE_BOOL_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
+            ClassName.get("compilerxyz.main.eval.value.bool", "TypeBoolDynamic");
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
     private static final ClassName TYPE_NULL_DYNAMIC =

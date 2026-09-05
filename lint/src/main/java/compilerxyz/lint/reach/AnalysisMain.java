@@ -37,26 +37,26 @@ public final class AnalysisMain {
             sourceRoots.add(module + "/src/test/java");
             sourceRoots.add(module + "/target/generated-sources/codegen");
         }
-        for (String _ssRoot : sourceRoots) {
-            Path _ssSrc = base.resolve(_ssRoot);
-            if (!Files.isDirectory(_ssSrc)) continue;
-            try (var walk = Files.walk(_ssSrc)) {
-                for (Path _ssP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java")
+        for (String root : sourceRoots) {
+            Path src = base.resolve(root);
+            if (!Files.isDirectory(src)) continue;
+            try (var walk = Files.walk(src)) {
+                for (Path ssP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java")
                         && !x.getFileName().toString().equals("module-info.java"))::iterator) {
-                    Path _ssTarget = staged.resolve(_ssSrc.relativize(_ssP));
-                    Files.createDirectories(_ssTarget.getParent());
-                    Files.copy(_ssP, _ssTarget, StandardCopyOption.REPLACE_EXISTING);
+                    Path target = staged.resolve(src.relativize(ssP));
+                    Files.createDirectories(target.getParent());
+                    Files.copy(ssP, target, StandardCopyOption.REPLACE_EXISTING);
                 }
             }
         }
 
         Set<String> generatedFiles = new HashSet<>();
         for (String module : modules) {
-            Path _sffSrc = base.resolve(module + "/target/generated-sources/codegen");
-            if (!Files.isDirectory(_sffSrc)) continue;
-            try (var walk = Files.walk(_sffSrc)) {
-                for (Path _sffP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
-                    generatedFiles.add(staged.resolve(_sffSrc.relativize(_sffP))
+            Path sffSrc = base.resolve(module + "/target/generated-sources/codegen");
+            if (!Files.isDirectory(sffSrc)) continue;
+            try (var walk = Files.walk(sffSrc)) {
+                for (Path sffP : (Iterable<Path>) walk.filter(x -> x.toString().endsWith(".java"))::iterator) {
+                    generatedFiles.add(staged.resolve(sffSrc.relativize(sffP))
                             .toAbsolutePath()
                             .normalize()
                             .toString());
@@ -93,6 +93,8 @@ public final class AnalysisMain {
         conventionFindings.addAll(new StateChecks(generatedFiles).run(index));
         conventionFindings.addAll(new InheritanceChecks(generatedFiles).run(index));
         conventionFindings.addAll(new VariableChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new NamingChecks(generatedFiles).run(index));
+        conventionFindings.addAll(new AspectChecks(generatedFiles).run(index));
         conventionFindings.addAll(new StructureChecks(base).run());
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (var f : conventionFindings) counts.merge(f.check(), 1, Integer::sum);
@@ -105,10 +107,10 @@ public final class AnalysisMain {
                 .sorted(Comparator.comparing(ConventionChecks.Finding::file)
                         .thenComparingInt(ConventionChecks.Finding::line))
                 .forEach(f -> {
-                    String _sfPath = f.file();
-                    int _sfI = _sfPath.indexOf("spoon-src/");
-                    String _sfShort = _sfI >= 0 ? _sfPath.substring(_sfI + "spoon-src/".length()) : _sfPath;
-                    detail.append(String.format("%s:%d [%s] %s%n", _sfShort, f.line(), f.check(), f.message()));
+                    String path = f.file();
+                    int i = path.indexOf("spoon-src/");
+                    String sfShort = i >= 0 ? path.substring(i + "spoon-src/".length()) : path;
+                    detail.append(String.format("%s:%d [%s] %s%n", sfShort, f.line(), f.check(), f.message()));
                 });
         Path conventionsReport = Path.of("lint/target/conventions-report.txt");
         Files.createDirectories(conventionsReport.getParent());

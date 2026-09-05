@@ -36,7 +36,6 @@ import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetCodec;
@@ -208,50 +207,46 @@ public final class DefinitionSet implements Artifactable {
             return EResult.ok(null);
         }
         for (var iface : interfaces) {
-            var _sieBuilding = iface.building();
-            var _sieMethods = new TList<InterfaceMethodData>();
-            for (var _sieMethod : _sieBuilding.methods) {
-                if (_sieMethod.argType.optIsNone()) {
+            var building = iface.building();
+            var sieMethods = new TList<InterfaceMethodData>();
+            for (var sieMethod : building.methods) {
+                if (sieMethod.argType.optIsNone()) {
                     return EResult.err(
                             loc,
-                            "Interface '" + _sieBuilding.description.optUnwrapOr("(unnamed)") + "' method '"
-                                    + _sieMethod.name + "' has no signature (impl was not called)");
+                            "Interface '" + building.description.optUnwrapOr("(unnamed)") + "' method '"
+                                    + sieMethod.name + "' has no signature (impl was not called)");
                 }
-                _sieMethods.add(new InterfaceMethodData(
-                        _sieMethod.name,
-                        _sieMethod.argType.optUnwrap(),
-                        _sieMethod.retType,
+                sieMethods.add(new InterfaceMethodData(
+                        sieMethod.name,
+                        sieMethod.argType.optUnwrap(),
+                        sieMethod.retType,
                         IList.of(),
                         Opt.none(),
                         Opt.none()));
             }
-            var _sieInternalName = iface.binaryName.replace('.', '/');
-            var _sieCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-            _sieCw.visit(
+            var internalName = iface.binaryName.replace('.', '/');
+            var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+            cw.visit(
                     Opcodes.V11,
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT,
-                    _sieInternalName,
+                    internalName,
                     null,
                     JvmConstants.INTNAME_OBJECT.value(),
                     null);
-            for (var _sieMethod : _sieMethods) {
-                _sieCw.visitMethod(
+            for (var method : sieMethods) {
+                cw.visitMethod(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT,
-                                _sieMethod.name,
+                                method.name,
                                 JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT)
                                         .value(),
                                 null,
                                 null)
                         .visitEnd();
             }
-            _sieCw.visitEnd();
-            iface.compiledBytecode = Opt.some(_sieCw.toByteArray());
+            cw.visitEnd();
+            iface.compiledBytecode = Opt.some(cw.toByteArray());
             iface.freeze(new InterfaceData(
-                    _sieBuilding.description,
-                    _sieBuilding.isAspect,
-                    _sieBuilding.aspectId,
-                    IList.from(_sieMethods),
-                    Opt.none()));
+                    building.description, building.isAspect, building.aspectId, IList.from(sieMethods), Opt.none()));
         }
         for (var func : functions) {
             var r = func.finish(xx, loc);
@@ -271,9 +266,9 @@ public final class DefinitionSet implements Artifactable {
                 var r = method.finish(xx, loc, nameStr, obj, underlyingType, objInternalName);
                 if (r.hasErrors()) return r.reerr();
             }
-            for (int _implIdx = 0; _implIdx < obj.interfaceImpls.size(); _implIdx++) {
-                var impl = obj.interfaceImpls.get(_implIdx);
-                var mr = impl.materialize(loc, "_iface" + _implIdx);
+            for (int idx = 0; idx < obj.interfaceImpls.size(); idx++) {
+                var impl = obj.interfaceImpls.get(idx);
+                var mr = impl.materialize(loc, "_iface" + idx);
                 if (mr.hasErrors()) return mr.reerr();
                 for (var m : impl.methodImpls) {
                     var r = m.finish(xx, loc, obj, underlyingType);
@@ -284,125 +279,120 @@ public final class DefinitionSet implements Artifactable {
             if (obj.compiledBytecode.optIsSome()) {
                 r = EResult.ok(null);
             } else {
-                var _soeInternalNameStr = obj.internalName();
-                var _soeInternalName = JavaInternalName.of(_soeInternalNameStr);
-                var _soeImplementsInternalNames = new TOrderedSet<String>();
-                _soeImplementsInternalNames.add(SourceObjectEmitter.INTNAME_SOURCE_OBJECT_INSTANCE.value());
-                for (var _soeImpl : obj.interfaceImpls) {
-                    var _soeIface = _soeImpl.interface_;
-                    _soeImplementsInternalNames.add(
-                            _soeIface.jvmInternalNameForSet(this).value());
+                var internalNameStr = obj.internalName();
+                var soeInternalName = JavaInternalName.of(internalNameStr);
+                var implementsInternalNames = new TOrderedSet<String>();
+                implementsInternalNames.add(SourceObjectEmitter.INTNAME_SOURCE_OBJECT_INSTANCE.value());
+                for (var soeImpl : obj.interfaceImpls) {
+                    var soeIface = soeImpl.interface_;
+                    implementsInternalNames.add(
+                            soeIface.jvmInternalNameForSet(this).value());
                 }
-                var _soeInterfacesArr = _soeImplementsInternalNames.isEmpty()
-                        ? null
-                        : _soeImplementsInternalNames.toArray(new String[0]);
-                var _soeCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+                var interfacesArr =
+                        implementsInternalNames.isEmpty() ? null : implementsInternalNames.toArray(new String[0]);
+                var soeCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
                     @Override
                     protected String getCommonSuperClass(String type1, String type2) {
                         return JvmConstants.INTNAME_OBJECT.value();
                     }
                 };
-                _soeCw.visit(
+                soeCw.visit(
                         Opcodes.V11,
                         Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER,
-                        _soeInternalNameStr,
+                        internalNameStr,
                         null,
                         JvmConstants.INTNAME_OBJECT.value(),
-                        _soeInterfacesArr);
-                var _soeDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
-                _soeCw.visitField(
+                        interfacesArr);
+                var dataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
+                soeCw.visitField(
                                 Opcodes.ACC_PUBLIC,
                                 SourceObjectEmitter.DATA_INSTANCE_FIELD,
-                                _soeDataFieldDesc.value(),
+                                dataFieldDesc.value(),
                                 null,
                                 null)
                         .visitEnd();
-                var _soeCtor = _soeCw.visitMethod(
+                var ctor = soeCw.visitMethod(
                         Opcodes.ACC_PUBLIC, "<init>", JavaMethodDescriptor.VOID_NOARGS.value(), null, null);
-                _soeCtor.visitCode();
-                var _soeCtorSeq = new JavaBytecodeSequence();
-                _soeCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                _soeCtorSeq.add(JavaBytecodeUtils.invokeSpecial(
+                ctor.visitCode();
+                var ctorSeq = new JavaBytecodeSequence();
+                ctorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+                ctorSeq.add(JavaBytecodeUtils.invokeSpecial(
                         CodeLoc.Infallible.INSTANCE,
                         JvmConstants.INTNAME_OBJECT,
                         "<init>",
                         JavaMethodDescriptor.VOID_NOARGS));
-                _soeCtorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
-                JavaBytecodeUtils.renderMethod(_soeCtorSeq, _soeCtor, TList.of());
-                var _soeRealCtorDesc =
-                        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(_soeDataFieldDesc));
-                var _soeRealCtor =
-                        _soeCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", _soeRealCtorDesc.value(), null, null);
-                _soeRealCtor.visitCode();
-                var _soeRealCtorSeq = new JavaBytecodeSequence();
-                _soeRealCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                _soeRealCtorSeq.add(JavaBytecodeUtils.invokeSpecial(
+                ctorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+                JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of());
+                var realCtorDesc =
+                        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(dataFieldDesc));
+                var realCtor = soeCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", realCtorDesc.value(), null, null);
+                realCtor.visitCode();
+                var realCtorSeq = new JavaBytecodeSequence();
+                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+                realCtorSeq.add(JavaBytecodeUtils.invokeSpecial(
                         CodeLoc.Infallible.INSTANCE,
                         JvmConstants.INTNAME_OBJECT,
                         "<init>",
                         JavaMethodDescriptor.VOID_NOARGS));
-                _soeRealCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                _soeRealCtorSeq.add(
-                        JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, _soeDataFieldDesc.loadOpcode(), 1));
-                _soeRealCtorSeq.add(JavaBytecodeUtils.setField(
+                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
+                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, dataFieldDesc.loadOpcode(), 1));
+                realCtorSeq.add(JavaBytecodeUtils.setField(
                         CodeLoc.Infallible.INSTANCE,
-                        _soeInternalName,
+                        soeInternalName,
                         SourceObjectEmitter.DATA_INSTANCE_FIELD,
-                        _soeDataFieldDesc));
-                _soeRealCtorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
-                JavaBytecodeUtils.renderMethod(_soeRealCtorSeq, _soeRealCtor, TList.of());
-                var _soeAllFieldNames = new TOrderedSet<String>();
-                var _soeStaticFieldValues = new TOrderedMap<String, Object>();
-                var _soeFieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-                for (int _soeImplIdx = 0; _soeImplIdx < obj.interfaceImpls.size(); _soeImplIdx++) {
-                    var _soeImpl = obj.interfaceImpls.get(_soeImplIdx);
-                    for (int _soeMIdx = 0; _soeMIdx < _soeImpl.methodImpls.size(); _soeMIdx++) {
-                        var _soeM = _soeImpl.methodImpls.get(_soeMIdx);
-                        if (_soeM.compiledBodyCode.optIsNone()) {
+                        dataFieldDesc));
+                realCtorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+                JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of());
+                var allFieldNames = new TOrderedSet<String>();
+                var staticFieldValues = new TOrderedMap<String, Object>();
+                var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
+                for (int implIdx = 0; implIdx < obj.interfaceImpls.size(); implIdx++) {
+                    var impl = obj.interfaceImpls.get(implIdx);
+                    for (int mIdx = 0; mIdx < impl.methodImpls.size(); mIdx++) {
+                        var soeM = impl.methodImpls.get(mIdx);
+                        if (soeM.compiledBodyCode.optIsNone()) {
                             continue;
                         }
-                        var _soePrefix = _soeM.jvmMethodName + "_";
-                        for (int _cmfI = 0; _cmfI < _soeM.capturedExternals.size(); _cmfI++) {
-                            var _cmfEntry = _soeM.capturedExternals.get(_cmfI);
-                            var _cmfName = _soePrefix + Prefixes.EXTERNAL_PREFIX + _cmfI;
-                            if (_soeAllFieldNames.add(_cmfName)) {
-                                _soeFieldDescriptors.put(
-                                        _cmfName,
+                        var prefix = soeM.jvmMethodName + "_";
+                        for (int i = 0; i < soeM.capturedExternals.size(); i++) {
+                            var entry = soeM.capturedExternals.get(i);
+                            var cmfName = prefix + Prefixes.EXTERNAL_PREFIX + i;
+                            if (allFieldNames.add(cmfName)) {
+                                fieldDescriptors.put(
+                                        cmfName,
                                         JavaDataDescriptor.fromClass(
-                                                _cmfEntry.external().externalHostClass()));
-                                _soeStaticFieldValues.put(
-                                        _cmfName, _cmfEntry.external().externalHostValue());
+                                                entry.external().externalHostClass()));
+                                staticFieldValues.put(cmfName, entry.external().externalHostValue());
                             }
                         }
                     }
                 }
-                for (long _soeMethodIdx = 0; _soeMethodIdx < obj.methods.size(); _soeMethodIdx++) {
-                    var _soeMethod = obj.methods.get((int) _soeMethodIdx);
-                    var _soeBodyCode = _soeMethod.compiledBodyCode;
-                    if (_soeBodyCode == null) {
+                for (long methodIdx = 0; methodIdx < obj.methods.size(); methodIdx++) {
+                    var soeMethod = obj.methods.get((int) methodIdx);
+                    var bodyCode = soeMethod.compiledBodyCode;
+                    if (bodyCode == null) {
                         continue;
                     }
-                    var _soePrefix = _soeMethod.jvmMethodName + "_";
-                    for (int _soeI = 0; _soeI < _soeMethod.capturedExternals.size(); _soeI++) {
-                        var _soeEntry = _soeMethod.capturedExternals.get(_soeI);
-                        var _soeName = _soePrefix + Prefixes.EXTERNAL_PREFIX + _soeI;
-                        if (_soeAllFieldNames.add(_soeName)) {
-                            _soeFieldDescriptors.put(
-                                    _soeName,
+                    var soePrefix = soeMethod.jvmMethodName + "_";
+                    for (int soeI = 0; soeI < soeMethod.capturedExternals.size(); soeI++) {
+                        var soeEntry = soeMethod.capturedExternals.get(soeI);
+                        var soeName = soePrefix + Prefixes.EXTERNAL_PREFIX + soeI;
+                        if (allFieldNames.add(soeName)) {
+                            fieldDescriptors.put(
+                                    soeName,
                                     JavaDataDescriptor.fromClass(
-                                            _soeEntry.external().externalHostClass()));
-                            _soeStaticFieldValues.put(
-                                    _soeName, _soeEntry.external().externalHostValue());
+                                            soeEntry.external().externalHostClass()));
+                            staticFieldValues.put(soeName, soeEntry.external().externalHostValue());
                         }
                     }
                 }
-                for (var _soeName : _soeAllFieldNames) {
-                    var _soeDesc = _soeFieldDescriptors.getOrDefault(_soeName, JvmConstants.DESC_OBJECT);
-                    _soeCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, _soeName, _soeDesc.value(), null, null)
+                for (var name : allFieldNames) {
+                    var desc = fieldDescriptors.getOrDefault(name, JvmConstants.DESC_OBJECT);
+                    soeCw.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, name, desc.value(), null, null)
                             .visitEnd();
                 }
-                if (_soeAllFieldNames.add(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD)) {
-                    _soeCw.visitField(
+                if (allFieldNames.add(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD)) {
+                    soeCw.visitField(
                                     Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                                     SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD,
                                     JvmConstants.DESC_OBJECT.value(),
@@ -410,356 +400,351 @@ public final class DefinitionSet implements Artifactable {
                                     null)
                             .visitEnd();
                 }
-                _soeStaticFieldValues.put(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD, obj);
-                _soeCw.visitField(
+                staticFieldValues.put(SourceObjectEmitter.SOURCE_OBJECT_DATA_FIELD, obj);
+                soeCw.visitField(
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                                 EvalRootEmitter.EXPR_CONTEXT_FIELD,
                                 EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
                                 null,
                                 null)
                         .visitEnd();
-                for (long _soeMethodIdx = 0; _soeMethodIdx < obj.methods.size(); _soeMethodIdx++) {
-                    var _soeMethod = obj.methods.get((int) _soeMethodIdx);
-                    if (_soeMethod.compiledBodyCode.optIsNone()) {
+                for (long soeMethodIdx = 0; soeMethodIdx < obj.methods.size(); soeMethodIdx++) {
+                    var method = obj.methods.get((int) soeMethodIdx);
+                    if (method.compiledBodyCode.optIsNone()) {
                         continue;
                     }
                     {
-                        var _emmBodyCode = _soeMethod.compiledBodyCode.optUnwrap();
-                        var _emmMethodName = _soeMethod.jvmMethodName;
-                        var _emmPrefix = _emmMethodName + "_";
-                        JavaDataDescriptor _emmRetDesc;
-                        if (_soeMethod.retType.optIsSome()) {
-                            if (!(_soeMethod.retType.optUnwrap() instanceof AspectConsumeDynamic _emmRetConsume)) {
+                        var emmBodyCode = method.compiledBodyCode.optUnwrap();
+                        var methodName = method.jvmMethodName;
+                        var emmPrefix = methodName + "_";
+                        JavaDataDescriptor retDesc;
+                        if (method.retType.optIsSome()) {
+                            var retConsume = GenAspectConsumeDynamic.getMaybe(xx, method.retType.optUnwrap());
+                            if (retConsume.optIsNone()) {
                                 throw new IllegalStateException("SourceObjectEmitter.emitMethodMethod: method '"
-                                        + _soeMethod.name + "' retType does not implement AspectConsumeDynamic");
+                                        + method.name + "' retType does not implement AspectConsumeDynamic");
                             }
-                            _emmRetDesc = _emmRetConsume.aspectConsumeDynamicJvmClass(xx);
+                            retDesc = retConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
                         } else {
-                            _emmRetDesc = JavaDataDescriptor.DESC_VOID;
+                            retDesc = JavaDataDescriptor.DESC_VOID;
                         }
-                        if (_soeMethod.compiledArgSlots.optIsNone() || _soeMethod.compiledArgSlotIds.optIsNone()) {
+                        if (method.compiledArgSlots.optIsNone() || method.compiledArgSlotIds.optIsNone()) {
                             throw new IllegalStateException("SourceObjectEmitter.emitMethodMethod: method '"
-                                    + _soeMethod.name + "' has no compiledArgSlots (finish ordering violation)");
+                                    + method.name + "' has no compiledArgSlots (finish ordering violation)");
                         }
-                        var _emmArgSlots = _soeMethod.compiledArgSlots.optUnwrap();
-                        var _emmArgSlotIds = _soeMethod.compiledArgSlotIds.optUnwrap();
-                        var _emmArgDescs = new TList<JavaDataDescriptor>(_emmArgSlots.size());
-                        for (var _emmS : _emmArgSlots) _emmArgDescs.add(_emmS.jvmDesc());
-                        var _emmDescriptor = JavaMethodDescriptor.fromParts(_emmRetDesc, _emmArgDescs);
-                        var _emmMv = _soeCw.visitMethod(
-                                Opcodes.ACC_PUBLIC, _emmMethodName, _emmDescriptor.value(), null, null);
-                        var _emmTarget = new TargetDynamic(new Counter());
-                        int _emmTotalArgSlots = 0;
-                        for (var _emmS : _emmArgSlots)
-                            _emmTotalArgSlots += _emmS.jvmDesc().slotWidth();
-                        var _emmCtx = new EmitCtx(_soeInternalName.value(), 1 + _emmTotalArgSlots, _emmPrefix);
-                        if (_soeMethod.innerBindingId.optIsNone()) {
-                            throw new IllegalStateException("SourceObjectEmitter.emit: method '" + _soeMethod.name
+                        var argSlots = method.compiledArgSlots.optUnwrap();
+                        var argSlotIds = method.compiledArgSlotIds.optUnwrap();
+                        var argDescs = new TList<JavaDataDescriptor>(argSlots.size());
+                        for (var s : argSlots) argDescs.add(s.jvmDesc());
+                        var descriptor = JavaMethodDescriptor.fromParts(retDesc, argDescs);
+                        var mv = soeCw.visitMethod(Opcodes.ACC_PUBLIC, methodName, descriptor.value(), null, null);
+                        var target = new TargetDynamic();
+                        int totalArgSlots = 0;
+                        for (var emmS : argSlots)
+                            totalArgSlots += emmS.jvmDesc().slotWidth();
+                        var ctx = new EmitCtx(soeInternalName.value(), 1 + totalArgSlots, emmPrefix);
+                        if (method.innerBindingId.optIsNone()) {
+                            throw new IllegalStateException("SourceObjectEmitter.emit: method '" + method.name
                                     + "' has no innerBindingId (finish ordering violation)");
                         }
-                        var _emmSelfId = _soeMethod.innerBindingId.optUnwrap();
-                        var _emmSeq = new JavaBytecodeSequence();
-                        var _emmLoc = CodeLoc.Infallible.INSTANCE;
-                        var _emmSelfLocal = mustCast(BindingId.class, _emmSelfId);
-                        var _emmDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
-                        if (_soeMethod.outerBindingId.optIsSome()) {
-                            _emmSeq.add(JavaBytecodeUtils.varInsn(_emmLoc, Opcodes.ALOAD, 0));
-                            _emmSeq.add(new CodeDynamic(
-                                    _emmLoc,
-                                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, _soeMethod.outerBindingId.optUnwrap())));
+                        var selfId = method.innerBindingId.optUnwrap();
+                        var seq = new JavaBytecodeSequence();
+                        var emmLoc = CodeLoc.Infallible.INSTANCE;
+                        var selfLocal = mustCast(BindingId.class, selfId);
+                        var emmDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
+                        if (method.outerBindingId.optIsSome()) {
+                            seq.add(JavaBytecodeUtils.varInsn(emmLoc, Opcodes.ALOAD, 0));
+                            seq.add(new CodeDynamic(
+                                    emmLoc,
+                                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, method.outerBindingId.optUnwrap())));
                         }
-                        _emmSeq.add(JavaBytecodeUtils.varInsn(_emmLoc, Opcodes.ALOAD, 0));
-                        _emmSeq.add(JavaBytecodeUtils.accessField(
-                                _emmLoc, _soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, _emmDataFieldDesc));
-                        _emmSeq.add(new CodeDynamic(
-                                _emmLoc, new JavaBytecodeStoreLoad(_emmDataFieldDesc.storeOpcode(), _emmSelfLocal)));
-                        var _emmInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
-                        _emmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
-                        for (int _emmI = 0; _emmI < _emmArgSlots.size(); _emmI++) {
-                            _emmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
-                                    _emmArgSlotIds.get(_emmI),
-                                    _emmArgSlots.get(_emmI).jvmDesc().isWide()));
+                        seq.add(JavaBytecodeUtils.varInsn(emmLoc, Opcodes.ALOAD, 0));
+                        seq.add(JavaBytecodeUtils.accessField(
+                                emmLoc, soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, emmDataFieldDesc));
+                        seq.add(new CodeDynamic(
+                                emmLoc, new JavaBytecodeStoreLoad(emmDataFieldDesc.storeOpcode(), selfLocal)));
+                        var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
+                        initialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
+                        for (int emmI = 0; emmI < argSlots.size(); emmI++) {
+                            initialSlots.add(new JavaBytecodeSequence.InitialSlot(
+                                    argSlotIds.get(emmI),
+                                    argSlots.get(emmI).jvmDesc().isWide()));
                         }
-                        for (int _emmI = 0; _emmI < _soeMethod.capturedExternals.size(); _emmI++) {
-                            var _emmEntry = _soeMethod.capturedExternals.get(_emmI);
-                            var _emmFieldName = _emmPrefix + Prefixes.EXTERNAL_PREFIX + _emmI;
-                            var _emmFieldDesc = JavaDataDescriptor.fromClass(
-                                    _emmEntry.external().externalHostClass());
-                            _emmSeq.add(JavaBytecodeUtils.accessStaticField(
-                                    _emmLoc, _soeInternalName, _emmFieldName, _emmFieldDesc));
-                            _emmSeq.add(new CodeDynamic(
-                                    _emmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, _emmEntry.key())));
+                        for (int i = 0; i < method.capturedExternals.size(); i++) {
+                            var emmEntry = method.capturedExternals.get(i);
+                            var fieldName = emmPrefix + Prefixes.EXTERNAL_PREFIX + i;
+                            var fieldDesc = JavaDataDescriptor.fromClass(
+                                    emmEntry.external().externalHostClass());
+                            seq.add(JavaBytecodeUtils.accessStaticField(emmLoc, soeInternalName, fieldName, fieldDesc));
+                            seq.add(new CodeDynamic(emmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, emmEntry.key())));
                         }
-                        _emmTarget.emit(_emmSeq, _emmCtx, _emmBodyCode);
-                        _emmSeq.add(JavaBytecodeUtils.inst(_emmLoc, _emmRetDesc.returnOpcode()));
-                        JavaBytecodeUtils.renderMethodTyped(_emmSeq, _emmMv, _emmInitialSlots);
+                        target.emit(seq, ctx, emmBodyCode);
+                        seq.add(JavaBytecodeUtils.inst(emmLoc, retDesc.returnOpcode()));
+                        JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
                     }
                 }
-                for (int _soeImplIdx = 0; _soeImplIdx < obj.interfaceImpls.size(); _soeImplIdx++) {
-                    var _soeImpl = obj.interfaceImpls.get(_soeImplIdx);
-                    for (int _soeMIdx = 0; _soeMIdx < _soeImpl.methodImpls.size(); _soeMIdx++) {
-                        var _soeM = _soeImpl.methodImpls.get(_soeMIdx);
-                        if (_soeM.compiledBodyCode.optIsNone()) {
+                for (int soeImplIdx = 0; soeImplIdx < obj.interfaceImpls.size(); soeImplIdx++) {
+                    var impl = obj.interfaceImpls.get(soeImplIdx);
+                    for (int soeMIdx = 0; soeMIdx < impl.methodImpls.size(); soeMIdx++) {
+                        var m = impl.methodImpls.get(soeMIdx);
+                        if (m.compiledBodyCode.optIsNone()) {
                             continue;
                         }
                         {
-                            var _eimMethodName = _soeM.jvmMethodName;
-                            var _eimPrefix = _eimMethodName + "_";
-                            if (_soeM.innerBindingId.optIsNone()) {
+                            var eimMethodName = m.jvmMethodName;
+                            var eimPrefix = eimMethodName + "_";
+                            if (m.innerBindingId.optIsNone()) {
                                 throw new IllegalStateException(
                                         "SourceObjectEmitter.emitInterfaceMethodMethod: impl has no innerBindingId");
                             }
-                            var _eimSelfId = mustCast(BindingId.class, _soeM.innerBindingId.optUnwrap());
-                            if (_soeM.compiledArgParamIds.optIsNone()) {
+                            var eimSelfId = mustCast(BindingId.class, m.innerBindingId.optUnwrap());
+                            if (m.compiledArgParamIds.optIsNone()) {
                                 throw new IllegalStateException(
                                         "SourceObjectEmitter.emitInterfaceMethodMethod: impl has no compiledArgParamIds");
                             }
-                            var _eimArgParamIds = _soeM.compiledArgParamIds.optUnwrap();
-                            var _eimIfaceMethod = _soeM.interfaceMethod;
-                            var _eimDescriptor =
-                                    SourceObjectEmitter.interfaceMethodMethodDescriptor(xx, _soeM, _eimIfaceMethod);
-                            var _eimJvmParamKeys = new TList<BindingId>();
-                            var _eimJvmParamWides = new TList<Boolean>();
-                            if (_soeM.compiledArgParamTypes.optIsNone()
-                                    || _soeM.compiledArgParamTypes.optUnwrap().size() != _eimArgParamIds.size()) {
+                            var argParamIds = m.compiledArgParamIds.optUnwrap();
+                            var ifaceMethod = m.interfaceMethod;
+                            var eimDescriptor = SourceObjectEmitter.interfaceMethodMethodDescriptor(xx, m, ifaceMethod);
+                            var jvmParamKeys = new TList<BindingId>();
+                            var jvmParamWides = new TList<Boolean>();
+                            if (m.compiledArgParamTypes.optIsNone()
+                                    || m.compiledArgParamTypes.optUnwrap().size() != argParamIds.size()) {
                                 throw new IllegalStateException(
                                         "SourceObjectEmitter.emitInterfaceMethodMethod: compiledArgParamTypes missing or mismatched");
                             }
-                            var _eimArgParamTypes = _soeM.compiledArgParamTypes.optUnwrap();
-                            for (int _eimI = 0; _eimI < _eimArgParamIds.size(); _eimI++) {
-                                var _eimArgType = _eimArgParamTypes.get(_eimI);
-                                var _eimArgConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, _eimArgType);
-                                if (_eimArgConsumeOpt.optIsNone()) {
+                            var argParamTypes = m.compiledArgParamTypes.optUnwrap();
+                            for (int eimI = 0; eimI < argParamIds.size(); eimI++) {
+                                var eimArgType = argParamTypes.get(eimI);
+                                var argConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, eimArgType);
+                                if (argConsumeOpt.optIsNone()) {
                                     throw new IllegalStateException(
                                             "SourceObjectEmitter.emitInterfaceMethodMethod: arg type "
-                                                    + _eimArgType.typeDesc()
+                                                    + eimArgType.typeDesc()
                                                     + " does not implement AspectConsumeDynamic");
                                 }
-                                var _eimArgDesc = _eimArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-                                _eimJvmParamKeys.add(_eimArgParamIds.get(_eimI));
-                                _eimJvmParamWides.add(_eimArgDesc.isWide());
+                                var argDesc = argConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
+                                jvmParamKeys.add(argParamIds.get(eimI));
+                                jvmParamWides.add(argDesc.isWide());
                             }
-                            var _eimMv = _soeCw.visitMethod(
-                                    Opcodes.ACC_PUBLIC, _eimMethodName, _eimDescriptor.value(), null, null);
-                            var _eimTarget = new TargetDynamic(new Counter());
-                            int _eimTotalParamSlots = 0;
-                            for (var _eimWide : _eimJvmParamWides) _eimTotalParamSlots += (_eimWide ? 2 : 1);
-                            var _eimCtx = new EmitCtx(_soeInternalName.value(), 1 + _eimTotalParamSlots, _eimPrefix);
-                            var _eimSeq = new JavaBytecodeSequence();
-                            var _eimLoc = CodeLoc.Infallible.INSTANCE;
-                            if (_soeM.outerBindingId.optIsSome()) {
-                                _eimSeq.add(JavaBytecodeUtils.varInsn(_eimLoc, Opcodes.ALOAD, 0));
-                                _eimSeq.add(new CodeDynamic(
-                                        _eimLoc,
-                                        new JavaBytecodeStoreLoad(Opcodes.ASTORE, _soeM.outerBindingId.optUnwrap())));
+                            var eimMv = soeCw.visitMethod(
+                                    Opcodes.ACC_PUBLIC, eimMethodName, eimDescriptor.value(), null, null);
+                            var eimTarget = new TargetDynamic();
+                            int totalParamSlots = 0;
+                            for (var wide : jvmParamWides) totalParamSlots += (wide ? 2 : 1);
+                            var eimCtx = new EmitCtx(soeInternalName.value(), 1 + totalParamSlots, eimPrefix);
+                            var eimSeq = new JavaBytecodeSequence();
+                            var eimLoc = CodeLoc.Infallible.INSTANCE;
+                            if (m.outerBindingId.optIsSome()) {
+                                eimSeq.add(JavaBytecodeUtils.varInsn(eimLoc, Opcodes.ALOAD, 0));
+                                eimSeq.add(new CodeDynamic(
+                                        eimLoc,
+                                        new JavaBytecodeStoreLoad(Opcodes.ASTORE, m.outerBindingId.optUnwrap())));
                             }
-                            var _eimInnerDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
-                            _eimSeq.add(JavaBytecodeUtils.varInsn(_eimLoc, Opcodes.ALOAD, 0));
-                            _eimSeq.add(JavaBytecodeUtils.accessField(
-                                    _eimLoc, _soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, _eimInnerDesc));
-                            _eimSeq.add(new CodeDynamic(
-                                    _eimLoc, new JavaBytecodeStoreLoad(_eimInnerDesc.storeOpcode(), _eimSelfId)));
-                            var _eimInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
-                            _eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
-                            for (int _eimI = 0; _eimI < _eimJvmParamKeys.size(); _eimI++) {
-                                _eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
-                                        _eimJvmParamKeys.get(_eimI), _eimJvmParamWides.get(_eimI)));
+                            var innerDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
+                            eimSeq.add(JavaBytecodeUtils.varInsn(eimLoc, Opcodes.ALOAD, 0));
+                            eimSeq.add(JavaBytecodeUtils.accessField(
+                                    eimLoc, soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, innerDesc));
+                            eimSeq.add(new CodeDynamic(
+                                    eimLoc, new JavaBytecodeStoreLoad(innerDesc.storeOpcode(), eimSelfId)));
+                            var eimInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
+                            eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
+                            for (int i = 0; i < jvmParamKeys.size(); i++) {
+                                eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
+                                        jvmParamKeys.get(i), jvmParamWides.get(i)));
                             }
-                            for (int _eimI = 0; _eimI < _soeM.capturedExternals.size(); _eimI++) {
-                                var _eimEntry = _soeM.capturedExternals.get(_eimI);
-                                var _eimFieldName = _eimPrefix + Prefixes.EXTERNAL_PREFIX + _eimI;
-                                var _eimFieldDesc = JavaDataDescriptor.fromClass(
-                                        _eimEntry.external().externalHostClass());
-                                _eimSeq.add(JavaBytecodeUtils.accessStaticField(
-                                        _eimLoc, _soeInternalName, _eimFieldName, _eimFieldDesc));
-                                _eimSeq.add(new CodeDynamic(
-                                        _eimLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, _eimEntry.key())));
+                            for (int i = 0; i < m.capturedExternals.size(); i++) {
+                                var eimEntry = m.capturedExternals.get(i);
+                                var eimFieldName = eimPrefix + Prefixes.EXTERNAL_PREFIX + i;
+                                var eimFieldDesc = JavaDataDescriptor.fromClass(
+                                        eimEntry.external().externalHostClass());
+                                eimSeq.add(JavaBytecodeUtils.accessStaticField(
+                                        eimLoc, soeInternalName, eimFieldName, eimFieldDesc));
+                                eimSeq.add(new CodeDynamic(
+                                        eimLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, eimEntry.key())));
                             }
-                            _eimTarget.emit(_eimSeq, _eimCtx, _soeM.compiledBodyCode.optUnwrap());
+                            eimTarget.emit(eimSeq, eimCtx, m.compiledBodyCode.optUnwrap());
                             {
-                                var _ercDescStr = _eimDescriptor.value();
-                                var _ercRetDesc =
-                                        JavaDataDescriptor.create(_ercDescStr.substring(_ercDescStr.indexOf(')') + 1));
-                                if (_ercRetDesc.value().charAt(0) == 'L') {
-                                    _eimSeq.add(JavaBytecodeUtils.cast(_eimLoc, _ercRetDesc));
+                                var descStr = eimDescriptor.value();
+                                var ercRetDesc = JavaDataDescriptor.create(descStr.substring(descStr.indexOf(')') + 1));
+                                if (ercRetDesc.value().charAt(0) == 'L') {
+                                    eimSeq.add(JavaBytecodeUtils.cast(eimLoc, ercRetDesc));
                                 }
-                                _eimSeq.add(JavaBytecodeUtils.inst(_eimLoc, _ercRetDesc.returnOpcode()));
+                                eimSeq.add(JavaBytecodeUtils.inst(eimLoc, ercRetDesc.returnOpcode()));
                             }
-                            JavaBytecodeUtils.renderMethodTyped(_eimSeq, _eimMv, _eimInitialSlots);
+                            JavaBytecodeUtils.renderMethodTyped(eimSeq, eimMv, eimInitialSlots);
                         }
                     }
                 }
                 {
-                    var _ehiEmitted = new TOrderedSet<String>();
-                    for (int _ehiImplIdx = 0; _ehiImplIdx < obj.interfaceImpls.size(); _ehiImplIdx++) {
-                        var _ehiImpl = obj.interfaceImpls.get(_ehiImplIdx);
-                        for (int _ehiMIdx = 0; _ehiMIdx < _ehiImpl.methodImpls.size(); _ehiMIdx++) {
-                            var _ehiM = _ehiImpl.methodImpls.get(_ehiMIdx);
-                            if (_ehiM.compiledBodyCode.optIsNone()) {
+                    var emitted = new TOrderedSet<String>();
+                    for (int ehiImplIdx = 0; ehiImplIdx < obj.interfaceImpls.size(); ehiImplIdx++) {
+                        var ehiImpl = obj.interfaceImpls.get(ehiImplIdx);
+                        for (int ehiMIdx = 0; ehiMIdx < ehiImpl.methodImpls.size(); ehiMIdx++) {
+                            var ehiM = ehiImpl.methodImpls.get(ehiMIdx);
+                            if (ehiM.compiledBodyCode.optIsNone()) {
                                 continue;
                             }
-                            var _ehiIfaceMethod = _ehiM.interfaceMethod;
-                            String _ehiHostName;
-                            JavaMethodDescriptor _ehiHostDescriptor;
-                            if (_ehiIfaceMethod.hostMethodName.optIsSome()
-                                    && _ehiIfaceMethod.hostMethodDescriptor.optIsSome()) {
-                                _ehiHostName = _ehiIfaceMethod.hostMethodName.optUnwrap();
-                                _ehiHostDescriptor = _ehiIfaceMethod.hostMethodDescriptor.optUnwrap();
+                            var ehiIfaceMethod = ehiM.interfaceMethod;
+                            String hostName;
+                            JavaMethodDescriptor hostDescriptor;
+                            if (ehiIfaceMethod.hostMethodName.optIsSome()
+                                    && ehiIfaceMethod.hostMethodDescriptor.optIsSome()) {
+                                hostName = ehiIfaceMethod.hostMethodName.optUnwrap();
+                                hostDescriptor = ehiIfaceMethod.hostMethodDescriptor.optUnwrap();
                             } else {
-                                _ehiHostName = _ehiIfaceMethod.name;
-                                _ehiHostDescriptor = JavaMethodDescriptor.fromParts(
+                                hostName = ehiIfaceMethod.name;
+                                hostDescriptor = JavaMethodDescriptor.fromParts(
                                         JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT);
                             }
-                            var _ehiDedupeKey = _ehiHostName + _ehiHostDescriptor.value();
-                            if (!_ehiEmitted.add(_ehiDedupeKey)) {
+                            var dedupeKey = hostName + hostDescriptor.value();
+                            if (!emitted.add(dedupeKey)) {
                                 continue;
                             }
                             {
-                                var _ehaMv = _soeCw.visitMethod(
-                                        Opcodes.ACC_PUBLIC, _ehiHostName, _ehiHostDescriptor.value(), null, null);
-                                var _ehaHostDescStr = _ehiHostDescriptor.value();
-                                var _ehaLoc = CodeLoc.Infallible.INSTANCE;
-                                var _ehaSeq = new JavaBytecodeSequence();
-                                _ehaSeq.add(JavaBytecodeUtils.varInsn(_ehaLoc, Opcodes.ALOAD, 0));
-                                var _ehaCalleeDescriptor =
-                                        SourceObjectEmitter.interfaceMethodMethodDescriptor(xx, _ehiM, _ehiIfaceMethod);
-                                int _ehaHostSlot = 1;
-                                if (_ehiM.compiledArgParamTypes.optIsSome()) {
-                                    var _ehaArgParamTypes = _ehiM.compiledArgParamTypes.optUnwrap();
-                                    var _ehaHostParams = new TList<String>();
+                                var ehaMv = soeCw.visitMethod(
+                                        Opcodes.ACC_PUBLIC, hostName, hostDescriptor.value(), null, null);
+                                var hostDescStr = hostDescriptor.value();
+                                var ehaLoc = CodeLoc.Infallible.INSTANCE;
+                                var ehaSeq = new JavaBytecodeSequence();
+                                ehaSeq.add(JavaBytecodeUtils.varInsn(ehaLoc, Opcodes.ALOAD, 0));
+                                var calleeDescriptor =
+                                        SourceObjectEmitter.interfaceMethodMethodDescriptor(xx, ehiM, ehiIfaceMethod);
+                                int hostSlot = 1;
+                                if (ehiM.compiledArgParamTypes.optIsSome()) {
+                                    var ehaArgParamTypes = ehiM.compiledArgParamTypes.optUnwrap();
+                                    var hostParams = new TList<String>();
                                     {
-                                        int _pdI = 1;
-                                        while (_pdI < _ehaHostDescStr.length() && _ehaHostDescStr.charAt(_pdI) != ')') {
-                                            int _pdStart = _pdI;
-                                            while (_ehaHostDescStr.charAt(_pdI) == '[') _pdI++;
-                                            if (_ehaHostDescStr.charAt(_pdI) == 'L') {
-                                                _pdI = _ehaHostDescStr.indexOf(';', _pdI) + 1;
+                                        int pdI = 1;
+                                        while (pdI < hostDescStr.length() && hostDescStr.charAt(pdI) != ')') {
+                                            int start = pdI;
+                                            while (hostDescStr.charAt(pdI) == '[') pdI++;
+                                            if (hostDescStr.charAt(pdI) == 'L') {
+                                                pdI = hostDescStr.indexOf(';', pdI) + 1;
                                             } else {
-                                                _pdI++;
+                                                pdI++;
                                             }
-                                            _ehaHostParams.add(_ehaHostDescStr.substring(_pdStart, _pdI));
+                                            hostParams.add(hostDescStr.substring(start, pdI));
                                         }
                                     }
-                                    int _ehaArgIdx = 0;
-                                    for (var _ehaArgType : _ehaArgParamTypes) {
-                                        var _ehaHostParamDesc =
-                                                JavaDataDescriptor.create(_ehaHostParams.get(_ehaArgIdx));
-                                        _ehaSeq.add(JavaBytecodeUtils.varInsn(
-                                                _ehaLoc, _ehaHostParamDesc.loadOpcode(), _ehaHostSlot));
-                                        var _ehaArgConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, _ehaArgType);
-                                        if (_ehaArgConsumeOpt.optIsNone()) {
+                                    int argIdx = 0;
+                                    for (var ehaArgType : ehaArgParamTypes) {
+                                        var hostParamDesc = JavaDataDescriptor.create(hostParams.get(argIdx));
+                                        ehaSeq.add(JavaBytecodeUtils.varInsn(
+                                                ehaLoc, hostParamDesc.loadOpcode(), hostSlot));
+                                        var ehaArgConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, ehaArgType);
+                                        if (ehaArgConsumeOpt.optIsNone()) {
                                             throw new IllegalStateException(
                                                     "SourceObjectEmitter.emitHostAdapter: arg type "
-                                                            + _ehaArgType.typeDesc()
+                                                            + ehaArgType.typeDesc()
                                                             + " does not implement AspectConsumeDynamic");
                                         }
-                                        var _ehaArgDesc =
-                                                _ehaArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-                                        var _ehaHostParam = _ehaHostParams.get(_ehaArgIdx);
-                                        if (!_ehaHostParam.equals(_ehaArgDesc.value())
-                                                && _ehaArgDesc.isReference()
-                                                && !_ehaArgDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
-                                            _ehaSeq.add(JavaBytecodeUtils.cast(_ehaLoc, _ehaArgDesc));
+                                        var ehaArgDesc =
+                                                ehaArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
+                                        var hostParam = hostParams.get(argIdx);
+                                        if (!hostParam.equals(ehaArgDesc.value())
+                                                && ehaArgDesc.isReference()
+                                                && !ehaArgDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+                                            ehaSeq.add(JavaBytecodeUtils.cast(ehaLoc, ehaArgDesc));
                                         }
-                                        _ehaHostSlot += _ehaHostParamDesc.slotWidth();
-                                        _ehaArgIdx++;
+                                        hostSlot += hostParamDesc.slotWidth();
+                                        argIdx++;
                                     }
                                 }
-                                _ehaSeq.add(JavaBytecodeUtils.callMethod(
-                                        _ehaLoc, _soeInternalName, _ehiM.jvmMethodName, _ehaCalleeDescriptor));
-                                var _ehaRetDesc = JavaDataDescriptor.create(
-                                        _ehaHostDescStr.substring(_ehaHostDescStr.indexOf(')') + 1));
-                                _ehaSeq.add(JavaBytecodeUtils.inst(_ehaLoc, _ehaRetDesc.returnOpcode()));
-                                JavaBytecodeUtils.renderMethod(_ehaSeq, _ehaMv, TList.of());
+                                ehaSeq.add(JavaBytecodeUtils.callMethod(
+                                        ehaLoc, soeInternalName, ehiM.jvmMethodName, calleeDescriptor));
+                                var ehaRetDesc =
+                                        JavaDataDescriptor.create(hostDescStr.substring(hostDescStr.indexOf(')') + 1));
+                                ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, ehaRetDesc.returnOpcode()));
+                                JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of());
                             }
                         }
                     }
                 }
-                _soeCw.visitEnd();
-                obj.compiledBytecode = Opt.some(_soeCw.toByteArray());
-                obj.compiledStaticFieldValues = Opt.some(_soeStaticFieldValues);
+                soeCw.visitEnd();
+                obj.compiledBytecode = Opt.some(soeCw.toByteArray());
+                obj.compiledStaticFieldValues = Opt.some(staticFieldValues);
                 r = EResult.ok(null);
             }
             if (r.hasErrors()) return r.reerr();
         }
-        for (var _seu : unions) {
+        for (var seu : unions) {
             EResult<Void> r;
-            if (_seu.compiled.baseBytecode.optIsSome()) {
+            if (seu.compiled.baseBytecode.optIsSome()) {
                 r = EResult.ok(null);
             } else {
-                var _seuBaseBinaryName = _seu.baseBinaryName;
-                var _seuBaseInternalName = _seuBaseBinaryName.replace('.', '/');
-                var _seuVariantBinaryNames = new TList<String>(_seu.variants.size());
-                var _seuVariantInternalNames = new TList<String>(_seu.variants.size());
-                for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
-                    var _seuVbn = SourceUnionEmitter.variantBinaryNameFor(_seuBaseBinaryName, _seuI);
-                    _seuVariantBinaryNames.add(_seuVbn);
-                    _seuVariantInternalNames.add(_seuVbn.replace('.', '/'));
+                var seuBaseBinaryName = seu.baseBinaryName;
+                var baseInternalName = seuBaseBinaryName.replace('.', '/');
+                var variantBinaryNames = new TList<String>(seu.variants.size());
+                var variantInternalNames = new TList<String>(seu.variants.size());
+                for (int seuI = 0; seuI < seu.variants.size(); seuI++) {
+                    var vbn = SourceUnionEmitter.variantBinaryNameFor(seuBaseBinaryName, seuI);
+                    variantBinaryNames.add(vbn);
+                    variantInternalNames.add(vbn.replace('.', '/'));
                 }
                 {
-                    var _ebCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-                    _ebCw.visit(
+                    var ebCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+                    ebCw.visit(
                             Opcodes.V17,
                             Opcodes.ACC_PUBLIC | Opcodes.ACC_ABSTRACT | Opcodes.ACC_SUPER,
-                            _seuBaseInternalName,
+                            baseInternalName,
                             null,
                             JvmConstants.INTNAME_OBJECT.value(),
                             null);
-                    for (var _ebVin : _seuVariantInternalNames) {
-                        _ebCw.visitPermittedSubclass(_ebVin);
+                    for (var vin : variantInternalNames) {
+                        ebCw.visitPermittedSubclass(vin);
                     }
-                    var _ebCtor = _ebCw.visitMethod(Opcodes.ACC_PROTECTED, "<init>", "()V", null, null);
-                    _ebCtor.visitCode();
-                    _ebCtor.visitVarInsn(Opcodes.ALOAD, 0);
-                    _ebCtor.visitMethodInsn(
+                    var ebCtor = ebCw.visitMethod(Opcodes.ACC_PROTECTED, "<init>", "()V", null, null);
+                    ebCtor.visitCode();
+                    ebCtor.visitVarInsn(Opcodes.ALOAD, 0);
+                    ebCtor.visitMethodInsn(
                             Opcodes.INVOKESPECIAL, JvmConstants.INTNAME_OBJECT.value(), "<init>", "()V", false);
-                    _ebCtor.visitInsn(Opcodes.RETURN);
-                    _ebCtor.visitMaxs(0, 0);
-                    _ebCtor.visitEnd();
-                    _ebCw.visitEnd();
-                    _seu.compiled.baseBytecode = Opt.some(_ebCw.toByteArray());
+                    ebCtor.visitInsn(Opcodes.RETURN);
+                    ebCtor.visitMaxs(0, 0);
+                    ebCtor.visitEnd();
+                    ebCw.visitEnd();
+                    seu.compiled.baseBytecode = Opt.some(ebCw.toByteArray());
                 }
-                var _seuVariantBytecode = new TList<byte[]>(_seu.variants.size());
-                for (int _seuI = 0; _seuI < _seu.variants.size(); _seuI++) {
-                    var _seuVariant = _seu.variants.get(_seuI);
-                    var _seuPayloadDesc = SourceUnionEmitter.payloadDescriptor(xx, _seuVariant.type);
+                var seuVariantBytecode = new TList<byte[]>(seu.variants.size());
+                for (int i = 0; i < seu.variants.size(); i++) {
+                    var variant = seu.variants.get(i);
+                    var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, variant.type);
                     {
-                        var _evVariantInternalName = _seuVariantInternalNames.get(_seuI);
-                        var _evCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-                        _evCw.visit(
+                        var variantInternalName = variantInternalNames.get(i);
+                        var evCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
+                        evCw.visit(
                                 Opcodes.V17,
                                 Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
-                                _evVariantInternalName,
+                                variantInternalName,
                                 null,
-                                _seuBaseInternalName,
+                                baseInternalName,
                                 null);
-                        _evCw.visitField(
+                        evCw.visitField(
                                         Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL,
                                         SourceUnionEmitter.PAYLOAD_FIELD,
-                                        _seuPayloadDesc.value(),
+                                        payloadDesc.value(),
                                         null,
                                         null)
                                 .visitEnd();
-                        var _evCtorDesc = "(" + _seuPayloadDesc.value() + ")V";
-                        var _evCtor = _evCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", _evCtorDesc, null, null);
-                        _evCtor.visitCode();
-                        _evCtor.visitVarInsn(Opcodes.ALOAD, 0);
-                        _evCtor.visitMethodInsn(Opcodes.INVOKESPECIAL, _seuBaseInternalName, "<init>", "()V", false);
-                        _evCtor.visitVarInsn(Opcodes.ALOAD, 0);
-                        _evCtor.visitVarInsn(_seuPayloadDesc.loadOpcode(), 1);
-                        _evCtor.visitFieldInsn(
+                        var ctorDesc = "(" + payloadDesc.value() + ")V";
+                        var evCtor = evCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", ctorDesc, null, null);
+                        evCtor.visitCode();
+                        evCtor.visitVarInsn(Opcodes.ALOAD, 0);
+                        evCtor.visitMethodInsn(Opcodes.INVOKESPECIAL, baseInternalName, "<init>", "()V", false);
+                        evCtor.visitVarInsn(Opcodes.ALOAD, 0);
+                        evCtor.visitVarInsn(payloadDesc.loadOpcode(), 1);
+                        evCtor.visitFieldInsn(
                                 Opcodes.PUTFIELD,
-                                _evVariantInternalName,
+                                variantInternalName,
                                 SourceUnionEmitter.PAYLOAD_FIELD,
-                                _seuPayloadDesc.value());
-                        _evCtor.visitInsn(Opcodes.RETURN);
-                        _evCtor.visitMaxs(0, 0);
-                        _evCtor.visitEnd();
-                        _evCw.visitEnd();
-                        _seuVariantBytecode.add(_evCw.toByteArray());
+                                payloadDesc.value());
+                        evCtor.visitInsn(Opcodes.RETURN);
+                        evCtor.visitMaxs(0, 0);
+                        evCtor.visitEnd();
+                        evCw.visitEnd();
+                        seuVariantBytecode.add(evCw.toByteArray());
                     }
                 }
-                _seu.compiled.variantBytecode = Opt.some(_seuVariantBytecode);
+                seu.compiled.variantBytecode = Opt.some(seuVariantBytecode);
                 r = EResult.ok(null);
             }
             if (r.hasErrors()) return r.reerr();
@@ -790,101 +775,97 @@ public final class DefinitionSet implements Artifactable {
         if (specs.isEmpty()) {
             return Opt.none();
         }
-        var _dsfBinaryName = DefSetFunctionsEmitter.functionsBinaryName(defSetId);
-        var _dsfInternalName = DefSetFunctionsEmitter.functionsInternalName(defSetId);
-        var _dsfCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+        var binaryName = DefSetFunctionsEmitter.functionsBinaryName(defSetId);
+        var internalName = DefSetFunctionsEmitter.functionsInternalName(defSetId);
+        var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
             @Override
             protected String getCommonSuperClass(String type1, String type2) {
                 return JvmConstants.INTNAME_OBJECT.value();
             }
         };
-        _dsfCw.visit(
+        cw.visit(
                 Opcodes.V11,
                 Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
-                _dsfInternalName,
+                internalName,
                 null,
                 JvmConstants.INTNAME_OBJECT.value(),
                 null);
-        var _dsfFieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-        var _dsfStaticFieldValues = new TOrderedMap<String, Object>();
-        for (var _dsfSpec : specs) {
-            var _dsfPrefix = DefSetFunctionsEmitter.functionFieldPrefix(_dsfSpec.methodName());
-            for (int _dsfI = 0; _dsfI < _dsfSpec.externals().size(); _dsfI++) {
-                var _dsfEntry = _dsfSpec.externals().get(_dsfI);
-                var _dsfName = _dsfPrefix + Prefixes.EXTERNAL_PREFIX + _dsfI;
-                var _dsfExternal = _dsfEntry.external();
-                var _dsfDesc = JavaDataDescriptor.fromClass(_dsfExternal.externalHostClass());
-                var _dsfPrev = _dsfFieldDescriptors.put(_dsfName, _dsfDesc);
-                if (_dsfPrev != null && !_dsfPrev.value().equals(_dsfDesc.value())) {
-                    throw new AssertionError("DefSetFunctionsEmitter::emit: descriptor conflict for " + _dsfName);
+        var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
+        var staticFieldValues = new TOrderedMap<String, Object>();
+        for (var dsfSpec : specs) {
+            var prefix = DefSetFunctionsEmitter.functionFieldPrefix(dsfSpec.methodName());
+            for (int i = 0; i < dsfSpec.externals().size(); i++) {
+                var entry = dsfSpec.externals().get(i);
+                var name = prefix + Prefixes.EXTERNAL_PREFIX + i;
+                var external = entry.external();
+                var desc = JavaDataDescriptor.fromClass(external.externalHostClass());
+                var prev = fieldDescriptors.put(name, desc);
+                if (prev != null && !prev.value().equals(desc.value())) {
+                    throw new AssertionError("DefSetFunctionsEmitter::emit: descriptor conflict for " + name);
                 }
-                _dsfStaticFieldValues.put(_dsfName, _dsfExternal.externalHostValue());
+                staticFieldValues.put(name, external.externalHostValue());
             }
         }
-        for (var _dsfFdEntry : _dsfFieldDescriptors.entrySet()) {
-            _dsfCw.visitField(
+        for (var fdEntry : fieldDescriptors.entrySet()) {
+            cw.visitField(
                             Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                            _dsfFdEntry.getKey(),
-                            _dsfFdEntry.getValue().value(),
+                            fdEntry.getKey(),
+                            fdEntry.getValue().value(),
                             null,
                             null)
                     .visitEnd();
         }
-        _dsfCw.visitField(
+        cw.visitField(
                         Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
                         EvalRootEmitter.EXPR_CONTEXT_FIELD,
                         EvalRootEmitter.DESC_EXPR_CONTEXT.value(),
                         null,
                         null)
                 .visitEnd();
-        for (var _dsfSpec : specs) {
-            var _efmMethodName = _dsfSpec.methodName();
-            var _efmPrefix = DefSetFunctionsEmitter.functionFieldPrefix(_dsfSpec.methodName());
-            var _efmArgDescs = new TList<JavaDataDescriptor>(_dsfSpec.argSlots().size());
-            for (var _efmS : _dsfSpec.argSlots()) _efmArgDescs.add(_efmS.jvmDesc());
-            var _efmMv = _dsfCw.visitMethod(
+        for (var spec : specs) {
+            var methodName = spec.methodName();
+            var efmPrefix = DefSetFunctionsEmitter.functionFieldPrefix(spec.methodName());
+            var argDescs = new TList<JavaDataDescriptor>(spec.argSlots().size());
+            for (var s : spec.argSlots()) argDescs.add(s.jvmDesc());
+            var mv = cw.visitMethod(
                     Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                    _efmMethodName,
-                    JavaMethodDescriptor.fromParts(_dsfSpec.retDesc(), _efmArgDescs)
-                            .value(),
+                    methodName,
+                    JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs).value(),
                     null,
                     null);
-            var _efmTarget = new TargetDynamic(new Counter());
-            int _efmReservedLocals = 0;
-            for (var _efmSlot : _dsfSpec.argSlots())
-                _efmReservedLocals += _efmSlot.jvmDesc().slotWidth();
-            var _efmCtx = new EmitCtx(_dsfInternalName, Math.max(1, _efmReservedLocals), _efmPrefix);
-            var _efmLoc = CodeLoc.Infallible.INSTANCE;
-            var _efmSeq = JavaBytecodeUtils.seq();
-            var _efmOwnerInternal = JavaInternalName.of(_dsfInternalName);
-            for (int _efmI = 0; _efmI < _dsfSpec.externals().size(); _efmI++) {
-                var _efmEntry = _dsfSpec.externals().get(_efmI);
-                var _efmFieldName = _efmPrefix + Prefixes.EXTERNAL_PREFIX + _efmI;
-                var _efmFieldDesc =
-                        JavaDataDescriptor.fromClass(_efmEntry.external().externalHostClass());
-                _efmSeq.add(
-                        JavaBytecodeUtils.accessStaticField(_efmLoc, _efmOwnerInternal, _efmFieldName, _efmFieldDesc));
-                _efmSeq.add(new CodeDynamic(_efmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, _efmEntry.key())));
+            var target = new TargetDynamic();
+            int reservedLocals = 0;
+            for (var slot : spec.argSlots()) reservedLocals += slot.jvmDesc().slotWidth();
+            var ctx = new EmitCtx(internalName, Math.max(1, reservedLocals), efmPrefix);
+            var loc = CodeLoc.Infallible.INSTANCE;
+            var seq = JavaBytecodeUtils.seq();
+            var ownerInternal = JavaInternalName.of(internalName);
+            for (int efmI = 0; efmI < spec.externals().size(); efmI++) {
+                var efmEntry = spec.externals().get(efmI);
+                var fieldName = efmPrefix + Prefixes.EXTERNAL_PREFIX + efmI;
+                var fieldDesc = JavaDataDescriptor.fromClass(efmEntry.external().externalHostClass());
+                seq.add(JavaBytecodeUtils.accessStaticField(loc, ownerInternal, fieldName, fieldDesc));
+                seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, efmEntry.key())));
             }
-            _efmTarget.emit(_efmSeq, _efmCtx, _dsfSpec.bodyCode());
-            _efmSeq.add(JavaBytecodeUtils.inst(_efmLoc, _dsfSpec.retDesc().returnOpcode()));
-            var _efmInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
-            for (var _efmSlot : _dsfSpec.argSlots()) {
-                _efmInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
-                        _efmSlot.id(), _efmSlot.jvmDesc().isWide()));
+            target.emit(seq, ctx, spec.bodyCode());
+            seq.add(JavaBytecodeUtils.inst(loc, spec.retDesc().returnOpcode()));
+            var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
+            for (var efmSlot : spec.argSlots()) {
+                initialSlots.add(new JavaBytecodeSequence.InitialSlot(
+                        efmSlot.id(), efmSlot.jvmDesc().isWide()));
             }
-            JavaBytecodeUtils.renderMethodTyped(_efmSeq, _efmMv, _efmInitialSlots);
+            JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
         }
-        _dsfCw.visitEnd();
-        var _dsfEmitted = new DefSetFunctionsEmitter.EmittedFunctions(
-                _dsfBinaryName, _dsfInternalName, _dsfCw.toByteArray(), _dsfStaticFieldValues);
+        cw.visitEnd();
+        var emitted = new DefSetFunctionsEmitter.EmittedFunctions(
+                binaryName, internalName, cw.toByteArray(), staticFieldValues);
         for (var func : contributors) {
-            func.compiledClassName = Opt.some(_dsfEmitted.binaryName());
-            func.compiledBytecode = Opt.some(_dsfEmitted.bytecode());
-            func.compiledStaticFieldValues = Opt.some(_dsfEmitted.staticFieldValues());
+            func.compiledClassName = Opt.some(emitted.binaryName());
+            func.compiledBytecode = Opt.some(emitted.bytecode());
+            func.compiledStaticFieldValues = Opt.some(emitted.staticFieldValues());
             func.functionSpec = Opt.none();
         }
-        return Opt.some(_dsfEmitted);
+        return Opt.some(emitted);
     }
 
     @Override

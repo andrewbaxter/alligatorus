@@ -7,9 +7,7 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
@@ -22,21 +20,13 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectBindViaTarget;
+import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectInitialBindDynamic;
-import compilerxyz.main.gen.AspectType;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -46,9 +36,7 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
-import compilerxyz.main.gen.GenInterfaceCell;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataDefSetInterfaceCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
@@ -62,15 +50,7 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinLight(uniqueId = 6004L)
-public record TypeSourceInterfaceDynamic(InterfaceCell cell)
-        implements TypeAspect,
-                AspectInitialBindDynamic,
-                Type,
-                AspectArtifact,
-                AspectBind,
-                AspectConsumeDynamic,
-                AspectDropDynamicLight,
-                AspectType {
+public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, TypeAspect, Type {
 
     @Override
     public Unique typeAspectId() {
@@ -92,16 +72,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell)
     }
 
     @Override
-    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromInternalName(cell.jvmInternalName(xx));
-    }
-
-    @Override
-    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public String typeDesc() {
         return cell.description().optUnwrapOr("interface");
     }
@@ -109,26 +79,32 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell)
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectInitialBindDynamicSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectType.AspectId)) {
+            return Opt.some(AspectTypeSourceInterfaceDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(new AspectConsumeDynamicSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(AspectBindViaTarget.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE);
         }
         if (key.equals(cell.identity)
                 || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
-                || key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectType.AspectId)) {
+                || key.equals(GenAspectDropDynamicLight.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.SOURCE_INTERFACE_DYNAMIC;
     }
 
     private static Artifact nullArtifact() {
@@ -257,20 +233,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell)
     };
 
     @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindViaTarget(xx, loc, cv);
-    }
-
-    @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        if (dynCast.requireValue("dyn").optIsSome())
-            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
-        return EResult.err(loc, "TypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
-    }
-
-    @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         return destType.typeAspect(xx, cell.identity).optIsSome()
                 || destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
@@ -304,16 +266,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell)
     }
 
     @Override
-    public Type aspectTypeType(Value value) {
-        return GenInterfaceCell.dynamicType();
-    }
-
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -331,6 +283,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell)
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(AspectArtifactSourceInterfaceDynamic.INSTANCE.aspectArtifactExporter());
     }
 }

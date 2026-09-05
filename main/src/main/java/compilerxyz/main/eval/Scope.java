@@ -82,9 +82,9 @@ public final class Scope {
                                     labeled.label, labeled.isBlock, labeled.end, labeled.landing, labeled.emission);
                         case ScopeLevel.Catch catch_ -> new ScopeLevel.Catch(catch_.handler, catch_.emission);
                         case ScopeLevel.Finally finally_ -> {
-                            var _f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
-                            _f.body = finally_.body;
-                            yield _f;
+                            var f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
+                            f.body = finally_.body;
+                            yield f;
                         }
                     });
         }

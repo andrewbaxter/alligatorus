@@ -11,5 +11,5 @@ import compilerxyz.prelude.annotations.BuiltinPath;
 @BuiltinFull(uniqueId = 1017L, identityId = 4017L)
 @BuiltinPath("eval.aspect_set")
 public interface AspectSet extends Aspect {
-    EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue self_, CodeValue value);
+    EResult<CodeValue> aspectSetSet(ExprContext xx, QExprId loc, CodeValue self, CodeValue value);
 }

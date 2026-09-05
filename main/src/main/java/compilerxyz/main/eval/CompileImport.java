@@ -103,18 +103,18 @@ public final class CompileImport {
                 var evalRootLoc = rootExpr.loc();
                 var evalVx = new EvalContext(cix);
                 var evalRootScope = new Scope(evalVx);
-                var evalTarget = new TargetDynamic(evalVx.nextLocalId);
+                var evalTarget = new TargetDynamic();
                 var evalXx = new ExprContext(
                         evalRootScope, evalTarget, evalVx, importState, Opt.some(new TypeStringConst()));
-                var _bindingRes = GenBuiltinTree.installRoot(evalXx, evalRootLoc, importState);
-                if (_bindingRes.hasErrors()) {
-                    evalResult = new EvalOutcome.Err(_bindingRes.errorsOpt().optUnwrap());
+                var res = GenBuiltinTree.installRoot(evalXx, evalRootLoc, importState);
+                if (res.hasErrors()) {
+                    evalResult = new EvalOutcome.Err(res.errorsOpt().optUnwrap());
                     break evalBlock;
                 }
-                var _rootBinding = _bindingRes.requireValue("Eval::eval installRoot");
-                evalXx.vx.ix.builtinScopeRootBinding = Opt.some(_rootBinding);
+                var binding = res.requireValue("Eval::eval installRoot");
+                evalXx.vx.ix.builtinScopeRootBinding = Opt.some(binding);
                 var scopeEntries = new TMap<ConstKey, Binding>();
-                scopeEntries.put(new ConstKey.Str(Eval.KEY_BUILTINS), _rootBinding);
+                scopeEntries.put(new ConstKey.Str(Eval.KEY_BUILTINS), binding);
                 for (var entry : scopeEntries.entrySet()) {
                     evalRootScope.pushNamed(entry.getKey(), entry.getValue());
                 }
@@ -232,78 +232,77 @@ public final class CompileImport {
                         evalResult = new EvalOutcome.Ok(fallbackValue.optUnwrap(), evalVx.logs, false);
                         break evalBlock;
                     }
-                    var _ereInternalName = EvalRootEmitter.toInternalName(evalBinaryName);
-                    var _ereCw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
+                    var internalName = EvalRootEmitter.toInternalName(evalBinaryName);
+                    var cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS) {
                         @Override
                         protected String getCommonSuperClass(String type1, String type2) {
                             return JvmConstants.INTNAME_OBJECT.value();
                         }
                     };
-                    _ereCw.visit(
+                    cw.visit(
                             Opcodes.V11,
                             Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER,
-                            _ereInternalName,
+                            internalName,
                             null,
                             JvmConstants.INTNAME_OBJECT.value(),
                             null);
-                    var _ereFieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
-                    _ereFieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
-                    var _ereExternalFieldNames = new TList<String>(evalVx.externals.size());
-                    var _ereExternalFieldDescs = new TList<JavaDataDescriptor>(evalVx.externals.size());
-                    for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-                        var _ereEntry = evalVx.externals.get(_ereI);
-                        var _ereFieldName = Prefixes.EXTERNAL_PREFIX + _ereI;
-                        _ereExternalFieldNames.add(_ereFieldName);
-                        var _ereDesc = JavaDataDescriptor.fromClass(
-                                _ereEntry.external().externalHostClass());
-                        _ereExternalFieldDescs.add(_ereDesc);
-                        _ereFieldDescriptors.put(_ereFieldName, _ereDesc);
+                    var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
+                    fieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
+                    var externalFieldNames = new TList<String>(evalVx.externals.size());
+                    var externalFieldDescs = new TList<JavaDataDescriptor>(evalVx.externals.size());
+                    for (int ereI = 0; ereI < evalVx.externals.size(); ereI++) {
+                        var ereEntry = evalVx.externals.get(ereI);
+                        var fieldName = Prefixes.EXTERNAL_PREFIX + ereI;
+                        externalFieldNames.add(fieldName);
+                        var desc =
+                                JavaDataDescriptor.fromClass(ereEntry.external().externalHostClass());
+                        externalFieldDescs.add(desc);
+                        fieldDescriptors.put(fieldName, desc);
                     }
-                    for (var _ereFieldEntry : _ereFieldDescriptors.entrySet()) {
-                        _ereCw.visitField(
+                    for (var fieldEntry : fieldDescriptors.entrySet()) {
+                        cw.visitField(
                                         Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC,
-                                        _ereFieldEntry.getKey(),
-                                        _ereFieldEntry.getValue().value(),
+                                        fieldEntry.getKey(),
+                                        fieldEntry.getValue().value(),
                                         null,
                                         null)
                                 .visitEnd();
                     }
-                    var _ereMdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
-                    var _ereMv = _ereCw.visitMethod(
-                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", _ereMdescRun.value(), null, null);
-                    var _ereCtx = new EmitCtx(_ereInternalName, 0);
-                    var _ereSeq = new JavaBytecodeSequence();
-                    var _ereOwnerInternal = JavaInternalName.of(_ereInternalName);
-                    for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-                        var _ereEntry = evalVx.externals.get(_ereI);
-                        _ereSeq.add(JavaBytecodeUtils.accessStaticField(
+                    var mdescRun = JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of());
+                    var mv = cw.visitMethod(
+                            Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "run", mdescRun.value(), null, null);
+                    var ctx = new EmitCtx(internalName, 0);
+                    var ereSeq = new JavaBytecodeSequence();
+                    var ownerInternal = JavaInternalName.of(internalName);
+                    for (int i = 0; i < evalVx.externals.size(); i++) {
+                        var entry = evalVx.externals.get(i);
+                        ereSeq.add(JavaBytecodeUtils.accessStaticField(
                                 CodeLoc.Infallible.INSTANCE,
-                                _ereOwnerInternal,
-                                _ereExternalFieldNames.get(_ereI),
-                                _ereExternalFieldDescs.get(_ereI)));
-                        _ereSeq.add(new CodeDynamic(
-                                CodeLoc.Infallible.INSTANCE,
-                                new JavaBytecodeStoreLoad(Opcodes.ASTORE, _ereEntry.key())));
+                                ownerInternal,
+                                externalFieldNames.get(i),
+                                externalFieldDescs.get(i)));
+                        ereSeq.add(new CodeDynamic(
+                                CodeLoc.Infallible.INSTANCE, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
                     }
-                    evalTarget.emit(_ereSeq, _ereCtx, stage1Code.optUnwrap());
-                    _ereSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-                    JavaBytecodeUtils.renderMethod(_ereSeq, _ereMv, TList.of());
-                    _ereCw.visitEnd();
-                    var _ereBytecode = _ereCw.toByteArray();
-                    var _ereStaticFields = new TOrderedMap<String, Object>();
-                    for (int _ereI = 0; _ereI < evalVx.externals.size(); _ereI++) {
-                        _ereStaticFields.put(
-                                _ereExternalFieldNames.get(_ereI),
-                                evalVx.externals.get(_ereI).external().externalHostValue());
+                    evalTarget.emit(ereSeq, ctx, stage1Code.optUnwrap());
+                    ereSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
+                    JavaBytecodeUtils.renderMethod(ereSeq, mv, TList.of());
+                    cw.visitEnd();
+                    var bytecode = cw.toByteArray();
+                    var staticFields = new TOrderedMap<String, Object>();
+                    for (int i = 0; i < evalVx.externals.size(); i++) {
+                        staticFields.put(
+                                externalFieldNames.get(i),
+                                evalVx.externals.get(i).external().externalHostValue());
                     }
                     if (evalXx.vx.ix.classLoader.optIsNone()) {
                         evalXx.vx.ix.classLoader = Opt.some(new DefinitionSetClassLoader(
                                 evalXx.vx.ix.gx, DefinitionSetClassLoader.class.getClassLoader(), dependencyLoaders));
                     }
                     var loader = evalXx.vx.ix.classLoader.optUnwrap();
-                    loader.registerClass(evalBinaryName, _ereBytecode);
+                    loader.registerClass(evalBinaryName, bytecode);
                     var rootStaticFields = new TOrderedMap<String, Object>();
-                    rootStaticFields.putAll(_ereStaticFields);
+                    rootStaticFields.putAll(staticFields);
                     rootStaticFields.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, evalXx);
                     loader.registerExternals(evalBinaryName, rootStaticFields);
                     Class<?> rootClass;
@@ -379,7 +378,7 @@ public final class CompileImport {
                         }
                         var vx = new EvalContext(cix);
                         var rootScope = new Scope(vx);
-                        var target = new TargetDynamic(vx.nextLocalId);
+                        var target = new TargetDynamic();
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
                         var exportErrors = new TList<ExprErr>();
                         var exportArt = Artifactable.exportArtifact(xx, rootLoc, ok.value());

@@ -7,7 +7,6 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -20,9 +19,6 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectFunction;
@@ -39,11 +35,10 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6143L)
-public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int variantIndex)
-        implements Type, AspectArtifact, AspectBind, AspectFunction {
+public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type, int variantIndex) implements Aspect, Type {
 
-    private TypeSourceUnionNewDynamic asCtor() {
-        return new TypeSourceUnionNewDynamic(type_, variantIndex);
+    TypeSourceUnionNewDynamic asCtor() {
+        return new TypeSourceUnionNewDynamic(type, variantIndex);
     }
 
     @Override
@@ -56,35 +51,22 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectFunction.AspectId)) {
+        if (key.equals(GenAspectFunction.AspectId)) {
+            return Opt.some(new AspectFunctionTypeSourceUnionNewConst(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(new AspectBindTypeSourceUnionNewConst(this));
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactTypeSourceUnionNewConst.INSTANCE);
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        return asCtor().aspectBindBind(xx, loc, cv);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-        return asCtor().aspectFunctionCall(xx, loc, function, argument);
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-        return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.SOURCE_UNION_NEW_CONST;
     }
 
     private static Artifact nullArtifact() {
@@ -96,7 +78,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             if (self instanceof TypeSourceUnionNewDynamic dyn) {
-                self = new TypeTypeSourceUnionNewConst(dyn.type_(), dyn.variantIndex());
+                self = new TypeTypeSourceUnionNewConst(dyn.type(), dyn.variantIndex());
             }
             if (!(self instanceof TypeTypeSourceUnionNewConst uc)) {
                 return EResult.err(
@@ -104,7 +86,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                         "TypeTypeSourceUnionNewConst::exporterRootDelegateSelfExport: expected"
                                 + " TypeTypeSourceUnionNewConst, got " + self.getClass());
             }
-            var tu = uc.type_;
+            var tu = uc.type;
             var variantIndex = uc.variantIndex;
             if (variantIndex < 0 || variantIndex >= tu.variants.size()) {
                 return EResult.err(
@@ -184,7 +166,7 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
                 GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_NEW_CONST_IDENTITY,
                 TypeTypeSourceUnionNewConst.class);
         return oOpt.optIsSome()
-                && type_.typeIsEqual(xx, oOpt.optUnwrap().type_)
+                && type.typeIsEqual(xx, oOpt.optUnwrap().type)
                 && variantIndex == oOpt.optUnwrap().variantIndex;
     }
 
@@ -206,6 +188,6 @@ public record TypeTypeSourceUnionNewConst(TypeSourceUnionDynamic type_, int vari
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(AspectArtifactTypeSourceUnionNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

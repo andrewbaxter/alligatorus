@@ -33,8 +33,8 @@ public final class BuiltinTreeGen {
             ClassName.get("compilerxyz.main.eval.value.argrecord", "TypeArgumentRecord");
     private static final ClassName ARGUMENT_RECORD_BINDING =
             ClassName.get("compilerxyz.main.eval.value.argrecord", "ArgumentRecordBinding");
-    public static final CodeBlock TYPE_OF_TYPES_EXPR = CodeBlock.of(
-            "$T.plainTypeType()", ClassName.get("compilerxyz.main.eval.value.object_", "ValueObjectConst"));
+    public static final CodeBlock TYPE_OF_TYPES_EXPR =
+            CodeBlock.of("$T.plainTypeType()", ClassName.get("compilerxyz.main.eval.value.object", "ValueObjectConst"));
     private static final ClassName TYPE_UNIQUE_CONST =
             ClassName.get("compilerxyz.main.eval.value.unique", "TypeUniqueConst");
     public static final CodeBlock TUC_TYPE_EXPR = CodeBlock.of("new $T()", TYPE_UNIQUE_CONST);

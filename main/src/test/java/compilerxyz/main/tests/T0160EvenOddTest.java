@@ -127,7 +127,7 @@ public final class T0160EvenOddTest {
                         mb.return_(mb.constEvalCode(mb.call(
                                 mb.evalConstEval(),
                                 mb.recordOf(TList.of(
-                                        new TestMb.RecordPair("xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
                                         new TestMb.RecordPair(
                                                 "staged",
                                                 mb.stage(mb.return_(mb.graft(mb.scopeUse("underlying_code_"))))))))))));
@@ -1002,7 +1002,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                         "initial_")),
                                                                                                                                                                         mb
-                                                                                                                                                                                .as_(
+                                                                                                                                                                                .as(
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .literalNull(),
                                                                                                                                                                                         mb
@@ -1387,7 +1387,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         .scopeUse(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "val_"))),
                                                                                                                                                                                                                                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .as_(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .as(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         .num(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 2.0),
@@ -2327,7 +2327,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                                         .RecordPair(
                                                                                                                                                                                                                                                                                                                                         "drop_modified",
                                                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                                                .as_(
+                                                                                                                                                                                                                                                                                                                                                .as(
                                                                                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                                                                                 .operatorEq(
                                                                                                                                                                                                                                                                                                                                                                         mb
@@ -2875,7 +2875,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                         .scopeUse(
                                                                                                                                                                                                                                                                                                                 "ref_val_")))),
                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                        .as_(
+                                                                                                                                                                                                                                                        .as(
                                                                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                                                                         .num(
                                                                                                                                                                                                                                                                                 2.0),
@@ -2968,7 +2968,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                                 .literalNull())),
                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                .as_(
+                                                                                                                                                                                                                                                                                .as(
                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                 .num(
                                                                                                                                                                                                                                                                                                         2.0),
@@ -3047,7 +3047,7 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                 .of(
                                                                                                                                                                                         new TestMb
                                                                                                                                                                                                 .RecordPair(
-                                                                                                                                                                                                "xx_",
+                                                                                                                                                                                                "xx",
                                                                                                                                                                                                 mb
                                                                                                                                                                                                         .field(
                                                                                                                                                                                                                 mb
@@ -3145,11 +3145,11 @@ public final class T0160EvenOddTest {
                                         mb.recordOf(
                                                 TList.of(
                                                         new TestMb.RecordPair(
-                                                                "xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                                                                "xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
                                                         new TestMb.RecordPair(
                                                                 "staged",
                                                                 mb.stage(mb.throw_(mb.str("drop boom"))))))))))),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("bound")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -3185,7 +3185,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("bound")))));
         var res = compileOk(modules);
         assertTrue(res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
@@ -3200,8 +3200,8 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
-                        mb.set(mb.scopeUse("a"), mb.as_(mb.num(4.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.set(mb.scopeUse("a"), mb.as(mb.num(4.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("set-done")))));
         compileOk(modules);
     }
@@ -3215,7 +3215,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("b", mb.scopeUse("a")),
                         mb.call(mb.log(), mb.str("used")))));
         var res = compileOk(modules);
@@ -3231,7 +3231,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("cast-const")))));
         var res = compileOk(modules);
         assertTrue(res.logs().size() >= 1, () -> "expected at least one log entry, got " + res.logs());
@@ -3246,7 +3246,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.bind("b", mb.operatorAdd(mb.scopeUse("a"), mb.num(3.0))),
                         mb.call(mb.log(), mb.str("add-const")))));
         var res = compileOk(modules);
@@ -3262,8 +3262,8 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
-                        mb.bind("b", mb.as_(mb.num(4.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("b", mb.as(mb.num(4.0), mb.scopeUse("even_type"))),
                         mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.scopeUse("b"))),
                         mb.call(mb.log(), mb.str("add-evenodd")))));
         var res = compileOk(modules);
@@ -3279,7 +3279,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                         mb.set(mb.scopeUse("a"), mb.num(4.0)),
                         mb.call(mb.log(), mb.str("set-const")))));
         var res = compileOk(modules);
@@ -3295,8 +3295,8 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
-                        mb.set(mb.scopeUse("a"), mb.as_(mb.num(4.0), mb.typesLong())),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.set(mb.scopeUse("a"), mb.as(mb.num(4.0), mb.typesLong())),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -3312,11 +3312,11 @@ public final class T0160EvenOddTest {
     }
 
     private static SourceExpr evenCast(TestMb mb, double v) {
-        return mb.as_(mb.num(v), mb.scopeUse("even_type"));
+        return mb.as(mb.num(v), mb.scopeUse("even_type"));
     }
 
     private static SourceExpr dynTrue(TestMb mb) {
-        return mb.operatorEq(mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+        return mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong()));
     }
 
     private static void assertParityMergeError(TMap<String, SourceModule> modules) {
@@ -3590,7 +3590,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -3617,7 +3617,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -3640,7 +3640,7 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.as_(mb.num(2.0), mb.typesLong()), mb.scopeUse("even_type"))),
+                        mb.bind("a", mb.as(mb.as(mb.num(2.0), mb.typesLong()), mb.scopeUse("even_type"))),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
@@ -3668,7 +3668,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -3693,7 +3693,7 @@ public final class T0160EvenOddTest {
                         mb.bind("a", evenCast(mb, 2.0)),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -3810,8 +3810,8 @@ public final class T0160EvenOddTest {
                 new SourceModule.V1(moduleSeq(
                         mb,
                         bindEvenOddType(mb, "EvenOdd"),
-                        mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
-                        mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.as_(mb.num(3.0), mb.typesLong()))),
+                        mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
+                        mb.bind("c", mb.operatorAdd(mb.scopeUse("a"), mb.as(mb.num(3.0), mb.typesLong()))),
                         mb.call(mb.log(), mb.str("unreachable")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));

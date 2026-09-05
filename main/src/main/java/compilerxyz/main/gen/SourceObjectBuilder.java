@@ -17,37 +17,37 @@ import compilerxyz.prelude.util.TOrderedMap;
 
 @BuiltinFull(uniqueId = 6347L)
 public final class SourceObjectBuilder {
-    public final TypeSourceObjectDynamic type_;
+    public final TypeSourceObjectDynamic type;
 
     public final TypeSourceObjectNewDynamic new_;
 
-    public SourceObjectBuilder(TypeSourceObjectDynamic type_) {
-        this.type_ = type_;
-        this.new_ = new TypeSourceObjectNewDynamic(type_);
+    public SourceObjectBuilder(TypeSourceObjectDynamic type) {
+        this.type = type;
+        this.new_ = new TypeSourceObjectNewDynamic(type);
     }
 
-    public void set_description(String description) {
-        if (this.type_.description.optIsSome()) {
+    public void setDescription(String description) {
+        if (this.type.description.optIsSome()) {
             throw new IllegalStateException("Object already has a description");
         }
-        this.type_.description = Opt.some(description);
+        this.type.description = Opt.some(description);
     }
 
-    public void set_inner(Type typeRef) {
-        if (this.type_.underlyingType.optIsSome()) {
+    public void setInner(Type typeRef) {
+        if (this.type.underlyingType.optIsSome()) {
             throw new IllegalStateException("Object already has an inner type");
         }
-        this.type_.underlyingType = Opt.some(typeRef);
+        this.type.underlyingType = Opt.some(typeRef);
     }
 
     public SourceObjectMethodResult func(String name) {
-        var dtData = this.type_;
+        var dtData = this.type;
         var method = new SourceDataMethodData(name, "_" + dtData.methods.size());
         dtData.methods.add(method);
         return new SourceObjectMethodResult(method);
     }
 
-    public void impl_interface(InterfaceCell ifaceRef, TOrderedMap<ConstKey, StagedExprCell> record) {
+    public void implInterface(InterfaceCell ifaceRef, TOrderedMap<ConstKey, StagedExprCell> record) {
         var impls = new TOrderedMap<ConstKey, Expr>();
         for (var entry : record.entrySet()) {
             impls.put(entry.getKey(), mustCast(Expr.class, entry.getValue().value()));
@@ -57,6 +57,6 @@ public final class SourceObjectBuilder {
                 throw new IllegalStateException("Missing implementation for interface method '" + name + "'");
             }
         }
-        this.type_.interfaceImpls.add(new SourceObjectInterfaceImplData(ifaceRef, impls));
+        this.type.interfaceImpls.add(new SourceObjectInterfaceImplData(ifaceRef, impls));
     }
 }

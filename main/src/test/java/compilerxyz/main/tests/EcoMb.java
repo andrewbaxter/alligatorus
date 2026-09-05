@@ -29,7 +29,7 @@ public final class EcoMb {
     }
 
     public SourceExpr intOf(double value) {
-        return mb.as_(mb.num(value), mb.typesInt());
+        return mb.as(mb.num(value), mb.typesInt());
     }
 
     public SourceExpr let(String name, SourceExpr value) {

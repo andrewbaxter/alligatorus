@@ -15,16 +15,14 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectArtifactObjectConst;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.aspect.AspectTypeObjectConstData;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -33,29 +31,29 @@ import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6138L)
-public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_) implements Type, AspectArtifact, AspectType {
+public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
-        return type_.description.optUnwrapOr("object(" + type_.name.optUnwrapOr("?") + ")");
+        return type.description.optUnwrapOr("object(" + type.name.optUnwrapOr("?") + ")");
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectType.AspectId)) {
+            return Opt.some(AspectTypeObjectConstData.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactObjectConst.INSTANCE);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_CONST_IDENTITY)
-                || key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectType.AspectId)) {
+                || key.equals(GenAspectArtifact.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.OBJECT_CONST;
     }
 
     @Override
@@ -68,7 +66,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_) implement
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var oc = MustCast.mustCast(TypeTypeSourceObjectConst.class, self);
-            var objRes = Artifactable.exportArtifact(xx, loc, oc.type_);
+            var objRes = Artifactable.exportArtifact(xx, loc, oc.type);
             if (objRes.hasErrors()) return objRes.reerr();
             var body =
                     new ArtifactDataSourceObjectType(objRes.requireValue("TypeTypeSourceObjectConst::export object"));
@@ -95,12 +93,6 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_) implement
     };
 
     @Override
-    public Type aspectTypeType(Value value) {
-        var voc = MustCast.mustCast(ValueObjectConst.class, value);
-        return MustCast.mustCast(Type.class, voc.data());
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -113,7 +105,7 @@ public record TypeTypeSourceObjectConst(TypeSourceObjectDynamic type_) implement
                 other,
                 GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_CONST_IDENTITY,
                 TypeTypeSourceObjectConst.class);
-        return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
+        return oOpt.optIsSome() && type.typeIsEqual(xx, oOpt.optUnwrap().type);
     }
 
     @Override

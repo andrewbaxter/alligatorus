@@ -28,19 +28,19 @@ public final class T0056UnsignedMatrixTest {
         }
 
         SourceExpr ubyteV(double v) {
-            return mb.as_(mb.num(v), mb.typesUbyte());
+            return mb.as(mb.num(v), mb.typesUbyte());
         }
 
         SourceExpr ushortV(double v) {
-            return mb.as_(mb.num(v), mb.builtin("types", "ushort"));
+            return mb.as(mb.num(v), mb.builtin("types", "ushort"));
         }
 
         SourceExpr uintV(double v) {
-            return mb.as_(mb.num(v), mb.typesUint());
+            return mb.as(mb.num(v), mb.typesUint());
         }
 
         SourceExpr ulongV(double v) {
-            return mb.as_(mb.num(v), mb.typesUlong());
+            return mb.as(mb.num(v), mb.typesUlong());
         }
 
         void num(SourceExpr expr, String exp) {
@@ -143,13 +143,13 @@ public final class T0056UnsignedMatrixTest {
     public void test00400Conversions() {
         var mb = new TestMb();
         var c = new Cases(mb);
-        c.num(mb.as_(c.ubyteV(200), mb.typesUint()), "200");
-        c.num(mb.as_(c.ushortV(40000), mb.typesUint()), "40000");
-        c.num(mb.as_(c.uintV(3000000000.0), mb.typesUlong()), "3000000000");
-        c.num(mb.as_(c.ubyteV(200), mb.typesInt()), "200");
-        c.num(mb.as_(c.uintV(3000000000.0), mb.typesLong()), "3000000000");
-        c.num(mb.as_(mb.as_(mb.num(-1.0), mb.typesByte()), mb.typesUbyte()), "255");
-        c.num(mb.as_(mb.as_(mb.num(-1.0), mb.typesInt()), mb.typesUint()), "4294967295");
+        c.num(mb.as(c.ubyteV(200), mb.typesUint()), "200");
+        c.num(mb.as(c.ushortV(40000), mb.typesUint()), "40000");
+        c.num(mb.as(c.uintV(3000000000.0), mb.typesUlong()), "3000000000");
+        c.num(mb.as(c.ubyteV(200), mb.typesInt()), "200");
+        c.num(mb.as(c.uintV(3000000000.0), mb.typesLong()), "3000000000");
+        c.num(mb.as(mb.as(mb.num(-1.0), mb.typesByte()), mb.typesUbyte()), "255");
+        c.num(mb.as(mb.as(mb.num(-1.0), mb.typesInt()), mb.typesUint()), "4294967295");
         check(c);
     }
 
@@ -164,8 +164,7 @@ public final class T0056UnsignedMatrixTest {
                         mb.call(
                                 mb.field(
                                         mb.operatorAdd(
-                                                mb.as_(mb.num(1.0), mb.typesUint()),
-                                                mb.as_(mb.num(1.0), mb.typesInt())),
+                                                mb.as(mb.num(1.0), mb.typesUint()), mb.as(mb.num(1.0), mb.typesInt())),
                                         mb.str("to_string")),
                                 mb.tupleOf()))));
         var gx = Helpers.newGx(modules);

@@ -79,11 +79,12 @@ public final class SourceObjectEmitter {
             retDesc =
                     JavaDataDescriptor.create(hmd.value().substring(hmd.value().indexOf(')') + 1));
         } else if (ifaceMethod.retType.optIsSome()) {
-            if (!(ifaceMethod.retType.optUnwrap() instanceof AspectConsumeDynamic retConsume)) {
+            var retConsume = GenAspectConsumeDynamic.getMaybe(xx, ifaceMethod.retType.optUnwrap());
+            if (retConsume.optIsNone()) {
                 throw new IllegalStateException(
                         "SourceObjectEmitter.interfaceMethodMethodDescriptor: retType does not implement AspectConsumeDynamic");
             }
-            retDesc = retConsume.aspectConsumeDynamicJvmClass(xx);
+            retDesc = retConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
         } else {
             retDesc = JavaDataDescriptor.DESC_VOID;
         }

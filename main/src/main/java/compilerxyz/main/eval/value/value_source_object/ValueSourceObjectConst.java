@@ -11,7 +11,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.gen.GenAspectLift;

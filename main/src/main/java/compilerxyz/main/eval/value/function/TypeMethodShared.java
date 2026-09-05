@@ -57,22 +57,22 @@ public final class TypeMethodShared {
         var args = argsDynRes.requireValue(what + "::call args");
         var paramDescs = new TList<JavaDataDescriptor>();
         {
-            var _pd = descriptor.value();
-            if (_pd.isEmpty() || _pd.charAt(0) != '(') {
-                throw new IllegalStateException("JavaMethodDescriptor missing '(': " + _pd);
+            var pd = descriptor.value();
+            if (pd.isEmpty() || pd.charAt(0) != '(') {
+                throw new IllegalStateException("JavaMethodDescriptor missing '(': " + pd);
             }
-            int _pdi = 1;
-            while (_pdi < _pd.length() && _pd.charAt(_pdi) != ')') {
-                int _pdStart = _pdi;
-                while (_pdi < _pd.length() && _pd.charAt(_pdi) == '[') _pdi++;
-                char _pdc = _pd.charAt(_pdi);
-                if (_pdc == 'L') {
-                    while (_pdi < _pd.length() && _pd.charAt(_pdi) != ';') _pdi++;
-                    _pdi++;
+            int pdi = 1;
+            while (pdi < pd.length() && pd.charAt(pdi) != ')') {
+                int start = pdi;
+                while (pdi < pd.length() && pd.charAt(pdi) == '[') pdi++;
+                char pdc = pd.charAt(pdi);
+                if (pdc == 'L') {
+                    while (pdi < pd.length() && pd.charAt(pdi) != ';') pdi++;
+                    pdi++;
                 } else {
-                    _pdi++;
+                    pdi++;
                 }
-                paramDescs.add(JavaDataDescriptor.create(_pd.substring(_pdStart, _pdi)));
+                paramDescs.add(JavaDataDescriptor.create(pd.substring(start, pdi)));
             }
         }
         var paramOffset = needsEvalContext ? 1 : 0;
@@ -99,13 +99,5 @@ public final class TypeMethodShared {
         if (retStackRes.hasErrors()) return retStackRes.reerr();
         return EResult.ok(
                 retStackRes.requireValue(what + "::call ret stack").aspectStackValueDynamicToValue(xx, loc, seqCode));
-    }
-
-    public static EResult<CodeDynamic> toDynamic(QExprId loc, CodeValue cv, String what) {
-        var dynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        if (dynCast.requireValue("dyn").optIsSome())
-            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
-        return EResult.err(loc, what + "::toDynamic: CodeValue has no dynamic code");
     }
 }

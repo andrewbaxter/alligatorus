@@ -14,6 +14,7 @@ import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -26,6 +27,7 @@ public final class DefinitionSetBuilder {
         this.inner = inner;
     }
 
+    @BuiltinEvalContext
     public SourceFuncResult func(EvalContext vx, String name) {
         var data =
                 new SourceFunctionData(name, this.inner, DynRuntime.freshUnique(vx), "_" + this.inner.functions.size());
@@ -33,6 +35,7 @@ public final class DefinitionSetBuilder {
         return new SourceFuncResult(new TypeSourceFunctionConst(data));
     }
 
+    @BuiltinEvalContext
     public SourceObjectBuilder object(EvalContext vx, String name) {
         var identity = DynRuntime.freshUnique(vx);
         var data = new TypeSourceObjectDynamic(
@@ -45,6 +48,7 @@ public final class DefinitionSetBuilder {
         return new SourceObjectBuilder(data);
     }
 
+    @BuiltinEvalContext
     public SourceUnionBuilder union(EvalContext vx) {
         var identity = DynRuntime.freshUnique(vx);
         var data = new TypeSourceUnionDynamic(
@@ -53,6 +57,7 @@ public final class DefinitionSetBuilder {
         return new SourceUnionBuilder(data);
     }
 
+    @BuiltinEvalContext
     public SourceInterfaceResult interface_(EvalContext vx) {
         var identity = DynRuntime.freshUnique(vx);
         var iface = new InterfaceCell(
@@ -70,12 +75,13 @@ public final class DefinitionSetBuilder {
                 + "_";
     }
 
+    @BuiltinEvalContext
     public void finish(EvalContext vx) {
-        var _loc = new QExprId(new SourceId(-1L), -1L);
-        var _r = this.inner.finish(ExprContext.freshRoot(vx.ix), _loc);
-        if (_r.hasErrors()) {
-            var _errs = _r.errorsOpt();
-            throw new DynCompileErrors(_errs.optUnwrapOr(new TList<>()));
+        var loc = new QExprId(new SourceId(-1L), -1L);
+        var r = this.inner.finish(ExprContext.freshRoot(vx.ix), loc);
+        if (r.hasErrors()) {
+            var errs = r.errorsOpt();
+            throw new DynCompileErrors(errs.optUnwrapOr(new TList<>()));
         }
     }
 }

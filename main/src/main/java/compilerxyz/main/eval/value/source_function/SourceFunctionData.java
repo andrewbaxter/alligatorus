@@ -112,7 +112,7 @@ public final class SourceFunctionData {
 
         var innerVx = new EvalContext(xx.vx.ix);
         innerVx.evalRootInternalName = DefSetFunctionsEmitter.functionsInternalName(funcSet.defSetId);
-        var innerTarget = new TargetDynamic(innerVx.nextLocalId);
+        var innerTarget = new TargetDynamic();
 
         var bodyScope = new Scope(innerVx);
         bodyScope.pushAll(Eval.bodyBuiltinScope(xx));
@@ -220,9 +220,9 @@ public final class SourceFunctionData {
         if (retT.optIsNone()) {
             retDesc = JavaDataDescriptor.DESC_VOID;
         } else {
-            var _rdConsume = GenAspectConsumeDynamic.getMaybe(xx, retT.optUnwrap());
-            if (_rdConsume.optIsSome()) {
-                retDesc = _rdConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
+            var rdConsume = GenAspectConsumeDynamic.getMaybe(xx, retT.optUnwrap());
+            if (rdConsume.optIsSome()) {
+                retDesc = rdConsume.optUnwrap().aspectConsumeDynamicJvmClass(xx);
             } else {
                 retDesc = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
             }

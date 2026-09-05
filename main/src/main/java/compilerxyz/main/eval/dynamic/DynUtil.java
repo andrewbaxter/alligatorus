@@ -209,8 +209,8 @@ public final class DynUtil {
         };
     }
 
-    public static CodeValue dynamicStackToValue(ExprContext xx, CodeDynamic value, Type type_) {
-        var dynValue = ValueDynamic.stack(xx, type_);
+    public static CodeValue dynamicStackToValue(ExprContext xx, CodeDynamic value, Type type) {
+        var dynValue = ValueDynamic.stack(xx, type);
         return new CodeValue(Code.target(value), EvalOutcome.ofValue(dynValue));
     }
 
@@ -231,17 +231,17 @@ public final class DynUtil {
         return EResult.ok(new CodeDynamic(loc, seq));
     }
 
-    public static EResult<CodeValue> dynamicSet(ExprContext xx, QExprId loc, CodeValue self_, CodeValue value) {
-        if (self_.value().optIsNone()) {
+    public static EResult<CodeValue> dynamicSet(ExprContext xx, QExprId loc, CodeValue self, CodeValue value) {
+        if (self.value().optIsNone()) {
             throw new IllegalStateException(
                     "dynamicSet called with absent value in self_; Rust unwraps unconditionally");
         }
-        if (!(self_.value().optUnwrap() instanceof ValueDynamic selfDyn)) {
+        if (!(self.value().optUnwrap() instanceof ValueDynamic selfDyn)) {
             throw new IllegalStateException("dynamicSet: self_ value is not a ValueDynamic (got "
-                    + self_.value().optUnwrap().getClass().getName()
+                    + self.value().optUnwrap().getClass().getName()
                     + ")");
         }
-        Type targetType = selfDyn.type_();
+        Type targetType = selfDyn.type();
         var convRes = Eval.typecheckConvert(xx, loc, targetType, value);
         if (convRes.hasErrors()) {
             return convRes.reerr();

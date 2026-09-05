@@ -1,7 +1,6 @@
 package compilerxyz.main.eval.value.list;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
@@ -12,29 +11,15 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBindDynamic;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
-import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 6198L)
-public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
-        implements Type, AspectInitialBindDynamic, AspectFunction {
-
-    @Override
-    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
+public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -44,18 +29,18 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectInitialBindDynamicListSpecializedNewDynamic(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_LIST_SPECIALIZED_NEW_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectFunctionListSpecializedNewDynamic(this));
         }
         return Opt.none();
     }
 
-    private EResult<CodeDynamic> elementToDynamic(ExprContext xx, QExprId loc, CodeValue element) {
+    EResult<CodeDynamic> elementToDynamic(ExprContext xx, QExprId loc, CodeValue element) {
         var elementType = listType.elementType;
         var convertedRes = Eval.typecheckConvert(xx, loc, elementType, element);
         if (convertedRes.hasErrors()) return convertedRes.reerr();
@@ -64,48 +49,6 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
         return consumeRes
                 .requireValue("AspectConsumeDynamic.get")
                 .aspectConsumeDynamicToDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        if (argument.value().optIsNone()) {
-            return EResult.err(loc, "TypeListSpecializedNewDynamic::call: argument has no compile-time value");
-        }
-        var argValue = argument.value().optUnwrap();
-        var argType = argValue.valueType();
-        var dynamicElements = new TList<CodeDynamic>();
-        var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
-        if (argTupleOpt.optIsSome()) {
-            var elements = argTupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
-            for (var elemRes : elements) {
-                if (elemRes.hasErrors()) return elemRes.reerr();
-                var dynRes = elementToDynamic(xx, loc, elemRes.requireValue("takeElements"));
-                if (dynRes.hasErrors()) return dynRes.reerr();
-                dynamicElements.add(dynRes.requireValue("elementToDynamic"));
-            }
-        } else {
-            var dynRes = elementToDynamic(xx, loc, argument);
-            if (dynRes.hasErrors()) return dynRes.reerr();
-            dynamicElements.add(dynRes.requireValue("elementToDynamic"));
-        }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, listType);
-        if (retStackRes.hasErrors()) {
-            return retStackRes.reerr();
-        }
-        var seq = new JavaBytecodeSequence();
-        var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-        if (selfDynCast.hasErrors()) return selfDynCast.reerr();
-        var selfDyn = selfDynCast.requireValue("selfDyn");
-        if (selfDyn.optIsSome()) seq.add(selfDyn.optUnwrap());
-        seq.add(listType.emitNew(xx, loc, dynamicElements));
-        return EResult.ok(retStackRes
-                .requireValue("AspectStackValueDynamic.get")
-                .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-        return Opt.none();
     }
 
     @Override

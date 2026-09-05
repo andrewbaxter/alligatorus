@@ -1,24 +1,16 @@
 package compilerxyz.main.eval.value.source_interface;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
-import compilerxyz.main.eval.value.object_.TypeObjectDynamic;
-import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectInitialBindDynamic;
-import compilerxyz.main.gen.Binding;
+import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -27,12 +19,7 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6197L)
 public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String name, TypeMethodDynamic method)
-        implements Type, AspectInitialBindDynamic, AspectFunction {
-
-    @Override
-    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
+        implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -42,35 +29,14 @@ public record TypeInterfaceMethodBuiltin(TypeObjectDynamic receiverType, String 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectInitialBindDynamicInterfaceMethodBuiltin(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_INTERFACE_METHOD_BUILTIN_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectFunctionInterfaceMethodBuiltin(this));
         }
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var splitRes =
-                DynUtil.methodRefSplitArgument(xx, loc, method.arg(), argument, "interface method '" + name + "'");
-        if (splitRes.hasErrors()) return splitRes.reerr();
-        var split = splitRes.requireValue("TypeInterfaceMethodBuiltin split");
-        var receiverRes = Eval.typecheckConvert(xx, loc, receiverType, split.receiver());
-        if (receiverRes.hasErrors()) return receiverRes.reerr();
-        var receiverCv = receiverRes.requireValue("TypeInterfaceMethodBuiltin receiver");
-        var receiverDynRes = receiverType.aspectConsumeDynamicToDynamic(xx, loc, receiverCv);
-        if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
-        var receiverDyn = receiverDynRes.requireValue("TypeInterfaceMethodBuiltin receiver toDynamic");
-        return method.aspectFunctionCall(
-                xx, loc, new CodeValue(Code.target(receiverDyn), receiverCv.outcome()), split.methodArgs());
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
     }
 

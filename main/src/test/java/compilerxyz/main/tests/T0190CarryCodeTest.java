@@ -126,8 +126,7 @@ public final class T0190CarryCodeTest {
     @Test
     public void test00900AsCast() {
         var mb = new TestMb();
-        assertPushed(
-                run(mb, mb.call(mb.log(), intToString(mb, mb.as_(carrying(mb, "b", mb.num(1.0)), mb.typesInt())))));
+        assertPushed(run(mb, mb.call(mb.log(), intToString(mb, mb.as(carrying(mb, "b", mb.num(1.0)), mb.typesInt())))));
     }
 
     @Test
@@ -139,11 +138,11 @@ public final class T0190CarryCodeTest {
     }
 
     private static SourceExpr carryingDynamicStr(TestMb mb, String pushed, String value) {
-        return carrying(mb, pushed, mb.as_(mb.str(value), mb.typesString()));
+        return carrying(mb, pushed, mb.as(mb.str(value), mb.typesString()));
     }
 
     private static SourceExpr carryingDynamicInt(TestMb mb, String pushed, double value) {
-        return carrying(mb, pushed, mb.as_(mb.num(value), mb.typesInt()));
+        return carrying(mb, pushed, mb.as(mb.num(value), mb.typesInt()));
     }
 
     @Test
@@ -187,8 +186,7 @@ public final class T0190CarryCodeTest {
                         mb.log(),
                         intToString(
                                 mb,
-                                mb.operatorAdd(
-                                        mb.as_(mb.num(2.0), mb.typesInt()), carryingDynamicInt(mb, "b", 1.0))))));
+                                mb.operatorAdd(mb.as(mb.num(2.0), mb.typesInt()), carryingDynamicInt(mb, "b", 1.0))))));
     }
 
     @Test
@@ -241,7 +239,7 @@ public final class T0190CarryCodeTest {
     @Test
     public void test02800DynamicNestedBlock() {
         var mb = new TestMb();
-        var inner = carryingLabeled(mb, "inner", "b", mb.as_(mb.str("inner-value"), mb.typesString()));
+        var inner = carryingLabeled(mb, "inner", "b", mb.as(mb.str("inner-value"), mb.typesString()));
         var outer = mb.labeled("outer", mb.seqOf(mb.return_("outer", inner)));
         assertPushed(run(mb, mb.call(mb.log(), outer)));
     }
@@ -402,7 +400,7 @@ public final class T0190CarryCodeTest {
         var mb = new TestMb();
         assertPushed(run(
                 mb,
-                mb.bind("x", mb.as_(mb.num(4.0), mb.typesInt())),
+                mb.bind("x", mb.as(mb.num(4.0), mb.typesInt())),
                 mb.set(mb.scopeUse("x"), carrying(mb, "b", mb.num(7.0))),
                 mb.call(mb.log(), intToString(mb, mb.scopeUse("x")))));
     }
@@ -412,7 +410,7 @@ public final class T0190CarryCodeTest {
         var mb = new TestMb();
         assertPushed(run(
                 mb,
-                mb.bind("x", mb.as_(mb.num(4.0), mb.typesInt())),
+                mb.bind("x", mb.as(mb.num(4.0), mb.typesInt())),
                 mb.set(mb.scopeUse("x"), carryingDynamicInt(mb, "b", 7.0)),
                 mb.call(mb.log(), intToString(mb, mb.scopeUse("x")))));
     }
@@ -427,6 +425,6 @@ public final class T0190CarryCodeTest {
     @Test
     public void test00900UnitToNullCastKeepsCarry() {
         var mb = new TestMb();
-        assertPushed(run(mb, mb.as_(carrying(mb, "b", mb.tupleOf()), mb.typesNull())));
+        assertPushed(run(mb, mb.as(carrying(mb, "b", mb.tupleOf()), mb.typesNull())));
     }
 }

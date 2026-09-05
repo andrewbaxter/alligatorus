@@ -26,7 +26,7 @@ public final class T0016ReturnScopeTest {
                         e.retSome(e.mb.typesString()),
                         e.stage(e.seq(
                                 e.ifOnly(
-                                        e.mb.operatorLt(e.v("arg"), e.mb.as_(e.n(5.), e.mb.typesInt())),
+                                        e.mb.operatorLt(e.v("arg"), e.mb.as(e.n(5.), e.mb.typesInt())),
                                         e.ret(thenValue)),
                                 tail))),
                 e.finish(e.v("d")),
@@ -42,7 +42,7 @@ public final class T0016ReturnScopeTest {
                 src.resolve("main.at"),
                 e.seq(
                         e.let("f", e.importLocal("lib", "lib.at")),
-                        e.call(e.mb.log(), e.call(e.v("f"), e.mb.as_(e.n(3.), e.mb.typesInt())))));
+                        e.call(e.mb.log(), e.call(e.v("f"), e.mb.as(e.n(3.), e.mb.typesInt())))));
         var ok = T0200EcosystemLlvmTest.compileOk(src.resolve("main.at"), tmp.resolve("cache"));
         return ok.logs().get(0).message();
     }

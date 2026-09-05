@@ -72,12 +72,12 @@ public final class BuiltinPathScanner {
                 if (mpathOpt.optIsNone()) continue;
                 var mpath = mpathOpt.optUnwrap();
                 NodeWithAnnotations<?> node = m;
-                long _rScopeIdFromAnnotation;
+                long scopeIdFromAnnotation;
                 _scopeIdFromAnnotation:
                 {
                     var opt = findBuiltinPath(node);
                     if (opt.optIsNone()) {
-                        _rScopeIdFromAnnotation = 0L;
+                        scopeIdFromAnnotation = 0L;
                         break _scopeIdFromAnnotation;
                     }
                     var ann = opt.optUnwrap();
@@ -87,34 +87,31 @@ public final class BuiltinPathScanner {
                                 var raw = p.getValue().toString();
                                 if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
                                 {
-                                    _rScopeIdFromAnnotation = Long.parseLong(raw);
+                                    scopeIdFromAnnotation = Long.parseLong(raw);
                                     break _scopeIdFromAnnotation;
                                 }
                             }
                         }
                     }
                     {
-                        _rScopeIdFromAnnotation = 0L;
+                        scopeIdFromAnnotation = 0L;
                         break _scopeIdFromAnnotation;
                     }
                 }
-                long scopeId = _rScopeIdFromAnnotation;
+                long scopeId = scopeIdFromAnnotation;
 
                 var args = new TList<NamedTypeRef>();
                 var params = m.getParameters();
                 var needsEvalContext = false;
                 var firstArgIndex = 0;
-                if (!params.isEmpty()
-                        && params.get(0).getNameAsString().equals("vx")
-                        && typeNameOf(params.get(0).getType(), imports, sourcePkg) instanceof ClassName ficn
-                        && ficn.canonicalName().equals("compilerxyz.main.eval.EvalContext")) {
+                if (JavaAspectExtractor.injectsEvalContext(m, params, mpath)) {
                     needsEvalContext = true;
                     firstArgIndex = 1;
                 }
                 for (int i = firstArgIndex; i < params.size(); i++) {
                     var p = params.get(i);
                     String s = p.getNameAsString();
-                    String _rSnakeCase;
+                    String snakeCase;
                     _snakeCase:
                     {
                         var sb = new StringBuilder();
@@ -124,11 +121,11 @@ public final class BuiltinPathScanner {
                             sb.append(Character.toLowerCase(c));
                         }
                         {
-                            _rSnakeCase = sb.toString();
+                            snakeCase = sb.toString();
                             break _snakeCase;
                         }
                     }
-                    args.add(new NamedTypeRef(_rSnakeCase, typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
+                    args.add(new NamedTypeRef(snakeCase, typeRefOf(p.getType(), imports, sourcePkg, scannedLeaves)));
                 }
                 var ownerSimple = enclosing.isEmpty() ? simple : enclosing.replace('.', '$') + "$" + simple;
                 var ownerInternalName = pkg.replace('.', '/') + "/" + ownerSimple;
@@ -210,7 +207,7 @@ public final class BuiltinPathScanner {
                     ClassName.get("compilerxyz.main.gen", "AspectBind", "BindResult")));
 
     private static final ClassName TYPE_BOOL_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic");
+            ClassName.get("compilerxyz.main.eval.value.bool", "TypeBoolDynamic");
 
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");

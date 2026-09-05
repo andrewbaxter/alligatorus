@@ -63,7 +63,7 @@ public final class T0080UnionTest {
                                                         new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -141,7 +141,7 @@ public final class T0080UnionTest {
                                                         new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -207,7 +207,7 @@ public final class T0080UnionTest {
                                                         new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(
@@ -275,7 +275,7 @@ public final class T0080UnionTest {
                                                         new TestMb.RecordPair("num", mb.scopeUse("new_num")))))))),
                         mb.bind(
                                 "x",
-                                mb.as_(
+                                mb.as(
                                         mb.call(mb.field(mb.scopeUse("strnum"), mb.str("num")), mb.num(7.)),
                                         mb.field(mb.scopeUse("strnum"), mb.str("type")))),
                         mb.matchOf(

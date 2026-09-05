@@ -18,15 +18,15 @@ public final class T0125RecordCastTest {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
         var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesInt())),
-                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesInt()))));
+                new TestMb.RecordPair("b", mb.as(mb.num(0.0), mb.typesInt())),
+                new TestMb.RecordPair("a", mb.as(mb.num(0.0), mb.typesInt()))));
         var sourceRecord = mb.recordOf(TList.of(
-                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesInt())),
-                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesInt()))));
+                new TestMb.RecordPair("a", mb.as(mb.num(1.0), mb.typesInt())),
+                new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
-                        mb.bind("r", mb.as_(sourceRecord, reorderedType)),
+                        mb.bind("r", mb.as(sourceRecord, reorderedType)),
                         mb.call(
                                 mb.log(),
                                 mb.call(
@@ -57,16 +57,16 @@ public final class T0125RecordCastTest {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
         var reorderedType = mb.recordOf(TList.of(
-                new TestMb.RecordPair("b", mb.as_(mb.num(0.0), mb.typesInt())),
-                new TestMb.RecordPair("a", mb.as_(mb.num(0.0), mb.typesInt()))));
+                new TestMb.RecordPair("b", mb.as(mb.num(0.0), mb.typesInt())),
+                new TestMb.RecordPair("a", mb.as(mb.num(0.0), mb.typesInt()))));
         var sourceRecord = mb.recordOf(TList.of(
-                new TestMb.RecordPair("a", mb.as_(mb.num(1.0), mb.typesInt())),
-                new TestMb.RecordPair("b", mb.as_(mb.num(2.0), mb.typesInt()))));
+                new TestMb.RecordPair("a", mb.as(mb.num(1.0), mb.typesInt())),
+                new TestMb.RecordPair("b", mb.as(mb.num(2.0), mb.typesInt()))));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("src", sourceRecord),
-                        mb.bind("r", mb.as_(mb.scopeUse("src"), reorderedType)),
+                        mb.bind("r", mb.as(mb.scopeUse("src"), reorderedType)),
                         mb.call(
                                 mb.log(),
                                 mb.call(

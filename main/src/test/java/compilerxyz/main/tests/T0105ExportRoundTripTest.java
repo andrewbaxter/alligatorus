@@ -229,7 +229,7 @@ public final class T0105ExportRoundTripTest {
                         e.v("fb"),
                         e.rec(e.p("c", e.mb.typesCode())),
                         e.retSome(e.mb.typesString()),
-                        e.stage(e.mb.as_(e.s("from-code-fn"), e.mb.typesString()))),
+                        e.stage(e.mb.as(e.s("from-code-fn"), e.mb.typesString()))),
                 e.finish(e.v("d")),
                 e.ret(e.rec(e.p("f", e.fld(e.v("fb"), "func"))))));
         var main = e.seq(importLib(e), e.let("f", e.fld(e.v("r"), "f")), e.call(e.mb.log(), e.s("imported-code-fn")));
@@ -240,7 +240,7 @@ public final class T0105ExportRoundTripTest {
     public void test00800TypeValueFieldRoundTrips() {
         var e = new EcoMb();
         var lib = e.rec(e.p("t", e.mb.typesInt()));
-        var main = e.seq(importLib(e), e.call(e.mb.log(), e.toStr(e.mb.as_(e.n(3.), e.fld(e.v("r"), "t")))));
+        var main = e.seq(importLib(e), e.call(e.mb.log(), e.toStr(e.mb.as(e.n(3.), e.fld(e.v("r"), "t")))));
         assertEquals(TList.of("3"), compileLogs(lib, main));
     }
 }

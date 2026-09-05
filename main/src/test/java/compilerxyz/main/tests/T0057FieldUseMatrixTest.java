@@ -24,21 +24,21 @@ public final class T0057FieldUseMatrixTest {
         var expected = new TList<String>();
 
         for (var ty : NUMERICS) {
-            var dyn = e.mb.as_(e.n(5.), e.mb.builtin("types", ty));
+            var dyn = e.mb.as(e.n(5.), e.mb.builtin("types", ty));
             exprs.add(e.let("r_" + ty, e.rec(e.p("v", dyn))));
             exprs.add(e.let("g_" + ty, e.fld(e.v("r_" + ty), "v")));
             exprs.add(e.ifElse(
-                    e.mb.operatorEq(e.v("g_" + ty), e.mb.as_(e.n(5.), e.mb.builtin("types", ty))),
+                    e.mb.operatorEq(e.v("g_" + ty), e.mb.as(e.n(5.), e.mb.builtin("types", ty))),
                     e.call(e.mb.log(), e.s("ok:" + ty)),
                     e.call(e.mb.log(), e.s("bad:" + ty))));
             expected.add("ok:" + ty);
         }
         for (var ty : FLOATS) {
-            var dyn = e.mb.as_(e.n(1.5), e.mb.builtin("types", ty));
+            var dyn = e.mb.as(e.n(1.5), e.mb.builtin("types", ty));
             exprs.add(e.let("r_" + ty, e.rec(e.p("v", dyn))));
             exprs.add(e.let("g_" + ty, e.fld(e.v("r_" + ty), "v")));
             exprs.add(e.ifElse(
-                    e.mb.operatorEq(e.v("g_" + ty), e.mb.as_(e.n(1.5), e.mb.builtin("types", ty))),
+                    e.mb.operatorEq(e.v("g_" + ty), e.mb.as(e.n(1.5), e.mb.builtin("types", ty))),
                     e.call(e.mb.log(), e.s("ok:" + ty)),
                     e.call(e.mb.log(), e.s("bad:" + ty))));
             expected.add("ok:" + ty);
@@ -46,12 +46,11 @@ public final class T0057FieldUseMatrixTest {
         exprs.add(e.let(
                 "r_bool",
                 e.rec(e.p(
-                        "v",
-                        e.mb.operatorLt(e.mb.as_(e.n(0.), e.mb.typesInt()), e.mb.as_(e.n(1.), e.mb.typesInt()))))));
+                        "v", e.mb.operatorLt(e.mb.as(e.n(0.), e.mb.typesInt()), e.mb.as(e.n(1.), e.mb.typesInt()))))));
         exprs.add(e.let("g_bool", e.fld(e.v("r_bool"), "v")));
         exprs.add(e.ifElse(e.v("g_bool"), e.call(e.mb.log(), e.s("ok:bool")), e.call(e.mb.log(), e.s("bad:bool"))));
         expected.add("ok:bool");
-        exprs.add(e.let("r_string", e.rec(e.p("v", e.toStr(e.mb.as_(e.n(7.), e.mb.typesInt()))))));
+        exprs.add(e.let("r_string", e.rec(e.p("v", e.toStr(e.mb.as(e.n(7.), e.mb.typesInt()))))));
         exprs.add(e.let("g_string", e.fld(e.v("r_string"), "v")));
         exprs.add(e.call(e.mb.log(), e.v("g_string")));
         expected.add("7");

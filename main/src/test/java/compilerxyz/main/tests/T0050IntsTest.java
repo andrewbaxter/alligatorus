@@ -21,7 +21,7 @@ public final class T0050IntsTest {
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
-                        mb.bind("x", mb.as_(mb.num(4.0), mb.typesInt())),
+                        mb.bind("x", mb.as(mb.num(4.0), mb.typesInt())),
                         mb.ifOf(
                                 TList.of(new TestMb.Branch(
                                         mb.operatorLt(mb.scopeUse("x"), mb.num(5.0)),

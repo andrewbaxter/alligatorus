@@ -15,7 +15,7 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 1015L, identityId = 4015L)
 @BuiltinPath("eval.aspect_field")
 public interface AspectField extends Aspect {
-    EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self_, CodeValue key);
+    EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key);
 
     Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key);
 

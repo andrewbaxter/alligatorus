@@ -7,9 +7,7 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
@@ -18,16 +16,10 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
@@ -35,7 +27,6 @@ import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataSourceObjectNewCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
@@ -47,16 +38,15 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6140L)
-public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
-        implements Type, AspectArtifact, AspectBind, AspectDropDynamicLight, AspectFunction, AspectLift {
+public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) implements Aspect, Type {
 
-    private TypeSourceObjectNewDynamic asCtor() {
-        return new TypeSourceObjectNewDynamic(type_);
+    TypeSourceObjectNewDynamic asCtor() {
+        return new TypeSourceObjectNewDynamic(type);
     }
 
     @Override
     public String typeDesc() {
-        return type_.description.optUnwrapOr("definition_set_object_new_const");
+        return type.description.optUnwrapOr("definition_set_object_new_const");
     }
 
     @Override
@@ -64,47 +54,28 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectFunction.AspectId)
-                || key.equals(GenAspectLift.AspectId)) {
+        if (key.equals(GenAspectLift.AspectId)) {
+            return Opt.some(new AspectLiftTypeSourceObjectNewConst(this));
+        }
+        if (key.equals(GenAspectFunction.AspectId)) {
+            return Opt.some(new AspectFunctionTypeSourceObjectNewConst(this));
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(new AspectBindTypeSourceObjectNewConst(this));
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactTypeSourceObjectNewConst.INSTANCE);
+        }
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        return asCtor().aspectBindBind(xx, loc, cv);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-        return asCtor().aspectFunctionCall(xx, loc, function, argument);
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        return EResult.ok(new ValueObjectConst(new TypeSourceObjectNewDynamic(type_), null));
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.SOURCE_OBJECT_NEW_CONST;
-    }
-
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
     }
 
     private static Artifact nullArtifact() {
@@ -121,7 +92,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                         "TypeTypeSourceObjectNewConst::exporterRootDelegateSelfExport: expected"
                                 + " TypeTypeSourceObjectNewConst, got " + self.getClass());
             }
-            var dt = oc.type_;
+            var dt = oc.type;
             var errors = new TList<ExprErr>();
             var artifact =
                     ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, dt.newArtifactIdCell, () -> {
@@ -187,7 +158,7 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
                 other,
                 GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_OBJECT_NEW_CONST_IDENTITY,
                 TypeTypeSourceObjectNewConst.class);
-        return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
+        return oOpt.optIsSome() && type.typeIsEqual(xx, oOpt.optUnwrap().type);
     }
 
     @Override
@@ -208,6 +179,6 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type_)
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(AspectArtifactTypeSourceObjectNewConst.INSTANCE.aspectArtifactExporter());
     }
 }

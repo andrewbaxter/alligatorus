@@ -30,6 +30,7 @@ import compilerxyz.main.gen.DefinitionSetBuilder;
 import compilerxyz.main.gen.GenAspectNumericConst;
 import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -42,16 +43,18 @@ public final class BuiltinBodies {
     private BuiltinBodies() {}
 
     @BuiltinPath(value = "eval.stack", scopeId = 5013L)
-    public static Value stack(ExprContext xx_, Type type) {
-        return ValueDynamic.stack(xx_, type);
+    public static Value stack(ExprContext xx, Type type) {
+        return ValueDynamic.stack(xx, type);
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)
+    @BuiltinEvalContext
     public static void log(EvalContext vx, String message) {
         vx.logs.add(new LogEntry(System.currentTimeMillis(), message));
     }
 
     @BuiltinPath(value = "define", scopeId = 5002L)
+    @BuiltinEvalContext
     public static DefinitionSetBuilder define(EvalContext vx) {
         var compileId = new CompileId(vx.ix.importState, vx.ix.sourceId);
         var defSetId = new DefSetId(compileId, vx.ix.defSetCounter.next());
@@ -61,8 +64,8 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.scope", scopeId = 5006L)
-    public static Scope scope(EvalContext vx_, TOrderedMap<ConstKey, Binding> entries) {
-        var scope = new Scope(vx_);
+    public static Scope scope(EvalContext vx, TOrderedMap<ConstKey, Binding> entries) {
+        var scope = new Scope(vx);
         var named = new TMap<ConstKey, Binding>();
         for (var entry : entries.entrySet()) {
             named.put(entry.getKey(), entry.getValue());
@@ -72,11 +75,13 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.eval_context", scopeId = 5009L)
+    @BuiltinEvalContext
     public static EvalContext evalContext(EvalContext vx) {
         return new EvalContext(vx.ix);
     }
 
     @BuiltinPath(value = "eval.fresh_unique", scopeId = 5016L)
+    @BuiltinEvalContext
     public static Unique freshUnique(EvalContext vx) {
         return DynRuntime.freshUnique(vx);
     }
@@ -108,23 +113,23 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.const_eval", scopeId = 5008L)
-    public static EResult<CodeValue> constEval(ExprContext xx_, StagedExprCell staged) {
+    public static EResult<CodeValue> constEval(ExprContext xx, StagedExprCell staged) {
         Object exprValue = staged.value();
         if (!(exprValue instanceof Expr exprAst)) {
             throw new AssertionError(
                     "builtin 5008 (const_eval): staged payload is not Expr, got " + exprValue.getClass());
         }
-        var _constEvalResult = ConstEval.constEval(xx_, exprAst);
-        if (_constEvalResult.valueOpt().optIsNone()) return _constEvalResult.reerr();
-        var _cv = _constEvalResult.requireValue("const_eval map").cv();
-        var _errs = _constEvalResult.errorsOpt();
-        if (_errs.optIsNone() || _errs.optUnwrap().isEmpty()) return EResult.ok(_cv);
-        return EResult.mixed(_cv, _errs.optUnwrap());
+        var evalResult = ConstEval.constEval(xx, exprAst);
+        if (evalResult.valueOpt().optIsNone()) return evalResult.reerr();
+        var cv = evalResult.requireValue("const_eval map").cv();
+        var errs = evalResult.errorsOpt();
+        if (errs.optIsNone() || errs.optUnwrap().isEmpty()) return EResult.ok(cv);
+        return EResult.mixed(cv, errs.optUnwrap());
     }
 
     @BuiltinPath(value = "eval.expr_context", scopeId = 5017L)
-    public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exception_type) {
-        return new ExprContext(scope, target, vx, vx.ix.importState, Opt.some(exception_type));
+    public static ExprContext exprContext(Scope scope, Target target, EvalContext vx, Type exceptionType) {
+        return new ExprContext(scope, target, vx, vx.ix.importState, Opt.some(exceptionType));
     }
 
     @BuiltinPath(value = "eval.code_none", scopeId = 5018L)
@@ -133,8 +138,8 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.const_numeric_to_str", scopeId = 5031L)
-    public static String constNumericToStr(ExprContext xx_, Value value) {
-        var aspOpt = GenAspectNumericConst.getMaybe(xx_, value.valueType());
+    public static String constNumericToStr(ExprContext xx, Value value) {
+        var aspOpt = GenAspectNumericConst.getMaybe(xx, value.valueType());
         if (aspOpt.optIsNone()) {
             throw new IllegalStateException("const_numeric_to_str: value type "
                     + value.valueType().typeDesc() + " has no const numeric aspect");
@@ -143,8 +148,8 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.extract_constkey", scopeId = 5019L)
-    public static ConstKey extractConstkey(ExprContext xx_, Value value) {
-        var res = Eval.extractConstKey(xx_, value);
+    public static ConstKey extractConstkey(ExprContext xx, Value value) {
+        var res = Eval.extractConstKey(xx, value);
         return switch (res) {
             case Result.Err<ConstKey, String> err ->
                 throw new IllegalStateException("builtin 5019 (extract_constkey): " + err.error());
@@ -163,7 +168,7 @@ public final class BuiltinBodies {
     }
 
     @BuiltinPath(value = "eval.drop_value", scopeId = 5020L)
-    public static EResult<Code> dropValue(ExprContext xx_, QExprId loc, CodeValue cv) {
-        return Eval.dropValue(xx_, loc, cv);
+    public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
+        return Eval.dropValue(xx, loc, cv);
     }
 }

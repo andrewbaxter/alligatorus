@@ -24,65 +24,65 @@ public final class Json {
             if (value == Math.floor(value) && Math.abs(value) < (1L << 53)) {
                 writer.value((long) value);
             } else {
-                double _d = value;
-                boolean _negative = _d < 0;
-                if (_negative) _d = -_d;
-                String _originalString = Double.toString(_d);
-                int _eIdx = _originalString.indexOf('E');
-                String _intPart, _fracPart;
-                int _exponentValue;
-                if (_eIdx >= 0) {
-                    _exponentValue = Integer.parseInt(_originalString.substring(_eIdx + 1));
-                    String _mantissa = _originalString.substring(0, _eIdx);
-                    int _dotIdx = _mantissa.indexOf('.');
-                    if (_dotIdx >= 0) {
-                        _intPart = _mantissa.substring(0, _dotIdx);
-                        _fracPart = _mantissa.substring(_dotIdx + 1);
+                double d = value;
+                boolean negative = d < 0;
+                if (negative) d = -d;
+                String string = Double.toString(d);
+                int idx = string.indexOf('E');
+                String part, fracPart;
+                int exponentValue;
+                if (idx >= 0) {
+                    exponentValue = Integer.parseInt(string.substring(idx + 1));
+                    String mantissa = string.substring(0, idx);
+                    int dotIdx = mantissa.indexOf('.');
+                    if (dotIdx >= 0) {
+                        part = mantissa.substring(0, dotIdx);
+                        fracPart = mantissa.substring(dotIdx + 1);
                     } else {
-                        _intPart = _mantissa;
-                        _fracPart = "";
+                        part = mantissa;
+                        fracPart = "";
                     }
                 } else {
-                    _exponentValue = 0;
-                    int _dotIdx = _originalString.indexOf('.');
-                    if (_dotIdx >= 0) {
-                        _intPart = _originalString.substring(0, _dotIdx);
-                        _fracPart = _originalString.substring(_dotIdx + 1);
+                    exponentValue = 0;
+                    int dotIdx = string.indexOf('.');
+                    if (dotIdx >= 0) {
+                        part = string.substring(0, dotIdx);
+                        fracPart = string.substring(dotIdx + 1);
                     } else {
-                        _intPart = _originalString;
-                        _fracPart = "";
+                        part = string;
+                        fracPart = "";
                     }
                 }
-                String _allDigits = _intPart + _fracPart;
-                int _k = _allDigits.length();
-                while (_k > 1 && _allDigits.charAt(_k - 1) == '0') _k--;
-                String _digits = _allDigits.substring(0, _k);
-                int _digitsBeforeDecimal = _intPart.length() + _exponentValue;
-                var _sb = new StringBuilder();
-                if (_negative) _sb.append('-');
-                if (_k <= _digitsBeforeDecimal && _digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
-                    _sb.append(_digits);
-                    _sb.append("0".repeat(_digitsBeforeDecimal - _k));
-                } else if (0 < _digitsBeforeDecimal && _digitsBeforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
-                    _sb.append(_digits, 0, _digitsBeforeDecimal);
-                    _sb.append('.');
-                    _sb.append(_digits, _digitsBeforeDecimal, _k);
-                } else if (-6 < _digitsBeforeDecimal && _digitsBeforeDecimal <= 0) {
-                    _sb.append("0.");
-                    _sb.append("0".repeat(-_digitsBeforeDecimal));
-                    _sb.append(_digits);
+                String digits = part + fracPart;
+                int k = digits.length();
+                while (k > 1 && digits.charAt(k - 1) == '0') k--;
+                String trimmedDigits = digits.substring(0, k);
+                int beforeDecimal = part.length() + exponentValue;
+                var sb = new StringBuilder();
+                if (negative) sb.append('-');
+                if (k <= beforeDecimal && beforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
+                    sb.append(trimmedDigits);
+                    sb.append("0".repeat(beforeDecimal - k));
+                } else if (0 < beforeDecimal && beforeDecimal <= CANONICAL_EXP_LEN_LIMIT) {
+                    sb.append(trimmedDigits, 0, beforeDecimal);
+                    sb.append('.');
+                    sb.append(trimmedDigits, beforeDecimal, k);
+                } else if (-6 < beforeDecimal && beforeDecimal <= 0) {
+                    sb.append("0.");
+                    sb.append("0".repeat(-beforeDecimal));
+                    sb.append(trimmedDigits);
                 } else {
-                    _sb.append(_digits.charAt(0));
-                    if (_k > 1) {
-                        _sb.append('.');
-                        _sb.append(_digits, 1, _k);
+                    sb.append(trimmedDigits.charAt(0));
+                    if (k > 1) {
+                        sb.append('.');
+                        sb.append(trimmedDigits, 1, k);
                     }
-                    int _exp = _digitsBeforeDecimal - 1;
-                    _sb.append('e');
-                    if (_exp > 0) _sb.append('+');
-                    _sb.append(_exp);
+                    int exp = beforeDecimal - 1;
+                    sb.append('e');
+                    if (exp > 0) sb.append('+');
+                    sb.append(exp);
                 }
-                writer.jsonValue(_sb.toString());
+                writer.jsonValue(sb.toString());
             }
         } else {
             writer.value(value);
@@ -134,19 +134,12 @@ public final class Json {
     }
 
     public static class DeserializationException extends RuntimeException {
-        private final String errorMessage;
-        private final FieldPath path;
-
         public DeserializationException(String message, FieldPath path) {
             super(message + " at " + path);
-            this.errorMessage = message;
-            this.path = path;
         }
 
         public DeserializationException(String message, FieldPath path, Throwable cause) {
             super(message + " at " + path, cause);
-            this.errorMessage = message;
-            this.path = path;
         }
     }
 }

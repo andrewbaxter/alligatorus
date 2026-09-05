@@ -101,7 +101,7 @@ public final class GenMain {
         var aspectIds = new TSet<Long>();
         var scopeIds = new TSet<Long>();
 
-        TMap<ClassName, CodeBlock> _rScanRoot1;
+        TMap<ClassName, CodeBlock> scanRoot1;
 
         _scanRoot:
         {
@@ -141,12 +141,12 @@ public final class GenMain {
             }
             for (var e : mirror.entrySet()) out.put(e.getKey(), e.getValue());
             {
-                _rScanRoot1 = out;
+                scanRoot1 = out;
                 break _scanRoot;
             }
         }
 
-        TMap<ClassName, CodeBlock> scannedLeaves = _rScanRoot1;
+        TMap<ClassName, CodeBlock> scannedLeaves = scanRoot1;
         scannedLeaves.put(
                 ClassName.get("compilerxyz.main.eval", "Code"),
                 CodeBlock.of("new $T()", ClassName.get("compilerxyz.main.eval.value.code", "TypeCodeDynamic")));
@@ -175,7 +175,7 @@ public final class GenMain {
             GenMain.write(outRoot, file, formatter);
         }
 
-        JavaAspectExtractor.ScanResult _rScanRoot2;
+        JavaAspectExtractor.ScanResult scanRoot2;
 
         _scanRoot:
         {
@@ -186,7 +186,7 @@ public final class GenMain {
                     var src = Files.readString(file);
                     if (!src.contains("@BuiltinFull(")) continue;
                     var cu = StaticJavaParser.parse(file);
-                    Opt<TypeDeclaration<?>> _rFindBuiltinType;
+                    Opt<TypeDeclaration<?>> findBuiltinType;
                     _findBuiltinType:
                     {
                         for (var t : cu.getTypes()) {
@@ -196,20 +196,20 @@ public final class GenMain {
                                                     .isPresent();
                             if (!hasBuiltin) continue;
                             if (t instanceof ClassOrInterfaceDeclaration c) {
-                                _rFindBuiltinType = Opt.some(c);
+                                findBuiltinType = Opt.some(c);
                                 break _findBuiltinType;
                             }
                             if (t instanceof RecordDeclaration r) {
-                                _rFindBuiltinType = Opt.some(r);
+                                findBuiltinType = Opt.some(r);
                                 break _findBuiltinType;
                             }
                         }
                         {
-                            _rFindBuiltinType = Opt.none();
+                            findBuiltinType = Opt.none();
                             break _findBuiltinType;
                         }
                     }
-                    Opt<TypeDeclaration<?>> declOpt = _rFindBuiltinType;
+                    Opt<TypeDeclaration<?>> declOpt = findBuiltinType;
 
                     if (declOpt.optIsSome()) {
                         var decl = declOpt.optUnwrap();
@@ -217,24 +217,24 @@ public final class GenMain {
                         if (decl instanceof ClassOrInterfaceDeclaration coid) {
                             if (coid.isInterface()) {
                                 ClassOrInterfaceDeclaration ifaceDecl = coid;
-                                boolean _rInterfaceExtendsAspect;
+                                boolean interfaceExtendsAspect;
                                 _interfaceExtendsAspect:
                                 {
                                     for (var ext : coid.getExtendedTypes()) {
                                         var n = ext.getNameAsString();
                                         if (n.equals("Aspect") || n.equals("compilerxyz.main.eval.aspect.Aspect")) {
-                                            _rInterfaceExtendsAspect = true;
+                                            interfaceExtendsAspect = true;
                                             break _interfaceExtendsAspect;
                                         }
                                     }
                                     {
-                                        _rInterfaceExtendsAspect = false;
+                                        interfaceExtendsAspect = false;
                                         break _interfaceExtendsAspect;
                                     }
                                 }
-                                boolean isAspect = _rInterfaceExtendsAspect;
+                                boolean isAspect = interfaceExtendsAspect;
 
-                                Opt<BuiltinInterfacesGen.BuiltinSpec> _rExtractBuiltinSpecInterface;
+                                Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecInterface;
                                 _extractBuiltinSpecInterface:
                                 {
                                     var simpleName = ifaceDecl.getNameAsString();
@@ -272,7 +272,7 @@ public final class GenMain {
                                         if (!m.isAbstract()) continue;
                                         String javaMethodName = m.getNameAsString();
                                         String interfaceSimpleName = simpleName;
-                                        String _rDeriveSourceName;
+                                        String deriveSourceName;
                                         _deriveSourceName:
                                         {
                                             var prefix = Character.toLowerCase(interfaceSimpleName.charAt(0))
@@ -281,34 +281,34 @@ public final class GenMain {
                                                     && javaMethodName.length() > prefix.length()) {
                                                 var rest = javaMethodName.substring(prefix.length());
                                                 {
-                                                    _rDeriveSourceName =
+                                                    deriveSourceName =
                                                             Character.toLowerCase(rest.charAt(0)) + rest.substring(1);
                                                     break _deriveSourceName;
                                                 }
                                             }
                                             {
-                                                _rDeriveSourceName = javaMethodName;
+                                                deriveSourceName = javaMethodName;
                                                 break _deriveSourceName;
                                             }
                                         }
-                                        var sourceName = NameDerivation.snakeCase(_rDeriveSourceName);
+                                        var sourceName = NameDerivation.snakeCase(deriveSourceName);
                                         var params = new TList<Param>();
                                         for (var p : m.getParameters()) {
                                             String name = p.getNameAsString();
-                                            String _rStripReservedSuffix;
+                                            String stripReservedSuffix;
                                             _stripReservedSuffix:
                                             {
                                                 if (name.endsWith("_") && name.length() > 1) {
-                                                    _rStripReservedSuffix = name.substring(0, name.length() - 1);
+                                                    stripReservedSuffix = name.substring(0, name.length() - 1);
                                                     break _stripReservedSuffix;
                                                 }
                                                 {
-                                                    _rStripReservedSuffix = name;
+                                                    stripReservedSuffix = name;
                                                     break _stripReservedSuffix;
                                                 }
                                             }
                                             params.add(new Param(
-                                                    NameDerivation.snakeCase(_rStripReservedSuffix),
+                                                    NameDerivation.snakeCase(stripReservedSuffix),
                                                     JavaAspectExtractor.typeNameOf(
                                                             p.getType(), effectiveImports, pkg)));
                                         }
@@ -321,7 +321,7 @@ public final class GenMain {
                                                 false));
                                     }
                                     {
-                                        _rExtractBuiltinSpecInterface = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
+                                        extractBuiltinSpecInterface = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                                                 simpleName,
                                                 pkg,
                                                 uniqueId,
@@ -333,11 +333,11 @@ public final class GenMain {
                                         break _extractBuiltinSpecInterface;
                                     }
                                 }
-                                builtin = _rExtractBuiltinSpecInterface;
+                                builtin = extractBuiltinSpecInterface;
 
                             } else {
                                 ClassOrInterfaceDeclaration clsDecl = coid;
-                                Opt<BuiltinInterfacesGen.BuiltinSpec> _rExtractBuiltinSpecClass;
+                                Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecClass;
                                 _extractBuiltinSpecClass:
                                 {
                                     var simpleName = clsDecl.getNameAsString();
@@ -368,13 +368,8 @@ public final class GenMain {
                                     for (var m : clsDecl.getMethods()) {
                                         if (m.isStatic() || !m.isPublic()) continue;
                                         var params = m.getParameters();
-                                        var needsEvalContext = !params.isEmpty()
-                                                && params.get(0)
-                                                        .getNameAsString()
-                                                        .equals("vx")
-                                                && JavaAspectExtractor.typeNameOf(
-                                                                params.get(0).getType(), classImports, pkg)
-                                                        .equals(ClassName.get("compilerxyz.main.eval", "EvalContext"));
+                                        var needsEvalContext = JavaAspectExtractor.injectsEvalContext(
+                                                m, params, simpleName + "." + m.getNameAsString());
                                         var methodParams = new TList<Param>();
                                         for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
                                             var p = params.get(i);
@@ -391,7 +386,7 @@ public final class GenMain {
                                                 needsEvalContext));
                                     }
                                     {
-                                        _rExtractBuiltinSpecClass = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
+                                        extractBuiltinSpecClass = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
                                                 simpleName,
                                                 pkg,
                                                 uniqueId,
@@ -403,7 +398,7 @@ public final class GenMain {
                                         break _extractBuiltinSpecClass;
                                     }
                                 }
-                                builtin = _rExtractBuiltinSpecClass;
+                                builtin = extractBuiltinSpecClass;
                             }
                         } else if (decl instanceof RecordDeclaration recDecl) {
                             builtin = JavaAspectExtractor.extractBuiltinSpecRecord(cu, recDecl, Opt.none());
@@ -419,12 +414,12 @@ public final class GenMain {
                 }
             }
             {
-                _rScanRoot2 = new JavaAspectExtractor.ScanResult(builtins);
+                scanRoot2 = new JavaAspectExtractor.ScanResult(builtins);
                 break _scanRoot;
             }
         }
 
-        JavaAspectExtractor.ScanResult scan = _rScanRoot2;
+        JavaAspectExtractor.ScanResult scan = scanRoot2;
 
         {
             TList<BuiltinInterfacesGen.BuiltinSpec> specs = scan.builtins();
@@ -522,7 +517,7 @@ public final class GenMain {
                                 Modifier.FINAL)
                         .initializer("build()")
                         .build());
-                MethodSpec _rBuildBuild;
+                MethodSpec buildBuild;
                 _buildBuild:
                 {
                     var typeDesc = spec.isAspect()
@@ -643,14 +638,14 @@ public final class GenMain {
 
                     b.addStatement("return instance");
                     {
-                        _rBuildBuild = b.build();
+                        buildBuild = b.build();
                         break _buildBuild;
                     }
                 }
-                holder.addMethod(_rBuildBuild);
+                holder.addMethod(buildBuild);
                 cls.addType(holder.build());
 
-                MethodSpec _rBuildLink;
+                MethodSpec buildLink;
 
                 _buildLink:
                 {
@@ -787,7 +782,7 @@ public final class GenMain {
                                     BuiltinInterfacesGen.OBJECT_DATA_FIELD,
                                     f.langName(),
                                     ClassName.get(
-                                            "compilerxyz.main.eval.value.object_",
+                                            "compilerxyz.main.eval.value.object",
                                             "ObjectDataField",
                                             "Access",
                                             "MethodCall"),
@@ -813,12 +808,12 @@ public final class GenMain {
                             BuiltinInterfacesGen.ILIST,
                             BuiltinInterfacesGen.ILIST);
                     {
-                        _rBuildLink = b.build();
+                        buildLink = b.build();
                         break _buildLink;
                     }
                 }
 
-                cls.addMethod(_rBuildLink);
+                cls.addMethod(buildLink);
                 if (spec.isInterface()) {
                     cls.addMethod(MethodSpec.methodBuilder("interfaceData")
                             .addJavadoc(
@@ -896,7 +891,7 @@ public final class GenMain {
                     .build();
             GenMain.write(outRoot, file, formatter);
         }
-        TList<BuiltinPathScanner.Entry> _rScanRoot3;
+        TList<BuiltinPathScanner.Entry> scanRoot3;
         _scanRoot:
         {
             var out = new TList<BuiltinPathScanner.Entry>();
@@ -909,7 +904,7 @@ public final class GenMain {
                     var pkg = cu.getPackageDeclaration()
                             .map(pd -> pd.getNameAsString())
                             .orElse("");
-                    TMap<String, String> _rBuildImportMap;
+                    TMap<String, String> buildImportMap;
                     _buildImportMap:
                     {
                         var m = new TMap<String, String>();
@@ -919,11 +914,11 @@ public final class GenMain {
                             m.put(simple, full);
                         }
                         {
-                            _rBuildImportMap = m;
+                            buildImportMap = m;
                             break _buildImportMap;
                         }
                     }
-                    TMap<String, String> imports = _rBuildImportMap;
+                    TMap<String, String> imports = buildImportMap;
 
                     for (var t : cu.getTypes()) {
                         BuiltinPathScanner.walkType(pkg, pkg, "", t, imports, out, scannedLeaves);
@@ -931,13 +926,13 @@ public final class GenMain {
                 }
             }
             {
-                _rScanRoot3 = out;
+                scanRoot3 = out;
                 break _scanRoot;
             }
         }
-        TList<BuiltinPathScanner.Entry> pathEntries = _rScanRoot3;
+        TList<BuiltinPathScanner.Entry> pathEntries = scanRoot3;
 
-        TList<BuiltinIdentityScanner.IdentitySpec> _rScanRoot4;
+        TList<BuiltinIdentityScanner.IdentitySpec> scanRoot4;
 
         _scanRoot:
         {
@@ -954,18 +949,18 @@ public final class GenMain {
                 }
             }
             {
-                _rScanRoot4 = out;
+                scanRoot4 = out;
                 break _scanRoot;
             }
         }
 
-        TList<BuiltinIdentityScanner.IdentitySpec> scannedIdentities = _rScanRoot4;
+        TList<BuiltinIdentityScanner.IdentitySpec> scannedIdentities = scanRoot4;
 
         var identityExtras = new TList<IdentitySpec>();
         for (var s : scannedIdentities) {
             identityExtras.add(new IdentitySpec(s.name(), s.value(), s.standalone()));
         }
-        TList<IdentitySpec> _rIdentitySpecs;
+        TList<IdentitySpec> identitySpecs;
         _identitySpecs:
         {
             var out = new TList<IdentitySpec>();
@@ -973,11 +968,11 @@ public final class GenMain {
                 out.add(new IdentitySpec(ListsGen.snake(ListsGen.typeSimple(prim)), prim.uniqueId(), true));
             }
             {
-                _rIdentitySpecs = out;
+                identitySpecs = out;
                 break _identitySpecs;
             }
         }
-        identityExtras.addAll(_rIdentitySpecs);
+        identityExtras.addAll(identitySpecs);
         {
             TList<IdentitySpec> extras = identityExtras;
 
@@ -1002,17 +997,17 @@ public final class GenMain {
 
             for (var spec : specs) {
                 String snake = spec.name();
-                String _rConstantName;
+                String constantName;
                 _constantName:
                 {
                     var s = snake;
                     if (s.endsWith("_identity")) s = s.substring(0, s.length() - "_identity".length());
                     {
-                        _rConstantName = s.toUpperCase(Locale.ROOT) + "_IDENTITY";
+                        constantName = s.toUpperCase(Locale.ROOT) + "_IDENTITY";
                         break _constantName;
                     }
                 }
-                cls.addField(FieldSpec.builder(UNIQUE, _rConstantName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                cls.addField(FieldSpec.builder(UNIQUE, constantName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
                         .initializer("new $T($LL)", UNIQUE_BUILTIN, spec.builtinUniqueId())
                         .build());
             }
@@ -1022,12 +1017,12 @@ public final class GenMain {
         }
         {
             for (var store : ListsGen.STORES) {
-                TypeSpec _rStoreClass;
+                TypeSpec storeClass;
                 _storeClass:
                 {
                     var arrayType = ArrayTypeName.of(store.javaPrim());
                     {
-                        _rStoreClass = TypeSpec.classBuilder(store.simple())
+                        storeClass = TypeSpec.classBuilder(store.simple())
                                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                                 .addField(FieldSpec.builder(
                                                 arrayType, "EMPTY", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
@@ -1076,10 +1071,10 @@ public final class GenMain {
                 }
                 GenMain.write(
                         outRoot,
-                        JavaFile.builder(ListsGen.GEN_PACKAGE, _rStoreClass).build(),
+                        JavaFile.builder(ListsGen.GEN_PACKAGE, storeClass).build(),
                         formatter);
             }
-            TypeSpec _rFactoryClass;
+            TypeSpec factoryClass;
             _factoryClass:
             {
                 var method = MethodSpec.methodBuilder("listDynamic")
@@ -1105,7 +1100,7 @@ public final class GenMain {
                 }
                 method.addStatement("return new $T(elementType)", ListsGen.LIST_BOXED);
                 {
-                    _rFactoryClass = TypeSpec.classBuilder("GenLists")
+                    factoryClass = TypeSpec.classBuilder("GenLists")
                             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                             .addMethod(MethodSpec.constructorBuilder()
                                     .addModifiers(Modifier.PRIVATE)
@@ -1117,7 +1112,7 @@ public final class GenMain {
             }
             GenMain.write(
                     outRoot,
-                    JavaFile.builder(ListsGen.GEN_PACKAGE, _rFactoryClass).build(),
+                    JavaFile.builder(ListsGen.GEN_PACKAGE, factoryClass).build(),
                     formatter);
         }
 
@@ -1126,7 +1121,7 @@ public final class GenMain {
 
             TList<BuiltinPathScanner.Entry> scannedPathEntries = pathEntries;
 
-            BuiltinTreeGen.NodeSpec _rCanonicalSpec;
+            BuiltinTreeGen.NodeSpec canonicalSpec;
             _canonicalSpec:
             {
                 var pathToLeaf = new LinkedHashMap<String, BuiltinTreeGen.LeafSpec>();
@@ -1146,7 +1141,7 @@ public final class GenMain {
                                             ? CodeBlock.of(
                                                     "$T.some($L)", BuiltinTreeGen.OPT, retDynamicType.optUnwrap())
                                             : CodeBlock.of("$T.<$T>none()", BuiltinTreeGen.OPT, BuiltinTreeGen.TYPE);
-                                    CodeBlock _rParamsExpr;
+                                    CodeBlock rParamsExpr;
                                     _paramsExpr:
                                     {
                                         var functionParam =
@@ -1164,14 +1159,14 @@ public final class GenMain {
                                         }
                                         b.add(")");
                                         {
-                                            _rParamsExpr = b.build();
+                                            rParamsExpr = b.build();
                                             break _paramsExpr;
                                         }
                                     }
                                     var innerExpr = CodeBlock.of(
                                             "new $T($L, $L, $T.of($S), $S, $L)",
                                             BuiltinTreeGen.TYPE_FUNCTION_DYNAMIC,
-                                            _rParamsExpr,
+                                            rParamsExpr,
                                             retExpr,
                                             BuiltinTreeGen.JAVA_INTERNAL_NAME,
                                             fl.ownerInternalName(),
@@ -1329,11 +1324,11 @@ public final class GenMain {
                     cur.children().put(leafName, new BuiltinTreeGen.TreeNode(e.getValue()));
                 }
                 {
-                    _rCanonicalSpec = BuiltinTreeGen.toNodeSpec(root, "");
+                    canonicalSpec = BuiltinTreeGen.toNodeSpec(root, "");
                     break _canonicalSpec;
                 }
             }
-            BuiltinTreeGen.NodeSpec spec = _rCanonicalSpec;
+            BuiltinTreeGen.NodeSpec spec = canonicalSpec;
 
             BuiltinTreeGen.NodeSpec root = spec;
 
@@ -1357,7 +1352,7 @@ public final class GenMain {
                     .addModifiers(Modifier.PRIVATE)
                     .build());
 
-            MethodSpec _rInstallRootFactory;
+            MethodSpec installRootFactory;
 
             _installRootFactory:
             {
@@ -1379,12 +1374,12 @@ public final class GenMain {
                 m.addCode(st.body.build());
                 m.addStatement("return $T.ok($N)", BuiltinTreeGen.ERESULT, vars[0]);
                 {
-                    _rInstallRootFactory = m.build();
+                    installRootFactory = m.build();
                     break _installRootFactory;
                 }
             }
 
-            cls.addMethod(_rInstallRootFactory);
+            cls.addMethod(installRootFactory);
 
             var file = JavaFile.builder(BuiltinTreeGen.GEN_PACKAGE, cls.build()).build();
             GenMain.write(outRoot, file, formatter);
@@ -1414,7 +1409,7 @@ public final class GenMain {
                 if (t == null) continue;
                 if (t.kind == TypeKind.RECORD || t.kind == TypeKind.SEALED || t.kind == TypeKind.ENUM) {
                     CodecsGen.TypeInfo info = t;
-                    String _rEmit;
+                    String emit;
                     _emit:
                     {
                         String ctxQname = qname;
@@ -1437,13 +1432,13 @@ public final class GenMain {
 
                         var simpleName = CodecEmitter.simpleNameOf(qname);
                         var codecClassName = simpleName + "Codec";
-                        TypeName _rClassNameOf;
+                        TypeName classNameOf;
                         _classNameOf:
                         {
                             var lastDot = qname.lastIndexOf('.');
                             if (lastDot < 0) {
                                 {
-                                    _rClassNameOf = ClassName.bestGuess(qname);
+                                    classNameOf = ClassName.bestGuess(qname);
                                     break _classNameOf;
                                 }
                             }
@@ -1451,12 +1446,11 @@ public final class GenMain {
                             var rest = qname.substring(lastDot + 1);
                             var parts = rest.split("\\.");
                             {
-                                _rClassNameOf =
-                                        ClassName.get(pkg, parts[0], Arrays.copyOfRange(parts, 1, parts.length));
+                                classNameOf = ClassName.get(pkg, parts[0], Arrays.copyOfRange(parts, 1, parts.length));
                                 break _classNameOf;
                             }
                         }
-                        TypeName target = _rClassNameOf;
+                        TypeName target = classNameOf;
 
                         var cls = TypeSpec.classBuilder(codecClassName).addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
@@ -1465,25 +1459,25 @@ public final class GenMain {
                                 .build());
 
                         if (info.kind == TypeKind.RECORD) {
-                            MethodSpec _rBuildRecordEncode;
+                            MethodSpec buildRecordEncode;
                             _buildRecordEncode:
                             {
                                 var body = CodeBlock.builder();
                                 body.addStatement("writer.beginObject()");
                                 body.beginControlFlow("if (style == $T.CANONICAL)", CodecEmitter.JSON_STYLE);
                                 TList<Component> cs = info.components;
-                                TList<Component> _rSortedBySnake;
+                                TList<Component> sortedBySnake;
                                 _sortedBySnake:
                                 {
                                     var out = TList.from(cs);
                                     out.sort((a, b) -> CodecEmitter.toSnakeCase(a.name)
                                             .compareTo(CodecEmitter.toSnakeCase(b.name)));
                                     {
-                                        _rSortedBySnake = out;
+                                        sortedBySnake = out;
                                         break _sortedBySnake;
                                     }
                                 }
-                                for (var c : _rSortedBySnake) {
+                                for (var c : sortedBySnake) {
                                     body.add(CodecEmitter.encodeFieldBlock(c));
                                 }
                                 body.nextControlFlow("else");
@@ -1493,7 +1487,7 @@ public final class GenMain {
                                 body.endControlFlow();
                                 body.addStatement("writer.endObject()");
                                 {
-                                    _rBuildRecordEncode = MethodSpec.methodBuilder("encode")
+                                    buildRecordEncode = MethodSpec.methodBuilder("encode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(void.class)
                                             .addParameter(CodecEmitter.JSON_WRITER, "writer")
@@ -1505,8 +1499,8 @@ public final class GenMain {
                                     break _buildRecordEncode;
                                 }
                             }
-                            cls.addMethod(_rBuildRecordEncode);
-                            MethodSpec _rBuildRecordDecode;
+                            cls.addMethod(buildRecordEncode);
+                            MethodSpec buildRecordDecode;
                             _buildRecordDecode:
                             {
                                 var body = CodeBlock.builder();
@@ -1558,7 +1552,7 @@ public final class GenMain {
                                 }
                                 body.addStatement("return new $L($L)", qname, ctorArgs.build());
                                 {
-                                    _rBuildRecordDecode = MethodSpec.methodBuilder("decode")
+                                    buildRecordDecode = MethodSpec.methodBuilder("decode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(target)
                                             .addParameter(CodecEmitter.JSON_READER, "reader")
@@ -1569,9 +1563,9 @@ public final class GenMain {
                                     break _buildRecordDecode;
                                 }
                             }
-                            cls.addMethod(_rBuildRecordDecode);
+                            cls.addMethod(buildRecordDecode);
                         } else if (info.kind == TypeKind.SEALED) {
-                            MethodSpec _rBuildSealedEncode;
+                            MethodSpec buildSealedEncode;
                             _buildSealedEncode:
                             {
                                 var body = CodeBlock.builder();
@@ -1593,7 +1587,7 @@ public final class GenMain {
                                 }
                                 body.addStatement("writer.endObject()");
                                 {
-                                    _rBuildSealedEncode = MethodSpec.methodBuilder("encode")
+                                    buildSealedEncode = MethodSpec.methodBuilder("encode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(void.class)
                                             .addParameter(CodecEmitter.JSON_WRITER, "writer")
@@ -1605,8 +1599,8 @@ public final class GenMain {
                                     break _buildSealedEncode;
                                 }
                             }
-                            cls.addMethod(_rBuildSealedEncode);
-                            MethodSpec _rBuildSealedDecode;
+                            cls.addMethod(buildSealedEncode);
+                            MethodSpec buildSealedDecode;
                             _buildSealedDecode:
                             {
                                 var body = CodeBlock.builder();
@@ -1639,7 +1633,7 @@ public final class GenMain {
                                 body.addStatement("reader.endObject()");
                                 body.addStatement("return __out");
                                 {
-                                    _rBuildSealedDecode = MethodSpec.methodBuilder("decode")
+                                    buildSealedDecode = MethodSpec.methodBuilder("decode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(target)
                                             .addParameter(CodecEmitter.JSON_READER, "reader")
@@ -1650,13 +1644,13 @@ public final class GenMain {
                                     break _buildSealedDecode;
                                 }
                             }
-                            cls.addMethod(_rBuildSealedDecode);
+                            cls.addMethod(buildSealedDecode);
                         } else if (info.kind == TypeKind.ENUM) {
-                            MethodSpec _rBuildEnumEncode;
+                            MethodSpec buildEnumEncode;
                             _buildEnumEncode:
                             {
                                 {
-                                    _rBuildEnumEncode = MethodSpec.methodBuilder("encode")
+                                    buildEnumEncode = MethodSpec.methodBuilder("encode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(void.class)
                                             .addParameter(CodecEmitter.JSON_WRITER, "writer")
@@ -1669,8 +1663,8 @@ public final class GenMain {
                                     break _buildEnumEncode;
                                 }
                             }
-                            cls.addMethod(_rBuildEnumEncode);
-                            MethodSpec _rBuildEnumDecode;
+                            cls.addMethod(buildEnumEncode);
+                            MethodSpec buildEnumDecode;
                             _buildEnumDecode:
                             {
                                 var body = CodeBlock.builder();
@@ -1685,7 +1679,7 @@ public final class GenMain {
                                         "Unknown enum constant '",
                                         "' for " + qname);
                                 {
-                                    _rBuildEnumDecode = MethodSpec.methodBuilder("decode")
+                                    buildEnumDecode = MethodSpec.methodBuilder("decode")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(target)
                                             .addParameter(CodecEmitter.JSON_READER, "reader")
@@ -1696,13 +1690,13 @@ public final class GenMain {
                                     break _buildEnumDecode;
                                 }
                             }
-                            cls.addMethod(_rBuildEnumDecode);
+                            cls.addMethod(buildEnumDecode);
                         } else {
                             throw new IllegalStateException("Unsupported kind: " + info.kind + " for " + qname);
                         }
 
                         if (info.implementsMarker) {
-                            MethodSpec _rBuildToValue;
+                            MethodSpec buildToValue;
                             _buildToValue:
                             {
                                 var body = CodeBlock.builder();
@@ -1720,7 +1714,7 @@ public final class GenMain {
                                 body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
                                 body.endControlFlow();
                                 {
-                                    _rBuildToValue = MethodSpec.methodBuilder("toValue")
+                                    buildToValue = MethodSpec.methodBuilder("toValue")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(CodecEmitter.JSON_VALUE)
                                             .addParameter(target, "value")
@@ -1729,8 +1723,8 @@ public final class GenMain {
                                     break _buildToValue;
                                 }
                             }
-                            cls.addMethod(_rBuildToValue);
-                            MethodSpec _rBuildFromValue;
+                            cls.addMethod(buildToValue);
+                            MethodSpec buildFromValue;
                             _buildFromValue:
                             {
                                 var body = CodeBlock.builder();
@@ -1740,7 +1734,7 @@ public final class GenMain {
                                 body.addStatement("throw new AssertionError($S, __e)", "In-memory IO failed");
                                 body.endControlFlow();
                                 {
-                                    _rBuildFromValue = MethodSpec.methodBuilder("fromValue")
+                                    buildFromValue = MethodSpec.methodBuilder("fromValue")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(target)
                                             .addParameter(CodecEmitter.JSON_VALUE, "value")
@@ -1749,8 +1743,8 @@ public final class GenMain {
                                     break _buildFromValue;
                                 }
                             }
-                            cls.addMethod(_rBuildFromValue);
-                            MethodSpec _rBuildDeserialize;
+                            cls.addMethod(buildFromValue);
+                            MethodSpec buildDeserialize;
                             _buildDeserialize:
                             {
                                 var body = CodeBlock.builder();
@@ -1761,7 +1755,7 @@ public final class GenMain {
                                         CodecEmitter.STRING_READER);
                                 body.addStatement("return decode(__reader, $T.root())", CodecEmitter.FIELD_PATH);
                                 {
-                                    _rBuildDeserialize = MethodSpec.methodBuilder("deserialize")
+                                    buildDeserialize = MethodSpec.methodBuilder("deserialize")
                                             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                                             .returns(target)
                                             .addParameter(String.class, "json")
@@ -1771,18 +1765,18 @@ public final class GenMain {
                                     break _buildDeserialize;
                                 }
                             }
-                            cls.addMethod(_rBuildDeserialize);
+                            cls.addMethod(buildDeserialize);
                         }
 
                         var javaFile = JavaFile.builder(CodecsGen.GEN_PACKAGE, cls.build())
                                 .skipJavaLangImports(true)
                                 .build();
                         {
-                            _rEmit = javaFile.toString();
+                            emit = javaFile.toString();
                             break _emit;
                         }
                     }
-                    String src = _rEmit;
+                    String src = emit;
 
                     String source = src;
 

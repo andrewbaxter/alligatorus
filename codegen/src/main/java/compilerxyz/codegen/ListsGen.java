@@ -38,7 +38,7 @@ public final class ListsGen {
             new Prim(
                     "Uint",
                     "ListStoreInt",
-                    ClassName.get("compilerxyz.main.eval.value.uint_", "TypeUintDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.uint", "TypeUintDynamic"),
                     6201L),
             new Prim(
                     "Long",
@@ -48,7 +48,7 @@ public final class ListsGen {
             new Prim(
                     "Ulong",
                     "ListStoreLong",
-                    ClassName.get("compilerxyz.main.eval.value.ulong_", "TypeUlongDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ulong", "TypeUlongDynamic"),
                     6203L),
             new Prim(
                     "Short",
@@ -58,7 +58,7 @@ public final class ListsGen {
             new Prim(
                     "Ushort",
                     "ListStoreShort",
-                    ClassName.get("compilerxyz.main.eval.value.ushort_", "TypeUshortDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ushort", "TypeUshortDynamic"),
                     6205L),
             new Prim(
                     "Byte",
@@ -68,7 +68,7 @@ public final class ListsGen {
             new Prim(
                     "Ubyte",
                     "ListStoreByte",
-                    ClassName.get("compilerxyz.main.eval.value.ubyte_", "TypeUbyteDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.ubyte", "TypeUbyteDynamic"),
                     6207L),
             new Prim(
                     "Float",
@@ -83,7 +83,7 @@ public final class ListsGen {
             new Prim(
                     "Bool",
                     "ListStoreBool",
-                    ClassName.get("compilerxyz.main.eval.value.bool_", "TypeBoolDynamic"),
+                    ClassName.get("compilerxyz.main.eval.value.bool", "TypeBoolDynamic"),
                     6210L));
 
     public static String typeSimple(Prim prim) {

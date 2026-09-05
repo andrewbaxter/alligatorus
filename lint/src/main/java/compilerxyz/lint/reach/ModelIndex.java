@@ -7,6 +7,7 @@ import java.util.Map;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtBinaryOperator;
+import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExecutableReferenceExpression;
 import spoon.reflect.code.CtFieldRead;
@@ -14,7 +15,11 @@ import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtLambda;
 import spoon.reflect.code.CtLocalVariable;
+import spoon.reflect.code.CtOperatorAssignment;
+import spoon.reflect.code.CtUnaryOperator;
 import spoon.reflect.code.CtVariableAccess;
+import spoon.reflect.code.CtVariableWrite;
+import spoon.reflect.code.UnaryOperatorKind;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
@@ -23,6 +28,7 @@ import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtInterface;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
@@ -53,6 +59,7 @@ public final class ModelIndex {
     public final List<CtMethod<?>> methods = new ArrayList<>();
     public final List<CtConstructor<?>> constructors = new ArrayList<>();
     public final List<CtLambda<?>> lambdas = new ArrayList<>();
+    public final List<CtCatchVariable<?>> catchVariables = new ArrayList<>();
 
     private final Map<String, ExecAccesses> byExecutable = new HashMap<>();
     private final Map<String, ExecAccesses> byTypeInitializers = new HashMap<>();
@@ -71,6 +78,7 @@ public final class ModelIndex {
             if (e instanceof CtMethod<?> m) methods.add(m);
             if (e instanceof CtConstructor<?> c) constructors.add(c);
             if (e instanceof CtLambda<?> l) lambdas.add(l);
+            if (e instanceof CtCatchVariable<?> cv) catchVariables.add(cv);
             if (e instanceof CtTypeReference<?> tr) {
                 typeReferences.add(tr);
                 for (var acc : ownerAccesses(e)) acc.typeReferences.add(tr);
@@ -119,6 +127,22 @@ public final class ModelIndex {
             }
         }
         return out;
+    }
+
+    public static boolean isRead(CtVariableAccess<?> access) {
+        var parent = access.isParentInitialized() ? access.getParent() : null;
+        var mutator = parent instanceof CtUnaryOperator<?> u
+                        && (u.getKind() == UnaryOperatorKind.POSTINC
+                                || u.getKind() == UnaryOperatorKind.POSTDEC
+                                || u.getKind() == UnaryOperatorKind.PREINC
+                                || u.getKind() == UnaryOperatorKind.PREDEC)
+                || parent instanceof CtOperatorAssignment<?, ?>;
+        if (mutator) {
+            if (access.getRoleInParent() == CtRole.ASSIGNMENT) return true;
+            var role = parent.getRoleInParent();
+            return role != CtRole.STATEMENT && role != CtRole.FOR_UPDATE;
+        }
+        return !(access instanceof CtVariableWrite<?>);
     }
 
     private static String execKey(CtElement executable) {

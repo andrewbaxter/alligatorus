@@ -15,16 +15,14 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectArtifactObjectConst;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.aspect.AspectTypeObjectConstData;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataSourceUnionTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -33,7 +31,7 @@ import compilerxyz.prelude.util.Opt;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6141L)
-public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_) implements Type, AspectArtifact, AspectType {
+public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -42,26 +40,20 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_) implements 
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
+        if (key.equals(GenAspectType.AspectId)) {
+            return Opt.some(AspectTypeObjectConstData.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactObjectConst.INSTANCE);
+        }
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY)
-                || key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectType.AspectId)) {
+                || key.equals(GenAspectArtifact.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.OBJECT_CONST;
-    }
-
-    @Override
-    public Type aspectTypeType(Value value) {
-        var voc = MustCast.mustCast(ValueObjectConst.class, value);
-        return MustCast.mustCast(Type.class, voc.data());
     }
 
     @Override
@@ -77,7 +69,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_) implements 
                 other,
                 GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_UNION_CONST_IDENTITY,
                 TypeTypeSourceUnionConst.class);
-        return oOpt.optIsSome() && type_.typeIsEqual(xx, oOpt.optUnwrap().type_);
+        return oOpt.optIsSome() && type.typeIsEqual(xx, oOpt.optUnwrap().type);
     }
 
     @Override
@@ -106,7 +98,7 @@ public record TypeTypeSourceUnionConst(TypeSourceUnionDynamic type_) implements 
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var uc = MustCast.mustCast(TypeTypeSourceUnionConst.class, self);
-            var uRes = Artifactable.exportArtifact(xx, loc, uc.type_);
+            var uRes = Artifactable.exportArtifact(xx, loc, uc.type);
             if (uRes.hasErrors()) return uRes.reerr();
             var body = new ArtifactDataSourceUnionType(uRes.requireValue("TypeTypeSourceUnionConst::export union"));
             return EResult.ok(new Artifact.Body(makeBody.apply(ArtifactDataSourceUnionTypeCodec.toValue(body))));

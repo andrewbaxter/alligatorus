@@ -9,9 +9,9 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.Value;
 
-public record ValueDynamic(ValueDynamicSource source, Type type_) implements Value {
+public record ValueDynamic(ValueDynamicSource source, Type type) implements Value {
     public Type valueType() {
-        return type_;
+        return type;
     }
 
     public static Value stack(ExprContext xx, Type type) {

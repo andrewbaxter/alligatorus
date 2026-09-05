@@ -15,6 +15,7 @@ public final class StructureChecks {
     private static final Pattern PACKAGE = Pattern.compile("^\\s*package\\s+([A-Za-z_][\\w.]*)\\s*;");
 
     private final Path base;
+    private final JavaNames names = new JavaNames();
 
     public StructureChecks(Path base) {
         this.base = base;
@@ -68,6 +69,34 @@ public final class StructureChecks {
             for (String sourceRoot : List.of("src/main/java", "src/test/java", "target/generated-sources/codegen")) {
                 Path root = base.resolve(module).resolve(sourceRoot);
                 if (!Files.isDirectory(root)) continue;
+                try (var walk = Files.walk(root)) {
+                    for (Path entry : (Iterable<Path>) walk.filter(p -> !p.equals(root))::iterator) {
+                        String name = entry.getFileName().toString();
+                        if (Files.isDirectory(entry)) {
+                            if (!JavaNames.PACKAGE_SEGMENT
+                                    .matcher(names.bare(name))
+                                    .matches()) {
+                                findings.add(new Finding(
+                                        "StructureDirectoryName",
+                                        rel(entry),
+                                        1,
+                                        "package directory '" + name + "' must be lowercase [a-z0-9_]; "
+                                                + JavaNames.UNDERSCORE_RULE));
+                            }
+                            continue;
+                        }
+                        if (!name.endsWith(".java")) continue;
+                        String stem = name.substring(0, name.length() - ".java".length());
+                        if (stem.equals("package-info") || stem.equals("module-info")) continue;
+                        if (!JavaNames.UPPER_CAMEL.matcher(stem).matches()) {
+                            findings.add(new Finding(
+                                    "StructureFileName",
+                                    rel(entry),
+                                    1,
+                                    "java file '" + name + "' must be UpperCamelCase.java (letters and digits only)"));
+                        }
+                    }
+                }
                 try (var walk = Files.walk(root)) {
                     for (Path file :
                             (Iterable<Path>) walk.filter(p -> p.toString().endsWith(".java")

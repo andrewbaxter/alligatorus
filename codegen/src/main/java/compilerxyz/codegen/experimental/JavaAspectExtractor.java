@@ -3,11 +3,13 @@ package compilerxyz.codegen.experimental;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
@@ -25,6 +27,7 @@ import compilerxyz.prelude.util.TMap;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 public final class JavaAspectExtractor {
@@ -84,10 +87,7 @@ public final class JavaAspectExtractor {
             if (m.isStatic() || !m.isPublic()) continue;
             if (recordComponentNames.contains(m.getNameAsString())) continue;
             var params = m.getParameters();
-            var needsEvalContext = !params.isEmpty()
-                    && params.get(0).getNameAsString().equals("vx")
-                    && typeNameOf(params.get(0).getType(), importMap, pkg)
-                            .equals(ClassName.get("compilerxyz.main.eval", "EvalContext"));
+            var needsEvalContext = injectsEvalContext(m, params, simpleName + "." + m.getNameAsString());
             var methodParams = new TList<Param>();
             for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
                 var p = params.get(i);
@@ -116,6 +116,18 @@ public final class JavaAspectExtractor {
                 outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName)));
     }
 
+    public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {
+        boolean annotated = m.getAnnotationByName("BuiltinEvalContext").isPresent()
+                || m.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinEvalContext")
+                        .isPresent();
+        if (!annotated) return false;
+        if (params.isEmpty() || !params.get(0).getType().asString().endsWith("EvalContext")) {
+            throw new IllegalStateException(
+                    "@BuiltinEvalContext on " + where + " requires the first parameter to be an EvalContext");
+        }
+        return true;
+    }
+
     public static AnnotationExpr getBuiltinAnnotation(TypeDeclaration<?> decl) {
         return decl.getAnnotationByName("BuiltinFull")
                 .or(() -> decl.getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull"))
@@ -126,22 +138,22 @@ public final class JavaAspectExtractor {
         var out = new HashMap<String, String>();
         if (annot instanceof NormalAnnotationExpr n) {
             for (var p : n.getPairs()) {
-                String _rLiteralValueOf;
+                String literalValueOf;
                 _literalValueOf:
                 {
                     var v = p.getValue();
                     if (v instanceof StringLiteralExpr s) {
-                        _rLiteralValueOf = s.asString();
+                        literalValueOf = s.asString();
                         break _literalValueOf;
                     }
                     var raw = v.toString();
                     if (raw.endsWith("L") || raw.endsWith("l")) raw = raw.substring(0, raw.length() - 1);
                     {
-                        _rLiteralValueOf = raw;
+                        literalValueOf = raw;
                         break _literalValueOf;
                     }
                 }
-                out.put(p.getNameAsString(), _rLiteralValueOf);
+                out.put(p.getNameAsString(), literalValueOf);
             }
         }
         return out;
@@ -173,7 +185,7 @@ public final class JavaAspectExtractor {
         }
         if (t instanceof ClassOrInterfaceType c) {
             String simple = c.getNameAsString();
-            ClassName _rClassNameOf;
+            ClassName classNameOf;
             _classNameOf:
             {
                 var fqn = imports.getOrNull(simple);
@@ -186,11 +198,11 @@ public final class JavaAspectExtractor {
                 }
                 var idx = fqn.lastIndexOf('.');
                 {
-                    _rClassNameOf = ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
+                    classNameOf = ClassName.get(fqn.substring(0, idx), fqn.substring(idx + 1));
                     break _classNameOf;
                 }
             }
-            ClassName raw = _rClassNameOf;
+            ClassName raw = classNameOf;
 
             if (c.getTypeArguments().isPresent() && !c.getTypeArguments().get().isEmpty()) {
                 var argsList = c.getTypeArguments().get();

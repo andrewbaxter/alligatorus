@@ -19,7 +19,7 @@ public final class T0165MutableDropForkTest {
         return mb.constEvalCode(mb.call(
                 mb.evalConstEval(),
                 mb.recordOf(TList.of(
-                        new TestMb.RecordPair("xx_", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
+                        new TestMb.RecordPair("xx", mb.field(mb.scopeUse("arg"), mb.str("xx"))),
                         new TestMb.RecordPair(
                                 "staged",
                                 mb.stage(mb.seqOf(
@@ -967,7 +967,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                         "initial_")),
                                                                                                                                                                         mb
-                                                                                                                                                                                .as_(
+                                                                                                                                                                                .as(
                                                                                                                                                                                         mb
                                                                                                                                                                                                 .literalNull(),
                                                                                                                                                                                         mb
@@ -1352,7 +1352,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         .scopeUse(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "val_"))),
                                                                                                                                                                                                                                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .as_(
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        .as(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         .num(
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 2.0),
@@ -2020,7 +2020,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                         .str(
                                                                                                                                                                                                 "parity")),
                                                                                                                                                                 mb
-                                                                                                                                                                        .as_(
+                                                                                                                                                                        .as(
                                                                                                                                                                                 mb
                                                                                                                                                                                         .num(
                                                                                                                                                                                                 0.0),
@@ -2402,7 +2402,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                                                         .RecordPair(
                                                                                                                                                                                                                                                                                                                                         "drop_modified",
                                                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                                                .as_(
+                                                                                                                                                                                                                                                                                                                                                .as(
                                                                                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                                                                                 .operatorEq(
                                                                                                                                                                                                                                                                                                                                                                         mb
@@ -2950,7 +2950,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                         .scopeUse(
                                                                                                                                                                                                                                                                                                                 "ref_val_")))),
                                                                                                                                                                                                                                                 mb
-                                                                                                                                                                                                                                                        .as_(
+                                                                                                                                                                                                                                                        .as(
                                                                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                                                                         .num(
                                                                                                                                                                                                                                                                                 2.0),
@@ -3043,7 +3043,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                                 .literalNull())),
                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                .as_(
+                                                                                                                                                                                                                                                                                .as(
                                                                                                                                                                                                                                                                                         mb
                                                                                                                                                                                                                                                                                                 .num(
                                                                                                                                                                                                                                                                                                         2.0),
@@ -3122,7 +3122,7 @@ public final class T0165MutableDropForkTest {
                                                                                                                                                                                 .of(
                                                                                                                                                                                         new TestMb
                                                                                                                                                                                                 .RecordPair(
-                                                                                                                                                                                                "xx_",
+                                                                                                                                                                                                "xx",
                                                                                                                                                                                                 mb
                                                                                                                                                                                                         .field(
                                                                                                                                                                                                                 mb
@@ -3171,8 +3171,7 @@ public final class T0165MutableDropForkTest {
         return mb.ifOf(
                 TList.of(new TestMb.Branch(
                         mb.operatorEq(
-                                mb.as_(mb.num(1.0), mb.typesLong()),
-                                mb.as_(mb.num(doThrow ? 1.0 : 2.0), mb.typesLong())),
+                                mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(doThrow ? 1.0 : 2.0), mb.typesLong())),
                         mb.throw_(mb.str(msg)))),
                 Opt.none());
     }
@@ -3183,7 +3182,7 @@ public final class T0165MutableDropForkTest {
                 bindEvenOddType(mb, "MutCanary"),
                 mb.tryCatchFinally(
                         mb.seqOf(
-                                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                                mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                                 maybeThrow(mb, throwBefore, "boom_before"),
                                 mb.set(mb.scopeUse("a"), mb.num(3.0)),
                                 maybeThrow(mb, throwAfter, "boom_after")),
@@ -3222,7 +3221,7 @@ public final class T0165MutableDropForkTest {
         var messages = compileAndRun(moduleSeq(
                 mb,
                 bindEvenOddType(mb, "MutCanary"),
-                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                 mb.set(mb.scopeUse("a"), mb.num(3.0)),
                 mb.call(mb.log(), mb.str("after"))));
         assertEquals(
@@ -3259,7 +3258,7 @@ public final class T0165MutableDropForkTest {
                 bindEvenOddType(mb, "MutCanary"),
                 mb.tryCatchFinally(
                         mb.seqOf(
-                                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                                mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                                 mb.seqOf(mb.set(mb.scopeUse("a"), mb.num(3.0)), maybeThrow(mb, true, "boom_same"))),
                         Opt.some(new TestMb.Catch(
                                 "e", mb.builtin("types", "string"), mb.seqOf(mb.call(mb.log(), mb.scopeUse("e"))))),
@@ -3280,7 +3279,7 @@ public final class T0165MutableDropForkTest {
                 bindEvenOddType(mb, "MutCanary"),
                 mb.tryCatchFinally(
                         mb.seqOf(
-                                mb.bind("a", mb.as_(mb.num(2.0), mb.scopeUse("even_type"))),
+                                mb.bind("a", mb.as(mb.num(2.0), mb.scopeUse("even_type"))),
                                 mb.seqOf(
                                         maybeThrow(mb, true, "boom_first"),
                                         mb.set(mb.scopeUse("a"), mb.num(3.0)),

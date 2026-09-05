@@ -36,27 +36,28 @@ public final class VariableChecks {
     public List<ConventionChecks.Finding> run(ModelIndex index) {
         for (CtLocalVariable<?> local : index.localVariables) {
             if (local.isImplicit()) continue;
-            var _pbParent = local.isParentInitialized() ? local.getParent() : null;
-            var _pbIsPattern = false;
-            while (_pbParent != null) {
-                if (_pbParent.getClass().getSimpleName().contains("Pattern")) {
-                    _pbIsPattern = true;
+            var parent = local.isParentInitialized() ? local.getParent() : null;
+            var isPattern = false;
+            while (parent != null) {
+                if (parent.getClass().getSimpleName().contains("Pattern")) {
+                    isPattern = true;
                     break;
                 }
-                if (_pbParent instanceof CtMethod
-                        || _pbParent instanceof CtConstructor
-                        || _pbParent instanceof CtLambda
-                        || !_pbParent.isParentInitialized()) {
+                if (parent instanceof CtMethod
+                        || parent instanceof CtConstructor
+                        || parent instanceof CtLambda
+                        || !parent.isParentInitialized()) {
                     break;
                 }
-                _pbParent = _pbParent.getParent();
+                parent = parent.getParent();
             }
-            if (_pbIsPattern || local.getParent() instanceof CtTryWithResource) continue;
+            if (isPattern || local.getParent() instanceof CtTryWithResource) continue;
             if (usedInEnclosingBody(index, local, local.getSimpleName())) continue;
             report(
                     "VariableUnused",
                     local,
-                    "local variable '" + local.getSimpleName() + "' is never read; remove it (keep the initializer as a"
+                    "local variable '" + local.getSimpleName()
+                            + "' is never read (write-only counts as unused); remove it (keep the initializer as a"
                             + " bare statement if it has side effects).");
         }
 
@@ -74,14 +75,14 @@ public final class VariableChecks {
                 tops.clear();
             }
             if (tops.isEmpty()) {
-                var _oaOverride = false;
+                var override = false;
                 for (CtAnnotation<?> a : m.getAnnotations()) {
                     if ("Override".equals(a.getAnnotationType().getSimpleName())) {
-                        _oaOverride = true;
+                        override = true;
                         break;
                     }
                 }
-                if (_oaOverride) continue;
+                if (override) continue;
                 for (CtParameter<?> p : m.getParameters()) {
                     if (p.isImplicit() || usedInEnclosingBody(index, m, p.getSimpleName())) continue;
                     report(
@@ -145,14 +146,14 @@ public final class VariableChecks {
         for (var top : tops) {
             var owner = top.getDeclaringType();
             if (owner == null) continue;
-            var _bcBridged = false;
+            var bridged = false;
             for (CtAnnotation<?> a : owner.getAnnotations()) {
                 if (a.getAnnotationType().getSimpleName().startsWith("Builtin")) {
-                    _bcBridged = true;
+                    bridged = true;
                     break;
                 }
             }
-            if (_bcBridged) continue;
+            if (bridged) continue;
             var key = owner.getQualifiedName() + "#" + top.getSignature();
             contractDecl.putIfAbsent(key, top);
             var flags = contractParamUsed.computeIfAbsent(
@@ -198,6 +199,7 @@ public final class VariableChecks {
         for (CtVariableAccess<?> access : index.accessesOf(owner).variableAccesses) {
             var ref = access.getVariable();
             if (ref == null) continue;
+            if (!ModelIndex.isRead(access)) continue;
             if (!scopeIsOwner) {
                 var apos = access.getPosition();
                 if (apos != null

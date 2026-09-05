@@ -19,7 +19,7 @@ public interface Target {
     EResult<Opt<Code>> targetCastException(
             ExprContext xx, QExprId loc, JumpKey self, Type calleeExc, Type callerExc, Opt<JumpKey> next);
 
-    EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type_);
+    EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type);
 
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 

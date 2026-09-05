@@ -135,68 +135,75 @@ public final class ReachabilityMain {
             if (ex instanceof CtTypeMember tm && tm.getDeclaringType() != null) {
                 String tn = tm.getDeclaringType().getQualifiedName();
                 if (fieldInitDone.add(tn)) {
-                    var _fiAcc = index.initializerAccessesOf(tm.getDeclaringType());
-                    for (CtInvocation<?> inv : _fiAcc.invocations) {
+                    var acc = index.initializerAccessesOf(tm.getDeclaringType());
+                    for (CtInvocation<?> inv : acc.invocations) {
                         onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
                     }
-                    for (CtConstructorCall<?> cc : _fiAcc.constructorCalls) {
+                    for (CtConstructorCall<?> cc : acc.constructorCalls) {
                         onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
                     }
-                    scanMethodRefs(_fiAcc.executableRefs, work, fromGenerated);
+                    scanMethodRefs(acc.executableRefs, work, fromGenerated);
                     if (tm.getDeclaringType() instanceof CtClass<?> liveClass) {
                         for (CtAnonymousExecutable ab : liveClass.getAnonymousExecutables()) {
-                            var _abAcc = index.accessesOf(ab);
-                            for (CtInvocation<?> inv : _abAcc.invocations) {
+                            var abAcc = index.accessesOf(ab);
+                            for (CtInvocation<?> inv : abAcc.invocations) {
                                 onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
                             }
-                            for (CtConstructorCall<?> cc : _abAcc.constructorCalls) {
+                            for (CtConstructorCall<?> cc : abAcc.constructorCalls) {
                                 onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
                             }
-                            scanMethodRefs(_abAcc.executableRefs, work, fromGenerated);
-                            for (CtFieldRead<?> fr : _abAcc.fieldReads) {
+                            scanMethodRefs(abAcc.executableRefs, work, fromGenerated);
+                            for (CtFieldRead<?> fr : abAcc.fieldReads) {
                                 if (fr.getVariable() != null) {
                                     fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
                                 }
                             }
-                            for (CtFieldWrite<?> fw : _abAcc.fieldWrites) {
+                            for (CtFieldWrite<?> fw : abAcc.fieldWrites) {
                                 if (fw.getVariable() != null) {
                                     fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                                    if (ModelIndex.isRead(fw))
+                                        fieldReads.merge(
+                                                fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
                                 }
                             }
                         }
                     }
-                    for (CtFieldRead<?> fr : _fiAcc.fieldReads) {
+                    for (CtFieldRead<?> fr : acc.fieldReads) {
                         if (fr.getVariable() != null) {
                             fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
                         }
                     }
-                    for (CtFieldWrite<?> fw : _fiAcc.fieldWrites) {
+                    for (CtFieldWrite<?> fw : acc.fieldWrites) {
                         if (fw.getVariable() != null) {
                             fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                            if (ModelIndex.isRead(fw))
+                                fieldReads.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
                         }
                     }
                 }
             }
-            var _wlAcc = index.accessesOf(ex);
-            for (CtTypeReference<?> _artTr : _wlAcc.typeReferences) {
-                String _artQn = _artTr.getQualifiedName();
-                if (_artQn != null && !_artQn.isEmpty()) referencedTypes.add(_artQn);
+            var wlAcc = index.accessesOf(ex);
+            for (CtTypeReference<?> artTr : wlAcc.typeReferences) {
+                String artQn = artTr.getQualifiedName();
+                if (artQn != null && !artQn.isEmpty()) referencedTypes.add(artQn);
             }
-            for (CtInvocation<?> inv : _wlAcc.invocations) {
+            for (CtInvocation<?> inv : wlAcc.invocations) {
                 onCall(inv.getExecutable(), inv.getArguments().size(), work, fromGenerated);
             }
-            for (CtConstructorCall<?> cc : _wlAcc.constructorCalls) {
+            for (CtConstructorCall<?> cc : wlAcc.constructorCalls) {
                 onCall(cc.getExecutable(), cc.getArguments().size(), work, fromGenerated);
             }
-            scanMethodRefs(_wlAcc.executableRefs, work, fromGenerated);
-            for (CtFieldRead<?> fr : _wlAcc.fieldReads) {
+            scanMethodRefs(wlAcc.executableRefs, work, fromGenerated);
+            for (CtFieldRead<?> fr : wlAcc.fieldReads) {
                 if (fr.getVariable() != null) {
                     fieldReads.merge(fieldKey(fr.getVariable().getQualifiedName()), 1, Integer::sum);
                 }
             }
-            for (CtFieldWrite<?> fw : _wlAcc.fieldWrites) {
+            for (CtFieldWrite<?> fw : wlAcc.fieldWrites) {
                 if (fw.getVariable() != null) {
                     fieldWrites.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
+                    if (ModelIndex.isRead(fw))
+                        fieldReads.merge(fieldKey(fw.getVariable().getQualifiedName()), 1, Integer::sum);
                 }
             }
         }
@@ -242,10 +249,10 @@ public final class ReachabilityMain {
                 if (!(ex instanceof CtMethod<?> m)) continue;
                 String k = key(ex);
                 boolean concrete = m.getBody() != null;
-                boolean _iam = false;
-                for (CtMethod<?> _iamTop : m.getTopDefinitions()) {
-                    if (!key(_iamTop).equals(key(m)) && _iamTop.isAbstract()) {
-                        _iam = true;
+                boolean iam = false;
+                for (CtMethod<?> top : m.getTopDefinitions()) {
+                    if (!key(top).equals(key(m)) && top.isAbstract()) {
+                        iam = true;
                         break;
                     }
                 }
@@ -254,7 +261,7 @@ public final class ReachabilityMain {
                         && !"compilerxyz.prelude.util.Assert".equals(qn)
                         && m.getBody() != null
                         && !overridesExternal(m)
-                        && !_iam
+                        && !iam
                         && !isRecordAccessor(t, m)
                         && (m.hasModifier(ModifierKind.PRIVATE) || m.hasModifier(ModifierKind.STATIC));
                 if (!reachable.contains(k)
@@ -279,9 +286,6 @@ public final class ReachabilityMain {
                     if (f.getModifiers().contains(ModifierKind.PRIVATE)
                             && !rooted
                             && !f.getSimpleName().equals("serialVersionUID")
-                            && fieldWrites.getOrDefault(
-                                            fieldKey(f.getReference().getQualifiedName()), 0)
-                                    == 0
                             && fieldReads.getOrDefault(fieldKey(f.getReference().getQualifiedName()), 0) == 0) {
                         deadFields.add(qn + "#" + f.getSimpleName());
                     }
@@ -310,7 +314,7 @@ public final class ReachabilityMain {
         section(out, "#1 UNREACHABLE CLASSES (dead)", deadClasses);
         section(out, "#1 UNREACHABLE METHODS (dead)", deadMethods);
         section(out, "#2 SINGLE-USE METHODS (inline candidates: private/static, 1 caller)", singleUseMethods);
-        section(out, "#1 DEAD PRIVATE FIELDS (0 reads)", deadFields);
+        section(out, "#1 DEAD PRIVATE FIELDS (0 reads; write-only counts as dead)", deadFields);
         section(out, "#2 SINGLE-USE PRIVATE FIELDS (1 read)", singleUseFields);
         int total = deadClasses.size()
                 + deadMethods.size()

@@ -164,7 +164,7 @@ public final class T0130DropThrowTest {
                                                                                                                                                                                         .of(
                                                                                                                                                                                                 new TestMb
                                                                                                                                                                                                         .RecordPair(
-                                                                                                                                                                                                        "xx_",
+                                                                                                                                                                                                        "xx",
                                                                                                                                                                                                         mb
                                                                                                                                                                                                                 .field(
                                                                                                                                                                                                                         mb
@@ -206,7 +206,7 @@ public final class T0130DropThrowTest {
                                                                                                                                                 .of(
                                                                                                                                                         new TestMb
                                                                                                                                                                 .RecordPair(
-                                                                                                                                                                "xx_",
+                                                                                                                                                                "xx",
                                                                                                                                                                 mb
                                                                                                                                                                         .field(
                                                                                                                                                                                 mb
@@ -467,7 +467,7 @@ public final class T0130DropThrowTest {
                                                                                                                                         .of(
                                                                                                                                                 new TestMb
                                                                                                                                                         .RecordPair(
-                                                                                                                                                        "xx_",
+                                                                                                                                                        "xx",
                                                                                                                                                         mb
                                                                                                                                                                 .field(
                                                                                                                                                                         mb
@@ -536,7 +536,7 @@ public final class T0130DropThrowTest {
                                                                                                                                         .of(
                                                                                                                                                 new TestMb
                                                                                                                                                         .RecordPair(
-                                                                                                                                                        "xx_",
+                                                                                                                                                        "xx",
                                                                                                                                                         mb
                                                                                                                                                                 .field(
                                                                                                                                                                         mb
@@ -1069,7 +1069,7 @@ public final class T0130DropThrowTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
-                        mb.bind("cnry", mb.as_(mb.as_(mb.str("X"), mb.typesString()), mb.scopeUse("canary"))),
+                        mb.bind("cnry", mb.as(mb.as(mb.str("X"), mb.typesString()), mb.scopeUse("canary"))),
                         mb.call(mb.log(), mb.str("after")))));
         var res = compileOk(modules);
         var messages = messages(res);
@@ -1087,7 +1087,7 @@ public final class T0130DropThrowTest {
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
-                        mb.as_(mb.as_(mb.str("Y"), mb.typesString()), mb.scopeUse("canary")),
+                        mb.as(mb.as(mb.str("Y"), mb.typesString()), mb.scopeUse("canary")),
                         mb.call(mb.log(), mb.str("after")))));
         var res = compileOk(modules);
         var messages = messages(res);
@@ -1111,11 +1111,11 @@ public final class T0130DropThrowTest {
                                 mb.recordOf(TList.of(
                                         new TestMb.RecordPair(
                                                 "a",
-                                                mb.as_(mb.as_(mb.str("A"), mb.typesString()), mb.scopeUse("canary_a"))),
+                                                mb.as(mb.as(mb.str("A"), mb.typesString()), mb.scopeUse("canary_a"))),
                                         new TestMb.RecordPair(
                                                 "b",
-                                                mb.as_(
-                                                        mb.as_(mb.str("B"), mb.typesString()),
+                                                mb.as(
+                                                        mb.as(mb.str("B"), mb.typesString()),
                                                         mb.scopeUse("canary_b")))))),
                         mb.field(mb.scopeUse("rec"), mb.str("a")),
                         mb.call(mb.log(), mb.str("end")))));
@@ -1139,7 +1139,7 @@ public final class T0130DropThrowTest {
                 new SourceModule.V1(mb.tryCatchFinally(
                         mb.seqOf(
                                 mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
-                                mb.bind("cnry", mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
+                                mb.bind("cnry", mb.as(mb.as(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
                                 mb.throw_(mb.str("boom"))),
                         Opt.some(new TestMb.Catch(
                                 "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
@@ -1154,7 +1154,7 @@ public final class T0130DropThrowTest {
     }
 
     private static SourceExpr dynTrue(TestMb mb) {
-        return mb.operatorEq(mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+        return mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong()));
     }
 
     @Test
@@ -1171,8 +1171,8 @@ public final class T0130DropThrowTest {
                                         mb.seqOf(
                                                 mb.bind(
                                                         "cnry",
-                                                        mb.as_(
-                                                                mb.as_(mb.str("Z"), mb.typesString()),
+                                                        mb.as(
+                                                                mb.as(mb.str("Z"), mb.typesString()),
                                                                 mb.scopeUse("canary"))),
                                                 mb.call(mb.log(), mb.str("then")),
                                                 mb.tupleOf()))),
@@ -1195,7 +1195,7 @@ public final class T0130DropThrowTest {
                 new SourceModule.V1(mb.tryCatchFinally(
                         mb.seqOf(
                                 mb.bind("canary", mb.lower(makeCanaryInstance(mb, "Canary", "dropped"))),
-                                mb.bind("cnry", mb.as_(mb.as_(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
+                                mb.bind("cnry", mb.as(mb.as(mb.str("Z"), mb.typesString()), mb.scopeUse("canary"))),
                                 mb.ifOf(
                                         TList.of(new TestMb.Branch(dynTrue(mb), mb.throw_(mb.str("boom")))),
                                         Opt.some(mb.tupleOf()))),
@@ -1265,7 +1265,7 @@ public final class T0130DropThrowTest {
                         mb.tryCatchFinally(
                                 mb.call(mb.log(), mb.str("body")),
                                 Opt.none(),
-                                Opt.some(mb.as_(mb.as_(mb.str("V"), mb.typesString()), mb.scopeUse("canary")))),
+                                Opt.some(mb.as(mb.as(mb.str("V"), mb.typesString()), mb.scopeUse("canary")))),
                         mb.call(mb.log(), mb.str("after")))));
         var res = compileOk(modules);
         var messages = messages(res);
@@ -1387,7 +1387,7 @@ public final class T0130DropThrowTest {
     }
 
     private static SourceExpr canaryInstance(TestMb mb, String canaryScope, String textLiteral) {
-        return mb.as_(mb.as_(mb.str(textLiteral), mb.typesString()), mb.scopeUse(canaryScope));
+        return mb.as(mb.as(mb.str(textLiteral), mb.typesString()), mb.scopeUse(canaryScope));
     }
 
     @Test
@@ -1491,7 +1491,7 @@ public final class T0130DropThrowTest {
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
-                        mb.as_(sourceRecord, reorderedType),
+                        mb.as(sourceRecord, reorderedType),
                         mb.call(mb.log(), mb.str("after")))));
         var res = compileOk(modules);
         assertEquals(
@@ -1517,7 +1517,7 @@ public final class T0130DropThrowTest {
                         mb.bind("cA", mb.lower(makeCanaryInstance(mb, "CanaryA", "drop_A"))),
                         mb.bind("cB", mb.lower(makeCanaryInstance(mb, "CanaryB", "drop_B"))),
                         mb.bind("src", sourceRecord),
-                        mb.bind("r", mb.as_(mb.scopeUse("src"), reorderedType)),
+                        mb.bind("r", mb.as(mb.scopeUse("src"), reorderedType)),
                         mb.call(mb.log(), mb.str("after")))));
         var res = compileOk(modules);
         assertEquals(

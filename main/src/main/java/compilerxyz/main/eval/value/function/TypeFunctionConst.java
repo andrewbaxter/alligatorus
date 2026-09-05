@@ -1,12 +1,9 @@
 package compilerxyz.main.eval.value.function;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -14,18 +11,15 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectRecord;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -35,7 +29,7 @@ import compilerxyz.prelude.util.TList;
 @BuiltinFull(uniqueId = 6110L)
 public record TypeFunctionConst(
         TList<FunctionParam> params, Opt<Type> ret, JavaInternalName klass, String methodName, boolean needsEvalContext)
-        implements Type, AspectFunction {
+        implements Aspect, Type {
 
     public Type arg() {
         return FunctionParam.argType(params);
@@ -114,52 +108,8 @@ public record TypeFunctionConst(
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectFunctionFunctionConst(this));
         }
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var argType = arg();
-        var argList = new TList<CodeDynamic>();
-        EResult<TList<CodeDynamic>> argsDynRes;
-        if (DynUtil.zeroArgSignature(xx, argType)) {
-            argsDynRes = EResult.ok(new TList<>());
-        } else {
-            var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
-            if (convertedRes.hasErrors()) return convertedRes.reerr();
-            var converted = convertedRes.requireValue("TypeFunctionConst::call converted arg");
-            argsDynRes = DynUtil.destructurePositional(xx, loc, argType, converted);
-            if (argsDynRes.hasErrors()) return argsDynRes.reerr();
-        }
-        for (var c : argsDynRes.requireValue("TypeFunctionConst::call positional args")) {
-            argList.add(c);
-        }
-        var descRes = descriptorFor(xx, loc, arg(), ret, needsEvalContext);
-        if (descRes.hasErrors()) return descRes.reerr();
-        var invocationRes = emitStaticInvocation(
-                xx,
-                loc,
-                klass,
-                methodName,
-                descRes.requireValue("TypeFunctionConst::emit desc"),
-                needsEvalContext,
-                argList);
-        if (invocationRes.hasErrors()) return invocationRes.reerr();
-        var invocation = invocationRes.requireValue("TypeFunctionConst::call invocation");
-        if (ret.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.target(invocation), EvalOutcome.NO_VALUE));
-        }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        return EResult.ok(retStackRes
-                .requireValue("TypeFunctionConst::call ret stack")
-                .aspectStackValueDynamicToValue(xx, loc, invocation));
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
     }
 

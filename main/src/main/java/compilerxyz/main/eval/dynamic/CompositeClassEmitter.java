@@ -32,23 +32,23 @@ public final class CompositeClassEmitter {
     public static Class<?> getOrEmit(ExprContext xx, TList<Type> sortedTypes) {
         var slotDescs = new TList<JavaDataDescriptor>(sortedTypes.size());
         for (var t : sortedTypes) slotDescs.add(slotDescriptor(xx, t));
-        var _bnfSb = new StringBuilder(BINARY_NAME_PREFIX);
-        _bnfSb.append(slotDescs.size());
-        for (var _bnfDesc : slotDescs) {
-            _bnfSb.append("#x");
-            var _bnfD = _bnfDesc.value();
-            for (int _bnfJ = 0; _bnfJ < _bnfD.length(); _bnfJ++) {
-                char _bnfC = _bnfD.charAt(_bnfJ);
-                switch (_bnfC) {
-                    case '#' -> _bnfSb.append("##");
-                    case '/' -> _bnfSb.append("#s");
-                    case ';' -> _bnfSb.append("#e");
-                    case '[' -> _bnfSb.append("#a");
-                    default -> _bnfSb.append(_bnfC);
+        var sb = new StringBuilder(BINARY_NAME_PREFIX);
+        sb.append(slotDescs.size());
+        for (var desc : slotDescs) {
+            sb.append("#x");
+            var d = desc.value();
+            for (int j = 0; j < d.length(); j++) {
+                char c = d.charAt(j);
+                switch (c) {
+                    case '#' -> sb.append("##");
+                    case '/' -> sb.append("#s");
+                    case ';' -> sb.append("#e");
+                    case '[' -> sb.append("#a");
+                    default -> sb.append(c);
                 }
             }
         }
-        var binaryName = _bnfSb.toString();
+        var binaryName = sb.toString();
         var cache = xx.vx.ix.compositeCache;
         var existing = cache.get(binaryName);
         if (existing != null) {

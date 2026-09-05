@@ -238,12 +238,12 @@ public final class T0010DefineFuncTest {
                                                                         mb.stage(
                                                                                 mb.operatorAdd(
                                                                                         mb.scopeUse("arg"),
-                                                                                        mb.as_(
+                                                                                        mb.as(
                                                                                                 mb.num(1.),
                                                                                                 mb.typesInt()))))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
-                        mb.bind("y", mb.call(mb.scopeUse("inc"), mb.as_(mb.num(2.), mb.typesInt()))),
+                        mb.bind("y", mb.call(mb.scopeUse("inc"), mb.as(mb.num(2.), mb.typesInt()))),
                         mb.seqOf(
                                 mb.call(
                                         mb.log(),

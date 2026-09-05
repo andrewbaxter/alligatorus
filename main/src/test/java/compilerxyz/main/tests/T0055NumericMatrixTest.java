@@ -28,27 +28,27 @@ public final class T0055NumericMatrixTest {
         }
 
         SourceExpr byteV(double v) {
-            return mb.as_(mb.num(v), mb.typesByte());
+            return mb.as(mb.num(v), mb.typesByte());
         }
 
         SourceExpr shortV(double v) {
-            return mb.as_(mb.num(v), mb.builtin("types", "short"));
+            return mb.as(mb.num(v), mb.builtin("types", "short"));
         }
 
         SourceExpr intV(double v) {
-            return mb.as_(mb.num(v), mb.typesInt());
+            return mb.as(mb.num(v), mb.typesInt());
         }
 
         SourceExpr longV(double v) {
-            return mb.as_(mb.num(v), mb.typesLong());
+            return mb.as(mb.num(v), mb.typesLong());
         }
 
         SourceExpr floatV(double v) {
-            return mb.as_(mb.num(v), mb.builtin("types", "float"));
+            return mb.as(mb.num(v), mb.builtin("types", "float"));
         }
 
         SourceExpr doubleV(double v) {
-            return mb.as_(mb.num(v), mb.builtin("types", "double"));
+            return mb.as(mb.num(v), mb.builtin("types", "double"));
         }
 
         void num(SourceExpr expr, String exp) {

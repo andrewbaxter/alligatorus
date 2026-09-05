@@ -68,7 +68,7 @@ public final class T0085UnionVariantSetTest {
     }
 
     private static SourceExpr widened(TestMb mb, SourceExpr value) {
-        return mb.as_(value, mb.field(mb.scopeUse("strnum"), mb.str("type")));
+        return mb.as(value, mb.field(mb.scopeUse("strnum"), mb.str("type")));
     }
 
     private static SourceExpr logToString(TestMb mb, String key) {
@@ -226,7 +226,7 @@ public final class T0085UnionVariantSetTest {
                 mb.bind("x", newNum(mb, 7.)),
                 mb.ifOf(
                         TList.of(new TestMb.Branch(
-                                mb.operatorEq(mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong())),
+                                mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong())),
                                 mb.set(mb.scopeUse("x"), newStr(mb, "s")))),
                         Opt.none()));
     }

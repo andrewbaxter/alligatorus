@@ -5,7 +5,7 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.value.object_.ObjectAspectSource;
+import compilerxyz.main.eval.value.object.ObjectAspectSource;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;

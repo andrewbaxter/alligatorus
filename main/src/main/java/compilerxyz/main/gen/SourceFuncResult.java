@@ -14,7 +14,7 @@ public final class SourceFuncResult {
         this.func = func;
     }
 
-    public void set_description(String description) {
+    public void setDescription(String description) {
         if (this.func.data().description.optIsSome()) {
             throw new IllegalStateException("Function already has a description");
         }
@@ -37,7 +37,7 @@ public final class SourceFuncResult {
         data.implExpr = Opt.some((Value) implBody.value());
     }
 
-    public void set_exception_type(Type exceptionType) {
+    public void setExceptionType(Type exceptionType) {
         if (this.func.data().exceptionType.optIsSome()) {
             throw new IllegalStateException("Function already has an exception type");
         }

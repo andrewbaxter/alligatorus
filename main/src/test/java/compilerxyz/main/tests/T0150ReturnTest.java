@@ -389,7 +389,7 @@ public final class T0150ReturnTest {
     public void test01678LabeledReturnFinallyWithBranches() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        var dynTrue = mb.operatorEq(mb.as_(mb.num(1.0), mb.typesLong()), mb.as_(mb.num(1.0), mb.typesLong()));
+        var dynTrue = mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong()));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(

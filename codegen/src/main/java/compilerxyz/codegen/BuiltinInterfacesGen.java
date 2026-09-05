@@ -63,23 +63,23 @@ public final class BuiltinInterfacesGen {
     public static final ClassName INTERFACE_DATA =
             ClassName.get("compilerxyz.main.eval.value.source_interface", "InterfaceData");
     public static final ClassName TYPE_OBJECT_DYNAMIC =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectDynamic");
+            ClassName.get("compilerxyz.main.eval.value.object", "TypeObjectDynamic");
     public static final ClassName ILIST = ClassName.get("compilerxyz.prelude.util", "IList");
     public static final ClassName TYPE_OBJECT_META =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectMeta");
+            ClassName.get("compilerxyz.main.eval.value.object", "TypeObjectMeta");
     public static final ClassName TYPE_OBJECT_CAST_RULE =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastRule");
+            ClassName.get("compilerxyz.main.eval.value.object", "TypeObjectCastRule");
     public static final ClassName TYPE_OBJECT_CAST_FROM_RULE =
-            ClassName.get("compilerxyz.main.eval.value.object_", "TypeObjectCastFromRule");
-    public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object_", "ObjectMethod");
+            ClassName.get("compilerxyz.main.eval.value.object", "TypeObjectCastFromRule");
+    public static final ClassName OBJECT_METHOD = ClassName.get("compilerxyz.main.eval.value.object", "ObjectMethod");
     public static final ClassName OBJECT_DATA_FIELD =
-            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDataField");
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectDataField");
     public static final ClassName OBJECT_DROP_KIND =
-            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectDropKind");
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectDropKind");
     public static final ClassName OBJECT_ASPECT_SOURCE =
-            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectAspectSource");
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectAspectSource");
     public static final ClassName OBJECT_ASPECT_SOURCE_STATIC =
-            ClassName.get("compilerxyz.main.eval.value.object_", "ObjectAspectSource", "Static");
+            ClassName.get("compilerxyz.main.eval.value.object", "ObjectAspectSource", "Static");
     public static final ClassName JAVA_INTERNAL_NAME =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
     public static final ClassName JAVA_DATA_DESCRIPTOR =

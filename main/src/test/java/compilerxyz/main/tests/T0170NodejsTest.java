@@ -352,7 +352,7 @@ public final class T0170NodejsTest {
                                                                                         mb.tupleOf())),
                                                                         rp(
                                                                                 "expr_count",
-                                                                                mb.as_(mb.num(0.), mb.typesInt()))))),
+                                                                                mb.as(mb.num(0.), mb.typesInt()))))),
                                                 mb.call(
                                                         mb.field(
                                                                 mb.field(mb.scopeUse("context"), mb.str("out")),
@@ -548,7 +548,7 @@ public final class T0170NodejsTest {
     public void test00005NodejsCodeMiscastIsCapturedError() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
-        var dynStr = (java.util.function.Function<String, SourceExpr>) v -> mb.as_(mb.str(v), mb.typesString());
+        var dynStr = (java.util.function.Function<String, SourceExpr>) v -> mb.as(mb.str(v), mb.typesString());
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
@@ -576,7 +576,7 @@ public final class T0170NodejsTest {
                         mb.call(
                                 mb.log(),
                                 mb.matchOf(
-                                        mb.as_(codeOp(mb, "lit_str", mb.str("x")), mb.typesCode()),
+                                        mb.as(codeOp(mb, "lit_str", mb.str("x")), mb.typesCode()),
                                         mb.str("c"),
                                         TList.of(
                                                 new TestMb.Branch(
@@ -757,7 +757,7 @@ public final class T0170NodejsTest {
                                                                                                 mb.recordOf(
                                                                                                         TList.of(
                                                                                                                 rp(
-                                                                                                                        "xx_",
+                                                                                                                        "xx",
                                                                                                                         mb
                                                                                                                                 .field(
                                                                                                                                         mb
@@ -789,7 +789,7 @@ public final class T0170NodejsTest {
                                                                                 TList.of(
                                                                                         rp(
                                                                                                 "code",
-                                                                                                mb.as_(
+                                                                                                mb.as(
                                                                                                         mb.scopeUse(
                                                                                                                 "call_code"),
                                                                                                         mb
@@ -855,7 +855,7 @@ public final class T0170NodejsTest {
                                                                 mb.recordOf(
                                                                         TList.of(
                                                                                 rp(
-                                                                                        "xx_",
+                                                                                        "xx",
                                                                                         mb.field(
                                                                                                 mb.scopeUse("arg"),
                                                                                                 mb.str("xx"))),
@@ -906,7 +906,7 @@ public final class T0170NodejsTest {
                                                                         TList.of(
                                                                                 rp(
                                                                                         "code",
-                                                                                        mb.as_(
+                                                                                        mb.as(
                                                                                                 mb.scopeUse(
                                                                                                         "field_code"),
                                                                                                 mb.typesCode())),
@@ -983,7 +983,7 @@ public final class T0170NodejsTest {
                                                                 TList.of(
                                                                         rp(
                                                                                 "code",
-                                                                                mb.as_(
+                                                                                mb.as(
                                                                                         mb.call(
                                                                                                 mb.lower(
                                                                                                         mb.field(
@@ -1208,7 +1208,7 @@ public final class T0170NodejsTest {
                                                                                                                 rp(
                                                                                                                         "count",
                                                                                                                         mb
-                                                                                                                                .as_(
+                                                                                                                                .as(
                                                                                                                                         mb
                                                                                                                                                 .num(
                                                                                                                                                         0.),
@@ -1230,7 +1230,7 @@ public final class T0170NodejsTest {
                                                                                                 mb.recordOf(
                                                                                                         TList.of(
                                                                                                                 rp(
-                                                                                                                        "vx_",
+                                                                                                                        "vx",
                                                                                                                         mb
                                                                                                                                 .scopeUse(
                                                                                                                                         "vx2")),
@@ -1278,7 +1278,7 @@ public final class T0170NodejsTest {
                                                                                                                 rp(
                                                                                                                         "target",
                                                                                                                         mb
-                                                                                                                                .as_(
+                                                                                                                                .as(
                                                                                                                                         mb
                                                                                                                                                 .scopeUse(
                                                                                                                                                         "tgt"),
@@ -1300,7 +1300,7 @@ public final class T0170NodejsTest {
                                                                                                 mb.recordOf(
                                                                                                         TList.of(
                                                                                                                 rp(
-                                                                                                                        "xx_",
+                                                                                                                        "xx",
                                                                                                                         mb
                                                                                                                                 .scopeUse(
                                                                                                                                         "ctx")),

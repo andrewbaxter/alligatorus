@@ -87,16 +87,16 @@ public final class CodegenDescriptorScanner {
                 }
             }
             for (var m : t.getMethods()) {
-                boolean _rIsAnnotated;
+                boolean isAnnotated;
                 _isAnnotated:
                 {
                     {
-                        _rIsAnnotated = m.getAnnotations().stream()
+                        isAnnotated = m.getAnnotations().stream()
                                 .anyMatch(a -> a.getNameAsString().equals("CodegenDescriptor"));
                         break _isAnnotated;
                     }
                 }
-                if (!_rIsAnnotated) continue;
+                if (!isAnnotated) continue;
                 var typeParams = new TSet<String>();
                 typeParams.addAll(classTypeParams);
                 for (var tp : m.getTypeParameters()) typeParams.add(tp.getNameAsString());
@@ -145,27 +145,27 @@ public final class CodegenDescriptorScanner {
         if (t.isClassOrInterfaceType()) {
             var name = t.asClassOrInterfaceType().getNameAsString();
             if (typeParams.contains(name)) return ClassName.get(Object.class);
-            String _rResolve;
+            String resolve;
             _resolve:
             {
                 var head = name.contains(".") ? name.substring(0, name.indexOf('.')) : name;
                 var fromImport = imports.get(head);
                 if (fromImport != null) {
                     {
-                        _rResolve = name.contains(".") ? fromImport + name.substring(name.indexOf('.')) : fromImport;
+                        resolve = name.contains(".") ? fromImport + name.substring(name.indexOf('.')) : fromImport;
                         break _resolve;
                     }
                 }
                 if (JAVA_LANG.contains(head)) {
-                    _rResolve = "java.lang." + name;
+                    resolve = "java.lang." + name;
                     break _resolve;
                 }
                 {
-                    _rResolve = pkg.isEmpty() ? name : pkg + "." + name;
+                    resolve = pkg.isEmpty() ? name : pkg + "." + name;
                     break _resolve;
                 }
             }
-            return ClassName.bestGuess(_rResolve);
+            return ClassName.bestGuess(resolve);
         }
         throw new IllegalStateException("Unsupported @CodegenDescriptor type: " + t);
     }

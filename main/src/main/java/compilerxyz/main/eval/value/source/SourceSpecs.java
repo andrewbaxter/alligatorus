@@ -4,7 +4,7 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectStringConst;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.Value;

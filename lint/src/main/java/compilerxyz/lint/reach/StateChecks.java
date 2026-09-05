@@ -61,31 +61,29 @@ public final class StateChecks {
     public List<ConventionChecks.Finding> run(ModelIndex index) {
         Set<String> dynMethodNames = new HashSet<>();
         for (CtConstructorCall<?> cc : index.constructorCalls) {
-            String _dynCtor = cc.getType() == null ? "" : cc.getType().getSimpleName();
-            int _dynIdx;
-            switch (_dynCtor) {
-                case "TypeMethodDynamic" -> _dynIdx = 4;
-                case "TypeFunctionConst" -> _dynIdx = 3;
+            String ctor = cc.getType() == null ? "" : cc.getType().getSimpleName();
+            int idx;
+            switch (ctor) {
+                case "TypeMethodDynamic" -> idx = 4;
+                case "TypeFunctionConst" -> idx = 3;
                 default -> {
                     continue;
                 }
             }
-            List<CtExpression<?>> _dynArgs = cc.getArguments();
-            if (_dynArgs.size() > _dynIdx
-                    && _dynArgs.get(_dynIdx) instanceof CtLiteral<?> lit
-                    && lit.getValue() instanceof String n) {
+            List<CtExpression<?>> args = cc.getArguments();
+            if (args.size() > idx && args.get(idx) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
                 dynMethodNames.add(n);
             }
         }
         for (CtInvocation<?> inv : index.invocations) {
-            String _dynName =
+            String dynName =
                     inv.getExecutable() == null ? "" : inv.getExecutable().getSimpleName();
-            if (!"callStaticMethod".equals(_dynName) && !"callStaticInterfaceMethod".equals(_dynName)) {
+            if (!"callStaticMethod".equals(dynName) && !"callStaticInterfaceMethod".equals(dynName)) {
                 continue;
             }
-            List<CtExpression<?>> _dynArgs = inv.getArguments();
-            if (_dynArgs.size() > 2
-                    && _dynArgs.get(2) instanceof CtLiteral<?> lit
+            List<CtExpression<?>> dynArgs = inv.getArguments();
+            if (dynArgs.size() > 2
+                    && dynArgs.get(2) instanceof CtLiteral<?> lit
                     && lit.getValue() instanceof String n) {
                 dynMethodNames.add(n);
             }

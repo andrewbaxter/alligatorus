@@ -31,7 +31,7 @@ public final class TestMb {
         return v ? operatorLt(num(0.0), num(1.0)) : operatorLt(num(1.0), num(0.0));
     }
 
-    public SourceExpr as_(SourceExpr base, SourceExpr target) {
+    public SourceExpr as(SourceExpr base, SourceExpr target) {
         return new SourceExpr(id(), new SourceExpr.As(base, target));
     }
 
@@ -237,7 +237,7 @@ public final class TestMb {
         return call(
                 builtin("eval", "drop_value"),
                 recordOf(TList.of(
-                        new RecordPair("xx_", field(scopeUse("arg"), str("xx"))),
+                        new RecordPair("xx", field(scopeUse("arg"), str("xx"))),
                         new RecordPair("loc", field(scopeUse("arg"), str("loc"))),
                         new RecordPair(
                                 "cv",

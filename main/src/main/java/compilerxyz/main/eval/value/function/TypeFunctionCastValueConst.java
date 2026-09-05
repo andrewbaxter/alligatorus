@@ -8,7 +8,6 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -17,7 +16,7 @@ import compilerxyz.prelude.util.Opt;
 
 @BuiltinPath("eval.cast_value")
 @BuiltinFull(uniqueId = 6109L)
-public record TypeFunctionCastValueConst() implements Type, AspectFunction {
+public record TypeFunctionCastValueConst() implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -30,21 +29,8 @@ public record TypeFunctionCastValueConst() implements Type, AspectFunction {
             return Opt.some(this);
         }
         if (key.equals(GenAspectFunction.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(AspectFunctionFunctionCastValueConst.INSTANCE);
         }
-        return Opt.none();
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        return EResult.err(
-                loc,
-                "TypeFunctionCastValueConst::call: needs ExprContext externals + TypeSourceObject"
-                        + " {Const,Dynamic} + CAST_VALUE_FN_SCOPE_ID emission (deferred)");
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
         return Opt.none();
     }
 

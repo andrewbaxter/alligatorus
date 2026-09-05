@@ -8,37 +8,24 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectArtifactObjectConst;
+import compilerxyz.main.eval.aspect.AspectBindViaTarget;
+import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.AspectInitialBindDynamic;
-import compilerxyz.main.gen.AspectLift;
-import compilerxyz.main.gen.AspectType;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -50,69 +37,62 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactDataSourceInterfaceTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.Result;
-import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6196L)
-public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type_)
-        implements Type,
-                AspectInitialBindDynamic,
-                AspectArtifact,
-                AspectBind,
-                AspectConsumeDynamic,
-                AspectDropDynamicLight,
-                AspectField,
-                AspectLift,
-                AspectType {
+public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> type) implements Aspect, Type {
 
     public static final TypeTypeSourceInterfaceDynamic GENERIC = new TypeTypeSourceInterfaceDynamic(Opt.none());
 
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.OBJECT_CONST;
-    }
-
-    private TypeSourceInterfaceDynamic require(String op) {
-        if (type_.optIsSome()) return type_.optUnwrap();
+    TypeSourceInterfaceDynamic require(String op) {
+        if (type.optIsSome()) return type.optUnwrap();
         throw new IllegalStateException(
                 "TypeTypeSourceInterfaceDynamic::" + op + " on the generic (interface-agnostic) descriptor");
     }
 
     @Override
-    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, new TypeTypeSourceInterfaceDynamic(type_));
-    }
-
-    @Override
     public String typeDesc() {
-        if (type_.optIsSome()) return type_.optUnwrap().typeDesc();
+        if (type.optIsSome()) return type.optUnwrap().typeDesc();
         return "interface";
     }
 
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectInitialBindDynamicTypeSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectType.AspectId)) {
+            return Opt.some(new AspectTypeTypeSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return Opt.some(AspectLiftTypeSourceInterfaceDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectField.AspectId)) {
+            return Opt.some(new AspectFieldTypeSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(new AspectConsumeDynamicTypeSourceInterfaceDynamic(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(AspectBindViaTarget.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactObjectConst.INSTANCE);
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
                 || key.equals(GenTrivialIdentityAspects.TYPE_IDENTITY)
-                || key.equals(GenAspectLift.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectType.AspectId)) {
+                || key.equals(GenAspectArtifact.AspectId)) {
             return Opt.some(this);
         }
-        if (type_.optIsSome() && key.equals(type_.optUnwrap().cell().identity)) {
+        if (type.optIsSome() && key.equals(type.optUnwrap().cell().identity)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -151,120 +131,6 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
     }
 
     @Override
-    public EResult<Value> aspectLiftLift(ExprContext xx, QExprId loc, Opt<Object> externalHostValue) {
-        var host = (TypeSourceInterfaceDynamic) externalHostValue.optUnwrap();
-        return EResult.ok(new ValueObjectConst(new TypeTypeSourceInterfaceDynamic(Opt.some(host)), host));
-    }
-
-    @Override
-    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromClass(TypeSourceInterfaceDynamic.class);
-    }
-
-    @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        if (dynCast.requireValue("dyn").optIsSome())
-            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
-        return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::toDynamic: CodeValue has no dynamic code");
-    }
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindViaTarget(xx, loc, cv);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-        var type = require("aspectFieldField");
-        if (key.value().optIsNone()) {
-            return EResult.err(loc, "TypeTypeSourceInterfaceDynamic::field: key has no compile-time value");
-        }
-        var ckRes = Eval.extractConstKey(xx, key.value().optUnwrap());
-        ConstKey ck;
-        switch (ckRes) {
-            case Result.Ok<ConstKey, String> ok -> ck = ok.value();
-            case Result.Err<ConstKey, String> e -> {
-                return EResult.err(loc, e.error());
-            }
-        }
-        ConstKey.Str keyStr;
-        switch (ck) {
-            case ConstKey.Str s -> keyStr = s;
-            case ConstKey.Uint u -> {
-                return EResult.err(loc, "Method " + ck.constKeyToCanonical() + " not found on interface");
-            }
-        }
-        var keyName = keyStr.value();
-        InterfaceMethodData match = null;
-        for (var m : type.cell().frozen().methods) {
-            if (m.name.equals(keyName)) {
-                match = m;
-                break;
-            }
-        }
-        if (match == null) {
-            return EResult.err(loc, "Method '" + keyName + "' not found on interface");
-        }
-        var refType = new TypeInterfaceMethodDynamic(type.cell(), match);
-        Code carry = self.code();
-        var carryDynCast = CodeDynamic.castOpt(loc, carry);
-        if (carryDynCast.hasErrors()) return carryDynCast.reerr();
-        if (carryDynCast.requireValue("carryDyn").optIsSome()) {
-            var dropRes = DynUtil.dropDefault(loc, self);
-            if (dropRes.hasErrors()) return dropRes.reerr();
-            var seq = new JavaBytecodeSequence();
-            seq.add(carryDynCast.requireValue("carryDyn").optUnwrap());
-            var dropDynCast =
-                    CodeDynamic.castOpt(loc, dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop"));
-            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
-            var dropDyn = dropDynCast.requireValue("dropDyn");
-            if (dropDyn.optIsSome()) seq.add(dropDyn.optUnwrap());
-            carry = Code.target(new CodeDynamic(loc, seq));
-        }
-        return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
-    }
-
-    @Override
-    public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return new TList<>();
-    }
-
-    @Override
-    public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        if (type_.optIsNone()) {
-            return Opt.none();
-        }
-        ConstKey.Str s;
-        switch (key) {
-            case ConstKey.Str ks -> s = ks;
-            case ConstKey.Uint u -> {
-                return Opt.none();
-            }
-        }
-        for (var m : type_.optUnwrap().cell().frozen().methods) {
-            if (m.name.equals(s.value())) {
-                return Opt.some(new TypeInterfaceMethodDynamic(type_.optUnwrap().cell(), m));
-            }
-        }
-        return Opt.none();
-    }
-
-    @Override
-    public Type aspectTypeType(Value value) {
-        if (value instanceof ValueObjectConst voc && voc.data() instanceof Type t) {
-            return t;
-        }
-        return require("aspectTypeType");
-    }
-
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         throw new UnsupportedOperationException(
                 getClass().getSimpleName() + "::typeCastFrom unreachable (typeCanCastFrom returned false)");
@@ -280,10 +146,10 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         if (oOpt.optIsNone()) {
             return false;
         }
-        if (type_.optIsSome() && oOpt.optUnwrap().type_.optIsSome()) {
-            return type_.optUnwrap().typeIsEqual(xx, oOpt.optUnwrap().type_.optUnwrap());
+        if (type.optIsSome() && oOpt.optUnwrap().type.optIsSome()) {
+            return type.optUnwrap().typeIsEqual(xx, oOpt.optUnwrap().type.optUnwrap());
         }
-        return type_.optIsNone() && oOpt.optUnwrap().type_.optIsNone();
+        return type.optIsNone() && oOpt.optUnwrap().type.optIsNone();
     }
 
     @Override
@@ -302,8 +168,8 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
             var tt = MustCast.mustCast(TypeTypeSourceInterfaceDynamic.class, self);
             Opt<Artifact> ifaceArt = Opt.none();
-            if (tt.type_.optIsSome()) {
-                var iRes = Artifactable.exportArtifact(xx, loc, tt.type_.optUnwrap());
+            if (tt.type.optIsSome()) {
+                var iRes = Artifactable.exportArtifact(xx, loc, tt.type.optUnwrap());
                 if (iRes.hasErrors()) return iRes.reerr();
                 ifaceArt = Opt.some(iRes.requireValue("TypeTypeSourceInterfaceDynamic::export interface"));
             }

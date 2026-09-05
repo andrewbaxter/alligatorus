@@ -7,14 +7,12 @@ import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
-import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.ArtifactExternal;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -22,18 +20,10 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
+import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynRuntime;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.value.function.TypeFunctionConst;
-import compilerxyz.main.gen.AspectArtifact;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.AspectType;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.GenAspectArtifact;
@@ -41,7 +31,6 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
@@ -56,13 +45,7 @@ import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6022L)
-public record TypeSourceFunctionConst(SourceFunctionData data)
-        implements Type, AspectArtifact, AspectBind, AspectDropDynamicLight, AspectFunction, AspectType {
-
-    @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
-    }
+public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect, Type {
 
     @Override
     public String typeDesc() {
@@ -74,22 +57,28 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         if (key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_FUNCTION_CONST_IDENTITY)) {
             return Opt.some(this);
         }
-        if (key.equals(GenAspectArtifact.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectFunction.AspectId)
-                || key.equals(GenAspectType.AspectId)) {
+        if (key.equals(GenAspectType.AspectId)) {
+            return Opt.some(new AspectTypeSourceFunctionConst(this));
+        }
+        if (key.equals(GenAspectFunction.AspectId)) {
+            return Opt.some(new AspectFunctionSourceFunctionConst(this));
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(AspectBindSourceFunctionConst.INSTANCE);
+        }
+        if (key.equals(GenAspectArtifact.AspectId)) {
+            return Opt.some(AspectArtifactSourceFunctionConst.INSTANCE);
+        }
+        if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
             return Opt.some(PostDeserializeIdentity.INSTANCE);
         }
         return Opt.none();
-    }
-
-    @Override
-    public ArtifactExporter aspectArtifactExporter() {
-        return ExporterRoot.SOURCE_FUNCTION_CONST;
     }
 
     public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
@@ -249,69 +238,7 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
         }
     };
 
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (cv.value().optIsNone()) {
-            return EResult.err(loc, "TypeSourceFunctionConst::bind: CodeValue has no compile-time value");
-        }
-        Value v = cv.value().optUnwrap();
-        return EResult.ok(new BindResult(Code.none(loc), new SourceFunctionConstBinding(v)));
-    }
-
-    @Override
-    public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue function, CodeValue argument) {
-        var set = data.set;
-        if (set == null) {
-            return EResult.err(loc, "TypeSourceFunctionConst::call: definition set function has no set reference");
-        }
-        xx.vx.definitionSets.putIfAbsent(set.defSetId, set);
-        if (data.argType.optIsNone()) {
-            return EResult.err(loc, "TypeSourceFunctionConst::call: definition set function missing arg type");
-        }
-        var argType = data.argType.optUnwrap();
-        var retType = data.retType;
-        var klass = JavaInternalName.of(DefSetFunctionsEmitter.functionsInternalName(set.defSetId));
-        var methodName = data.jvmMethodName;
-        var convertedRes = Eval.typecheckConvert(xx, loc, argType, argument);
-        if (convertedRes.hasErrors()) return convertedRes.reerr();
-        var converted = convertedRes.requireValue("TypeSourceFunctionConst::call converted arg");
-        var argCodesRes = DynUtil.destructurePositional(xx, loc, argType, converted);
-        if (argCodesRes.hasErrors()) return argCodesRes.reerr();
-        var argCodes = argCodesRes.requireValue("TypeSourceFunctionConst::call arg codes");
-
-        var descRes = TypeFunctionConst.descriptorFor(xx, loc, argType, retType, false);
-        if (descRes.hasErrors()) return descRes.reerr();
-        var invocationRes = TypeFunctionConst.emitStaticInvocation(
-                xx,
-                loc,
-                klass,
-                methodName,
-                descRes.requireValue("TypeSourceFunctionConst::call descriptor"),
-                false,
-                argCodes);
-        if (invocationRes.hasErrors()) return invocationRes.reerr();
-        var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
-        if (retType.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.target(invocation), EvalOutcome.NO_VALUE));
-        }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        return EResult.ok(retStackRes
-                .requireValue("TypeSourceFunctionConst::call ret stack")
-                .aspectStackValueDynamicToValue(xx, loc, invocation));
-    }
-
-    @Override
-    public Opt<Type> aspectFunctionExceptionType(ExprContext xx, QExprId loc, CodeValue self) {
-        return data.exceptionType;
-    }
-
-    @Override
-    public Type aspectTypeType(Value value) {
-        return new TypeSourceFunctionConst(data);
-    }
-
-    private record SourceFunctionConstBinding(Value value) implements Binding {
+    record SourceFunctionConstBinding(Value value) implements Binding {
         @Override
         public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
             return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
@@ -375,6 +302,6 @@ public record TypeSourceFunctionConst(SourceFunctionData data)
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.ok(aspectArtifactExporter());
+        return EResult.ok(AspectArtifactSourceFunctionConst.INSTANCE.aspectArtifactExporter());
     }
 }

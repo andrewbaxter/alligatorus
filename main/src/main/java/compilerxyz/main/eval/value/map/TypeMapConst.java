@@ -17,7 +17,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.gen.AspectDynamicConst;
+import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactMapTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
@@ -62,7 +62,8 @@ public final class TypeMapConst<K extends Type, V extends Type> implements Type,
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (self instanceof AspectDynamicConst dc) self = dc.aspectDynamicConstConstForm();
+            var selfDc = GenAspectDynamicConst.getMaybe(xx, MustCast.mustCast(Type.class, self));
+            if (selfDc.optIsSome()) self = selfDc.optUnwrap().aspectDynamicConstConstForm();
             var map = MustCast.mustCast(TypeMapConst.class, self);
             var cell = map.artifactIdCell;
             var errors = new TList<ExprErr>();

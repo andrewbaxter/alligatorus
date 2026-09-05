@@ -63,61 +63,57 @@ public final class DefinitionSetClassLoader extends ClassLoader {
             return defined;
         }
         if (name.startsWith(CompositeClassEmitter.BINARY_NAME_PREFIX)) {
-            var _dbnRest = name.substring(CompositeClassEmitter.BINARY_NAME_PREFIX.length());
-            int _dbnI = 0;
-            while (_dbnI < _dbnRest.length() && Character.isDigit(_dbnRest.charAt(_dbnI))) _dbnI++;
-            if (_dbnI == 0) {
+            var rest = name.substring(CompositeClassEmitter.BINARY_NAME_PREFIX.length());
+            int i = 0;
+            while (i < rest.length() && Character.isDigit(rest.charAt(i))) i++;
+            if (i == 0) {
                 throw new IllegalArgumentException("CompositeClassEmitter::decodeBinaryName: missing arity: " + name);
             }
-            var _dbnArity = Integer.parseInt(_dbnRest.substring(0, _dbnI));
-            var _dbnSlotDescs = new TList<JavaDataDescriptor>(_dbnArity);
-            StringBuilder _dbnCurrent = null;
-            while (_dbnI < _dbnRest.length()) {
-                char _dbnC = _dbnRest.charAt(_dbnI);
-                if (_dbnC == '#') {
-                    _dbnI++;
-                    if (_dbnI >= _dbnRest.length()) {
+            var arity = Integer.parseInt(rest.substring(0, i));
+            var slotDescs = new TList<JavaDataDescriptor>(arity);
+            StringBuilder current = null;
+            while (i < rest.length()) {
+                char c = rest.charAt(i);
+                if (c == '#') {
+                    i++;
+                    if (i >= rest.length()) {
                         throw new IllegalArgumentException(
                                 "CompositeClassEmitter::decodeBinaryName: dangling escape: " + name);
                     }
-                    char _dbnE = _dbnRest.charAt(_dbnI);
-                    switch (_dbnE) {
+                    char dbnE = rest.charAt(i);
+                    switch (dbnE) {
                         case 'x' -> {
-                            if (_dbnCurrent != null)
-                                _dbnSlotDescs.add(JavaDataDescriptor.create(_dbnCurrent.toString()));
-                            _dbnCurrent = new StringBuilder();
+                            if (current != null) slotDescs.add(JavaDataDescriptor.create(current.toString()));
+                            current = new StringBuilder();
                         }
-                        case '#' -> _dbnCurrent.append('#');
-                        case 's' -> _dbnCurrent.append('/');
-                        case 'e' -> _dbnCurrent.append(';');
-                        case 'a' -> _dbnCurrent.append('[');
+                        case '#' -> current.append('#');
+                        case 's' -> current.append('/');
+                        case 'e' -> current.append(';');
+                        case 'a' -> current.append('[');
                         default ->
                             throw new IllegalArgumentException(
-                                    "CompositeClassEmitter::decodeBinaryName: unknown escape #"
-                                            + _dbnE
-                                            + " in "
-                                            + name);
+                                    "CompositeClassEmitter::decodeBinaryName: unknown escape #" + dbnE + " in " + name);
                     }
                 } else {
-                    if (_dbnCurrent == null) {
+                    if (current == null) {
                         throw new IllegalArgumentException(
                                 "CompositeClassEmitter::decodeBinaryName: descriptor before first slot marker: "
                                         + name);
                     }
-                    _dbnCurrent.append(_dbnC);
+                    current.append(c);
                 }
-                _dbnI++;
+                i++;
             }
-            if (_dbnCurrent != null) _dbnSlotDescs.add(JavaDataDescriptor.create(_dbnCurrent.toString()));
-            if (_dbnSlotDescs.size() != _dbnArity) {
+            if (current != null) slotDescs.add(JavaDataDescriptor.create(current.toString()));
+            if (slotDescs.size() != arity) {
                 throw new IllegalArgumentException("CompositeClassEmitter::decodeBinaryName: arity "
-                        + _dbnArity
+                        + arity
                         + " does not match "
-                        + _dbnSlotDescs.size()
+                        + slotDescs.size()
                         + " slots: "
                         + name);
             }
-            var composite = CompositeClassEmitter.emitBytecode(name, _dbnSlotDescs);
+            var composite = CompositeClassEmitter.emitBytecode(name, slotDescs);
             return defineClass(name, composite, 0, composite.length);
         }
         for (var dep : dependencyLoaders) {

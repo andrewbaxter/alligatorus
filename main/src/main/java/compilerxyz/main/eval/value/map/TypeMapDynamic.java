@@ -2,7 +2,6 @@ package compilerxyz.main.eval.value.map;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ArtifactSupport;
-import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
@@ -16,33 +15,18 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.binding.BindingIteratorStack;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
-import compilerxyz.main.eval.value.object_.ValueObjectConst;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.string.TypeStringConst;
-import compilerxyz.main.gen.AspectBind;
-import compilerxyz.main.gen.AspectBindDynamic;
-import compilerxyz.main.gen.AspectConsumeDynamic;
-import compilerxyz.main.gen.AspectDropDynamic;
-import compilerxyz.main.gen.AspectDropDynamicLight;
-import compilerxyz.main.gen.AspectDynamicConst;
-import compilerxyz.main.gen.AspectField;
-import compilerxyz.main.gen.AspectInitialBindDynamic;
-import compilerxyz.main.gen.AspectIterable;
-import compilerxyz.main.gen.AspectStackValueDynamic;
-import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -54,31 +38,17 @@ import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
-import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6122L)
-public final class TypeMapDynamic<K extends Type, V extends Type>
-        implements Type,
-                AspectInitialBindDynamic,
-                AspectDynamicConst,
-                AspectBind,
-                AspectBindDynamic,
-                AspectConsumeDynamic,
-                AspectDropDynamic,
-                AspectDropDynamicLight,
-                AspectField,
-                AspectIterable,
-                AspectStackValueDynamic {
+public final class TypeMapDynamic<K extends Type, V extends Type> implements Aspect, Type {
 
     public final K keyType;
     public final V valueType;
@@ -90,24 +60,14 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
     }
 
     @Override
-    public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {
-        return new BindingDynamicBinding(dynamicKey, this);
-    }
-
-    @Override
     public String typeDesc() {
         return "map(" + keyType.typeDesc() + ", " + valueType.typeDesc() + ")";
     }
 
     @Override
-    public JavaDataDescriptor aspectConsumeDynamicJvmClass(ExprContext xx) {
-        return JavaDataDescriptor.fromClass(compilerxyz.prelude.util.TOrderedMap.class);
-    }
-
-    @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(this);
+            return Opt.some(new AspectInitialBindDynamicMapDynamic<>(this));
         }
         if (key.equals(GenTrivialIdentityAspects.TYPE_MAP_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
@@ -115,28 +75,37 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         if (key.equals(GenAspectDropDynamic.AspectId)) {
             return GenAspectDropDynamic.getMaybe(xx, keyType).optIsSome()
                             || GenAspectDropDynamic.getMaybe(xx, valueType).optIsSome()
-                    ? Opt.some(this)
+                    ? Opt.some(new AspectDropDynamicMapDynamic<>(this))
                     : Opt.none();
         }
-        if (key.equals(GenAspectDynamicConst.AspectId)
-                || key.equals(GenAspectBind.AspectId)
-                || key.equals(GenAspectBindDynamic.AspectId)
-                || key.equals(GenAspectConsumeDynamic.AspectId)
-                || key.equals(GenAspectDropDynamicLight.AspectId)
-                || key.equals(GenAspectField.AspectId)
-                || key.equals(GenAspectIterable.AspectId)
-                || key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(this);
+        if (key.equals(GenAspectStackValueDynamic.AspectId)) {
+            return Opt.some(new AspectStackValueDynamicMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectIterable.AspectId)) {
+            return Opt.some(new AspectIterableMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectField.AspectId)) {
+            return Opt.some(new AspectFieldMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
+            return Opt.some(new AspectDropDynamicLightMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectConsumeDynamic.AspectId)) {
+            return Opt.some(new AspectConsumeDynamicMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectBindDynamic.AspectId)) {
+            return Opt.some(new AspectBindDynamicMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectBind.AspectId)) {
+            return Opt.some(new AspectBindMapDynamic<>(this));
+        }
+        if (key.equals(GenAspectDynamicConst.AspectId)) {
+            return Opt.some(new AspectDynamicConstMapDynamic<>(this));
         }
         return Opt.none();
     }
 
-    @Override
-    public Type aspectDynamicConstConstForm() {
-        return new TypeMapConst(keyType, valueType);
-    }
-
-    private sealed interface FieldSpec {
+    sealed interface FieldSpec {
         Type fieldSpecFieldType();
 
         record Factory(Type type) implements FieldSpec {
@@ -161,188 +130,18 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
         }
     }
 
-    private TMap<ConstKey, FieldSpec> fieldSpecs() {
+    TMap<ConstKey, FieldSpec> fieldSpecs() {
         return TMap.ofEntries(
                 new Pair<>(new ConstKey.Str("new"), new FieldSpec.Factory(new TypeMapNewDynamic(keyType, valueType))),
                 new Pair<>(new ConstKey.Str("get"), new FieldSpec.GetFn(new TypeMapGetFnDynamic(keyType, valueType))),
                 new Pair<>(new ConstKey.Str("put"), new FieldSpec.PutFn(new TypeMapPutFnDynamic(keyType, valueType))));
     }
 
-    @Override
-    public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
-        var erb = new Erb(loc);
-        if (key.value().optIsNone()) {
-            return EResult.err(loc, "TypeMapDynamic::field: key has no compile-time value");
-        }
-        var ckOpt = erb.mustRes(Eval.extractConstKey(xx, key.value().optUnwrap()));
-        if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
-        var ck = ckOpt.optUnwrap();
-        var spec = fieldSpecs().getOrNull(ck);
-        if (spec != null) {
-            return switch (spec) {
-                case FieldSpec.Factory f ->
-                    EResult.ok(new CodeValue(
-                            self.code(),
-                            EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
-                case FieldSpec.GetFn g -> {
-                    var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-                    if (selfDynCast.hasErrors()) yield selfDynCast.reerr();
-                    if (selfDynCast.requireValue("selfDyn").optIsNone()) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
-                    }
-                    var selfDyn = selfDynCast.requireValue("selfDyn").optUnwrap();
-                    if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdg)) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
-                    }
-                    yield EResult.ok(new CodeValue(
-                            Code.target(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdg.source(), g.type()))));
-                }
-                case FieldSpec.PutFn p -> {
-                    var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-                    if (selfDynCast.hasErrors()) yield selfDynCast.reerr();
-                    if (selfDynCast.requireValue("selfDyn").optIsNone()) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
-                    }
-                    var selfDyn = selfDynCast.requireValue("selfDyn").optUnwrap();
-                    if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdp)) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
-                    }
-                    yield EResult.ok(new CodeValue(
-                            Code.target(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdp.source(), p.type()))));
-                }
-            };
-        }
-        switch (ck) {
-            case ConstKey.Uint u -> {
-                return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map");
-            }
-            case ConstKey.Str s -> {}
-        }
-        if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic selfVd)) {
-            return EResult.err(loc, "TypeMapDynamic::field: receiver is not a ValueDynamic");
-        }
-        return EResult.err(
-                loc,
-                "TypeMapDynamic::field: map key access via source-tracked value no longer supported;"
-                        + " use map.get(key) explicitly");
-    }
-
-    @Override
-    public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.from(fieldSpecs().keySet());
-    }
-
-    @Override
-    public Opt<Type> aspectFieldTypeOpt(ExprContext xx, ConstKey key) {
-        var spec = fieldSpecs().getOrNull(key);
-        if (spec != null) return Opt.some(spec.fieldSpecFieldType());
-        return switch (key) {
-            case ConstKey.Str s -> Opt.some(valueType);
-            case ConstKey.Uint u -> Opt.none();
-        };
-    }
-
-    @Override
-    public EResult<BindResult> aspectBindBind(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindViaTarget(xx, loc, cv);
-    }
-
-    @Override
-    public EResult<Opt<TargetBindSub>> aspectBindDynamicBindDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.bindDynamicDefault(loc, cv);
-    }
-
-    @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        if (dynCast.requireValue("dyn").optIsNone()) {
-            throw new IllegalStateException(
-                    "TypeMapDynamic::toDynamic: dynamic type must carry dynamic code (single-representation invariant)");
-        }
-        var dyn = dynCast.requireValue("dyn").optUnwrap();
-        return EResult.ok(dyn);
-    }
-
-    @Override
-    public Type aspectIterableElementType() {
-        return new TypeMapEntryDynamic(keyType, valueType);
-    }
-
-    @Override
-    public Binding aspectIterableLoopBinding(ExprContext xx) {
-        return new BindingIteratorStack();
-    }
-
-    private CodeDynamic entryDecode(QExprId loc) {
+    CodeDynamic entryDecode(QExprId loc) {
         var decodeSeq = new JavaBytecodeSequence();
         decodeSeq.add(JavaBytecodeUtils.cast(
                 loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.Entry.class))));
         return new CodeDynamic(loc, decodeSeq);
-    }
-
-    @Override
-    public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
-        return EResult.ok(DynUtil.dynamicStackToValue(
-                xx, DynUtil.iteratorNext(loc, entryDecode(loc)), aspectIterableElementType()));
-    }
-
-    @Override
-    public EResult<CodeValue> aspectIterableForeach(
-            ExprContext xx, QExprId loc, CodeValue base, Binding loop, Code elementBind, CodeValue body) {
-        var baseConsumeRes = GenAspectConsumeDynamic.get(xx, loc, this);
-        if (baseConsumeRes.hasErrors()) return baseConsumeRes.reerr();
-        var baseDynRes =
-                baseConsumeRes.requireValue("AspectConsumeDynamic.get").aspectConsumeDynamicToDynamic(xx, loc, base);
-        if (baseDynRes.hasErrors()) return baseDynRes.reerr();
-        var baseDyn = baseDynRes.requireValue("aspectConsumeDynamicToDynamic(base)");
-
-        var mapName = JavaInternalName.fromClass(Map.class);
-        var setName = JavaInternalName.fromClass(Set.class);
-        var iteratorName = JavaInternalName.fromClass(Iterator.class);
-        var entrySetMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
-        var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-        var setupSeq = new JavaBytecodeSequence();
-        setupSeq.add(baseDyn);
-        setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
-        setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
-        var iteratorSetup = new CodeDynamic(loc, setupSeq);
-
-        var elementBindCast = CodeDynamic.castOpt(loc, elementBind);
-        if (elementBindCast.hasErrors()) return elementBindCast.reerr();
-        var elementBindDyn = elementBindCast.requireValue("foreach element bind");
-        if (elementBindDyn.optIsNone()) {
-            return EResult.err(loc, "foreach: element bind produced no code");
-        }
-
-        Code bodyCode;
-        if (body.value().optIsSome()) {
-            var dropRes = xx.target.targetDrop(xx, loc, body);
-            if (dropRes.hasErrors()) return dropRes.reerr();
-            var dropCode = dropRes.requireValue("TypeMapDynamic::foreach body drop");
-            var bodyDynCast = CodeDynamic.castOpt(loc, body.code());
-            if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
-            var bodyDyn = bodyDynCast.requireValue("bodyDyn");
-            var dropDynCast = CodeDynamic.castOpt(loc, dropCode);
-            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
-            var dropDyn = dropDynCast.requireValue("dropDyn");
-            if (bodyDyn.optIsNone() && dropDyn.optIsNone()) {
-                bodyCode = Code.none(loc);
-            } else {
-                var combinedSeq = new JavaBytecodeSequence();
-                if (bodyDyn.optIsSome()) combinedSeq.add(bodyDyn.optUnwrap());
-                if (dropDyn.optIsSome()) combinedSeq.add(dropDyn.optUnwrap());
-                bodyCode = Code.target(new CodeDynamic(loc, combinedSeq));
-            }
-        } else {
-            bodyCode = body.code();
-        }
-        return DynUtil.foreachSkeleton(loc, iteratorSetup, elementBindDyn.optUnwrap(), bodyCode);
-    }
-
-    @Override
-    public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        return DynUtil.dynamicStackToValue(xx, value, this);
     }
 
     @Override
@@ -450,87 +249,6 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
     }
 
     @Override
-    public EResult<Code> aspectDropDynamicLightDropDynamicLight(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
-    }
-
-    @Override
-    public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
-        var keyDropOpt = GenAspectDropDynamic.getMaybe(xx, keyType);
-        var valDropOpt = GenAspectDropDynamic.getMaybe(xx, valueType);
-        if (cv.value().optIsNone() || !(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
-            return EResult.ok(Code.none(loc));
-        }
-        var entrySlot = new BindingId();
-        var entryClassName = JavaInternalName.fromClass(Map.Entry.class);
-
-        var bodySeq = new JavaBytecodeSequence();
-        if (keyDropOpt.optIsSome()) {
-            var keyDropSome = keyDropOpt.optUnwrap();
-            var loadKeySeq = new JavaBytecodeSequence();
-            loadKeySeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot)));
-            loadKeySeq.add(JavaBytecodeUtils.callInterfaceMethod(
-                    loc,
-                    entryClassName,
-                    "getKey",
-                    JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
-            var keyCv = new CodeValue(
-                    Code.target(new CodeDynamic(loc, loadKeySeq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, keyType)));
-            var keyDropRes = keyDropSome.aspectDropDynamicDrop(xx, loc, keyCv);
-            if (keyDropRes.hasErrors()) return keyDropRes.reerr();
-            var keyDropDynCast = CodeDynamic.castOpt(loc, keyDropRes.requireValue("map key drop"));
-            if (keyDropDynCast.hasErrors()) return keyDropDynCast.reerr();
-            var keyDropDyn = keyDropDynCast.requireValue("keyDropDyn");
-            if (keyDropDyn.optIsSome()) bodySeq.add(keyDropDyn.optUnwrap());
-        }
-        if (valDropOpt.optIsSome()) {
-            var valDropSome = valDropOpt.optUnwrap();
-            var loadValSeq = new JavaBytecodeSequence();
-            loadValSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, entrySlot)));
-            loadValSeq.add(JavaBytecodeUtils.callInterfaceMethod(
-                    loc,
-                    entryClassName,
-                    "getValue",
-                    JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
-            var valCv = new CodeValue(
-                    Code.target(new CodeDynamic(loc, loadValSeq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, valueType)));
-            var valDropRes = valDropSome.aspectDropDynamicDrop(xx, loc, valCv);
-            if (valDropRes.hasErrors()) return valDropRes.reerr();
-            var valDropDynCast = CodeDynamic.castOpt(loc, valDropRes.requireValue("map value drop"));
-            if (valDropDynCast.hasErrors()) return valDropDynCast.reerr();
-            var valDropDyn = valDropDynCast.requireValue("valDropDyn");
-            if (valDropDyn.optIsSome()) bodySeq.add(valDropDyn.optUnwrap());
-        }
-
-        var mapName = JavaInternalName.fromClass(Map.class);
-        var setName = JavaInternalName.fromClass(Set.class);
-        var iteratorName = JavaInternalName.fromClass(Iterator.class);
-        var entrySetMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(setName), TList.of());
-        var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-        var setupSeq = new JavaBytecodeSequence();
-        setupSeq.add(vd.source().valueDynamicSourceRealize(xx, loc));
-        setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "entrySet", entrySetMethod));
-        setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, setName, "iterator", iterMethod));
-        var iteratorSetup = new CodeDynamic(loc, setupSeq);
-
-        var entryStoreSeq = new JavaBytecodeSequence();
-        entryStoreSeq.add(DynUtil.iteratorNext(loc, entryDecode(loc)));
-        entryStoreSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entrySlot)));
-        var loopRes = DynUtil.foreachSkeleton(
-                loc, iteratorSetup, new CodeDynamic(loc, entryStoreSeq), Code.target(new CodeDynamic(loc, bodySeq)));
-        if (loopRes.hasErrors()) return loopRes.reerr();
-        var loopCodeCast = CodeDynamic.castOpt(loc, loopRes.requireValue("loop").code());
-        if (loopCodeCast.hasErrors()) return loopCodeCast.reerr();
-        var loopCode = loopCodeCast.requireValue("loopCode");
-        var finalSeq = new JavaBytecodeSequence();
-        if (loopCode.optIsSome()) finalSeq.add(loopCode.optUnwrap());
-        finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.target(new CodeDynamic(loc, finalSeq)));
-    }
-
-    @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
         return false;
     }
@@ -543,6 +261,8 @@ public final class TypeMapDynamic<K extends Type, V extends Type>
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return aspectDynamicConstConstForm().artifactableExporter(xx, loc);
+        return new AspectDynamicConstMapDynamic<>(this)
+                .aspectDynamicConstConstForm()
+                .artifactableExporter(xx, loc);
     }
 }

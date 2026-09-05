@@ -10,7 +10,6 @@ public final class EvalContext {
     public final TMap<DefSetId, DefinitionSet> definitionSets = new TMap<>();
     public final TList<ExternalEntry> externals = new TList<>();
     public final CompileImportContext ix;
-    public final Counter nextLocalId = new Counter();
 
     public final Counter dropStateCounter = new Counter();
 
