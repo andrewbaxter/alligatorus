@@ -46,9 +46,10 @@ public record AspectBindRecord(Record type) implements AspectBind {
                 }
                 scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(d.type()));
             }
-            var subRes = jvmTarget.codeToBindSub(loc, carry, recordType);
-            if (subRes.hasErrors()) return subRes.reerr();
-            var sub = subRes.requireValue("Record::bindSub base.bindSub");
+            var baseRes = DynUtil.wrapWithCarry(
+                    loc, carry, type.base.optUnwrap().source().valueDynamicSourceRealize(loc));
+            if (baseRes.hasErrors()) return baseRes.reerr();
+            var sub = new TargetBindSub(baseRes.requireValue("Record::bindSub base realize"), recordType);
             var bound = jvmTarget.bindSlot(xx, loc, sub);
             return EResult.ok(
                     new BindResult(Code.target(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));

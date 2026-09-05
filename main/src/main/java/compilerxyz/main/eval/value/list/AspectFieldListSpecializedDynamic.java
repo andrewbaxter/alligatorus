@@ -9,7 +9,7 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
@@ -34,9 +34,7 @@ public record AspectFieldListSpecializedDynamic<T extends Type>(TypeListSpeciali
                             ValueObjectConst.plainTypeType(), new TypeListSpecializedNewDynamic(type)))));
         }
         if (ck.equals(new ConstKey.Str("push"))) {
-            return EResult.ok(new CodeValue(
-                    self.code(),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeListSpecializedPushDynamic(type)))));
+            return EResult.ok(DynUtil.methodRefOn(self, new TypeListSpecializedPushDynamic(type)));
         }
         return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on list");
     }

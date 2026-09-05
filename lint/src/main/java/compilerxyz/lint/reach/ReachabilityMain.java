@@ -34,6 +34,7 @@ import spoon.reflect.declaration.CtType;
 import spoon.reflect.declaration.CtTypeMember;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.reference.CtExecutableReference;
+import spoon.reflect.reference.CtTypeParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
@@ -351,9 +352,10 @@ public final class ReachabilityMain {
     private void onCall(CtExecutableReference<?> ref, int actualArity, Deque<String> work, boolean fromGenerated) {
         if (ref == null) return;
         CtExecutable<?> decl = ref.getExecutableDeclaration();
+        String declKey = decl == null ? null : key(decl);
         String counted = null;
-        if (decl != null) {
-            counted = key(decl);
+        if (declKey != null) {
+            counted = declKey;
             if (reachable.add(counted)) work.add(counted);
         }
         CtTypeReference<?> refDecl = ref.getDeclaringType();
@@ -366,7 +368,7 @@ public final class ReachabilityMain {
             for (String cand : keysByNameArity.getOrDefault(nameArity(ref.getSimpleName(), arity), List.of())) {
                 CtExecutable<?> cex = execByKey.get(cand);
                 if (cex == null) continue;
-                if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+                if (cand.equals(declKey) || subtypeOf(cex, refDecl)) {
                     if (reachable.add(cand)) work.add(cand);
                     matched.add(cand);
                 }
@@ -381,7 +383,7 @@ public final class ReachabilityMain {
                                 .get(cex.getParameters().size() - 1)
                                 .isVarArgs();
                 if (!isVarargs) continue;
-                if (isDirect(ref, cex) || subtypeOf(cex, refDecl)) {
+                if (cand.equals(declKey) || subtypeOf(cex, refDecl)) {
                     if (reachable.add(cand)) work.add(cand);
                     matched.add(cand);
                 }
@@ -396,15 +398,17 @@ public final class ReachabilityMain {
         }
     }
 
-    private static boolean isDirect(CtExecutableReference<?> ref, CtExecutable<?> cex) {
-        CtExecutable<?> decl = ref.getExecutableDeclaration();
-        return decl != null && key(cex).equals(key(decl));
-    }
+    private final Map<String, Boolean> subtypeCache = new HashMap<>();
 
     private boolean subtypeOf(CtExecutable<?> cex, CtTypeReference<?> superRef) {
         if (superRef == null) return false;
         if (!(cex instanceof CtTypeMember tm) || tm.getDeclaringType() == null) return false;
-        return tm.getDeclaringType().getReference().isSubtypeOf(superRef);
+        CtTypeReference<?> declaring = tm.getDeclaringType().getReference();
+        if (superRef instanceof CtTypeParameterReference) {
+            return declaring.isSubtypeOf(superRef);
+        }
+        return subtypeCache.computeIfAbsent(
+                declaring.getQualifiedName() + "<:" + superRef.toString(), k -> declaring.isSubtypeOf(superRef));
     }
 
     private boolean isRoot(CtExecutable<?> ex) {

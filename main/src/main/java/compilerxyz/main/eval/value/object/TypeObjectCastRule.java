@@ -9,6 +9,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -20,8 +21,7 @@ public sealed interface TypeObjectCastRule {
 
     boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);
 
-    EResult<CodeValue> typeObjectCastRuleApply(
-            ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType);
+    EResult<CodeValue> typeObjectCastRuleApply(ExprContext xx, QExprId loc, CodeValue cv, Type destType);
 
     record RestampToIdentity(Unique identity) implements TypeObjectCastRule {
         @Override
@@ -30,9 +30,8 @@ public sealed interface TypeObjectCastRule {
         }
 
         @Override
-        public EResult<CodeValue> typeObjectCastRuleApply(
-                ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+        public EResult<CodeValue> typeObjectCastRuleApply(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, destType));
         }
     }
 
@@ -43,16 +42,10 @@ public sealed interface TypeObjectCastRule {
         }
 
         @Override
-        public EResult<CodeValue> typeObjectCastRuleApply(
-                ExprContext xx, TypeObjectDynamic source, QExprId loc, CodeValue cv, Type destType) {
-            var sourceCodeCast = CodeDynamic.castOpt(loc, cv.code());
+        public EResult<CodeValue> typeObjectCastRuleApply(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+            var sourceCodeCast = DynUtil.dynamicConsumeToDynamic(loc, cv);
             if (sourceCodeCast.hasErrors()) return sourceCodeCast.reerr();
-            if (sourceCodeCast.requireValue("sourceCode").optIsNone()) {
-                return EResult.err(
-                        loc,
-                        "cast " + source.typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
-            }
-            var sourceCode = sourceCodeCast.requireValue("sourceCode").optUnwrap();
+            var sourceCode = sourceCodeCast.requireValue("sourceCode");
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(method.owner)));

@@ -8,12 +8,9 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
+import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -23,11 +20,10 @@ import compilerxyz.prelude.util.TList;
 public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        CodeDynamic dyn;
-        dyn = new CodeDynamic(
-                new CodeLoc.Some(loc), new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, type), dynamicKey));
-        Value value = new ValueDynamic(new ValueDynamicSource.Binding(dynamicKey, setter), type);
-        return new CodeValue(Code.target(dyn), EvalOutcome.ofValue(value));
+        var desc = JvmSort.descriptor(xx, type);
+        Value value = new ValueDynamic(
+                BindingCode.slot(loc, dynamicKey, desc.loadOpcode(), desc.storeOpcode(), setter), type);
+        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(value));
     }
 
     @Override

@@ -11,6 +11,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.value.ValueDynamic;
@@ -37,7 +38,7 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
             }
         }
         var keyStr = ckStr.value();
-        var dynRes = CodeDynamic.castRequired(loc, self.code(), type.typeDesc() + ": self has no dynamic code");
+        var dynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (dynRes.hasErrors()) return dynRes.reerr();
         var dyn = dynRes.requireValue("dyn");
         for (var f : type.dataFields) {
@@ -60,8 +61,7 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
         if (type.interfaceRepresented.optIsNone()) {
             for (var m : type.methods) {
                 if (m.langName().equals(keyStr)) {
-                    return EResult.ok(
-                            new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, m.funcType()))));
+                    return EResult.ok(DynUtil.methodRefOn(self, m.funcType()));
                 }
             }
         }

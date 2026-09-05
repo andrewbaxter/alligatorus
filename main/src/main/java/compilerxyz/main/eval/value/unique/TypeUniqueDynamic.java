@@ -21,7 +21,7 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
@@ -303,9 +303,7 @@ public record TypeUniqueDynamic() implements Aspect, Type {
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
-        var codeCast = CodeDynamic.castOpt(loc, cv.code());
-        if (codeCast.hasErrors()) return codeCast.reerr();
-        if (codeCast.requireValue("code").optIsSome()) return EResult.ok(cv);
+        if (DynUtil.dynamicHasCode(cv)) return EResult.ok(cv);
         if (cv.value().optIsNone()) return EResult.ok(cv);
         var srcType = cv.value().optUnwrap().valueType();
         if (srcType instanceof TypeUniqueDynamic) return EResult.ok(cv);

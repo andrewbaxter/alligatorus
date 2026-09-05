@@ -36,7 +36,7 @@ public final class TypeMethodShared {
             JavaMethodDescriptor descriptor,
             boolean isInterface,
             boolean needsEvalContext) {
-        var receiverDynRes = CodeDynamic.castRequired(loc, self.code(), what + "::call: receiver has no dynamic code");
+        var receiverDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
         var receiverDyn = receiverDynRes.requireValue("receiverDyn");
         EResult<TList<CodeDynamic>> argsDynRes;

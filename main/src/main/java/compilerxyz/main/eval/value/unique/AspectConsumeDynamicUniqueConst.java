@@ -11,6 +11,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -25,10 +26,9 @@ public record AspectConsumeDynamicUniqueConst(TypeUniqueConst type) implements A
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        if (dynCast.requireValue("dyn").optIsSome())
-            return EResult.ok(dynCast.requireValue("dyn").optUnwrap());
+        if (DynUtil.dynamicHasCode(cv)) {
+            return DynUtil.dynamicConsumeToDynamic(loc, cv);
+        }
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeUniqueConst::toDynamic: no compile-time value");
         }

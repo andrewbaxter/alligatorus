@@ -12,6 +12,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc.Some;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.value.ValueDynamic;
@@ -41,8 +42,7 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
                     case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
                 };
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("has_errors")) {
-            var selfDynRes = CodeDynamic.castRequired(
-                    loc, self.code(), "TypeEResultDynamic::aspectFieldField(has_errors): self has no runtime code");
+            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
             if (selfDynRes.hasErrors()) return selfDynRes.reerr();
             var selfDyn = selfDynRes.requireValue("selfDyn");
             var seq = new JavaBytecodeSequence();
@@ -53,8 +53,7 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
                     EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-            var selfDynRes = CodeDynamic.castRequired(
-                    loc, self.code(), "TypeEResultDynamic::aspectFieldField(value): self has no runtime code");
+            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
             if (selfDynRes.hasErrors()) return selfDynRes.reerr();
             var selfDyn = selfDynRes.requireValue("selfDyn");
             var seq = new JavaBytecodeSequence();

@@ -28,6 +28,7 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
@@ -207,7 +208,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, identity).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
             boolean hasTypeImpl = false;
@@ -218,8 +219,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                 }
             }
             if (hasTypeImpl) {
-                var sourceCodeRes = CodeDynamic.castRequired(
-                        loc, cv.code(), "cast " + typeDesc() + " -> any: source has no runtime code");
+                var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
                 if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
                 var sourceCode = sourceCodeRes.requireValue("sourceCode");
                 return EResult.ok(emitBuiltinCast(xx, sourceCode, GenType.dynamicType()));
@@ -228,8 +228,7 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
                 if (impl.interface_.identity.equals(GenTrivialIdentityAspects.CODE_DYN_IDENTITY)) {
-                    var codeSourceRes = CodeDynamic.castRequired(
-                            loc, cv.code(), "cast " + typeDesc() + " -> code: source has no runtime code");
+                    var codeSourceRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
                     if (codeSourceRes.hasErrors()) return codeSourceRes.reerr();
                     var codeSource = codeSourceRes.requireValue("codeSource");
                     var wrapSeq = new JavaBytecodeSequence();
@@ -251,20 +250,17 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                     resultType = frozen.builtinType.optUnwrap();
                 }
                 if (resultType != null) {
-                    var sourceCodeRes = CodeDynamic.castRequired(
-                            loc, cv.code(), "cast " + typeDesc() + " -> interface: source has no runtime code");
+                    var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
                     if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
                     var sourceCode = sourceCodeRes.requireValue("sourceCode");
                     return EResult.ok(emitBuiltinCast(xx, sourceCode, resultType));
                 }
-                return EResult.ok(new CodeValue(
-                        cv.code(),
-                        EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeSourceInterfaceDynamic(impl.interface_)))));
+                return EResult.ok(
+                        DynUtil.dynamicCastKeepingSource(cv, new TypeSourceInterfaceDynamic(impl.interface_)));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
-            var sourceCodeRes = CodeDynamic.castRequired(
-                    loc, cv.code(), "cast " + typeDesc() + " -> aspect: source has no runtime code");
+            var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
             if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
             var sourceCode = sourceCodeRes.requireValue("sourceCode");
             return EResult.ok(emitBuiltinCast(xx, sourceCode, GenAspect.dynamicType()));

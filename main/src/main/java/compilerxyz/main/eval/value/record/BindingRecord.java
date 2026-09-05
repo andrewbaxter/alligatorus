@@ -11,8 +11,6 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.BindingCode;
-import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.util.Opt;
@@ -23,17 +21,11 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        Code useCode;
         Opt<RecordBaseDynamic> base;
         switch (jsKey) {
-            case Opt.Some<BindingId> some -> {
-                useCode = Code.target(BindingCode.bindingUse(new CodeLoc.Some(loc), some.value()));
-                base = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Binding(some.value(), setter)));
-            }
-            case Opt.None<BindingId> none -> {
-                useCode = Code.none(loc);
-                base = Opt.none();
-            }
+            case Opt.Some<BindingId> some ->
+                base = Opt.some(new RecordBaseDynamic(BindingCode.slotRef(loc, some.value(), setter)));
+            case Opt.None<BindingId> none -> base = Opt.none();
         }
         var resultFields = new TOrderedMap<ConstKey, RecordField>();
         for (var entry : fields.entrySet()) {
@@ -51,7 +43,7 @@ public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<
                     };
             resultFields.put(entry.getKey(), rf);
         }
-        return new CodeValue(useCode, EvalOutcome.ofValue(new Record(base, resultFields)));
+        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Record(base, resultFields)));
     }
 
     @Override

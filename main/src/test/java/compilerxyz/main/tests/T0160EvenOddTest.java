@@ -24,6 +24,10 @@ public final class T0160EvenOddTest {
                 mb.recordOf(staged));
     }
 
+    private static SourceExpr cvValue(TestMb mb, SourceExpr cv) {
+        return mb.field(mb.call(mb.field(cv, mb.str("value")), mb.tupleOf()), mb.str("value"));
+    }
+
     private static SourceExpr delegateNull(TestMb mb, SourceExpr underlying, SourceExpr aspectRef, String methodName) {
         return mb.call(
                 mb.field(aspectRef, mb.str(methodName)),
@@ -82,7 +86,10 @@ public final class T0160EvenOddTest {
                                                                         "source",
                                                                         mb.call(
                                                                                 mb.lower(mb.scopeUse("vs_expr")),
-                                                                                mb.literalNull()))))))))));
+                                                                                mb.literalNull())),
+                                                                new TestMb.RecordPair(
+                                                                        "wrapped",
+                                                                        cvValue(mb, mb.scopeUse("sum_cv_")))))))))));
     }
 
     private static TList<SourceExpr> bindEvenOddType(TestMb mb, String name) {
@@ -273,7 +280,30 @@ public final class T0160EvenOddTest {
                                                                         mb.field(mb.scopeUse("u"), mb.str("type"))),
                                                                 new TestMb.RecordPair(
                                                                         "source",
-                                                                        mb.field(mb.scopeUse("vs"), mb.str("type")))))),
+                                                                        mb.field(mb.scopeUse("vs"), mb.str("type"))),
+                                                                new TestMb.RecordPair("wrapped", mb.evalValue())))),
+                                        mb.bind(
+                                                "vb_gw_method",
+                                                mb.call(
+                                                        mb.field(mb.scopeUse("vb"), mb.str("func")),
+                                                        mb.str("get_wrapped"))),
+                                        mb.call(
+                                                mb.field(mb.scopeUse("vb_gw_method"), mb.str("impl")),
+                                                mb.recordOf(
+                                                        TList.of(
+                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair(
+                                                                        "ret", mb.optSomeType(mb.evalValue())),
+                                                                new TestMb.RecordPair(
+                                                                        "impl_body",
+                                                                        mb.stage(
+                                                                                mb.seqOf(
+                                                                                        mb.return_(
+                                                                                                mb.field(
+                                                                                                        mb.scopeUse(
+                                                                                                                "inner"),
+                                                                                                        mb.str(
+                                                                                                                "wrapped"))))))))),
                                         mb.bind(
                                                 "vb_gs_method",
                                                 mb.call(
@@ -869,7 +899,15 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                 "inner"),
                                                                                                                                                                                                                                                                                                 mb
                                                                                                                                                                                                                                                                                                         .str(
-                                                                                                                                                                                                                                                                                                                "state"))))))))))))))))),
+                                                                                                                                                                                                                                                                                                                "state"))))))),
+                                                                                                                                                                                                                new TestMb
+                                                                                                                                                                                                                        .RecordPair(
+                                                                                                                                                                                                                        "wrapped",
+                                                                                                                                                                                                                        cvValue(
+                                                                                                                                                                                                                                mb,
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                "int_use_cv_"))))))))))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "fork",
                                                                                                 mb.seqOf(
@@ -1404,7 +1442,15 @@ public final class T0160EvenOddTest {
                                                                                                                                                                                                                                                                                                                                                                                                                                 .scopeUse(
                                                                                                                                                                                                                                                                                                                                                                                                                                         "vs_expr")),
                                                                                                                                                                                                                                                                                                                                                                                                         mb
-                                                                                                                                                                                                                                                                                                                                                                                                                .literalNull()))))))))))))),
+                                                                                                                                                                                                                                                                                                                                                                                                                .literalNull())),
+                                                                                                                                                                                                                                                                                                                                                                                new TestMb
+                                                                                                                                                                                                                                                                                                                                                                                        .RecordPair(
+                                                                                                                                                                                                                                                                                                                                                                                        "wrapped",
+                                                                                                                                                                                                                                                                                                                                                                                        cvValue(
+                                                                                                                                                                                                                                                                                                                                                                                                mb,
+                                                                                                                                                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                                                                                                                                                                                "cast_cv_")))))))))))))),
                                                                                                                                                                                                                 new TestMb
                                                                                                                                                                                                                         .Branch(
                                                                                                                                                                                                                         mb
@@ -1972,12 +2018,122 @@ public final class T0160EvenOddTest {
                                                                                 TList.of(
                                                                                         new TestMb.RecordPair(
                                                                                                 "to_dynamic",
-                                                                                                delegateNull(
-                                                                                                        mb,
-                                                                                                        mb.typesLong(),
-                                                                                                        mb
-                                                                                                                .evalAspectConsumeDynamic(),
-                                                                                                        "to_dynamic")),
+                                                                                                mb.call(
+                                                                                                        mb.field(
+                                                                                                                mb
+                                                                                                                        .evalAspectConsumeDynamic(),
+                                                                                                                mb.str(
+                                                                                                                        "to_dynamic")),
+                                                                                                        mb.tupleOf(
+                                                                                                                mb
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .call(
+                                                                                                                                                mb
+                                                                                                                                                        .evalAspectLookup(),
+                                                                                                                                                mb
+                                                                                                                                                        .tupleOf(
+                                                                                                                                                                mb
+                                                                                                                                                                        .typesLong(),
+                                                                                                                                                                mb
+                                                                                                                                                                        .evalAspectConsumeDynamic(),
+                                                                                                                                                                mb
+                                                                                                                                                                        .field(
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .str(
+                                                                                                                                                                                                "xx")))),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "value")),
+                                                                                                                mb
+                                                                                                                        .recordOf(
+                                                                                                                                TList
+                                                                                                                                        .of(
+                                                                                                                                                new TestMb
+                                                                                                                                                        .RecordPair(
+                                                                                                                                                        "xx",
+                                                                                                                                                        mb
+                                                                                                                                                                .field(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                        "arg"),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .str(
+                                                                                                                                                                                        "xx"))),
+                                                                                                                                                new TestMb
+                                                                                                                                                        .RecordPair(
+                                                                                                                                                        "loc",
+                                                                                                                                                        mb
+                                                                                                                                                                .field(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                        "arg"),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .str(
+                                                                                                                                                                                        "loc"))),
+                                                                                                                                                new TestMb
+                                                                                                                                                        .RecordPair(
+                                                                                                                                                        "cv",
+                                                                                                                                                        mb
+                                                                                                                                                                .call(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .evalCodevalue(),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .recordOf(
+                                                                                                                                                                                        TList
+                                                                                                                                                                                                .of(
+                                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                                .RecordPair(
+                                                                                                                                                                                                                "code",
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                                "cv")),
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                "code"))),
+                                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                                .RecordPair(
+                                                                                                                                                                                                                "value",
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .call(
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                        .call(
+                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                        .mustReinterpret(),
+                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                        .tupleOf(
+                                                                                                                                                                                                                                                                                cvValue(
+                                                                                                                                                                                                                                                                                        mb,
+                                                                                                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                                                                                                .field(
+                                                                                                                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                                                                                                                                                        "arg"),
+                                                                                                                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                                                                                                                .str(
+                                                                                                                                                                                                                                                                                                                        "cv"))),
+                                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                                        .lower(
+                                                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                                                                                "vb_type")))),
+                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                                "get_wrapped")),
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .literalNull()))))))))))),
                                                                                         new TestMb.RecordPair(
                                                                                                 "jvm_class",
                                                                                                 delegateNullXxOnly(

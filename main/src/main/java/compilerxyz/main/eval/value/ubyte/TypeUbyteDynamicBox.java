@@ -17,6 +17,7 @@ import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.numeric.AspectConsumeDynamicJvmByteBoxed;
@@ -117,8 +118,7 @@ public record TypeUbyteDynamicBox() implements Aspect, Type {
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        var selfDynRes = CodeDynamic.castRequired(
-                loc, cv.code(), "TypeUbyteDynamicBox::typeCastTo: receiver has no runtime code");
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
         if (selfDynRes.hasErrors()) return selfDynRes.reerr();
         var selfDyn = selfDynRes.requireValue("selfDyn");
         var seq = new JavaBytecodeSequence();

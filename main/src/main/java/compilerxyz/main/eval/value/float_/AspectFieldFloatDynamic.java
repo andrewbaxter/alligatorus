@@ -5,11 +5,10 @@ import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -32,8 +31,7 @@ public final class AspectFieldFloatDynamic implements AspectField {
         if (fieldTypeOpt.optIsNone()) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on dynamic float");
         }
-        return EResult.ok(
-                new CodeValue(self.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, fieldTypeOpt.optUnwrap()))));
+        return EResult.ok(DynUtil.methodRefOn(self, fieldTypeOpt.optUnwrap()));
     }
 
     @Override

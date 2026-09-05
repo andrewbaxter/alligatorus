@@ -41,6 +41,7 @@ import compilerxyz.main.gen.TargetCase;
 import compilerxyz.main.gen.TargetMatchFallback;
 import compilerxyz.main.gen.TryCatchClause;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -92,12 +93,21 @@ public final class TargetDynamic implements Target {
             return cv;
         }
         return switch (vd.source()) {
-            case ValueDynamicSource.Expr ignored -> cv;
-            case ValueDynamicSource.Binding ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type())));
-            case ValueDynamicSource.Field ignored ->
-                new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type())));
+            case ValueDynamicSource.Stack ignored -> cv;
+            case ValueDynamicSource.Slot ignored -> returnRealize(xx, loc, cv, vd);
+            case ValueDynamicSource.Field ignored -> returnRealize(xx, loc, cv, vd);
         };
+    }
+
+    private static CodeValue returnRealize(ExprContext xx, QExprId loc, CodeValue cv, ValueDynamic vd) {
+        var seq = new JavaBytecodeSequence();
+        switch (cv.code()) {
+            case Code.None n -> {}
+            case Code.Target t -> seq.add(MustCast.mustCast(CodeDynamic.class, t.impl()));
+        }
+        seq.add(vd.source().valueDynamicSourceRealize(loc));
+        return new CodeValue(
+                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, vd.type())));
     }
 
     @Override
@@ -284,7 +294,9 @@ public final class TargetDynamic implements Target {
             seq.add(cleanupDyn.optUnwrap());
         }
         if (parkKey != null) {
-            seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(JvmSort.loadOpcode(xx, parkType), parkKey)));
+            seq.add(new CodeDynamic(
+                    loc,
+                    new JavaBytecodeStoreLoad(JvmSort.descriptor(xx, parkType).loadOpcode(), parkKey)));
         }
         seq.add(new CodeDynamic(loc, new JavaBytecodeJump(next)));
         return EResult.ok(Code.target(new CodeDynamic(loc, seq)));
@@ -539,7 +551,7 @@ public final class TargetDynamic implements Target {
                 new EvalContext.ExternalEntry(treeKey, treeExprType, new External(StagedExprCell.class, treeCell)));
         var restElements = new TList<CodeDynamic>();
         for (var cv : lowerValues) {
-            if (cv.code().codeIsNone()) {
+            if (!DynUtil.dynamicHasCode(cv)) {
                 if (cv.value().optIsNone()) {
                     return EResult.err(loc, "TargetDynamic::stage: lower CodeValue has no value");
                 }
@@ -570,7 +582,7 @@ public final class TargetDynamic implements Target {
             }
         }
         for (var cv : graftValues) {
-            if (cv.code().codeIsNone()) {
+            if (!DynUtil.dynamicHasCode(cv)) {
                 var graftCv = new CodeValue(Code.none(loc), cv.outcome());
                 var key = new BindingId();
                 var id = key;
@@ -627,13 +639,6 @@ public final class TargetDynamic implements Target {
         return bindDynOpt.optUnwrap().aspectBindDynamicBindDynamic(xx, loc, cv);
     }
 
-    public EResult<TargetBindSub> codeToBindSub(QExprId loc, Code code, Type type) {
-        var dynRes = CodeDynamic.castRequired(loc, code, "Target::codeToBindSub: code is not dynamic");
-        if (dynRes.hasErrors()) return dynRes.reerr();
-        var dyn = dynRes.requireValue("dyn");
-        return EResult.ok(new TargetBindSub(dyn, type));
-    }
-
     public EResult<TargetBindSub> bindSubRecord(
             ExprContext xx, QExprId loc, Code carry, TList<RecordBindField> fields) {
         var entries = new TOrderedMap<ConstKey, TargetBindSub>();
@@ -674,7 +679,7 @@ public final class TargetDynamic implements Target {
         var castCvOpt = erb.mustEr(calleeExc.typeCastTo(xx, loc, boundCv, callerExc));
         if (castCvOpt.optIsNone()) return EResult.errs(erb.errors());
         var castCv = castCvOpt.optUnwrap();
-        if (castCv.code().codeIsNone()) {
+        if (!DynUtil.dynamicHasCode(castCv)) {
             return EResult.ok(Opt.<Code>none());
         }
         var seq = new JavaBytecodeSequence();

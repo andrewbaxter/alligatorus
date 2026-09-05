@@ -7,6 +7,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -35,8 +36,7 @@ public record AspectFunctionListPushDynamic(TypeListPushDynamic type) implements
         if (argDynRes.hasErrors()) return argDynRes.reerr();
         var argDyn = argDynRes.requireValue("toDynamic");
 
-        var selfDynRes =
-                CodeDynamic.castRequired(loc, self.code(), "TypeListPushDynamic::call: self has no dynamic code");
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (selfDynRes.hasErrors()) return selfDynRes.reerr();
         var selfDyn = selfDynRes.requireValue("selfDyn");
 

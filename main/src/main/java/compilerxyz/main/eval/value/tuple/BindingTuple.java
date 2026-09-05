@@ -10,8 +10,6 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr.Opaque;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.BindingCode;
-import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.util.Opt;
@@ -21,13 +19,10 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
-        Code useCode;
         Opt<TupleBaseDynamic> base;
         if (jsKey.optIsSome()) {
-            useCode = Code.target(BindingCode.bindingUse(new CodeLoc.Some(loc), jsKey.optUnwrap()));
-            base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Binding(jsKey.optUnwrap(), setter)));
+            base = Opt.some(new TupleBaseDynamic(BindingCode.slotRef(loc, jsKey.optUnwrap(), setter)));
         } else {
-            useCode = Code.none(loc);
             base = Opt.none();
         }
         var resultElements = new TList<TupleElement>(elements.size());
@@ -44,7 +39,7 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                     };
             resultElements.add(te);
         }
-        return new CodeValue(useCode, EvalOutcome.ofValue(new Tuple(base, resultElements)));
+        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(base, resultElements)));
     }
 
     @Override

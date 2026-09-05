@@ -124,7 +124,7 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        return EResult.ok(cv);
     }
 
     private static CodeDynamic valueOfBoolean(QExprId loc) {

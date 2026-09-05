@@ -8,6 +8,7 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectField;
@@ -19,7 +20,7 @@ public record AspectFieldSourceObjectConst(TypeSourceObjectConst type) implement
     @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         TypeSourceObjectDynamic dynType = type.dynamic();
-        if (!self.code().codeIsNone()) {
+        if (DynUtil.dynamicHasCode(self)) {
             return GenAspectField.getMaybe(xx, dynType).optUnwrap().aspectFieldField(xx, loc, self, key);
         }
         var selfCodeRes = new AspectConsumeDynamicSourceObjectConst(type).aspectConsumeDynamicToDynamic(xx, loc, self);

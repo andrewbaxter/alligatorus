@@ -23,6 +23,7 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -273,7 +274,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(xx, this, cv);
+                return rule.typeObjectCastFromRuleApply(this, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());
@@ -300,13 +301,9 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         if (interfaceRepresented.optIsSome()
                 && destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                         .optIsSome()) {
-            var sourceCodeCast = CodeDynamic.castOpt(loc, cv.code());
+            var sourceCodeCast = DynUtil.dynamicConsumeToDynamic(loc, cv);
             if (sourceCodeCast.hasErrors()) return sourceCodeCast.reerr();
-            if (sourceCodeCast.requireValue("sourceCode").optIsNone()) {
-                return EResult.err(
-                        loc, "cast " + typeDesc() + " → " + destType.typeDesc() + ": source has no runtime code");
-            }
-            var sourceCode = sourceCodeCast.requireValue("sourceCode").optUnwrap();
+            var sourceCode = sourceCodeCast.requireValue("sourceCode");
             var seq = new JavaBytecodeSequence();
             seq.add(sourceCode);
             seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.TYPE_OBJECT_DYNAMIC_GET_INTERFACE_CELL));
@@ -320,7 +317,7 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         }
         for (var rule : castRules()) {
             if (rule.typeObjectCastRuleMatches(xx, destType)) {
-                return rule.typeObjectCastRuleApply(xx, this, loc, cv, destType);
+                return rule.typeObjectCastRuleApply(xx, loc, cv, destType);
             }
         }
         return EResult.err(loc, "Cannot cast " + typeDesc() + " to " + destType.typeDesc());

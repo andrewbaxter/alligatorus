@@ -9,6 +9,8 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.function.TypeMethodDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodBuiltin;
 import compilerxyz.main.gen.AspectField;
@@ -33,13 +35,13 @@ public record AspectFieldObjectConst(TypeObjectConst type) implements AspectFiel
                             .aspectFieldTypeOpt(xx, ok.value())
                             .optIsSome()) {
                         CodeValue selfLifted = self;
-                        if (self.code().codeIsNone()) {
+                        if (!DynUtil.dynamicHasCode(self)) {
                             var liftRes = new AspectConsumeDynamicObjectConst(type)
                                     .aspectConsumeDynamicToDynamic(xx, loc, self);
                             if (liftRes.hasErrors()) return liftRes.reerr();
                             selfLifted = new CodeValue(
                                     Code.target(liftRes.requireValue(type.typeDesc() + "::field lift")),
-                                    self.outcome());
+                                    EvalOutcome.ofValue(ValueDynamic.stack(xx, type)));
                         }
                         return new AspectFieldObjectDynamic(GenType.Holder.INSTANCE)
                                 .aspectFieldField(xx, loc, selfLifted, key);

@@ -44,7 +44,7 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
                     "code.target.cast: destination type " + destType.typeDesc()
                             + " has no distinguishing host class; cast to a concrete object type");
         }
-        var selfDynRes = CodeDynamic.castRequired(loc, self.code(), "code.target.cast: receiver has no dynamic code");
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (selfDynRes.hasErrors()) return selfDynRes.reerr();
         var argDynCast = CodeDynamic.castOpt(loc, argument.code());
         if (argDynCast.hasErrors()) return argDynCast.reerr();

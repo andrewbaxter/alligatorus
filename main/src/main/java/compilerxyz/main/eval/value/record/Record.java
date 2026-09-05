@@ -26,6 +26,7 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
+import compilerxyz.main.eval.dynamic.BindingCode;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.CompositeSlotSort;
@@ -226,7 +227,7 @@ public final class Record implements Aspect, Type, Value {
                 var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, slotInfo.sortedTypes()));
                 if (accessKey.optIsNone()) {
                     var out = new JavaBytecodeSequence();
-                    out.add(baseSource.valueDynamicSourceRealize(xx, loc));
+                    out.add(baseSource.valueDynamicSourceRealize(loc));
                     var ecdKeys = new TList<ConstKey>(dynamicFieldTypes.size());
                     ecdKeys.addAll(dynamicFieldTypes.keySet());
                     for (int ecdI = ecdKeys.size() - 1; ecdI >= 0; ecdI--) {
@@ -630,15 +631,15 @@ public final class Record implements Aspect, Type, Value {
         if (carryDyn.optIsSome()) {
             var bindResult = jvmTarget.bindSlot(xx, loc, new TargetBindSub(carryDyn.optUnwrap(), srcType));
             sourceLoadCarry = bindResult.code;
-            srcAccessSource = new ValueDynamicSource.Binding(bindResult.id, new BindingSetterConsumed());
+            srcAccessSource = BindingCode.slotRef(loc, bindResult.id, new BindingSetterConsumed());
         } else {
             switch (sourcedSource) {
-                case ValueDynamicSource.Expr e -> {
+                case ValueDynamicSource.Stack e -> {
                     var srcKey = new BindingId();
                     sourceLoadCarry = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, srcKey));
-                    srcAccessSource = new ValueDynamicSource.Binding(srcKey, new BindingSetterConsumed());
+                    srcAccessSource = BindingCode.slotRef(loc, srcKey, new BindingSetterConsumed());
                 }
-                case ValueDynamicSource.Binding b -> {
+                case ValueDynamicSource.Slot b -> {
                     sourceLoadCarry = null;
                     srcAccessSource = sourcedSource;
                 }
@@ -664,7 +665,7 @@ public final class Record implements Aspect, Type, Value {
             var srcFieldType = srcFieldTypes.getOrNull(key);
             int srcSlot = srcSlotInfo.slotOfKey().get(key);
             var loadSeq = new JavaBytecodeSequence();
-            loadSeq.add(srcAccessSource.valueDynamicSourceRealize(xx, loc));
+            loadSeq.add(srcAccessSource.valueDynamicSourceRealize(loc));
             loadSeq.add(JavaBytecodeUtils.accessField(
                     loc,
                     srcKlass,
@@ -706,7 +707,7 @@ public final class Record implements Aspect, Type, Value {
         } else {
             finalDyn = instantiate;
         }
-        var newBase = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Expr(
+        var newBase = Opt.some(new RecordBaseDynamic(new ValueDynamicSource.Stack(
                 JavaDataDescriptor.fromInternalName(destKlass).slotWidth())));
         var newRecord = new Record(newBase, asDynamicFields(fields));
         return EResult.ok(new CodeValue(Code.target(finalDyn), EvalOutcome.ofValue((Value) newRecord)));

@@ -18,6 +18,7 @@ import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -152,11 +153,11 @@ public record TypeStringDynamic() implements Aspect, Type {
             var result = new CodeDynamic(loc, seq);
             return EResult.ok(new CodeValue(Code.target(result), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
         }
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        return EResult.ok(cv);
     }
 }

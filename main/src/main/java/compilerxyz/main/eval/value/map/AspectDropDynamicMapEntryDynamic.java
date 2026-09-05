@@ -7,7 +7,6 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.DropChild;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
@@ -41,7 +40,7 @@ public record AspectDropDynamicMapEntryDynamic(TypeMapEntryDynamic type) impleme
                 JavaBytecodeUtils.callInterfaceMethod(
                         loc, TypeMapEntryDynamic.MAP_ENTRY_INAME, "getValue", descObjNoArgs)));
         var source = vd.source();
-        boolean stackRooted = DynUtil.isStackRooted(source);
+        boolean stackRooted = source.valueDynamicSourceIsStackRooted();
         var childDrops = new TList<CodeDynamic>();
         for (var child : children) {
             var dropOpt = GenAspectDropDynamic.getMaybe(xx, child.childType());
@@ -62,7 +61,7 @@ public record AspectDropDynamicMapEntryDynamic(TypeMapEntryDynamic type) impleme
         }
         if (childDrops.isEmpty()) return EResult.ok(source.valueDynamicSourceDrop(loc));
         var out = new JavaBytecodeSequence();
-        if (!stackRooted) out.add(source.valueDynamicSourceRealize(xx, loc));
+        if (!stackRooted) out.add(source.valueDynamicSourceRealize(loc));
         for (var d : childDrops) out.add(d);
         out.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
         return EResult.ok(Code.target(new CodeDynamic(loc, out)));

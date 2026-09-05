@@ -46,7 +46,7 @@ public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDyn
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
         var setupSeq = new JavaBytecodeSequence();
-        setupSeq.add(vd.source().valueDynamicSourceRealize(xx, loc));
+        setupSeq.add(vd.source().valueDynamicSourceRealize(loc));
         setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 

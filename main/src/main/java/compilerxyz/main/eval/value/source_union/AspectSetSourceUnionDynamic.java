@@ -27,15 +27,15 @@ public record AspectSetSourceUnionDynamic(TypeSourceUnionDynamic type) implement
         }
         var selfDyn = MustCast.mustCast(ValueDynamic.class, base.value().optUnwrap());
         return switch (selfDyn.source()) {
-            case ValueDynamicSource.Binding b -> {
+            case ValueDynamicSource.Slot slot -> {
                 var replacement =
-                        new BindingDynamicBinding(b.key(), type.withActiveVariants(newOpt.optUnwrap().active));
-                if (!b.setter().bindingSetterSet(xx, loc, replacement, false)) {
+                        new BindingDynamicBinding(slot.slot(), type.withActiveVariants(newOpt.optUnwrap().active));
+                if (!slot.setter().bindingSetterSet(xx, loc, replacement, false)) {
                     yield EResult.err(loc, "set: union binding is no longer in scope");
                 }
                 yield out;
             }
-            case ValueDynamicSource.Expr e -> out;
+            case ValueDynamicSource.Stack e -> out;
             case ValueDynamicSource.Field f -> out;
         };
     }

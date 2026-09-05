@@ -16,7 +16,7 @@ public record ValueDynamic(ValueDynamicSource source, Type type) implements Valu
 
     public static Value stack(ExprContext xx, Type type) {
         return new ValueDynamic(
-                new ValueDynamicSource.Expr(JvmSort.descriptor(xx, type).slotWidth()), type);
+                new ValueDynamicSource.Stack(JvmSort.descriptor(xx, type).slotWidth()), type);
     }
 
     @Override

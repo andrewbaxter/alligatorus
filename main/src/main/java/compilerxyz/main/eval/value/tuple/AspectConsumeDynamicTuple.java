@@ -52,12 +52,8 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
             throw new IllegalStateException("Tuple::toDynamic: expected Tuple value, got " + someValue.getClass());
         }
         if (tuple.base.optIsSome()) {
-            var dynCast = CodeDynamic.castOpt(loc, carry);
-            if (dynCast.hasErrors()) return dynCast.reerr();
-            if (dynCast.requireValue("_tbDyn").optIsNone())
-                return EResult.err(loc, "TupleBaseDynamic::toDynamic: carry has no dynamic code");
-            var tbDyn = dynCast.requireValue("_tbDyn").optUnwrap();
-            return EResult.ok(tbDyn);
+            return DynUtil.wrapWithCarry(
+                    loc, carry, tuple.base.optUnwrap().source().valueDynamicSourceRealize(loc));
         }
         var types = new TList<Type>(type.elements.size());
         for (var e : type.elements) {

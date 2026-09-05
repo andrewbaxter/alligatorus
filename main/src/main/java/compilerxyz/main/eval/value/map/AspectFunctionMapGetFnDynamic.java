@@ -7,6 +7,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -34,8 +35,7 @@ public record AspectFunctionMapGetFnDynamic(TypeMapGetFnDynamic type) implements
         if (keyDynRes.hasErrors()) return keyDynRes.reerr();
         var keyDyn = keyDynRes.requireValue("toDynamic key");
 
-        var selfDynRes =
-                CodeDynamic.castRequired(loc, self.code(), "TypeMapGetFnDynamic::call: self has no dynamic code");
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (selfDynRes.hasErrors()) return selfDynRes.reerr();
         var selfDyn = selfDynRes.requireValue("selfDyn");
 

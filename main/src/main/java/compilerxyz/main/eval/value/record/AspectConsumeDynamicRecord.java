@@ -40,12 +40,8 @@ public record AspectConsumeDynamicRecord(Record type) implements AspectConsumeDy
                     + cv.value().optUnwrap().getClass());
         }
         if (record.base.optIsSome()) {
-            var dynCast = CodeDynamic.castOpt(loc, carry);
-            if (dynCast.hasErrors()) return dynCast.reerr();
-            if (dynCast.requireValue("_rbDyn").optIsNone())
-                return EResult.err(loc, "RecordBaseDynamic::toDynamic: carry has no dynamic code");
-            var dyn = dynCast.requireValue("_rbDyn").optUnwrap();
-            return EResult.ok(dyn);
+            return DynUtil.wrapWithCarry(
+                    loc, carry, record.base.optUnwrap().source().valueDynamicSourceRealize(loc));
         }
         TList<ExprErr> errors = null;
         record LoweredField(ConstKey key, String desc, Type type, CodeDynamic code) {}

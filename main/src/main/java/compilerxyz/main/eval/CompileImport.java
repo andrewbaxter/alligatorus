@@ -12,6 +12,7 @@ import compilerxyz.main.eval.dynamic.CodeLoc.Some;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynException;
 import compilerxyz.main.eval.dynamic.DynPanic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EmitCtx;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
@@ -154,7 +155,7 @@ public final class CompileImport {
                 } else {
                     var cvValue = cv.value().optUnwrap();
                     valueType = cvValue.valueType();
-                    if (cv.code().codeIsNone()) {
+                    if (!DynUtil.dynamicHasCode(cv)) {
                         stage1Code = Opt.none();
                         fallbackValue = Opt.some(cvValue);
                     } else {

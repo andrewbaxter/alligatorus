@@ -10,6 +10,7 @@ import compilerxyz.main.eval.NumericKind;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.numeric.Numerics;
@@ -26,8 +27,7 @@ public final class AspectFieldUbyteDynamicBox implements AspectField {
     @Override
     public EResult<CodeValue> aspectFieldField(ExprContext xx, QExprId loc, CodeValue self, CodeValue key) {
         var unboxed = new TypeUbyteDynamic();
-        var selfDynRes =
-                CodeDynamic.castRequired(loc, self.code(), "TypeUbyteDynamicBox::field: receiver has no runtime code");
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
         if (selfDynRes.hasErrors()) return selfDynRes.reerr();
         var selfDyn = selfDynRes.requireValue("selfDyn");
         var seq = new JavaBytecodeSequence();

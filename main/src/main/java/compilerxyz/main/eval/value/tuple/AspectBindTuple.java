@@ -44,9 +44,10 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                 }
                 scopeFields.add(new TupleScopeField.Dynamic(d.type()));
             }
-            var subRes = jvmTarget.codeToBindSub(loc, carry, tupleType);
-            if (subRes.hasErrors()) return subRes.reerr();
-            var sub = subRes.requireValue("Tuple::bindSub base.bindSub");
+            var baseRes = DynUtil.wrapWithCarry(
+                    loc, carry, type.base.optUnwrap().source().valueDynamicSourceRealize(loc));
+            if (baseRes.hasErrors()) return baseRes.reerr();
+            var sub = new TargetBindSub(baseRes.requireValue("Tuple::bindSub base realize"), tupleType);
             var bound = jvmTarget.bindSlot(xx, loc, sub);
             return EResult.ok(
                     new BindResult(Code.target(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));

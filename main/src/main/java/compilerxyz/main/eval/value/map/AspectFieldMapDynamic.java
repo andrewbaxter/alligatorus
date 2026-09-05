@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.value.map;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
@@ -10,7 +9,7 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.map.TypeMapDynamic.FieldSpec;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -37,30 +36,16 @@ public record AspectFieldMapDynamic<K extends Type, V extends Type>(TypeMapDynam
                             self.code(),
                             EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
                 case FieldSpec.GetFn g -> {
-                    var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-                    if (selfDynCast.hasErrors()) yield selfDynCast.reerr();
-                    if (selfDynCast.requireValue("selfDyn").optIsNone()) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
-                    }
-                    var selfDyn = selfDynCast.requireValue("selfDyn").optUnwrap();
                     if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdg)) {
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
                     }
-                    yield EResult.ok(new CodeValue(
-                            Code.target(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdg.source(), g.type()))));
+                    yield EResult.ok(DynUtil.methodRefOn(self, g.type()));
                 }
                 case FieldSpec.PutFn p -> {
-                    var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-                    if (selfDynCast.hasErrors()) yield selfDynCast.reerr();
-                    if (selfDynCast.requireValue("selfDyn").optIsNone()) {
-                        yield EResult.err(loc, "TypeMapDynamic::field: receiver has no runtime code");
-                    }
-                    var selfDyn = selfDynCast.requireValue("selfDyn").optUnwrap();
                     if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic fnSelfVdp)) {
                         yield EResult.err(loc, "TypeMapDynamic::field: fn receiver has no dynamic source");
                     }
-                    yield EResult.ok(new CodeValue(
-                            Code.target(selfDyn), EvalOutcome.ofValue(new ValueDynamic(fnSelfVdp.source(), p.type()))));
+                    yield EResult.ok(DynUtil.methodRefOn(self, p.type()));
                 }
             };
         }

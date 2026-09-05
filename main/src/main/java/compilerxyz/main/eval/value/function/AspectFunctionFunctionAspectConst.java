@@ -81,7 +81,7 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
                 .aspectConsumeDynamicToDynamic(xx, loc, subjectConverted);
         if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
         var subjectDyn = subjectDynRes.requireValue("aspect_lookup subject toDynamic");
-        var xxDynRes = CodeDynamic.castRequired(loc, xxCv.code(), "aspect_lookup: xx has no runtime code");
+        var xxDynRes = DynUtil.dynamicConsumeToDynamic(loc, xxCv);
         if (xxDynRes.hasErrors()) return xxDynRes.reerr();
         var xxDyn = xxDynRes.requireValue("xxDyn");
 

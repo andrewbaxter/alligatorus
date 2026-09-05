@@ -5,6 +5,7 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -22,9 +23,6 @@ public final class AspectConsumeDynamicMapPutFnDynamic implements AspectConsumeD
 
     @Override
     public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var dynRes = CodeDynamic.castRequired(loc, cv.code(), "TypeMapPutFnDynamic::toDynamic: no dynamic code");
-        if (dynRes.hasErrors()) return dynRes.reerr();
-        var dyn = dynRes.requireValue("dyn");
-        return EResult.ok(dyn);
+        return DynUtil.dynamicConsumeToDynamic(loc, cv);
     }
 }

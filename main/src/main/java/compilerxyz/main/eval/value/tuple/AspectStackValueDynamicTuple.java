@@ -14,7 +14,7 @@ public record AspectStackValueDynamicTuple(Tuple type) implements AspectStackVal
 
     @Override
     public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        var source = new ValueDynamicSource.Expr(new AspectConsumeDynamicTuple(type)
+        var source = new ValueDynamicSource.Stack(new AspectConsumeDynamicTuple(type)
                 .aspectConsumeDynamicJvmClass(xx)
                 .slotWidth());
         return new CodeValue(

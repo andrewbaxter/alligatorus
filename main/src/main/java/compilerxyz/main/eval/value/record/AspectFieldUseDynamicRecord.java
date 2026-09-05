@@ -7,7 +7,6 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
 import compilerxyz.main.gen.Value;
@@ -19,7 +18,7 @@ public record AspectFieldUseDynamicRecord(Record type) implements AspectFieldUse
     @Override
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(
             ExprContext xx, QExprId loc, ValueDynamicSource source) {
-        var fieldCode = Code.target(DynUtil.renderSource(xx, loc, source));
+        var fieldCode = Code.none(loc);
         var newFields = new TOrderedMap<ConstKey, RecordField>();
         for (var entry : type.fields.entrySet()) {
             var t =

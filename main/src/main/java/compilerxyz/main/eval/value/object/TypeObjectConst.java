@@ -10,6 +10,7 @@ import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -21,6 +22,7 @@ import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectAspect;
 import compilerxyz.main.gen.GenAspectBind;
@@ -158,9 +160,10 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
                     var dynRes = new AspectConsumeDynamicObjectConst(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
                     if (dynRes.hasErrors()) return dynRes.reerr();
                     materialized = new CodeValue(
-                            Code.target(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")), cv.outcome());
+                            Code.target(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")),
+                            EvalOutcome.ofValue(ValueDynamic.stack(xx, this)));
                 }
-                return rule.typeObjectCastRuleApply(xx, null, loc, materialized, destType);
+                return rule.typeObjectCastRuleApply(xx, loc, materialized, destType);
             }
         }
         return EResult.err(loc, "Cannot cast " + typeDesc() + " to " + destType.typeDesc());
@@ -180,7 +183,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         var sourceType = cv.value().optUnwrap().valueType();
         for (var rule : castFromRules()) {
             if (rule.typeObjectCastFromRuleMatches(xx, sourceType)) {
-                return rule.typeObjectCastFromRuleApply(xx, null, cv);
+                return rule.typeObjectCastFromRuleApply(null, cv);
             }
         }
         return EResult.err(loc, "Cannot cast " + sourceType.typeDesc() + " to " + typeDesc());

@@ -24,6 +24,7 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.value.ValueDynamic;
@@ -244,15 +245,14 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
         if (destType.typeAspect(xx, cell.identity).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, destType));
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceCodeRes = CodeDynamic.castRequired(
-                    loc, cv.code(), "cast source_interface_dynamic → interface_cell: source has no runtime code");
+            var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
             if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
             var sourceCode = sourceCodeRes.requireValue("sourceCode");
             var seq = new JavaBytecodeSequence();

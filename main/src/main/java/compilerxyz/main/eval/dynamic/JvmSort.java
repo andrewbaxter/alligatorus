@@ -18,10 +18,6 @@ public final class JvmSort {
         };
     }
 
-    public static int loadOpcode(ExprContext xx, Type type) {
-        return descriptor(xx, type).loadOpcode();
-    }
-
     public static int storeOpcode(ExprContext xx, Type type) {
         return descriptor(xx, type).storeOpcode();
     }

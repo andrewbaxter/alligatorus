@@ -10,7 +10,6 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.value.ValueDynamic;
-import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
@@ -25,6 +24,7 @@ import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.TargetBindSub;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.Iterator;
@@ -113,15 +113,6 @@ public final class DynUtil {
         return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
 
-    public static CodeDynamic renderSource(ExprContext xx, QExprId loc, ValueDynamicSource src) {
-        return switch (src) {
-            case ValueDynamicSource.Expr e ->
-                throw new IllegalStateException("ValueDynamicSource.Expr has no reconstructable code");
-            case ValueDynamicSource.Binding b -> b.valueDynamicSourceRealize(xx, loc);
-            case ValueDynamicSource.Field f -> f.valueDynamicSourceRealize(xx, loc);
-        };
-    }
-
     public static EResult<TargetDynamic> jvmTarget(ExprContext xx, QExprId loc) {
         if (xx.target instanceof TargetDynamic t) return EResult.ok(t);
         return EResult.err(loc, "Value with a JVM representation is being bound under a non-JVM target");
@@ -134,7 +125,7 @@ public final class DynUtil {
                     "bind_via_target called with absent value in CodeValue; Rust unwraps unconditionally");
         }
         var vtype = valueOpt.optUnwrap().valueType();
-        if (cv.code().codeIsNone()) {
+        if (!dynamicHasCode(cv)) {
             Binding binding = new BindingValue(valueOpt.optUnwrap());
             return EResult.ok(new AspectBind.BindResult(cv.code(), binding));
         }
@@ -159,7 +150,7 @@ public final class DynUtil {
     }
 
     public static EResult<Opt<TargetBindSub>> bindDynamicDefault(QExprId loc, CodeValue cv) {
-        if (cv.code().codeIsNone()) {
+        if (!dynamicHasCode(cv)) {
             return EResult.ok(Opt.none());
         }
         if (cv.value().optIsNone()) {
@@ -187,19 +178,37 @@ public final class DynUtil {
         return EResult.ok(vd.source().valueDynamicSourceDrop(loc));
     }
 
-    public static boolean isStackRooted(ValueDynamicSource source) {
-        return switch (source) {
-            case ValueDynamicSource.Expr expr -> true;
-            case ValueDynamicSource.Binding binding -> false;
-            case ValueDynamicSource.Field field -> isStackRooted(field.base());
-        };
+    public static EResult<CodeDynamic> dynamicConsumeToDynamic(QExprId loc, CodeValue cv) {
+        var carryRes = CodeDynamic.castOpt(loc, cv.code());
+        if (carryRes.hasErrors()) return carryRes.reerr();
+        var carry = carryRes.requireValue("DynUtil::dynamicConsumeToDynamic carry");
+        Opt<CodeDynamic> realized = cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic vd
+                ? Opt.some(vd.source().valueDynamicSourceRealize(loc))
+                : Opt.none();
+        if (realized.optIsNone()) {
+            if (carry.optIsNone()) return EResult.err(loc, "Expression resulted in empty code");
+            return EResult.ok(carry.optUnwrap());
+        }
+        if (carry.optIsNone()) return EResult.ok(realized.optUnwrap());
+        var seq = new JavaBytecodeSequence();
+        seq.add(carry.optUnwrap());
+        seq.add(realized.optUnwrap());
+        return EResult.ok(new CodeDynamic(loc, seq));
     }
 
-    public static EResult<CodeDynamic> dynamicConsumeToDynamic(QExprId loc, CodeValue cv) {
-        var dynRes = CodeDynamic.castRequired(loc, cv.code(), "Expression resulted in empty code");
-        if (dynRes.hasErrors()) return dynRes.reerr();
-        var dyn = dynRes.requireValue("dyn");
-        return EResult.ok(dyn);
+    public static CodeValue methodRefOn(CodeValue receiver, Type methodType) {
+        var vd = MustCast.mustCast(ValueDynamic.class, receiver.value().optUnwrap());
+        return new CodeValue(receiver.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), methodType)));
+    }
+
+    public static CodeValue dynamicCastKeepingSource(CodeValue cv, Type type) {
+        var vd = MustCast.mustCast(ValueDynamic.class, cv.value().optUnwrap());
+        return new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), type)));
+    }
+
+    public static boolean dynamicHasCode(CodeValue cv) {
+        if (!cv.code().codeIsNone()) return true;
+        return cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic;
     }
 
     public static Type substituteBoxed(ExprContext xx, Type type) {
@@ -266,32 +275,12 @@ public final class DynUtil {
             return nullStackRes.reerr();
         }
         var nullStack = nullStackRes.requireValue("DynUtil::dynamicSet null stack aspect");
-        return switch (selfDyn.source()) {
-            case ValueDynamicSource.Binding bindingSrc -> {
-                var seq = new JavaBytecodeSequence();
-                seq.add(valueCode);
-                seq.add(new CodeDynamic(
-                        new CodeLoc.Some(loc),
-                        new JavaBytecodeStoreLoad(JvmSort.storeOpcode(xx, targetType), bindingSrc.key())));
-                seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-                var setJs = new CodeDynamic(loc, seq);
-                yield EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
-            }
-            case ValueDynamicSource.Field fieldSrc -> {
-                if (isStackRooted(fieldSrc)) {
-                    yield EResult.err(loc, "Cannot modify a temporary value");
-                }
-                var seq = new JavaBytecodeSequence();
-                seq.add(fieldSrc.base().valueDynamicSourceRealize(xx, loc));
-                seq.add(valueCode);
-                seq.add(JavaBytecodeUtils.setField(
-                        new CodeLoc.Some(loc), fieldSrc.klass(), fieldSrc.slotName(), fieldSrc.slotDesc()));
-                seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-                var setJs = new CodeDynamic(loc, seq);
-                yield EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, setJs));
-            }
-            case ValueDynamicSource.Expr e -> EResult.err(loc, "Cannot modify a temporary value");
-        };
+        var storeRes = selfDyn.source().valueDynamicSourceStore(loc, valueCode);
+        if (storeRes.hasErrors()) return storeRes.reerr();
+        var seq = new JavaBytecodeSequence();
+        seq.add(storeRes.requireValue("DynUtil::dynamicSet store"));
+        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
+        return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
     }
 
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {

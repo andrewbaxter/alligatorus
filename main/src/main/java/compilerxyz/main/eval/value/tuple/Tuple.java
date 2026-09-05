@@ -26,6 +26,7 @@ import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.CompositeSlotSort;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -215,7 +216,7 @@ public final class Tuple implements Aspect, Type, Value {
                 var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
                 if (accessIndex.optIsNone()) {
                     var out = new JavaBytecodeSequence();
-                    out.add(baseSource.valueDynamicSourceRealize(xx, loc));
+                    out.add(baseSource.valueDynamicSourceRealize(loc));
                     for (int i = tuple.elements.size() - 1; i >= 0; i--) {
                         int dynIdx = dynamicIndexOfElement.get(i);
                         if (dynIdx < 0) continue;
@@ -448,7 +449,7 @@ public final class Tuple implements Aspect, Type, Value {
         }
         var cvValue = cv.value().optUnwrap();
         if (cvValue instanceof ValueDynamic) {
-            return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
         }
         if (!(cvValue instanceof Tuple tuple)) {
             throw new IllegalStateException("Tuple::typeCastFrom: expected Tuple value, got " + cvValue.getClass());
