@@ -333,7 +333,7 @@ public final class Record implements Aspect, Type, Value {
             return Opt.some(this);
         }
         if (key.equals(GenAspectType.AspectId)) {
-            return Opt.some(AspectTypeRecord.INSTANCE);
+            return recordFieldsAllTypes() ? Opt.some(AspectTypeRecord.INSTANCE) : Opt.none();
         }
         if (key.equals(GenAspectRecord.AspectId)) {
             return Opt.some(new AspectRecordRecord(this));
@@ -840,6 +840,29 @@ public final class Record implements Aspect, Type, Value {
         }
     }
 
+    private boolean recordFieldsAllTypes() {
+        for (var entry : fields.entrySet()) {
+            switch (entry.getValue()) {
+                case RecordField.Dynamic d -> {}
+                case RecordField.EvalRes er -> {
+                    var inner = er.result();
+                    if (inner.hasErrors()) return false;
+                    var innerCv = inner.requireValue("Record::recordFieldsAllTypes field");
+                    if (innerCv.value().optIsNone()) return false;
+                    var fieldValue = innerCv.value().optUnwrap();
+                    if (fieldValue instanceof Record nested) {
+                        if (!nested.recordFieldsAllTypes()) return false;
+                    } else if (fieldValue instanceof ValueObjectConst voc) {
+                        if (!(voc.data() instanceof Type)) return false;
+                    } else if (!(fieldValue instanceof Type)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
     static Type recordFieldType(RecordField f) {
         return switch (f) {
             case RecordField.Dynamic d -> d.type();
@@ -867,7 +890,7 @@ public final class Record implements Aspect, Type, Value {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome();
+        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome() && recordFieldsAllTypes();
     }
 
     @Override

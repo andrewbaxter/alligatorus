@@ -11,6 +11,7 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -35,6 +36,9 @@ public record ArgumentTuple(TList<Binding> elements, TList<Type> elementTypes) i
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.ARGUMENT_TUPLE_IDENTITY)) {
             return Opt.some(this);
+        }
+        if (key.equals(GenAspectField.AspectId)) {
+            return Opt.some(AspectFieldArgumentTuple.INSTANCE);
         }
         return Opt.none();
     }

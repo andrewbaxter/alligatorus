@@ -22,7 +22,7 @@ public final class T0140PanicTest {
                 mb.call(
                         mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                         mb.recordOf(TList.of(
-                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                 new TestMb.RecordPair("ret", mb.optSomeType(mb.typesNull())),
                                 new TestMb.RecordPair("impl_body", mb.stage(mb.panic(mb.str(message))))))),
                 mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
@@ -97,7 +97,7 @@ public final class T0140PanicTest {
                                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesNull())),
                                                                 new TestMb.RecordPair(

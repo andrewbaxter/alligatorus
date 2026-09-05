@@ -220,7 +220,7 @@ public final class T0160EvenOddTest {
                                                 mb.field(mb.scopeUse("u_gp_method"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesLong())),
                                                                 new TestMb.RecordPair(
@@ -291,7 +291,7 @@ public final class T0160EvenOddTest {
                                                 mb.field(mb.scopeUse("vb_gw_method"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.evalValue())),
                                                                 new TestMb.RecordPair(
@@ -313,7 +313,7 @@ public final class T0160EvenOddTest {
                                                 mb.field(mb.scopeUse("vb_gs_method"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret",
                                                                         mb.optSomeType(
@@ -413,7 +413,7 @@ public final class T0160EvenOddTest {
                                                 mb.field(mb.scopeUse("gp_method"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesLong())),
                                                                 new TestMb.RecordPair(

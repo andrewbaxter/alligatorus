@@ -267,7 +267,7 @@ public final class T0100ImportTest {
                                                 mb.field(mb.scopeUse("mnfr"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString())),
                                                                 new TestMb.RecordPair(
@@ -298,7 +298,12 @@ public final class T0100ImportTest {
         var ok = ((Result.Ok<Compile.CompileResult, TList<ExprErr>>) res).value();
         assertEquals(1, ok.logs().size());
         assertEquals("HELLO", ok.logs().get(0).message());
-        assertEquals(2, gxa.artifacts().data.size());
+        assertEquals(3, gxa.artifacts().data.size());
+        var tupleArt = Helpers.artifactByTag(gxa.artifacts(), "tuple");
+        assertEquals(
+                new ArtifactBodyExporter.Body(new ArtifactBody(jsonStr("tuple"), new ArtifactBodyExporter.Root())),
+                tupleArt.exporter());
+        assertEquals(jsonObj(jsonField("elements", jsonArr())), tupleArt.data());
         var objArt = Helpers.artifactByTag(gxa.artifacts(), "source_object_const");
         assertEquals(
                 new ArtifactBodyExporter.Body(
@@ -329,7 +334,7 @@ public final class T0100ImportTest {
                                 "methods",
                                 jsonArr(jsonObj(
                                         jsonField("name", jsonStr("to_string")),
-                                        jsonField("arg_type", typeArtifact("null_dynamic")),
+                                        jsonField("arg_type", artifactRef(2)),
                                         jsonField("ret_type", typeArtifact("string_dynamic")),
                                         jsonField("jvm_method_name", jsonStr("_0")),
                                         jsonField("captured_externals", jsonArr())))),
@@ -499,7 +504,7 @@ public final class T0100ImportTest {
                         mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                 mb.recordOf(TList.of(
-                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("arg", mb.tupleOf()),
                                         new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair("impl_body", mb.stage(mb.str("hello")))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
@@ -514,19 +519,18 @@ public final class T0100ImportTest {
                         mb.call(
                                 mb.field(mb.scopeUse("nfr"), mb.str("impl")),
                                 mb.recordOf(TList.of(
-                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                        new TestMb.RecordPair("arg", mb.tupleOf()),
                                         new TestMb.RecordPair("ret", mb.optSomeType(mb.typesString())),
                                         new TestMb.RecordPair(
                                                 "impl_body",
-                                                mb.stage(
-                                                        mb.call(mb.lower(mb.scopeUse("func_b")), mb.literalNull())))))),
+                                                mb.stage(mb.call(mb.lower(mb.scopeUse("func_b")), mb.tupleOf())))))),
                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                         mb.return_(mb.scopeUse("f")))));
         modules.put(
                 "main",
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("func_a", mb.importExpr(mb.str("module_a"))),
-                        mb.call(mb.log(), mb.call(mb.scopeUse("func_a"), mb.literalNull())))));
+                        mb.call(mb.log(), mb.call(mb.scopeUse("func_a"), mb.tupleOf())))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         assertTrue(

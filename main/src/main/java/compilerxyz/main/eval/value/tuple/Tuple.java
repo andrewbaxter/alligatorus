@@ -29,9 +29,12 @@ import compilerxyz.main.eval.dynamic.CompositeSlotSort;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.GenAspectArtifact;
@@ -47,6 +50,7 @@ import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
+import compilerxyz.main.gen.GenAspectType;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
@@ -57,6 +61,7 @@ import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
@@ -334,6 +339,40 @@ public final class Tuple implements Aspect, Type, Value {
         return new Tuple(base, slotTypes);
     }
 
+    private boolean tupleElementsAllTypes() {
+        for (var element : elements) {
+            switch (element) {
+                case TupleElement.Dynamic d -> {}
+                case TupleElement.EvalRes er -> {
+                    var inner = er.result();
+                    if (inner.hasErrors()) return false;
+                    var innerCv = inner.requireValue("Tuple::tupleElementsAllTypes element");
+                    if (innerCv.value().optIsNone()) return false;
+                    var elementValue = innerCv.value().optUnwrap();
+                    if (elementValue instanceof Tuple nested) {
+                        if (!nested.tupleElementsAllTypes()) return false;
+                    } else if (elementValue instanceof ValueObjectConst voc) {
+                        if (!(voc.data() instanceof Type)) return false;
+                    } else if (!(elementValue instanceof Type)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public static Tuple newDynamic(Object[] elems) {
+        var out = new TList<TupleElement>(elems.length);
+        for (var raw : elems) {
+            if (!(raw instanceof Type t)) {
+                throw new IllegalStateException("Tuple::newDynamic: element value is not a Type: " + raw.getClass());
+            }
+            out.add(new TupleElement.Dynamic(t));
+        }
+        return new Tuple(Opt.none(), out);
+    }
+
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
@@ -344,6 +383,9 @@ public final class Tuple implements Aspect, Type, Value {
         }
         if (key.equals(GenAspectTuple.AspectId)) {
             return Opt.some(new AspectTupleTuple(this));
+        }
+        if (key.equals(GenAspectType.AspectId)) {
+            return tupleElementsAllTypes() ? Opt.some(AspectTypeTuple.INSTANCE) : Opt.none();
         }
         if (key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(new AspectStackValueDynamicTuple(this));
@@ -391,11 +433,69 @@ public final class Tuple implements Aspect, Type, Value {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return elements.isEmpty() && GenAspectNull.getMaybe(xx, destType).optIsSome();
+        if (elements.isEmpty() && GenAspectNull.getMaybe(xx, destType).optIsSome()) return true;
+        return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome() && tupleElementsAllTypes();
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        if (destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome()) {
+            if (destType.typeAspect(xx, GenAspectStackValueDynamic.AspectId).optIsNone()) {
+                return EResult.ok(cv);
+            }
+            if (cv.value().optIsNone()) {
+                return EResult.err(loc, "Tuple::typeCastTo: CodeValue has no value");
+            }
+            var tuple = MustCast.mustCast(Tuple.class, cv.value().optUnwrap());
+            var elems = new TList<CodeDynamic>(tuple.elements.size());
+            for (var element : tuple.elements) {
+                TupleElement.EvalRes er;
+                switch (element) {
+                    case TupleElement.EvalRes erVal -> er = erVal;
+                    case TupleElement.Dynamic d -> {
+                        return EResult.err(loc, "Tuple::typeCastTo: element is dynamic-only");
+                    }
+                }
+                var elemRes = er.result();
+                if (elemRes.hasErrors()) return elemRes.reerr();
+                var elemCv = elemRes.requireValue("Tuple::typeCastTo element");
+                if (elemCv.value().optIsNone()) {
+                    return EResult.err(loc, "Tuple::typeCastTo: element has no value");
+                }
+                var elemValue = elemCv.value().optUnwrap();
+                if (elemValue instanceof Tuple nested) {
+                    var nestedRes = nested.typeCastTo(xx, loc, elemCv, destType);
+                    if (nestedRes.hasErrors()) return nestedRes.reerr();
+                    var nestedDyn = CodeDynamic.castRequired(
+                            loc,
+                            nestedRes.requireValue("Tuple::typeCastTo nested").code(),
+                            "Tuple::typeCastTo: nested tuple cast produced no dynamic code");
+                    if (nestedDyn.hasErrors()) return nestedDyn.reerr();
+                    elems.add(nestedDyn.requireValue("nestedDyn"));
+                    continue;
+                }
+                var toDynRes = GenAspectConsumeDynamic.get(xx, loc, elemValue.valueType());
+                if (toDynRes.hasErrors()) return toDynRes.reerr();
+                var lowered = toDynRes.requireValue("Tuple::typeCastTo element consume")
+                        .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
+                if (lowered.hasErrors()) return lowered.reerr();
+                elems.add(lowered.requireValue("Tuple::typeCastTo element lowered"));
+            }
+            var callSeq = new JavaBytecodeSequence();
+            callSeq.add(JavaBytecodeUtils.buildObjectArray(loc, elems));
+            callSeq.add(JavaBytecodeUtils.callStaticMethod(
+                    loc,
+                    JavaInternalName.of(Tuple.class.getName().replace('.', '/')),
+                    "newDynamic",
+                    JavaMethodDescriptor.fromParts(
+                            JavaDataDescriptor.fromClass(Tuple.class),
+                            TList.of(JavaDataDescriptor.fromClass(Object[].class)))));
+            var withCarry = DynUtil.wrapWithCarry(loc, cv.code(), new CodeDynamic(loc, callSeq));
+            if (withCarry.hasErrors()) return withCarry.reerr();
+            return EResult.ok(new CodeValue(
+                    Code.target(withCarry.requireValue("withCarry")),
+                    EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+        }
         var concatRes = Eval.codeConcat(xx, loc, cv.code(), Code.target(JavaBytecodeUtils.literalNull(loc)));
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(

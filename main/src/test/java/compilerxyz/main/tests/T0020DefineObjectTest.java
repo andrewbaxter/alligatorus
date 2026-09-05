@@ -219,7 +219,7 @@ public final class T0020DefineObjectTest {
                                                 mb.field(mb.scopeUse("mnfr"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString())),
                                                                 new TestMb.RecordPair(

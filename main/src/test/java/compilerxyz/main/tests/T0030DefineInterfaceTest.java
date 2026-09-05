@@ -35,7 +35,7 @@ public final class T0030DefineInterfaceTest {
                                                 mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString()))))),
                                         mb.bind(
@@ -274,7 +274,7 @@ public final class T0030DefineInterfaceTest {
                                 mb.log(),
                                 mb.call(
                                         mb.field(mb.field(mb.scopeUse("defs"), mb.str("iface")), mb.str("to_string")),
-                                        mb.tupleOf(mb.scopeUse("val"), mb.tupleOf()))))));
+                                        mb.scopeUse("val"))))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> ok;
@@ -310,7 +310,7 @@ public final class T0030DefineInterfaceTest {
                                                 mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
                                                 mb.recordOf(
                                                         TList.of(
-                                                                new TestMb.RecordPair("arg", mb.typesNull()),
+                                                                new TestMb.RecordPair("arg", mb.tupleOf()),
                                                                 new TestMb.RecordPair(
                                                                         "ret", mb.optSomeType(mb.typesString()))))),
                                         mb.bind(
@@ -571,11 +571,8 @@ public final class T0030DefineInterfaceTest {
                                                                                                                                                 "type"))),
                                                                                                         mb.str(
                                                                                                                 "to_string")),
-                                                                                                mb.tupleOf(
-                                                                                                        mb.scopeUse(
-                                                                                                                "arg"),
-                                                                                                        mb
-                                                                                                                .tupleOf())))))))),
+                                                                                                mb.scopeUse(
+                                                                                                        "arg")))))))),
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.recordOf(
                                                 TList.of(
@@ -620,7 +617,7 @@ public final class T0030DefineInterfaceTest {
                                         mb.field(mb.scopeUse("iface_meth"), mb.str("impl")),
                                         mb.recordOf(
                                                 TList.of(
-                                                        new TestMb.RecordPair("arg", mb.typesNull()),
+                                                        new TestMb.RecordPair("arg", mb.tupleOf()),
                                                         new TestMb.RecordPair(
                                                                 "ret", mb.optSomeType(mb.typesString()))))),
                                 mb.bind("ndr", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str("upper"))),
