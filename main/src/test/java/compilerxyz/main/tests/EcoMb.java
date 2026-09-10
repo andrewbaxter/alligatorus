@@ -3,9 +3,11 @@ package compilerxyz.main.tests;
 import compilerxyz.main.syntax.SourceExpr;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import java.util.function.Function;
+import compilerxyz.prelude.util.TMap;
 
 public final class EcoMb {
+    public final TMap<String, SourceExpr[]> fnSigs = new TMap<>();
+
     public final TestMb mb = new TestMb();
 
     public SourceExpr v(String name) {
@@ -199,6 +201,66 @@ public final class EcoMb {
         return callM(mb.call(mb.typesEresult(), resultType), "ok", value);
     }
 
+    public SourceExpr eresultErr(SourceExpr resultType, SourceExpr loc, SourceExpr message) {
+        return callM(mb.call(mb.typesEresult(), resultType), "err", mb.tupleOf(loc, message));
+    }
+
+    public SourceExpr eresultErrs(SourceExpr resultType, SourceExpr errors) {
+        return callM(mb.call(mb.typesEresult(), resultType), "errs", errors);
+    }
+
+    public SourceExpr typesDouble() {
+        return mb.builtin("types", "double");
+    }
+
+    public SourceExpr typesFloat() {
+        return mb.builtin("types", "float");
+    }
+
+    public SourceExpr typesExprContext() {
+        return mb.builtin("types", "expr_context");
+    }
+
+    public SourceExpr typesLoc() {
+        return mb.builtin("types", "qexpr_id");
+    }
+
+    public SourceExpr typesJumpKey() {
+        return mb.builtin("types", "jump_key");
+    }
+
+    public SourceExpr evalBuiltin(String name) {
+        return mb.builtin("eval", name);
+    }
+
+    public SourceExpr dstr(String value) {
+        return mb.as(mb.str(value), mb.typesString());
+    }
+
+    public SourceExpr matchOf(SourceExpr base, String key, Opt<SourceExpr> fallback, P... branches) {
+        var out = new TList<TestMb.Branch>(branches.length);
+        for (var b : branches) {
+            out.add(new TestMb.Branch(mb.str(b.key()), b.value()));
+        }
+        return mb.matchOf(base, mb.str(key), out, fallback);
+    }
+
+    public SourceExpr mapType(SourceExpr keyType, SourceExpr valueType) {
+        return mb.call(mb.typesMap(), mb.tupleOf(keyType, valueType));
+    }
+
+    public SourceExpr mapNew(SourceExpr keyType, SourceExpr valueType, P... entries) {
+        return callM(mapType(keyType, valueType), "new", rec(entries));
+    }
+
+    public SourceExpr not(SourceExpr a) {
+        return ifElse(a, mb.operatorLt(intOf(1), intOf(0)), b(true));
+    }
+
+    public SourceExpr eq(SourceExpr a, SourceExpr b) {
+        return mb.operatorEq(a, b);
+    }
+
     public SourceExpr codeNone() {
         return mb.call(mb.builtin("eval", "code_none"), fld(v("arg"), "loc"));
     }
@@ -210,28 +272,5 @@ public final class EcoMb {
                     new TestMb.Branch(mb.operatorEq(fld(v("arg"), "key"), id), optSome(mb.typesAspect(), v("outer"))));
         }
         return mb.ifOf(branches, Opt.some(optNone(mb.typesAspect())));
-    }
-
-    public void implAsSelfType(SourceExpr objectBuilder, String desc, SourceExpr dispatch, TList<SourceExpr> out) {
-        implAsSelfTypeEq(objectBuilder, desc, dispatch, field -> b(false), out);
-    }
-
-    public void implAsSelfTypeEq(
-            SourceExpr objectBuilder,
-            String desc,
-            SourceExpr dispatch,
-            Function<String, SourceExpr> eqOn,
-            TList<SourceExpr> out) {
-        out.add(implInterface(objectBuilder, mb.evalValue(), p("type", v("outer"))));
-        out.add(implInterface(
-                objectBuilder,
-                mb.evalType(),
-                p("desc", s(desc)),
-                p("aspect", dispatch),
-                p("can_cast_from", eqOn.apply("source_type")),
-                p("cast_from", eresultOk(mb.typesCve(), fld(v("arg"), "cv"))),
-                p("can_cast_to", b(false)),
-                p("cast_to", mb.panic(s(desc + ".cast_to not implemented"))),
-                p("is_equal", eqOn.apply("other"))));
     }
 }

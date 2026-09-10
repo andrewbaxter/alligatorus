@@ -1,10 +1,19 @@
 package compilerxyz.main.eval.value.eresult;
 
+import compilerxyz.main.artifact.Artifact;
+import compilerxyz.main.artifact.ArtifactBody;
+import compilerxyz.main.artifact.ArtifactBodyExporter.Root;
 import compilerxyz.main.artifact.ArtifactExporter;
+import compilerxyz.main.artifact.ArtifactIdSource;
+import compilerxyz.main.artifact.ArtifactSupport;
+import compilerxyz.main.artifact.Artifactable;
+import compilerxyz.main.artifact.ExporterRoot;
+import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
@@ -26,15 +35,35 @@ import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectUnion;
 import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
+import compilerxyz.main.gen.codec.ArtifactEResultTypeCodec;
+import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Pair;
+import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
+import java.util.function.Function;
 import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6017L)
-public record TypeEResultDynamic<T extends Type>(T elementType) implements Aspect, Type, MatchDynamic {
+public final class TypeEResultDynamic<T extends Type> implements Aspect, Type, MatchDynamic {
+
+    public final T elementType;
+    public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
+
+    public TypeEResultDynamic(T elementType) {
+        this.elementType = elementType;
+    }
+
+    public T elementType() {
+        return elementType;
+    }
+
+    public ArtifactSupport.ArtifactIdHolder artifactIdCell() {
+        return artifactIdCell;
+    }
 
     @Override
     public String typeDesc() {
@@ -167,6 +196,71 @@ public record TypeEResultDynamic<T extends Type>(T elementType) implements Aspec
 
     @Override
     public EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc) {
-        return EResult.err(loc, typeDesc() + " is not exportable");
+        return EResult.ok(ExporterRoot.ERESULT_DYNAMIC);
     }
+
+    private static Artifact nullArtifact() {
+        return new Artifact.Body(new ArtifactBody(new JsonValueNull(), new Root()));
+    }
+
+    public static final ExporterRootDelegate DELEGATE = new ExporterRootDelegate() {
+        @Override
+        public EResult<Artifact> exporterRootDelegateSelfExport(
+                ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
+            if (!(self instanceof TypeEResultDynamic<?> eresult)) {
+                return EResult.err(
+                        loc,
+                        "TypeEResultDynamic::exporterRootDelegateSelfExport: expected TypeEResultDynamic, got "
+                                + self.getClass());
+            }
+            var cell = eresult.artifactIdCell();
+            var errors = new TList<ExprErr>();
+            var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
+                var elementArtRes = Artifactable.exportArtifact(xx, loc, eresult.elementType());
+                elementArtRes.drainInto(errors);
+                var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
+                var body = new ArtifactEResultType(elementArt);
+                return makeBody.apply(ArtifactEResultTypeCodec.toValue(body));
+            });
+            if (errors.isEmpty()) return EResult.ok(artifact);
+            return EResult.mixed(artifact, errors);
+        }
+
+        @Override
+        public EResult<Artifactable> exporterRootDelegateSelfFromArtifactData(
+                ExprContext xx, QExprId loc, Opt<ArtifactIdSource> id, JsonValue data) {
+            if (id.optIsNone()) {
+                return EResult.err(loc, "TypeEResultDynamic requires an artifact id to deserialize");
+            }
+            var idValue = id.optUnwrap();
+            return ArtifactSupport.implImportIndependentArtifact(
+                    xx,
+                    loc,
+                    idValue,
+                    data,
+                    (raw) -> {
+                        ArtifactEResultType body;
+                        try {
+                            body = ArtifactEResultTypeCodec.fromValue(raw);
+                        } catch (RuntimeException e) {
+                            return new Result.Err<>(
+                                    "TypeEResultDynamic data: failed to parse ArtifactEResultType: " + e.getMessage());
+                        }
+                        return new Result.Ok<>(body);
+                    },
+                    (body) -> {
+                        var deps = new TList<Artifact>();
+                        deps.add(body.elementType());
+                        ArtifactSupport.ImportIndependentResult.Finalizer fin = (xx2, loc2) -> {
+                            var elementRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
+                                    xx2, loc2, body.elementType());
+                            var elementT = elementRes.requireValue("TypeEResultDynamic::finalizer element type");
+                            var out = new TypeEResultDynamic<>(elementT);
+                            out.artifactIdCell().set(idValue);
+                            return out;
+                        };
+                        return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
+                    });
+        }
+    };
 }

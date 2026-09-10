@@ -206,24 +206,6 @@ public final class T0165MutableDropForkTest {
                                                                                                 "initial_bind_dynamic",
                                                                                                 mb.scopeUse(
                                                                                                         "outer")))))))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("iface_ref", mb.evalAspectLift()),
-                                                                new TestMb.RecordPair(
-                                                                        "record",
-                                                                        mb.call(
-                                                                                mb.field(
-                                                                                        mb.call(
-                                                                                                mb.typesMap(),
-                                                                                                mb.tupleOf(
-                                                                                                        mb
-                                                                                                                .typesConstkey(),
-                                                                                                        mb
-                                                                                                                .typesExpr())),
-                                                                                        mb.str("new")),
-                                                                                mb.recordOf(TList.of())))))),
                                         mb.bind(
                                                 "vb",
                                                 mb.call(
@@ -380,24 +362,6 @@ public final class T0165MutableDropForkTest {
                                                                                                 "initial_bind_dynamic",
                                                                                                 mb.scopeUse(
                                                                                                         "outer")))))))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("bb"), mb.str("impl_interface")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("iface_ref", mb.evalAspectLift()),
-                                                                new TestMb.RecordPair(
-                                                                        "record",
-                                                                        mb.call(
-                                                                                mb.field(
-                                                                                        mb.call(
-                                                                                                mb.typesMap(),
-                                                                                                mb.tupleOf(
-                                                                                                        mb
-                                                                                                                .typesConstkey(),
-                                                                                                        mb
-                                                                                                                .typesExpr())),
-                                                                                        mb.str("new")),
-                                                                                mb.recordOf(TList.of())))))),
                                         mb.call(
                                                 mb.field(mb.scopeUse("bb"), mb.str("impl_interface")),
                                                 mb.recordOf(

@@ -240,6 +240,8 @@ public final class DynRuntime {
                                 cloneWithLowerSubstitutions(fe.elementKey(), sd, ld, values, grafts),
                                 cloneWithLowerSubstitutions(fe.body(), sd, ld, values, grafts)));
             case Expr.Match m -> {
+                var newBase = cloneWithLowerSubstitutions(m.base(), sd, ld, values, grafts);
+                var newElementKey = cloneWithLowerSubstitutions(m.elementKey(), sd, ld, values, grafts);
                 var newCases = new TList<Expr.MatchBranch>();
                 for (var c : m.cases()) {
                     newCases.add(new Expr.MatchBranch(
@@ -252,15 +254,10 @@ public final class DynRuntime {
                         newFallback = Opt.some(cloneWithLowerSubstitutions(some.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newFallback = Opt.none();
                 }
-                yield new Expr(
-                        loc,
-                        new Expr.Match(
-                                cloneWithLowerSubstitutions(m.base(), sd, ld, values, grafts),
-                                newCases,
-                                cloneWithLowerSubstitutions(m.elementKey(), sd, ld, values, grafts),
-                                newFallback));
+                yield new Expr(loc, new Expr.Match(newBase, newCases, newElementKey, newFallback));
             }
             case Expr.Try t -> {
+                var newBody = cloneWithLowerSubstitutions(t.body(), sd, ld, values, grafts);
                 Opt<Expr.TryCatch> newCatch;
                 switch (t.catchClause()) {
                     case Opt.Some<Expr.TryCatch> someCatch -> {
@@ -278,10 +275,7 @@ public final class DynRuntime {
                         newFinally = Opt.some(cloneWithLowerSubstitutions(someFin.value(), sd, ld, values, grafts));
                     case Opt.None<Expr> none -> newFinally = Opt.none();
                 }
-                yield new Expr(
-                        loc,
-                        new Expr.Try(
-                                cloneWithLowerSubstitutions(t.body(), sd, ld, values, grafts), newCatch, newFinally));
+                yield new Expr(loc, new Expr.Try(newBody, newCatch, newFinally));
             }
         };
     }

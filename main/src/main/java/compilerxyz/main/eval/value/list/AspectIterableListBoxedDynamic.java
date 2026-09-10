@@ -1,12 +1,15 @@
 package compilerxyz.main.eval.value.list;
 
+import static compilerxyz.prelude.util.MustCast.mustCast;
+
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.binding.BindingIteratorStack;
+import compilerxyz.main.eval.binding.BindingIteratorSlot;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
@@ -24,8 +27,9 @@ public record AspectIterableListBoxedDynamic<T extends Type>(TypeListBoxedDynami
 
     @Override
     public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
+        var iteratorSlot = mustCast(BindingIteratorSlot.class, loop).iteratorSlot();
         return EResult.ok(DynUtil.dynamicStackToValue(
-                xx, DynUtil.iteratorNext(loc, type.elementDecodeCast(xx, loc)), type.elementType));
+                xx, DynUtil.iteratorNext(loc, iteratorSlot, type.elementDecodeCast(xx, loc)), type.elementType));
     }
 
     @Override
@@ -80,11 +84,12 @@ public record AspectIterableListBoxedDynamic<T extends Type>(TypeListBoxedDynami
         } else {
             bodyCode = body.code();
         }
-        return DynUtil.foreachSkeleton(loc, iteratorSetup, elementBindDyn.optUnwrap(), bodyCode);
+        var iteratorSlot = mustCast(BindingIteratorSlot.class, loop).iteratorSlot();
+        return DynUtil.foreachSkeleton(loc, iteratorSetup, iteratorSlot, elementBindDyn.optUnwrap(), bodyCode);
     }
 
     @Override
     public Binding aspectIterableLoopBinding(ExprContext xx) {
-        return new BindingIteratorStack();
+        return new BindingIteratorSlot(new BindingId());
     }
 }

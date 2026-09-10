@@ -40,6 +40,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenBuiltinInterfaces;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -239,6 +240,9 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
         }
         if (aspectSource().optIsSome() && key.equals(GenAspectAspect.AspectId)) {
             return Opt.some(new AspectAspectObjectDynamic(this));
+        }
+        if (meta.identityEq() && key.equals(GenAspectOperatorEq.AspectId)) {
+            return Opt.some(AspectOperatorEqObjectIdentity.INSTANCE);
         }
         switch (dropKind) {
             case DYNAMIC -> {

@@ -3,7 +3,9 @@ package compilerxyz.main.eval.value.tuple;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Type;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
+@BuiltinFull(uniqueId = 6410L)
 public sealed interface TupleElement {
     record Dynamic(Type type) implements TupleElement {}
 

@@ -5,7 +5,9 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.GenAspectArtifact;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
+@BuiltinFull(uniqueId = 6417L)
 public interface Artifactable {
     EResult<ArtifactExporter> artifactableExporter(ExprContext xx, QExprId loc);
 

@@ -9,6 +9,7 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
@@ -62,6 +63,12 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
         seq.add(selfDyn);
         seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(ifaceInternalName)));
         seq.add(argDyn);
+        var argJvmDesc = consumeRes
+                .requireValue("TypeInterfaceMethodDynamic AspectConsumeDynamic.get")
+                .aspectConsumeDynamicJvmClass(xx);
+        if (JavaBytecodeUtils.isPrimitive(argJvmDesc)) {
+            seq.add(JavaBytecodeUtils.boxPrimitive(new CodeLoc.Some(loc), argJvmDesc));
+        }
         var hostName = type.method().hostMethodName.optUnwrapOr(type.method().name);
         seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
         if (retType.optIsNone()) {
@@ -72,6 +79,8 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
         var retDesc = JvmSort.descriptor(xx, retTypeVal);
         if (retDesc.isReference() && !retDesc.value().equals(descObject.value())) {
             seq.add(JavaBytecodeUtils.cast(loc, retDesc));
+        } else if (JavaBytecodeUtils.isPrimitive(retDesc)) {
+            seq.add(JavaBytecodeUtils.unboxPrimitive(new CodeLoc.Some(loc), retDesc));
         }
         var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retTypeVal);
         if (retStackRes.hasErrors()) return retStackRes.reerr();

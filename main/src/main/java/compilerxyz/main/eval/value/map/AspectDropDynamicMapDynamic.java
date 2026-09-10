@@ -36,6 +36,7 @@ public record AspectDropDynamicMapDynamic<K extends Type, V extends Type>(TypeMa
             return EResult.ok(Code.none(loc));
         }
         var entrySlot = new BindingId();
+        var iteratorSlot = new BindingId();
         var entryClassName = JavaInternalName.fromClass(Map.Entry.class);
 
         var bodySeq = new JavaBytecodeSequence();
@@ -90,10 +91,14 @@ public record AspectDropDynamicMapDynamic<K extends Type, V extends Type>(TypeMa
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
         var entryStoreSeq = new JavaBytecodeSequence();
-        entryStoreSeq.add(DynUtil.iteratorNext(loc, type.entryDecode(loc)));
+        entryStoreSeq.add(DynUtil.iteratorNext(loc, iteratorSlot, type.entryDecode(loc)));
         entryStoreSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entrySlot)));
         var loopRes = DynUtil.foreachSkeleton(
-                loc, iteratorSetup, new CodeDynamic(loc, entryStoreSeq), Code.target(new CodeDynamic(loc, bodySeq)));
+                loc,
+                iteratorSetup,
+                iteratorSlot,
+                new CodeDynamic(loc, entryStoreSeq),
+                Code.target(new CodeDynamic(loc, bodySeq)));
         if (loopRes.hasErrors()) return loopRes.reerr();
         var loopCodeCast = CodeDynamic.castOpt(loc, loopRes.requireValue("loop").code());
         if (loopCodeCast.hasErrors()) return loopCodeCast.reerr();

@@ -21,14 +21,14 @@ public final class BuiltinInterfacesGen {
             TList<BuiltinMethodEmit.Method> methods,
             TList<DataField> dataFields,
             Opt<String> outerSimpleName,
-            Opt<String> nestedSimpleName) {
+            Opt<String> nestedSimpleName,
+            boolean identityToken) {
         public BuiltinSpec(
                 String simpleName,
                 String pkg,
                 long uniqueId,
                 long identityId,
                 boolean isAspect,
-                boolean isInterface,
                 TList<BuiltinMethodEmit.Method> methods,
                 TList<DataField> dataFields) {
             this(
@@ -38,11 +38,12 @@ public final class BuiltinInterfacesGen {
                     identityId,
                     isAspect,
                     false,
-                    isInterface,
+                    true,
                     methods,
                     dataFields,
                     Opt.none(),
-                    Opt.none());
+                    Opt.none(),
+                    false);
         }
     }
 
@@ -82,6 +83,7 @@ public final class BuiltinInterfacesGen {
             ClassName.get("compilerxyz.main.eval.value.object", "ObjectAspectSource", "Static");
     public static final ClassName JAVA_INTERNAL_NAME =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName");
+    public static final ClassName VALUE = ClassName.get("compilerxyz.main.gen", "Value");
     public static final ClassName JAVA_DATA_DESCRIPTOR =
             ClassName.get("compilerxyz.main.eval.dynamic", "JavaDataDescriptor");
 
@@ -90,6 +92,10 @@ public final class BuiltinInterfacesGen {
         b.beginControlFlow("if ($T.class.isAssignableFrom($T.class))", TYPE, interfaceRef);
         b.addStatement("trivialIdentityAspects.add($T.TYPE_IDENTITY)", genTrivial);
         b.addStatement("castRules.add(new $T.RestampToIdentity($T.TYPE_IDENTITY))", TYPE_OBJECT_CAST_RULE, genTrivial);
+        b.endControlFlow();
+        b.beginControlFlow("if ($T.class.isAssignableFrom($T.class))", VALUE, interfaceRef);
+        b.addStatement("trivialIdentityAspects.add($T.VALUE_IDENTITY)", genTrivial);
+        b.addStatement("castRules.add(new $T.RestampToIdentity($T.VALUE_IDENTITY))", TYPE_OBJECT_CAST_RULE, genTrivial);
         b.endControlFlow();
         if (interfaceRef.equals(TYPE)) {
             b.addStatement(

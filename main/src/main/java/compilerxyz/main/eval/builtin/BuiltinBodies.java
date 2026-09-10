@@ -23,6 +23,7 @@ import compilerxyz.main.eval.binding.BindingSetterConsumed;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -162,6 +163,11 @@ public final class BuiltinBodies {
         return new BindingSetterConsumed();
     }
 
+    @BuiltinPath(value = "eval.value_object_const", scopeId = 5038L)
+    public static ValueObjectConst valueObjectConst(Type type, Object data) {
+        return new ValueObjectConst(type, data);
+    }
+
     @BuiltinPath(value = "eval.bind_result", scopeId = 5015L)
     public static AspectBind.BindResult bindResult(Code code, Binding binding) {
         return new AspectBind.BindResult(code, binding);
@@ -170,5 +176,40 @@ public final class BuiltinBodies {
     @BuiltinPath(value = "eval.drop_value", scopeId = 5020L)
     public static EResult<Code> dropValue(ExprContext xx, QExprId loc, CodeValue cv) {
         return Eval.dropValue(xx, loc, cv);
+    }
+
+    @BuiltinPath(value = "eval.cast_value", scopeId = 5033L)
+    public static EResult<CodeValue> castValue(ExprContext xx, QExprId loc, Type type, CodeValue cv) {
+        return Eval.typecheckConvert(xx, loc, type, cv);
+    }
+
+    @BuiltinPath(value = "eval.codevalue_no_value", scopeId = 5034L)
+    public static CodeValue codevalueNoValue(Code code) {
+        return new CodeValue(code, EvalOutcome.NO_VALUE);
+    }
+
+    @BuiltinPath(value = "eval.codevalue_control_ended", scopeId = 5035L)
+    public static CodeValue codevalueControlEnded(Code code) {
+        return new CodeValue(code, EvalOutcome.CONTROL_ENDED);
+    }
+
+    @BuiltinPath(value = "eval.const_numeric_to_double", scopeId = 5036L)
+    public static double constNumericToDouble(ExprContext xx, Value value) {
+        var aspOpt = GenAspectNumericConst.getMaybe(xx, value.valueType());
+        if (aspOpt.optIsNone()) {
+            throw new IllegalStateException("const_numeric_to_double: value type "
+                    + value.valueType().typeDesc() + " has no const numeric aspect");
+        }
+        return aspOpt.optUnwrap().aspectNumericConstGet(value).doubleValue();
+    }
+
+    @BuiltinPath(value = "eval.expr_loc", scopeId = 5037L)
+    public static QExprId exprLoc(StagedExprCell staged) {
+        Object exprValue = staged.value();
+        if (!(exprValue instanceof Expr exprAst)) {
+            throw new AssertionError(
+                    "builtin 5037 (expr_loc): staged payload is not Expr, got " + exprValue.getClass());
+        }
+        return exprAst.loc();
     }
 }

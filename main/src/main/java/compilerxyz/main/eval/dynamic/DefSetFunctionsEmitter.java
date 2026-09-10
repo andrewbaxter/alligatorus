@@ -3,6 +3,7 @@ package compilerxyz.main.eval.dynamic;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.EvalContext;
+import compilerxyz.main.eval.value.source_function.SourceFunctionData;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -37,5 +38,16 @@ public final class DefSetFunctionsEmitter {
 
     public static String functionFieldPrefix(String methodName) {
         return methodName + "_";
+    }
+
+    public static TOrderedMap<String, Object> rebuildStaticFieldValues(SourceFunctionData func) {
+        var staticFieldValues = new TOrderedMap<String, Object>();
+        var prefix = functionFieldPrefix(func.jvmMethodName);
+        for (int i = 0; i < func.capturedExternals.size(); i++) {
+            var entry = func.capturedExternals.get(i);
+            staticFieldValues.put(
+                    prefix + Prefixes.EXTERNAL_PREFIX + i, entry.external().externalHostValue());
+        }
+        return staticFieldValues;
     }
 }

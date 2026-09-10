@@ -3,6 +3,8 @@ package compilerxyz.codegen.experimental;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.Parameter;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
@@ -10,6 +12,7 @@ import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.NormalAnnotationExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithAnnotations;
+import com.github.javaparser.ast.nodeTypes.NodeWithTypeParameters;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.Type;
@@ -55,9 +58,91 @@ public final class JavaAspectExtractor {
                     if (spec.optIsSome()) builtins.add(spec.optUnwrap());
                 }
             }
+            if (member instanceof ClassOrInterfaceDeclaration nestedCls && !nestedCls.isInterface()) {
+                var hasBuiltin = nestedCls.getAnnotationByName("BuiltinFull").isPresent()
+                        || nestedCls
+                                .getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull")
+                                .isPresent();
+                if (hasBuiltin) {
+                    var spec = extractBuiltinSpecClass(cu, nestedCls, Opt.some(outerSimple));
+                    if (spec.optIsSome()) builtins.add(spec.optUnwrap());
+                }
+            }
+            if (member instanceof EnumDeclaration nestedEnum) {
+                var hasBuiltin = nestedEnum.getAnnotationByName("BuiltinFull").isPresent()
+                        || nestedEnum
+                                .getAnnotationByName("compilerxyz.prelude.annotations.BuiltinFull")
+                                .isPresent();
+                if (hasBuiltin) {
+                    var spec = extractBuiltinSpecClass(cu, nestedEnum, Opt.some(outerSimple));
+                    if (spec.optIsSome()) builtins.add(spec.optUnwrap());
+                }
+            }
             if (member instanceof TypeDeclaration<?> nested) {
                 collectNestedBuiltinRecords(sourceFile, cu, nested, builtins);
             }
+        }
+    }
+
+    public static Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecClass(
+            CompilationUnit cu, TypeDeclaration<?> clsDecl, Opt<String> outerSimpleName) {
+        var nestedName = clsDecl.getNameAsString();
+        var simpleName = outerSimpleName.optIsNone() ? nestedName : outerSimpleName.optUnwrap() + nestedName;
+        var pkg = cu.getPackageDeclaration().orElseThrow().getNameAsString();
+        var builtinAnn = getBuiltinAnnotation(clsDecl);
+        var attrs = readAttrs(builtinAnn);
+        var uniqueIdStr = attrs.get("uniqueId");
+        if (uniqueIdStr == null) {
+            throw new IllegalStateException("@Builtin on " + simpleName + " missing required uniqueId");
+        }
+        var uniqueId = Long.parseLong(uniqueIdStr);
+        var classImports = buildImportMap(cu);
+        var classFields = new TList<BuiltinInterfacesGen.DataField>();
+        for (var f : clsDecl.getFields()) {
+            if (f.isStatic() || !f.isPublic() || !f.isFinal()) continue;
+            for (var v : f.getVariables()) {
+                classFields.add(new BuiltinInterfacesGen.DataField(
+                        NameDerivation.snakeCase(v.getNameAsString()),
+                        v.getNameAsString(),
+                        typeNameOf(f.getElementType(), classImports, pkg)));
+            }
+        }
+        var classMethods = new TList<Method>();
+        for (var m : clsDecl.getMethods()) {
+            if (m.isStatic() || !m.isPublic()) continue;
+            var params = m.getParameters();
+            var needsEvalContext = injectsEvalContext(m, params, simpleName + "." + m.getNameAsString());
+            var methodParams = new TList<Param>();
+            for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
+                var p = params.get(i);
+                methodParams.add(new Param(
+                        NameDerivation.snakeCase(p.getNameAsString()), typeNameOf(p.getType(), classImports, pkg)));
+            }
+            classMethods.add(new Method(
+                    NameDerivation.snakeCase(m.getNameAsString()),
+                    m.getNameAsString(),
+                    methodParams,
+                    typeNameOf(m.getType(), classImports, pkg),
+                    true,
+                    needsEvalContext));
+        }
+        {
+            var identityToken = clsDecl.getAnnotationByName("IdentityToken").isPresent()
+                    || clsDecl.getAnnotationByName("compilerxyz.prelude.annotations.IdentityToken")
+                            .isPresent();
+            return Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
+                    simpleName,
+                    pkg,
+                    uniqueId,
+                    0L,
+                    false,
+                    false,
+                    false,
+                    classMethods,
+                    classFields,
+                    outerSimpleName,
+                    outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
+                    identityToken));
         }
     }
 
@@ -113,7 +198,8 @@ public final class JavaAspectExtractor {
                 methods,
                 dataFields,
                 outerSimpleName,
-                outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName)));
+                outerSimpleName.optIsNone() ? Opt.none() : Opt.some(nestedName),
+                false));
     }
 
     public static boolean injectsEvalContext(NodeWithAnnotations<?> m, List<Parameter> params, String where) {
@@ -185,6 +271,56 @@ public final class JavaAspectExtractor {
         }
         if (t instanceof ClassOrInterfaceType c) {
             String simple = c.getNameAsString();
+            {
+                var node = c.getParentNode();
+                while (node.isPresent()) {
+                    var n = node.get();
+                    if (n instanceof NodeWithTypeParameters<?> withParams) {
+                        for (var tp : withParams.getTypeParameters()) {
+                            if (tp.getNameAsString().equals(simple)) {
+                                if (tp.getTypeBound().isEmpty()) return ClassName.OBJECT;
+                                return typeNameOf(tp.getTypeBound().get(0), imports, sourcePkg);
+                            }
+                        }
+                    }
+                    node = n.getParentNode();
+                }
+            }
+            {
+                var node = c.getParentNode();
+                while (node.isPresent()) {
+                    var n = node.get();
+                    if (n instanceof TypeDeclaration<?> decl) {
+                        for (var member : decl.getMembers()) {
+                            if (member instanceof TypeDeclaration<?> nested
+                                    && nested.getNameAsString().equals(simple)) {
+                                var chain = new TList<String>();
+                                chain.add(simple);
+                                var up = decl;
+                                while (true) {
+                                    chain.add(0, up.getNameAsString());
+                                    var parent = up.getParentNode();
+                                    if (parent.isPresent() && parent.get() instanceof TypeDeclaration<?> pd) {
+                                        up = pd;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                                return ClassName.get(
+                                        sourcePkg,
+                                        chain.get(0),
+                                        chain.subList(1, chain.size()).toArray(new String[0]));
+                            }
+                        }
+                    }
+                    node = n.getParentNode();
+                }
+            }
+            if (c.getScope().isPresent()) {
+                var scopeName = typeNameOf(c.getScope().get(), imports, sourcePkg);
+                if (scopeName instanceof ClassName scn) return scn.nestedClass(simple);
+                throw new IllegalStateException("Unhandled scoped type: " + t);
+            }
             ClassName classNameOf;
             _classNameOf:
             {

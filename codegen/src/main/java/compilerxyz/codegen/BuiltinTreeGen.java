@@ -16,7 +16,6 @@ public final class BuiltinTreeGen {
     public static final String GEN_PACKAGE = "compilerxyz.main.gen";
 
     static final long ASPECT_COMPILE_SCOPE_ID = 7023;
-    static final long CAST_VALUE_COMPILE_SCOPE_ID = 7024;
     static final long THROW_COMPILE_SCOPE_ID = 7025;
     static final long PANIC_COMPILE_SCOPE_ID = 7026;
 

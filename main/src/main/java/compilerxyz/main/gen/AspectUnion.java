@@ -8,6 +8,7 @@ import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 1014L, identityId = 4014L)
 public interface AspectUnion extends Aspect {
+    @BuiltinFull(uniqueId = 6412L)
     record Variant(ConstKey key, String jsTag, Type type) {}
 
     TList<Variant> aspectUnionVariants();

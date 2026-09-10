@@ -25,6 +25,7 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
+import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -55,6 +56,9 @@ public record TypeCodeDynamic() implements Aspect, Type, MatchDynamic {
         }
         if (key.equals(GenAspectUnion.AspectId)) {
             return Opt.some(AspectUnionCodeDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
+            return Opt.some(new AspectFieldUseDynamicCodeDynamic(this));
         }
         if (key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(new AspectStackValueDynamicCodeDynamic(this));

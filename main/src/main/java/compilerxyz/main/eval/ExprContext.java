@@ -4,9 +4,11 @@ import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.gen.Target;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6001L)
+@BuiltinPath("types.expr_context")
 public final class ExprContext {
     public final Opt<Type> currentExceptionType;
     public final ImportStateId importState;

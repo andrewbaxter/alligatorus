@@ -212,6 +212,9 @@ public final class BuiltinPathScanner {
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
 
+    private static final ClassName TYPE_DOUBLE_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic");
+
     private static final ClassName TYPE_NULL_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
 
@@ -221,6 +224,7 @@ public final class BuiltinPathScanner {
         var tn = typeNameOf(t, imports, sourcePkg);
         if (tn.equals(TypeName.BOOLEAN)) return TypeRef.leaf(TYPE_BOOL_DYNAMIC, scannedLeaves);
         if (tn.equals(TypeName.LONG)) return TypeRef.leaf(TYPE_LONG_DYNAMIC, scannedLeaves);
+        if (tn.equals(TypeName.DOUBLE)) return TypeRef.leaf(TYPE_DOUBLE_DYNAMIC, scannedLeaves);
         if (tn instanceof ClassName cn && cn.canonicalName().equals("java.lang.Object")) {
             return TypeRef.leaf(TYPE_NULL_DYNAMIC, scannedLeaves);
         }

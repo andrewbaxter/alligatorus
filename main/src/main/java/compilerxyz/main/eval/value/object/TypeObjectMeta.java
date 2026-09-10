@@ -9,4 +9,5 @@ public record TypeObjectMeta(
         IList<Unique> trivialIdentityAspects,
         IList<TypeObjectCastRule> castRules,
         IList<TypeObjectCastFromRule> castFromRules,
-        Opt<ObjectAspectSource> aspectSource) {}
+        Opt<ObjectAspectSource> aspectSource,
+        boolean identityEq) {}

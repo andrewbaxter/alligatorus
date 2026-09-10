@@ -23,6 +23,7 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
+import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynRuntime;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
@@ -231,6 +232,8 @@ public record TypeSourceFunctionConst(SourceFunctionData data) implements Aspect
                             var extRes = ExternalCodec.importExternals(xx2, loc2, body.capturedExternals());
                             var extVal = extRes.requireValue("TypeSourceFunctionConst::finalizer externals");
                             funcData.capturedExternals.addAll(extVal);
+                            funcData.compiledStaticFieldValues =
+                                    Opt.some(DefSetFunctionsEmitter.rebuildStaticFieldValues(funcData));
                             return fc;
                         };
                         return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.some(fc), deps, fin));

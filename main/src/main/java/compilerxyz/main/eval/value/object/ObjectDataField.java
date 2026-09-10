@@ -3,7 +3,9 @@ package compilerxyz.main.eval.value.object;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
+@BuiltinFull(uniqueId = 6409L)
 public record ObjectDataField(String langName, ObjectDataField.Access access, Type fieldType) {
 
     public sealed interface Access {

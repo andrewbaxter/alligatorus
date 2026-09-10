@@ -6,22 +6,20 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
-public record BindingIteratorIndexed(BindingId indexSlot) implements Binding {
+public record BindingIteratorIndexed(BindingId listSlot, BindingId indexSlot) implements Binding {
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         throw new IllegalStateException(
-                "BindingIteratorIndexed: iterator is a stack-only scope entry, never resolved by name");
+                "BindingIteratorIndexed: loop list and index live in local slots, never resolved by name");
     }
 
     @Override
     public EResult<Code> bindingDrop(ExprContext xx, QExprId loc) {
-        return EResult.ok(Code.target(JavaBytecodeUtils.inst(loc, Opcodes.POP)));
+        return EResult.ok(Code.none(loc));
     }
 
     @Override

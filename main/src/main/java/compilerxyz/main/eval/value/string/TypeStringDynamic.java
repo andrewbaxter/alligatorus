@@ -33,6 +33,7 @@ import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -73,6 +74,9 @@ public record TypeStringDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectStringDynamic.AspectId)) {
             return Opt.some(AspectStringDynamicStringDynamic.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorEq.AspectId)) {
+            return Opt.some(AspectOperatorEqStringDynamic.INSTANCE);
         }
         if (key.equals(GenAspectStackValueDynamic.AspectId)) {
             return Opt.some(new AspectStackValueDynamicStringDynamic(this));

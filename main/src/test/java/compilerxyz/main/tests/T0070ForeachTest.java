@@ -96,36 +96,35 @@ public final class T0070ForeachTest {
             INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
             ASTORE 0
             ALOAD 0
+            ASTORE 1
             LDC 0
-            ISTORE 1
-           L0
-            DUP
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.size ()I
-            ILOAD 1
-            SWAP
-            IF_ICMPGE L1
-            DUP
-            ILOAD 1
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.get (I)I
             ISTORE 2
+           L0
+            ILOAD 2
+            ALOAD 1
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.size ()I
+            IF_ICMPGE L1
+            ALOAD 1
+            ILOAD 2
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.get (I)I
+            ISTORE 3
             GETSTATIC compilerxyz/main/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/main/eval/ExprContext;
             GETFIELD compilerxyz/main/eval/ExprContext.vx : Lcompilerxyz/main/eval/EvalContext;
-            ILOAD 2
+            ILOAD 3
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
-            ILOAD 1
+            ILOAD 2
             LDC 1
             IADD
-            ISTORE 1
+            ISTORE 2
             GOTO L0
            L1
-            POP
             NEW compilerxyz/main/eval/gen/Composite$0
             DUP
             INVOKESPECIAL compilerxyz/main/eval/gen/Composite$0.<init> ()V
             ARETURN
             MAXSTACK = 3
-            MAXLOCALS = 3
+            MAXLOCALS = 4
         }
         """,
                 Helpers.disassembled(ok, "compilerxyz.main.eval.gen.EvalRoot$0"));

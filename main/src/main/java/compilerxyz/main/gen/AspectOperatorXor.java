@@ -6,8 +6,10 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 
 @BuiltinFull(uniqueId = 1055L, identityId = 4055L)
+@BuiltinPath("eval.operator_xor")
 public interface AspectOperatorXor extends Aspect {
     EResult<CodeValue> aspectOperatorXorXor(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference);
 }

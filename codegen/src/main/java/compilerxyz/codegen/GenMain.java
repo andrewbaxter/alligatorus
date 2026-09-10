@@ -3,6 +3,7 @@ package compilerxyz.codegen;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.EnumDeclaration;
 import com.github.javaparser.ast.body.RecordDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
 import com.palantir.javaformat.java.Formatter;
@@ -73,6 +74,16 @@ public final class GenMain {
 
     public record IdentitySpec(String name, long builtinUniqueId, boolean standalone) {}
 
+    private static TList<Path> sourceFiles(Path... roots) throws IOException {
+        var files = new TList<Path>();
+        for (var root : roots) {
+            try (Stream<Path> stream = Files.walk(root)) {
+                files.addAll(stream.filter(p -> p.toString().endsWith(".java")).toList());
+            }
+        }
+        return files;
+    }
+
     public static void main(String[] args) throws IOException {
         if (args.length != 3) {
             throw new IllegalArgumentException(
@@ -106,8 +117,8 @@ public final class GenMain {
         _scanRoot:
         {
             var out = new TMap<ClassName, CodeBlock>();
-            try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
-                var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
+            {
+                var files = sourceFiles(runtimeSourceRoot, utilSourceRoot);
                 for (var file : files) {
                     var src = Files.readString(file);
                     if (!src.contains("dynamicType") && !src.contains("@Builtin")) continue;
@@ -180,8 +191,8 @@ public final class GenMain {
         _scanRoot:
         {
             var builtins = new TList<BuiltinInterfacesGen.BuiltinSpec>();
-            try (Stream<Path> stream = Files.walk(runtimeSourceRoot)) {
-                var files = stream.filter(p -> p.toString().endsWith(".java")).toList();
+            {
+                var files = sourceFiles(runtimeSourceRoot, utilSourceRoot);
                 for (var file : files) {
                     var src = Files.readString(file);
                     if (!src.contains("@BuiltinFull(")) continue;
@@ -197,6 +208,10 @@ public final class GenMain {
                             if (!hasBuiltin) continue;
                             if (t instanceof ClassOrInterfaceDeclaration c) {
                                 findBuiltinType = Opt.some(c);
+                                break _findBuiltinType;
+                            }
+                            if (t instanceof EnumDeclaration en) {
+                                findBuiltinType = Opt.some(en);
                                 break _findBuiltinType;
                             }
                             if (t instanceof RecordDeclaration r) {
@@ -327,7 +342,6 @@ public final class GenMain {
                                                 uniqueId,
                                                 identityId,
                                                 isAspect,
-                                                true,
                                                 methods,
                                                 new TList<BuiltinInterfacesGen.DataField>()));
                                         break _extractBuiltinSpecInterface;
@@ -336,72 +350,12 @@ public final class GenMain {
                                 builtin = extractBuiltinSpecInterface;
 
                             } else {
-                                ClassOrInterfaceDeclaration clsDecl = coid;
-                                Opt<BuiltinInterfacesGen.BuiltinSpec> extractBuiltinSpecClass;
-                                _extractBuiltinSpecClass:
-                                {
-                                    var simpleName = clsDecl.getNameAsString();
-                                    var pkg = cu.getPackageDeclaration()
-                                            .orElseThrow()
-                                            .getNameAsString();
-                                    var builtinAnn = JavaAspectExtractor.getBuiltinAnnotation(clsDecl);
-                                    var attrs = JavaAspectExtractor.readAttrs(builtinAnn);
-                                    var uniqueIdStr = attrs.get("uniqueId");
-                                    if (uniqueIdStr == null) {
-                                        throw new IllegalStateException(
-                                                "@Builtin on " + simpleName + " missing required uniqueId");
-                                    }
-                                    var uniqueId = Long.parseLong(uniqueIdStr);
-                                    var classImports = JavaAspectExtractor.buildImportMap(cu);
-                                    var classFields = new TList<BuiltinInterfacesGen.DataField>();
-                                    for (var f : clsDecl.getFields()) {
-                                        if (f.isStatic() || !f.isPublic() || !f.isFinal()) continue;
-                                        for (var v : f.getVariables()) {
-                                            classFields.add(new BuiltinInterfacesGen.DataField(
-                                                    NameDerivation.snakeCase(v.getNameAsString()),
-                                                    v.getNameAsString(),
-                                                    JavaAspectExtractor.typeNameOf(
-                                                            f.getElementType(), classImports, pkg)));
-                                        }
-                                    }
-                                    var classMethods = new TList<Method>();
-                                    for (var m : clsDecl.getMethods()) {
-                                        if (m.isStatic() || !m.isPublic()) continue;
-                                        var params = m.getParameters();
-                                        var needsEvalContext = JavaAspectExtractor.injectsEvalContext(
-                                                m, params, simpleName + "." + m.getNameAsString());
-                                        var methodParams = new TList<Param>();
-                                        for (int i = needsEvalContext ? 1 : 0; i < params.size(); i++) {
-                                            var p = params.get(i);
-                                            methodParams.add(new Param(
-                                                    NameDerivation.snakeCase(p.getNameAsString()),
-                                                    JavaAspectExtractor.typeNameOf(p.getType(), classImports, pkg)));
-                                        }
-                                        classMethods.add(new Method(
-                                                NameDerivation.snakeCase(m.getNameAsString()),
-                                                m.getNameAsString(),
-                                                methodParams,
-                                                JavaAspectExtractor.typeNameOf(m.getType(), classImports, pkg),
-                                                true,
-                                                needsEvalContext));
-                                    }
-                                    {
-                                        extractBuiltinSpecClass = Opt.some(new BuiltinInterfacesGen.BuiltinSpec(
-                                                simpleName,
-                                                pkg,
-                                                uniqueId,
-                                                0L,
-                                                false,
-                                                false,
-                                                classMethods,
-                                                classFields));
-                                        break _extractBuiltinSpecClass;
-                                    }
-                                }
-                                builtin = extractBuiltinSpecClass;
+                                builtin = JavaAspectExtractor.extractBuiltinSpecClass(cu, coid, Opt.none());
                             }
                         } else if (decl instanceof RecordDeclaration recDecl) {
                             builtin = JavaAspectExtractor.extractBuiltinSpecRecord(cu, recDecl, Opt.none());
+                        } else if (decl instanceof EnumDeclaration enumDecl) {
+                            builtin = JavaAspectExtractor.extractBuiltinSpecClass(cu, enumDecl, Opt.none());
                         } else {
                             throw new IllegalStateException(
                                     "JavaAspectExtractor: unexpected decl type " + decl.getClass());
@@ -550,7 +504,7 @@ public final class GenMain {
                         b.addStatement("trivialIdentityAspects.add($T.IdentityId)", self);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)))",
+                                        + "$T.<$T>some(new $T($T.AspectId, $T.IdentityId)), false)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -577,7 +531,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>none())",
+                                        + "$T.<$T>none(), false)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -602,7 +556,7 @@ public final class GenMain {
                         BuiltinInterfacesGen.emitTypeHostRestamp(b, interfaceRef);
                         b.addStatement(
                                 "var meta = new $T($S, $T.from(trivialIdentityAspects), $T.from(castRules), $T.<$T>of(), "
-                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))))",
+                                        + "$T.<$T>some(new $T(new $T($LL), new $T($LL))), $L)",
                                 BuiltinInterfacesGen.TYPE_OBJECT_META,
                                 typeDesc,
                                 BuiltinInterfacesGen.ILIST,
@@ -615,7 +569,8 @@ public final class GenMain {
                                 BuiltinInterfacesGen.UNIQUE_BUILTIN,
                                 spec.uniqueId(),
                                 BuiltinInterfacesGen.UNIQUE_BUILTIN,
-                                spec.uniqueId());
+                                spec.uniqueId(),
+                                spec.identityToken());
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
@@ -669,21 +624,33 @@ public final class GenMain {
                         BuiltinMethodEmit.Method method = m;
                         _emitObjectMethod:
                         {
+                            var where = spec.simpleName() + "." + method.hostMethodName();
                             var retDescOpt = BuiltinMethodEmit.resolveDescriptor(method.ret(), leafDescriptors);
-                            if (retDescOpt.optIsNone()) break _emitObjectMethod;
+                            if (retDescOpt.optIsNone()) {
+                                throw new IllegalStateException(
+                                        "codegen: no language type for return type " + method.ret() + " of " + where);
+                            }
                             var retDesc = retDescOpt.optUnwrap();
                             var paramDescs = new TList<CodeBlock>();
                             var paramRawClasses = new TList<TypeName>();
                             for (var p : method.params()) {
                                 var pdOpt = BuiltinMethodEmit.resolveDescriptor(p.type(), leafDescriptors);
-                                if (pdOpt.optIsNone()) break _emitObjectMethod;
+                                if (pdOpt.optIsNone()) {
+                                    throw new IllegalStateException("codegen: no language type for parameter "
+                                            + p.name() + ": " + p.type() + " of " + where);
+                                }
                                 paramDescs.add(pdOpt.optUnwrap());
                                 var rawOpt = BuiltinMethodEmit.rawClass(p.type());
-                                if (rawOpt.optIsNone()) break _emitObjectMethod;
+                                if (rawOpt.optIsNone()) {
+                                    throw new IllegalStateException(
+                                            "codegen: no raw class for parameter " + p.name() + " of " + where);
+                                }
                                 paramRawClasses.add(rawOpt.optUnwrap());
                             }
                             var retRawOpt = BuiltinMethodEmit.rawClass(method.ret());
-                            if (retRawOpt.optIsNone()) break _emitObjectMethod;
+                            if (retRawOpt.optIsNone()) {
+                                throw new IllegalStateException("codegen: no raw class for return of " + where);
+                            }
                             var retRaw = retRawOpt.optUnwrap();
 
                             var suffix = method.hostMethodName();
@@ -1260,6 +1227,116 @@ public final class GenMain {
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
+                        "eval.aspect_operator_sub_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorSub")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_mul_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorMul")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_div_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorDiv")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_mod_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorMod")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_and_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorAnd")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_or_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorOr")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_xor_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorXor")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_shl_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorShl")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_shr_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorShr")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_ushr_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorUshr")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_eq_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorEq")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_ne_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorNe")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_gt_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorGt")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_le_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorLe")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_ge_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorGe")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_neg_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorNeg")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_operator_bit_not_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectOperatorBitNot")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_iterable_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectIterable")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_tuple_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectTuple")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_record_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectRecord")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_type_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectType")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
+                        "eval.aspect_lift_id",
+                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectLift")),
+                        BuiltinTreeGen.TUC_TYPE_EXPR);
+                BuiltinTreeGen.addSpecial(
+                        pathToLeaf,
                         "eval.aspect_drop_dynamic_light_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
@@ -1334,7 +1411,6 @@ public final class GenMain {
 
             for (var id : new long[] {
                 BuiltinTreeGen.ASPECT_COMPILE_SCOPE_ID,
-                BuiltinTreeGen.CAST_VALUE_COMPILE_SCOPE_ID,
                 BuiltinTreeGen.THROW_COMPILE_SCOPE_ID,
                 BuiltinTreeGen.PANIC_COMPILE_SCOPE_ID
             }) {

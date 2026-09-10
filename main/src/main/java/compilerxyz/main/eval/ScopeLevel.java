@@ -2,6 +2,7 @@ package compilerxyz.main.eval;
 
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
@@ -10,6 +11,7 @@ public sealed interface ScopeLevel {
 
     Emission scopeLevelEmission();
 
+    @BuiltinFull(uniqueId = 6404L)
     final class Entry implements ScopeLevel {
         public final Opt<ConstKey> name;
         public Binding binding;
@@ -53,6 +55,7 @@ public sealed interface ScopeLevel {
         }
     }
 
+    @BuiltinFull(uniqueId = 6403L)
     final class Labeled implements ScopeLevel {
         public final Opt<String> label;
         public final boolean isBlock;
@@ -170,6 +173,7 @@ public sealed interface ScopeLevel {
         }
     }
 
+    @BuiltinFull(uniqueId = 6415L)
     final class Emission {
         public final long id;
 

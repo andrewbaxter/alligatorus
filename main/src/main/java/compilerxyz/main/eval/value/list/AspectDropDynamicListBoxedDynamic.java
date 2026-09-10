@@ -35,6 +35,7 @@ public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDyn
             return EResult.ok(Code.none(loc));
         }
         var elementSlot = new BindingId();
+        var iteratorSlot = new BindingId();
         var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot));
         var elementCv =
                 new CodeValue(Code.target(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, type.elementType)));
@@ -51,9 +52,10 @@ public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDyn
         var iteratorSetup = new CodeDynamic(loc, setupSeq);
 
         var elementStoreSeq = new JavaBytecodeSequence();
-        elementStoreSeq.add(DynUtil.iteratorNext(loc, type.elementDecodeCast(xx, loc)));
+        elementStoreSeq.add(DynUtil.iteratorNext(loc, iteratorSlot, type.elementDecodeCast(xx, loc)));
         elementStoreSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, elementSlot)));
-        var loopRes = DynUtil.foreachSkeleton(loc, iteratorSetup, new CodeDynamic(loc, elementStoreSeq), elemDropCode);
+        var loopRes = DynUtil.foreachSkeleton(
+                loc, iteratorSetup, iteratorSlot, new CodeDynamic(loc, elementStoreSeq), elemDropCode);
         if (loopRes.hasErrors()) return loopRes.reerr();
         var loopCodeCast = CodeDynamic.castOpt(loc, loopRes.requireValue("loop").code());
         if (loopCodeCast.hasErrors()) return loopCodeCast.reerr();

@@ -15,6 +15,7 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc.Some;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -27,6 +28,7 @@ import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectStringConst;
+import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.BuiltinPath;
@@ -75,7 +77,8 @@ public record TypeConstkeyDynamic() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
-        return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome();
+        return GenAspectStringConst.getMaybe(xx, sourceType).optIsSome()
+                || GenAspectStringDynamic.getMaybe(xx, sourceType).optIsSome();
     }
 
     @Override
@@ -86,16 +89,22 @@ public record TypeConstkeyDynamic() implements Aspect, Type {
         var sourceValue = cv.value().optUnwrap();
         var sourceType = sourceValue.valueType();
         var stringConstOpt = GenAspectStringConst.getMaybe(xx, sourceType);
-        if (stringConstOpt.optIsNone()) {
-            return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");
-        }
-        var s = stringConstOpt.optUnwrap().aspectStringConstGet(sourceValue);
         var strInternal = JavaInternalName.fromClass(ConstKey.Str.class);
         var ctorDesc = JavaMethodDescriptor.fromConstructorParts(TList.of(JavaDataDescriptor.fromClass(String.class)));
         var seq = new JavaBytecodeSequence();
         seq.add(JavaBytecodeUtils.newInstance(loc, strInternal));
         seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(JavaBytecodeUtils.literalString(loc, s));
+        if (stringConstOpt.optIsSome()) {
+            seq.add(JavaBytecodeUtils.literalString(
+                    loc, stringConstOpt.optUnwrap().aspectStringConstGet(sourceValue)));
+        } else {
+            if (GenAspectStringDynamic.getMaybe(xx, sourceType).optIsNone()) {
+                return EResult.err(loc, "Cannot convert " + sourceType.typeDesc() + " to constkey");
+            }
+            var dynRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+            if (dynRes.hasErrors()) return dynRes.reerr();
+            seq.add(dynRes.requireValue("constkey from dynamic string"));
+        }
         seq.add(JavaBytecodeUtils.invokeSpecial(loc, strInternal, "<init>", ctorDesc));
         return EResult.ok(new CodeValue(
                 Code.target(new CodeDynamic(new Some(loc), seq)),

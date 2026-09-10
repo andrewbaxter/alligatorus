@@ -1,5 +1,8 @@
 package compilerxyz.main.eval;
 
+import compilerxyz.prelude.annotations.BuiltinFull;
+
+@BuiltinFull(uniqueId = 6401L)
 public enum NumericKind {
     BYTE,
     SHORT,

@@ -16,7 +16,9 @@ import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaVirtualMethodRef;
 import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.prelude.annotations.BuiltinFull;
 
+@BuiltinFull(uniqueId = 6406L)
 public sealed interface TypeObjectCastRule {
 
     boolean typeObjectCastRuleMatches(ExprContext xx, Type destType);

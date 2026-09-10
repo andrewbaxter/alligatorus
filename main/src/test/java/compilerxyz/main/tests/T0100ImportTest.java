@@ -240,24 +240,6 @@ public final class T0100ImportTest {
                                                                                                                                                                                                 "new")),
                                                                                                                                                                 mb
                                                                                                                                                                         .tupleOf())))))))))))),
-                                        mb.call(
-                                                mb.field(mb.scopeUse("ndr"), mb.str("impl_interface")),
-                                                mb.recordOf(
-                                                        TList.of(
-                                                                new TestMb.RecordPair("iface_ref", mb.evalAspectLift()),
-                                                                new TestMb.RecordPair(
-                                                                        "record",
-                                                                        mb.call(
-                                                                                mb.field(
-                                                                                        mb.call(
-                                                                                                mb.typesMap(),
-                                                                                                mb.tupleOf(
-                                                                                                        mb
-                                                                                                                .typesConstkey(),
-                                                                                                        mb
-                                                                                                                .typesExpr())),
-                                                                                        mb.str("new")),
-                                                                                mb.recordOf(TList.of())))))),
                                         mb.bind(
                                                 "mnfr",
                                                 mb.call(
@@ -380,8 +362,7 @@ public final class T0100ImportTest {
                                                         externalType(),
                                                         externalUnique(1015)),
                                                 methodImpl(4015, "type_opt", "_iface3_method1"),
-                                                methodImpl(4015, "keys", "_iface3_method2")),
-                                        interfaceImpl(4026))),
+                                                methodImpl(4015, "keys", "_iface3_method2")))),
                         jsonField("binary_name", jsonStr("SourceObject$0_0_0_0")),
                         jsonField("compiled_bytecode", jsonObj(jsonField("some", jsonStr("BYTECODE"))))),
                 Helpers.jsonRedacted(objArt.data()));

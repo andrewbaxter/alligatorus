@@ -24,6 +24,7 @@ import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectLift;
+import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -49,6 +50,9 @@ public record TypeStringConst() implements Aspect, Type {
         }
         if (key.equals(GenAspectStringConst.AspectId)) {
             return Opt.some(AspectStringConstStringConst.INSTANCE);
+        }
+        if (key.equals(GenAspectOperatorEq.AspectId)) {
+            return Opt.some(AspectOperatorEqStringConst.INSTANCE);
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldStringConst.INSTANCE);

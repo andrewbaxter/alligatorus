@@ -57,11 +57,17 @@ public record AspectFieldSourceObjectDynamic(TypeSourceObjectDynamic type) imple
             }
         }
         if (fieldName == null) {
+            var names = new TList<String>();
+            for (var m : type.methods) names.add(m.name);
             return EResult.err(
                     loc,
                     "TypeSourceObjectDynamic::field: field '"
                             + keyName
-                            + "' not found on object (underlying-type Record fallback deferred)");
+                            + "' not found on object "
+                            + type.typeDesc()
+                            + " (methods: "
+                            + names
+                            + "; underlying-type Record fallback deferred)");
         }
         if (self.value().optIsNone() || !(self.value().optUnwrap() instanceof ValueDynamic selfVd)) {
             return EResult.err(loc, "TypeSourceObjectDynamic::field: receiver is not a ValueDynamic");

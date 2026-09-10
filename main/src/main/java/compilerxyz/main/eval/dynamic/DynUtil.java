@@ -1,5 +1,6 @@
 package compilerxyz.main.eval.dynamic;
 
+import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
@@ -73,9 +74,9 @@ public final class DynUtil {
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
-    public static CodeDynamic iteratorNext(QExprId loc, CodeDynamic elementDecode) {
+    public static CodeDynamic iteratorNext(QExprId loc, BindingId iteratorSlot, CodeDynamic elementDecode) {
         var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, iteratorSlot)));
         seq.add(JavaBytecodeUtils.callInterfaceMethod(
                 loc,
                 JavaInternalName.fromClass(Iterator.class),
@@ -86,13 +87,14 @@ public final class DynUtil {
     }
 
     public static EResult<CodeValue> foreachSkeleton(
-            QExprId loc, CodeDynamic iteratorSetup, CodeDynamic elementBind, Code body) {
+            QExprId loc, CodeDynamic iteratorSetup, BindingId iteratorSlot, CodeDynamic elementBind, Code body) {
         var loopLabel = new LabelNode();
         var doneLabel = new LabelNode();
         var seq = new JavaBytecodeSequence();
         seq.add(iteratorSetup);
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, iteratorSlot)));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, iteratorSlot)));
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         seq.add(JavaBytecodeUtils.callInterfaceMethod(
                 loc,
@@ -109,7 +111,6 @@ public final class DynUtil {
         }
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
         return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
     }
 

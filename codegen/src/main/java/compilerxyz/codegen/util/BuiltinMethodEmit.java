@@ -51,6 +51,8 @@ public final class BuiltinMethodEmit {
             ClassName.get("compilerxyz.main.eval.value.bool", "TypeBoolDynamic");
     private static final ClassName TYPE_LONG_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.long_", "TypeLongDynamic");
+    private static final ClassName TYPE_DOUBLE_DYNAMIC =
+            ClassName.get("compilerxyz.main.eval.value.double_", "TypeDoubleDynamic");
     private static final ClassName TYPE_NULL_DYNAMIC =
             ClassName.get("compilerxyz.main.eval.value.null_", "TypeNullDynamic");
 
@@ -61,17 +63,47 @@ public final class BuiltinMethodEmit {
             new Pair<>(ClassName.get("compilerxyz.prelude.util", "TMap"), TYPE_MAP_DYNAMIC),
             new Pair<>(TORDERED_MAP, TYPE_MAP_DYNAMIC));
 
+    private static ClassName valueType(String pkg, String cls) {
+        return ClassName.get("compilerxyz.main.eval.value." + pkg, cls);
+    }
+
     public static Opt<CodeBlock> resolveDescriptor(TypeName tn, TMap<ClassName, CodeBlock> leafDescriptors) {
         if (tn.equals(TypeName.BOOLEAN)) return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
         if (tn.equals(TypeName.LONG)) return Opt.some(CodeBlock.of("new $T()", TYPE_LONG_DYNAMIC));
+        if (tn.equals(TypeName.DOUBLE)) return Opt.some(CodeBlock.of("new $T()", TYPE_DOUBLE_DYNAMIC));
         if (tn.equals(TypeName.VOID)) return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
+        if (tn.equals(TypeName.INT)) return Opt.some(CodeBlock.of("new $T()", valueType("int_", "TypeIntDynamic")));
+        if (tn.equals(TypeName.BYTE)) return Opt.some(CodeBlock.of("new $T()", valueType("byte_", "TypeByteDynamic")));
+        if (tn.equals(TypeName.SHORT)) {
+            return Opt.some(CodeBlock.of("new $T()", valueType("short_", "TypeShortDynamic")));
+        }
+        if (tn.equals(TypeName.FLOAT)) {
+            return Opt.some(CodeBlock.of("new $T()", valueType("float_", "TypeFloatDynamic")));
+        }
         if (tn instanceof ClassName cn) {
+            if (cn.equals(ClassName.get(Integer.class))) {
+                return Opt.some(CodeBlock.of("new $T()", valueType("int_", "TypeIntDynamicBox")));
+            }
+            if (cn.equals(ClassName.get(Long.class))) {
+                return Opt.some(CodeBlock.of("new $T()", valueType("long_", "TypeLongDynamicBox")));
+            }
+            if (cn.equals(ClassName.get(Double.class))) {
+                return Opt.some(CodeBlock.of("new $T()", valueType("double_", "TypeDoubleDynamicBox")));
+            }
+            if (cn.equals(ClassName.get(Void.class))
+                    || cn.equals(ClassName.get(Number.class))
+                    || cn.equals(ClassName.get(java.util.Iterator.class))) {
+                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
+            }
             if (cn.equals(ClassName.get(String.class))) {
                 return Opt.some(CodeBlock.of(
                         "new $T()", ClassName.get("compilerxyz.main.eval.value.string", "TypeStringDynamic")));
             }
             if (cn.equals(ClassName.get(Boolean.class))) {
                 return Opt.some(CodeBlock.of("new $T()", TYPE_BOOL_DYNAMIC));
+            }
+            if (cn.equals(ClassName.get(Object.class))) {
+                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
             }
             if (cn.equals(ClassName.get("compilerxyz.main.eval.expr", "StagedExprCell"))) {
                 return Opt.some(
@@ -80,8 +112,11 @@ public final class BuiltinMethodEmit {
             return Opt.ofNullable(leafDescriptors.get(cn));
         }
         if (tn instanceof ParameterizedTypeName pt) {
+            if (pt.rawType.equals(ClassName.get(java.util.Iterator.class))) {
+                return Opt.some(CodeBlock.of("new $T()", TYPE_NULL_DYNAMIC));
+            }
             var wrapper = COMPOSITE_DESCRIPTORS.getOrNull(pt.rawType);
-            if (wrapper == null) return Opt.none();
+            if (wrapper == null) return Opt.ofNullable(leafDescriptors.get(pt.rawType));
             var parts = new TList<CodeBlock>();
             for (var arg : pt.typeArguments) {
                 var sub = resolveDescriptor(arg, leafDescriptors);
@@ -99,8 +134,13 @@ public final class BuiltinMethodEmit {
     }
 
     public static Opt<TypeName> rawClass(TypeName tn) {
+        if (tn.equals(TypeName.INT)) return Opt.some(TypeName.INT);
+        if (tn.equals(TypeName.BYTE)) return Opt.some(TypeName.BYTE);
+        if (tn.equals(TypeName.SHORT)) return Opt.some(TypeName.SHORT);
+        if (tn.equals(TypeName.FLOAT)) return Opt.some(TypeName.FLOAT);
         if (tn.equals(TypeName.BOOLEAN)) return Opt.some(TypeName.BOOLEAN);
         if (tn.equals(TypeName.LONG)) return Opt.some(TypeName.LONG);
+        if (tn.equals(TypeName.DOUBLE)) return Opt.some(TypeName.DOUBLE);
         if (tn.equals(TypeName.VOID)) return Opt.some(TypeName.VOID);
         if (tn instanceof ClassName cn) return Opt.some(cn);
         if (tn instanceof ParameterizedTypeName pt) return Opt.some(pt.rawType);

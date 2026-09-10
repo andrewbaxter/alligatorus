@@ -480,7 +480,8 @@ public final class DefinitionSet implements Artifactable {
                         }
                         target.emit(seq, ctx, emmBodyCode);
                         seq.add(JavaBytecodeUtils.inst(emmLoc, retDesc.returnOpcode()));
-                        JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
+                        JavaBytecodeUtils.renderMethodTyped(
+                                seq, mv, initialSlots, obj.typeDesc() + "." + methodName, descriptor);
                     }
                 }
                 for (int soeImplIdx = 0; soeImplIdx < obj.interfaceImpls.size(); soeImplIdx++) {
@@ -571,7 +572,12 @@ public final class DefinitionSet implements Artifactable {
                                 }
                                 eimSeq.add(JavaBytecodeUtils.inst(eimLoc, ercRetDesc.returnOpcode()));
                             }
-                            JavaBytecodeUtils.renderMethodTyped(eimSeq, eimMv, eimInitialSlots);
+                            JavaBytecodeUtils.renderMethodTyped(
+                                    eimSeq,
+                                    eimMv,
+                                    eimInitialSlots,
+                                    obj.typeDesc() + "." + eimMethodName,
+                                    eimDescriptor);
                         }
                     }
                 }
@@ -645,6 +651,10 @@ public final class DefinitionSet implements Artifactable {
                                                 && ehaArgDesc.isReference()
                                                 && !ehaArgDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
                                             ehaSeq.add(JavaBytecodeUtils.cast(ehaLoc, ehaArgDesc));
+                                        } else if (!hostParam.equals(ehaArgDesc.value())
+                                                && hostParamDesc.isReference()
+                                                && JavaBytecodeUtils.isPrimitive(ehaArgDesc)) {
+                                            ehaSeq.add(JavaBytecodeUtils.unboxPrimitive(ehaLoc, ehaArgDesc));
                                         }
                                         hostSlot += hostParamDesc.slotWidth();
                                         argIdx++;
@@ -654,6 +664,19 @@ public final class DefinitionSet implements Artifactable {
                                         ehaLoc, soeInternalName, ehiM.jvmMethodName, calleeDescriptor));
                                 var ehaRetDesc =
                                         JavaDataDescriptor.create(hostDescStr.substring(hostDescStr.indexOf(')') + 1));
+                                var calleeDescStr = calleeDescriptor.value();
+                                var calleeRetDesc = JavaDataDescriptor.create(
+                                        calleeDescStr.substring(calleeDescStr.indexOf(')') + 1));
+                                if (!calleeRetDesc.value().equals(ehaRetDesc.value())) {
+                                    if (calleeRetDesc.value().equals(JavaDataDescriptor.DESC_VOID.value())) {
+                                        if (ehaRetDesc.isReference()) {
+                                            ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, Opcodes.ACONST_NULL));
+                                        }
+                                    } else if (JavaBytecodeUtils.isPrimitive(calleeRetDesc)
+                                            && ehaRetDesc.isReference()) {
+                                        ehaSeq.add(JavaBytecodeUtils.boxPrimitive(ehaLoc, calleeRetDesc));
+                                    }
+                                }
                                 ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, ehaRetDesc.returnOpcode()));
                                 JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of());
                             }

@@ -172,6 +172,9 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                 return Opt.some(new AspectTypeSourceObjectDynamic(this));
             }
         }
+        if (key.equals(GenAspectLift.AspectId)) {
+            return Opt.some(new AspectLiftSourceObjectDynamic(this));
+        }
         return Opt.none();
     }
 

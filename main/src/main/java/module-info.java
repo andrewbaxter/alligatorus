@@ -6,6 +6,7 @@ module compilerxyz.main {
     requires transitive org.objectweb.asm;
     requires transitive org.objectweb.asm.tree;
     requires transitive org.objectweb.asm.util;
+    requires transitive org.objectweb.asm.tree.analysis;
     requires transitive com.github.benmanes.caffeine;
     requires transitive org.pcollections;
     requires java.sql;

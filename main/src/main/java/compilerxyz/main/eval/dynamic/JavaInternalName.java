@@ -1,5 +1,8 @@
 package compilerxyz.main.eval.dynamic;
 
+import compilerxyz.prelude.annotations.BuiltinFull;
+
+@BuiltinFull(uniqueId = 6402L)
 public final class JavaInternalName {
     public final String value;
 

@@ -16,11 +16,15 @@ import compilerxyz.main.gen.GenType;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactValueObjectConstCodec;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.function.Function;
 
+@BuiltinFull(uniqueId = 6213L)
+@BuiltinPath("types.value_object_const")
 public record ValueObjectConst(Type type, Object data) implements Value {
     @Override
     public Type valueType() {

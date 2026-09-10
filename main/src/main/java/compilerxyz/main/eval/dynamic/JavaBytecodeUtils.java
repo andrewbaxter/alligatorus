@@ -32,11 +32,18 @@ import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.analysis.Analyzer;
+import org.objectweb.asm.tree.analysis.AnalyzerException;
+import org.objectweb.asm.tree.analysis.BasicVerifier;
+import org.objectweb.asm.util.Textifier;
+import org.objectweb.asm.util.TraceMethodVisitor;
 
 public class JavaBytecodeUtils {
     public static final JavaBytecode JBC_DUP = new JavaBytecodeInstructionInt(DUP);
+    private static final boolean VERIFY_BYTECODE = Boolean.getBoolean("compilerxyz.verifyBytecode");
 
     private static CodeLoc lc(QExprId loc) {
         return new CodeLoc.Some(loc);
@@ -207,6 +214,56 @@ public class JavaBytecodeUtils {
 
     public static CodeDynamic instanceOf(QExprId loc, JavaInternalName klass) {
         return typeInsn(lc(loc), INSTANCEOF, klass);
+    }
+
+    public static boolean isPrimitive(JavaDataDescriptor desc) {
+        return !desc.isReference() && !desc.value().equals(JavaDataDescriptor.DESC_VOID.value());
+    }
+
+    private static JavaInternalName wrapperOf(JavaDataDescriptor prim) {
+        return JavaInternalName.of(
+                switch (prim.value()) {
+                    case "Z" -> "java/lang/Boolean";
+                    case "B" -> "java/lang/Byte";
+                    case "S" -> "java/lang/Short";
+                    case "C" -> "java/lang/Character";
+                    case "I" -> "java/lang/Integer";
+                    case "J" -> "java/lang/Long";
+                    case "F" -> "java/lang/Float";
+                    case "D" -> "java/lang/Double";
+                    default -> throw new IllegalArgumentException("not a primitive descriptor: " + prim.value());
+                });
+    }
+
+    public static CodeDynamic boxPrimitive(CodeLoc loc, JavaDataDescriptor prim) {
+        var wrapper = wrapperOf(prim);
+        return methodCall(
+                loc,
+                INVOKESTATIC,
+                wrapper,
+                "valueOf",
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromInternalName(wrapper), TList.of(prim)),
+                false);
+    }
+
+    public static CodeDynamic unboxPrimitive(CodeLoc loc, JavaDataDescriptor prim) {
+        var wrapper = wrapperOf(prim);
+        var unboxMethod =
+                switch (prim.value()) {
+                    case "Z" -> "booleanValue";
+                    case "B" -> "byteValue";
+                    case "S" -> "shortValue";
+                    case "C" -> "charValue";
+                    case "I" -> "intValue";
+                    case "J" -> "longValue";
+                    case "F" -> "floatValue";
+                    case "D" -> "doubleValue";
+                    default -> throw new IllegalArgumentException("not a primitive descriptor: " + prim.value());
+                };
+        var seq = new JavaBytecodeSequence();
+        seq.add(cast(loc, JavaDataDescriptor.fromInternalName(wrapper)));
+        seq.add(callMethod(loc, wrapper, unboxMethod, JavaMethodDescriptor.fromParts(prim, TList.of())));
+        return new CodeDynamic(loc, seq);
     }
 
     public static CodeDynamic cast(CodeLoc loc, JavaDataDescriptor toClass) {
@@ -417,6 +474,60 @@ public class JavaBytecodeUtils {
         seq.renderInternal(mv, initialSlots);
         mv.visitMaxs(0, 0);
         mv.visitEnd();
+    }
+
+    public static void renderMethodTyped(
+            JavaBytecodeSequence seq,
+            MethodVisitor mv,
+            TList<JavaBytecodeSequence.InitialSlot> initialSlots,
+            String context,
+            JavaMethodDescriptor descriptor) {
+        try {
+            renderMethodTyped(seq, mv, initialSlots);
+        } catch (RuntimeException e) {
+            throw new IllegalStateException(
+                    "bytecode rendering failed for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor), e);
+        }
+        if (VERIFY_BYTECODE) {
+            var dump = dumpMethod(seq, initialSlots, descriptor);
+            if (!dump.startsWith("analyzer: ok")) {
+                throw new IllegalStateException("bytecode verification failed for " + context + ":\n" + dump);
+            }
+        }
+    }
+
+    public static String dumpMethod(
+            JavaBytecodeSequence seq,
+            TList<JavaBytecodeSequence.InitialSlot> initialSlots,
+            JavaMethodDescriptor descriptor) {
+        var node = new MethodNode(Opcodes.ASM9, Opcodes.ACC_PUBLIC, "dump", descriptor.value(), null, null);
+        seq.renderInternal(node, initialSlots);
+        node.maxLocals = 512;
+        node.maxStack = 512;
+        var sb = new StringBuilder();
+        var analyzer = new Analyzer<>(new BasicVerifier());
+        try {
+            analyzer.analyze("Dump", node);
+            sb.append("analyzer: ok\n");
+        } catch (AnalyzerException e) {
+            sb.append("analyzer: ")
+                    .append(e.getMessage())
+                    .append(" at insn #")
+                    .append(e.node == null ? -1 : node.instructions.indexOf(e.node))
+                    .append("\n");
+        }
+        var textifier = new Textifier();
+        var tracer = new TraceMethodVisitor(textifier);
+        int index = 0;
+        for (var insn : node.instructions) {
+            insn.accept(tracer);
+            for (var line : textifier.getText()) {
+                sb.append('#').append(index).append(' ').append(line);
+            }
+            textifier.getText().clear();
+            index++;
+        }
+        return sb.toString();
     }
 
     public static JavaBytecodeSequence seq() {

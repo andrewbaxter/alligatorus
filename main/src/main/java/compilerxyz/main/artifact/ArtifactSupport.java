@@ -7,6 +7,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -216,6 +217,7 @@ public final class ArtifactSupport {
         return EResult.errs(errors);
     }
 
+    @BuiltinFull(uniqueId = 6413L)
     public static final class ArtifactIdHolder {
         private Opt<ArtifactIdSource> id = Opt.none();
 

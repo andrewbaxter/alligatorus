@@ -1,11 +1,13 @@
 package compilerxyz.prelude.util;
 
+import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.annotations.Immutable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
 @Immutable
+@BuiltinFull(uniqueId = 6414L)
 public final class IList<T> implements Iterable<T> {
     private final List<T> backing;
 

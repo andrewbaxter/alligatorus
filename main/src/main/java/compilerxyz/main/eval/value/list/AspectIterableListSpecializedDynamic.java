@@ -31,11 +31,11 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
 
     @Override
     public EResult<CodeValue> aspectIterableElementAccess(ExprContext xx, QExprId loc, Binding loop) {
-        var indexSlot = mustCast(BindingIteratorIndexed.class, loop).indexSlot();
+        var slots = mustCast(BindingIteratorIndexed.class, loop);
         var getDesc = JavaMethodDescriptor.fromParts(type.elementDescriptor(xx), TList.of(JavaDataDescriptor.DESC_INT));
         var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, slots.listSlot())));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, slots.indexSlot())));
         seq.add(JavaBytecodeUtils.callMethod(loc, type.storeName, "get", getDesc));
         return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), type.elementType));
     }
@@ -78,18 +78,20 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
         if (elementBindCast.hasErrors()) return elementBindCast.reerr();
         var elementBindDyn = elementBindCast.requireValue("foreach element bind");
         var sizeDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_INT, TList.of());
-        var indexSlot = mustCast(BindingIteratorIndexed.class, loop).indexSlot();
+        var slots = mustCast(BindingIteratorIndexed.class, loop);
+        var listSlot = slots.listSlot();
+        var indexSlot = slots.indexSlot();
         var loopLabel = new LabelNode();
         var doneLabel = new LabelNode();
         var loopSeq = new JavaBytecodeSequence();
         loopSeq.add(baseDyn);
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, listSlot)));
         loopSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot)));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-        loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        loopSeq.add(JavaBytecodeUtils.callMethod(loc, type.storeName, "size", sizeDesc));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ILOAD, indexSlot)));
-        loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.SWAP));
+        loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, listSlot)));
+        loopSeq.add(JavaBytecodeUtils.callMethod(loc, type.storeName, "size", sizeDesc));
         loopSeq.add(
                 new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IF_ICMPGE, doneLabel))));
         if (elementBindDyn.optIsSome()) loopSeq.add(elementBindDyn.optUnwrap());
@@ -105,12 +107,11 @@ public record AspectIterableListSpecializedDynamic<T extends Type>(TypeListSpeci
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ISTORE, indexSlot)));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
         loopSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-        loopSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
         return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, loopSeq)), EvalOutcome.NO_VALUE));
     }
 
     @Override
     public Binding aspectIterableLoopBinding(ExprContext xx) {
-        return new BindingIteratorIndexed(new BindingId());
+        return new BindingIteratorIndexed(new BindingId(), new BindingId());
     }
 }

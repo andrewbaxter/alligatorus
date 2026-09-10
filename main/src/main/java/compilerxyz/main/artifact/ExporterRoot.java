@@ -14,6 +14,7 @@ import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.double_.TypeDoubleConst;
 import compilerxyz.main.eval.value.double_.TypeDoubleDynamic;
+import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
 import compilerxyz.main.eval.value.expr.TypeExpr;
 import compilerxyz.main.eval.value.float_.TypeFloatConst;
 import compilerxyz.main.eval.value.float_.TypeFloatDynamic;
@@ -162,6 +163,12 @@ public enum ExporterRoot implements ArtifactExporter, Artifactable {
         @Override
         ExporterRootDelegate delegate() {
             return TypeOptionDynamic.DELEGATE;
+        }
+    },
+    ERESULT_DYNAMIC("eresult_dynamic") {
+        @Override
+        ExporterRootDelegate delegate() {
+            return TypeEResultDynamic.DELEGATE;
         }
     },
     OPTION_VARIANT_CONSTRUCTOR_DYNAMIC("option_variant_constructor_dynamic") {

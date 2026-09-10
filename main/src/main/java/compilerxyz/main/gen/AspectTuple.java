@@ -7,9 +7,11 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 1013L, identityId = 4013L)
+@BuiltinPath("eval.aspect_tuple")
 public interface AspectTuple extends Aspect {
     TList<Type> aspectTupleElementTypes();
 

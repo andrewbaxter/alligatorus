@@ -7,209 +7,260 @@ import compilerxyz.prelude.util.TList;
 public final class EcoPipewire {
     private EcoPipewire() {}
 
-    private record Extern(String name, String ret, IList<String> params) {}
+    private static final IList<EcoExtern> EXTERNS = IList.of(
+            new EcoExtern("pw_init", IList.of("pv", "pv"), "void", false),
+            new EcoExtern("pw_deinit", IList.of(), "void", false),
+            new EcoExtern("pw_main_loop_new", IList.of("pv"), "pv", false),
+            new EcoExtern("pw_main_loop_get_loop", IList.of("pv"), "pv", false),
+            new EcoExtern("pw_main_loop_run", IList.of("pv"), "i32", false),
+            new EcoExtern("pw_main_loop_quit", IList.of("pv"), "i32", false),
+            new EcoExtern("pw_main_loop_destroy", IList.of("pv"), "void", false),
+            new EcoExtern("pw_stream_new_simple", IList.of("pv", "pu8", "pv", "pv", "pv"), "pv", false),
+            new EcoExtern("pw_stream_connect", IList.of("pv", "u32", "u32", "u32", "pv", "u32"), "i32", false),
+            new EcoExtern("pw_stream_dequeue_buffer", IList.of("pv"), "p_pw_buffer", false),
+            new EcoExtern("pw_stream_queue_buffer", IList.of("pv", "p_pw_buffer"), "i32", false),
+            new EcoExtern("pw_properties_new", IList.of("pu8"), "pv", true));
 
-    private static final IList<Extern> EXTERNS = IList.of(
-            new Extern("pw_init", "void", IList.of("ptr", "ptr")),
-            new Extern("pw_deinit", "void", IList.of()),
-            new Extern("pw_main_loop_new", "ptr", IList.of("ptr")),
-            new Extern("pw_main_loop_get_loop", "ptr", IList.of("ptr")),
-            new Extern("pw_main_loop_run", "i32", IList.of("ptr")),
-            new Extern("pw_main_loop_quit", "i32", IList.of("ptr")),
-            new Extern("pw_main_loop_destroy", "void", IList.of("ptr")),
-            new Extern("pw_stream_new_simple", "ptr", IList.of("ptr", "ptr", "ptr", "ptr", "ptr")),
-            new Extern("pw_stream_connect", "i32", IList.of("ptr", "i32", "i32", "i32", "ptr", "i32")),
-            new Extern("pw_stream_dequeue_buffer", "ptr", IList.of("ptr")),
-            new Extern("pw_stream_queue_buffer", "i32", IList.of("ptr", "ptr")));
-
-    private static final IList<Extern> VARARG_EXTERNS =
-            IList.of(new Extern("pw_properties_new", "ptr", IList.of("ptr")));
-
-    private record Konst(String name, String value) {}
+    private record Konst(String name, double value) {}
 
     private static final IList<Konst> KONSTS = IList.of(
-            new Konst("direction_input", "0"),
-            new Konst("direction_output", "1"),
-            new Konst("id_any", "4294967295"),
-            new Konst("flag_autoconnect", "1"),
-            new Konst("flag_map_buffers", "4"),
-            new Konst("flag_rt_process", "16"),
-            new Konst("flags_autoconnect_map_rt", "21"),
-            new Konst("flags_map_rt", "20"),
-            new Konst("off_pwbuf_buffer", "0"),
-            new Konst("off_pwbuf_requested", "24"),
-            new Konst("off_spabuf_n_datas", "4"),
-            new Konst("off_spabuf_datas", "16"),
-            new Konst("sizeof_spa_data", "40"),
-            new Konst("off_spadata_maxsize", "20"),
-            new Konst("off_spadata_data", "24"),
-            new Konst("off_spadata_chunk", "32"),
-            new Konst("off_chunk_offset", "0"),
-            new Konst("off_chunk_size", "4"),
-            new Konst("off_chunk_stride", "8"),
-            new Konst("sizeof_spa_pod", "8"),
-            new Konst("off_seq_first_control", "16"),
-            new Konst("off_control_type", "4"),
-            new Konst("off_control_value", "8"),
-            new Konst("control_midi", "2"),
-            new Konst("control_ump", "4"));
+            new Konst("direction_input", 0),
+            new Konst("direction_output", 1),
+            new Konst("id_any", 4294967295.0),
+            new Konst("flags_autoconnect_map_rt", 21),
+            new Konst("pod_type_sequence", 16),
+            new Konst("control_midi", 2),
+            new Konst("control_ump", 4));
 
-    private static final String EVENTS_TY = "{ i32, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr, ptr }";
+    private record Field(String name, String ty) {}
+
+    private record Struct(String name, IList<Field> fields) {}
+
+    private static final IList<Struct> STRUCTS = IList.of(
+            new Struct(
+                    "spa_chunk",
+                    IList.of(
+                            new Field("offset", "u32"),
+                            new Field("size", "u32"),
+                            new Field("stride", "i32"),
+                            new Field("flags", "i32"))),
+            new Struct(
+                    "spa_data",
+                    IList.of(
+                            new Field("type", "u32"),
+                            new Field("flags", "u32"),
+                            new Field("fd", "i64"),
+                            new Field("mapoffset", "u32"),
+                            new Field("maxsize", "u32"),
+                            new Field("data", "pv"),
+                            new Field("chunk", "p_spa_chunk"))),
+            new Struct(
+                    "spa_buffer",
+                    IList.of(
+                            new Field("n_metas", "u32"),
+                            new Field("n_datas", "u32"),
+                            new Field("metas", "pv"),
+                            new Field("datas", "p_spa_data"))),
+            new Struct(
+                    "pw_buffer",
+                    IList.of(
+                            new Field("buffer", "p_spa_buffer"),
+                            new Field("user_data", "pv"),
+                            new Field("size", "u64"),
+                            new Field("requested", "u64"),
+                            new Field("time", "u64"))),
+            new Struct("spa_pod", IList.of(new Field("size", "u32"), new Field("type", "u32"))),
+            new Struct(
+                    "spa_pod_control",
+                    IList.of(new Field("offset", "u32"), new Field("type", "u32"), new Field("value", "spa_pod"))),
+            new Struct(
+                    "spa_pod_sequence",
+                    IList.of(new Field("pod", "spa_pod"), new Field("unit", "u32"), new Field("pad", "u32"))),
+            new Struct(
+                    "pw_stream_events",
+                    IList.of(
+                            new Field("version", "u32"),
+                            new Field("destroy", "pv"),
+                            new Field("state_changed", "pv"),
+                            new Field("control_info", "pv"),
+                            new Field("io_changed", "pv"),
+                            new Field("param_changed", "pv"),
+                            new Field("add_buffer", "pv"),
+                            new Field("remove_buffer", "pv"),
+                            new Field("process", "pv"),
+                            new Field("drained", "pv"),
+                            new Field("command", "pv"),
+                            new Field("trigger_done", "pv"))));
 
     private static final String POD_AUDIO_F32_MONO_48K =
-            "c\"\\A0\\00\\00\\00\\0F\\00\\00\\00\\03\\00\\04\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00"
+            "\\A0\\00\\00\\00\\0F\\00\\00\\00\\03\\00\\04\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00\\02\\00\\00\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00\\01\\00\\01\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\03\\00\\00\\00\\1B\\01\\00\\00\\00\\00\\00\\00\\03\\00\\01\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\04\\00\\00\\00\\80\\BB\\00\\00\\00\\00\\00\\00\\04\\00\\01\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\04\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00\\05\\00\\01\\00\\00\\00\\00\\00"
-                    + "\\0C\\00\\00\\00\\0D\\00\\00\\00\\04\\00\\00\\00\\03\\00\\00\\00\\00\\00\\00\\00\\00\\00\\00\\00\"";
+                    + "\\0C\\00\\00\\00\\0D\\00\\00\\00\\04\\00\\00\\00\\03\\00\\00\\00\\00\\00\\00\\00\\00\\00\\00\\00";
 
     private static final String POD_MIDI_CONTROL =
-            "c\"\\38\\00\\00\\00\\0F\\00\\00\\00\\03\\00\\04\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00"
+            "\\38\\00\\00\\00\\0F\\00\\00\\00\\03\\00\\04\\00\\03\\00\\00\\00\\01\\00\\00\\00\\00\\00\\00\\00"
                     + "\\04\\00\\00\\00\\03\\00\\00\\00\\06\\00\\00\\00\\00\\00\\00\\00\\02\\00\\00\\00\\00\\00\\00\\00"
-                    + "\\04\\00\\00\\00\\03\\00\\00\\00\\01\\00\\06\\00\\00\\00\\00\\00\"";
+                    + "\\04\\00\\00\\00\\03\\00\\00\\00\\01\\00\\06\\00\\00\\00\\00\\00";
+
+    static SourceExpr byteTuple(EcoMb e, int[] bytes) {
+        var parts = new SourceExpr[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            parts[i] = e.n(bytes[i]);
+        }
+        return e.tup(parts);
+    }
+
+    static int[] escapedBytes(String escaped) {
+        var out = new int[escaped.length() / 3];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = Integer.parseInt(escaped.substring(i * 3 + 1, i * 3 + 3), 16);
+        }
+        return out;
+    }
+
+    static SourceExpr byteArrayType(EcoMb e, String ll, int count) {
+        return e.callM(e.v(ll), "array", e.rec(e.p("elem", e.v("t_u8")), e.p("count", e.intOf(count))));
+    }
+
+    static SourceExpr byteArrayConstType(EcoMb e, String ll, int count) {
+        return EcoExtern.globalT(e, ll, e.callM(e.v(ll), "ptr", byteArrayType(e, ll, count)), false);
+    }
+
+    private static SourceExpr paramsArrayType(EcoMb e, String ll) {
+        return e.callM(e.v(ll), "array", e.rec(e.p("elem", e.v("t_pv")), e.p("count", e.intOf(1))));
+    }
+
+    private static SourceExpr paramsConstType(EcoMb e, String ll) {
+        return EcoExtern.globalT(e, ll, e.callM(e.v(ll), "ptr", paramsArrayType(e, ll)), false);
+    }
+
+    private static SourceExpr byteArrayConst(EcoMb e, String ll, String name, int[] bytes) {
+        return e.callM(
+                e.v(ll),
+                "global_const",
+                e.rec(
+                        e.p("name", e.s(name)),
+                        e.p("ty", byteArrayType(e, ll, bytes.length)),
+                        e.p("init", e.stage(byteTuple(e, bytes)))));
+    }
+
+    private static SourceExpr paramsConst(EcoMb e, String ll, String name, String pod) {
+        return e.callM(
+                e.v(ll),
+                "global_const",
+                e.rec(
+                        e.p("name", e.s(name)),
+                        e.p("ty", paramsArrayType(e, ll)),
+                        e.p("init", e.stage(e.tup(e.mb.as(e.lower(e.v(pod)), e.lower(e.v(pod + "_t"))))))));
+    }
 
     public static SourceExpr module(EcoMb e) {
         var exprs = new TList<SourceExpr>();
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
         exprs.add(e.let("probe", e.call(e.v("llvm"), e.nil())));
-        exprs.add(e.let("lapp_t", e.callM(e.v("probe"), "t_app", e.nil())));
-        exprs.add(e.let("fnv_t", e.callM(e.v("probe"), "t_extern", e.nil())));
-        exprs.add(e.let("lv_t", e.callM(e.v("probe"), "t_value", e.nil())));
+        exprs.add(e.let("lmod_t", e.callM(e.v("probe"), "t_mod", e.nil())));
+        exprs.add(e.let("lref_t", e.callM(e.v("probe"), "t_ref", e.nil())));
 
         exprs.add(e.let("d", e.define()));
         exprs.add(e.let("pw_o", e.defObject(e.v("d"), "pipewire 1.6")));
         var innerFields = new TList<EcoMb.P>();
-        for (var ex : EXTERNS) {
-            innerFields.add(e.p(ex.name(), e.v("fnv_t")));
+        var members = new TList<String>();
+        var refMembers = new TList<String>();
+        for (var ex : EXTERNS) refMembers.add(ex.name());
+        for (var k : KONSTS) refMembers.add(k.name());
+        for (var g : new String[] {"pod_audio_f32_mono_48k", "pod_midi_control", "params_audio", "params_midi"}) {
+            refMembers.add(g);
         }
-        for (var ex : VARARG_EXTERNS) {
-            innerFields.add(e.p(ex.name(), e.v("fnv_t")));
+        for (var m : refMembers) {
+            innerFields.add(e.p(m, e.v("lref_t")));
+            innerFields.add(e.p(m + "_t", e.mb.evalType()));
+            members.add(m);
+        }
+        for (var s : STRUCTS) {
+            innerFields.add(e.p(s.name(), e.mb.evalType()));
+            members.add(s.name());
         }
         exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(new EcoMb.P[0]))));
-        for (var ex : EXTERNS) {
+        for (var m : refMembers) {
+            exprs.add(e.methodImpl(
+                    e.v("pw_o"), m, e.mb.typesNull(), e.retSome(e.v("lref_t")), e.stage(e.fld(e.v("inner"), m))));
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
-                    ex.name(),
+                    m + "_t",
                     e.mb.typesNull(),
-                    e.retSome(e.v("fnv_t")),
-                    e.stage(e.fld(e.v("inner"), ex.name()))));
+                    e.retSome(e.mb.evalType()),
+                    e.stage(e.fld(e.v("inner"), m + "_t"))));
         }
-        for (var ex : VARARG_EXTERNS) {
+        for (var s : STRUCTS) {
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
-                    ex.name(),
+                    s.name(),
                     e.mb.typesNull(),
-                    e.retSome(e.v("fnv_t")),
-                    e.stage(e.fld(e.v("inner"), ex.name()))));
+                    e.retSome(e.mb.evalType()),
+                    e.stage(e.fld(e.v("inner"), s.name()))));
         }
-        for (var k : KONSTS) {
-            exprs.add(e.methodImpl(
-                    e.v("pw_o"), k.name(), e.mb.typesNull(), e.retSome(e.mb.typesString()), e.stage(e.s(k.value()))));
-        }
-        exprs.add(e.methodImpl(
-                e.v("pw_o"), "events_ty", e.mb.typesNull(), e.retSome(e.mb.typesString()), e.stage(e.s(EVENTS_TY))));
-        exprs.add(e.methodImpl(
-                e.v("pw_o"),
-                "events_init",
-                e.mb.typesString(),
-                e.retSome(e.mb.typesString()),
-                e.stage(e.cat(
-                        e.s("{ i32 2, ptr null, ptr null, ptr null, ptr null, ptr null, ptr null, ptr null, ptr "),
-                        e.v("arg"),
-                        e.s(", ptr null, ptr null, ptr null }")))));
-        exprs.add(e.methodImpl(
-                e.v("pw_o"),
-                "pod_audio_f32_mono_48k",
-                e.v("lapp_t"),
-                e.retSome(e.v("lv_t")),
-                e.stage(e.callM(
-                        e.v("arg"),
-                        "global_const",
-                        e.rec(
-                                e.p("name", e.s("pw.pod.audio_f32_mono_48k")),
-                                e.p("type", e.s("[168 x i8]")),
-                                e.p("init", e.s(POD_AUDIO_F32_MONO_48K)))))));
-        exprs.add(e.methodImpl(
-                e.v("pw_o"),
-                "pod_midi_control",
-                e.v("lapp_t"),
-                e.retSome(e.v("lv_t")),
-                e.stage(e.callM(
-                        e.v("arg"),
-                        "global_const",
-                        e.rec(
-                                e.p("name", e.s("pw.pod.midi_control")),
-                                e.p("type", e.s("[64 x i8]")),
-                                e.p("init", e.s(POD_MIDI_CONTROL)))))));
-        exprs.add(e.methodImpl(
-                e.v("pw_o"),
-                "params_of",
-                e.rec(e.p("ll", e.v("lapp_t")), e.p("pod", e.v("lv_t")), e.p("name", e.mb.typesString())),
-                e.retSome(e.v("lv_t")),
-                e.stage(e.callM(
-                        e.fld(e.v("arg"), "ll"),
-                        "global_const",
-                        e.rec(
-                                e.p("name", e.fld(e.v("arg"), "name")),
-                                e.p("type", e.s("[1 x ptr]")),
-                                e.p(
-                                        "init",
-                                        e.cat(
-                                                e.s("[ptr "),
-                                                e.callM(e.fld(e.v("arg"), "pod"), "r", e.nil()),
-                                                e.s("]"))))))));
 
         exprs.add(e.let("pw_builder", e.defFunc(e.v("d"), "pipewire")));
         var body = new TList<SourceExpr>();
+        EcoExtern.bindTypes(e, body, "arg");
+        for (var s : STRUCTS) {
+            var fieldList = new TList<SourceExpr>();
+            for (var f : s.fields()) {
+                fieldList.add(
+                        e.callM(e.v("arg"), "field", e.rec(e.p("name", e.s(f.name())), e.p("ty", e.v("t_" + f.ty())))));
+            }
+            var fields = fieldList.toArray(new SourceExpr[0]);
+            body.add(e.let(
+                    "t_" + s.name(),
+                    e.callM(
+                            e.v("arg"),
+                            "struct",
+                            e.rec(e.p("name", e.s(s.name())), e.p("fields", e.listNew(e.mb.evalValue(), fields))))));
+            body.add(e.let("t_p_" + s.name(), e.callM(e.v("arg"), "ptr", e.v("t_" + s.name()))));
+        }
         var ctorFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
-            var params = new TList<SourceExpr>();
-            for (var p : ex.params()) {
-                params.add(e.s(p));
-            }
-            body.add(e.let(
-                    ex.name(),
-                    e.callM(
-                            e.v("arg"),
-                            "extern_func",
-                            e.rec(
-                                    e.p("name", e.s(ex.name())),
-                                    e.p("ret", e.s(ex.ret())),
-                                    e.p("params", listOf(e, params))))));
-            ctorFields.add(e.p(ex.name(), e.v(ex.name())));
+            body.add(e.let(ex.name(), ex.declare(e, "arg")));
+            body.add(e.let(ex.name() + "_t", ex.constType(e, "arg")));
         }
-        for (var ex : VARARG_EXTERNS) {
-            var params = new TList<SourceExpr>();
-            for (var p : ex.params()) {
-                params.add(e.s(p));
-            }
+        for (var k : KONSTS) {
             body.add(e.let(
-                    ex.name(),
+                    k.name(),
                     e.callM(
                             e.v("arg"),
-                            "extern_func_varargs",
-                            e.rec(
-                                    e.p("name", e.s(ex.name())),
-                                    e.p("ret", e.s(ex.ret())),
-                                    e.p("params", listOf(e, params))))));
-            ctorFields.add(e.p(ex.name(), e.v(ex.name())));
+                            "constant",
+                            e.rec(e.p("ty", e.v("t_u32")), e.p("value", e.stage(e.n(k.value())))))));
+            body.add(e.let(k.name() + "_t", EcoExtern.globalT(e, "arg", e.v("t_u32"), false)));
+        }
+        for (var s : STRUCTS) {
+            ctorFields.add(e.p(s.name(), e.v("t_" + s.name())));
+        }
+        body.add(e.let(
+                "pod_audio_f32_mono_48k",
+                byteArrayConst(e, "arg", "pw.pod.audio_f32_mono_48k", escapedBytes(POD_AUDIO_F32_MONO_48K))));
+        body.add(e.let(
+                "pod_midi_control", byteArrayConst(e, "arg", "pw.pod.midi_control", escapedBytes(POD_MIDI_CONTROL))));
+        body.add(e.let(
+                "pod_audio_f32_mono_48k_t", byteArrayConstType(e, "arg", escapedBytes(POD_AUDIO_F32_MONO_48K).length)));
+        body.add(e.let("pod_midi_control_t", byteArrayConstType(e, "arg", escapedBytes(POD_MIDI_CONTROL).length)));
+        body.add(e.let("params_audio", paramsConst(e, "arg", "pw.params.audio", "pod_audio_f32_mono_48k")));
+        body.add(e.let("params_audio_t", paramsConstType(e, "arg")));
+        body.add(e.let("params_midi", paramsConst(e, "arg", "pw.params.midi", "pod_midi_control")));
+        body.add(e.let("params_midi_t", paramsConstType(e, "arg")));
+        for (var m : refMembers) {
+            ctorFields.add(e.p(m, e.v(m)));
+            ctorFields.add(e.p(m + "_t", e.v(m + "_t")));
         }
         body.add(e.ret(e.call(e.lower(e.fld(e.v("pw_o"), "new")), e.rec(ctorFields.toArray(new EcoMb.P[0])))));
         exprs.add(e.funcImpl(
-                e.v("pw_builder"), e.v("lapp_t"), e.retSome(e.fld(e.v("pw_o"), "type")), e.stage(e.mb.seq(body))));
+                e.v("pw_builder"), e.v("lmod_t"), e.retSome(e.fld(e.v("pw_o"), "type")), e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));
         exprs.add(e.ret(e.fld(e.v("pw_builder"), "func")));
         return e.lower(e.mb.seq(exprs));
-    }
-
-    private static SourceExpr listOf(EcoMb e, TList<SourceExpr> elements) {
-        var arr = new SourceExpr[elements.size()];
-        for (int i = 0; i < elements.size(); i++) {
-            arr[i] = elements.get(i);
-        }
-        return e.strList(arr);
     }
 }

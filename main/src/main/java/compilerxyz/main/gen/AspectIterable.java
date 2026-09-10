@@ -8,8 +8,10 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 
 @BuiltinFull(uniqueId = 1027L, identityId = 4027L)
+@BuiltinPath("eval.aspect_iterable")
 public interface AspectIterable extends Aspect {
     Type aspectIterableElementType();
 

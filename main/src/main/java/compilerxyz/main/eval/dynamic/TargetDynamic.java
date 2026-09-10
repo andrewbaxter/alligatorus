@@ -6,6 +6,7 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
@@ -505,15 +506,13 @@ public final class TargetDynamic implements Target {
                     case Code.Target ct -> {}
                 }
             }
-        } else if (allControlEnded) {
+        } else {
             seq.add(JavaBytecodeUtils.instantiate(
                     loc,
                     JavaInternalName.of("java/lang/AssertionError"),
                     JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID),
                     new CodeDynamic(loc, new JavaBytecodeSequence())));
             seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
-        } else if (anyValue) {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
         }
         seq.add(JavaBytecodeUtils.wrapObj(loc, endLabel));
         if (allControlEnded) {
@@ -676,7 +675,7 @@ public final class TargetDynamic implements Target {
         if (bindingOpt.optIsNone()) return EResult.errs(erb.errors());
         var binding = bindingOpt.optUnwrap();
         var boundCv = binding.bindingUse(xx, loc, new BindingSetterConsumed(), Code.none(loc));
-        var castCvOpt = erb.mustEr(calleeExc.typeCastTo(xx, loc, boundCv, callerExc));
+        var castCvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, callerExc, boundCv));
         if (castCvOpt.optIsNone()) return EResult.errs(erb.errors());
         var castCv = castCvOpt.optUnwrap();
         if (!DynUtil.dynamicHasCode(castCv)) {
