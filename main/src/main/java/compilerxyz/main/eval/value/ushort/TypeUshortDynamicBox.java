@@ -34,9 +34,11 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6186L)
+@BuiltinPath("types.ushort_box")
 public record TypeUshortDynamicBox() implements Aspect, Type {
 
     @Override

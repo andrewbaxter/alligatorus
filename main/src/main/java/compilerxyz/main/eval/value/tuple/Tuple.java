@@ -224,7 +224,17 @@ public final class Tuple implements Aspect, Type, Value {
                     out.add(baseSource.valueDynamicSourceRealize(loc));
                     for (int i = tuple.elements.size() - 1; i >= 0; i--) {
                         int dynIdx = dynamicIndexOfElement.get(i);
-                        if (dynIdx < 0) continue;
+                        if (dynIdx < 0) {
+                            var heldRes = ((TupleElement.EvalRes) tuple.elements.get(i)).result();
+                            if (heldRes.hasErrors()) yield heldRes.reerr();
+                            var heldDrop = Eval.dropValue(xx, loc, heldRes.requireValue("Tuple::drop held element"));
+                            if (heldDrop.hasErrors()) yield heldDrop.reerr();
+                            var heldCast = CodeDynamic.castOpt(loc, heldDrop.requireValue("Tuple::drop held code"));
+                            if (heldCast.hasErrors()) yield heldCast.reerr();
+                            if (heldCast.requireValue("heldDyn").optIsSome())
+                                out.add(heldCast.requireValue("heldDyn").optUnwrap());
+                            continue;
+                        }
                         var t = dynamicTypes.get(dynIdx);
                         int slotIdx = slotInfo.slotOfKey().get(dynIdx);
                         var tcFullDropOpt = GenAspectDropDynamic.getMaybe(xx, t);

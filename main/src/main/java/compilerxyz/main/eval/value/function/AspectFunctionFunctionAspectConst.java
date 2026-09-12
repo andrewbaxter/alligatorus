@@ -99,8 +99,7 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
 
         return EResult.ok(new CodeValue(
                 Code.target(new CodeDynamic(new CodeLoc.Some(loc), seq)),
-                EvalOutcome.ofValue(
-                        ValueDynamic.stack(xx, new TypeOptionDynamic(DynUtil.substituteBoxed(xx, aspTa))))));
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeOptionDynamic(aspTa)))));
     }
 
     @Override

@@ -34,9 +34,11 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6190L)
+@BuiltinPath("types.uint_box")
 public record TypeUintDynamicBox() implements Aspect, Type {
 
     @Override

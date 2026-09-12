@@ -934,6 +934,9 @@ public final class GenMain {
             for (var prim : ListsGen.PRIMS) {
                 out.add(new IdentitySpec(ListsGen.snake(ListsGen.typeSimple(prim)), prim.uniqueId(), true));
             }
+            for (var prim : OptionsGen.PRIMS) {
+                out.add(new IdentitySpec(ListsGen.snake(OptionsGen.typeSimple(prim)), prim.uniqueId(), true));
+            }
             {
                 identitySpecs = out;
                 break _identitySpecs;
@@ -1077,6 +1080,102 @@ public final class GenMain {
                     break _factoryClass;
                 }
             }
+            GenMain.write(
+                    outRoot,
+                    JavaFile.builder(ListsGen.GEN_PACKAGE, factoryClass).build(),
+                    formatter);
+        }
+        {
+            for (var store : OptionsGen.STORES) {
+                var self = ClassName.get(ListsGen.GEN_PACKAGE, store.simple());
+                var boxed = store.javaPrim().box();
+                var optOfBoxed = ParameterizedTypeName.get(OptionsGen.OPT, boxed);
+                var storeClass = TypeSpec.classBuilder(store.simple())
+                        .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                        .addField(FieldSpec.builder(self, "NONE", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                                .initializer("new $T(false, $L)", self, store.zeroLiteral())
+                                .build())
+                        .addField(FieldSpec.builder(TypeName.BOOLEAN, "present", Modifier.PRIVATE, Modifier.FINAL)
+                                .build())
+                        .addField(FieldSpec.builder(store.javaPrim(), "value", Modifier.PRIVATE, Modifier.FINAL)
+                                .build())
+                        .addMethod(MethodSpec.constructorBuilder()
+                                .addModifiers(Modifier.PRIVATE)
+                                .addParameter(TypeName.BOOLEAN, "present")
+                                .addParameter(store.javaPrim(), "value")
+                                .addStatement("this.present = present")
+                                .addStatement("this.value = value")
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("some")
+                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                .returns(self)
+                                .addParameter(store.javaPrim(), "value")
+                                .addStatement("return new $T(true, value)", self)
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("none")
+                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                .returns(self)
+                                .addStatement("return NONE")
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("isSome")
+                                .addModifiers(Modifier.PUBLIC)
+                                .returns(TypeName.BOOLEAN)
+                                .addStatement("return present")
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("value")
+                                .addModifiers(Modifier.PUBLIC)
+                                .returns(store.javaPrim())
+                                .beginControlFlow("if (!present)")
+                                .addStatement("throw new $T($S)", IllegalStateException.class, "option value of none")
+                                .endControlFlow()
+                                .addStatement("return value")
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("fromOpt")
+                                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                                .returns(self)
+                                .addParameter(optOfBoxed, "opt")
+                                .addStatement("return opt.optIsSome() ? some(opt.optUnwrap()) : NONE")
+                                .build())
+                        .addMethod(MethodSpec.methodBuilder("toOpt")
+                                .addModifiers(Modifier.PUBLIC)
+                                .returns(optOfBoxed)
+                                .addStatement(
+                                        "return present ? $T.some(value) : $T.none()", OptionsGen.OPT, OptionsGen.OPT)
+                                .build())
+                        .build();
+                GenMain.write(
+                        outRoot,
+                        JavaFile.builder(ListsGen.GEN_PACKAGE, storeClass).build(),
+                        formatter);
+            }
+            var method = MethodSpec.methodBuilder("optionDynamic")
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(OptionsGen.OPTION_DYNAMIC)
+                    .addParameter(ListsGen.EXPR_CONTEXT, "xx")
+                    .addParameter(ListsGen.TYPE, "elementType");
+            for (var prim : OptionsGen.PRIMS) {
+                method.beginControlFlow(
+                        "if (elementType.typeAspect(xx, $T.$L).optIsSome())",
+                        ListsGen.GEN_IDENTITIES,
+                        ListsGen.constantName(ListsGen.snake(prim.elementClass().simpleName())));
+                method.addStatement(
+                        "return new $T(new $T(), $T.fromClass($T.class), $T.$L)",
+                        OptionsGen.OPTION_SPECIALIZED,
+                        prim.elementClass(),
+                        ListsGen.JAVA_INTERNAL_NAME,
+                        ClassName.get(ListsGen.GEN_PACKAGE, prim.storeSimple()),
+                        ListsGen.GEN_IDENTITIES,
+                        ListsGen.constantName(ListsGen.snake(OptionsGen.typeSimple(prim))));
+                method.endControlFlow();
+            }
+            method.addStatement("return new $T(elementType)", OptionsGen.OPTION_BOXED);
+            var factoryClass = TypeSpec.classBuilder("GenOptions")
+                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+                    .addMethod(MethodSpec.constructorBuilder()
+                            .addModifiers(Modifier.PRIVATE)
+                            .build())
+                    .addMethod(method.build())
+                    .build();
             GenMain.write(
                     outRoot,
                     JavaFile.builder(ListsGen.GEN_PACKAGE, factoryClass).build(),

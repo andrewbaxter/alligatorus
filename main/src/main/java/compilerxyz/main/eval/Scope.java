@@ -34,6 +34,13 @@ public final class Scope {
         }
     }
 
+    public ScopeLevel.Temp pushTemp(Binding binding) {
+        var id = vx.dropStateCounter.next();
+        var level = new ScopeLevel.Temp(binding, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+        levels.add(level);
+        return level;
+    }
+
     public ScopeLevel.Labeled pushLabeled(Opt<String> label) {
         var level = new ScopeLevel.Labeled(
                 label,

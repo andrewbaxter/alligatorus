@@ -6,13 +6,11 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectFieldUseDynamic;
 
-public record AspectFieldUseDynamicOptionDynamic<T extends Type>(TypeOptionDynamic<T> type)
-        implements AspectFieldUseDynamic {
+public record AspectFieldUseDynamicOptionDynamic(OptionDynamic type) implements AspectFieldUseDynamic {
 
     @Override
     public EResult<CodeValue> aspectFieldUseDynamicFieldUseDynamic(

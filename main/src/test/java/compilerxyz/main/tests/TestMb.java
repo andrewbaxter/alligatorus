@@ -434,6 +434,10 @@ public final class TestMb {
         return builtin("types", "null");
     }
 
+    public SourceExpr typesIntBox() {
+        return builtin("types", "int_box");
+    }
+
     public SourceExpr typesInt() {
         return builtin("types", "int");
     }

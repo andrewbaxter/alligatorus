@@ -150,6 +150,22 @@ public final class DynUtil {
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
     }
 
+    public static EResult<TargetBindSub> bindSubWithHeldCodes(
+            ExprContext xx, QExprId loc, TargetBindSub sub, TList<Code> codes, boolean before) {
+        if (codes.isEmpty()) return EResult.ok(sub);
+        var parts = new TList<Code>();
+        if (!before) parts.add(Code.target(sub.data));
+        parts.addAll(codes);
+        if (before) parts.add(Code.target(sub.data));
+        codes.clear();
+        var seqRes = xx.target.targetSeq(loc, parts);
+        if (seqRes.hasErrors()) return seqRes.reerr();
+        var dynRes = CodeDynamic.castRequired(
+                loc, seqRes.requireValue("bindSubWithHeldCodes seq"), "bindSubWithHeldCodes: codes are not dynamic");
+        if (dynRes.hasErrors()) return dynRes.reerr();
+        return EResult.ok(new TargetBindSub(dynRes.requireValue("bindSubWithHeldCodes dyn"), sub.type));
+    }
+
     public static EResult<Opt<TargetBindSub>> bindDynamicDefault(QExprId loc, CodeValue cv) {
         if (!dynamicHasCode(cv)) {
             return EResult.ok(Opt.none());
@@ -210,6 +226,16 @@ public final class DynUtil {
     public static boolean dynamicHasCode(CodeValue cv) {
         if (!cv.code().codeIsNone()) return true;
         return cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic;
+    }
+
+    public static EResult<Type> requireBoxedTypeArgument(ExprContext xx, QExprId loc, String what, Type type) {
+        if (GenAspectDynamicBoxed.getMaybe(xx, type).optIsSome()) {
+            return EResult.err(
+                    loc,
+                    what + " cannot be declared with the unboxed primitive " + type.typeDesc()
+                            + "; use its boxed type (e.g. types.int_box)");
+        }
+        return EResult.ok(type);
     }
 
     public static Type substituteBoxed(ExprContext xx, Type type) {

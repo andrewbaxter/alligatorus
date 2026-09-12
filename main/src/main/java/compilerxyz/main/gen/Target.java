@@ -21,6 +21,12 @@ public interface Target {
 
     EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type);
 
+    EResult<Opt<TargetOperandParked>> targetOperandPark(ExprContext xx, QExprId loc, CodeValue operand);
+
+    EResult<Code> targetLabeledStart(QExprId loc, JumpKey end);
+
+    EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, JumpKey labeled, CodeValue value);
+
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 
     EResult<Code> targetJump(QExprId loc, JumpKey dest);

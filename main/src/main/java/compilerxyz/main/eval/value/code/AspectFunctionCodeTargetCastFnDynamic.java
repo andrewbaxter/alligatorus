@@ -60,7 +60,9 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
         seq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), locKey));
         seq.add(JavaBytecodeUtils.wrapObj(loc, new LdcInsnNode(org.objectweb.asm.Type.getType(destDesc.value()))));
         seq.add(JavaBytecodeUtils.callStaticMethod(new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_CAST_TARGET_CODE));
-        Type resultType = new TypeEResultDynamic<>(DynUtil.substituteBoxed(xx, destType));
+        var destRes = DynUtil.requireBoxedTypeArgument(xx, loc, "code cast target type", destType);
+        if (destRes.hasErrors()) return destRes.reerr();
+        Type resultType = new TypeEResultDynamic<>(destType);
         return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), resultType));
     }
 

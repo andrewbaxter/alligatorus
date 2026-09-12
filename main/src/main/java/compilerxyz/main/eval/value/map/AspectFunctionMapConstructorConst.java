@@ -72,8 +72,10 @@ public record AspectFunctionMapConstructorConst(TypeMapConstructorConst type) im
         var valueType = valueAtRes
                 .requireValue("TypeMapConstructorConst::call value AspectType")
                 .aspectTypeType(valueValue);
-        keyType = DynUtil.substituteBoxed(xx, keyType);
-        valueType = DynUtil.substituteBoxed(xx, valueType);
+        var keyBoxedRes = DynUtil.requireBoxedTypeArgument(xx, loc, "map key type", keyType);
+        if (keyBoxedRes.hasErrors()) return keyBoxedRes.reerr();
+        var valueBoxedRes = DynUtil.requireBoxedTypeArgument(xx, loc, "map value type", valueType);
+        if (valueBoxedRes.hasErrors()) return valueBoxedRes.reerr();
         Type mapType = new TypeMapDynamic(keyType, valueType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();

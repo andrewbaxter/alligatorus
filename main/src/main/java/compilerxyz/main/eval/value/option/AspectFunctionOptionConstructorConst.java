@@ -7,10 +7,10 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenOptions;
 import compilerxyz.prelude.util.Opt;
 
 public final class AspectFunctionOptionConstructorConst implements AspectFunction {
@@ -30,7 +30,7 @@ public final class AspectFunctionOptionConstructorConst implements AspectFunctio
         var elementType = aspectTypeRes
                 .requireValue("TypeOptionConstructorConst::call AspectType")
                 .aspectTypeType(argValue);
-        Type optType = new TypeOptionDynamic(DynUtil.substituteBoxed(xx, elementType));
+        Type optType = GenOptions.optionDynamic(xx, elementType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(

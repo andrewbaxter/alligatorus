@@ -17,23 +17,24 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public final class T0071TryInForeachTest {
-    private static SourceExpr tryCall(EcoMb e, SourceExpr errsT, SourceExpr intT) {
+    private static SourceExpr tryCall(EcoMb e, SourceExpr errsT, SourceExpr boxT) {
         return e.matchOf(
                 e.mb.tryCatchFinally(
-                        e.eresultOk(intT, e.call(e.lower(e.fld(e.v("fb"), "func")), e.v("arg"))),
-                        Opt.some(new TestMb.Catch("__errs", errsT, e.eresultErrs(intT, e.v("__errs")))),
+                        e.eresultOk(boxT, e.call(e.lower(e.fld(e.v("fb"), "func")), e.v("arg"))),
+                        Opt.some(new TestMb.Catch("__errs", errsT, e.eresultErrs(boxT, e.v("__errs")))),
                         Opt.none()),
                 "__r",
                 Opt.none(),
                 e.p("ok", e.v("__r")),
-                e.p("errs", e.mb.return_("m", e.eresultErrs(intT, e.v("__r")))));
+                e.p("errs", e.mb.return_("m", e.eresultErrs(boxT, e.v("__r")))));
     }
 
     private static void run(Path tmp, String label, boolean inLoop) throws IOException {
         var e = new EcoMb();
         var errsT = e.listType(e.mb.builtin("types", "expr_err"));
         var intT = e.mb.typesInt();
-        var erInt = e.call(e.mb.typesEresult(), intT);
+        var boxT = e.mb.typesIntBox();
+        var erInt = e.call(e.mb.typesEresult(), e.mb.typesIntBox());
         var defs = new TList<SourceExpr>();
         defs.add(e.let("d", e.define()));
         defs.add(e.let("fb", e.defFunc(e.v("d"), "f")));
@@ -47,7 +48,7 @@ public final class T0071TryInForeachTest {
                         e.ifOnly(
                                 e.v("arg"),
                                 e.matchOf(
-                                        e.eresultErr(intT, e.v("loc"), e.s("boom")),
+                                        e.eresultErr(boxT, e.v("loc"), e.s("boom")),
                                         "__x",
                                         Opt.none(),
                                         e.p("ok", e.mb.panic(e.s("unreachable"))),
@@ -58,8 +59,8 @@ public final class T0071TryInForeachTest {
                 ? e.foreach(
                         e.v("ones"),
                         "__i",
-                        e.seq(e.let("r0", tryCall(e, errsT, intT)), e.push(e.v("out"), e.toStr(e.v("r0")))))
-                : e.let("r0", tryCall(e, errsT, intT));
+                        e.seq(e.let("r0", tryCall(e, errsT, boxT)), e.push(e.v("out"), e.toStr(e.v("r0")))))
+                : e.let("r0", tryCall(e, errsT, boxT));
         defs.add(e.funcImpl(
                 e.v("gb"),
                 e.mb.typesBool(),
@@ -71,7 +72,7 @@ public final class T0071TryInForeachTest {
                                 e.let("ones", e.listNew(e.mb.typesString(), e.s("one"))),
                                 middle,
                                 e.push(e.v("out"), e.s("x")),
-                                e.mb.return_("m", e.eresultOk(intT, e.mb.as(e.n(1), intT))))))));
+                                e.mb.return_("m", e.eresultOk(boxT, e.mb.as(e.n(1), intT))))))));
         defs.add(e.finish(e.v("d")));
         defs.add(e.ret(e.fld(e.v("gb"), "func")));
         var top = new TList<SourceExpr>();
@@ -101,7 +102,7 @@ public final class T0071TryInForeachTest {
             }
             var messages = new TList<String>();
             for (var entry : ok.value().logs()) messages.add(entry.message());
-            assertEquals(TList.of("ok 1", "[0:75] boom"), messages);
+            assertEquals(TList.of("ok 1", "[0:87] boom"), messages);
         }
     }
 

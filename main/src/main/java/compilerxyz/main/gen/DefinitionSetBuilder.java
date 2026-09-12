@@ -4,9 +4,11 @@ import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
+import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.SourceId;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynRuntime;
+import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
 import compilerxyz.main.eval.value.source_function.TypeSourceFunctionConst;
 import compilerxyz.main.eval.value.source_interface.InterfaceBuilding;
@@ -14,6 +16,7 @@ import compilerxyz.main.eval.value.source_interface.InterfaceCell;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.eval.value.source_union.TypeSourceUnionDynamic;
+import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.prelude.annotations.BuiltinEvalContext;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -78,7 +81,15 @@ public final class DefinitionSetBuilder {
     @BuiltinEvalContext
     public void finish(EvalContext vx) {
         var loc = new QExprId(new SourceId(-1L), -1L);
-        var r = this.inner.finish(ExprContext.freshRoot(vx.ix), loc);
+        var finishVx = new EvalContext(vx.ix);
+        var r = this.inner.finish(
+                new ExprContext(
+                        new Scope(finishVx),
+                        new TargetDynamic(),
+                        finishVx,
+                        vx.ix.importState,
+                        Opt.some(new TypeStringConst())),
+                loc);
         if (r.hasErrors()) {
             var errs = r.errorsOpt();
             throw new DynCompileErrors(errs.optUnwrapOr(new TList<>()));

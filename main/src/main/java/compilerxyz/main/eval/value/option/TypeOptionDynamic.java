@@ -10,7 +10,6 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.CodeValue;
-import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
@@ -19,6 +18,11 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
+import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -28,20 +32,20 @@ import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
+import compilerxyz.main.gen.GenCodegenDescriptors;
+import compilerxyz.main.gen.GenOptions;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.codec.ArtifactOptionTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.Pair;
 import compilerxyz.prelude.util.Result;
 import compilerxyz.prelude.util.TList;
-import compilerxyz.prelude.util.TMap;
 import java.util.function.Function;
 
 @BuiltinFull(uniqueId = 6008L)
-public final class TypeOptionDynamic<T extends Type> implements Aspect, Type {
+public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDynamic {
 
     public final T elementType;
     public final ArtifactSupport.ArtifactIdHolder artifactIdCell = new ArtifactSupport.ArtifactIdHolder();
@@ -55,6 +59,28 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, Type {
     }
 
     @Override
+    public ArtifactSupport.ArtifactIdHolder optionDynamicArtifactIdCell() {
+        return artifactIdCell;
+    }
+
+    @Override
+    public Type optionDynamicElementType() {
+        return elementType;
+    }
+
+    @Override
+    public CodeDynamic optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<CodeDynamic> payload) {
+        if (payload.optIsSome()) {
+            return JavaBytecodeUtils.instantiate(
+                    loc,
+                    JavaInternalName.fromClass(Opt.Some.class),
+                    JavaMethodDescriptor.fromConstructorParts(TList.of(JvmConstants.DESC_OBJECT)),
+                    payload.optUnwrap());
+        }
+        return JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.OPT_NONE);
+    }
+
+    @Override
     public String typeDesc() {
         return "option(" + elementType.typeDesc() + ")";
     }
@@ -62,34 +88,34 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, Type {
     @Override
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenAspectInitialBindDynamic.AspectId)) {
-            return Opt.some(new AspectInitialBindDynamicOptionDynamic<>(this));
+            return Opt.some(new AspectInitialBindDynamicOptionDynamic(this));
         }
         if (key.equals(GenAspectStackValueDynamic.AspectId)) {
-            return Opt.some(new AspectStackValueDynamicOptionDynamic<>(this));
+            return Opt.some(new AspectStackValueDynamicOptionDynamic(this));
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionDynamic<>(this));
         }
         if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightOptionDynamic<>(this));
+            return Opt.some(new AspectDropDynamicLightOptionDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicOptionDynamic<>(this));
         }
         if (key.equals(GenAspectBindDynamic.AspectId)) {
-            return Opt.some(new AspectBindDynamicOptionDynamic<>(this));
+            return Opt.some(new AspectBindDynamicOptionDynamic(this));
         }
         if (key.equals(GenAspectBind.AspectId)) {
-            return Opt.some(new AspectBindOptionDynamic<>(this));
+            return Opt.some(new AspectBindOptionDynamic(this));
         }
-        if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY) || key.equals(GenAspectField.AspectId)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_OPTION_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectSet.AspectId)) {
-            return Opt.some(new AspectSetOptionDynamic<>(this));
+            return Opt.some(new AspectSetOptionDynamic(this));
         }
         if (key.equals(GenAspectFieldUseDynamic.AspectId)) {
-            return Opt.some(new AspectFieldUseDynamicOptionDynamic<>(this));
+            return Opt.some(new AspectFieldUseDynamicOptionDynamic(this));
         }
         return Opt.none();
     }
@@ -124,17 +150,16 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, Type {
         @Override
         public EResult<Artifact> exporterRootDelegateSelfExport(
                 ExprContext xx, QExprId loc, Artifactable self, Function<JsonValue, ArtifactBody> makeBody) {
-            if (!(self instanceof TypeOptionDynamic<?> option)) {
+            if (!(self instanceof OptionDynamic option)) {
                 return EResult.err(
                         loc,
-                        "TypeOptionDynamic::exporterRootDelegateSelfExport: expected TypeOptionDynamic,"
-                                + " got "
+                        "TypeOptionDynamic::exporterRootDelegateSelfExport: expected an option type, got "
                                 + self.getClass());
             }
-            var cell = option.artifactIdCell;
+            var cell = option.optionDynamicArtifactIdCell();
             var errors = new TList<ExprErr>();
             var artifact = ArtifactSupport.implExportIndependentArtifact(xx.vx.ix.gx.artifacts, cell, () -> {
-                var elementArtRes = Artifactable.exportArtifact(xx, loc, option.elementType());
+                var elementArtRes = Artifactable.exportArtifact(xx, loc, option.optionDynamicElementType());
                 elementArtRes.drainInto(errors);
                 var elementArt = elementArtRes.valueOpt().optUnwrapOr(nullArtifact());
                 var body = new ArtifactOptionType(elementArt);
@@ -173,35 +198,14 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, Type {
                             var elementRes = ArtifactSupport.independentFinalizeImportTypeArtifact(
                                     xx2, loc2, body.elementType());
                             var elementT = elementRes.requireValue("TypeOptionDynamic::finalizer element type");
-                            var out = new TypeOptionDynamic(elementT);
-                            out.artifactIdCell.set(idValue);
+                            var out = GenOptions.optionDynamic(xx2, elementT);
+                            out.optionDynamicArtifactIdCell().set(idValue);
                             return out;
                         };
                         return new Result.Ok<>(new ArtifactSupport.ImportIndependentResult(Opt.none(), deps, fin));
                     });
         }
     };
-
-    sealed interface FieldSpec {
-        Type fieldSpecFieldType();
-
-        record Factory(Type type) implements FieldSpec {
-            @Override
-            public Type fieldSpecFieldType() {
-                return type;
-            }
-        }
-    }
-
-    TMap<ConstKey, FieldSpec> fieldSpecs() {
-        return TMap.ofEntries(
-                new Pair<>(
-                        new ConstKey.Str("some"),
-                        new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, true))),
-                new Pair<>(
-                        new ConstKey.Str("none"),
-                        new FieldSpec.Factory(new TypeOptionVariantConstructorDynamic(elementType, false))));
-    }
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {

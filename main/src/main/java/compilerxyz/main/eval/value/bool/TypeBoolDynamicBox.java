@@ -15,6 +15,7 @@ import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
@@ -33,10 +34,12 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 @BuiltinFull(uniqueId = 6104L)
+@BuiltinPath("types.bool_box")
 public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
@@ -124,7 +127,18 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        return EResult.ok(cv);
+        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
+        var seq = new JavaBytecodeSequence();
+        seq.add(selfDynRes.requireValue("selfDyn"));
+        seq.add(JavaBytecodeUtils.callMethod(
+                loc,
+                JavaInternalName.fromClass(Boolean.class),
+                "booleanValue",
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
+        return EResult.ok(new CodeValue(
+                Code.target(new CodeDynamic(loc, seq)),
+                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
     }
 
     private static CodeDynamic valueOfBoolean(QExprId loc) {

@@ -92,12 +92,13 @@ public record AspectBindRecord(Record type) implements AspectBind {
                         bindResults.add(new FieldBindResult(key, Opt.some(subOpt.optUnwrap()), Opt.none()));
                     } else {
                         bindResults.add(new FieldBindResult(
-                                key, Opt.none(), Opt.some(new CodeValue(Code.none(loc), savedValue))));
+                                key, Opt.none(), Opt.some(new CodeValue(elemCv.code(), savedValue))));
                     }
                 }
             }
         }
         if (errors != null && !errors.isEmpty()) return EResult.errs(errors);
+        var constBindCodes = new TList<Code>();
         if (!hasTarget) {
             var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
             for (var br : bindResults) {
@@ -125,17 +126,26 @@ public record AspectBindRecord(Record type) implements AspectBind {
                     continue;
                 }
                 var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
+                constBindCodes.add(fieldBind.code());
                 scopeFields.put(br.key(), new RecordScopeField.Scope(fieldBind.binding()));
             }
-            return EResult.ok(new BindResult(Code.none(loc), new BindingRecord(scopeFields, Opt.none())));
+            var codeRes = xx.target.targetSeq(loc, constBindCodes);
+            if (codeRes.hasErrors()) return codeRes.reerr();
+            return EResult.ok(new BindResult(
+                    codeRes.requireValue("Record::bindSub const codes"), new BindingRecord(scopeFields, Opt.none())));
         }
         var scopeFields = new TOrderedMap<ConstKey, RecordScopeField>();
         var targetFields = new TList<RecordBindField>(bindResults.size());
+        var pendingConst = new TList<Code>();
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 scopeFields.put(
                         br.key(), new RecordScopeField.Dynamic(br.targetSub().optUnwrap().type));
-                targetFields.add(new RecordBindField(br.key(), br.targetSub().optUnwrap()));
+                var withPrefixRes =
+                        DynUtil.bindSubWithHeldCodes(xx, loc, br.targetSub().optUnwrap(), pendingConst, true);
+                if (withPrefixRes.hasErrors()) return withPrefixRes.reerr();
+                targetFields.add(
+                        new RecordBindField(br.key(), withPrefixRes.requireValue("Record::bindSub prefixed sub")));
             } else if (br.constCv().optIsSome()) {
                 var fieldCv = br.constCv().optUnwrap();
                 if (fieldCv.value().optIsNone())
@@ -157,10 +167,20 @@ public record AspectBindRecord(Record type) implements AspectBind {
                     continue;
                 }
                 var fieldBind = fieldBindRes.requireValue("Record::bindSub field AspectBind.bind");
+                pendingConst.add(fieldBind.code());
                 scopeFields.put(br.key(), new RecordScopeField.Scope(fieldBind.binding()));
             } else {
                 throw new IllegalStateException("Record::bindSub: bind result has neither target nor const");
             }
+        }
+        if (!pendingConst.isEmpty()) {
+            int last = targetFields.size() - 1;
+            var withSuffixRes = DynUtil.bindSubWithHeldCodes(xx, loc, targetFields.get(last).sub, pendingConst, false);
+            if (withSuffixRes.hasErrors()) return withSuffixRes.reerr();
+            targetFields.set(
+                    last,
+                    new RecordBindField(
+                            targetFields.get(last).key, withSuffixRes.requireValue("Record::bindSub suffixed sub")));
         }
         var combinedRes = jvmTarget.bindSubRecord(xx, loc, carry, targetFields);
         if (combinedRes.hasErrors()) return combinedRes.reerr();

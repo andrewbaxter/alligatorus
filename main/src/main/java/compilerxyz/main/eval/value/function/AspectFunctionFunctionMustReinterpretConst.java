@@ -9,7 +9,6 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.value.ValueDynamic;
@@ -67,7 +66,6 @@ public record AspectFunctionFunctionMustReinterpretConst(TypeFunctionMustReinter
         var typeAtOpt = erb.mustEr(GenAspectType.get(xx, loc, typeValue.valueType()));
         if (typeAtOpt.optIsNone()) return EResult.errs(erb.errors());
         var targetType = typeAtOpt.optUnwrap().aspectTypeType(typeValue);
-        targetType = DynUtil.substituteBoxed(xx, targetType);
 
         Opt.Some<Value> valueSome;
         switch (valueCv.value()) {

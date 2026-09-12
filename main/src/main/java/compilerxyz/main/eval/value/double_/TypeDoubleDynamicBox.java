@@ -33,9 +33,11 @@ import compilerxyz.main.gen.GenAspectSet;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.BuiltinPath;
 import compilerxyz.prelude.util.Opt;
 
 @BuiltinFull(uniqueId = 6177L)
+@BuiltinPath("types.double_box")
 public record TypeDoubleDynamicBox() implements Aspect, Type {
 
     @Override

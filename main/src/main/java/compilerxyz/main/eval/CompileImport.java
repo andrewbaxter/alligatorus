@@ -287,7 +287,12 @@ public final class CompileImport {
                     }
                     evalTarget.emit(ereSeq, ctx, stage1Code.optUnwrap());
                     ereSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
-                    JavaBytecodeUtils.renderMethod(ereSeq, mv, TList.of());
+                    JavaBytecodeUtils.renderMethodTyped(
+                            ereSeq,
+                            mv,
+                            TList.of(),
+                            ownerInternal.value() + ".run",
+                            JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of()));
                     cw.visitEnd();
                     var bytecode = cw.toByteArray();
                     var staticFields = new TOrderedMap<String, Object>();

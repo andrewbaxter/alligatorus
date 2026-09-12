@@ -33,7 +33,7 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         var erb = new Erb(loc);
-        Type resultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, type.elementType()));
+        Type resultType = new TypeEResultDynamic(type.elementType());
         if (type.kind() == Kind.OK) {
             var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, type.elementType(), argument));
             if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());

@@ -20,7 +20,6 @@ import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
-import compilerxyz.main.eval.value.option.TypeOptionDynamic.FieldSpec;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -75,21 +74,17 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
                     Code.target(new CodeDynamic(new Some(loc), seq)),
                     EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
         }
-        var spec = type.fieldSpecs().getOrNull(ck);
-        if (spec == null) {
+        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(ck);
+        if (factory == null) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on option");
         }
-        return switch (spec) {
-            case FieldSpec.Factory f ->
-                EResult.ok(new CodeValue(
-                        Code.none(loc),
-                        EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), f.type()))));
-        };
+        return EResult.ok(new CodeValue(
+                Code.none(loc), EvalOutcome.ofValue(new ValueObjectConst(ValueObjectConst.plainTypeType(), factory))));
     }
 
     @Override
     public TList<ConstKey> aspectFieldKeys(ExprContext xx) {
-        return TList.from(type.fieldSpecs().keySet());
+        return TList.from(OptionFieldSpecs.factories(type.elementType).keySet());
     }
 
     @Override
@@ -102,7 +97,10 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
         if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("is_some")) {
             return Opt.some(new TypeBoolDynamic());
         }
-        var spec = type.fieldSpecs().getOrNull(key);
-        return spec == null ? Opt.none() : Opt.some(spec.fieldSpecFieldType());
+        if (keyStr.optIsSome() && keyStr.optUnwrap().value().equals("value")) {
+            return Opt.some(type.elementType);
+        }
+        var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(key);
+        return factory == null ? Opt.none() : Opt.some(factory);
     }
 }

@@ -25,12 +25,20 @@ public final class T0130DropThrowTest {
                 mb.recordOf(staged));
     }
 
-    private static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
+    static SourceExpr makeCanaryInstance(TestMb mb, String name, String dropMessage) {
         return mb.call(
                 mb.lower(mb.seqOf(
                         mb.bind("d", mb.call(mb.define(), mb.tupleOf())),
                         mb.bind("u", mb.call(mb.field(mb.scopeUse("d"), mb.str("object")), mb.str(name))),
                         mb.call(mb.field(mb.scopeUse("u"), mb.str("set_inner")), mb.typesNull()),
+                        mb.bind("mk", mb.call(mb.field(mb.scopeUse("d"), mb.str("interface")), mb.tupleOf())),
+                        mb.call(mb.field(mb.scopeUse("mk"), mb.str("set_is_aspect")), mb.bool(true)),
+                        mb.bind("mk_id", mb.call(mb.field(mb.scopeUse("mk"), mb.str("aspect_id")), mb.tupleOf())),
+                        mb.call(
+                                mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
+                                mb.recordOf(TList.of(
+                                        new TestMb.RecordPair("iface_ref", mb.field(mb.scopeUse("mk"), mb.str("type"))),
+                                        new TestMb.RecordPair("record", ifaceMethods(mb, TList.of()))))),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
@@ -222,6 +230,29 @@ public final class T0130DropThrowTest {
                                                                                                                                 "arg"),
                                                                                                                 mb.str(
                                                                                                                         "key")),
+                                                                                                        mb.lower(
+                                                                                                                mb
+                                                                                                                        .scopeUse(
+                                                                                                                                "mk_id"))),
+                                                                                                mb.call(
+                                                                                                        mb.field(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .typesOption(),
+                                                                                                                        mb
+                                                                                                                                .typesAspect()),
+                                                                                                                mb.str(
+                                                                                                                        "some")),
+                                                                                                        mb.scopeUse(
+                                                                                                                "outer"))),
+                                                                                        new TestMb.Branch(
+                                                                                                mb.operatorEq(
+                                                                                                        mb.field(
+                                                                                                                mb
+                                                                                                                        .scopeUse(
+                                                                                                                                "arg"),
+                                                                                                                mb.str(
+                                                                                                                        "key")),
                                                                                                         mb
                                                                                                                 .evalAspectBindId()),
                                                                                                 mb.call(
@@ -334,9 +365,38 @@ public final class T0130DropThrowTest {
                                                                         "is_equal",
                                                                         mb.seqOf(
                                                                                 mb.return_(
-                                                                                        mb.operatorEq(
-                                                                                                mb.num(0.0),
-                                                                                                mb.num(1.0))))),
+                                                                                        mb.field(
+                                                                                                mb.call(
+                                                                                                        mb
+                                                                                                                .evalAspectLookup(),
+                                                                                                        mb.tupleOf(
+                                                                                                                mb
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "other")),
+                                                                                                                mb
+                                                                                                                        .lower(
+                                                                                                                                mb
+                                                                                                                                        .field(
+                                                                                                                                                mb
+                                                                                                                                                        .scopeUse(
+                                                                                                                                                                "mk"),
+                                                                                                                                                mb
+                                                                                                                                                        .str(
+                                                                                                                                                                "type"))),
+                                                                                                                mb
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "xx")))),
+                                                                                                mb.str("is_some"))))),
                                                                 new TestMb.RecordPair(
                                                                         "can_cast_to",
                                                                         mb.seqOf(
@@ -495,9 +555,34 @@ public final class T0130DropThrowTest {
                                                         TList.of(
                                                                 new TestMb.RecordPair(
                                                                         "drop",
-                                                                        mb.panic(
-                                                                                mb.str(
-                                                                                        "binding.drop not implemented"))),
+                                                                        mb.constEvalCode(
+                                                                                mb.call(
+                                                                                        mb.evalConstEval(),
+                                                                                        mb.recordOf(
+                                                                                                TList.of(
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "xx",
+                                                                                                                mb
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "xx"))),
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "staged",
+                                                                                                                mb
+                                                                                                                        .stage(
+                                                                                                                                mb
+                                                                                                                                        .call(
+                                                                                                                                                mb
+                                                                                                                                                        .log(),
+                                                                                                                                                mb
+                                                                                                                                                        .str(
+                                                                                                                                                                dropMessage))))))))),
                                                                 new TestMb.RecordPair(
                                                                         "use",
                                                                         mb.call(
@@ -506,12 +591,66 @@ public final class T0130DropThrowTest {
                                                                                         TList.of(
                                                                                                 new TestMb.RecordPair(
                                                                                                         "code",
-                                                                                                        mb.field(
-                                                                                                                mb
-                                                                                                                        .scopeUse(
-                                                                                                                                "arg"),
+                                                                                                        mb.matchOf(
+                                                                                                                mb.call(
+                                                                                                                        mb
+                                                                                                                                .evalConstEval(),
+                                                                                                                        mb
+                                                                                                                                .recordOf(
+                                                                                                                                        TList
+                                                                                                                                                .of(
+                                                                                                                                                        new TestMb
+                                                                                                                                                                .RecordPair(
+                                                                                                                                                                "xx",
+                                                                                                                                                                mb
+                                                                                                                                                                        .field(
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .str(
+                                                                                                                                                                                                "xx"))),
+                                                                                                                                                        new TestMb
+                                                                                                                                                                .RecordPair(
+                                                                                                                                                                "staged",
+                                                                                                                                                                mb
+                                                                                                                                                                        .stage(
+                                                                                                                                                                                mb
+                                                                                                                                                                                        .as(
+                                                                                                                                                                                                mb
+                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                ""),
+                                                                                                                                                                                                mb
+                                                                                                                                                                                                        .typesString())))))),
                                                                                                                 mb.str(
-                                                                                                                        "code"))),
+                                                                                                                        "__use_p"),
+                                                                                                                TList
+                                                                                                                        .of(
+                                                                                                                                new TestMb
+                                                                                                                                        .Branch(
+                                                                                                                                        mb
+                                                                                                                                                .str(
+                                                                                                                                                        "ok"),
+                                                                                                                                        mb
+                                                                                                                                                .field(
+                                                                                                                                                        mb
+                                                                                                                                                                .scopeUse(
+                                                                                                                                                                        "__use_p"),
+                                                                                                                                                        mb
+                                                                                                                                                                .str(
+                                                                                                                                                                        "code"))),
+                                                                                                                                new TestMb
+                                                                                                                                        .Branch(
+                                                                                                                                        mb
+                                                                                                                                                .str(
+                                                                                                                                                        "errs"),
+                                                                                                                                        mb
+                                                                                                                                                .panic(
+                                                                                                                                                        mb
+                                                                                                                                                                .str(
+                                                                                                                                                                        "canary use placeholder failed")))),
+                                                                                                                Opt
+                                                                                                                        .none())),
                                                                                                 new TestMb.RecordPair(
                                                                                                         "value",
                                                                                                         mb.call(
@@ -788,7 +927,7 @@ public final class T0130DropThrowTest {
                 mb.literalNull());
     }
 
-    private static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
+    static Compile.CompileResult compileOk(TMap<String, SourceModule> modules) {
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes;
@@ -802,7 +941,7 @@ public final class T0130DropThrowTest {
         return okRes.value();
     }
 
-    private static TList<String> messages(Compile.CompileResult res) {
+    static TList<String> messages(Compile.CompileResult res) {
         var out = new TList<String>(res.logs().size());
         for (var l : res.logs()) out.add(l.message());
         return out;
@@ -1140,7 +1279,7 @@ public final class T0130DropThrowTest {
         assertTrue(dropIdx < caughtIdx, () -> "drop should run before catch handler; got logs=" + messages);
     }
 
-    private static SourceExpr dynTrue(TestMb mb) {
+    static SourceExpr dynTrue(TestMb mb) {
         return mb.operatorEq(mb.as(mb.num(1.0), mb.typesLong()), mb.as(mb.num(1.0), mb.typesLong()));
     }
 
@@ -1373,7 +1512,7 @@ public final class T0130DropThrowTest {
         assertTrue(msg.contains("Unreachable"), () -> "expected Unreachable error message, got: " + msg);
     }
 
-    private static SourceExpr canaryInstance(TestMb mb, String canaryScope, String textLiteral) {
+    static SourceExpr canaryInstance(TestMb mb, String canaryScope, String textLiteral) {
         return mb.as(mb.as(mb.str(textLiteral), mb.typesString()), mb.scopeUse(canaryScope));
     }
 

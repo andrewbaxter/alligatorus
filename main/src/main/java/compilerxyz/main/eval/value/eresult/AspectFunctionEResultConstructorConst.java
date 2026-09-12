@@ -30,7 +30,9 @@ public final class AspectFunctionEResultConstructorConst implements AspectFuncti
         var elementType = aspectTypeRes
                 .requireValue("TypeEResultConstructorConst::call AspectType")
                 .aspectTypeType(argValue);
-        Type eresultType = new TypeEResultDynamic(DynUtil.substituteBoxed(xx, elementType));
+        var elementRes = DynUtil.requireBoxedTypeArgument(xx, loc, "eresult element type", elementType);
+        if (elementRes.hasErrors()) return elementRes.reerr();
+        Type eresultType = new TypeEResultDynamic(elementType);
         var concatRes = Eval.codeConcat(xx, loc, self.code(), argument.code());
         if (concatRes.hasErrors()) return concatRes.reerr();
         return EResult.ok(new CodeValue(

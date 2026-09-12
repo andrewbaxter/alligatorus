@@ -1796,7 +1796,7 @@ public final class EcoLlvmIr {
                     e.seq(
                             e.let("out", e.listNew(str(e))),
                             e.let("st", e.rec(e.p("open", num(e, 1)), e.p("pend", e.dstr("")))),
-                            e.let("refs", e.mapNew(str(e), e.mb.typesInt())),
+                            e.let("refs", e.mapNew(str(e), e.mb.typesIntBox())),
                             e.foreach(
                                     e.v("arg"),
                                     "r0",
@@ -4063,6 +4063,21 @@ public final class EcoLlvmIr {
                                             e.listNew(
                                                     e.mb.evalValue(),
                                                     labelInst(e, e.callM(mod(e), "label_of", a(e, "dest"))))))),
+                    e.p(
+                            "operand_park",
+                            e.eresultOk(
+                                    e.mb.call(e.mb.typesOption(), e.mb.builtin("types", "target_operand_parked")),
+                                    e.optNone(e.mb.builtin("types", "target_operand_parked")))),
+                    e.p("labeled_start", e.eresultOk(codeT(e), codeNone(e, loc(e)))),
+                    e.p(
+                            "exit",
+                            e.eresultOk(
+                                    codeT(e),
+                                    codeOf(
+                                            e,
+                                            e.listNew(
+                                                    e.mb.evalValue(),
+                                                    brInst(e, e.callM(mod(e), "label_of", a(e, "dest"))))))),
                     e.p("guarded", e.mb.panic(e.s("llvm target: exceptions are not supported"))),
                     e.p("exc_cleanup", e.mb.panic(e.s("llvm target: exceptions are not supported"))),
                     e.p("exit_trampoline", e.mb.panic(e.s("llvm target: cleanup blocks are not supported"))),

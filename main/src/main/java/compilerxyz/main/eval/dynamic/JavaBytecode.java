@@ -15,5 +15,9 @@ public interface JavaBytecode {
         T dispatcherHandleJump(JavaBytecodeJump n);
 
         T dispatcherHandleGuarded(JavaBytecodeGuarded n);
+
+        T dispatcherHandleStackMark(JavaBytecodeStackMark n);
+
+        T dispatcherHandleStackUnwind(JavaBytecodeStackUnwind n);
     }
 }

@@ -11,10 +11,12 @@ import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.Expr;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.binding.BindingOperandParked;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
 import compilerxyz.main.eval.expr.StagedExprCell;
 import compilerxyz.main.eval.value.ValueDynamic;
@@ -28,6 +30,7 @@ import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleBaseDynamic;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
@@ -40,6 +43,7 @@ import compilerxyz.main.gen.Target;
 import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.main.gen.TargetCase;
 import compilerxyz.main.gen.TargetMatchFallback;
+import compilerxyz.main.gen.TargetOperandParked;
 import compilerxyz.main.gen.TryCatchClause;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.MustCast;
@@ -121,6 +125,148 @@ public final class TargetDynamic implements Target {
                 .aspectInitialBindDynamicInitialBindDynamic(key);
         initialBindSlots.put(binding, key);
         return EResult.ok(binding);
+    }
+
+    @Override
+    public EResult<Opt<TargetOperandParked>> targetOperandPark(ExprContext xx, QExprId loc, CodeValue operand) {
+        var slots = new TList<BindingOperandParked.Slot>();
+        var parkedRes = operandParkValue(xx, loc, operand, slots);
+        if (parkedRes.hasErrors()) return parkedRes.reerr();
+        if (slots.isEmpty()) return EResult.ok(Opt.none());
+        return EResult.ok(Opt.some(new TargetOperandParked(
+                parkedRes.requireValue("targetOperandPark value"), new BindingOperandParked(slots))));
+    }
+
+    private EResult<CodeValue> operandParkValue(
+            ExprContext xx, QExprId loc, CodeValue cv, TList<BindingOperandParked.Slot> slots) {
+        if (cv.value().optIsNone()) return EResult.ok(cv);
+        var value = cv.value().optUnwrap();
+        switch (value) {
+            case ValueDynamic vd -> {
+                return operandParkStack(xx, loc, cv, vd.type(), vd.source(), slots);
+            }
+            case Tuple tuple -> {
+                if (tuple.base.optIsSome()) {
+                    return operandParkStack(
+                            xx, loc, cv, tuple, tuple.base.optUnwrap().source(), slots);
+                }
+                var elements = new TList<TupleElement>(tuple.elements.size());
+                for (var element : tuple.elements) {
+                    switch (element) {
+                        case TupleElement.Dynamic d -> elements.add(d);
+                        case TupleElement.EvalRes er -> {
+                            if (er.result().valueOpt().optIsNone()) {
+                                elements.add(er);
+                                continue;
+                            }
+                            var innerRes = operandParkValue(
+                                    xx, loc, er.result().valueOpt().optUnwrap(), slots);
+                            if (innerRes.hasErrors()) return innerRes.reerr();
+                            var errors = new TList<ExprErr>();
+                            er.result().drainInto(errors);
+                            var inner = innerRes.requireValue("operandParkValue tuple element");
+                            elements.add(new TupleElement.EvalRes(
+                                    errors.isEmpty() ? EResult.ok(inner) : EResult.mixed(inner, errors)));
+                        }
+                    }
+                }
+                return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Tuple(Opt.none(), elements))));
+            }
+            case Record record -> {
+                if (record.base.optIsSome()) {
+                    return operandParkStack(
+                            xx, loc, cv, record, record.base.optUnwrap().source(), slots);
+                }
+                var fields = new TOrderedMap<ConstKey, RecordField>();
+                for (var fe : record.fields.entrySet()) {
+                    switch (fe.getValue()) {
+                        case RecordField.Dynamic d -> fields.put(fe.getKey(), d);
+                        case RecordField.EvalRes er -> {
+                            if (er.result().valueOpt().optIsNone()) {
+                                fields.put(fe.getKey(), er);
+                                continue;
+                            }
+                            var innerRes = operandParkValue(
+                                    xx, loc, er.result().valueOpt().optUnwrap(), slots);
+                            if (innerRes.hasErrors()) return innerRes.reerr();
+                            var errors = new TList<ExprErr>();
+                            er.result().drainInto(errors);
+                            var inner = innerRes.requireValue("operandParkValue record field");
+                            fields.put(
+                                    fe.getKey(),
+                                    new RecordField.EvalRes(
+                                            errors.isEmpty() ? EResult.ok(inner) : EResult.mixed(inner, errors)));
+                        }
+                    }
+                }
+                return EResult.ok(new CodeValue(cv.code(), EvalOutcome.ofValue(new Record(Opt.none(), fields))));
+            }
+            default -> {
+                return EResult.ok(cv);
+            }
+        }
+    }
+
+    private EResult<CodeValue> operandParkStack(
+            ExprContext xx,
+            QExprId loc,
+            CodeValue cv,
+            Type type,
+            ValueDynamicSource source,
+            TList<BindingOperandParked.Slot> slots) {
+        if (!source.valueDynamicSourceIsStackRooted()) return EResult.ok(cv);
+        var bindAspectOpt = GenAspectBind.getMaybe(xx, type);
+        if (bindAspectOpt.optIsNone() || GenAspectBindDynamic.getMaybe(xx, type).optIsNone()) return EResult.ok(cv);
+        var dup = JavaBytecodeUtils.inst(loc, JvmSort.descriptor(xx, type).isWide() ? Opcodes.DUP2 : Opcodes.DUP);
+        var bindRes = bindAspectOpt.optUnwrap().aspectBindBind(xx, loc, new CodeValue(Code.target(dup), cv.outcome()));
+        if (bindRes.hasErrors()) return bindRes.reerr();
+        var bound = bindRes.requireValue("operandParkStack bind");
+        var seq = new JavaBytecodeSequence();
+        var origCast = CodeDynamic.castOpt(loc, cv.code());
+        if (origCast.hasErrors()) return origCast.reerr();
+        var orig = origCast.requireValue("operandParkStack orig");
+        if (orig.optIsSome()) seq.add(orig.optUnwrap());
+        var storeCast = CodeDynamic.castOpt(loc, bound.code());
+        if (storeCast.hasErrors()) return storeCast.reerr();
+        var store = storeCast.requireValue("operandParkStack store");
+        if (store.optIsSome()) seq.add(store.optUnwrap());
+        slots.add(new BindingOperandParked.Slot(type, bound.binding()));
+        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), cv.outcome()));
+    }
+
+    @Override
+    public EResult<Code> targetLabeledStart(QExprId loc, JumpKey end) {
+        return EResult.ok(Code.target(new CodeDynamic(loc, new JavaBytecodeStackMark(end))));
+    }
+
+    @Override
+    public EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, JumpKey labeled, CodeValue value) {
+        var seq = new JavaBytecodeSequence();
+        Opt<JavaDataDescriptor> carry = Opt.none();
+        if (value.value().optIsSome()) {
+            switch (value.value().optUnwrap()) {
+                case ValueDynamic vd -> {
+                    if (vd.source().valueDynamicSourceIsStackRooted())
+                        carry = Opt.some(JvmSort.descriptor(xx, vd.type()));
+                }
+                case Tuple tuple -> {
+                    if (tuple.base.optIsSome()
+                            && tuple.base.optUnwrap().source().valueDynamicSourceIsStackRooted()) {
+                        carry = Opt.some(JvmSort.descriptor(xx, tuple));
+                    }
+                }
+                case Record record -> {
+                    if (record.base.optIsSome()
+                            && record.base.optUnwrap().source().valueDynamicSourceIsStackRooted()) {
+                        carry = Opt.some(JvmSort.descriptor(xx, record));
+                    }
+                }
+                default -> {}
+            }
+        }
+        seq.add(new CodeDynamic(loc, new JavaBytecodeStackUnwind(labeled, carry)));
+        seq.add(new CodeDynamic(loc, new JavaBytecodeJump(dest)));
+        return EResult.ok(Code.target(new CodeDynamic(loc, seq)));
     }
 
     private BindingId initialBindSlot(Binding binding) {
@@ -482,7 +628,8 @@ public final class TargetDynamic implements Target {
             seq.add(extractRes.requireValue("targetMatch variant extract"));
             seq.add(new CodeDynamic(
                     new CodeLoc.Some(loc),
-                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, initialBindSlot(branch.payloadBinding))));
+                    new JavaBytecodeStoreLoad(
+                            JvmSort.storeOpcode(xx, branch.variantType), initialBindSlot(branch.payloadBinding))));
             seq.add(bodyDyn);
             if (!bodyCv.controlEnded()) {
                 seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, endLabel)));

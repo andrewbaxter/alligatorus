@@ -98,8 +98,10 @@ public final class ConstEval {
             }
             case Expr.Call p -> {
                 var erb = new Erb(loc);
-                var fopt = erb.mustCv(xx, constEvalOperand(xx, p.func()));
+                int operandBase = xx.scope.levelCount();
+                var fopt = constEvalOperandPending(xx, erb, p.func());
                 var aopt = erb.mustCv(xx, constEvalOperand(xx, p.arg()));
+                var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (fopt.optIsNone() || aopt.optIsNone()) yield EResult.errs(erb.errors());
                 var func = fopt.optUnwrap();
                 var arg = aopt.optUnwrap();
@@ -179,7 +181,9 @@ public final class ConstEval {
                     }
                 }
                 if (wrapped.optIsNone()) yield EResult.errs(erb.errors());
-                yield EResult.ok(EvalRes.of(wrapped.optUnwrap(), xx.scope));
+                var callOut = withPendingBlocks(xx, loc, erb, wrapped.optUnwrap(), pendingBlocks);
+                if (callOut.optIsNone()) yield EResult.errs(erb.errors());
+                yield EResult.ok(EvalRes.of(callOut.optUnwrap(), xx.scope));
             }
             case Expr.Set e -> {
                 var erb = new Erb(loc);
@@ -407,8 +411,12 @@ public final class ConstEval {
             case Expr.Tuple t -> {
                 var erb = new Erb(loc);
                 var elements = new TList<TupleElement>(t.elements().size());
-                for (var elExpr : t.elements()) {
-                    var elRes = elementResult(xx, constEvalOperand(xx, elExpr));
+                int operandBase = xx.scope.levelCount();
+                for (int ei = 0; ei < t.elements().size(); ei++) {
+                    var elExpr = t.elements().get(ei);
+                    var elRes = ei == t.elements().size() - 1
+                            ? elementResult(xx, constEvalOperand(xx, elExpr))
+                            : elementResultPending(xx, elExpr.loc(), constEvalOperand(xx, elExpr));
                     if (!elRes.hasErrors()
                             && elRes.valueOpt().optIsSome()
                             && elRes.valueOpt().optUnwrap().value().optIsNone()) {
@@ -423,15 +431,20 @@ public final class ConstEval {
                     }
                     elements.add(new TupleElement.EvalRes(elRes));
                 }
+                var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (!erb.errors().isEmpty()) yield EResult.errs(erb.errors());
+                var tupleCode = pendingBlocks.isEmpty() ? Code.none(loc) : blocksSplice(xx, loc, pendingBlocks, erb);
+                if (tupleCode == null) yield EResult.errs(erb.errors());
                 yield EResult.ok(EvalRes.of(
-                        new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(Opt.none(), elements))), xx.scope));
+                        new CodeValue(tupleCode, EvalOutcome.ofValue(new Tuple(Opt.none(), elements))), xx.scope));
             }
             case Expr.Record r -> {
                 var entries = new TOrderedMap<ConstKey, EResult<CodeValue>>();
                 var keyCodes = new TList<Code>();
                 var errors = new TList<ExprErr>();
-                for (var entry : r.entries()) {
+                int operandBase = xx.scope.levelCount();
+                for (int ei = 0; ei < r.entries().size(); ei++) {
+                    var entry = r.entries().get(ei);
                     var kRes = elementResult(xx, constEvalOperand(xx, entry.key()));
                     if (kRes.hasErrors()) {
                         kRes.drainInto(errors);
@@ -447,7 +460,10 @@ public final class ConstEval {
                     var keyRes = Eval.extractConstKey(xx, kCv.value().optUnwrap());
                     switch (keyRes) {
                         case Result.Ok<ConstKey, String> ok -> {
-                            var valRes = elementResult(xx, constEvalOperand(xx, entry.value()));
+                            var valRes = ei == r.entries().size() - 1
+                                    ? elementResult(xx, constEvalOperand(xx, entry.value()))
+                                    : elementResultPending(
+                                            xx, entry.value().loc(), constEvalOperand(xx, entry.value()));
                             if (!valRes.hasErrors()
                                     && valRes.valueOpt().optIsSome()
                                     && valRes.valueOpt().optUnwrap().value().optIsNone()) {
@@ -465,7 +481,14 @@ public final class ConstEval {
                             errors.add(new ExprErr(loc, TList.of(new ExprSubErr.Opaque(err.error()))));
                     }
                 }
+                var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (!errors.isEmpty()) yield EResult.errs(errors);
+                if (!pendingBlocks.isEmpty()) {
+                    var spliceErb = new Erb(loc);
+                    var splice = blocksSplice(xx, loc, pendingBlocks, spliceErb);
+                    if (splice == null) yield EResult.errs(spliceErb.errors());
+                    keyCodes.add(splice);
+                }
                 var codeRes = xx.target.targetSeq(loc, keyCodes);
                 if (codeRes.hasErrors()) yield codeRes.reerr();
                 var rCode = codeRes.requireValue("record key codes");
@@ -476,8 +499,10 @@ public final class ConstEval {
             }
             case Expr.OperatorBinary e -> {
                 var erb = new Erb(loc);
-                var bopt = erb.mustCv(xx, constEvalOperand(xx, e.base()));
+                int operandBase = xx.scope.levelCount();
+                var bopt = constEvalOperandPending(xx, erb, e.base());
                 var ropt = erb.mustCv(xx, constEvalOperand(xx, e.reference()));
+                var pendingBlocks = operandPendingClose(xx, operandBase);
                 if (bopt.optIsNone() || ropt.optIsNone()) yield EResult.errs(erb.errors());
                 var base = bopt.optUnwrap();
                 var bv = (Opt.Some<Value>) base.value();
@@ -572,7 +597,9 @@ public final class ConstEval {
                             }
                         };
                 if (out.optIsNone()) yield EResult.errs(erb.errors());
-                yield EResult.ok(EvalRes.of(out.optUnwrap(), xx.scope));
+                var opOut = withPendingBlocks(xx, loc, erb, out.optUnwrap(), pendingBlocks);
+                if (opOut.optIsNone()) yield EResult.errs(erb.errors());
+                yield EResult.ok(EvalRes.of(opOut.optUnwrap(), xx.scope));
             }
             case Expr.OperatorUnary e -> {
                 var erb = new Erb(loc);
@@ -1432,7 +1459,7 @@ public final class ConstEval {
                 var dest = destRes.requireValue("constEvalReturn dest");
                 target.landing.arrivals.add(
                         new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
-                var jumpOpt = erb.mustEr(xx.target.targetJump(loc, dest));
+                var jumpOpt = erb.mustEr(xx.target.targetExit(xx, loc, dest, target.end, valCv));
                 if (jumpOpt.optIsNone()) yield EResult.errs(erb.errors());
                 var retSeq = seqCode(xx, loc, erb, TList.of(valCv.code(), jumpOpt.optUnwrap()));
                 if (retSeq.optIsNone()) yield EResult.errs(erb.errors());
@@ -1460,6 +1487,62 @@ public final class ConstEval {
         var res = constEval(xx, expr);
         xx.scope.popToLevelCount(before);
         return res;
+    }
+
+    private static Opt<CodeValue> constEvalOperandPending(ExprContext xx, Erb erb, Expr expr) {
+        var opt = erb.mustCv(xx, constEvalOperand(xx, expr));
+        if (opt.optIsNone()) return opt;
+        var parkedOpt = erb.mustEr(xx.target.targetOperandPark(xx, expr.loc(), opt.optUnwrap()));
+        if (parkedOpt.optIsNone()) return Opt.none();
+        var parked = parkedOpt.optUnwrap();
+        if (parked.optIsNone()) return opt;
+        xx.scope.pushTemp(parked.optUnwrap().binding);
+        return Opt.some(parked.optUnwrap().value);
+    }
+
+    private static TList<Code> operandPendingClose(ExprContext xx, int operandBase) {
+        var blocks = new TList<Code>();
+        for (int i = operandBase; i < xx.scope.levels.size(); i++) {
+            switch (xx.scope.levels.get(i)) {
+                case ScopeLevel.Temp temp -> blocks.addAll(temp.scopeLevelEmission().blocks);
+                case ScopeLevel.Entry en ->
+                    throw new AssertionError("pending operand close: level above the operand base is not a Temp");
+                case ScopeLevel.Labeled lb ->
+                    throw new AssertionError("pending operand close: level above the operand base is not a Temp");
+                case ScopeLevel.Catch ca ->
+                    throw new AssertionError("pending operand close: level above the operand base is not a Temp");
+                case ScopeLevel.Finally fin ->
+                    throw new AssertionError("pending operand close: level above the operand base is not a Temp");
+            }
+        }
+        xx.scope.popToLevelCount(operandBase);
+        return blocks;
+    }
+
+    private static Opt<CodeValue> withPendingBlocks(
+            ExprContext xx, QExprId loc, Erb erb, CodeValue cv, TList<Code> blocks) {
+        if (blocks.isEmpty()) return Opt.some(cv);
+        var splice = blocksSplice(xx, loc, blocks, erb);
+        if (splice == null) return Opt.none();
+        var code = seqCode(xx, loc, erb, TList.of(cv.code(), splice));
+        if (code.optIsNone()) return Opt.none();
+        return Opt.some(new CodeValue(code.optUnwrap(), cv.outcome()));
+    }
+
+    private static EResult<CodeValue> elementResultPending(ExprContext xx, QExprId loc, EResult<EvalRes> r) {
+        var res = elementResult(xx, r);
+        if (res.valueOpt().optIsNone()) return res;
+        var cv = res.valueOpt().optUnwrap();
+        if (cv.value().optIsNone()) return res;
+        var parkRes = xx.target.targetOperandPark(xx, loc, cv);
+        if (parkRes.hasErrors()) return parkRes.reerr();
+        var parked = parkRes.requireValue("elementResultPending park");
+        if (parked.optIsNone()) return res;
+        xx.scope.pushTemp(parked.optUnwrap().binding);
+        var errors = new TList<ExprErr>();
+        res.drainInto(errors);
+        var value = parked.optUnwrap().value;
+        return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
     }
 
     private static void popByBox(Scope scope, ScopeLevel level) {
@@ -1564,6 +1647,11 @@ public final class ConstEval {
         var code = innerCv.code();
         if (!arrivals.isEmpty() || !blocks.isEmpty()) {
             var parts = new TList<Code>();
+            if (!arrivals.isEmpty()) {
+                var startOpt = erb.mustEr(xx.target.targetLabeledStart(loc, level.end));
+                if (startOpt.optIsNone()) return EResult.errs(erb.errors());
+                parts.add(startOpt.optUnwrap());
+            }
             parts.add(code);
             if (fallsThrough && !blocks.isEmpty()) {
                 var jumpOpt = erb.mustEr(xx.target.targetJump(loc, level.end));

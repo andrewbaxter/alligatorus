@@ -75,19 +75,6 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                         continue;
                     }
                     var elemCv = inner.requireValue("Tuple::bindSub element value");
-                    if (elemCv.value().optIsSome()) {
-                        var elemType = elemCv.value().optUnwrap().valueType();
-                        var boxedType = DynUtil.substituteBoxed(xx, elemType);
-                        if (!boxedType.typeIsEqual(xx, elemType)) {
-                            var boxedRes = boxedType.typeCastFrom(xx, loc, elemCv);
-                            if (boxedRes.hasErrors()) {
-                                if (errors == null) errors = new TList<>();
-                                boxedRes.drainInto(errors);
-                                continue;
-                            }
-                            elemCv = boxedRes.requireValue("Tuple::bindSub boxed element");
-                        }
-                    }
                     var savedValue = elemCv.outcome();
                     var subRes = jvmTarget.maybeBindSub(xx, loc, elemCv);
                     if (subRes.hasErrors()) {
@@ -101,12 +88,13 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                         bindResults.add(new ElemBindResult(Opt.some(subOpt.optUnwrap()), Opt.none()));
                     } else {
                         bindResults.add(
-                                new ElemBindResult(Opt.none(), Opt.some(new CodeValue(Code.none(loc), savedValue))));
+                                new ElemBindResult(Opt.none(), Opt.some(new CodeValue(elemCv.code(), savedValue))));
                     }
                 }
             }
         }
         if (errors != null && !errors.isEmpty()) return EResult.errs(errors);
+        var constBindCodes = new TList<Code>();
         if (!hasTarget) {
             var scopeFields = new TList<TupleScopeField>(bindResults.size());
             for (var br : bindResults) {
@@ -131,17 +119,24 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                     continue;
                 }
                 var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
+                constBindCodes.add(elemBind.code());
                 scopeFields.add(new TupleScopeField.Scope(elemBind.binding()));
             }
-            return EResult.ok(new BindResult(Code.none(loc), new BindingTuple(scopeFields, Opt.none())));
+            var codeRes = xx.target.targetSeq(loc, constBindCodes);
+            if (codeRes.hasErrors()) return codeRes.reerr();
+            return EResult.ok(new BindResult(
+                    codeRes.requireValue("Tuple::bindSub const codes"), new BindingTuple(scopeFields, Opt.none())));
         }
         var scopeFields = new TList<TupleScopeField>(bindResults.size());
         var targetSlots = new TList<TupleBindSlot>(bindResults.size());
+        var pendingConst = new TList<Code>();
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 var targetSome = br.targetSub().optUnwrap();
                 scopeFields.add(new TupleScopeField.Dynamic(targetSome.type));
-                targetSlots.add(new TupleBindSlot(targetSome));
+                var withPrefixRes = DynUtil.bindSubWithHeldCodes(xx, loc, targetSome, pendingConst, true);
+                if (withPrefixRes.hasErrors()) return withPrefixRes.reerr();
+                targetSlots.add(new TupleBindSlot(withPrefixRes.requireValue("Tuple::bindSub prefixed sub")));
             } else if (br.constCv().optIsSome()) {
                 var elemCv = br.constCv().optUnwrap();
                 if (elemCv.value().optIsNone())
@@ -161,10 +156,17 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                     continue;
                 }
                 var elemBind = elemBindRes.requireValue("Tuple::bindSub element AspectBind.bind");
+                pendingConst.add(elemBind.code());
                 scopeFields.add(new TupleScopeField.Scope(elemBind.binding()));
             } else {
                 throw new IllegalStateException("Tuple::bindSub: bind result has neither target nor const");
             }
+        }
+        if (!pendingConst.isEmpty()) {
+            int last = targetSlots.size() - 1;
+            var withSuffixRes = DynUtil.bindSubWithHeldCodes(xx, loc, targetSlots.get(last).sub, pendingConst, false);
+            if (withSuffixRes.hasErrors()) return withSuffixRes.reerr();
+            targetSlots.set(last, new TupleBindSlot(withSuffixRes.requireValue("Tuple::bindSub suffixed sub")));
         }
         var combinedRes = jvmTarget.bindSubTuple(xx, loc, carry, targetSlots);
         if (combinedRes.hasErrors()) return combinedRes.reerr();

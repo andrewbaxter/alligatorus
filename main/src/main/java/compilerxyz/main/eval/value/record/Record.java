@@ -228,11 +228,22 @@ public final class Record implements Aspect, Type, Value {
                 if (accessKey.optIsNone()) {
                     var out = new JavaBytecodeSequence();
                     out.add(baseSource.valueDynamicSourceRealize(loc));
-                    var ecdKeys = new TList<ConstKey>(dynamicFieldTypes.size());
-                    ecdKeys.addAll(dynamicFieldTypes.keySet());
+                    var ecdKeys = new TList<ConstKey>(record.fields.size());
+                    ecdKeys.addAll(record.fields.keySet());
                     for (int ecdI = ecdKeys.size() - 1; ecdI >= 0; ecdI--) {
                         var k = ecdKeys.get(ecdI);
                         var t = dynamicFieldTypes.getOrNull(k);
+                        if (t == null) {
+                            var heldRes = ((RecordField.EvalRes) record.fields.getOrNull(k)).result();
+                            if (heldRes.hasErrors()) yield heldRes.reerr();
+                            var heldDrop = Eval.dropValue(xx, loc, heldRes.requireValue("Record::drop held field"));
+                            if (heldDrop.hasErrors()) yield heldDrop.reerr();
+                            var heldCast = CodeDynamic.castOpt(loc, heldDrop.requireValue("Record::drop held code"));
+                            if (heldCast.hasErrors()) yield heldCast.reerr();
+                            if (heldCast.requireValue("heldDyn").optIsSome())
+                                out.add(heldCast.requireValue("heldDyn").optUnwrap());
+                            continue;
+                        }
                         int slotIdx = slotInfo.slotOfKey().get(k);
                         var cfdcFullDropOpt = GenAspectDropDynamic.getMaybe(xx, t);
                         if (cfdcFullDropOpt.optIsSome()) {

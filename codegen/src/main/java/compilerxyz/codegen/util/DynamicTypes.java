@@ -44,6 +44,17 @@ public final class DynamicTypes {
         nullary(nullary, "compilerxyz.main.eval.value.uint", "TypeUintDynamic", TypeName.INT);
         nullary(nullary, "compilerxyz.main.eval.value.ulong", "TypeUlongDynamic", TypeName.LONG);
         nullary(nullary, "compilerxyz.main.eval.value.byte_", "TypeByteDynamic", TypeName.BYTE);
+        nullary(nullary, "compilerxyz.main.eval.value.bool", "TypeBoolDynamicBox", TypeName.BOOLEAN.box());
+        nullary(nullary, "compilerxyz.main.eval.value.int_", "TypeIntDynamicBox", TypeName.INT.box());
+        nullary(nullary, "compilerxyz.main.eval.value.short_", "TypeShortDynamicBox", TypeName.SHORT.box());
+        nullary(nullary, "compilerxyz.main.eval.value.long_", "TypeLongDynamicBox", TypeName.LONG.box());
+        nullary(nullary, "compilerxyz.main.eval.value.float_", "TypeFloatDynamicBox", TypeName.FLOAT.box());
+        nullary(nullary, "compilerxyz.main.eval.value.double_", "TypeDoubleDynamicBox", TypeName.DOUBLE.box());
+        nullary(nullary, "compilerxyz.main.eval.value.ubyte", "TypeUbyteDynamicBox", TypeName.BYTE.box());
+        nullary(nullary, "compilerxyz.main.eval.value.ushort", "TypeUshortDynamicBox", TypeName.SHORT.box());
+        nullary(nullary, "compilerxyz.main.eval.value.uint", "TypeUintDynamicBox", TypeName.INT.box());
+        nullary(nullary, "compilerxyz.main.eval.value.ulong", "TypeUlongDynamicBox", TypeName.LONG.box());
+        nullary(nullary, "compilerxyz.main.eval.value.byte_", "TypeByteDynamicBox", TypeName.BYTE.box());
         nullary(nullary, "compilerxyz.main.eval.value.null_", "TypeNullDynamic", ClassName.OBJECT);
         nullary(
                 nullary,

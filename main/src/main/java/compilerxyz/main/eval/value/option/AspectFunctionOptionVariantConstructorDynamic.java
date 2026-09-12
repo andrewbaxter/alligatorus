@@ -8,18 +8,12 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc.Some;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenCodegenDescriptors;
+import compilerxyz.main.gen.GenOptions;
 import compilerxyz.prelude.util.Opt;
-import compilerxyz.prelude.util.TList;
 
 public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantConstructorDynamic type)
         implements AspectFunction {
@@ -41,17 +35,9 @@ public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantCon
         if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
         var underlyingJs = underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
 
-        Type resultType = new TypeOptionDynamic(DynUtil.substituteBoxed(xx, type.elementType()));
-        CodeDynamic newOpt;
-        if (type.isSome()) {
-            newOpt = JavaBytecodeUtils.instantiate(
-                    loc,
-                    JavaInternalName.fromClass(Opt.Some.class),
-                    JavaMethodDescriptor.fromConstructorParts(TList.of(JvmConstants.DESC_OBJECT)),
-                    underlyingJs);
-        } else {
-            newOpt = JavaBytecodeUtils.callStaticMethod(new Some(loc), GenCodegenDescriptors.OPT_NONE);
-        }
+        var resultType = GenOptions.optionDynamic(xx, type.elementType());
+        var newOpt = resultType.optionDynamicConstruct(
+                xx, loc, type.isSome() ? Opt.some(underlyingJs) : Opt.<CodeDynamic>none());
         return EResult.ok(DynUtil.dynamicStackToValue(xx, newOpt, resultType));
     }
 

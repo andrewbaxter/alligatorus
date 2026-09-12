@@ -1,13 +1,11 @@
 package compilerxyz.main.eval.value.option;
 
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.gen.AspectInitialBindDynamic;
 import compilerxyz.main.gen.Binding;
 
-public record AspectInitialBindDynamicOptionDynamic<T extends Type>(TypeOptionDynamic<T> type)
-        implements AspectInitialBindDynamic {
+public record AspectInitialBindDynamicOptionDynamic(OptionDynamic type) implements AspectInitialBindDynamic {
 
     @Override
     public Binding aspectInitialBindDynamicInitialBindDynamic(BindingId dynamicKey) {

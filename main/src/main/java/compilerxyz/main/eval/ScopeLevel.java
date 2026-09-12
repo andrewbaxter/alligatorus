@@ -36,6 +36,7 @@ public sealed interface ScopeLevel {
         }
     }
 
+    @BuiltinFull(uniqueId = 6421L)
     final class Temp implements ScopeLevel {
         public Binding binding;
         public long state;

@@ -23,8 +23,11 @@ public record AspectFunctionMapNewDynamic(TypeMapNewDynamic type) implements Asp
 
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
-        var instanceType = new TypeMapDynamic(
-                DynUtil.substituteBoxed(xx, type.keyType()), DynUtil.substituteBoxed(xx, type.valueType()));
+        var keyRes = DynUtil.requireBoxedTypeArgument(xx, loc, "map key type", type.keyType());
+        if (keyRes.hasErrors()) return keyRes.reerr();
+        var valueRes = DynUtil.requireBoxedTypeArgument(xx, loc, "map value type", type.valueType());
+        if (valueRes.hasErrors()) return valueRes.reerr();
+        var instanceType = new TypeMapDynamic(type.keyType(), type.valueType());
         if (argument.value().optIsNone()) {
             return EResult.err(loc, "TypeMapNewDynamic::call: argument has no compile-time value");
         }

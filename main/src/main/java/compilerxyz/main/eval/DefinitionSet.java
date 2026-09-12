@@ -14,6 +14,7 @@ import compilerxyz.main.eval.definition_set.ArtifactDataDefSet;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EmitCtx;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
@@ -635,27 +636,26 @@ public final class DefinitionSet implements Artifactable {
                                     int argIdx = 0;
                                     for (var ehaArgType : ehaArgParamTypes) {
                                         var hostParamDesc = JavaDataDescriptor.create(hostParams.get(argIdx));
-                                        ehaSeq.add(JavaBytecodeUtils.varInsn(
+                                        var hostArgType = hostParamDesc.isReference()
+                                                ? DynUtil.substituteBoxed(xx, ehaArgType)
+                                                : ehaArgType;
+                                        var hostArgDesc = JvmSort.descriptor(xx, hostArgType);
+                                        var loadSeq = new JavaBytecodeSequence();
+                                        loadSeq.add(JavaBytecodeUtils.varInsn(
                                                 ehaLoc, hostParamDesc.loadOpcode(), hostSlot));
-                                        var ehaArgConsumeOpt = GenAspectConsumeDynamic.getMaybe(xx, ehaArgType);
-                                        if (ehaArgConsumeOpt.optIsNone()) {
-                                            throw new IllegalStateException(
-                                                    "SourceObjectEmitter.emitHostAdapter: arg type "
-                                                            + ehaArgType.typeDesc()
-                                                            + " does not implement AspectConsumeDynamic");
+                                        if (!hostParamDesc.value().equals(hostArgDesc.value())
+                                                && hostArgDesc.isReference()) {
+                                            loadSeq.add(JavaBytecodeUtils.cast(ehaLoc, hostArgDesc));
                                         }
-                                        var ehaArgDesc =
-                                                ehaArgConsumeOpt.optUnwrap().aspectConsumeDynamicJvmClass(xx);
-                                        var hostParam = hostParams.get(argIdx);
-                                        if (!hostParam.equals(ehaArgDesc.value())
-                                                && ehaArgDesc.isReference()
-                                                && !ehaArgDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
-                                            ehaSeq.add(JavaBytecodeUtils.cast(ehaLoc, ehaArgDesc));
-                                        } else if (!hostParam.equals(ehaArgDesc.value())
-                                                && hostParamDesc.isReference()
-                                                && JavaBytecodeUtils.isPrimitive(ehaArgDesc)) {
-                                            ehaSeq.add(JavaBytecodeUtils.unboxPrimitive(ehaLoc, ehaArgDesc));
-                                        }
+                                        var hostArgCv = DynUtil.dynamicStackToValue(
+                                                xx, new CodeDynamic(ehaLoc, loadSeq), hostArgType);
+                                        var argCv = Eval.typecheckConvert(xx, loc, ehaArgType, hostArgCv)
+                                                .requireValue("SourceObjectEmitter.emitHostAdapter: arg convert");
+                                        var argDyn = GenAspectConsumeDynamic.getMaybe(xx, ehaArgType)
+                                                .optUnwrap()
+                                                .aspectConsumeDynamicToDynamic(xx, loc, argCv)
+                                                .requireValue("SourceObjectEmitter.emitHostAdapter: arg consume");
+                                        ehaSeq.add(argDyn);
                                         hostSlot += hostParamDesc.slotWidth();
                                         argIdx++;
                                     }
@@ -664,18 +664,21 @@ public final class DefinitionSet implements Artifactable {
                                         ehaLoc, soeInternalName, ehiM.jvmMethodName, calleeDescriptor));
                                 var ehaRetDesc =
                                         JavaDataDescriptor.create(hostDescStr.substring(hostDescStr.indexOf(')') + 1));
-                                var calleeDescStr = calleeDescriptor.value();
-                                var calleeRetDesc = JavaDataDescriptor.create(
-                                        calleeDescStr.substring(calleeDescStr.indexOf(')') + 1));
-                                if (!calleeRetDesc.value().equals(ehaRetDesc.value())) {
-                                    if (calleeRetDesc.value().equals(JavaDataDescriptor.DESC_VOID.value())) {
-                                        if (ehaRetDesc.isReference()) {
-                                            ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, Opcodes.ACONST_NULL));
-                                        }
-                                    } else if (JavaBytecodeUtils.isPrimitive(calleeRetDesc)
-                                            && ehaRetDesc.isReference()) {
-                                        ehaSeq.add(JavaBytecodeUtils.boxPrimitive(ehaLoc, calleeRetDesc));
+                                if (ehiIfaceMethod.retType.optIsNone()) {
+                                    if (ehaRetDesc.isReference()) {
+                                        ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, Opcodes.ACONST_NULL));
                                     }
+                                } else if (ehaRetDesc.isReference()) {
+                                    var calleeRetType = ehiIfaceMethod.retType.optUnwrap();
+                                    var hostRetType = DynUtil.substituteBoxed(xx, calleeRetType);
+                                    var calleeCv = DynUtil.dynamicStackToValue(
+                                            xx, new CodeDynamic(ehaLoc, new JavaBytecodeSequence()), calleeRetType);
+                                    var hostCv = Eval.typecheckConvert(xx, loc, hostRetType, calleeCv)
+                                            .requireValue("SourceObjectEmitter.emitHostAdapter: ret convert");
+                                    ehaSeq.add(GenAspectConsumeDynamic.getMaybe(xx, hostRetType)
+                                            .optUnwrap()
+                                            .aspectConsumeDynamicToDynamic(xx, loc, hostCv)
+                                            .requireValue("SourceObjectEmitter.emitHostAdapter: ret consume"));
                                 }
                                 ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, ehaRetDesc.returnOpcode()));
                                 JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of());
@@ -877,7 +880,12 @@ public final class DefinitionSet implements Artifactable {
                 initialSlots.add(new JavaBytecodeSequence.InitialSlot(
                         efmSlot.id(), efmSlot.jvmDesc().isWide()));
             }
-            JavaBytecodeUtils.renderMethodTyped(seq, mv, initialSlots);
+            JavaBytecodeUtils.renderMethodTyped(
+                    seq,
+                    mv,
+                    initialSlots,
+                    internalName + "." + spec.methodName(),
+                    JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs));
         }
         cw.visitEnd();
         var emitted = new DefSetFunctionsEmitter.EmittedFunctions(

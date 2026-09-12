@@ -21,7 +21,6 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
-import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
@@ -136,11 +135,12 @@ public final class TypeObjectDynamic implements Aspect, TypeImmutable, TypeAspec
 
     @Override
     public boolean typeIsEqual(ExprContext xx, Type other) {
-        var oOpt = AspectLookup.getMaybe(
-                xx, other, GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY, TypeObjectDynamic.class);
-        return oOpt.optIsSome()
-                && hostClass.getName().equals(oOpt.optUnwrap().hostClass.getName())
-                && meta.typeDesc().equals(oOpt.optUnwrap().meta.typeDesc());
+        if (other.typeAspect(xx, GenTrivialIdentityAspects.TYPE_OBJECT_DYNAMIC_IDENTITY)
+                .optIsNone()) return false;
+        for (var idAspect : trivialIdentityAspects()) {
+            if (other.typeAspect(xx, idAspect).optIsNone()) return false;
+        }
+        return true;
     }
 
     @Override
