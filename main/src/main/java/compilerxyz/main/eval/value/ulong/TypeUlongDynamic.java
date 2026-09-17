@@ -13,7 +13,6 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.numeric.AspectConsumeDynamicJvmLong;
@@ -40,7 +39,6 @@ import compilerxyz.main.eval.value.numeric.Numerics;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
@@ -170,9 +168,6 @@ public record TypeUlongDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectDynamicBoxed.AspectId)) {
             return Opt.some(AspectDynamicBoxedUlongDynamic.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicJvmLong.INSTANCE);

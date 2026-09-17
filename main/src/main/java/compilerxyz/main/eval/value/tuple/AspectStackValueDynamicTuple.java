@@ -13,12 +13,10 @@ import compilerxyz.prelude.util.Opt;
 public record AspectStackValueDynamicTuple(Tuple type) implements AspectStackValueDynamic {
 
     @Override
-    public CodeValue aspectStackValueDynamicToValue(ExprContext xx, QExprId loc, CodeDynamic value) {
-        var source = new ValueDynamicSource.Stack(new AspectConsumeDynamicTuple(type)
-                .aspectConsumeDynamicJvmClass(xx)
-                .slotWidth());
+    public CodeValue aspectStackValueDynamicToValue(
+            ExprContext xx, QExprId loc, CodeDynamic code, ValueDynamicSource source) {
         return new CodeValue(
-                Code.target(value),
+                Code.target(code),
                 EvalOutcome.ofValue(new Tuple(Opt.some(new TupleBaseDynamic(source)), type.elements)));
     }
 }

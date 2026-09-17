@@ -7,10 +7,8 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
@@ -21,7 +19,6 @@ import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenExprErr;
 import compilerxyz.main.gen.GenQExprId;
 import compilerxyz.prelude.util.Opt;
@@ -37,45 +34,34 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
         if (type.kind() == Kind.OK) {
             var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, type.elementType(), argument));
             if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
-            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, type.elementType());
-            if (consumeRes.hasErrors()) return consumeRes.reerr();
-            var innerJsRes = consumeRes
-                    .requireValue("TypeEResultVariantConstructorDynamic::call ok consume")
-                    .aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.optUnwrap());
-            if (innerJsRes.hasErrors()) return innerJsRes.reerr();
-            var innerJs = innerJsRes.requireValue("TypeEResultVariantConstructorDynamic::call ok toDynamic");
-            var okSeq = new JavaBytecodeSequence();
-            okSeq.add(innerJs);
-            okSeq.add(JavaBytecodeUtils.callStaticMethod(
-                    loc,
+            var innerRes = DynUtil.materialize(xx, loc, convertedOpt.optUnwrap());
+            if (innerRes.hasErrors()) return innerRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.invokeStatic(
                     JavaInternalName.fromClass(EResult.class),
                     "ok",
                     JavaMethodDescriptor.fromParts(
                             JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
-                            TList.of(JvmConstants.DESC_OBJECT))));
-            return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, okSeq), resultType));
+                            TList.of(JvmConstants.DESC_OBJECT)),
+                    b.reg(innerRes.requireValue("eresult ok value")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
         if (type.kind() == Kind.ERRS) {
             var errsArgType = new TypeListBoxedDynamic(GenExprErr.dynamicType());
             var convertedErrsOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, errsArgType, argument));
             if (convertedErrsOpt.optIsNone()) return EResult.errs(erb.errors());
-            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, errsArgType);
-            if (consumeRes.hasErrors()) return consumeRes.reerr();
-            var listJsRes = consumeRes
-                    .requireValue("TypeEResultVariantConstructorDynamic::call errs consume")
-                    .aspectConsumeDynamicToDynamic(xx, loc, convertedErrsOpt.optUnwrap());
-            if (listJsRes.hasErrors()) return listJsRes.reerr();
-            var errsSeq = new JavaBytecodeSequence();
-            errsSeq.add(listJsRes.requireValue("TypeEResultVariantConstructorDynamic::call errs toDynamic"));
-            errsSeq.add(JavaBytecodeUtils.callStaticMethod(
-                    loc,
+            var listRes = DynUtil.materialize(xx, loc, convertedErrsOpt.optUnwrap());
+            if (listRes.hasErrors()) return listRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.invokeStatic(
                     JavaInternalName.fromClass(EResult.class),
                     "errs",
                     JavaMethodDescriptor.fromParts(
                             JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
                             TList.of(JavaDataDescriptor.fromInternalName(
-                                    JavaInternalName.fromClass(compilerxyz.prelude.util.TList.class))))));
-            return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, errsSeq), resultType));
+                                    JavaInternalName.fromClass(compilerxyz.prelude.util.TList.class)))),
+                    b.reg(listRes.requireValue("eresult errs list")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
         var argTupleType = new Tuple(
                 Opt.none(),
@@ -91,21 +77,20 @@ public record AspectFunctionEResultVariantConstructorDynamic(TypeEResultVariantC
             throw new AssertionError(
                     "TypeEResultVariantConstructorDynamic::call err: expected 2 slots, got " + slots.size());
         }
-        var locJs = slots.get(0);
-        var msgJs = slots.get(1);
-        var errSeq = new JavaBytecodeSequence();
-        errSeq.add(locJs);
-        errSeq.add(msgJs);
-        errSeq.add(JavaBytecodeUtils.callStaticMethod(
-                loc,
+        var b = new JavaBytecodeBuilder(loc);
+        var locReg = b.reg(slots.get(0));
+        var msgReg = b.reg(slots.get(1));
+        var out = b.invokeStatic(
                 JavaInternalName.fromClass(EResult.class),
                 "err",
                 JavaMethodDescriptor.fromParts(
                         JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(EResult.class)),
                         TList.of(
                                 JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(QExprId.class)),
-                                JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(String.class))))));
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, errSeq), resultType));
+                                JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(String.class)))),
+                locReg,
+                msgReg);
+        return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
     }
 
     @Override

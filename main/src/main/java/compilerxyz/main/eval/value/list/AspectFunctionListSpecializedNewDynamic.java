@@ -5,10 +5,10 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -22,7 +22,7 @@ public record AspectFunctionListSpecializedNewDynamic(TypeListSpecializedNewDyna
         }
         var argValue = argument.value().optUnwrap();
         var argType = argValue.valueType();
-        var dynamicElements = new TList<CodeDynamic>();
+        var dynamicElements = new TList<CodeDynamicReg>();
         var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (argTupleOpt.optIsSome()) {
             var elements = argTupleOpt.optUnwrap().aspectTupleTakeElements(xx, loc, argValue);
@@ -37,19 +37,11 @@ public record AspectFunctionListSpecializedNewDynamic(TypeListSpecializedNewDyna
             if (dynRes.hasErrors()) return dynRes.reerr();
             dynamicElements.add(dynRes.requireValue("elementToDynamic"));
         }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, type.listType());
-        if (retStackRes.hasErrors()) {
-            return retStackRes.reerr();
-        }
-        var seq = new JavaBytecodeSequence();
-        var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-        if (selfDynCast.hasErrors()) return selfDynCast.reerr();
-        var selfDyn = selfDynCast.requireValue("selfDyn");
-        if (selfDyn.optIsSome()) seq.add(selfDyn.optUnwrap());
-        seq.add(type.listType().emitNew(xx, loc, dynamicElements));
-        return EResult.ok(retStackRes
-                .requireValue("AspectStackValueDynamic.get")
-                .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
+        var b = new JavaBytecodeBuilder(loc);
+        var selfRes = b.addCode(loc, self.code());
+        if (selfRes.hasErrors()) return selfRes.reerr();
+        var list = b.reg(type.listType().emitNew(xx, loc, dynamicElements));
+        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), list, type.listType()));
     }
 
     @Override

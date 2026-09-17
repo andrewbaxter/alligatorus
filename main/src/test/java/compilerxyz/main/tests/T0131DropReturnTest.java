@@ -198,7 +198,7 @@ public final class T0131DropReturnTest {
     }
 
     @Test
-    public void returnDoesNotDoubleDropBindingOwnedOperand() {
+    public void returnDropsBindingUseOperandAndBinding() {
         var mb = new TestMb();
         var logs = run(
                 mb,
@@ -214,11 +214,11 @@ public final class T0131DropReturnTest {
                                                         mb.scopeUse("a"), returnOr(mb, Opt.none(), dynStr(mb, "c")))),
                                         mb.call(mb.log(), mb.str("unreached")))),
                         mb.call(mb.log(), mb.str("after"))));
-        assertEquals(TList.of("dropped_a", "after"), logs);
+        assertEquals(TList.of("dropped_a", "dropped_a", "after"), logs);
     }
 
     @Test
-    public void throwDoesNotDoubleDropBindingOwnedOperand() {
+    public void throwDropsBindingUseOperandAndBinding() {
         var mb = new TestMb();
         var logs = run(
                 mb,
@@ -231,7 +231,7 @@ public final class T0131DropReturnTest {
                                         mb.bind("t", mb.tupleOf(mb.scopeUse("a"), throwOr(mb, dynStr(mb, "c")))),
                                         mb.call(mb.log(), mb.str("unreached")))),
                         mb.call(mb.log(), mb.str("after"))));
-        assertEquals(TList.of("dropped_a", "caught", "after"), logs);
+        assertEquals(TList.of("dropped_a", "dropped_a", "caught", "after"), logs);
     }
 
     @Test

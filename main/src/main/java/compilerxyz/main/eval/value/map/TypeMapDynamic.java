@@ -7,7 +7,6 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
@@ -15,13 +14,11 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.long_.TypeLongConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
@@ -31,7 +28,6 @@ import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -45,7 +41,6 @@ import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Map;
-import org.objectweb.asm.Opcodes;
 
 @BuiltinFull(uniqueId = 6122L)
 public final class TypeMapDynamic<K extends Type, V extends Type> implements Aspect, Type {
@@ -86,9 +81,6 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldMapDynamic<>(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightMapDynamic<>(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicMapDynamic<>(this));
@@ -137,11 +129,9 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
                 new Pair<>(new ConstKey.Str("put"), new FieldSpec.PutFn(new TypeMapPutFnDynamic(keyType, valueType))));
     }
 
-    CodeDynamic entryDecode(QExprId loc) {
-        var decodeSeq = new JavaBytecodeSequence();
-        decodeSeq.add(JavaBytecodeUtils.cast(
-                loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.Entry.class))));
-        return new CodeDynamic(loc, decodeSeq);
+    DynUtil.ElementDecode entryDecode() {
+        return (b, raw) ->
+                b.checkcast(JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Map.Entry.class)), raw);
     }
 
     @Override
@@ -179,25 +169,13 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
             return EResult.err(loc, "TypeMapDynamic::typeCastFrom: expected Record source, got " + cvVal.getClass());
         }
         var erb = new Erb(loc);
-        var valueToDynamicOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, valueType));
-        if (valueToDynamicOpt.optIsNone()) {
-            return EResult.errs(erb.errors());
-        }
-        var valueToDynamic = valueToDynamicOpt.optUnwrap();
-        var keyToDynamicOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, keyType));
-        if (keyToDynamicOpt.optIsNone()) {
-            return EResult.errs(erb.errors());
-        }
-        var keyToDynamic = keyToDynamicOpt.optUnwrap();
         var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
         var descObject = JavaDataDescriptor.fromClass(Object.class);
         var putDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject, descObject));
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.instantiate(
-                loc,
-                torderedMapIntname,
-                JavaMethodDescriptor.fromConstructorParts(TList.of()),
-                new CodeDynamic(loc, new JavaBytecodeSequence())));
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, cv.code());
+        if (carryRes.hasErrors()) return carryRes.reerr();
+        var map = b.newInstance(torderedMapIntname, JavaMethodDescriptor.fromConstructorParts(TList.of()));
         for (var entry : record.fields().entrySet()) {
             var fieldKey = entry.getKey();
             var fieldVal = entry.getValue();
@@ -212,10 +190,8 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
                             Code.none(loc),
                             EvalOutcome.ofValue(new ValueObjectConst(new TypeLongConst(), (long) u.value())));
             }
-            var keyConvOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, keyType, keyCv));
-            if (keyConvOpt.optIsNone()) return EResult.errs(erb.errors());
-            var keyCodeOpt = erb.mustEr(keyToDynamic.aspectConsumeDynamicToDynamic(xx, loc, keyConvOpt.optUnwrap()));
-            if (keyCodeOpt.optIsNone()) return EResult.errs(erb.errors());
+            var keyRes = DynUtil.materialize(xx, loc, keyType, keyCv);
+            if (keyRes.hasErrors()) return keyRes.reerr();
             CodeValue entryCv;
             switch (fieldVal) {
                 case RecordField.EvalRes er -> {
@@ -234,18 +210,13 @@ public final class TypeMapDynamic<K extends Type, V extends Type> implements Asp
                     return EResult.errs(erb.errors());
                 }
             }
-            var convertedOpt = erb.mustEr(Eval.typecheckConvert(xx, loc, valueType, entryCv));
-            if (convertedOpt.optIsNone()) return EResult.errs(erb.errors());
-            var jsValOpt = erb.mustEr(valueToDynamic.aspectConsumeDynamicToDynamic(xx, loc, convertedOpt.optUnwrap()));
-            if (jsValOpt.optIsNone()) return EResult.errs(erb.errors());
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-            seq.add(keyCodeOpt.optUnwrap());
-            seq.add(jsValOpt.optUnwrap());
-            seq.add(JavaBytecodeUtils.callMethod(loc, torderedMapIntname, "put", putDesc));
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
+            var valRes = DynUtil.materialize(xx, loc, valueType, entryCv);
+            if (valRes.hasErrors()) return valRes.reerr();
+            var k = b.reg(keyRes.requireValue("map key"));
+            var v = b.reg(valRes.requireValue("map value"));
+            b.invokeVirtual(torderedMapIntname, "put", putDesc, map, k, v);
         }
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        return EResult.ok(DynUtil.regToValue(b.code(), map, this));
     }
 
     @Override

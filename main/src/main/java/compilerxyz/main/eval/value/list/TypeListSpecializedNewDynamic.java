@@ -3,15 +3,14 @@ package compilerxyz.main.eval.value.list;
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -40,15 +39,8 @@ public record TypeListSpecializedNewDynamic(TypeListSpecializedDynamic listType)
         return Opt.none();
     }
 
-    EResult<CodeDynamic> elementToDynamic(ExprContext xx, QExprId loc, CodeValue element) {
-        var elementType = listType.elementType;
-        var convertedRes = Eval.typecheckConvert(xx, loc, elementType, element);
-        if (convertedRes.hasErrors()) return convertedRes.reerr();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        return consumeRes
-                .requireValue("AspectConsumeDynamic.get")
-                .aspectConsumeDynamicToDynamic(xx, loc, convertedRes.requireValue("typecheckConvert"));
+    EResult<CodeDynamicReg> elementToDynamic(ExprContext xx, QExprId loc, CodeValue element) {
+        return DynUtil.materialize(xx, loc, listType.elementType, element);
     }
 
     @Override

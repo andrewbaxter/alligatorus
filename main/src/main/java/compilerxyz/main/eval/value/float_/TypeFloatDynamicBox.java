@@ -1,10 +1,8 @@
 package compilerxyz.main.eval.value.float_;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.NumericKind;
 import compilerxyz.main.eval.QExprId;
@@ -13,18 +11,14 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.value.numeric.Numerics;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -65,9 +59,6 @@ public record TypeFloatDynamicBox() implements Aspect, Type {
         if (key.equals(GenAspectDynamicUnboxed.AspectId)) {
             return Opt.some(AspectDynamicUnboxedFloatDynamicBox.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicFloatDynamicBox.INSTANCE);
         }
@@ -99,35 +90,28 @@ public record TypeFloatDynamicBox() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return Numerics.isNumeric(xx, destType);
+        return destType.typeIsEqual(xx, this) || Numerics.isNumeric(xx, destType);
     }
 
     @Override
     public EResult<CodeValue> typeCastFrom(ExprContext xx, QExprId loc, CodeValue cv) {
         var unboxedCast = Numerics.castTo(xx, loc, cv, NumericKind.FLOAT, new TypeFloatDynamic());
         if (unboxedCast.hasErrors()) return unboxedCast.reerr();
-        var castCv = unboxedCast.requireValue("TypeFloatDynamicBox::typeCastFrom cast");
-        var seq = new JavaBytecodeSequence();
-        var dynCast = CodeDynamic.castOpt(loc, castCv.code());
-        if (dynCast.hasErrors()) return dynCast.reerr();
-        var dyn = dynCast.requireValue("dyn");
-        if (dyn.optIsSome()) seq.add(dyn.optUnwrap());
-        seq.add(Numerics.box(loc, NumericKind.FLOAT));
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+        var castRes = DynUtil.valueReg(loc, unboxedCast.requireValue("TypeFloatDynamicBox::typeCastFrom cast"));
+        if (castRes.hasErrors()) return castRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var boxed = Numerics.box(b, NumericKind.FLOAT, b.reg(castRes.requireValue("cast")));
+        return EResult.ok(DynUtil.regToValue(b.code(), boxed, this));
     }
 
     @Override
     public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
-        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-        var selfDyn = selfDynRes.requireValue("selfDyn");
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDyn);
-        seq.add(Numerics.unbox(loc, NumericKind.FLOAT));
-        var unboxed = new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeFloatDynamic())));
+        if (destType.typeIsEqual(xx, this)) return EResult.ok(cv);
+        var selfRes = DynUtil.valueReg(loc, cv);
+        if (selfRes.hasErrors()) return selfRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var raw = Numerics.unbox(b, NumericKind.FLOAT, b.reg(selfRes.requireValue("selfDyn")));
+        var unboxed = DynUtil.regToValue(b.code(), raw, new TypeFloatDynamic());
         var kkOpt = Numerics.kindOf(xx, destType);
         if (kkOpt.optIsSome()) {
             return Numerics.castTo(xx, loc, unboxed, kkOpt.optUnwrap(), destType);

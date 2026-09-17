@@ -286,10 +286,6 @@ public final class TestMb {
         return builtin("eval", "aspect_drop_dynamic");
     }
 
-    public SourceExpr evalAspectDropDynamicLight() {
-        return builtin("eval", "aspect_drop_dynamic_light");
-    }
-
     public SourceExpr evalAspectConsumeDynamic() {
         return builtin("eval", "aspect_consume_dynamic");
     }
@@ -382,8 +378,8 @@ public final class TestMb {
         return builtin("eval", "const_eval");
     }
 
-    public SourceExpr evalStack() {
-        return builtin("eval", "stack");
+    public SourceExpr evalCodevalueDynamic() {
+        return builtin("eval", "codevalue_dynamic");
     }
 
     public SourceExpr evalTarget() {

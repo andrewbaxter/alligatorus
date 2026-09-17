@@ -18,15 +18,15 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -69,15 +69,15 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
     }
 
     @Override
-    public CodeDynamic optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<CodeDynamic> payload) {
+    public CodeDynamicReg optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<JavaBytecodeReg> payload) {
+        var b = new JavaBytecodeBuilder(loc);
         if (payload.optIsSome()) {
-            return JavaBytecodeUtils.instantiate(
-                    loc,
+            return b.code(b.newInstance(
                     JavaInternalName.fromClass(Opt.Some.class),
                     JavaMethodDescriptor.fromConstructorParts(TList.of(JvmConstants.DESC_OBJECT)),
-                    payload.optUnwrap());
+                    payload.optUnwrap()));
         }
-        return JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.OPT_NONE);
+        return b.code(b.invokeStatic(GenCodegenDescriptors.OPT_NONE));
     }
 
     @Override
@@ -95,9 +95,6 @@ public final class TypeOptionDynamic<T extends Type> implements Aspect, OptionDy
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionDynamic<>(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightOptionDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicOptionDynamic<>(this));

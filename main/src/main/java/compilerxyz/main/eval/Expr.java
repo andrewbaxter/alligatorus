@@ -87,6 +87,10 @@ public record Expr(QExprId loc, Variant variant) implements Value {
         public static LitValue shared(Value v) {
             return new LitValue(v, false);
         }
+
+        public Opt<Value> litValueValue() {
+            return value;
+        }
     }
 
     public sealed interface Module {

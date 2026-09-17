@@ -9,11 +9,9 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
@@ -35,17 +33,13 @@ public record TypeUniqueConst() implements Aspect, Type {
         if (key.equals(GenAspectOperatorEq.AspectId)) {
             return Opt.some(AspectOperatorEqUniqueConst.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicUniqueConst(this));
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindConstValue.INSTANCE);
         }
-        if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)
-                || key.equals(GenAspectDropDynamicLight.AspectId)) {
+        if (key.equals(GenTrivialIdentityAspects.TYPE_UNIQUE_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         return Opt.none();

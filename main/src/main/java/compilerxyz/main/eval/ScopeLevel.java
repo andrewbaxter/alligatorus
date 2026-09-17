@@ -38,13 +38,13 @@ public sealed interface ScopeLevel {
 
     @BuiltinFull(uniqueId = 6421L)
     final class Temp implements ScopeLevel {
-        public Binding binding;
+        public final Value value;
         public long state;
         public long dropState;
         final Emission emission;
 
-        public Temp(Binding binding, long state, long dropState, Emission emission) {
-            this.binding = binding;
+        public Temp(Value value, long state, long dropState, Emission emission) {
+            this.value = value;
             this.state = state;
             this.dropState = dropState;
             this.emission = emission;
@@ -94,7 +94,6 @@ public sealed interface ScopeLevel {
     }
 
     final class Finally implements ScopeLevel {
-        public Code body;
         public final TList<Pending> pending;
         final Emission emission;
 
@@ -111,7 +110,7 @@ public sealed interface ScopeLevel {
         public record Pending(JumpKey self, DestKey key) {}
     }
 
-    record Arrival(QExprId loc, Value value, boolean stackCarried, Scope scope) {}
+    record Arrival(QExprId loc, Value value, Scope scope) {}
 
     final class Landing {
         public final TList<Arrival> arrivals = new TList<>();
@@ -122,13 +121,18 @@ public sealed interface ScopeLevel {
         public final long dropState;
         public final Opt<String> label;
         public final Opt<JumpKey> next;
-        public final int carryTypeIdx;
+        public final int argumentIdx;
 
-        public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int carryTypeIdx) {
+        public DestKey(long dropState, Opt<String> label, Opt<JumpKey> next, int argumentIdx) {
             this.dropState = dropState;
             this.label = label;
             this.next = next;
-            this.carryTypeIdx = carryTypeIdx;
+            this.argumentIdx = argumentIdx;
+        }
+
+        public Opt<Type> argument(Emission emission) {
+            if (argumentIdx < 0) return Opt.none();
+            return Opt.some(emission.argumentTypes.get(argumentIdx));
         }
 
         public Opt<String> label() {
@@ -137,11 +141,6 @@ public sealed interface ScopeLevel {
 
         public Opt<JumpKey> next() {
             return next;
-        }
-
-        public Opt<Type> carryType(Emission emission) {
-            if (carryTypeIdx < 0) return Opt.none();
-            return Opt.some(emission.carryTypes.get(carryTypeIdx));
         }
 
         @Override
@@ -157,7 +156,7 @@ public sealed interface ScopeLevel {
                             };
                         case Opt.None<JumpKey> ignored -> next.optIsNone();
                     }
-                    && d.carryTypeIdx == carryTypeIdx;
+                    && d.argumentIdx == argumentIdx;
         }
 
         @Override
@@ -169,7 +168,7 @@ public sealed interface ScopeLevel {
                         case Opt.Some<JumpKey> some -> System.identityHashCode(some.value());
                         case Opt.None<JumpKey> ignored -> 0;
                     };
-            h = h * 31 + carryTypeIdx;
+            h = h * 31 + argumentIdx;
             return h;
         }
     }
@@ -184,17 +183,17 @@ public sealed interface ScopeLevel {
 
         public final TMap<DestKey, Opt<JumpKey>> dests = new TMap<>();
         public final TList<Code> blocks = new TList<>();
-        public final TList<Type> carryTypes = new TList<>();
+        public final TList<Type> argumentTypes = new TList<>();
 
-        public int carryTypeIntern(ExprContext xx, Opt<Type> carryType) {
-            return switch (carryType) {
+        public int argumentIntern(ExprContext xx, Opt<Type> argument) {
+            return switch (argument) {
                 case Opt.None<Type> ignored -> -1;
                 case Opt.Some<Type> some -> {
-                    for (int i = 0; i < carryTypes.size(); i++) {
-                        if (carryTypes.get(i).typeIsEqual(xx, some.value())) yield i;
+                    for (int i = 0; i < argumentTypes.size(); i++) {
+                        if (argumentTypes.get(i).typeIsEqual(xx, some.value())) yield i;
                     }
-                    carryTypes.add(some.value());
-                    yield carryTypes.size() - 1;
+                    argumentTypes.add(some.value());
+                    yield argumentTypes.size() - 1;
                 }
             };
         }

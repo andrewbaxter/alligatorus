@@ -9,11 +9,12 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.BindSubDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.RecordBindField;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
@@ -46,17 +47,18 @@ public record AspectBindRecord(Record type) implements AspectBind {
                 }
                 scopeFields.put(entry.getKey(), new RecordScopeField.Dynamic(d.type()));
             }
-            var baseRes = DynUtil.wrapWithCarry(
-                    loc, carry, type.base.optUnwrap().source().valueDynamicSourceRealize(loc));
-            if (baseRes.hasErrors()) return baseRes.reerr();
-            var sub = new TargetBindSub(baseRes.requireValue("Record::bindSub base realize"), recordType);
-            var bound = jvmTarget.bindSlot(xx, loc, sub);
+            var subBuilder = new JavaBytecodeBuilder(loc);
+            var carryAdd = subBuilder.addCode(loc, carry);
+            if (carryAdd.hasErrors()) return carryAdd.reerr();
+            var baseReg = DynUtil.sourceReg(subBuilder, type.base.optUnwrap().source());
+            var sub = new BindSubDynamic(subBuilder.code(baseReg), recordType);
+            var bound = jvmTarget.bindSlot(loc, sub);
             return EResult.ok(
                     new BindResult(Code.target(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));
         }
 
         TList<ExprErr> errors = null;
-        record FieldBindResult(ConstKey key, Opt<TargetBindSub> targetSub, Opt<CodeValue> constCv) {}
+        record FieldBindResult(ConstKey key, Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}
         var bindResults = new TList<FieldBindResult>(record.fields.size());
         boolean hasTarget = false;
         for (var entry : record.fields.entrySet()) {
@@ -140,7 +142,8 @@ public record AspectBindRecord(Record type) implements AspectBind {
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 scopeFields.put(
-                        br.key(), new RecordScopeField.Dynamic(br.targetSub().optUnwrap().type));
+                        br.key(),
+                        new RecordScopeField.Dynamic(br.targetSub().optUnwrap().type()));
                 var withPrefixRes =
                         DynUtil.bindSubWithHeldCodes(xx, loc, br.targetSub().optUnwrap(), pendingConst, true);
                 if (withPrefixRes.hasErrors()) return withPrefixRes.reerr();
@@ -184,7 +187,7 @@ public record AspectBindRecord(Record type) implements AspectBind {
         }
         var combinedRes = jvmTarget.bindSubRecord(xx, loc, carry, targetFields);
         if (combinedRes.hasErrors()) return combinedRes.reerr();
-        var bound = jvmTarget.bindSlot(xx, loc, combinedRes.requireValue("record bind sub"));
+        var bound = jvmTarget.bindSlot(loc, combinedRes.requireValue("record bind sub"));
         return EResult.ok(new BindResult(Code.target(bound.code), new BindingRecord(scopeFields, Opt.some(bound.id))));
     }
 }

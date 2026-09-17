@@ -101,21 +101,20 @@ public final class CompositeClassEmitter {
                 null);
         ctor.visitCode();
 
-        var loc = CodeLoc.Infallible.INSTANCE;
-        var seq = JavaBytecodeUtils.seq();
-        seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-        seq.add(JavaBytecodeUtils.invokeSpecial(
-                loc, JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS));
-
+        var b = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+        var self = b.loadIndexed(0, JavaDataDescriptor.fromInternalName(ownName));
+        b.invokeSpecialVoid(JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS, self);
         int localSlot = 1;
         for (int i = 0; i < slotDescs.size(); i++) {
             var desc = slotDescs.get(i);
-            seq.add(JavaBytecodeUtils.varInsn(loc, Opcodes.ALOAD, 0));
-            seq.add(JavaBytecodeUtils.varInsn(loc, desc.loadOpcode(), localSlot));
-            seq.add(JavaBytecodeUtils.setField(loc, ownName, slotFieldName(i), desc));
+            var selfAgain = b.loadIndexed(0, JavaDataDescriptor.fromInternalName(ownName));
+            var value = b.loadIndexed(localSlot, desc);
+            b.putField(ownName, slotFieldName(i), desc, selfAgain, value);
             localSlot += desc.slotWidth();
         }
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.RETURN));
+        b.retVoid();
+        var seq = new JavaBytecodeSequence();
+        seq.add(b.code());
         JavaBytecodeUtils.renderMethod(seq, ctor, TList.of());
 
         cw.visitEnd();

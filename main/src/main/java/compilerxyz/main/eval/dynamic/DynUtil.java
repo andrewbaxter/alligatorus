@@ -7,12 +7,15 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
+import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
 import compilerxyz.main.gen.AspectBind;
@@ -24,14 +27,11 @@ import compilerxyz.main.gen.GenAspectDynamicBoxed;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
-import compilerxyz.main.gen.TargetBindSub;
-import compilerxyz.prelude.util.MustCast;
+import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.Iterator;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
 
 public final class DynUtil {
     private DynUtil() {}
@@ -74,44 +74,59 @@ public final class DynUtil {
         return EResult.ok(consumeRes.requireValue("DynUtil::jvmDescFor").aspectConsumeDynamicJvmClass(xx));
     }
 
-    public static CodeDynamic iteratorNext(QExprId loc, BindingId iteratorSlot, CodeDynamic elementDecode) {
-        var seq = new JavaBytecodeSequence();
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, iteratorSlot)));
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(
-                loc,
-                JavaInternalName.fromClass(Iterator.class),
+    public interface ElementDecode {
+        JavaBytecodeReg elementDecode(JavaBytecodeBuilder b, JavaBytecodeReg raw);
+    }
+
+    public static CodeDynamicReg iteratorNext(QExprId loc, BindingId iteratorSlot, ElementDecode decode) {
+        var b = new JavaBytecodeBuilder(loc);
+        var it = b.load(iteratorSlot, JavaDataDescriptor.fromClass(Iterator.class));
+        var raw = b.invokeInterface(
+                JvmConstants.INTNAME_ITERATOR,
                 "next",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
-        seq.add(elementDecode);
-        return new CodeDynamic(loc, seq);
+                JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of()),
+                it);
+        return b.code(decode.elementDecode(b, raw));
     }
 
     public static EResult<CodeValue> foreachSkeleton(
-            QExprId loc, CodeDynamic iteratorSetup, BindingId iteratorSlot, CodeDynamic elementBind, Code body) {
-        var loopLabel = new LabelNode();
-        var doneLabel = new LabelNode();
-        var seq = new JavaBytecodeSequence();
-        seq.add(iteratorSetup);
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, iteratorSlot)));
-        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(loopLabel)));
-        seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, iteratorSlot)));
-        var iteratorName = JavaInternalName.fromClass(Iterator.class);
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(
-                loc,
-                iteratorName,
+            QExprId loc, CodeDynamicReg iteratorSetup, BindingId iteratorSlot, CodeDynamic elementBind, Code body) {
+        var loopKey = new JumpKey();
+        var doneKey = new JumpKey();
+        var b = new JavaBytecodeBuilder(loc);
+        b.add(iteratorSetup.code());
+        b.store(iteratorSlot, iteratorSetup.reg());
+        b.land(loopKey);
+        var it = b.load(iteratorSlot, JavaDataDescriptor.fromClass(Iterator.class));
+        var hasNext = b.invokeInterface(
+                JvmConstants.INTNAME_ITERATOR,
                 "hasNext",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
-        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.IFEQ, doneLabel))));
-        seq.add(elementBind);
-        var bodyDynCast = CodeDynamic.castOpt(loc, body);
-        if (bodyDynCast.hasErrors()) return bodyDynCast.reerr();
-        var bodyDyn = bodyDynCast.requireValue("bodyDyn");
-        if (bodyDyn.optIsSome()) {
-            seq.add(bodyDyn.optUnwrap());
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of()),
+                it);
+        b.branch(Opcodes.IFEQ, doneKey, hasNext);
+        b.add(elementBind);
+        var bodyRes = b.addCode(loc, body);
+        if (bodyRes.hasErrors()) return bodyRes.reerr();
+        b.jump(loopKey);
+        b.land(doneKey);
+        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
+    }
+
+    public static Opt<JavaBytecodeReg> invokeStaticFunction(
+            ExprContext xx,
+            QExprId loc,
+            JavaBytecodeBuilder b,
+            JavaInternalName klass,
+            String methodName,
+            JavaMethodDescriptor desc,
+            boolean needsEvalContext,
+            TList<CodeDynamicReg> args) {
+        var regs = new TList<JavaBytecodeReg>();
+        if (needsEvalContext) {
+            regs.add(b.reg(EvalRootEmitter.loadEvalContext(loc, xx)));
         }
-        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, loopLabel))));
-        seq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(doneLabel)));
-        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+        for (var arg : args) regs.add(b.reg(arg));
+        return b.invoke(Opcodes.INVOKESTATIC, klass, methodName, desc, false, regs);
     }
 
     public static EResult<TargetDynamic> jvmTarget(ExprContext xx, QExprId loc) {
@@ -122,11 +137,10 @@ public final class DynUtil {
     public static EResult<AspectBind.BindResult> bindViaTarget(ExprContext xx, QExprId loc, CodeValue cv) {
         var valueOpt = cv.value();
         if (valueOpt.optIsNone()) {
-            throw new IllegalStateException(
-                    "bind_via_target called with absent value in CodeValue; Rust unwraps unconditionally");
+            throw new IllegalStateException("bind_via_target called with absent value in CodeValue");
         }
         var vtype = valueOpt.optUnwrap().valueType();
-        if (!dynamicHasCode(cv)) {
+        if (sourceOf(valueOpt.optUnwrap()).optIsNone()) {
             Binding binding = new BindingValue(valueOpt.optUnwrap());
             return EResult.ok(new AspectBind.BindResult(cv.code(), binding));
         }
@@ -144,83 +158,117 @@ public final class DynUtil {
         }
         var targetRes = jvmTarget(xx, loc);
         if (targetRes.hasErrors()) return targetRes.reerr();
-        var bound = targetRes.requireValue("DynUtil::bindViaTarget jvm target").bindSlot(xx, loc, subOpt.optUnwrap());
+        var bound = targetRes.requireValue("DynUtil::bindViaTarget jvm target").bindSlot(loc, subOpt.optUnwrap());
         Code wrappingCode = Code.target(bound.code);
         Binding binding = new BindingDynamicBinding(bound.id, vtype);
         return EResult.ok(new AspectBind.BindResult(wrappingCode, binding));
     }
 
-    public static EResult<TargetBindSub> bindSubWithHeldCodes(
-            ExprContext xx, QExprId loc, TargetBindSub sub, TList<Code> codes, boolean before) {
+    public static EResult<BindSubDynamic> bindSubWithHeldCodes(
+            ExprContext xx, QExprId loc, BindSubDynamic sub, TList<Code> codes, boolean before) {
         if (codes.isEmpty()) return EResult.ok(sub);
         var parts = new TList<Code>();
-        if (!before) parts.add(Code.target(sub.data));
+        if (!before) parts.add(Code.target(sub.value().code()));
         parts.addAll(codes);
-        if (before) parts.add(Code.target(sub.data));
+        if (before) parts.add(Code.target(sub.value().code()));
         codes.clear();
         var seqRes = xx.target.targetSeq(loc, parts);
         if (seqRes.hasErrors()) return seqRes.reerr();
         var dynRes = CodeDynamic.castRequired(
                 loc, seqRes.requireValue("bindSubWithHeldCodes seq"), "bindSubWithHeldCodes: codes are not dynamic");
         if (dynRes.hasErrors()) return dynRes.reerr();
-        return EResult.ok(new TargetBindSub(dynRes.requireValue("bindSubWithHeldCodes dyn"), sub.type));
+        return EResult.ok(new BindSubDynamic(
+                new CodeDynamicReg(
+                        dynRes.requireValue("bindSubWithHeldCodes dyn"),
+                        sub.value().reg()),
+                sub.type()));
     }
 
-    public static EResult<Opt<TargetBindSub>> bindDynamicDefault(QExprId loc, CodeValue cv) {
-        if (!dynamicHasCode(cv)) {
+    public static EResult<Opt<BindSubDynamic>> bindDynamicDefault(QExprId loc, CodeValue cv) {
+        if (cv.value().optIsNone()) {
+            throw new IllegalStateException("bind_dynamic_default called with absent value in CodeValue");
+        }
+        if (sourceOf(cv.value().optUnwrap()).optIsNone()) {
             return EResult.ok(Opt.none());
         }
-        if (cv.value().optIsNone()) {
-            throw new IllegalStateException(
-                    "bind_dynamic_default called with absent value in CodeValue; Rust unwraps unconditionally");
-        }
         var vtype = cv.value().optUnwrap().valueType();
-        var dynRes = dynamicConsumeToDynamic(loc, cv);
+        var dynRes = valueReg(loc, cv);
         if (dynRes.hasErrors()) {
             return dynRes.reerr();
         }
-        var dyn = dynRes.requireValue("DynUtil::bindDynamicDefault dynamicConsumeToDynamic");
-        return EResult.ok(Opt.some(new TargetBindSub(dyn, vtype)));
+        var dyn = dynRes.requireValue("DynUtil::bindDynamicDefault valueReg");
+        return EResult.ok(Opt.some(new BindSubDynamic(dyn, vtype)));
     }
 
-    public record DropChild(Type childType, CodeDynamic access) {}
+    public static Opt<ValueDynamicSource> sourceOf(Value value) {
+        return switch (value) {
+            case ValueDynamic vd -> Opt.some(vd.source());
+            case Tuple tuple ->
+                tuple.base.optIsSome() ? Opt.some(tuple.base.optUnwrap().source()) : Opt.none();
+            case Record record ->
+                record.base.optIsSome() ? Opt.some(record.base.optUnwrap().source()) : Opt.none();
+            default -> Opt.none();
+        };
+    }
 
-    public static EResult<Code> dropDefault(QExprId loc, CodeValue cv) {
+    public static JavaBytecodeReg sourceReg(JavaBytecodeBuilder b, ValueDynamicSource source) {
+        return switch (source) {
+            case ValueDynamicSource.Reg r -> r.reg();
+            case ValueDynamicSource.Slot slot -> b.load(slot.slot(), slot.desc());
+            case ValueDynamicSource.Field field ->
+                b.getField(field.klass(), field.field(), field.desc(), sourceReg(b, field.base()));
+        };
+    }
+
+    public static EResult<CodeDynamicReg> valueReg(QExprId loc, CodeValue cv) {
         if (cv.value().optIsNone()) {
-            return EResult.ok(Code.none(loc));
+            throw new IllegalStateException("DynUtil::valueReg: CodeValue has no value");
         }
-        if (!(cv.value().optUnwrap() instanceof ValueDynamic vd)) {
-            return EResult.ok(Code.none(loc));
+        var value = cv.value().optUnwrap();
+        var source = sourceOf(value);
+        if (source.optIsNone()) {
+            throw new IllegalStateException("DynUtil::valueReg: value has no JVM source: "
+                    + value.getClass().getName());
         }
-        return EResult.ok(vd.source().valueDynamicSourceDrop(loc));
+        var b = new JavaBytecodeBuilder(loc);
+        var codeRes = b.addCode(loc, cv.code());
+        if (codeRes.hasErrors()) return codeRes.reerr();
+        return EResult.ok(b.code(sourceReg(b, source.optUnwrap())));
     }
 
-    public static EResult<CodeDynamic> dynamicConsumeToDynamic(QExprId loc, CodeValue cv) {
-        var carryRes = CodeDynamic.castOpt(loc, cv.code());
-        if (carryRes.hasErrors()) return carryRes.reerr();
-        var carry = carryRes.requireValue("DynUtil::dynamicConsumeToDynamic carry");
-        Opt<CodeDynamic> realized = cv.value().optIsSome() && cv.value().optUnwrap() instanceof ValueDynamic vd
-                ? Opt.some(vd.source().valueDynamicSourceRealize(loc))
-                : Opt.none();
-        if (realized.optIsNone()) {
-            if (carry.optIsNone()) return EResult.err(loc, "Expression resulted in empty code");
-            return EResult.ok(carry.optUnwrap());
+    public static EResult<CodeDynamicReg> materialize(ExprContext xx, QExprId loc, CodeValue cv) {
+        if (cv.value().optIsNone()) {
+            return EResult.err(loc, "expression has no value to materialize");
         }
-        if (carry.optIsNone()) return EResult.ok(realized.optUnwrap());
-        var seq = new JavaBytecodeSequence();
-        seq.add(carry.optUnwrap());
-        seq.add(realized.optUnwrap());
-        return EResult.ok(new CodeDynamic(loc, seq));
+        var vtype = cv.value().optUnwrap().valueType();
+        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, vtype);
+        if (consumeRes.hasErrors()) return consumeRes.reerr();
+        var consumed =
+                consumeRes.requireValue("DynUtil::materialize consume").aspectConsumeDynamicToDynamic(xx, loc, cv);
+        if (consumed.hasErrors()) return consumed.reerr();
+        return valueReg(loc, consumed.requireValue("DynUtil::materialize consumed"));
+    }
+
+    public static EResult<CodeDynamicReg> materialize(ExprContext xx, QExprId loc, Type as, CodeValue cv) {
+        var converted = Eval.typecheckConvert(xx, loc, as, cv);
+        if (converted.hasErrors()) return converted.reerr();
+        return materialize(xx, loc, converted.requireValue("DynUtil::materialize convert"));
     }
 
     public static CodeValue methodRefOn(CodeValue receiver, Type methodType) {
-        var vd = MustCast.mustCast(ValueDynamic.class, receiver.value().optUnwrap());
-        return new CodeValue(receiver.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), methodType)));
+        var source = sourceOf(receiver.value().optUnwrap());
+        if (source.optIsNone()) {
+            throw new IllegalStateException("DynUtil::methodRefOn: receiver has no JVM source");
+        }
+        return new CodeValue(receiver.code(), EvalOutcome.ofValue(new ValueDynamic(source.optUnwrap(), methodType)));
     }
 
     public static CodeValue dynamicCastKeepingSource(CodeValue cv, Type type) {
-        var vd = MustCast.mustCast(ValueDynamic.class, cv.value().optUnwrap());
-        return new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(vd.source(), type)));
+        var source = sourceOf(cv.value().optUnwrap());
+        if (source.optIsNone()) {
+            throw new IllegalStateException("DynUtil::dynamicCastKeepingSource: value has no JVM source");
+        }
+        return new CodeValue(cv.code(), EvalOutcome.ofValue(new ValueDynamic(source.optUnwrap(), type)));
     }
 
     public static boolean dynamicHasCode(CodeValue cv) {
@@ -245,69 +293,61 @@ public final class DynUtil {
         };
     }
 
-    public static CodeValue dynamicStackToValue(ExprContext xx, CodeDynamic value, Type type) {
-        var dynValue = ValueDynamic.stack(xx, type);
-        return new CodeValue(Code.target(value), EvalOutcome.ofValue(dynValue));
+    public static CodeValue regToValue(CodeDynamic code, JavaBytecodeReg reg, Type type) {
+        return new CodeValue(
+                Code.target(code), EvalOutcome.ofValue(new ValueDynamic(new ValueDynamicSource.Reg(reg), type)));
     }
 
-    public static EResult<CodeDynamic> wrapWithCarry(QExprId loc, Code carry, CodeDynamic dynamicCode) {
-        var carryDynCast = CodeDynamic.castOpt(loc, carry);
-        if (carryDynCast.hasErrors()) return carryDynCast.reerr();
-        if (carryDynCast.requireValue("carryDyn").optIsNone()) {
-            return EResult.ok(dynamicCode);
-        }
-        var carryDyn = carryDynCast.requireValue("carryDyn").optUnwrap();
-        var seq = new JavaBytecodeSequence();
-        if (carryDyn.code() instanceof JavaBytecodeSequence carrySeq) {
-            for (var child : carrySeq.children) seq.add(child);
-        } else {
-            seq.add(carryDyn);
-        }
-        seq.add(dynamicCode);
-        return EResult.ok(new CodeDynamic(loc, seq));
+    public static CodeValue regToValue(CodeDynamicReg value, Type type) {
+        return regToValue(value.code(), value.reg(), type);
+    }
+
+    public static CodeValue sourceToValue(CodeDynamic code, ValueDynamicSource source, Type type) {
+        return new CodeValue(Code.target(code), EvalOutcome.ofValue(new ValueDynamic(source, type)));
+    }
+
+    public static CodeValue regToTypedValue(
+            ExprContext xx, QExprId loc, CodeDynamic code, JavaBytecodeReg reg, Type type) {
+        var source = new ValueDynamicSource.Reg(reg);
+        var aspect = GenAspectStackValueDynamic.getMaybe(xx, type);
+        if (aspect.optIsSome()) return aspect.optUnwrap().aspectStackValueDynamicToValue(xx, loc, code, source);
+        return sourceToValue(code, source, type);
     }
 
     public static EResult<CodeValue> dynamicSet(ExprContext xx, QExprId loc, CodeValue self, CodeValue value) {
         if (self.value().optIsNone()) {
-            throw new IllegalStateException(
-                    "dynamicSet called with absent value in self_; Rust unwraps unconditionally");
+            throw new IllegalStateException("dynamicSet called with absent value in self_");
         }
         if (!(self.value().optUnwrap() instanceof ValueDynamic selfDyn)) {
             throw new IllegalStateException("dynamicSet: self_ value is not a ValueDynamic (got "
                     + self.value().optUnwrap().getClass().getName()
                     + ")");
         }
-        Type targetType = selfDyn.type();
-        var convRes = Eval.typecheckConvert(xx, loc, targetType, value);
-        if (convRes.hasErrors()) {
-            return convRes.reerr();
+        var valueRes = materialize(xx, loc, selfDyn.type(), value);
+        if (valueRes.hasErrors()) return valueRes.reerr();
+        var valueDyn = valueRes.requireValue("DynUtil::dynamicSet value");
+        var b = new JavaBytecodeBuilder(loc);
+        var selfCodeRes = b.addCode(loc, self.code());
+        if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
+        switch (selfDyn.source()) {
+            case ValueDynamicSource.Reg r -> {
+                return EResult.err(loc, "Cannot modify a temporary value");
+            }
+            case ValueDynamicSource.Slot slot -> {
+                var newValue = b.reg(valueDyn);
+                b.store(slot.slot(), newValue);
+            }
+            case ValueDynamicSource.Field field -> {
+                if (!field.valueDynamicSourceIsPlace()) {
+                    return EResult.err(loc, "Cannot modify a temporary value");
+                }
+                var base = sourceReg(b, field.base());
+                var newValue = b.reg(valueDyn);
+                b.putField(field.klass(), field.field(), field.desc(), base, newValue);
+            }
         }
-        var converted = convRes.requireValue("DynUtil::dynamicSet typecheckConvert");
-        if (converted.value().optIsNone()) {
-            return EResult.err(loc, "dynamicSet: converted value has no compile-time value");
-        }
-        Type valueType = converted.value().optUnwrap().valueType();
-        var valueToDynRes = GenAspectConsumeDynamic.get(xx, loc, valueType);
-        if (valueToDynRes.hasErrors()) {
-            return valueToDynRes.reerr();
-        }
-        var valueToDyn = valueToDynRes.requireValue("DynUtil::dynamicSet consume aspect");
-        var valueCodeRes = valueToDyn.aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (valueCodeRes.hasErrors()) {
-            return valueCodeRes.reerr();
-        }
-        var valueCode = valueCodeRes.requireValue("DynUtil::dynamicSet consume.toDynamic");
-        var nullStackRes = GenAspectStackValueDynamic.get(xx, loc, new TypeNullDynamic());
-        if (nullStackRes.hasErrors()) {
-            return nullStackRes.reerr();
-        }
-        var nullStack = nullStackRes.requireValue("DynUtil::dynamicSet null stack aspect");
-        var storeRes = selfDyn.source().valueDynamicSourceStore(loc, valueCode);
-        if (storeRes.hasErrors()) return storeRes.reerr();
-        var seq = new JavaBytecodeSequence();
-        seq.add(storeRes.requireValue("DynUtil::dynamicSet store"));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-        return EResult.ok(nullStack.aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
+        var nullReg = b.constNull();
+        return EResult.ok(regToTypedValue(xx, loc, b.code(), nullReg, new TypeNullDynamic()));
     }
 
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {
@@ -318,7 +358,7 @@ public final class DynUtil {
         return false;
     }
 
-    public static EResult<TList<CodeDynamic>> destructurePositional(
+    public static EResult<TList<CodeDynamicReg>> destructurePositional(
             ExprContext xx, QExprId loc, Type argType, CodeValue converted) {
         var tupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (tupleOpt.optIsSome()) {
@@ -362,11 +402,7 @@ public final class DynUtil {
             }
             return destructureFromElements(xx, loc, elemTypes, elemCvs);
         }
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var argDyn = consumeRes
-                .requireValue("DynUtil::destructurePositional arg consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
+        var argDyn = materialize(xx, loc, converted);
         if (argDyn.hasErrors()) return argDyn.reerr();
         return EResult.ok(TList.of(argDyn.requireValue("DynUtil::destructurePositional arg")));
     }
@@ -401,20 +437,16 @@ public final class DynUtil {
                 elemCvs.get(1).requireValue("DynUtil::methodRefSplitArgument args")));
     }
 
-    private static EResult<TList<CodeDynamic>> destructureFromElements(
+    private static EResult<TList<CodeDynamicReg>> destructureFromElements(
             ExprContext xx, QExprId loc, TList<Type> elementTypes, TList<EResult<CodeValue>> elemCvs) {
-        var out = new TList<CodeDynamic>(elementTypes.size());
+        var out = new TList<CodeDynamicReg>(elementTypes.size());
         for (int i = 0; i < elementTypes.size(); i++) {
             var elemCvRes = elemCvs.get(i);
             if (elemCvRes.hasErrors()) return elemCvRes.reerr();
             var elemCv = elemCvRes.requireValue("DynUtil::destructurePositional element");
-            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, elementTypes.get(i));
-            if (consumeRes.hasErrors()) return consumeRes.reerr();
-            var elemDyn = consumeRes
-                    .requireValue("DynUtil::destructurePositional consume")
-                    .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
+            var elemDyn = materialize(xx, loc, elementTypes.get(i), elemCv);
             if (elemDyn.hasErrors()) return elemDyn.reerr();
-            out.add(elemDyn.requireValue("DynUtil::destructurePositional elem toDynamic"));
+            out.add(elemDyn.requireValue("DynUtil::destructurePositional elem"));
         }
         return EResult.ok(out);
     }

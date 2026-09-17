@@ -11,11 +11,9 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
@@ -43,9 +41,6 @@ public record TypeCodeTargetDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldCodeTargetDynamic.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicCodeTargetDynamic.INSTANCE);

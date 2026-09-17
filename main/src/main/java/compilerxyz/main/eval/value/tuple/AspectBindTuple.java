@@ -8,11 +8,12 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.BindSubDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.TupleBindSlot;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.TargetBindSub;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -44,17 +45,18 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
                 }
                 scopeFields.add(new TupleScopeField.Dynamic(d.type()));
             }
-            var baseRes = DynUtil.wrapWithCarry(
-                    loc, carry, type.base.optUnwrap().source().valueDynamicSourceRealize(loc));
-            if (baseRes.hasErrors()) return baseRes.reerr();
-            var sub = new TargetBindSub(baseRes.requireValue("Tuple::bindSub base realize"), tupleType);
-            var bound = jvmTarget.bindSlot(xx, loc, sub);
+            var subBuilder = new JavaBytecodeBuilder(loc);
+            var carryAdd = subBuilder.addCode(loc, carry);
+            if (carryAdd.hasErrors()) return carryAdd.reerr();
+            var baseReg = DynUtil.sourceReg(subBuilder, type.base.optUnwrap().source());
+            var sub = new BindSubDynamic(subBuilder.code(baseReg), tupleType);
+            var bound = jvmTarget.bindSlot(loc, sub);
             return EResult.ok(
                     new BindResult(Code.target(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));
         }
 
         TList<ExprErr> errors = null;
-        record ElemBindResult(Opt<TargetBindSub> targetSub, Opt<CodeValue> constCv) {}
+        record ElemBindResult(Opt<BindSubDynamic> targetSub, Opt<CodeValue> constCv) {}
         var bindResults = new TList<ElemBindResult>(tuple.elements.size());
         boolean hasTarget = false;
         for (int i = 0; i < tuple.elements.size(); i++) {
@@ -133,7 +135,7 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
         for (var br : bindResults) {
             if (br.targetSub().optIsSome()) {
                 var targetSome = br.targetSub().optUnwrap();
-                scopeFields.add(new TupleScopeField.Dynamic(targetSome.type));
+                scopeFields.add(new TupleScopeField.Dynamic(targetSome.type()));
                 var withPrefixRes = DynUtil.bindSubWithHeldCodes(xx, loc, targetSome, pendingConst, true);
                 if (withPrefixRes.hasErrors()) return withPrefixRes.reerr();
                 targetSlots.add(new TupleBindSlot(withPrefixRes.requireValue("Tuple::bindSub prefixed sub")));
@@ -170,7 +172,7 @@ public record AspectBindTuple(Tuple type) implements AspectBind {
         }
         var combinedRes = jvmTarget.bindSubTuple(xx, loc, carry, targetSlots);
         if (combinedRes.hasErrors()) return combinedRes.reerr();
-        var bound = jvmTarget.bindSlot(xx, loc, combinedRes.requireValue("tuple bind sub"));
+        var bound = jvmTarget.bindSlot(loc, combinedRes.requireValue("tuple bind sub"));
         return EResult.ok(new BindResult(Code.target(bound.code), new BindingTuple(scopeFields, Opt.some(bound.id))));
     }
 }

@@ -8,11 +8,9 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
@@ -21,17 +19,12 @@ import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectType;
@@ -85,9 +78,6 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         if (key.equals(GenAspectType.AspectId)) {
             return Opt.some(AspectTypeSourceInterfaceDynamic.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicSourceInterfaceDynamic(this));
         }
@@ -97,9 +87,7 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         if (key.equals(GenAspectArtifact.AspectId)) {
             return Opt.some(AspectArtifactSourceInterfaceDynamic.INSTANCE);
         }
-        if (key.equals(cell.identity)
-                || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)
-                || key.equals(GenAspectDropDynamicLight.AspectId)) {
+        if (key.equals(cell.identity) || key.equals(GenTrivialIdentityAspects.TYPE_SOURCE_INTERFACE_DYNAMIC_IDENTITY)) {
             return Opt.some(this);
         }
         if (key.equals(GenAspectPostDeserialize.AspectId)) {
@@ -252,15 +240,13 @@ public record TypeSourceInterfaceDynamic(InterfaceCell cell) implements Aspect, 
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
-            if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
-            var sourceCode = sourceCodeRes.requireValue("sourceCode");
-            var seq = new JavaBytecodeSequence();
-            seq.add(sourceCode);
-            seq.add(JavaBytecodeUtils.callMethod(
-                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL));
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+            var sourceRes = DynUtil.valueReg(loc, cv);
+            if (sourceRes.hasErrors()) return sourceRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.invokeVirtual(
+                    GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL,
+                    b.reg(sourceRes.requireValue("sourceCode")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
         }
         return EResult.err(loc, "Cannot cast interface_const to " + destType.typeDesc());
     }

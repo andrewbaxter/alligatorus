@@ -8,20 +8,15 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
 public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic type) implements AspectFunction {
 
@@ -38,51 +33,36 @@ public record AspectFunctionInterfaceMethodDynamic(TypeInterfaceMethodDynamic ty
         var ifaceType = new TypeSourceInterfaceDynamic(type.iface());
         var receiverRes = Eval.typecheckConvert(xx, loc, ifaceType, split.receiver());
         if (receiverRes.hasErrors()) return receiverRes.reerr();
-        var receiverDynRes = GenAspectConsumeDynamic.getMaybe(xx, ifaceType)
-                .optUnwrap()
-                .aspectConsumeDynamicToDynamic(
-                        xx, loc, receiverRes.requireValue("TypeInterfaceMethodDynamic receiver"));
+        var receiverDynRes =
+                DynUtil.materialize(xx, loc, receiverRes.requireValue("TypeInterfaceMethodDynamic receiver"));
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
-        var selfDyn = receiverDynRes.requireValue("TypeInterfaceMethodDynamic receiver toDynamic");
         var convertedRes = Eval.typecheckConvert(xx, loc, argType, split.methodArgs());
         if (convertedRes.hasErrors()) return convertedRes.reerr();
         var hostArgType = DynUtil.substituteBoxed(xx, argType);
-        var hostArgRes = Eval.typecheckConvert(
+        var argDynRes = DynUtil.materialize(
                 xx, loc, hostArgType, convertedRes.requireValue("TypeInterfaceMethodDynamic typecheckConvert"));
-        if (hostArgRes.hasErrors()) return hostArgRes.reerr();
-        var converted = hostArgRes.requireValue("TypeInterfaceMethodDynamic host arg");
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, hostArgType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var argDynRes = consumeRes
-                .requireValue("TypeInterfaceMethodDynamic AspectConsumeDynamic.get")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
         if (argDynRes.hasErrors()) return argDynRes.reerr();
-        var argDyn = argDynRes.requireValue("TypeInterfaceMethodDynamic argDyn");
 
         var descObject = JavaDataDescriptor.fromInternalName(JvmConstants.INTNAME_OBJECT);
         var methodDesc = JavaMethodDescriptor.fromParts(descObject, TList.of(descObject));
 
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDyn);
-        seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(ifaceInternalName)));
-        seq.add(argDyn);
+        var b = new JavaBytecodeBuilder(loc);
+        var receiver = b.checkcast(
+                JavaDataDescriptor.fromInternalName(ifaceInternalName),
+                b.reg(receiverDynRes.requireValue("TypeInterfaceMethodDynamic receiver toDynamic")));
+        var arg = b.reg(argDynRes.requireValue("TypeInterfaceMethodDynamic argDyn"));
         var hostName = type.method().hostMethodName.optUnwrapOr(type.method().name);
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, ifaceInternalName, hostName, methodDesc));
+        var out = b.invokeInterface(ifaceInternalName, hostName, methodDesc, receiver, arg);
         if (retType.optIsNone()) {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-            return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.NO_VALUE));
+            return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
         var retTypeVal = retType.optUnwrap();
         var hostRetType = DynUtil.substituteBoxed(xx, retTypeVal);
         var retDesc = JvmSort.descriptor(xx, hostRetType);
         if (!retDesc.value().equals(descObject.value())) {
-            seq.add(JavaBytecodeUtils.cast(loc, retDesc));
+            out = b.checkcast(retDesc, out);
         }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, hostRetType);
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        var hostRetCv = retStackRes
-                .requireValue("TypeInterfaceMethodDynamic AspectStackValueDynamic.get")
-                .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq));
+        var hostRetCv = DynUtil.regToTypedValue(xx, loc, b.code(), out, hostRetType);
         return Eval.typecheckConvert(xx, loc, retTypeVal, hostRetCv);
     }
 

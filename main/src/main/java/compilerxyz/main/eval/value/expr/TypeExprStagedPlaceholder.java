@@ -9,10 +9,8 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.value.object.TypeObjectDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.GenTypeExprStagedPlaceholder;
@@ -40,14 +38,8 @@ public record TypeExprStagedPlaceholder() implements Aspect, Type, Value {
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(AspectLiftStagedExprCell.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicObject.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(this);
         }
         return Opt.none();
     }

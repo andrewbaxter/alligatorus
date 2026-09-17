@@ -15,14 +15,12 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectOperatorEq;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
@@ -48,9 +46,6 @@ public record TypeBoolConst() implements Aspect, Type {
         }
         if (key.equals(GenAspectOperatorEq.AspectId)) {
             return Opt.some(AspectOperatorEqBoolConst.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicBoolConst.INSTANCE);

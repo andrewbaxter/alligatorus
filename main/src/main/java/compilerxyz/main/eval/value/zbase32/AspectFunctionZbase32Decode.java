@@ -1,6 +1,5 @@
 package compilerxyz.main.eval.value.zbase32;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
@@ -9,16 +8,13 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.builtin.Zbase32;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
 import compilerxyz.main.eval.value.byte_.TypeByteDynamic;
 import compilerxyz.main.eval.value.list.TypeListConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectStringConst;
 import compilerxyz.main.gen.GenAspectStringDynamic;
 import compilerxyz.main.gen.GenCodegenDescriptors;
@@ -59,18 +55,13 @@ public final class AspectFunctionZbase32Decode implements AspectFunction {
                     concatRes.requireValue("concat"), EvalOutcome.ofValue(new ValueObjectConst(listType, elements))));
         }
         if (GenAspectStringDynamic.getMaybe(xx, argType).optIsSome()) {
-            var consumeRes = GenAspectConsumeDynamic.get(xx, loc, argType);
-            if (consumeRes.hasErrors()) return consumeRes.reerr();
-            var argDynRes = consumeRes
-                    .requireValue("zbase32.decode AspectConsumeDynamic")
-                    .aspectConsumeDynamicToDynamic(xx, loc, argument);
-            if (argDynRes.hasErrors()) return argDynRes.reerr();
-            var seq = new JavaBytecodeSequence();
-            seq.add(argDynRes.requireValue("zbase32.decode arg dynamic"));
-            seq.add(JavaBytecodeUtils.callStaticMethod(loc, GenCodegenDescriptors.ZBASE32_DECODE_TO_STORE));
+            var argRes = DynUtil.materialize(xx, loc, argument);
+            if (argRes.hasErrors()) return argRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.invokeStatic(
+                    GenCodegenDescriptors.ZBASE32_DECODE_TO_STORE, b.reg(argRes.requireValue("zbase32.decode arg")));
             var listType = GenLists.listDynamic(xx, new TypeByteDynamic());
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, listType))));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, listType));
         }
         return EResult.err(loc, "zbase32.decode: argument must be a string, got " + argType.typeDesc());
     }

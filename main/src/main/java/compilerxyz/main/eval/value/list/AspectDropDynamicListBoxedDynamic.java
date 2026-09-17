@@ -4,24 +4,20 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectDropDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
 import compilerxyz.prelude.util.TList;
 import java.util.Iterator;
-import org.objectweb.asm.Opcodes;
 
 public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDynamic<T> type)
         implements AspectDropDynamic {
@@ -36,33 +32,32 @@ public record AspectDropDynamicListBoxedDynamic<T extends Type>(TypeListBoxedDyn
         }
         var elementSlot = new BindingId();
         var iteratorSlot = new BindingId();
-        var loadElement = new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ALOAD, elementSlot));
-        var elementCv =
-                new CodeValue(Code.target(loadElement), EvalOutcome.ofValue(ValueDynamic.stack(xx, type.elementType)));
+        var elementLoad = new JavaBytecodeBuilder(loc);
+        var elementCv = DynUtil.regToValue(
+                elementLoad.code(),
+                elementLoad.load(elementSlot, JvmSort.descriptor(xx, type.elementType)),
+                type.elementType);
         var elemDropCodeRes = elemDrop.aspectDropDynamicDrop(xx, loc, elementCv);
         if (elemDropCodeRes.hasErrors()) return elemDropCodeRes.reerr();
-        var elemDropCode = elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop");
+        var bodyRes = xx.target.targetSeq(
+                loc,
+                TList.of(
+                        Code.target(elementLoad.code()),
+                        elemDropCodeRes.requireValue("TypeListBoxedDynamic::drop element drop")));
+        if (bodyRes.hasErrors()) return bodyRes.reerr();
 
         var iterableName = JavaInternalName.fromClass(Iterable.class);
         var iteratorName = JavaInternalName.fromClass(Iterator.class);
         var iterMethod = JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromJVMName(iteratorName), TList.of());
-        var setupSeq = new JavaBytecodeSequence();
-        setupSeq.add(vd.source().valueDynamicSourceRealize(loc));
-        setupSeq.add(JavaBytecodeUtils.callInterfaceMethod(loc, iterableName, "iterator", iterMethod));
-        var iteratorSetup = new CodeDynamic(loc, setupSeq);
+        var setup = new JavaBytecodeBuilder(loc);
+        var iteratorSetup = setup.code(
+                setup.invokeInterface(iterableName, "iterator", iterMethod, DynUtil.sourceReg(setup, vd.source())));
 
-        var elementStoreSeq = new JavaBytecodeSequence();
-        elementStoreSeq.add(DynUtil.iteratorNext(loc, iteratorSlot, type.elementDecodeCast(xx, loc)));
-        elementStoreSeq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, elementSlot)));
-        var loopRes = DynUtil.foreachSkeleton(
-                loc, iteratorSetup, iteratorSlot, new CodeDynamic(loc, elementStoreSeq), elemDropCode);
+        var bind = new JavaBytecodeBuilder(loc);
+        bind.store(elementSlot, bind.reg(DynUtil.iteratorNext(loc, iteratorSlot, type.elementDecodeCast(xx))));
+        var loopRes =
+                DynUtil.foreachSkeleton(loc, iteratorSetup, iteratorSlot, bind.code(), bodyRes.requireValue("body"));
         if (loopRes.hasErrors()) return loopRes.reerr();
-        var loopCodeCast = CodeDynamic.castOpt(loc, loopRes.requireValue("loop").code());
-        if (loopCodeCast.hasErrors()) return loopCodeCast.reerr();
-        var loopCode = loopCodeCast.requireValue("loopCode");
-        var finalSeq = new JavaBytecodeSequence();
-        if (loopCode.optIsSome()) finalSeq.add(loopCode.optUnwrap());
-        finalSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        return EResult.ok(Code.target(new CodeDynamic(loc, finalSeq)));
+        return EResult.ok(loopRes.requireValue("loop").code());
     }
 }

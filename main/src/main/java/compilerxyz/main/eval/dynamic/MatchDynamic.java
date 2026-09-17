@@ -9,7 +9,8 @@ public interface MatchDynamic {
 
     EResult<Void> matchDynamicPrepare(ExprContext xx);
 
-    EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex);
+    EResult<CodeDynamicReg> matchDynamicTest(QExprId loc, JavaBytecodeReg base, int variantIndex);
 
-    EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType);
+    EResult<CodeDynamicReg> matchDynamicExtract(
+            ExprContext xx, QExprId loc, JavaBytecodeReg base, int variantIndex, Type variantType);
 }

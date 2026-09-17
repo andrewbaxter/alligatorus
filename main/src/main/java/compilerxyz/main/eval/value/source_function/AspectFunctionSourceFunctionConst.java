@@ -10,10 +10,10 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.function.TypeFunctionConst;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.prelude.util.Opt;
 
 public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) implements AspectFunction {
@@ -41,24 +41,20 @@ public record AspectFunctionSourceFunctionConst(TypeSourceFunctionConst type) im
 
         var descRes = TypeFunctionConst.descriptorFor(xx, loc, argType, retType, false);
         if (descRes.hasErrors()) return descRes.reerr();
-        var invocationRes = TypeFunctionConst.emitStaticInvocation(
+        var b = new JavaBytecodeBuilder(loc);
+        var invocation = DynUtil.invokeStaticFunction(
                 xx,
                 loc,
+                b,
                 klass,
                 methodName,
                 descRes.requireValue("TypeSourceFunctionConst::call descriptor"),
                 false,
                 argCodes);
-        if (invocationRes.hasErrors()) return invocationRes.reerr();
-        var invocation = invocationRes.requireValue("TypeSourceFunctionConst::call invocation");
-        if (retType.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.target(invocation), EvalOutcome.NO_VALUE));
+        if (retType.optIsNone() || invocation.optIsNone()) {
+            return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType.optUnwrap());
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        return EResult.ok(retStackRes
-                .requireValue("TypeSourceFunctionConst::call ret stack")
-                .aspectStackValueDynamicToValue(xx, loc, invocation));
+        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), invocation.optUnwrap(), retType.optUnwrap()));
     }
 
     @Override

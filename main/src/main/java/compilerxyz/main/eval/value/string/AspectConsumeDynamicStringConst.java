@@ -4,8 +4,8 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -22,11 +22,15 @@ public final class AspectConsumeDynamicStringConst implements AspectConsumeDynam
     }
 
     @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+    public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsSome()
                 && cv.value().optUnwrap() instanceof ValueObjectConst v
                 && v.data() instanceof String s) {
-            return EResult.ok(JavaBytecodeUtils.literalString(loc, s));
+            var b = new JavaBytecodeBuilder(loc);
+            var carryRes = b.addCode(loc, cv.code());
+            if (carryRes.hasErrors()) return carryRes.reerr();
+            var raw = b.constString(s);
+            return EResult.ok(DynUtil.regToValue(b.code(), raw, new TypeStringDynamic()));
         }
         return EResult.err(loc, "TypeStringConst::toDynamic: expected string ValueObjectConst");
     }

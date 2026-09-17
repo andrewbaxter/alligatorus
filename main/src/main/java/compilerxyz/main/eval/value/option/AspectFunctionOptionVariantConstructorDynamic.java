@@ -7,11 +7,11 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenOptions;
 import compilerxyz.prelude.util.Opt;
 
@@ -27,18 +27,14 @@ public record AspectFunctionOptionVariantConstructorDynamic(TypeOptionVariantCon
             return EResult.errs(erb.errors());
         }
         var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var underlyingJsRes = consumeRes
-                .requireValue("TypeOptionVariantConstructorDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-        var underlyingJs = underlyingJsRes.requireValue("TypeOptionVariantConstructorDynamic::call toDynamic");
-
+        var underlyingRes = DynUtil.materialize(xx, loc, converted);
+        if (underlyingRes.hasErrors()) return underlyingRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var underlying = b.reg(underlyingRes.requireValue("TypeOptionVariantConstructorDynamic::call underlying"));
         var resultType = GenOptions.optionDynamic(xx, type.elementType());
-        var newOpt = resultType.optionDynamicConstruct(
-                xx, loc, type.isSome() ? Opt.some(underlyingJs) : Opt.<CodeDynamic>none());
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, newOpt, resultType));
+        var newOpt = b.reg(resultType.optionDynamicConstruct(
+                xx, loc, type.isSome() ? Opt.some(underlying) : Opt.<JavaBytecodeReg>none()));
+        return EResult.ok(DynUtil.regToValue(b.code(), newOpt, resultType));
     }
 
     @Override

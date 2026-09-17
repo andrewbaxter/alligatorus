@@ -8,17 +8,16 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.Opcodes;
 
 public final class TypeMethodShared {
     private TypeMethodShared() {}
@@ -36,10 +35,9 @@ public final class TypeMethodShared {
             JavaMethodDescriptor descriptor,
             boolean isInterface,
             boolean needsEvalContext) {
-        var receiverDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
+        var receiverDynRes = DynUtil.valueReg(loc, self);
         if (receiverDynRes.hasErrors()) return receiverDynRes.reerr();
-        var receiverDyn = receiverDynRes.requireValue("receiverDyn");
-        EResult<TList<CodeDynamic>> argsDynRes;
+        EResult<TList<CodeDynamicReg>> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {
             argsDynRes = EResult.ok(new TList<>());
         } else {
@@ -49,55 +47,36 @@ public final class TypeMethodShared {
             argsDynRes = DynUtil.destructurePositional(xx, loc, argType, converted);
             if (argsDynRes.hasErrors()) return argsDynRes.reerr();
         }
-        var seq = new JavaBytecodeSequence();
-        seq.add(receiverDyn);
+        var b = new JavaBytecodeBuilder(loc);
+        var regs = new TList<JavaBytecodeReg>();
+        regs.add(b.reg(receiverDynRes.requireValue("receiverDyn")));
         if (needsEvalContext) {
-            seq.add(EvalRootEmitter.loadEvalContext(loc, xx));
+            regs.add(b.reg(EvalRootEmitter.loadEvalContext(loc, xx)));
         }
         var args = argsDynRes.requireValue(what + "::call args");
-        var paramDescs = new TList<JavaDataDescriptor>();
-        {
-            var pd = descriptor.value();
-            if (pd.isEmpty() || pd.charAt(0) != '(') {
-                throw new IllegalStateException("JavaMethodDescriptor missing '(': " + pd);
-            }
-            int pdi = 1;
-            while (pdi < pd.length() && pd.charAt(pdi) != ')') {
-                int start = pdi;
-                while (pdi < pd.length() && pd.charAt(pdi) == '[') pdi++;
-                char pdc = pd.charAt(pdi);
-                if (pdc == 'L') {
-                    while (pdi < pd.length() && pd.charAt(pdi) != ';') pdi++;
-                    pdi++;
-                } else {
-                    pdi++;
-                }
-                paramDescs.add(JavaDataDescriptor.create(pd.substring(start, pdi)));
-            }
-        }
+        var paramDescs = descriptor.argumentDescriptors();
         var paramOffset = needsEvalContext ? 1 : 0;
         for (int i = 0; i < args.size(); i++) {
-            seq.add(args.get(i));
+            var reg = b.reg(args.get(i));
             var pi = i + paramOffset;
             if (pi < paramDescs.size()) {
                 var expected = paramDescs.get(pi);
                 if (expected.value().startsWith("L") && !expected.value().equals("Ljava/lang/Object;")) {
-                    seq.add(JavaBytecodeUtils.cast(loc, expected));
+                    reg = b.checkcast(expected, reg);
                 }
             }
+            regs.add(reg);
         }
-        if (isInterface) {
-            seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, klass, methodName, descriptor));
-        } else {
-            seq.add(JavaBytecodeUtils.callMethod(loc, klass, methodName, descriptor));
+        var out = b.invoke(
+                isInterface ? Opcodes.INVOKEINTERFACE : Opcodes.INVOKEVIRTUAL,
+                klass,
+                methodName,
+                descriptor,
+                isInterface,
+                regs);
+        if (ret.optIsNone() || out.optIsNone()) {
+            return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        var seqCode = new CodeDynamic(loc, seq);
-        if (ret.optIsNone()) {
-            return EResult.ok(new CodeValue(Code.target(seqCode), EvalOutcome.NO_VALUE));
-        }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, ret.optUnwrap());
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        return EResult.ok(
-                retStackRes.requireValue(what + "::call ret stack").aspectStackValueDynamicToValue(xx, loc, seqCode));
+        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out.optUnwrap(), ret.optUnwrap()));
     }
 }

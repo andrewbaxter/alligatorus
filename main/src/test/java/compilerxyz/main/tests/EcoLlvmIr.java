@@ -791,7 +791,6 @@ public final class EcoLlvmIr {
             e.mb.evalAspectBindDynamicId(),
             e.mb.evalAspectConsumeDynamicId(),
             aspId(e, "initial_bind_dynamic"),
-            aspId(e, "drop_dynamic_light"),
             e.mb.evalAspectDropDynamicId()
         };
         var branches = new TList<TestMb.Branch>();
@@ -818,14 +817,13 @@ public final class EcoLlvmIr {
                         isTargetCode(e, cveCode(e, a(e, "cv"))),
                         retM(
                                 e,
-                                okCve(
-                                        e,
-                                        cvOf(
-                                                e,
-                                                cveCode(e, a(e, "cv")),
-                                                e.call(
-                                                        e.evalBuiltin("stack"),
-                                                        e.rec(e.p("xx", xx(e)), e.p("type", outer(e)))))))),
+                                e.call(
+                                        e.evalBuiltin("codevalue_dynamic"),
+                                        e.rec(
+                                                e.p("xx", xx(e)),
+                                                e.p("loc", loc(e)),
+                                                e.p("code", cveCode(e, a(e, "cv"))),
+                                                e.p("type", outer(e)))))),
                 e.ret(okCve(
                         e,
                         cvOf(
@@ -4057,31 +4055,34 @@ public final class EcoLlvmIr {
                     e.p(
                             "land",
                             e.eresultOk(
-                                    codeT(e),
-                                    codeOf(
+                                    cveT(e),
+                                    cvNo(
                                             e,
-                                            e.listNew(
-                                                    e.mb.evalValue(),
-                                                    labelInst(e, e.callM(mod(e), "label_of", a(e, "dest"))))))),
-                    e.p(
-                            "operand_park",
-                            e.eresultOk(
-                                    e.mb.call(e.mb.typesOption(), e.mb.builtin("types", "target_operand_parked")),
-                                    e.optNone(e.mb.builtin("types", "target_operand_parked")))),
-                    e.p("labeled_start", e.eresultOk(codeT(e), codeNone(e, loc(e)))),
+                                            codeOf(
+                                                    e,
+                                                    e.listNew(
+                                                            e.mb.evalValue(),
+                                                            labelInst(
+                                                                    e, e.callM(mod(e), "label_of", a(e, "dest")))))))),
+                    e.p("value_is_runtime", e.mb.bool(false)),
                     e.p(
                             "exit",
-                            e.eresultOk(
-                                    codeT(e),
-                                    codeOf(
+                            body(
+                                    e,
+                                    e.let("out", instsNew(e)),
+                                    appendCode(e, e.v("out"), a(e, "value", "code")),
+                                    appendCode(
                                             e,
-                                            e.listNew(
-                                                    e.mb.evalValue(),
-                                                    brInst(e, e.callM(mod(e), "label_of", a(e, "dest"))))))),
+                                            e.v("out"),
+                                            codeOf(
+                                                    e,
+                                                    e.listNew(
+                                                            e.mb.evalValue(),
+                                                            brInst(e, e.callM(mod(e), "label_of", a(e, "dest")))))),
+                                    e.ret(e.eresultOk(codeT(e), codeOf(e, e.v("out")))))),
                     e.p("guarded", e.mb.panic(e.s("llvm target: exceptions are not supported"))),
                     e.p("exc_cleanup", e.mb.panic(e.s("llvm target: exceptions are not supported"))),
                     e.p("exit_trampoline", e.mb.panic(e.s("llvm target: cleanup blocks are not supported"))),
-                    e.p("fresh", e.mb.panic(e.s("llvm target: finally blocks are not supported"))),
                     e.p("drop", e.eresultOk(codeT(e), codeNone(e, loc(e)))),
                     e.p(
                             "return",
@@ -4215,9 +4216,7 @@ public final class EcoLlvmIr {
                                                     e,
                                                     codeOf(e, e.v("out")),
                                                     lvalNew(e, e.fld(e.v("st"), "ty", "value"), e.v("r"))))))),
-                    e.p(
-                            "try_catch_finally",
-                            e.eresultErr(codeT(e), loc(e), e.s("llvm target: try/catch/finally is not supported"))),
+                    e.p("try_catch_finally", errCve(e, loc(e), "llvm target: try/catch/finally is not supported")),
                     e.p("match", errCve(e, loc(e), "llvm target: match is not supported"))));
         }
         x.add(e.let("llvm_b", e.defFunc(e.v("d"), "llvm")));

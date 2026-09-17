@@ -12,18 +12,16 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.DynUtil.ArgSignatureSlot;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
 import compilerxyz.main.eval.value.argrecord.ArgumentTuple;
 import compilerxyz.main.eval.value.argrecord.ArgumentTupleBinding;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectRecord;
@@ -50,6 +48,7 @@ public final class SourceDataMethodData {
     public Opt<BindingId> outerBindingId = Opt.none();
     public final TList<EvalContext.ExternalEntry> capturedExternals;
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
+    public Opt<JavaBytecodeReg> compiledBodyResult = Opt.none();
 
     public Opt<TList<ArgSignatureSlot>> compiledArgSlots = Opt.none();
     public Opt<TList<BindingId>> compiledArgSlotIds = Opt.none();
@@ -173,18 +172,15 @@ public final class SourceDataMethodData {
         }
         var convertedCv = convertedResult.requireValue("SourceDataMethodData::compile typecheckConvert");
         CodeDynamic bodyCode;
+        Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var valueType = convertedCv.value().optUnwrap().valueType();
-            var consumeResult = GenAspectConsumeDynamic.get(methodXx, rootLoc, valueType);
-            if (consumeResult.hasErrors()) {
-                return consumeResult.reerr();
-            }
-            var consume = consumeResult.requireValue("SourceDataMethodData::compile consume aspect");
-            var dynResult = consume.aspectConsumeDynamicToDynamic(methodXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(methodXx, rootLoc, convertedCv);
             if (dynResult.hasErrors()) {
                 return dynResult.reerr();
             }
-            bodyCode = dynResult.requireValue("SourceDataMethodData::compile consume.toDynamic");
+            var dyn = dynResult.requireValue("SourceDataMethodData::compile materialize");
+            bodyCode = dyn.code();
+            bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
                     rootLoc,
@@ -199,10 +195,12 @@ public final class SourceDataMethodData {
                             "Data type '" + dtName + "' method '" + name
                                     + "' body produces no value but declares a non-null return type");
                 }
-                var padded = new JavaBytecodeSequence();
+                var padded = new JavaBytecodeBuilder(rootLoc);
                 padded.add(bodyCode);
-                padded.add(JavaBytecodeUtils.literalNull(rootLoc));
-                bodyCode = new CodeDynamic(new CodeLoc.Some(rootLoc), padded);
+                bodyResult = Opt.some(padded.constNull());
+                bodyCode = padded.code();
+            } else {
+                bodyResult = Opt.none();
             }
         }
 
@@ -212,6 +210,7 @@ public final class SourceDataMethodData {
         capturedExternals.addAll(captured);
 
         compiledBodyCode = Opt.some(bodyCode);
+        compiledBodyResult = bodyResult;
         compiledArgSlots = Opt.ofNullable(argSlots);
         compiledArgSlotIds = Opt.ofNullable(argSlotIds);
         return EResult.ok(null);

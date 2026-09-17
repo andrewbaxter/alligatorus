@@ -10,12 +10,8 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc.Some;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic.FieldSpec;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -42,35 +38,29 @@ public record AspectFieldEResultDynamic<T extends Type>(TypeEResultDynamic<T> ty
                     case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
                 };
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("has_errors")) {
-            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-            if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-            var selfDyn = selfDynRes.requireValue("selfDyn");
-            var seq = new JavaBytecodeSequence();
-            seq.add(selfDyn);
-            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_HAS_ERRORS));
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out =
+                    b.invokeVirtual(GenCodegenDescriptors.E_RESULT_HAS_ERRORS, b.reg(selfRes.requireValue("selfDyn")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-            if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-            var selfDyn = selfDynRes.requireValue("selfDyn");
-            var seq = new JavaBytecodeSequence();
-            seq.add(selfDyn);
-            seq.add(JavaBytecodeUtils.literalString(new Some(loc), "eresult.value"));
-            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE));
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var selfReg = b.reg(selfRes.requireValue("selfDyn"));
+            var what = b.constString("eresult.value");
+            var value = b.invokeVirtual(GenCodegenDescriptors.E_RESULT_REQUIRE_VALUE, selfReg, what);
             var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, type.elementType());
             if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
             var elemDesc = elemConsumeRes
                     .requireValue("TypeEResultDynamic::field value AspectConsumeDynamic")
                     .aspectConsumeDynamicJvmClass(xx);
             if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-                seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+                value = b.checkcast(elemDesc, value);
             }
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, type.elementType()))));
+            return EResult.ok(DynUtil.regToValue(b.code(), value, type.elementType()));
         }
         var spec = type.fieldSpecs().getOrNull(ck);
         if (spec == null) {

@@ -12,6 +12,8 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
 import compilerxyz.main.eval.value.argrecord.ArgumentEntry;
 import compilerxyz.main.eval.value.argrecord.ArgumentRecordBinding;
@@ -22,7 +24,6 @@ import compilerxyz.main.eval.value.record.RecordField;
 import compilerxyz.main.eval.value.record.RecordField.Dynamic;
 import compilerxyz.main.eval.value.source_interface.InterfaceMethodData;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.Value;
@@ -40,6 +41,7 @@ public final class SourceObjectInterfaceMethodImplData {
     public Opt<BindingId> outerBindingId = Opt.none();
     public final TList<EvalContext.ExternalEntry> capturedExternals;
     public Opt<CodeDynamic> compiledBodyCode = Opt.none();
+    public Opt<JavaBytecodeReg> compiledBodyResult = Opt.none();
 
     public Opt<TList<BindingId>> compiledArgParamIds = Opt.none();
 
@@ -190,23 +192,21 @@ public final class SourceObjectInterfaceMethodImplData {
         }
         var convertedCv = convertedResult.requireValue("SourceObjectInterfaceMethodImplData::compile typecheckConvert");
         CodeDynamic bodyCode;
+        Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var valueType = convertedCv.value().optUnwrap().valueType();
-            var consumeResult = GenAspectConsumeDynamic.get(methodXx, rootLoc, valueType);
-            if (consumeResult.hasErrors()) {
-                return consumeResult.reerr();
-            }
-            var consume = consumeResult.requireValue("SourceObjectInterfaceMethodImplData::compile consume aspect");
-            var dynResult = consume.aspectConsumeDynamicToDynamic(methodXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(methodXx, rootLoc, convertedCv);
             if (dynResult.hasErrors()) {
                 return dynResult.reerr();
             }
-            bodyCode = dynResult.requireValue("SourceObjectInterfaceMethodImplData::compile consume.toDynamic");
+            var dyn = dynResult.requireValue("SourceObjectInterfaceMethodImplData::compile materialize");
+            bodyCode = dyn.code();
+            bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
                     rootLoc, convertedCv.code(), "Interface method impl body produced no compile-time value");
             if (bodyCodeRes.hasErrors()) return bodyCodeRes.reerr();
             bodyCode = bodyCodeRes.requireValue("bodyCode");
+            bodyResult = Opt.none();
         }
 
         dtData.set.absorbBodyContext(xx, innerVx);
@@ -215,6 +215,7 @@ public final class SourceObjectInterfaceMethodImplData {
         capturedExternals.addAll(captured);
 
         compiledBodyCode = Opt.some(bodyCode);
+        compiledBodyResult = bodyResult;
         compiledArgParamIds = Opt.some(argParamIds);
         return EResult.ok(null);
     }

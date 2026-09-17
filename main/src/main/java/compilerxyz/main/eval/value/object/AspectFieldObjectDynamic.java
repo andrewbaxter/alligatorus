@@ -1,20 +1,15 @@
 package compilerxyz.main.eval.value.object;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -38,24 +33,20 @@ public record AspectFieldObjectDynamic(TypeObjectDynamic type) implements Aspect
             }
         }
         var keyStr = ckStr.value();
-        var dynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
+        var dynRes = DynUtil.valueReg(loc, self);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        var dyn = dynRes.requireValue("dyn");
         for (var f : type.dataFields) {
             if (f.langName().equals(keyStr)) {
-                var loadSeq = new JavaBytecodeSequence();
-                loadSeq.add(dyn);
-                switch (f.access()) {
-                    case ObjectDataField.Access.FieldGet fg ->
-                        loadSeq.add(JavaBytecodeUtils.accessField(
-                                loc, type.jvmClass, fg.jvmFieldName(), fg.jvmFieldDesc()));
-                    case ObjectDataField.Access.MethodCall mc ->
-                        loadSeq.add(JavaBytecodeUtils.callMethod(
-                                loc, type.jvmClass, mc.jvmMethodName(), mc.jvmMethodDesc()));
-                }
-                return EResult.ok(new CodeValue(
-                        Code.target(new CodeDynamic(loc, loadSeq)),
-                        EvalOutcome.ofValue(ValueDynamic.stack(xx, f.fieldType()))));
+                var b = new JavaBytecodeBuilder(loc);
+                var selfReg = b.reg(dynRes.requireValue("dyn"));
+                var out =
+                        switch (f.access()) {
+                            case ObjectDataField.Access.FieldGet fg ->
+                                b.getField(type.jvmClass, fg.jvmFieldName(), fg.jvmFieldDesc(), selfReg);
+                            case ObjectDataField.Access.MethodCall mc ->
+                                b.invokeVirtual(type.jvmClass, mc.jvmMethodName(), mc.jvmMethodDesc(), selfReg);
+                        };
+                return EResult.ok(DynUtil.regToValue(b.code(), out, f.fieldType()));
             }
         }
         if (type.interfaceRepresented.optIsNone()) {

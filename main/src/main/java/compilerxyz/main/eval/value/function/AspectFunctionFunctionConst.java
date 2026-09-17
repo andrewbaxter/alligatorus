@@ -8,10 +8,10 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -20,8 +20,8 @@ public record AspectFunctionFunctionConst(TypeFunctionConst type) implements Asp
     @Override
     public EResult<CodeValue> aspectFunctionCall(ExprContext xx, QExprId loc, CodeValue self, CodeValue argument) {
         var argType = type.arg();
-        var argList = new TList<CodeDynamic>();
-        EResult<TList<CodeDynamic>> argsDynRes;
+        var argList = new TList<CodeDynamicReg>();
+        EResult<TList<CodeDynamicReg>> argsDynRes;
         if (DynUtil.zeroArgSignature(xx, argType)) {
             argsDynRes = EResult.ok(new TList<>());
         } else {
@@ -36,24 +36,21 @@ public record AspectFunctionFunctionConst(TypeFunctionConst type) implements Asp
         }
         var descRes = TypeFunctionConst.descriptorFor(xx, loc, type.arg(), type.ret(), type.needsEvalContext());
         if (descRes.hasErrors()) return descRes.reerr();
-        var invocationRes = TypeFunctionConst.emitStaticInvocation(
+        var b = new JavaBytecodeBuilder(loc);
+        var invocation = DynUtil.invokeStaticFunction(
                 xx,
                 loc,
+                b,
                 type.klass(),
                 type.methodName(),
                 descRes.requireValue("TypeFunctionConst::emit desc"),
                 type.needsEvalContext(),
                 argList);
-        if (invocationRes.hasErrors()) return invocationRes.reerr();
-        var invocation = invocationRes.requireValue("TypeFunctionConst::call invocation");
-        if (type.ret().optIsNone()) {
-            return EResult.ok(new CodeValue(Code.target(invocation), EvalOutcome.NO_VALUE));
+        if (type.ret().optIsNone() || invocation.optIsNone()) {
+            return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
         }
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, type.ret().optUnwrap());
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-        return EResult.ok(retStackRes
-                .requireValue("TypeFunctionConst::call ret stack")
-                .aspectStackValueDynamicToValue(xx, loc, invocation));
+        return EResult.ok(DynUtil.regToTypedValue(
+                xx, loc, b.code(), invocation.optUnwrap(), type.ret().optUnwrap()));
     }
 
     @Override

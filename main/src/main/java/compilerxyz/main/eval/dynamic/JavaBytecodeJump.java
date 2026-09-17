@@ -1,16 +1,18 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.JumpKey;
+import compilerxyz.prelude.util.TList;
 
-public class JavaBytecodeJump implements JavaBytecode {
+public final class JavaBytecodeJump implements JavaBytecode {
     public final JumpKey jumpKey;
+    public final TList<JavaBytecodeReg> args;
 
-    public JavaBytecodeJump(JumpKey jumpKey) {
+    public JavaBytecodeJump(JumpKey jumpKey, TList<JavaBytecodeReg> args) {
         this.jumpKey = jumpKey;
+        this.args = args;
     }
 
-    @Override
-    public <T> T javaBytecodeDispatch(Dispatcher<T> dispatcher) {
-        return dispatcher.dispatcherHandleJump(this);
+    public JavaBytecodeJump(JumpKey jumpKey) {
+        this(jumpKey, new TList<>());
     }
 }

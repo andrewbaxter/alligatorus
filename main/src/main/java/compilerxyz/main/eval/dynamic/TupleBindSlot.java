@@ -1,11 +1,9 @@
 package compilerxyz.main.eval.dynamic;
 
-import compilerxyz.main.gen.TargetBindSub;
-
 public final class TupleBindSlot {
-    public final TargetBindSub sub;
+    public final BindSubDynamic sub;
 
-    public TupleBindSlot(TargetBindSub sub) {
+    public TupleBindSlot(BindSubDynamic sub) {
         this.sub = sub;
     }
 }

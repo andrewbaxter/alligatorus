@@ -1057,24 +1057,11 @@ public final class T0170NodejsTest {
                         rp("seq", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("jump", targetPanic(mb, "jump")),
                         rp("land", targetPanic(mb, "land")),
-                        rp(
-                                "operand_park",
-                                eresultOk(
-                                        mb,
-                                        mb.call(mb.typesOption(), mb.builtin("types", "target_operand_parked")),
-                                        mb.call(
-                                                mb.field(
-                                                        mb.call(
-                                                                mb.typesOption(),
-                                                                mb.builtin("types", "target_operand_parked")),
-                                                        mb.str("none")),
-                                                mb.literalNull()))),
-                        rp("labeled_start", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("exit", targetPanic(mb, "exit")),
+                        rp("value_is_runtime", mb.bool(false)),
                         rp("guarded", targetPanic(mb, "guarded")),
                         rp("exc_cleanup", targetPanic(mb, "exc_cleanup")),
                         rp("exit_trampoline", targetPanic(mb, "exit_trampoline")),
-                        rp("fresh", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("drop", eresultOk(mb, mb.typesCode(), codeNone(mb))),
                         rp("return", targetPanic(mb, "return")),
                         rp("stage", targetPanic(mb, "stage")),

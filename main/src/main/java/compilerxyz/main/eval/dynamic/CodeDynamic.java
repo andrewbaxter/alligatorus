@@ -28,9 +28,4 @@ public record CodeDynamic(CodeLoc loc, JavaBytecode code) implements TargetCode,
         if (opt.optIsNone()) return EResult.err(loc, message);
         return EResult.ok(opt.optUnwrap());
     }
-
-    @Override
-    public <T> T javaBytecodeDispatch(JavaBytecode.Dispatcher<T> dispatcher) {
-        return code.javaBytecodeDispatch(dispatcher);
-    }
 }

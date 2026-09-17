@@ -2,11 +2,9 @@ package compilerxyz.main.eval.value.string;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -14,21 +12,16 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectSetDynamicDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -93,9 +86,6 @@ public record TypeStringDynamic() implements Aspect, Type {
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(AspectFieldStringDynamic.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicStringDynamic.INSTANCE);
         }
@@ -146,16 +136,11 @@ public record TypeStringDynamic() implements Aspect, Type {
         if (stringConstOpt.optIsSome()) {
             String strVal =
                     stringConstOpt.optUnwrap().aspectStringConstGet(cv.value().optUnwrap());
-            var seq = new JavaBytecodeSequence();
-            var existingDynCast = CodeDynamic.castOpt(loc, cv.code());
-            if (existingDynCast.hasErrors()) return existingDynCast.reerr();
-            var existingDyn = existingDynCast.requireValue("existingDyn");
-            if (existingDyn.optIsSome()) {
-                seq.add(existingDyn.optUnwrap());
-            }
-            seq.add(JavaBytecodeUtils.literalString(loc, strVal));
-            var result = new CodeDynamic(loc, seq);
-            return EResult.ok(new CodeValue(Code.target(result), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            var b = new JavaBytecodeBuilder(loc);
+            var carryRes = b.addCode(loc, cv.code());
+            if (carryRes.hasErrors()) return carryRes.reerr();
+            var raw = b.constString(strVal);
+            return EResult.ok(DynUtil.regToValue(b.code(), raw, this));
         }
         return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
     }

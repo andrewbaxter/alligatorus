@@ -7,10 +7,8 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -18,17 +16,14 @@ import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectArtifactObjectConst;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectAspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -116,9 +111,6 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldObjectConst(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicObjectConst(this));
         }
@@ -159,9 +151,7 @@ public record TypeObjectConst(TypeObjectMeta meta, Class externalHostClass) impl
                 if (codeCast.requireValue("code").optIsNone()) {
                     var dynRes = new AspectConsumeDynamicObjectConst(this).aspectConsumeDynamicToDynamic(xx, loc, cv);
                     if (dynRes.hasErrors()) return dynRes.reerr();
-                    materialized = new CodeValue(
-                            Code.target(dynRes.requireValue(typeDesc() + "::typeCastTo materialize")),
-                            EvalOutcome.ofValue(ValueDynamic.stack(xx, this)));
+                    materialized = dynRes.requireValue(typeDesc() + "::typeCastTo materialize");
                 }
                 return rule.typeObjectCastRuleApply(xx, loc, materialized, destType);
             }

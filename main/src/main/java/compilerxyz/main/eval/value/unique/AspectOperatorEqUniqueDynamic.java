@@ -6,18 +6,15 @@ import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolConst;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectOperatorEq;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.TList;
 
 public final class AspectOperatorEqUniqueDynamic implements AspectOperatorEq {
@@ -27,44 +24,31 @@ public final class AspectOperatorEqUniqueDynamic implements AspectOperatorEq {
 
     @Override
     public EResult<CodeValue> aspectOperatorEqEq(ExprContext xx, QExprId loc, CodeValue base, CodeValue reference) {
-        var b = TypeUniqueDynamic.extractUnique(base);
-        var r = TypeUniqueDynamic.extractUnique(reference);
-        if (b.optIsSome() && r.optIsSome()) {
+        var bu = TypeUniqueDynamic.extractUnique(base);
+        var ru = TypeUniqueDynamic.extractUnique(reference);
+        if (bu.optIsSome() && ru.optIsSome()) {
             return EResult.ok(new CodeValue(
                     Code.none(loc),
                     EvalOutcome.ofValue(new ValueObjectConst(
-                            new TypeBoolConst(), b.optUnwrap().equals(r.optUnwrap())))));
+                            new TypeBoolConst(), bu.optUnwrap().equals(ru.optUnwrap())))));
         }
         if (base.value().optIsNone() || reference.value().optIsNone()) {
             return EResult.err(loc, "TypeUniqueDynamic::eq: operand has no value");
         }
-        var baseAspRes =
-                GenAspectConsumeDynamic.get(xx, loc, base.value().optUnwrap().valueType());
-        if (baseAspRes.hasErrors()) return baseAspRes.reerr();
-        var baseDyn = baseAspRes
-                .requireValue("TypeUniqueDynamic::eq base aspect")
-                .aspectConsumeDynamicToDynamic(xx, loc, base);
-        if (baseDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: base lowering failed");
-        var refAspRes = GenAspectConsumeDynamic.get(
-                xx, loc, reference.value().optUnwrap().valueType());
-        if (refAspRes.hasErrors()) return refAspRes.reerr();
-        var refDyn = refAspRes
-                .requireValue("TypeUniqueDynamic::eq ref aspect")
-                .aspectConsumeDynamicToDynamic(xx, loc, reference);
-        if (refDyn.hasErrors()) return EResult.err(loc, "TypeUniqueDynamic::eq: reference lowering failed");
-        var eueBase = baseDyn.requireValue("TypeUniqueDynamic::eq base dynamic");
-        var ref = refDyn.requireValue("TypeUniqueDynamic::eq reference dynamic");
-        var seq = new JavaBytecodeSequence();
-        seq.add(eueBase);
-        seq.add(ref);
-        seq.add(JavaBytecodeUtils.callMethod(
-                loc,
+        var baseRes = DynUtil.materialize(xx, loc, base);
+        if (baseRes.hasErrors()) return baseRes.reerr();
+        var refRes = DynUtil.materialize(xx, loc, reference);
+        if (refRes.hasErrors()) return refRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var baseReg = b.reg(baseRes.requireValue("eq base"));
+        var refReg = b.reg(refRes.requireValue("eq reference"));
+        var out = b.invokeVirtual(
                 JavaInternalName.fromClass(Object.class),
                 "equals",
                 JavaMethodDescriptor.fromParts(
-                        JavaDataDescriptor.DESC_BOOL, TList.of(JavaDataDescriptor.fromClass(Object.class)))));
-        var call = new CodeDynamic(loc, seq);
-        return EResult.ok(
-                new CodeValue(Code.target(call), EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+                        JavaDataDescriptor.DESC_BOOL, TList.of(JavaDataDescriptor.fromClass(Object.class))),
+                baseReg,
+                refReg);
+        return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
     }
 }

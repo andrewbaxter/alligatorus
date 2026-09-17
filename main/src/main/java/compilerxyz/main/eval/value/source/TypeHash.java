@@ -9,9 +9,7 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindConstValue;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
@@ -28,9 +26,6 @@ public record TypeHash() implements Aspect, Type {
     public Opt<Aspect> typeAspect(ExprContext xx, Unique key) {
         if (key.equals(GenTrivialIdentityAspects.TYPE_HASH_IDENTITY)) {
             return Opt.some(this);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindConstValue.INSTANCE);

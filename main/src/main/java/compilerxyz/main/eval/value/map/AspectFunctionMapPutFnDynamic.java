@@ -6,22 +6,17 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import java.util.Map;
-import org.objectweb.asm.Opcodes;
 
 public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements AspectFunction {
 
@@ -49,47 +44,24 @@ public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements
         var keyConvertedRes = Eval.typecheckConvert(xx, loc, type.keyType(), keyRes.requireValue("put key"));
         if (keyConvertedRes.hasErrors()) return keyConvertedRes.reerr();
         var keyConverted = keyConvertedRes.requireValue("put key converted");
-        var keyConsumeRes = GenAspectConsumeDynamic.get(xx, loc, type.keyType());
-        if (keyConsumeRes.hasErrors()) return keyConsumeRes.reerr();
-        var keyDynRes = keyConsumeRes
-                .requireValue("AspectConsumeDynamic.get key")
-                .aspectConsumeDynamicToDynamic(xx, loc, keyConverted);
+        var keyDynRes = DynUtil.materialize(xx, loc, keyConverted);
         if (keyDynRes.hasErrors()) return keyDynRes.reerr();
-        var keyDyn = keyDynRes.requireValue("toDynamic key");
-
         var valConvertedRes = Eval.typecheckConvert(xx, loc, type.valueType(), valRes.requireValue("put value"));
         if (valConvertedRes.hasErrors()) return valConvertedRes.reerr();
-        var valConverted = valConvertedRes.requireValue("put value converted");
-        var valConsumeRes = GenAspectConsumeDynamic.get(xx, loc, type.valueType());
-        if (valConsumeRes.hasErrors()) return valConsumeRes.reerr();
-        var valDynRes = valConsumeRes
-                .requireValue("AspectConsumeDynamic.get value")
-                .aspectConsumeDynamicToDynamic(xx, loc, valConverted);
+        var valDynRes = DynUtil.materialize(xx, loc, valConvertedRes.requireValue("put value converted"));
         if (valDynRes.hasErrors()) return valDynRes.reerr();
-        var valDyn = valDynRes.requireValue("toDynamic value");
-
-        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-        var selfDyn = selfDynRes.requireValue("selfDyn");
-
-        var retType = new TypeNullDynamic();
-        var retStackRes = GenAspectStackValueDynamic.get(xx, loc, retType);
-        if (retStackRes.hasErrors()) return retStackRes.reerr();
-
+        var selfRes = DynUtil.valueReg(loc, self);
+        if (selfRes.hasErrors()) return selfRes.reerr();
         var mapName = JavaInternalName.fromClass(Map.class);
         var putDesc = JavaMethodDescriptor.fromParts(
                 JvmConstants.DESC_OBJECT, TList.of(JvmConstants.DESC_OBJECT, JvmConstants.DESC_OBJECT));
-
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDyn);
-        seq.add(keyDyn);
-        seq.add(valDyn);
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, mapName, "put", putDesc));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-        return EResult.ok(retStackRes
-                .requireValue("AspectStackValueDynamic.get")
-                .aspectStackValueDynamicToValue(xx, loc, new CodeDynamic(loc, seq)));
+        var b = new JavaBytecodeBuilder(loc);
+        var selfReg = b.reg(selfRes.requireValue("selfDyn"));
+        var k = b.reg(keyDynRes.requireValue("toDynamic key"));
+        var v = b.reg(valDynRes.requireValue("toDynamic value"));
+        b.invokeInterface(mapName, "put", putDesc, selfReg, k, v);
+        var out = b.constNull();
+        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, new TypeNullDynamic()));
     }
 
     @Override

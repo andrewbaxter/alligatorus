@@ -6,14 +6,11 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -35,30 +32,13 @@ public record AspectFunctionMapNewDynamic(TypeMapNewDynamic type) implements Asp
         var argTupleOpt = GenAspectTuple.getMaybe(xx, argType);
         if (argTupleOpt.optIsSome()
                 && argTupleOpt.optUnwrap().aspectTupleElementTypes().isEmpty()) {
-            var retStackRes = GenAspectStackValueDynamic.get(xx, loc, instanceType);
-            if (retStackRes.hasErrors()) return retStackRes.reerr();
-
-            var torderedMapIntname = JavaInternalName.fromClass(TOrderedMap.class);
-            var instantiateMap = JavaBytecodeUtils.instantiate(
-                    loc,
-                    torderedMapIntname,
-                    JavaMethodDescriptor.fromConstructorParts(TList.of()),
-                    new CodeDynamic(loc, new JavaBytecodeSequence()));
-            var selfDynCast = CodeDynamic.castOpt(loc, self.code());
-            if (selfDynCast.hasErrors()) return selfDynCast.reerr();
-            var selfDyn = selfDynCast.requireValue("selfDyn");
-            CodeDynamic newMap;
-            if (selfDyn.optIsNone()) {
-                newMap = instantiateMap;
-            } else {
-                var seq = new JavaBytecodeSequence();
-                seq.add(selfDyn.optUnwrap());
-                seq.add(instantiateMap);
-                newMap = new CodeDynamic(loc, seq);
-            }
-            return EResult.ok(retStackRes
-                    .requireValue("AspectStackValueDynamic.get")
-                    .aspectStackValueDynamicToValue(xx, loc, newMap));
+            var b = new JavaBytecodeBuilder(loc);
+            var selfRes = b.addCode(loc, self.code());
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var map = b.newInstance(
+                    JavaInternalName.fromClass(TOrderedMap.class),
+                    JavaMethodDescriptor.fromConstructorParts(TList.of()));
+            return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), map, instanceType));
         }
         return Eval.typecheckConvert(xx, loc, instanceType, argument);
     }

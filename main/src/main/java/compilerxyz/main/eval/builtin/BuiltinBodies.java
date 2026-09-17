@@ -20,9 +20,12 @@ import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.binding.BindingSetterConsumed;
+import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynRuntime;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.expr.StagedExprCell;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectBind;
 import compilerxyz.main.gen.Binding;
@@ -43,9 +46,16 @@ import java.io.StringWriter;
 public final class BuiltinBodies {
     private BuiltinBodies() {}
 
-    @BuiltinPath(value = "eval.stack", scopeId = 5013L)
-    public static Value stack(ExprContext xx, Type type) {
-        return ValueDynamic.stack(xx, type);
+    @BuiltinPath(value = "eval.codevalue_dynamic", scopeId = 5039L)
+    public static EResult<CodeValue> codevalueDynamic(ExprContext xx, QExprId loc, Code code, Type type) {
+        var castRes = CodeDynamic.castOpt(loc, code);
+        if (castRes.hasErrors()) return castRes.reerr();
+        var dyn = castRes.requireValue("codevalue_dynamic code");
+        var out = dyn.optIsSome() ? JavaBytecodeUtils.lastOut(dyn.optUnwrap()) : Opt.<JavaBytecodeReg>none();
+        if (out.optIsNone()) {
+            return EResult.err(loc, "codevalue_dynamic: code defines no value");
+        }
+        return EResult.ok(DynUtil.regToTypedValue(xx, loc, dyn.optUnwrap(), out.optUnwrap(), type));
     }
 
     @BuiltinPath(value = "log", scopeId = 5001L)

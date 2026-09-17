@@ -12,11 +12,9 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
@@ -24,7 +22,6 @@ import compilerxyz.main.eval.dynamic.MatchDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
@@ -66,9 +63,6 @@ public record TypeCodeDynamic() implements Aspect, Type, MatchDynamic {
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(AspectLiftCodeDynamic.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicCodeDynamic(this));
         }
@@ -92,27 +86,24 @@ public record TypeCodeDynamic() implements Aspect, Type, MatchDynamic {
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex) {
+    public EResult<CodeDynamicReg> matchDynamicTest(QExprId loc, JavaBytecodeReg base, int variantIndex) {
         var desc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of());
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(loc, CODE_INTNAME, "codeIsNone", desc));
+        var b = new JavaBytecodeBuilder(loc);
+        var isNone = b.invokeInterface(CODE_INTNAME, "codeIsNone", desc, base);
         if (variantIndex == 1) {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_1));
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
+            isNone = b.op(Opcodes.IXOR, JavaDataDescriptor.DESC_BOOL, isNone, b.constBool(true));
         }
-        return EResult.ok(new CodeDynamic(loc, seq));
+        return EResult.ok(b.code(isNone));
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
-        var seq = new JavaBytecodeSequence();
+    public EResult<CodeDynamicReg> matchDynamicExtract(
+            ExprContext xx, QExprId loc, JavaBytecodeReg base, int variantIndex, Type variantType) {
+        var b = new JavaBytecodeBuilder(loc);
         if (variantIndex == 0) {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.POP));
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ACONST_NULL));
-        } else {
-            seq.add(JavaBytecodeUtils.callStaticMethod(new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET_IMPL));
+            return EResult.ok(b.code(b.constNull()));
         }
-        return EResult.ok(new CodeDynamic(loc, seq));
+        return EResult.ok(b.code(b.invokeStatic(GenCodegenDescriptors.CODE_TARGET_IMPL, base)));
     }
 
     @Override

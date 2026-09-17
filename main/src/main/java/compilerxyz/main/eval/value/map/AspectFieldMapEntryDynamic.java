@@ -1,24 +1,19 @@
 package compilerxyz.main.eval.value.map;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -38,22 +33,19 @@ public record AspectFieldMapEntryDynamic(TypeMapEntryDynamic type) implements As
         if (spec == null) {
             return EResult.err(loc, "Field " + ck.constKeyToCanonical() + " not found on map entry");
         }
-        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-        var selfDyn = selfDynRes.requireValue("selfDyn");
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDyn);
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(
-                loc,
+        var selfRes = DynUtil.valueReg(loc, self);
+        if (selfRes.hasErrors()) return selfRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.invokeInterface(
                 TypeMapEntryDynamic.MAP_ENTRY_INAME,
                 spec.jvmGetter(),
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of())));
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Object.class), TList.of()),
+                b.reg(selfRes.requireValue("selfDyn")));
         var fieldDesc = JvmSort.descriptor(xx, spec.type());
         if (fieldDesc.isReference() && !fieldDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
-            seq.add(JavaBytecodeUtils.cast(loc, fieldDesc));
+            out = b.checkcast(fieldDesc, out);
         }
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, spec.type()))));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, spec.type()));
     }
 
     @Override

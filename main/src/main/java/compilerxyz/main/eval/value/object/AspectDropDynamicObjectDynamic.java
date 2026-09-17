@@ -5,7 +5,6 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.gen.AspectDropDynamic;
 
 public final class AspectDropDynamicObjectDynamic implements AspectDropDynamic {
@@ -15,6 +14,6 @@ public final class AspectDropDynamicObjectDynamic implements AspectDropDynamic {
 
     @Override
     public EResult<Code> aspectDropDynamicDrop(ExprContext xx, QExprId loc, CodeValue cv) {
-        return DynUtil.dropDefault(loc, cv);
+        return EResult.ok(Code.none(loc));
     }
 }

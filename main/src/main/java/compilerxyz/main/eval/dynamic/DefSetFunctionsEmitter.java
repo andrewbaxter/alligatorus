@@ -4,6 +4,7 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.value.source_function.SourceFunctionData;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
@@ -17,6 +18,7 @@ public final class DefSetFunctionsEmitter {
             TList<ArgSlot> argSlots,
             JavaDataDescriptor retDesc,
             CodeDynamic bodyCode,
+            Opt<JavaBytecodeReg> bodyResult,
             TList<EvalContext.ExternalEntry> externals) {}
 
     public record EmittedFunctions(

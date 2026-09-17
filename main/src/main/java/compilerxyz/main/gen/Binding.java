@@ -20,7 +20,11 @@ public interface Binding {
 
     static EResult<Code> bindingDrop(ExprContext xx, QExprId loc, Binding self) {
         var useCv = self.bindingUse(xx, loc, new BindingSetterConsumed(), Code.none(loc));
-        return Eval.dropValue(xx, loc, useCv);
+        var dropRes = Eval.dropValue(xx, loc, useCv);
+        if (dropRes.hasErrors()) return dropRes.reerr();
+        var drop = dropRes.requireValue("Binding drop");
+        if (drop.codeIsNone()) return EResult.ok(drop);
+        return Eval.codeConcat(xx, loc, useCv.code(), drop);
     }
 
     Binding bindingFork();

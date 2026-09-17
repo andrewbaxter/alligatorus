@@ -450,13 +450,15 @@ public final class T0010DefineFuncTest {
           // access flags 0x9
           public static _0(I)I
             ILOAD 0
+            ISTORE 2
+            ILOAD 2
             ISTORE 1
-            ILOAD 1
             GOTO L0
            L0
+            ILOAD 1
             IRETURN
             MAXSTACK = 1
-            MAXLOCALS = 2
+            MAXLOCALS = 3
         }
         """,
                 Helpers.disassembled(ok, "compilerxyz.main.eval.gen.Functions$0_0_0"));

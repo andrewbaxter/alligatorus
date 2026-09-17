@@ -1,22 +1,21 @@
 package compilerxyz.main.eval.value.numeric;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.NumericKind;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeInstructionObj;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.bool.TypeBoolConst;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.byte_.TypeByteConst;
@@ -49,8 +48,6 @@ import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
 
 public final class Numerics {
     private Numerics() {}
@@ -447,80 +444,92 @@ public final class Numerics {
             return EResult.ok(new CodeValue(concatRes.requireValue("concat"), EvalOutcome.ofValue(result)));
         }
 
-        var seq = new JavaBytecodeSequence();
-        var baseSeq = pushConverted(xx, loc, base, b, compute);
-        if (baseSeq.hasErrors()) return baseSeq.reerr();
-        seq.add(new CodeDynamic(loc, baseSeq.requireValue("Numerics::pushConverted base")));
+        var jb = new JavaBytecodeBuilder(loc);
+        var baseRegRes = pushConverted(xx, loc, jb, base, b, compute);
+        if (baseRegRes.hasErrors()) return baseRegRes.reerr();
+        var baseReg = baseRegRes.requireValue("Numerics::pushConverted base");
         var refTarget = op.shift() ? NumericKind.INT : compute;
-        var refSeq = pushConverted(xx, loc, reference, r, refTarget);
-        if (refSeq.hasErrors()) return refSeq.reerr();
-        seq.add(new CodeDynamic(loc, refSeq.requireValue("Numerics::pushConverted reference")));
+        var refRegRes = pushConverted(xx, loc, jb, reference, r, refTarget);
+        if (refRegRes.hasErrors()) return refRegRes.reerr();
+        var refReg = refRegRes.requireValue("Numerics::pushConverted reference");
 
-        Value resultValue;
+        Type resultType;
+        JavaBytecodeReg out;
         if (op.comparison()) {
-            var cmpSeq = new JavaBytecodeSequence();
             int branch;
+            TList<JavaBytecodeReg> branchArgs;
             switch (compute) {
-                case INT, BYTE, SHORT -> branch = intCmpBranch(op);
+                case INT, BYTE, SHORT -> {
+                    branch = intCmpBranch(op);
+                    branchArgs = TList.of(baseReg, refReg);
+                }
                 case UINT -> {
                     if (op.ordered()) {
-                        cmpSeq.add(staticCall(loc, Integer.class, "compareUnsigned", "I", "I", "I"));
+                        var c = staticCall(
+                                jb, Integer.class, "compareUnsigned", "I", TList.of("I", "I"), baseReg, refReg);
                         branch = zeroCmpBranch(op);
+                        branchArgs = TList.of(c);
                     } else {
                         branch = intCmpBranch(op);
+                        branchArgs = TList.of(baseReg, refReg);
                     }
                 }
                 case LONG -> {
-                    cmpSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
+                    var c = jb.op(Opcodes.LCMP, JavaDataDescriptor.DESC_INT, baseReg, refReg);
                     branch = zeroCmpBranch(op);
+                    branchArgs = TList.of(c);
                 }
                 case ULONG -> {
+                    JavaBytecodeReg c;
                     if (op.ordered()) {
-                        cmpSeq.add(staticCall(loc, Long.class, "compareUnsigned", "I", "J", "J"));
+                        c = staticCall(jb, Long.class, "compareUnsigned", "I", TList.of("J", "J"), baseReg, refReg);
                     } else {
-                        cmpSeq.add(JavaBytecodeUtils.inst(loc, Opcodes.LCMP));
+                        c = jb.op(Opcodes.LCMP, JavaDataDescriptor.DESC_INT, baseReg, refReg);
                     }
                     branch = zeroCmpBranch(op);
+                    branchArgs = TList.of(c);
                 }
                 case FLOAT -> {
-                    cmpSeq.add(JavaBytecodeUtils.inst(loc, floatCmpOpcode(op, false)));
+                    var c = jb.op(floatCmpOpcode(op, false), JavaDataDescriptor.DESC_INT, baseReg, refReg);
                     branch = zeroCmpBranch(op);
+                    branchArgs = TList.of(c);
                 }
                 case DOUBLE -> {
-                    cmpSeq.add(JavaBytecodeUtils.inst(loc, floatCmpOpcode(op, true)));
+                    var c = jb.op(floatCmpOpcode(op, true), JavaDataDescriptor.DESC_INT, baseReg, refReg);
                     branch = zeroCmpBranch(op);
+                    branchArgs = TList.of(c);
                 }
                 case UBYTE, USHORT -> throw new IllegalStateException("compare kind not promoted: " + compute);
                 default -> throw new IllegalStateException("unreachable");
             }
-            var trueLabel = new LabelNode();
-            var endLabel = new LabelNode();
-            cmpSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(branch, trueLabel))));
-            cmpSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 0));
-            cmpSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(new JumpInsnNode(Opcodes.GOTO, endLabel))));
-            cmpSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(trueLabel)));
-            cmpSeq.add(JavaBytecodeUtils.literalIntShortByte(loc, 1));
-            cmpSeq.add(new CodeDynamic(loc, new JavaBytecodeInstructionObj(endLabel)));
-            seq.add(new CodeDynamic(loc, cmpSeq));
-            resultValue = ValueDynamic.stack(xx, new TypeBoolDynamic());
+            var trueKey = new JumpKey();
+            var endKey = new JumpKey();
+            jb.branch(branch, trueKey, branchArgs.toArray(new JavaBytecodeReg[0]));
+            jb.jump(endKey, jb.constInt(0));
+            jb.land(trueKey);
+            jb.jump(endKey, jb.constInt(1));
+            resultType = new TypeBoolDynamic();
+            out = new JavaBytecodeReg(JvmSort.descriptor(xx, resultType));
+            jb.land(endKey, out);
         } else if (compute.unsigned() && (op == Op.DIV || op == Op.MOD)) {
-            seq.add(
-                    compute == NumericKind.UINT
-                            ? staticCall(
-                                    loc,
-                                    Integer.class,
-                                    op == Op.DIV ? "divideUnsigned" : "remainderUnsigned",
-                                    "I",
-                                    "I",
-                                    "I")
-                            : staticCall(
-                                    loc,
-                                    Long.class,
-                                    op == Op.DIV ? "divideUnsigned" : "remainderUnsigned",
-                                    "J",
-                                    "J",
-                                    "J"));
-            resultValue = ValueDynamic.stack(xx, dynamicType(compute));
+            out = compute == NumericKind.UINT
+                    ? staticCall(
+                            jb,
+                            Integer.class,
+                            op == Op.DIV ? "divideUnsigned" : "remainderUnsigned",
+                            "I",
+                            TList.of("I", "I"),
+                            baseReg,
+                            refReg)
+                    : staticCall(
+                            jb,
+                            Long.class,
+                            op == Op.DIV ? "divideUnsigned" : "remainderUnsigned",
+                            "J",
+                            TList.of("J", "J"),
+                            baseReg,
+                            refReg);
+            resultType = dynamicType(compute);
         } else {
             int opcode =
                     switch (compute) {
@@ -598,10 +607,10 @@ public final class Numerics {
                             };
                         case UBYTE, USHORT -> throw new IllegalStateException("compute kind not promoted: " + compute);
                     };
-            seq.add(JavaBytecodeUtils.inst(loc, opcode));
-            resultValue = ValueDynamic.stack(xx, dynamicType(compute));
+            out = jb.op(opcode, primDesc(compute), baseReg, refReg);
+            resultType = dynamicType(compute);
         }
-        return EResult.ok(new CodeValue(Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(resultValue)));
+        return EResult.ok(DynUtil.regToValue(jb.code(), out, resultType));
     }
 
     public static EResult<CodeValue> unary(ExprContext xx, QExprId loc, CodeValue base, Unary op) {
@@ -643,29 +652,29 @@ public final class Numerics {
             return EResult.ok(new CodeValue(base.code(), EvalOutcome.ofValue(result)));
         }
 
-        var seq = new JavaBytecodeSequence();
-        var baseSeq = pushConverted(xx, loc, base, b, compute);
-        if (baseSeq.hasErrors()) return baseSeq.reerr();
-        seq.add(new CodeDynamic(loc, baseSeq.requireValue("Numerics::unary pushConverted")));
+        var jb = new JavaBytecodeBuilder(loc);
+        var baseRegRes = pushConverted(xx, loc, jb, base, b, compute);
+        if (baseRegRes.hasErrors()) return baseRegRes.reerr();
+        var baseReg = baseRegRes.requireValue("Numerics::unary pushConverted");
+        JavaBytecodeReg out;
         if (op == Unary.NEG) {
-            seq.add(JavaBytecodeUtils.inst(
-                    loc,
+            out = jb.op(
                     switch (compute) {
                         case INT, BYTE, SHORT, UINT, UBYTE, USHORT -> Opcodes.INEG;
                         case LONG, ULONG -> Opcodes.LNEG;
                         case FLOAT -> Opcodes.FNEG;
                         case DOUBLE -> Opcodes.DNEG;
-                    }));
+                    },
+                    primDesc(compute),
+                    baseReg);
         } else if (compute.wide()) {
-            seq.add(JavaBytecodeUtils.literalLong(loc, -1L));
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.LXOR));
+            var minusOne = jb.constLong(-1L);
+            out = jb.op(Opcodes.LXOR, JavaDataDescriptor.DESC_LONG, baseReg, minusOne);
         } else {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_M1));
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.IXOR));
+            var minusOne = jb.op(Opcodes.ICONST_M1, JavaDataDescriptor.DESC_INT);
+            out = jb.op(Opcodes.IXOR, JavaDataDescriptor.DESC_INT, baseReg, minusOne);
         }
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, dynamicType(compute)))));
+        return EResult.ok(DynUtil.regToValue(jb.code(), out, dynamicType(compute)));
     }
 
     public static boolean isNumeric(ExprContext xx, Type type) {
@@ -707,16 +716,16 @@ public final class Numerics {
         };
     }
 
-    public static CodeDynamic box(QExprId loc, NumericKind kind) {
+    public static JavaBytecodeReg box(JavaBytecodeBuilder b, NumericKind kind, JavaBytecodeReg value) {
         var wrapper = JavaInternalName.fromClass(wrapperClass(kind));
-        return JavaBytecodeUtils.callStaticMethod(
-                loc,
+        return b.invokeStatic(
                 wrapper,
                 "valueOf",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromInternalName(wrapper), TList.of(primDesc(kind))));
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromInternalName(wrapper), TList.of(primDesc(kind))),
+                value);
     }
 
-    public static CodeDynamic unbox(QExprId loc, NumericKind kind) {
+    public static JavaBytecodeReg unbox(JavaBytecodeBuilder b, NumericKind kind, JavaBytecodeReg boxed) {
         var wrapper = JavaInternalName.fromClass(wrapperClass(kind));
         String name =
                 switch (kind) {
@@ -727,8 +736,7 @@ public final class Numerics {
                     case FLOAT -> "floatValue";
                     case DOUBLE -> "doubleValue";
                 };
-        return JavaBytecodeUtils.callMethod(
-                loc, wrapper, name, JavaMethodDescriptor.fromParts(primDesc(kind), TList.of()));
+        return b.invokeVirtual(wrapper, name, JavaMethodDescriptor.fromParts(primDesc(kind), TList.of()), boxed);
     }
 
     public static EResult<CodeValue> castTo(ExprContext xx, QExprId loc, CodeValue cv, NumericKind to, Type dest) {
@@ -741,167 +749,144 @@ public final class Numerics {
             return EResult.err(loc, "Numerics::cast: operand is not numeric");
         }
         var src = ((Opt.Some<Operand>) classOpt).value();
-        var seq = new JavaBytecodeSequence();
+        var jb = new JavaBytecodeBuilder(loc);
+        JavaBytecodeReg out;
         if (src.isConst()) {
             var n = constNumber(xx, src.value());
-            var carriedRes = addCarried(loc, seq, cv);
+            var carriedRes = jb.addCode(loc, cv.code());
             if (carriedRes.hasErrors()) return carriedRes.reerr();
-            seq.add(
-                    switch (to) {
-                        case BYTE, UBYTE -> JavaBytecodeUtils.literalIntShortByte(loc, (byte) n.longValue());
-                        case SHORT, USHORT -> JavaBytecodeUtils.literalIntShortByte(loc, (short) n.longValue());
-                        case INT, UINT -> JavaBytecodeUtils.literalIntShortByte(loc, (int) n.longValue());
-                        case LONG, ULONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
-                        case FLOAT -> JavaBytecodeUtils.literalFloat(loc, n.floatValue());
-                        case DOUBLE -> JavaBytecodeUtils.literalDouble(loc, n.doubleValue());
-                    });
+            out = switch (to) {
+                case BYTE, UBYTE -> jb.constInt((byte) n.longValue());
+                case SHORT, USHORT -> jb.constInt((short) n.longValue());
+                case INT, UINT -> jb.constInt((int) n.longValue());
+                case LONG, ULONG -> jb.constLong(n.longValue());
+                case FLOAT -> jb.constFloat(n.floatValue());
+                case DOUBLE -> jb.constDouble(n.doubleValue());
+            };
         } else {
-            var consumed = consume(xx, loc, cv);
+            var consumed = DynUtil.materialize(xx, loc, cv);
             if (consumed.hasErrors()) return consumed.reerr();
-            seq.add(consumed.requireValue("Numerics::cast consume"));
-            convert(seq, loc, src.kind(), to);
+            out = convert(jb, src.kind(), to, jb.reg(consumed.requireValue("Numerics::cast consume")));
         }
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, dest))));
+        return EResult.ok(DynUtil.regToValue(jb.code(), out, dest));
     }
 
-    private static EResult<JavaBytecodeSequence> pushConverted(
-            ExprContext xx, QExprId loc, CodeValue cv, Operand op, NumericKind target) {
-        var seq = new JavaBytecodeSequence();
+    private static EResult<JavaBytecodeReg> pushConverted(
+            ExprContext xx, QExprId loc, JavaBytecodeBuilder jb, CodeValue cv, Operand op, NumericKind target) {
         if (op.isConst()) {
             var n = constNumber(xx, op.value());
-            var carriedRes = addCarried(loc, seq, cv);
+            var carriedRes = jb.addCode(loc, cv.code());
             if (carriedRes.hasErrors()) return carriedRes.reerr();
-            seq.add(pushNatural(loc, op.kind(), n));
-            convert(seq, loc, op.kind(), target);
-        } else {
-            var consumed = consume(xx, loc, cv);
-            if (consumed.hasErrors()) return consumed.reerr();
-            seq.add(consumed.requireValue("Numerics::pushConverted consume"));
-            convert(seq, loc, op.kind(), target);
+            return EResult.ok(convert(jb, op.kind(), target, pushNatural(jb, op.kind(), n)));
         }
-        return EResult.ok(seq);
+        var consumed = DynUtil.materialize(xx, loc, cv);
+        if (consumed.hasErrors()) return consumed.reerr();
+        return EResult.ok(
+                convert(jb, op.kind(), target, jb.reg(consumed.requireValue("Numerics::pushConverted consume"))));
     }
 
-    public static EResult<CodeDynamic> constConsume(ExprContext xx, QExprId loc, CodeValue cv, NumericKind kind) {
+    public static EResult<CodeValue> constConsume(ExprContext xx, QExprId loc, CodeValue cv, NumericKind kind) {
         var vOpt = valueOf(cv);
         if (vOpt.optIsNone()) {
             return EResult.err(loc, "Numerics::constConsume: operand has no compile-time value");
         }
         var n = constNumber(xx, ((Opt.Some<Value>) vOpt).value());
-        var seq = new JavaBytecodeSequence();
-        var carriedRes = addCarried(loc, seq, cv);
+        var jb = new JavaBytecodeBuilder(loc);
+        var carriedRes = jb.addCode(loc, cv.code());
         if (carriedRes.hasErrors()) return carriedRes.reerr();
-        seq.add(pushNatural(loc, kind, n));
-        seq.add(box(loc, kind));
-        return EResult.ok(new CodeDynamic(loc, seq));
+        var boxed = box(jb, kind, pushNatural(jb, kind, n));
+        return EResult.ok(DynUtil.regToValue(jb.code(), boxed, DynUtil.substituteBoxed(xx, dynamicType(kind))));
     }
 
-    private static EResult<JavaBytecodeSequence> addCarried(QExprId loc, JavaBytecodeSequence seq, CodeValue cv) {
-        var carriedCast = CodeDynamic.castOpt(loc, cv.code());
-        if (carriedCast.hasErrors()) return carriedCast.reerr();
-        var carried = carriedCast.requireValue("carried");
-        if (carried.optIsSome()) seq.add(carried.optUnwrap());
-        return EResult.ok(seq);
-    }
-
-    private static EResult<CodeDynamic> consume(ExprContext xx, QExprId loc, CodeValue cv) {
-        var vOpt = valueOf(cv);
-        var type = vOpt.optUnwrap().valueType();
-        var cdOpt = GenAspectConsumeDynamic.getMaybe(xx, type);
-        if (cdOpt.optIsSome()) {
-            return cdOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
-        }
-        return EResult.err(loc, "Numerics::consume: dynamic operand is not consumable");
-    }
-
-    private static CodeDynamic pushNatural(QExprId loc, NumericKind kind, Number n) {
+    private static JavaBytecodeReg pushNatural(JavaBytecodeBuilder jb, NumericKind kind, Number n) {
         return switch (kind) {
-            case BYTE, SHORT, INT, UBYTE, USHORT, UINT ->
-                JavaBytecodeUtils.literalIntShortByte(loc, (int) n.longValue());
-            case LONG, ULONG -> JavaBytecodeUtils.literalLong(loc, n.longValue());
-            case FLOAT -> JavaBytecodeUtils.literalFloat(loc, n.floatValue());
-            case DOUBLE -> JavaBytecodeUtils.literalDouble(loc, n.doubleValue());
+            case BYTE, SHORT, INT, UBYTE, USHORT, UINT -> jb.constInt((int) n.longValue());
+            case LONG, ULONG -> jb.constLong(n.longValue());
+            case FLOAT -> jb.constFloat(n.floatValue());
+            case DOUBLE -> jb.constDouble(n.doubleValue());
         };
     }
 
-    private static void convert(JavaBytecodeSequence seq, QExprId loc, NumericKind from, NumericKind to) {
-        if (from == to) return;
+    private static JavaBytecodeReg convert(
+            JavaBytecodeBuilder jb, NumericKind from, NumericKind to, JavaBytecodeReg v) {
+        if (from == to) return v;
         boolean fromInt = from.integral();
         boolean toInt = to.integral();
         if (fromInt && toInt) {
             int fw = from.intWidth();
             int tw = to.intWidth();
-            if (fw == tw) return;
+            if (fw == tw) return v;
             if (fw < tw) {
                 if (from.unsigned()) {
-                    switch (from) {
-                        case UBYTE -> {
-                            if (tw <= 32) seq.add(staticCall(loc, Byte.class, "toUnsignedInt", "I", "B"));
-                            else seq.add(staticCall(loc, Byte.class, "toUnsignedLong", "J", "B"));
-                        }
-                        case USHORT -> {
-                            if (tw <= 32) seq.add(staticCall(loc, Short.class, "toUnsignedInt", "I", "S"));
-                            else seq.add(staticCall(loc, Short.class, "toUnsignedLong", "J", "S"));
-                        }
-                        case UINT -> seq.add(staticCall(loc, Integer.class, "toUnsignedLong", "J", "I"));
+                    return switch (from) {
+                        case UBYTE ->
+                            tw <= 32
+                                    ? staticCall(jb, Byte.class, "toUnsignedInt", "I", TList.of("B"), v)
+                                    : staticCall(jb, Byte.class, "toUnsignedLong", "J", TList.of("B"), v);
+                        case USHORT ->
+                            tw <= 32
+                                    ? staticCall(jb, Short.class, "toUnsignedInt", "I", TList.of("S"), v)
+                                    : staticCall(jb, Short.class, "toUnsignedLong", "J", TList.of("S"), v);
+                        case UINT -> staticCall(jb, Integer.class, "toUnsignedLong", "J", TList.of("I"), v);
                         default -> throw new IllegalStateException("zeroExtend from non-unsigned kind " + from);
-                    }
-                } else if (tw == 64) {
-                    seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2L));
+                    };
                 }
-            } else {
-                if (fw == 64) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.L2I));
-                if (tw == 8) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2B));
-                else if (tw == 16) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2S));
+                if (tw == 64) return jb.op(Opcodes.I2L, JavaDataDescriptor.DESC_LONG, v);
+                return v;
             }
-            return;
+            var out = v;
+            if (fw == 64) out = jb.op(Opcodes.L2I, JavaDataDescriptor.DESC_INT, out);
+            if (tw == 8) out = jb.op(Opcodes.I2B, JavaDataDescriptor.DESC_BYTE, out);
+            else if (tw == 16) out = jb.op(Opcodes.I2S, JavaDataDescriptor.DESC_SHORT, out);
+            return out;
         }
         if (fromInt) {
             boolean toDouble = to == NumericKind.DOUBLE;
+            var floatDesc = toDouble ? JavaDataDescriptor.DESC_DOUBLE : JavaDataDescriptor.DESC_FLOAT;
             if (from.unsigned()) {
-                switch (from) {
+                return switch (from) {
                     case UBYTE -> {
-                        seq.add(staticCall(loc, Byte.class, "toUnsignedInt", "I", "B"));
-                        seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+                        var i = staticCall(jb, Byte.class, "toUnsignedInt", "I", TList.of("B"), v);
+                        yield jb.op(toDouble ? Opcodes.I2D : Opcodes.I2F, floatDesc, i);
                     }
                     case USHORT -> {
-                        seq.add(staticCall(loc, Short.class, "toUnsignedInt", "I", "S"));
-                        seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+                        var i = staticCall(jb, Short.class, "toUnsignedInt", "I", TList.of("S"), v);
+                        yield jb.op(toDouble ? Opcodes.I2D : Opcodes.I2F, floatDesc, i);
                     }
                     case UINT -> {
-                        seq.add(staticCall(loc, Integer.class, "toUnsignedLong", "J", "I"));
-                        seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.L2D : Opcodes.L2F));
+                        var l = staticCall(jb, Integer.class, "toUnsignedLong", "J", TList.of("I"), v);
+                        yield jb.op(toDouble ? Opcodes.L2D : Opcodes.L2F, floatDesc, l);
                     }
                     case ULONG ->
-                        seq.add(JavaBytecodeUtils.callStaticMethod(
-                                loc,
+                        jb.invokeStatic(
                                 toDouble
                                         ? GenCodegenDescriptors.UNSIGNED_TO_DOUBLE
-                                        : GenCodegenDescriptors.UNSIGNED_TO_FLOAT));
+                                        : GenCodegenDescriptors.UNSIGNED_TO_FLOAT,
+                                v);
                     default -> throw new IllegalStateException("intToFloat from " + from);
-                }
-                return;
+                };
             }
             if (from.intWidth() == 64) {
-                seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.L2D : Opcodes.L2F));
-            } else {
-                seq.add(JavaBytecodeUtils.inst(loc, toDouble ? Opcodes.I2D : Opcodes.I2F));
+                return jb.op(toDouble ? Opcodes.L2D : Opcodes.L2F, floatDesc, v);
             }
-            return;
+            return jb.op(toDouble ? Opcodes.I2D : Opcodes.I2F, floatDesc, v);
         }
         if (toInt) {
             boolean toLong = to.intWidth() == 64;
+            var intDesc = toLong ? JavaDataDescriptor.DESC_LONG : JavaDataDescriptor.DESC_INT;
+            JavaBytecodeReg out;
             if (from == NumericKind.FLOAT) {
-                seq.add(JavaBytecodeUtils.inst(loc, toLong ? Opcodes.F2L : Opcodes.F2I));
+                out = jb.op(toLong ? Opcodes.F2L : Opcodes.F2I, intDesc, v);
             } else {
-                seq.add(JavaBytecodeUtils.inst(loc, toLong ? Opcodes.D2L : Opcodes.D2I));
+                out = jb.op(toLong ? Opcodes.D2L : Opcodes.D2I, intDesc, v);
             }
-            if (to.intWidth() == 8) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2B));
-            else if (to.intWidth() == 16) seq.add(JavaBytecodeUtils.inst(loc, Opcodes.I2S));
-            return;
+            if (to.intWidth() == 8) out = jb.op(Opcodes.I2B, JavaDataDescriptor.DESC_BYTE, out);
+            else if (to.intWidth() == 16) out = jb.op(Opcodes.I2S, JavaDataDescriptor.DESC_SHORT, out);
+            return out;
         }
-        seq.add(JavaBytecodeUtils.inst(loc, from == NumericKind.FLOAT ? Opcodes.F2D : Opcodes.D2F));
+        return from == NumericKind.FLOAT
+                ? jb.op(Opcodes.F2D, JavaDataDescriptor.DESC_DOUBLE, v)
+                : jb.op(Opcodes.D2F, JavaDataDescriptor.DESC_FLOAT, v);
     }
 
     private static int intCmpBranch(Op op) {
@@ -934,15 +919,20 @@ public final class Numerics {
         return g ? Opcodes.FCMPG : Opcodes.FCMPL;
     }
 
-    private static CodeDynamic staticCall(
-            QExprId loc, Class<?> owner, String method, String retDesc, String... argDescs) {
+    private static JavaBytecodeReg staticCall(
+            JavaBytecodeBuilder jb,
+            Class<?> owner,
+            String method,
+            String retDesc,
+            TList<String> argDescs,
+            JavaBytecodeReg... args) {
         var params = new TList<JavaDataDescriptor>();
         for (var a : argDescs) params.add(JavaDataDescriptor.create(a));
-        return JavaBytecodeUtils.callStaticMethod(
-                loc,
+        return jb.invokeStatic(
                 JavaInternalName.fromClass(owner),
                 method,
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.create(retDesc), params));
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.create(retDesc), params),
+                args);
     }
 
     private static int uintVal(NumericKind kind, Number n) {

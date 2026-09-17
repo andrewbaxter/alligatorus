@@ -7,16 +7,16 @@ import compilerxyz.main.artifact.ArtifactBody;
 import compilerxyz.main.artifact.ArtifactBodyExporter;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.CodeLoc;
-import compilerxyz.main.eval.dynamic.CodeLoc.Some;
 import compilerxyz.main.eval.dynamic.DynCompileErrors;
 import compilerxyz.main.eval.dynamic.DynException;
 import compilerxyz.main.eval.dynamic.DynPanic;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EmitCtx;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -28,7 +28,6 @@ import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.gen.Binding;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenBuiltinTree;
 import compilerxyz.main.gen.Value;
@@ -128,7 +127,7 @@ public final class CompileImport {
                 }
                 var evalRes = cvRes.requireValue("Eval::eval constEval");
                 var cv = evalRes.cv();
-                Opt<CodeDynamic> stage1Code;
+                Opt<CodeDynamicReg> stage1Code;
                 Opt<Value> fallbackValue;
                 Type valueType;
                 if (cv.value().optIsNone()) {
@@ -146,10 +145,9 @@ public final class CompileImport {
                     }
                     var codeDyn = codeDynCast.requireValue("codeDyn").optUnwrap();
                     var nullType = new TypeNullDynamic();
-                    var seq = new JavaBytecodeSequence();
-                    seq.add(codeDyn);
-                    seq.add(JavaBytecodeUtils.literalNull(evalRootLoc));
-                    stage1Code = Opt.some(new CodeDynamic(new Some(evalRootLoc), seq));
+                    var nb = new JavaBytecodeBuilder(evalRootLoc);
+                    nb.add(codeDyn);
+                    stage1Code = Opt.some(nb.code(nb.constNull()));
                     fallbackValue = Opt.none();
                     valueType = nullType;
                 } else {
@@ -159,21 +157,13 @@ public final class CompileImport {
                         stage1Code = Opt.none();
                         fallbackValue = Opt.some(cvValue);
                     } else {
-                        var consumeRes = GenAspectConsumeDynamic.get(evalXx, evalRootLoc, valueType);
-                        if (consumeRes.hasErrors()) {
-                            evalResult =
-                                    new EvalOutcome.Err(consumeRes.errorsOpt().optUnwrap());
-                            break evalBlock;
-                        }
-                        var consume = consumeRes.requireValue("Eval::eval consume aspect");
-                        var dynamicRes = consume.aspectConsumeDynamicToDynamic(evalXx, evalRootLoc, cv);
+                        var dynamicRes = DynUtil.materialize(evalXx, evalRootLoc, cv);
                         if (dynamicRes.hasErrors()) {
                             evalResult =
                                     new EvalOutcome.Err(dynamicRes.errorsOpt().optUnwrap());
                             break evalBlock;
                         }
-                        var dynamicCode = dynamicRes.requireValue("Eval::eval consume.toDynamic");
-                        stage1Code = Opt.some(dynamicCode);
+                        stage1Code = Opt.some(dynamicRes.requireValue("Eval::eval materialize"));
                         fallbackValue = Opt.none();
                     }
                 }
@@ -275,18 +265,27 @@ public final class CompileImport {
                     var ctx = new EmitCtx(internalName, 0);
                     var ereSeq = new JavaBytecodeSequence();
                     var ownerInternal = JavaInternalName.of(internalName);
-                    for (int i = 0; i < evalVx.externals.size(); i++) {
-                        var entry = evalVx.externals.get(i);
-                        ereSeq.add(JavaBytecodeUtils.accessStaticField(
-                                CodeLoc.Infallible.INSTANCE,
-                                ownerInternal,
-                                externalFieldNames.get(i),
-                                externalFieldDescs.get(i)));
-                        ereSeq.add(new CodeDynamic(
-                                CodeLoc.Infallible.INSTANCE, new JavaBytecodeStoreLoad(Opcodes.ASTORE, entry.key())));
+                    {
+                        var pb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        for (int i = 0; i < evalVx.externals.size(); i++) {
+                            var entry = evalVx.externals.get(i);
+                            pb.store(
+                                    entry.key(),
+                                    pb.getStatic(ownerInternal, externalFieldNames.get(i), externalFieldDescs.get(i)));
+                        }
+                        ereSeq.add(pb.code());
                     }
-                    evalTarget.emit(ereSeq, ctx, stage1Code.optUnwrap());
-                    ereSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.ARETURN));
+                    var stage1 = stage1Code.optUnwrap();
+                    evalTarget.emit(ereSeq, ctx, stage1.code());
+                    {
+                        var rb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                        var result = stage1.reg();
+                        if (!result.desc.isReference()) {
+                            throw new IllegalStateException("eval root: stage-1 result is not a reference");
+                        }
+                        rb.ret(result);
+                        ereSeq.add(rb.code());
+                    }
                     JavaBytecodeUtils.renderMethodTyped(
                             ereSeq,
                             mv,

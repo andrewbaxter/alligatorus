@@ -2,10 +2,8 @@ package compilerxyz.main.eval.value.null_;
 
 import compilerxyz.main.artifact.ArtifactExporter;
 import compilerxyz.main.artifact.ExporterRoot;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -13,18 +11,13 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectNullDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectNull;
@@ -60,9 +53,6 @@ public record TypeNullDynamic() implements Type, Aspect {
         }
         if (key.equals(GenAspectLift.AspectId)) {
             return Opt.some(AspectLiftNullDynamic.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicNullDynamic.INSTANCE);
@@ -116,10 +106,9 @@ public record TypeNullDynamic() implements Type, Aspect {
             return nullRes.reerr();
         }
         if (!DynUtil.dynamicHasCode(cv)) {
-            var seq = new JavaBytecodeSequence();
-            seq.add(JavaBytecodeUtils.literalNull(loc));
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
+            var b = new JavaBytecodeBuilder(loc);
+            var raw = b.constNull();
+            return EResult.ok(DynUtil.regToValue(b.code(), raw, this));
         }
         return EResult.ok(DynUtil.dynamicCastKeepingSource(cv, this));
     }

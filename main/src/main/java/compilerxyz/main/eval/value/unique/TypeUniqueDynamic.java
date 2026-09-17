@@ -7,7 +7,6 @@ import compilerxyz.main.artifact.ArtifactIdSource;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.CompileId;
 import compilerxyz.main.eval.EResult;
@@ -20,14 +19,12 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectOperatorEq;
@@ -70,9 +67,6 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         }
         if (key.equals(GenAspectOperatorEq.AspectId)) {
             return Opt.some(AspectOperatorEqUniqueDynamic.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicUniqueDynamic.INSTANCE);
@@ -311,8 +305,8 @@ public record TypeUniqueDynamic() implements Aspect, Type {
         if (asp.optIsNone()) return EResult.ok(cv);
         var dynRes = asp.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, cv);
         if (dynRes.hasErrors()) return dynRes.reerr();
-        return EResult.ok(
-                new CodeValue(Code.target(dynRes.requireValue("TypeUniqueDynamic::typeCastFrom")), cv.outcome()));
+        return EResult.ok(new CodeValue(
+                dynRes.requireValue("TypeUniqueDynamic::typeCastFrom").code(), cv.outcome()));
     }
 
     @Override

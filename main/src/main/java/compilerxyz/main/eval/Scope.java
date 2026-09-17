@@ -1,6 +1,7 @@
 package compilerxyz.main.eval;
 
 import compilerxyz.main.gen.Binding;
+import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.annotations.BuiltinFull;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
@@ -34,9 +35,9 @@ public final class Scope {
         }
     }
 
-    public ScopeLevel.Temp pushTemp(Binding binding) {
+    public ScopeLevel.Temp pushTemp(Value value) {
         var id = vx.dropStateCounter.next();
-        var level = new ScopeLevel.Temp(binding, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
+        var level = new ScopeLevel.Temp(value, id, id, new ScopeLevel.Emission(vx.emissionCounter.next()));
         levels.add(level);
         return level;
     }
@@ -83,16 +84,12 @@ public final class Scope {
                                     entry.dropState,
                                     entry.emission);
                         case ScopeLevel.Temp temp ->
-                            new ScopeLevel.Temp(temp.binding.bindingFork(), temp.state, temp.dropState, temp.emission);
+                            new ScopeLevel.Temp(temp.value, temp.state, temp.dropState, temp.emission);
                         case ScopeLevel.Labeled labeled ->
                             new ScopeLevel.Labeled(
                                     labeled.label, labeled.isBlock, labeled.end, labeled.landing, labeled.emission);
                         case ScopeLevel.Catch catch_ -> new ScopeLevel.Catch(catch_.handler, catch_.emission);
-                        case ScopeLevel.Finally finally_ -> {
-                            var f = new ScopeLevel.Finally(finally_.pending, finally_.emission);
-                            f.body = finally_.body;
-                            yield f;
-                        }
+                        case ScopeLevel.Finally finally_ -> new ScopeLevel.Finally(finally_.pending, finally_.emission);
                     });
         }
         return out;

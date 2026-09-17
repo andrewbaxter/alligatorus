@@ -1,6 +1,5 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.gen.Binding;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -57,7 +56,7 @@ public final class ScopeChains {
         if (existing != null) {
             return EResult.ok(existing);
         }
-        Binding binding;
+        EResult<Code> dropRes;
         switch (level) {
             case ScopeLevel.Finally finally_ -> {
                 var self = new JumpKey();
@@ -66,13 +65,17 @@ public final class ScopeChains {
                 emission.dests.put(key, resolved);
                 return EResult.ok(resolved);
             }
-            case ScopeLevel.Entry entry -> binding = entry.binding;
-            case ScopeLevel.Temp temp -> binding = temp.binding;
+            case ScopeLevel.Entry entry -> {
+                emission.dests.put(key, key.next());
+                dropRes = entry.binding.bindingDrop(xx, loc);
+            }
+            case ScopeLevel.Temp temp -> {
+                emission.dests.put(key, key.next());
+                dropRes = Eval.dropValue(xx, loc, new CodeValue(Code.none(loc), EvalOutcome.ofValue(temp.value)));
+            }
             case ScopeLevel.Labeled labeled -> throw new AssertionError();
             case ScopeLevel.Catch catch_ -> throw new AssertionError();
         }
-        emission.dests.put(key, key.next());
-        var dropRes = binding.bindingDrop(xx, loc);
         if (dropRes.hasErrors()) return dropRes.reerr();
         var cleanup = dropRes.requireValue("ScopeChains node drop");
         Opt<JumpKey> resolved;
@@ -86,7 +89,7 @@ public final class ScopeChains {
                         xx,
                         loc,
                         self,
-                        key.carryType(emission),
+                        key.argument(emission),
                         cleanup,
                         key.next().optUnwrap());
             } else {

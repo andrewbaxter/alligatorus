@@ -12,17 +12,15 @@ import compilerxyz.main.eval.ScopeChains;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynException;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeGuarded;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
 public record AspectFunctionThrowConst(TypeThrowConst type) implements AspectFunction {
 
@@ -38,23 +36,15 @@ public record AspectFunctionThrowConst(TypeThrowConst type) implements AspectFun
             return EResult.errs(erb.errors());
         }
         var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, excType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var valueDynRes = consumeRes
-                .requireValue("TypeThrowConst::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (valueDynRes.hasErrors()) return valueDynRes.reerr();
-        var valueCode = valueDynRes.requireValue("TypeThrowConst::call toDynamic");
+        var payloadRes = DynUtil.materialize(xx, loc, converted);
+        if (payloadRes.hasErrors()) return payloadRes.reerr();
         var excInternal = JavaInternalName.fromClass(DynException.class);
         var ctorDesc = JavaMethodDescriptor.fromParts(
                 JavaDataDescriptor.DESC_VOID, TList.of(JavaDataDescriptor.fromClass(Object.class)));
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.newInstance(loc, excInternal));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(valueCode);
-        seq.add(JavaBytecodeUtils.invokeSpecial(loc, excInternal, "<init>", ctorDesc));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ATHROW));
-        var throwCode = new CodeDynamic(loc, seq);
+        var b = new JavaBytecodeBuilder(loc);
+        var exc = b.newInstance(excInternal, ctorDesc, b.reg(payloadRes.requireValue("throw payload")));
+        b.athrow(exc);
+        var throwCode = b.code();
         var destRes = ScopeChains.excDest(xx, loc);
         if (destRes.hasErrors()) return destRes.reerr();
         var dest = destRes.requireValue("throw exc dest");

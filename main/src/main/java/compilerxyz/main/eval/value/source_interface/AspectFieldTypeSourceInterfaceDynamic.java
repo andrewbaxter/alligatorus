@@ -9,9 +9,6 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.prelude.util.Opt;
@@ -54,20 +51,6 @@ public record AspectFieldTypeSourceInterfaceDynamic(TypeTypeSourceInterfaceDynam
         }
         var refType = new TypeInterfaceMethodDynamic(iface.cell(), match);
         Code carry = self.code();
-        var carryDynCast = CodeDynamic.castOpt(loc, carry);
-        if (carryDynCast.hasErrors()) return carryDynCast.reerr();
-        if (carryDynCast.requireValue("carryDyn").optIsSome()) {
-            var dropRes = DynUtil.dropDefault(loc, self);
-            if (dropRes.hasErrors()) return dropRes.reerr();
-            var seq = new JavaBytecodeSequence();
-            seq.add(carryDynCast.requireValue("carryDyn").optUnwrap());
-            var dropDynCast =
-                    CodeDynamic.castOpt(loc, dropRes.requireValue("TypeTypeSourceInterfaceDynamic::field drop"));
-            if (dropDynCast.hasErrors()) return dropDynCast.reerr();
-            var dropDyn = dropDynCast.requireValue("dropDyn");
-            if (dropDyn.optIsSome()) seq.add(dropDyn.optUnwrap());
-            carry = Code.target(new CodeDynamic(loc, seq));
-        }
         return EResult.ok(new CodeValue(carry, EvalOutcome.ofValue(new ValueObjectConst(refType, refType))));
     }
 

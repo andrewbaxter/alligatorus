@@ -11,17 +11,16 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -62,20 +61,16 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
     }
 
     @Override
-    public CodeDynamic optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<CodeDynamic> payload) {
-        var seq = new JavaBytecodeSequence();
+    public CodeDynamicReg optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<JavaBytecodeReg> payload) {
+        var b = new JavaBytecodeBuilder(loc);
         if (payload.optIsSome()) {
-            seq.add(payload.optUnwrap());
-            seq.add(JavaBytecodeUtils.callStaticMethod(
-                    loc,
+            return b.code(b.invokeStatic(
                     storeName,
                     "some",
-                    JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of(elementDescriptor(xx)))));
-        } else {
-            seq.add(JavaBytecodeUtils.callStaticMethod(
-                    loc, storeName, "none", JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of())));
+                    JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of(elementDescriptor(xx))),
+                    payload.optUnwrap()));
         }
-        return new CodeDynamic(loc, seq);
+        return b.code(b.invokeStatic(storeName, "none", JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of())));
     }
 
     @Override
@@ -96,9 +91,6 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldOptionSpecializedDynamic<>(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightOptionDynamic(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicOptionSpecializedDynamic<>(this));
@@ -142,16 +134,15 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         if (cv.value().optIsSome() && typeIsEqual(xx, cv.value().optUnwrap().valueType())) {
             return EResult.ok(cv);
         }
-        var sourceRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+        var sourceRes = DynUtil.valueReg(loc, cv);
         if (sourceRes.hasErrors()) return sourceRes.reerr();
-        var seq = new JavaBytecodeSequence();
-        seq.add(sourceRes.requireValue("TypeOptionSpecializedDynamic::typeCastFrom source"));
-        seq.add(JavaBytecodeUtils.callStaticMethod(
-                loc,
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.invokeStatic(
                 storeName,
                 "fromOpt",
-                JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of(JavaDataDescriptor.fromClass(Opt.class)))));
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), this));
+                JavaMethodDescriptor.fromParts(storeDescriptor(), TList.of(JavaDataDescriptor.fromClass(Opt.class))),
+                b.reg(sourceRes.requireValue("TypeOptionSpecializedDynamic::typeCastFrom source")));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, this));
     }
 
     @Override
@@ -165,16 +156,15 @@ public final class TypeOptionSpecializedDynamic<T extends Type> implements Aspec
         if (twin.optIsNone()) {
             return EResult.err(loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
         }
-        var sourceRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+        var sourceRes = DynUtil.valueReg(loc, cv);
         if (sourceRes.hasErrors()) return sourceRes.reerr();
-        var seq = new JavaBytecodeSequence();
-        seq.add(sourceRes.requireValue("TypeOptionSpecializedDynamic::typeCastTo source"));
-        seq.add(JavaBytecodeUtils.callMethod(
-                loc,
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.invokeVirtual(
                 storeName,
                 "toOpt",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Opt.class), TList.of())));
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), twin.optUnwrap()));
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.fromClass(Opt.class), TList.of()),
+                b.reg(sourceRes.requireValue("TypeOptionSpecializedDynamic::typeCastTo source")));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, twin.optUnwrap()));
     }
 
     @Override

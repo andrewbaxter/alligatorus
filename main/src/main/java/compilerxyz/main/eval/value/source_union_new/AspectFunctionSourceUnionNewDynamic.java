@@ -7,19 +7,15 @@ import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.SourceUnionEmitter;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
 public record AspectFunctionSourceUnionNewDynamic(TypeSourceUnionNewDynamic type) implements AspectFunction {
 
@@ -44,24 +40,18 @@ public record AspectFunctionSourceUnionNewDynamic(TypeSourceUnionNewDynamic type
             return EResult.errs(erb.errors());
         }
         var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var underlyingJsRes = consumeRes
-                .requireValue("TypeSourceUnionNewDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-        var underlyingJs = underlyingJsRes.requireValue("TypeSourceUnionNewDynamic::call toDynamic");
+        var underlyingRes = DynUtil.materialize(xx, loc, converted);
+        if (underlyingRes.hasErrors()) return underlyingRes.reerr();
         Type resultType = type.type().withActiveVariants(TList.of(type.variantIndex()));
         var variantInternal = JavaInternalName.of(variantBinaryName.replace('.', '/'));
         var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, underlyingType);
         var ctorDesc = JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(payloadDesc));
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.newInstance(loc, variantInternal));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-        seq.add(underlyingJs);
-        seq.add(JavaBytecodeUtils.invokeSpecial(loc, variantInternal, "<init>", ctorDesc));
-        var newObject = new CodeDynamic(loc, seq);
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, newObject, resultType));
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.newInstance(
+                variantInternal,
+                ctorDesc,
+                b.reg(underlyingRes.requireValue("TypeSourceUnionNewDynamic::call underlying")));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
     }
 
     @Override

@@ -1,17 +1,13 @@
 package compilerxyz.main.eval.value.function;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Erb;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.AspectTuple;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
@@ -77,8 +73,8 @@ public record AspectFunctionFunctionMustReinterpretConst(TypeFunctionMustReinter
         var sourceType = valueSome.value().valueType();
         var sourceConsumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, sourceType));
         if (sourceConsumeOpt.optIsNone()) return EResult.errs(erb.errors());
-        var sourceCodeOpt = erb.mustEr(sourceConsumeOpt.optUnwrap().aspectConsumeDynamicToDynamic(xx, loc, valueCv));
-        if (sourceCodeOpt.optIsNone()) return EResult.errs(erb.errors());
+        var sourceRegOpt = erb.mustEr(DynUtil.materialize(xx, loc, valueCv));
+        if (sourceRegOpt.optIsNone()) return EResult.errs(erb.errors());
 
         var targetConsumeOpt = erb.mustEr(GenAspectConsumeDynamic.get(xx, loc, targetType));
         if (targetConsumeOpt.optIsNone()) return EResult.errs(erb.errors());
@@ -92,11 +88,9 @@ public record AspectFunctionFunctionMustReinterpretConst(TypeFunctionMustReinter
                             + targetJvmClass.value
                             + "; only object-shaped targets are supported");
         }
-        var seq = new JavaBytecodeSequence();
-        seq.add(sourceCodeOpt.optUnwrap());
-        seq.add(JavaBytecodeUtils.cast(loc, targetJvmClass));
-        var out = new CodeDynamic(loc, seq);
-        return EResult.ok(new CodeValue(Code.target(out), EvalOutcome.ofValue(ValueDynamic.stack(xx, targetType))));
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.checkcast(targetJvmClass, b.reg(sourceRegOpt.optUnwrap()));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, targetType));
     }
 
     @Override

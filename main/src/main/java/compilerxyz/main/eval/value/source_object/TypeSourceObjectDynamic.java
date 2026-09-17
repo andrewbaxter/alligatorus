@@ -10,12 +10,10 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
 import compilerxyz.main.eval.ArtifactExternal;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.DefSetId;
 import compilerxyz.main.eval.DefinitionSet;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr.Opaque;
@@ -25,14 +23,9 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.SourceObjectEmitter;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.code.TypeCodeDynamic;
 import compilerxyz.main.eval.value.source_function.ExternalCodec;
 import compilerxyz.main.eval.value.source_interface.TypeInterfaceMethodDynamic;
@@ -41,7 +34,6 @@ import compilerxyz.main.gen.GenAspect;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
@@ -146,9 +138,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldSourceObjectDynamic(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicSourceObjectDynamic(this));
         }
@@ -218,25 +207,20 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                 }
             }
             if (hasTypeImpl) {
-                var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+                var sourceCodeRes = DynUtil.valueReg(loc, cv);
                 if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
-                var sourceCode = sourceCodeRes.requireValue("sourceCode");
-                return EResult.ok(emitBuiltinCast(xx, sourceCode, GenType.dynamicType()));
+                return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), GenType.dynamicType()));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.CODE_IDENTITY).optIsSome()) {
             for (var impl : interfaceImpls) {
                 if (impl.interface_.identity.equals(GenTrivialIdentityAspects.CODE_DYN_IDENTITY)) {
-                    var codeSourceRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+                    var codeSourceRes = DynUtil.valueReg(loc, cv);
                     if (codeSourceRes.hasErrors()) return codeSourceRes.reerr();
-                    var codeSource = codeSourceRes.requireValue("codeSource");
-                    var wrapSeq = new JavaBytecodeSequence();
-                    wrapSeq.add(codeSource);
-                    wrapSeq.add(JavaBytecodeUtils.callStaticMethod(
-                            new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_TARGET));
-                    return EResult.ok(new CodeValue(
-                            Code.target(new CodeDynamic(new CodeLoc.Some(loc), wrapSeq)),
-                            EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeCodeDynamic()))));
+                    var b = new JavaBytecodeBuilder(loc);
+                    var out = b.invokeStatic(
+                            GenCodegenDescriptors.CODE_TARGET, b.reg(codeSourceRes.requireValue("codeSource")));
+                    return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeCodeDynamic()));
                 }
             }
             return EResult.err(loc, "cast " + typeDesc() + " -> code: object does not implement code_dyn");
@@ -249,20 +233,18 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
                     resultType = frozen.builtinType.optUnwrap();
                 }
                 if (resultType != null) {
-                    var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+                    var sourceCodeRes = DynUtil.valueReg(loc, cv);
                     if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
-                    var sourceCode = sourceCodeRes.requireValue("sourceCode");
-                    return EResult.ok(emitBuiltinCast(xx, sourceCode, resultType));
+                    return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), resultType));
                 }
                 return EResult.ok(
                         DynUtil.dynamicCastKeepingSource(cv, new TypeSourceInterfaceDynamic(impl.interface_)));
             }
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.ASPECT_IDENTITY).optIsSome()) {
-            var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
+            var sourceCodeRes = DynUtil.valueReg(loc, cv);
             if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
-            var sourceCode = sourceCodeRes.requireValue("sourceCode");
-            return EResult.ok(emitBuiltinCast(xx, sourceCode, GenAspect.dynamicType()));
+            return EResult.ok(DynUtil.regToValue(sourceCodeRes.requireValue("sourceCode"), GenAspect.dynamicType()));
         }
         return EResult.err(loc, "Cannot convert " + typeDesc() + " to " + destType.typeDesc());
     }
@@ -275,10 +257,6 @@ public final class TypeSourceObjectDynamic implements Aspect, Type {
     @Override
     public boolean typeCanCastFrom(ExprContext xx, QExprId loc, Type sourceType) {
         return sourceType.typeAspect(xx, identity).optIsSome();
-    }
-
-    private CodeValue emitBuiltinCast(ExprContext xx, CodeDynamic sourceCode, Type resultType) {
-        return new CodeValue(Code.target(sourceCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType)));
     }
 
     @Override

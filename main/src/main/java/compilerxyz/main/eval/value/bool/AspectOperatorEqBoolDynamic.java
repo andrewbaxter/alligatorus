@@ -1,21 +1,16 @@
 package compilerxyz.main.eval.value.bool;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
+import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.AspectOperatorEq;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
 
 public final class AspectOperatorEqBoolDynamic implements AspectOperatorEq {
     public static final AspectOperatorEqBoolDynamic INSTANCE = new AspectOperatorEqBoolDynamic();
@@ -27,30 +22,22 @@ public final class AspectOperatorEqBoolDynamic implements AspectOperatorEq {
         if (base.value().optIsNone() || reference.value().optIsNone()) {
             return EResult.err(loc, "bool eq: operand has no value");
         }
-        var baseAspRes =
-                GenAspectConsumeDynamic.get(xx, loc, base.value().optUnwrap().valueType());
-        if (baseAspRes.hasErrors()) return baseAspRes.reerr();
-        var baseDyn = baseAspRes.requireValue("bool eq base aspect").aspectConsumeDynamicToDynamic(xx, loc, base);
-        if (baseDyn.hasErrors()) return baseDyn.reerr();
-        var refAspRes = GenAspectConsumeDynamic.get(
-                xx, loc, reference.value().optUnwrap().valueType());
-        if (refAspRes.hasErrors()) return refAspRes.reerr();
-        var refDyn =
-                refAspRes.requireValue("bool eq reference aspect").aspectConsumeDynamicToDynamic(xx, loc, reference);
-        if (refDyn.hasErrors()) return refDyn.reerr();
-        var differ = new LabelNode(new Label());
-        var end = new LabelNode(new Label());
-        var seq = new JavaBytecodeSequence();
-        seq.add(baseDyn.requireValue("bool eq base dynamic"));
-        seq.add(refDyn.requireValue("bool eq reference dynamic"));
-        seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.IF_ICMPNE, differ)));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_1));
-        seq.add(JavaBytecodeUtils.wrapObj(loc, new JumpInsnNode(Opcodes.GOTO, end)));
-        seq.add(JavaBytecodeUtils.wrapObj(loc, differ));
-        seq.add(JavaBytecodeUtils.inst(loc, Opcodes.ICONST_0));
-        seq.add(JavaBytecodeUtils.wrapObj(loc, end));
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+        var baseRes = DynUtil.materialize(xx, loc, base);
+        if (baseRes.hasErrors()) return baseRes.reerr();
+        var refRes = DynUtil.materialize(xx, loc, reference);
+        if (refRes.hasErrors()) return refRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var baseReg = b.reg(baseRes.requireValue("eq base"));
+        var refReg = b.reg(refRes.requireValue("eq reference"));
+        var differ = new JumpKey();
+        var end = new JumpKey();
+        b.branch(Opcodes.IF_ICMPNE, differ, baseReg, refReg);
+        b.jump(end, b.constBool(true));
+        b.land(differ);
+        b.jump(end, b.constBool(false));
+        var resultType = new TypeBoolDynamic();
+        var out = new JavaBytecodeReg(JvmSort.descriptor(xx, resultType));
+        b.land(end, out);
+        return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
     }
 }

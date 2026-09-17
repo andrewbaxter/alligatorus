@@ -10,10 +10,6 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.EvalRootEmitter;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
@@ -69,25 +65,6 @@ public record TypeFunctionConst(
             retDesc = JavaDataDescriptor.DESC_VOID;
         }
         return EResult.ok(JavaMethodDescriptor.fromParts(retDesc, argDescs));
-    }
-
-    public static EResult<CodeDynamic> emitStaticInvocation(
-            ExprContext xx,
-            QExprId loc,
-            JavaInternalName klass,
-            String methodName,
-            JavaMethodDescriptor desc,
-            boolean needsEvalContext,
-            TList<CodeDynamic> args) {
-        var seq = new JavaBytecodeSequence();
-        if (needsEvalContext) {
-            seq.add(EvalRootEmitter.loadEvalContext(loc, xx));
-        }
-        for (var argCode : args) {
-            seq.add(argCode);
-        }
-        seq.add(JavaBytecodeUtils.callStaticMethod(loc, klass, methodName, desc));
-        return EResult.ok(new CodeDynamic(loc, seq));
     }
 
     private static EResult<JavaDataDescriptor> jvmDescOf(ExprContext xx, QExprId loc, Type t) {

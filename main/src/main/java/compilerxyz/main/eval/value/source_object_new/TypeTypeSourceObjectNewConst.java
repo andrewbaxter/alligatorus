@@ -16,13 +16,11 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
 import compilerxyz.main.eval.value.source_object.TypeSourceObjectDynamic;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFunction;
 import compilerxyz.main.gen.GenAspectLift;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -59,9 +57,6 @@ public record TypeTypeSourceObjectNewConst(TypeSourceObjectDynamic type) impleme
         }
         if (key.equals(GenAspectFunction.AspectId)) {
             return Opt.some(new AspectFunctionTypeSourceObjectNewConst(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
         }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(new AspectBindTypeSourceObjectNewConst(this));

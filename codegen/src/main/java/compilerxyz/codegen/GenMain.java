@@ -542,7 +542,7 @@ public final class GenMain {
                                 BuiltinInterfacesGen.OBJECT_ASPECT_SOURCE);
                         b.addStatement(
                                 "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-                                        + "$T.DYNAMIC_LIGHT, $T.<$T>none())",
+                                        + "$T.NONE, $T.<$T>none())",
                                 BuiltinInterfacesGen.TYPE_OBJECT_DYNAMIC,
                                 interfaceRef,
                                 BuiltinInterfacesGen.OBJECT_DROP_KIND,
@@ -574,7 +574,7 @@ public final class GenMain {
                         if (spec.isInterface()) {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-                                            + "$T.DYNAMIC_LIGHT, $T.some(jvmClass))",
+                                            + "$T.NONE, $T.some(jvmClass))",
                                     BuiltinInterfacesGen.TYPE_OBJECT_DYNAMIC,
                                     interfaceRef,
                                     BuiltinInterfacesGen.OBJECT_DROP_KIND,
@@ -582,7 +582,7 @@ public final class GenMain {
                         } else {
                             b.addStatement(
                                     "var instance = new $T(meta, jvmClass, jvmClassDesc, $T.class, "
-                                            + "$T.DYNAMIC_LIGHT, $T.<$T>none())",
+                                            + "$T.NONE, $T.<$T>none())",
                                     BuiltinInterfacesGen.TYPE_OBJECT_DYNAMIC,
                                     interfaceRef,
                                     BuiltinInterfacesGen.OBJECT_DROP_KIND,
@@ -1247,12 +1247,6 @@ public final class GenMain {
                 }
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,
-                        "eval.aspect_drop_dynamic_light",
-                        CodeBlock.of(
-                                "$T.dynamicType()", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
-                        BuiltinTreeGen.TYPE_OF_TYPES_EXPR);
-                BuiltinTreeGen.addSpecial(
-                        pathToLeaf,
                         "eval.aspect_initial_bind_dynamic",
                         CodeBlock.of(
                                 "$T.dynamicType()",
@@ -1433,11 +1427,6 @@ public final class GenMain {
                         pathToLeaf,
                         "eval.aspect_lift_id",
                         CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectLift")),
-                        BuiltinTreeGen.TUC_TYPE_EXPR);
-                BuiltinTreeGen.addSpecial(
-                        pathToLeaf,
-                        "eval.aspect_drop_dynamic_light_id",
-                        CodeBlock.of("$T.AspectId", ClassName.get("compilerxyz.main.gen", "GenAspectDropDynamicLight")),
                         BuiltinTreeGen.TUC_TYPE_EXPR);
                 BuiltinTreeGen.addSpecial(
                         pathToLeaf,

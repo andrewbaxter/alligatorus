@@ -138,84 +138,99 @@ public final class T0130DropThrowTest {
                                                                                                 mb.typesEresult(),
                                                                                                 mb.typesCve()),
                                                                                         mb.str("ok")),
-                                                                                mb.call(
-                                                                                        mb.evalCodevalue(),
-                                                                                        mb.recordOf(
-                                                                                                TList.of(
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "code",
-                                                                                                                mb
-                                                                                                                        .field(
-                                                                                                                                mb
-                                                                                                                                        .field(
-                                                                                                                                                mb
-                                                                                                                                                        .call(
-                                                                                                                                                                mb
-                                                                                                                                                                        .evalConstEval(),
-                                                                                                                                                                mb
-                                                                                                                                                                        .recordOf(
-                                                                                                                                                                                TList
-                                                                                                                                                                                        .of(
-                                                                                                                                                                                                new TestMb
-                                                                                                                                                                                                        .RecordPair(
-                                                                                                                                                                                                        "xx",
-                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                .field(
-                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                                                        "arg"),
-                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                .str(
-                                                                                                                                                                                                                                        "xx"))),
-                                                                                                                                                                                                new TestMb
-                                                                                                                                                                                                        .RecordPair(
-                                                                                                                                                                                                        "staged",
-                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                .stage(
-                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                .graft(
-                                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                                .field(
-                                                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                                                                                        "arg"),
-                                                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                                                .str(
-                                                                                                                                                                                                                                                                        "cv")))))))),
-                                                                                                                                                mb
-                                                                                                                                                        .str(
-                                                                                                                                                                "value")),
-                                                                                                                                mb
-                                                                                                                                        .str(
-                                                                                                                                                "code"))),
-                                                                                                        new TestMb
-                                                                                                                .RecordPair(
-                                                                                                                "value",
-                                                                                                                mb.call(
+                                                                                mb.matchOf(
+                                                                                        mb.call(
+                                                                                                mb
+                                                                                                        .evalCodevalueDynamic(),
+                                                                                                mb.recordOf(
+                                                                                                        TList.of(
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "loc",
                                                                                                                         mb
-                                                                                                                                .evalStack(),
+                                                                                                                                .field(
+                                                                                                                                        mb
+                                                                                                                                                .scopeUse(
+                                                                                                                                                        "arg"),
+                                                                                                                                        mb
+                                                                                                                                                .str(
+                                                                                                                                                        "loc"))),
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "xx",
                                                                                                                         mb
-                                                                                                                                .recordOf(
-                                                                                                                                        TList
-                                                                                                                                                .of(
-                                                                                                                                                        new TestMb
-                                                                                                                                                                .RecordPair(
-                                                                                                                                                                "xx",
-                                                                                                                                                                mb
-                                                                                                                                                                        .field(
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .scopeUse(
-                                                                                                                                                                                                "arg"),
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .str(
-                                                                                                                                                                                                "xx"))),
-                                                                                                                                                        new TestMb
-                                                                                                                                                                .RecordPair(
-                                                                                                                                                                "type",
-                                                                                                                                                                mb
-                                                                                                                                                                        .scopeUse(
-                                                                                                                                                                                "outer"))))))))))),
+                                                                                                                                .field(
+                                                                                                                                        mb
+                                                                                                                                                .scopeUse(
+                                                                                                                                                        "arg"),
+                                                                                                                                        mb
+                                                                                                                                                .str(
+                                                                                                                                                        "xx"))),
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "code",
+                                                                                                                        mb
+                                                                                                                                .field(
+                                                                                                                                        mb
+                                                                                                                                                .field(
+                                                                                                                                                        mb
+                                                                                                                                                                .call(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .evalConstEval(),
+                                                                                                                                                                        mb
+                                                                                                                                                                                .recordOf(
+                                                                                                                                                                                        TList
+                                                                                                                                                                                                .of(
+                                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                                .RecordPair(
+                                                                                                                                                                                                                "xx",
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                "xx"))),
+                                                                                                                                                                                                        new TestMb
+                                                                                                                                                                                                                .RecordPair(
+                                                                                                                                                                                                                "staged",
+                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                        .stage(
+                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                        .graft(
+                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                        .field(
+                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                        .scopeUse(
+                                                                                                                                                                                                                                                                                "arg"),
+                                                                                                                                                                                                                                                                mb
+                                                                                                                                                                                                                                                                        .str(
+                                                                                                                                                                                                                                                                                "cv")))))))),
+                                                                                                                                                        mb
+                                                                                                                                                                .str(
+                                                                                                                                                                        "value")),
+                                                                                                                                        mb
+                                                                                                                                                .str(
+                                                                                                                                                        "code"))),
+                                                                                                                new TestMb
+                                                                                                                        .RecordPair(
+                                                                                                                        "type",
+                                                                                                                        mb
+                                                                                                                                .scopeUse(
+                                                                                                                                        "outer"))))),
+                                                                                        mb.str("__cvd"),
+                                                                                        TList.of(
+                                                                                                new TestMb.Branch(
+                                                                                                        mb.str("ok"),
+                                                                                                        mb.scopeUse(
+                                                                                                                "__cvd")),
+                                                                                                new TestMb.Branch(
+                                                                                                        mb.str("errs"),
+                                                                                                        mb.panic(
+                                                                                                                mb.str(
+                                                                                                                        "codevalue_dynamic failed")))),
+                                                                                        Opt.none()))),
                                                                 new TestMb.RecordPair(
                                                                         "desc", mb.seqOf(mb.return_(mb.str(name)))),
                                                                 new TestMb.RecordPair(
@@ -428,81 +443,6 @@ public final class T0130DropThrowTest {
                                                                         new TestMb.RecordPair(
                                                                                 "drop",
                                                                                 mb.seqOf(
-                                                                                        mb.bind(
-                                                                                                "underlying_code_",
-                                                                                                mb.field(
-                                                                                                        mb.call(
-                                                                                                                mb
-                                                                                                                        .field(
-                                                                                                                                mb
-                                                                                                                                        .evalAspectDropDynamicLight(),
-                                                                                                                                mb
-                                                                                                                                        .str(
-                                                                                                                                                "drop_dynamic_light")),
-                                                                                                                mb
-                                                                                                                        .tupleOf(
-                                                                                                                                mb
-                                                                                                                                        .field(
-                                                                                                                                                mb
-                                                                                                                                                        .call(
-                                                                                                                                                                mb
-                                                                                                                                                                        .evalAspectLookup(),
-                                                                                                                                                                mb
-                                                                                                                                                                        .tupleOf(
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .typesString(),
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .evalAspectDropDynamicLight(),
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .field(
-                                                                                                                                                                                                mb
-                                                                                                                                                                                                        .scopeUse(
-                                                                                                                                                                                                                "arg"),
-                                                                                                                                                                                                mb
-                                                                                                                                                                                                        .str(
-                                                                                                                                                                                                                "xx")))),
-                                                                                                                                                mb
-                                                                                                                                                        .str(
-                                                                                                                                                                "value")),
-                                                                                                                                mb
-                                                                                                                                        .recordOf(
-                                                                                                                                                TList
-                                                                                                                                                        .of(
-                                                                                                                                                                new TestMb
-                                                                                                                                                                        .RecordPair(
-                                                                                                                                                                        "xx",
-                                                                                                                                                                        mb
-                                                                                                                                                                                .field(
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                        "arg"),
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .str(
-                                                                                                                                                                                                        "xx"))),
-                                                                                                                                                                new TestMb
-                                                                                                                                                                        .RecordPair(
-                                                                                                                                                                        "loc",
-                                                                                                                                                                        mb
-                                                                                                                                                                                .field(
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                        "arg"),
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .str(
-                                                                                                                                                                                                        "loc"))),
-                                                                                                                                                                new TestMb
-                                                                                                                                                                        .RecordPair(
-                                                                                                                                                                        "cv",
-                                                                                                                                                                        mb
-                                                                                                                                                                                .field(
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                        "arg"),
-                                                                                                                                                                                        mb
-                                                                                                                                                                                                .str(
-                                                                                                                                                                                                        "cv"))))))),
-                                                                                                        mb.str(
-                                                                                                                "value"))),
                                                                                         mb.return_(
                                                                                                 mb.constEvalCode(
                                                                                                         mb.call(
@@ -538,12 +478,7 @@ public final class T0130DropThrowTest {
                                                                                                                                                                                                                 .str(
                                                                                                                                                                                                                         dropMessage)),
                                                                                                                                                                                         mb
-                                                                                                                                                                                                .return_(
-                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                .graft(
-                                                                                                                                                                                                                        mb
-                                                                                                                                                                                                                                .scopeUse(
-                                                                                                                                                                                                                                        "underlying_code_"))))))))))))))))))),
+                                                                                                                                                                                                .returnEmpty())))))))))))))))),
                         mb.call(
                                 mb.field(mb.scopeUse("u"), mb.str("impl_interface")),
                                 mb.recordOf(TList.of(
@@ -585,98 +520,116 @@ public final class T0130DropThrowTest {
                                                                                                                                                                 dropMessage))))))))),
                                                                 new TestMb.RecordPair(
                                                                         "use",
-                                                                        mb.call(
-                                                                                mb.evalCodevalue(),
-                                                                                mb.recordOf(
-                                                                                        TList.of(
-                                                                                                new TestMb.RecordPair(
-                                                                                                        "code",
-                                                                                                        mb.matchOf(
-                                                                                                                mb.call(
-                                                                                                                        mb
-                                                                                                                                .evalConstEval(),
-                                                                                                                        mb
-                                                                                                                                .recordOf(
-                                                                                                                                        TList
-                                                                                                                                                .of(
-                                                                                                                                                        new TestMb
-                                                                                                                                                                .RecordPair(
-                                                                                                                                                                "xx",
-                                                                                                                                                                mb
-                                                                                                                                                                        .field(
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .scopeUse(
-                                                                                                                                                                                                "arg"),
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .str(
-                                                                                                                                                                                                "xx"))),
-                                                                                                                                                        new TestMb
-                                                                                                                                                                .RecordPair(
-                                                                                                                                                                "staged",
-                                                                                                                                                                mb
-                                                                                                                                                                        .stage(
-                                                                                                                                                                                mb
-                                                                                                                                                                                        .as(
-                                                                                                                                                                                                mb
-                                                                                                                                                                                                        .str(
-                                                                                                                                                                                                                ""),
-                                                                                                                                                                                                mb
-                                                                                                                                                                                                        .typesString())))))),
-                                                                                                                mb.str(
-                                                                                                                        "__use_p"),
-                                                                                                                TList
-                                                                                                                        .of(
-                                                                                                                                new TestMb
-                                                                                                                                        .Branch(
-                                                                                                                                        mb
-                                                                                                                                                .str(
-                                                                                                                                                        "ok"),
-                                                                                                                                        mb
-                                                                                                                                                .field(
-                                                                                                                                                        mb
-                                                                                                                                                                .scopeUse(
-                                                                                                                                                                        "__use_p"),
-                                                                                                                                                        mb
-                                                                                                                                                                .str(
-                                                                                                                                                                        "code"))),
-                                                                                                                                new TestMb
-                                                                                                                                        .Branch(
-                                                                                                                                        mb
-                                                                                                                                                .str(
-                                                                                                                                                        "errs"),
-                                                                                                                                        mb
-                                                                                                                                                .panic(
-                                                                                                                                                        mb
-                                                                                                                                                                .str(
-                                                                                                                                                                        "canary use placeholder failed")))),
-                                                                                                                Opt
-                                                                                                                        .none())),
-                                                                                                new TestMb.RecordPair(
-                                                                                                        "value",
-                                                                                                        mb.call(
+                                                                        mb.matchOf(
+                                                                                mb.call(
+                                                                                        mb.evalCodevalueDynamic(),
+                                                                                        mb.recordOf(
+                                                                                                TList.of(
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "loc",
                                                                                                                 mb
-                                                                                                                        .evalStack(),
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "loc"))),
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "xx",
                                                                                                                 mb
-                                                                                                                        .recordOf(
+                                                                                                                        .field(
+                                                                                                                                mb
+                                                                                                                                        .scopeUse(
+                                                                                                                                                "arg"),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "xx"))),
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "code",
+                                                                                                                mb
+                                                                                                                        .matchOf(
+                                                                                                                                mb
+                                                                                                                                        .call(
+                                                                                                                                                mb
+                                                                                                                                                        .evalConstEval(),
+                                                                                                                                                mb
+                                                                                                                                                        .recordOf(
+                                                                                                                                                                TList
+                                                                                                                                                                        .of(
+                                                                                                                                                                                new TestMb
+                                                                                                                                                                                        .RecordPair(
+                                                                                                                                                                                        "xx",
+                                                                                                                                                                                        mb
+                                                                                                                                                                                                .field(
+                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                .scopeUse(
+                                                                                                                                                                                                                        "arg"),
+                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                .str(
+                                                                                                                                                                                                                        "xx"))),
+                                                                                                                                                                                new TestMb
+                                                                                                                                                                                        .RecordPair(
+                                                                                                                                                                                        "staged",
+                                                                                                                                                                                        mb
+                                                                                                                                                                                                .stage(
+                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                .as(
+                                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                                .str(
+                                                                                                                                                                                                                                        ""),
+                                                                                                                                                                                                                        mb
+                                                                                                                                                                                                                                .typesString())))))),
+                                                                                                                                mb
+                                                                                                                                        .str(
+                                                                                                                                                "__use_p"),
                                                                                                                                 TList
                                                                                                                                         .of(
                                                                                                                                                 new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "xx",
+                                                                                                                                                        .Branch(
+                                                                                                                                                        mb
+                                                                                                                                                                .str(
+                                                                                                                                                                        "ok"),
                                                                                                                                                         mb
                                                                                                                                                                 .field(
                                                                                                                                                                         mb
                                                                                                                                                                                 .scopeUse(
-                                                                                                                                                                                        "arg"),
+                                                                                                                                                                                        "__use_p"),
                                                                                                                                                                         mb
                                                                                                                                                                                 .str(
-                                                                                                                                                                                        "xx"))),
+                                                                                                                                                                                        "code"))),
                                                                                                                                                 new TestMb
-                                                                                                                                                        .RecordPair(
-                                                                                                                                                        "type",
+                                                                                                                                                        .Branch(
                                                                                                                                                         mb
-                                                                                                                                                                .scopeUse(
-                                                                                                                                                                        "outer")))))))))),
+                                                                                                                                                                .str(
+                                                                                                                                                                        "errs"),
+                                                                                                                                                        mb
+                                                                                                                                                                .panic(
+                                                                                                                                                                        mb
+                                                                                                                                                                                .str(
+                                                                                                                                                                                        "canary use placeholder failed")))),
+                                                                                                                                Opt
+                                                                                                                                        .none())),
+                                                                                                        new TestMb
+                                                                                                                .RecordPair(
+                                                                                                                "type",
+                                                                                                                mb
+                                                                                                                        .scopeUse(
+                                                                                                                                "outer"))))),
+                                                                                mb.str("__cvd"),
+                                                                                TList.of(
+                                                                                        new TestMb.Branch(
+                                                                                                mb.str("ok"),
+                                                                                                mb.scopeUse("__cvd")),
+                                                                                        new TestMb.Branch(
+                                                                                                mb.str("errs"),
+                                                                                                mb.panic(
+                                                                                                        mb.str(
+                                                                                                                "codevalue_dynamic failed")))),
+                                                                                Opt.none())),
                                                                 new TestMb.RecordPair("fork", mb.scopeUse("outer")),
                                                                 new TestMb.RecordPair(
                                                                         "merge",

@@ -8,12 +8,9 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.BindingCode;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.value.eresult.TypeEResultDynamic;
 import compilerxyz.main.gen.AspectFunction;
@@ -44,26 +41,24 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
                     "code.target.cast: destination type " + destType.typeDesc()
                             + " has no distinguishing host class; cast to a concrete object type");
         }
-        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-        var argDynCast = CodeDynamic.castOpt(loc, argument.code());
-        if (argDynCast.hasErrors()) return argDynCast.reerr();
-        var argDyn = argDynCast.requireValue("argDyn");
-
+        var selfRes = DynUtil.valueReg(loc, self);
+        if (selfRes.hasErrors()) return selfRes.reerr();
         var locKey = new BindingId();
         xx.vx.externals.add(
                 new EvalContext.ExternalEntry(locKey, GenQExprId.dynamicType(), new External(QExprId.class, loc)));
-
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDynRes.requireValue("selfDyn"));
-        if (argDyn.optIsSome()) seq.add(argDyn.optUnwrap());
-        seq.add(BindingCode.bindingUse(new CodeLoc.Some(loc), locKey));
-        seq.add(JavaBytecodeUtils.wrapObj(loc, new LdcInsnNode(org.objectweb.asm.Type.getType(destDesc.value()))));
-        seq.add(JavaBytecodeUtils.callStaticMethod(new CodeLoc.Some(loc), GenCodegenDescriptors.CODE_CAST_TARGET_CODE));
+        var b = new JavaBytecodeBuilder(loc);
+        var selfReg = b.reg(selfRes.requireValue("selfDyn"));
+        var argRes = b.addCode(loc, argument.code());
+        if (argRes.hasErrors()) return argRes.reerr();
+        var locReg = b.load(locKey, JavaDataDescriptor.fromClass(QExprId.class));
+        var classReg = b.node(
+                new LdcInsnNode(org.objectweb.asm.Type.getType(destDesc.value())),
+                JavaDataDescriptor.fromClass(Class.class));
+        var out = b.invokeStatic(GenCodegenDescriptors.CODE_CAST_TARGET_CODE, selfReg, locReg, classReg);
         var destRes = DynUtil.requireBoxedTypeArgument(xx, loc, "code cast target type", destType);
         if (destRes.hasErrors()) return destRes.reerr();
         Type resultType = new TypeEResultDynamic<>(destType);
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, new CodeDynamic(loc, seq), resultType));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
     }
 
     @Override

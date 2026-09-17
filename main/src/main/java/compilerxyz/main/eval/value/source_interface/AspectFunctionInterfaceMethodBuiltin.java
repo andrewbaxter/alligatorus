@@ -1,15 +1,12 @@
 package compilerxyz.main.eval.value.source_interface;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectFunction;
@@ -33,13 +30,7 @@ public record AspectFunctionInterfaceMethodBuiltin(TypeInterfaceMethodBuiltin ty
         var receiverDyn = receiverDynRes.requireValue("TypeInterfaceMethodBuiltin receiver toDynamic");
         return GenAspectFunction.getMaybe(xx, type.method())
                 .optUnwrap()
-                .aspectFunctionCall(
-                        xx,
-                        loc,
-                        new CodeValue(
-                                Code.target(receiverDyn),
-                                EvalOutcome.ofValue(ValueDynamic.stack(xx, type.receiverType()))),
-                        split.methodArgs());
+                .aspectFunctionCall(xx, loc, receiverDyn, split.methodArgs());
     }
 
     @Override

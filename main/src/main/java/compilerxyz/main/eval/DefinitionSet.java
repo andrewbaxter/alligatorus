@@ -17,8 +17,9 @@ import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.EmitCtx;
 import compilerxyz.main.eval.dynamic.EvalRootEmitter;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeStoreLoad;
 import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -316,33 +317,30 @@ public final class DefinitionSet implements Artifactable {
                         Opcodes.ACC_PUBLIC, "<init>", JavaMethodDescriptor.VOID_NOARGS.value(), null, null);
                 ctor.visitCode();
                 var ctorSeq = new JavaBytecodeSequence();
-                ctorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                ctorSeq.add(JavaBytecodeUtils.invokeSpecial(
-                        CodeLoc.Infallible.INSTANCE,
-                        JvmConstants.INTNAME_OBJECT,
-                        "<init>",
-                        JavaMethodDescriptor.VOID_NOARGS));
-                ctorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+                {
+                    var cb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                    var self = cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                    cb.invokeSpecialVoid(JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS, self);
+                    cb.retVoid();
+                    ctorSeq.add(cb.code());
+                }
                 JavaBytecodeUtils.renderMethod(ctorSeq, ctor, TList.of());
                 var realCtorDesc =
                         JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(dataFieldDesc));
                 var realCtor = soeCw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", realCtorDesc.value(), null, null);
                 realCtor.visitCode();
                 var realCtorSeq = new JavaBytecodeSequence();
-                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                realCtorSeq.add(JavaBytecodeUtils.invokeSpecial(
-                        CodeLoc.Infallible.INSTANCE,
-                        JvmConstants.INTNAME_OBJECT,
-                        "<init>",
-                        JavaMethodDescriptor.VOID_NOARGS));
-                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, Opcodes.ALOAD, 0));
-                realCtorSeq.add(JavaBytecodeUtils.varInsn(CodeLoc.Infallible.INSTANCE, dataFieldDesc.loadOpcode(), 1));
-                realCtorSeq.add(JavaBytecodeUtils.setField(
-                        CodeLoc.Infallible.INSTANCE,
-                        soeInternalName,
-                        SourceObjectEmitter.DATA_INSTANCE_FIELD,
-                        dataFieldDesc));
-                realCtorSeq.add(JavaBytecodeUtils.inst(CodeLoc.Infallible.INSTANCE, Opcodes.RETURN));
+                {
+                    var cb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
+                    var self = cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                    cb.invokeSpecialVoid(JvmConstants.INTNAME_OBJECT, "<init>", JavaMethodDescriptor.VOID_NOARGS, self);
+                    var selfAgain = cb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                    var data = cb.loadIndexed(1, dataFieldDesc);
+                    cb.putField(
+                            soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, dataFieldDesc, selfAgain, data);
+                    cb.retVoid();
+                    realCtorSeq.add(cb.code());
+                }
                 JavaBytecodeUtils.renderMethod(realCtorSeq, realCtor, TList.of());
                 var allFieldNames = new TOrderedSet<String>();
                 var staticFieldValues = new TOrderedMap<String, Object>();
@@ -453,17 +451,27 @@ public final class DefinitionSet implements Artifactable {
                         var emmLoc = CodeLoc.Infallible.INSTANCE;
                         var selfLocal = mustCast(BindingId.class, selfId);
                         var emmDataFieldDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
-                        if (method.outerBindingId.optIsSome()) {
-                            seq.add(JavaBytecodeUtils.varInsn(emmLoc, Opcodes.ALOAD, 0));
-                            seq.add(new CodeDynamic(
-                                    emmLoc,
-                                    new JavaBytecodeStoreLoad(Opcodes.ASTORE, method.outerBindingId.optUnwrap())));
+                        var soeDesc = JavaDataDescriptor.fromInternalName(soeInternalName);
+                        {
+                            var pb = new JavaBytecodeBuilder(emmLoc);
+                            if (method.outerBindingId.optIsSome()) {
+                                pb.store(method.outerBindingId.optUnwrap(), pb.loadIndexed(0, soeDesc));
+                            }
+                            var data = pb.getField(
+                                    soeInternalName,
+                                    SourceObjectEmitter.DATA_INSTANCE_FIELD,
+                                    emmDataFieldDesc,
+                                    pb.loadIndexed(0, soeDesc));
+                            pb.store(selfLocal, data);
+                            for (int i = 0; i < method.capturedExternals.size(); i++) {
+                                var emmEntry = method.capturedExternals.get(i);
+                                var fieldName = emmPrefix + Prefixes.EXTERNAL_PREFIX + i;
+                                var fieldDesc = JavaDataDescriptor.fromClass(
+                                        emmEntry.external().externalHostClass());
+                                pb.store(emmEntry.key(), pb.getStatic(soeInternalName, fieldName, fieldDesc));
+                            }
+                            seq.add(pb.code());
                         }
-                        seq.add(JavaBytecodeUtils.varInsn(emmLoc, Opcodes.ALOAD, 0));
-                        seq.add(JavaBytecodeUtils.accessField(
-                                emmLoc, soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, emmDataFieldDesc));
-                        seq.add(new CodeDynamic(
-                                emmLoc, new JavaBytecodeStoreLoad(emmDataFieldDesc.storeOpcode(), selfLocal)));
                         var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
                         initialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
                         for (int emmI = 0; emmI < argSlots.size(); emmI++) {
@@ -471,16 +479,17 @@ public final class DefinitionSet implements Artifactable {
                                     argSlotIds.get(emmI),
                                     argSlots.get(emmI).jvmDesc().isWide()));
                         }
-                        for (int i = 0; i < method.capturedExternals.size(); i++) {
-                            var emmEntry = method.capturedExternals.get(i);
-                            var fieldName = emmPrefix + Prefixes.EXTERNAL_PREFIX + i;
-                            var fieldDesc = JavaDataDescriptor.fromClass(
-                                    emmEntry.external().externalHostClass());
-                            seq.add(JavaBytecodeUtils.accessStaticField(emmLoc, soeInternalName, fieldName, fieldDesc));
-                            seq.add(new CodeDynamic(emmLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, emmEntry.key())));
-                        }
                         target.emit(seq, ctx, emmBodyCode);
-                        seq.add(JavaBytecodeUtils.inst(emmLoc, retDesc.returnOpcode()));
+                        {
+                            var rb = new JavaBytecodeBuilder(emmLoc);
+                            if (retDesc.value().equals(JavaDataDescriptor.DESC_VOID.value())
+                                    || method.compiledBodyResult.optIsNone()) {
+                                rb.retVoid();
+                            } else {
+                                rb.ret(method.compiledBodyResult.optUnwrap());
+                            }
+                            seq.add(rb.code());
+                        }
                         JavaBytecodeUtils.renderMethodTyped(
                                 seq, mv, initialSlots, obj.typeDesc() + "." + methodName, descriptor);
                     }
@@ -536,42 +545,49 @@ public final class DefinitionSet implements Artifactable {
                             var eimCtx = new EmitCtx(soeInternalName.value(), 1 + totalParamSlots, eimPrefix);
                             var eimSeq = new JavaBytecodeSequence();
                             var eimLoc = CodeLoc.Infallible.INSTANCE;
-                            if (m.outerBindingId.optIsSome()) {
-                                eimSeq.add(JavaBytecodeUtils.varInsn(eimLoc, Opcodes.ALOAD, 0));
-                                eimSeq.add(new CodeDynamic(
-                                        eimLoc,
-                                        new JavaBytecodeStoreLoad(Opcodes.ASTORE, m.outerBindingId.optUnwrap())));
-                            }
                             var innerDesc = JvmSort.descriptor(xx, obj.underlyingType.optUnwrap());
-                            eimSeq.add(JavaBytecodeUtils.varInsn(eimLoc, Opcodes.ALOAD, 0));
-                            eimSeq.add(JavaBytecodeUtils.accessField(
-                                    eimLoc, soeInternalName, SourceObjectEmitter.DATA_INSTANCE_FIELD, innerDesc));
-                            eimSeq.add(new CodeDynamic(
-                                    eimLoc, new JavaBytecodeStoreLoad(innerDesc.storeOpcode(), eimSelfId)));
+                            var eimSoeDesc = JavaDataDescriptor.fromInternalName(soeInternalName);
+                            {
+                                var pb = new JavaBytecodeBuilder(eimLoc);
+                                if (m.outerBindingId.optIsSome()) {
+                                    pb.store(m.outerBindingId.optUnwrap(), pb.loadIndexed(0, eimSoeDesc));
+                                }
+                                var data = pb.getField(
+                                        soeInternalName,
+                                        SourceObjectEmitter.DATA_INSTANCE_FIELD,
+                                        innerDesc,
+                                        pb.loadIndexed(0, eimSoeDesc));
+                                pb.store(eimSelfId, data);
+                                for (int i = 0; i < m.capturedExternals.size(); i++) {
+                                    var eimEntry = m.capturedExternals.get(i);
+                                    var eimFieldName = eimPrefix + Prefixes.EXTERNAL_PREFIX + i;
+                                    var eimFieldDesc = JavaDataDescriptor.fromClass(
+                                            eimEntry.external().externalHostClass());
+                                    pb.store(eimEntry.key(), pb.getStatic(soeInternalName, eimFieldName, eimFieldDesc));
+                                }
+                                eimSeq.add(pb.code());
+                            }
                             var eimInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
                             eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(new BindingId()));
                             for (int i = 0; i < jvmParamKeys.size(); i++) {
                                 eimInitialSlots.add(new JavaBytecodeSequence.InitialSlot(
                                         jvmParamKeys.get(i), jvmParamWides.get(i)));
                             }
-                            for (int i = 0; i < m.capturedExternals.size(); i++) {
-                                var eimEntry = m.capturedExternals.get(i);
-                                var eimFieldName = eimPrefix + Prefixes.EXTERNAL_PREFIX + i;
-                                var eimFieldDesc = JavaDataDescriptor.fromClass(
-                                        eimEntry.external().externalHostClass());
-                                eimSeq.add(JavaBytecodeUtils.accessStaticField(
-                                        eimLoc, soeInternalName, eimFieldName, eimFieldDesc));
-                                eimSeq.add(new CodeDynamic(
-                                        eimLoc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, eimEntry.key())));
-                            }
                             eimTarget.emit(eimSeq, eimCtx, m.compiledBodyCode.optUnwrap());
                             {
-                                var descStr = eimDescriptor.value();
-                                var ercRetDesc = JavaDataDescriptor.create(descStr.substring(descStr.indexOf(')') + 1));
-                                if (ercRetDesc.value().charAt(0) == 'L') {
-                                    eimSeq.add(JavaBytecodeUtils.cast(eimLoc, ercRetDesc));
+                                var rb = new JavaBytecodeBuilder(eimLoc);
+                                var ercRetDesc = eimDescriptor.returnDescriptor();
+                                if (ercRetDesc.value().equals(JavaDataDescriptor.DESC_VOID.value())
+                                        || m.compiledBodyResult.optIsNone()) {
+                                    rb.retVoid();
+                                } else {
+                                    var result = m.compiledBodyResult.optUnwrap();
+                                    if (ercRetDesc.value().charAt(0) == 'L') {
+                                        result = rb.checkcast(ercRetDesc, result);
+                                    }
+                                    rb.ret(result);
                                 }
-                                eimSeq.add(JavaBytecodeUtils.inst(eimLoc, ercRetDesc.returnOpcode()));
+                                eimSeq.add(rb.code());
                             }
                             JavaBytecodeUtils.renderMethodTyped(
                                     eimSeq,
@@ -610,77 +626,69 @@ public final class DefinitionSet implements Artifactable {
                             {
                                 var ehaMv = soeCw.visitMethod(
                                         Opcodes.ACC_PUBLIC, hostName, hostDescriptor.value(), null, null);
-                                var hostDescStr = hostDescriptor.value();
                                 var ehaLoc = CodeLoc.Infallible.INSTANCE;
                                 var ehaSeq = new JavaBytecodeSequence();
-                                ehaSeq.add(JavaBytecodeUtils.varInsn(ehaLoc, Opcodes.ALOAD, 0));
+                                var eb = new JavaBytecodeBuilder(ehaLoc);
+                                var ehaSelf = eb.loadIndexed(0, JavaDataDescriptor.fromInternalName(soeInternalName));
+                                var calleeArgs = new TList<JavaBytecodeReg>();
                                 var calleeDescriptor =
                                         SourceObjectEmitter.interfaceMethodMethodDescriptor(xx, ehiM, ehiIfaceMethod);
                                 int hostSlot = 1;
                                 if (ehiM.compiledArgParamTypes.optIsSome()) {
                                     var ehaArgParamTypes = ehiM.compiledArgParamTypes.optUnwrap();
-                                    var hostParams = new TList<String>();
-                                    {
-                                        int pdI = 1;
-                                        while (pdI < hostDescStr.length() && hostDescStr.charAt(pdI) != ')') {
-                                            int start = pdI;
-                                            while (hostDescStr.charAt(pdI) == '[') pdI++;
-                                            if (hostDescStr.charAt(pdI) == 'L') {
-                                                pdI = hostDescStr.indexOf(';', pdI) + 1;
-                                            } else {
-                                                pdI++;
-                                            }
-                                            hostParams.add(hostDescStr.substring(start, pdI));
-                                        }
-                                    }
+                                    var hostParams = hostDescriptor.argumentDescriptors();
                                     int argIdx = 0;
                                     for (var ehaArgType : ehaArgParamTypes) {
-                                        var hostParamDesc = JavaDataDescriptor.create(hostParams.get(argIdx));
+                                        var hostParamDesc = hostParams.get(argIdx);
                                         var hostArgType = hostParamDesc.isReference()
                                                 ? DynUtil.substituteBoxed(xx, ehaArgType)
                                                 : ehaArgType;
                                         var hostArgDesc = JvmSort.descriptor(xx, hostArgType);
-                                        var loadSeq = new JavaBytecodeSequence();
-                                        loadSeq.add(JavaBytecodeUtils.varInsn(
-                                                ehaLoc, hostParamDesc.loadOpcode(), hostSlot));
+                                        var raw = eb.loadIndexed(hostSlot, hostParamDesc);
                                         if (!hostParamDesc.value().equals(hostArgDesc.value())
                                                 && hostArgDesc.isReference()) {
-                                            loadSeq.add(JavaBytecodeUtils.cast(ehaLoc, hostArgDesc));
+                                            raw = eb.checkcast(hostArgDesc, raw);
                                         }
-                                        var hostArgCv = DynUtil.dynamicStackToValue(
-                                                xx, new CodeDynamic(ehaLoc, loadSeq), hostArgType);
-                                        var argCv = Eval.typecheckConvert(xx, loc, ehaArgType, hostArgCv)
+                                        var hostArgCv = DynUtil.regToValue(
+                                                new CodeDynamic(ehaLoc, new JavaBytecodeSequence()), raw, hostArgType);
+                                        var argDyn = DynUtil.materialize(xx, loc, ehaArgType, hostArgCv)
                                                 .requireValue("SourceObjectEmitter.emitHostAdapter: arg convert");
-                                        var argDyn = GenAspectConsumeDynamic.getMaybe(xx, ehaArgType)
-                                                .optUnwrap()
-                                                .aspectConsumeDynamicToDynamic(xx, loc, argCv)
-                                                .requireValue("SourceObjectEmitter.emitHostAdapter: arg consume");
-                                        ehaSeq.add(argDyn);
+                                        calleeArgs.add(eb.reg(argDyn));
                                         hostSlot += hostParamDesc.slotWidth();
                                         argIdx++;
                                     }
                                 }
-                                ehaSeq.add(JavaBytecodeUtils.callMethod(
-                                        ehaLoc, soeInternalName, ehiM.jvmMethodName, calleeDescriptor));
-                                var ehaRetDesc =
-                                        JavaDataDescriptor.create(hostDescStr.substring(hostDescStr.indexOf(')') + 1));
-                                if (ehiIfaceMethod.retType.optIsNone()) {
+                                var callArgs = new TList<JavaBytecodeReg>();
+                                callArgs.add(ehaSelf);
+                                callArgs.addAll(calleeArgs);
+                                var calleeRet = eb.invoke(
+                                        Opcodes.INVOKEVIRTUAL,
+                                        soeInternalName,
+                                        ehiM.jvmMethodName,
+                                        calleeDescriptor,
+                                        false,
+                                        callArgs);
+                                var ehaRetDesc = hostDescriptor.returnDescriptor();
+                                if (ehiIfaceMethod.retType.optIsNone() || calleeRet.optIsNone()) {
                                     if (ehaRetDesc.isReference()) {
-                                        ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, Opcodes.ACONST_NULL));
+                                        eb.ret(eb.constNull());
+                                    } else {
+                                        eb.retVoid();
                                     }
                                 } else if (ehaRetDesc.isReference()) {
                                     var calleeRetType = ehiIfaceMethod.retType.optUnwrap();
                                     var hostRetType = DynUtil.substituteBoxed(xx, calleeRetType);
-                                    var calleeCv = DynUtil.dynamicStackToValue(
-                                            xx, new CodeDynamic(ehaLoc, new JavaBytecodeSequence()), calleeRetType);
-                                    var hostCv = Eval.typecheckConvert(xx, loc, hostRetType, calleeCv)
+                                    var calleeCv = DynUtil.regToValue(
+                                            new CodeDynamic(ehaLoc, new JavaBytecodeSequence()),
+                                            calleeRet.optUnwrap(),
+                                            calleeRetType);
+                                    var hostDyn = DynUtil.materialize(xx, loc, hostRetType, calleeCv)
                                             .requireValue("SourceObjectEmitter.emitHostAdapter: ret convert");
-                                    ehaSeq.add(GenAspectConsumeDynamic.getMaybe(xx, hostRetType)
-                                            .optUnwrap()
-                                            .aspectConsumeDynamicToDynamic(xx, loc, hostCv)
-                                            .requireValue("SourceObjectEmitter.emitHostAdapter: ret consume"));
+                                    eb.ret(eb.reg(hostDyn));
+                                } else {
+                                    eb.ret(calleeRet.optUnwrap());
                                 }
-                                ehaSeq.add(JavaBytecodeUtils.inst(ehaLoc, ehaRetDesc.returnOpcode()));
+                                ehaSeq.add(eb.code());
                                 JavaBytecodeUtils.renderMethod(ehaSeq, ehaMv, TList.of());
                             }
                         }
@@ -864,17 +872,30 @@ public final class DefinitionSet implements Artifactable {
             for (var slot : spec.argSlots()) reservedLocals += slot.jvmDesc().slotWidth();
             var ctx = new EmitCtx(internalName, Math.max(1, reservedLocals), efmPrefix);
             var loc = CodeLoc.Infallible.INSTANCE;
-            var seq = JavaBytecodeUtils.seq();
+            var seq = new JavaBytecodeSequence();
             var ownerInternal = JavaInternalName.of(internalName);
-            for (int efmI = 0; efmI < spec.externals().size(); efmI++) {
-                var efmEntry = spec.externals().get(efmI);
-                var fieldName = efmPrefix + Prefixes.EXTERNAL_PREFIX + efmI;
-                var fieldDesc = JavaDataDescriptor.fromClass(efmEntry.external().externalHostClass());
-                seq.add(JavaBytecodeUtils.accessStaticField(loc, ownerInternal, fieldName, fieldDesc));
-                seq.add(new CodeDynamic(loc, new JavaBytecodeStoreLoad(Opcodes.ASTORE, efmEntry.key())));
+            {
+                var pb = new JavaBytecodeBuilder(loc);
+                for (int efmI = 0; efmI < spec.externals().size(); efmI++) {
+                    var efmEntry = spec.externals().get(efmI);
+                    var fieldName = efmPrefix + Prefixes.EXTERNAL_PREFIX + efmI;
+                    var fieldDesc =
+                            JavaDataDescriptor.fromClass(efmEntry.external().externalHostClass());
+                    pb.store(efmEntry.key(), pb.getStatic(ownerInternal, fieldName, fieldDesc));
+                }
+                seq.add(pb.code());
             }
             target.emit(seq, ctx, spec.bodyCode());
-            seq.add(JavaBytecodeUtils.inst(loc, spec.retDesc().returnOpcode()));
+            {
+                var rb = new JavaBytecodeBuilder(loc);
+                if (spec.retDesc().value().equals(JavaDataDescriptor.DESC_VOID.value())
+                        || spec.bodyResult().optIsNone()) {
+                    rb.retVoid();
+                } else {
+                    rb.ret(spec.bodyResult().optUnwrap());
+                }
+                seq.add(rb.code());
+            }
             var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
             for (var efmSlot : spec.argSlots()) {
                 initialSlots.add(new JavaBytecodeSequence.InitialSlot(

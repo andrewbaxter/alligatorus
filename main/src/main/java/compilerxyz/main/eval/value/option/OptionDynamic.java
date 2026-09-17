@@ -5,7 +5,8 @@ import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.prelude.util.Opt;
 
 public sealed interface OptionDynamic extends Type, Artifactable
@@ -14,5 +15,5 @@ public sealed interface OptionDynamic extends Type, Artifactable
 
     Type optionDynamicElementType();
 
-    CodeDynamic optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<CodeDynamic> payload);
+    CodeDynamicReg optionDynamicConstruct(ExprContext xx, QExprId loc, Opt<JavaBytecodeReg> payload);
 }

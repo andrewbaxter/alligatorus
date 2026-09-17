@@ -10,13 +10,11 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
@@ -38,28 +36,28 @@ public record AspectFieldOptionSpecializedDynamic<T extends Type>(TypeOptionSpec
         if (ckOpt.optIsNone()) return EResult.errs(erb.errors());
         var ck = ckOpt.optUnwrap();
         if (ck.equals(VALUE) || ck.equals(IS_SOME)) {
-            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-            if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-            var seq = new JavaBytecodeSequence();
-            seq.add(selfDynRes.requireValue("selfDyn"));
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var selfReg = b.reg(selfRes.requireValue("selfDyn"));
             Type resultType;
+            JavaBytecodeReg out;
             if (ck.equals(VALUE)) {
-                seq.add(JavaBytecodeUtils.callMethod(
-                        loc,
+                out = b.invokeVirtual(
                         type.storeName,
                         "value",
-                        JavaMethodDescriptor.fromParts(type.elementDescriptor(xx), TList.of())));
+                        JavaMethodDescriptor.fromParts(type.elementDescriptor(xx), TList.of()),
+                        selfReg);
                 resultType = type.elementType;
             } else {
-                seq.add(JavaBytecodeUtils.callMethod(
-                        loc,
+                out = b.invokeVirtual(
                         type.storeName,
                         "isSome",
-                        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
+                        JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of()),
+                        selfReg);
                 resultType = new TypeBoolDynamic();
             }
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, resultType))));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
         }
         var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(ck);
         if (factory == null) {

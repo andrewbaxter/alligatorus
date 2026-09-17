@@ -10,14 +10,10 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc.Some;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.bool.TypeBoolDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectField;
@@ -43,36 +39,29 @@ public record AspectFieldOptionDynamic<T extends Type>(TypeOptionDynamic<T> type
                     case ConstKey.Uint u -> Opt.<ConstKey.Str>none();
                 };
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("value")) {
-            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-            if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-            var selfDyn = selfDynRes.requireValue("selfDyn");
-            var seq = new JavaBytecodeSequence();
-            seq.add(selfDyn);
-            seq.add(JavaBytecodeUtils.cast(
-                    loc, JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Opt.Some.class))));
-            seq.add(JavaBytecodeUtils.callMethod(loc, GenCodegenDescriptors.SOME_VALUE));
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var some = b.checkcast(
+                    JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Opt.Some.class)),
+                    b.reg(selfRes.requireValue("selfDyn")));
+            var value = b.invokeVirtual(GenCodegenDescriptors.SOME_VALUE, some);
             var elemConsumeRes = GenAspectConsumeDynamic.get(xx, loc, type.elementType);
             if (elemConsumeRes.hasErrors()) return elemConsumeRes.reerr();
             var elemDesc = elemConsumeRes
                     .requireValue("TypeOptionDynamic::field value AspectConsumeDynamic")
                     .aspectConsumeDynamicJvmClass(xx);
             if (elemDesc.value().startsWith("L") && !elemDesc.value().equals("Ljava/lang/Object;")) {
-                seq.add(JavaBytecodeUtils.cast(loc, elemDesc));
+                value = b.checkcast(elemDesc, value);
             }
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, type.elementType))));
+            return EResult.ok(DynUtil.regToValue(b.code(), value, type.elementType));
         }
         if (ckStr.optIsSome() && ckStr.optUnwrap().value().equals("is_some")) {
-            var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, self);
-            if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-            var selfDyn = selfDynRes.requireValue("selfDyn");
-            var seq = new JavaBytecodeSequence();
-            seq.add(selfDyn);
-            seq.add(JavaBytecodeUtils.instanceOf(loc, JavaInternalName.fromClass(Opt.Some.class)));
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(new Some(loc), seq)),
-                    EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
+            var selfRes = DynUtil.valueReg(loc, self);
+            if (selfRes.hasErrors()) return selfRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.instanceOf(JavaInternalName.fromClass(Opt.Some.class), b.reg(selfRes.requireValue("selfDyn")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeBoolDynamic()));
         }
         var factory = OptionFieldSpecs.factories(type.elementType).getOrNull(ck);
         if (factory == null) {

@@ -1,6 +1,5 @@
 package compilerxyz.main.eval;
 
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.null_.TypeNullConst;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.record.Record;
@@ -140,7 +139,8 @@ public final class ConstEval {
                                 } else if (blockRes.optUnwrap().optIsSome()) {
                                     var skip = new JumpKey();
                                     var opt = erb.mustEr(xx.target.targetJump(loc, skip));
-                                    var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
+                                    var landOpt =
+                                            erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, skip, Opt.none()));
                                     if (opt.optIsNone() || landOpt.optIsNone()) {
                                         wrapped = Opt.none();
                                     } else {
@@ -157,7 +157,7 @@ public final class ConstEval {
                                                             wrappedOpt.optUnwrap(),
                                                             opt.optUnwrap(),
                                                             blockRes.optUnwrap().optUnwrap(),
-                                                            landOpt.optUnwrap()));
+                                                            landOpt.optUnwrap().code()));
                                             wrapped = fullOpt.optIsNone()
                                                     ? Opt.none()
                                                     : Opt.some(new CodeValue(fullOpt.optUnwrap(), callCv.outcome()));
@@ -325,7 +325,7 @@ public final class ConstEval {
                             case EvalOutcome.NoValue nv -> {}
                             case EvalOutcome.HasValue hv -> {}
                         }
-                        pendingDiscard = r;
+                        pendingDiscard = new CodeValue(Code.none(sub.loc()), r.outcome());
                     }
                 }
                 if (pendingDiscard != null) {
@@ -416,7 +416,7 @@ public final class ConstEval {
                     var elExpr = t.elements().get(ei);
                     var elRes = ei == t.elements().size() - 1
                             ? elementResult(xx, constEvalOperand(xx, elExpr))
-                            : elementResultPending(xx, elExpr.loc(), constEvalOperand(xx, elExpr));
+                            : elementResultPending(xx, constEvalOperand(xx, elExpr));
                     if (!elRes.hasErrors()
                             && elRes.valueOpt().optIsSome()
                             && elRes.valueOpt().optUnwrap().value().optIsNone()) {
@@ -462,8 +462,7 @@ public final class ConstEval {
                         case Result.Ok<ConstKey, String> ok -> {
                             var valRes = ei == r.entries().size() - 1
                                     ? elementResult(xx, constEvalOperand(xx, entry.value()))
-                                    : elementResultPending(
-                                            xx, entry.value().loc(), constEvalOperand(xx, entry.value()));
+                                    : elementResultPending(xx, constEvalOperand(xx, entry.value()));
                             if (!valRes.hasErrors()
                                     && valRes.valueOpt().optIsSome()
                                     && valRes.valueOpt().optUnwrap().value().optIsNone()) {
@@ -1259,24 +1258,15 @@ public final class ConstEval {
                 Opt<Code> finallyNormal = Opt.none();
                 if (finallyLevel != null) {
                     popByBox(xx.scope, finallyLevel);
-                    var finSome = (Opt.Some<Expr>) e.finallyBlock();
-                    var finCvOpt = erb.mustCv(xx, constEvalOperand(xx, finSome.value()));
-                    if (finCvOpt.optIsNone()) yield EResult.errs(erb.errors());
-                    var finCv = finCvOpt.optUnwrap();
-                    var finallyDropOpt = erb.mustEr(Eval.dropValue(xx, loc, finCv));
-                    if (finallyDropOpt.optIsNone()) yield EResult.errs(erb.errors());
-                    Code finallyDropCode = finallyDropOpt.optUnwrap();
-                    Code combinedFinally;
-                    if (!finallyDropCode.codeIsNone()) {
-                        var combinedOpt = erb.mustEr(xx.target.targetSeq(loc, TList.of(finCv.code(), finallyDropCode)));
-                        if (combinedOpt.optIsNone()) yield EResult.errs(erb.errors());
-                        combinedFinally = combinedOpt.optUnwrap();
-                    } else {
-                        combinedFinally = finCv.code();
-                    }
-                    finallyLevel.body = combinedFinally;
+                    var finExpr = ((Opt.Some<Expr>) e.finallyBlock()).value();
+                    var normalOpt = constEvalFinally(xx, loc, finExpr, erb);
+                    if (normalOpt.optIsNone()) yield EResult.errs(erb.errors());
                     var emission = finallyLevel.scopeLevelEmission();
                     for (var pendingEntry : finallyLevel.pending) {
+                        var siteXx = new ExprContext(
+                                xx.scope.fork(), xx.target, xx.vx, xx.importState, xx.currentExceptionType);
+                        var siteOpt = constEvalFinally(siteXx, loc, finExpr, erb);
+                        if (siteOpt.optIsNone()) yield EResult.errs(erb.errors());
                         var key = pendingEntry.key();
                         EResult<Code> nodeRes;
                         if (key.label().optIsSome()) {
@@ -1284,12 +1274,12 @@ public final class ConstEval {
                                     xx,
                                     loc,
                                     pendingEntry.self(),
-                                    key.carryType(finallyLevel.scopeLevelEmission()),
-                                    finallyLevel.body,
+                                    key.argument(emission),
+                                    siteOpt.optUnwrap(),
                                     key.next().optUnwrap());
                         } else {
                             nodeRes = xx.target.targetExcCleanup(
-                                    xx, loc, pendingEntry.self(), finallyLevel.body, key.next());
+                                    xx, loc, pendingEntry.self(), siteOpt.optUnwrap(), key.next());
                         }
                         if (nodeRes.hasErrors()) {
                             nodeRes.drainInto(erb.errors());
@@ -1298,7 +1288,7 @@ public final class ConstEval {
                         emission.blocks.add(nodeRes.requireValue("ScopeChains finally block"));
                     }
                     finallyLevel.pending.clear();
-                    finallyNormal = Opt.some(combinedFinally);
+                    finallyNormal = Opt.some(normalOpt.optUnwrap());
                 }
                 var tryOpt = erb.mustErMaybeUnreachable(xx.target.targetTryCatchFinally(
                         xx,
@@ -1308,7 +1298,8 @@ public final class ConstEval {
                         handlerKey == null ? Opt.<JumpKey>none() : Opt.some(handlerKey),
                         finallyNormal));
                 if (tryOpt.optIsNone()) yield EResult.errs(erb.errors());
-                Code tryCode = tryOpt.optUnwrap();
+                var tryCv = tryOpt.optUnwrap();
+                Code tryCode = tryCv.code();
                 if (finallyLevel != null) {
                     var finSplice = blocksSplice(xx, loc, finallyLevel.scopeLevelEmission().blocks, erb);
                     if (finSplice == null) yield EResult.errs(erb.errors());
@@ -1323,9 +1314,7 @@ public final class ConstEval {
                     if (catchSeq.optIsNone()) yield EResult.errs(erb.errors());
                     tryCode = catchSeq.optUnwrap();
                 }
-                var innerCv = new CodeValue(
-                        tryCode,
-                        resultValue.optIsSome() ? EvalOutcome.ofValue(resultValue.optUnwrap()) : EvalOutcome.NO_VALUE);
+                var innerCv = new CodeValue(tryCode, tryCv.outcome());
                 var res = EvalRes.of(innerCv, xx.scope);
                 yield erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
             }
@@ -1407,9 +1396,9 @@ public final class ConstEval {
                     }
                     valCv = converted;
                 }
-                boolean stackCarried = someVal.value() instanceof ValueDynamic;
-                Opt<Type> carryType =
-                        someVal.value() instanceof ValueDynamic vd ? Opt.some(vd.type()) : Opt.<Type>none();
+                Opt<Type> argument = xx.target.targetValueIsRuntime(xx, someVal.value())
+                        ? Opt.some(target.landing.resultType.optUnwrap())
+                        : Opt.none();
                 EResult<JumpKey> destRes;
                 exitDestCompute:
                 {
@@ -1442,7 +1431,7 @@ public final class ConstEval {
                                         ScopeChains.levelDropState(cleanups.get(ci)),
                                         Opt.some(discriminator),
                                         Opt.some(next),
-                                        cleanups.get(ci).scopeLevelEmission().carryTypeIntern(xx, carryType)));
+                                        cleanups.get(ci).scopeLevelEmission().argumentIntern(xx, argument)));
                         if (resolved.hasErrors()) {
                             destRes = resolved.reerr();
                             break exitDestCompute;
@@ -1457,13 +1446,10 @@ public final class ConstEval {
                     yield EResult.errs(erb.errors());
                 }
                 var dest = destRes.requireValue("constEvalReturn dest");
-                target.landing.arrivals.add(
-                        new ScopeLevel.Arrival(loc, someVal.value(), stackCarried, xx.scope.fork()));
-                var jumpOpt = erb.mustEr(xx.target.targetExit(xx, loc, dest, target.end, valCv));
-                if (jumpOpt.optIsNone()) yield EResult.errs(erb.errors());
-                var retSeq = seqCode(xx, loc, erb, TList.of(valCv.code(), jumpOpt.optUnwrap()));
-                if (retSeq.optIsNone()) yield EResult.errs(erb.errors());
-                var cv = new CodeValue(retSeq.optUnwrap(), EvalOutcome.CONTROL_ENDED);
+                target.landing.arrivals.add(new ScopeLevel.Arrival(loc, someVal.value(), xx.scope.fork()));
+                var exitOpt = erb.mustEr(xx.target.targetExit(xx, loc, dest, argument, valCv));
+                if (exitOpt.optIsNone()) yield EResult.errs(erb.errors());
+                var cv = new CodeValue(exitOpt.optUnwrap(), EvalOutcome.CONTROL_ENDED);
                 var res = EvalRes.of(cv, xx.scope);
                 yield erb.errors().isEmpty() ? EResult.ok(res) : EResult.mixed(res, erb.errors());
             }
@@ -1489,15 +1475,23 @@ public final class ConstEval {
         return res;
     }
 
+    private static Opt<Code> constEvalFinally(ExprContext xx, QExprId loc, Expr finExpr, Erb erb) {
+        var finCvOpt = erb.mustCv(xx, constEvalOperand(xx, finExpr));
+        if (finCvOpt.optIsNone()) return Opt.none();
+        var finCv = finCvOpt.optUnwrap();
+        var dropOpt = erb.mustEr(Eval.dropValue(xx, loc, finCv));
+        if (dropOpt.optIsNone()) return Opt.none();
+        var drop = dropOpt.optUnwrap();
+        if (drop.codeIsNone()) return Opt.some(finCv.code());
+        return erb.mustEr(xx.target.targetSeq(loc, TList.of(finCv.code(), drop)));
+    }
+
     private static Opt<CodeValue> constEvalOperandPending(ExprContext xx, Erb erb, Expr expr) {
         var opt = erb.mustCv(xx, constEvalOperand(xx, expr));
         if (opt.optIsNone()) return opt;
-        var parkedOpt = erb.mustEr(xx.target.targetOperandPark(xx, expr.loc(), opt.optUnwrap()));
-        if (parkedOpt.optIsNone()) return Opt.none();
-        var parked = parkedOpt.optUnwrap();
-        if (parked.optIsNone()) return opt;
-        xx.scope.pushTemp(parked.optUnwrap().binding);
-        return Opt.some(parked.optUnwrap().value);
+        var cv = opt.optUnwrap();
+        if (cv.value().optIsSome()) xx.scope.pushTemp(cv.value().optUnwrap());
+        return opt;
     }
 
     private static TList<Code> operandPendingClose(ExprContext xx, int operandBase) {
@@ -1529,20 +1523,12 @@ public final class ConstEval {
         return Opt.some(new CodeValue(code.optUnwrap(), cv.outcome()));
     }
 
-    private static EResult<CodeValue> elementResultPending(ExprContext xx, QExprId loc, EResult<EvalRes> r) {
+    private static EResult<CodeValue> elementResultPending(ExprContext xx, EResult<EvalRes> r) {
         var res = elementResult(xx, r);
         if (res.valueOpt().optIsNone()) return res;
         var cv = res.valueOpt().optUnwrap();
-        if (cv.value().optIsNone()) return res;
-        var parkRes = xx.target.targetOperandPark(xx, loc, cv);
-        if (parkRes.hasErrors()) return parkRes.reerr();
-        var parked = parkRes.requireValue("elementResultPending park");
-        if (parked.optIsNone()) return res;
-        xx.scope.pushTemp(parked.optUnwrap().binding);
-        var errors = new TList<ExprErr>();
-        res.drainInto(errors);
-        var value = parked.optUnwrap().value;
-        return errors.isEmpty() ? EResult.ok(value) : EResult.mixed(value, errors);
+        if (cv.value().optIsSome()) xx.scope.pushTemp(cv.value().optUnwrap());
+        return res;
     }
 
     private static void popByBox(Scope scope, ScopeLevel level) {
@@ -1560,13 +1546,13 @@ public final class ConstEval {
         if (blocks.isEmpty()) return Code.none(loc);
         var skip = new JumpKey();
         var jumpOpt = erb.mustEr(xx.target.targetJump(loc, skip));
-        var landOpt = erb.mustEr(xx.target.targetLand(loc, skip));
+        var landOpt = erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, skip, Opt.none()));
         if (jumpOpt.optIsNone() || landOpt.optIsNone()) return null;
         var parts = new TList<Code>();
         parts.add(jumpOpt.optUnwrap());
         parts.addAll(blocks);
         blocks.clear();
-        parts.add(landOpt.optUnwrap());
+        parts.add(landOpt.optUnwrap().code());
         var res = seqCode(xx, loc, erb, parts);
         return res.optIsNone() ? null : res.optUnwrap();
     }
@@ -1606,6 +1592,10 @@ public final class ConstEval {
             }
             innerCv = fallConvRes.requireValue("labeledConsume fallthrough convert");
         }
+        Opt<Type> argument = !arrivals.isEmpty()
+                        && xx.target.targetValueIsRuntime(xx, arrivals.get(0).value())
+                ? level.landing.resultType
+                : Opt.none();
         var blocks = level.scopeLevelEmission().blocks;
         boolean fallsThrough =
                 switch (innerCv.outcome()) {
@@ -1615,7 +1605,7 @@ public final class ConstEval {
                 };
         if (!arrivals.isEmpty()
                 && fallsThrough
-                && arrivals.get(0).stackCarried()
+                && argument.optIsSome()
                 && innerCv.value().optIsNone()) {
             erb.errPush("block: return sites yield a value but the end of the block is reachable without one");
             return EResult.errs(erb.errors());
@@ -1645,30 +1635,34 @@ public final class ConstEval {
             }
         }
         var code = innerCv.code();
+        Opt<Value> resultValue =
+                arrivals.isEmpty() ? innerCv.value() : Opt.some(arrivals.get(0).value());
         if (!arrivals.isEmpty() || !blocks.isEmpty()) {
             var parts = new TList<Code>();
-            if (!arrivals.isEmpty()) {
-                var startOpt = erb.mustEr(xx.target.targetLabeledStart(loc, level.end));
-                if (startOpt.optIsNone()) return EResult.errs(erb.errors());
-                parts.add(startOpt.optUnwrap());
-            }
-            parts.add(code);
-            if (fallsThrough && !blocks.isEmpty()) {
-                var jumpOpt = erb.mustEr(xx.target.targetJump(loc, level.end));
-                if (jumpOpt.optIsNone()) return EResult.errs(erb.errors());
-                parts.add(jumpOpt.optUnwrap());
+            if (fallsThrough && argument.optIsSome()) {
+                var storeOpt = erb.mustEr(xx.target.targetExit(xx, loc, level.end, argument, innerCv));
+                if (storeOpt.optIsNone()) return EResult.errs(erb.errors());
+                parts.add(storeOpt.optUnwrap());
+            } else {
+                parts.add(code);
+                if (fallsThrough && !blocks.isEmpty()) {
+                    var jumpOpt = erb.mustEr(xx.target.targetJump(loc, level.end));
+                    if (jumpOpt.optIsNone()) return EResult.errs(erb.errors());
+                    parts.add(jumpOpt.optUnwrap());
+                }
             }
             parts.addAll(blocks);
             blocks.clear();
-            var landOpt = erb.mustEr(xx.target.targetLand(loc, level.end));
+            var landOpt = erb.mustErMaybeUnreachable(xx.target.targetLand(xx, loc, level.end, argument));
             if (landOpt.optIsNone()) return EResult.errs(erb.errors());
-            parts.add(landOpt.optUnwrap());
+            parts.add(landOpt.optUnwrap().code());
+            if (argument.optIsSome()) {
+                resultValue = landOpt.optUnwrap().value();
+            }
             var seqOpt = seqCode(xx, loc, erb, parts);
             if (seqOpt.optIsNone()) return EResult.errs(erb.errors());
             code = seqOpt.optUnwrap();
         }
-        Opt<Value> resultValue =
-                arrivals.isEmpty() ? innerCv.value() : Opt.some(arrivals.get(0).value());
         EvalOutcome outcome;
         if (resultValue.optIsSome()) {
             outcome = EvalOutcome.ofValue(resultValue.optUnwrap());

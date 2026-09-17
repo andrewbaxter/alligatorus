@@ -1,15 +1,12 @@
 package compilerxyz.main.eval.value.source_object;
 
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.ConstKey;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.AspectField;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.prelude.util.Opt;
@@ -25,8 +22,7 @@ public record AspectFieldSourceObjectConst(TypeSourceObjectConst type) implement
         }
         var selfCodeRes = new AspectConsumeDynamicSourceObjectConst(type).aspectConsumeDynamicToDynamic(xx, loc, self);
         if (selfCodeRes.hasErrors()) return selfCodeRes.reerr();
-        var selfCode = selfCodeRes.requireValue("TypeSourceObjectConst::field toDynamic");
-        var selfDynamic = new CodeValue(Code.target(selfCode), EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType)));
+        var selfDynamic = selfCodeRes.requireValue("TypeSourceObjectConst::field toDynamic");
         return GenAspectField.getMaybe(xx, dynType).optUnwrap().aspectFieldField(xx, loc, selfDynamic, key);
     }
 

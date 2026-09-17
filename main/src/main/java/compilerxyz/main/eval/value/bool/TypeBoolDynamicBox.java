@@ -1,10 +1,8 @@
 package compilerxyz.main.eval.value.bool;
 
 import compilerxyz.main.artifact.ArtifactExporter;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -12,22 +10,18 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectBoolConst;
 import compilerxyz.main.gen.GenAspectBoolDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicUnboxed;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectPostDeserialize;
@@ -61,9 +55,6 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
         if (key.equals(GenAspectDynamicUnboxed.AspectId)) {
             return Opt.some(AspectDynamicUnboxedBoolDynamicBox.INSTANCE);
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicBoolDynamicBox.INSTANCE);
         }
@@ -96,7 +87,8 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        return GenAspectBoolDynamic.getMaybe(xx, destType).optIsSome();
+        return destType.typeIsEqual(xx, this)
+                || GenAspectBoolDynamic.getMaybe(xx, destType).optIsSome();
     }
 
     @Override
@@ -106,49 +98,42 @@ public record TypeBoolDynamicBox() implements Aspect, Type {
         }
         var sourceType = cv.value().optUnwrap().valueType();
         var boolConstOpt = GenAspectBoolConst.getMaybe(xx, sourceType);
-        var seq = new JavaBytecodeSequence();
-        var existingDynCast = CodeDynamic.castOpt(loc, cv.code());
-        if (existingDynCast.hasErrors()) return existingDynCast.reerr();
-        var existingDyn = existingDynCast.requireValue("existingDyn");
-        if (existingDyn.optIsSome()) {
-            seq.add(existingDyn.optUnwrap());
-        }
+        var b = new JavaBytecodeBuilder(loc);
+        JavaBytecodeReg raw;
         if (boolConstOpt.optIsSome()) {
-            boolean boolVal =
-                    boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap());
-            seq.add(JavaBytecodeUtils.literalBool(loc, boolVal));
-            seq.add(valueOfBoolean(loc));
+            var carryRes = b.addCode(loc, cv.code());
+            if (carryRes.hasErrors()) return carryRes.reerr();
+            raw = b.constBool(
+                    boolConstOpt.optUnwrap().aspectBoolConstGet(cv.value().optUnwrap()));
         } else if (sourceType instanceof TypeBoolDynamic) {
-            seq.add(valueOfBoolean(loc));
+            var dynRes = DynUtil.valueReg(loc, cv);
+            if (dynRes.hasErrors()) return dynRes.reerr();
+            raw = b.reg(dynRes.requireValue("TypeBoolDynamicBox::typeCastFrom realize"));
+        } else {
+            return EResult.err(loc, "TypeBoolDynamicBox::typeCastFrom: source is not a bool");
         }
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, this))));
-    }
-
-    @Override
-    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
-        var selfDynRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
-        if (selfDynRes.hasErrors()) return selfDynRes.reerr();
-        var seq = new JavaBytecodeSequence();
-        seq.add(selfDynRes.requireValue("selfDyn"));
-        seq.add(JavaBytecodeUtils.callMethod(
-                loc,
-                JavaInternalName.fromClass(Boolean.class),
-                "booleanValue",
-                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of())));
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(loc, seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeBoolDynamic()))));
-    }
-
-    private static CodeDynamic valueOfBoolean(QExprId loc) {
-        return JavaBytecodeUtils.callStaticMethod(
-                loc,
+        var boxed = b.invokeStatic(
                 JavaInternalName.fromClass(Boolean.class),
                 "valueOf",
                 JavaMethodDescriptor.fromParts(
                         JavaDataDescriptor.fromInternalName(JavaInternalName.fromClass(Boolean.class)),
-                        TList.of(JavaDataDescriptor.DESC_BOOL)));
+                        TList.of(JavaDataDescriptor.DESC_BOOL)),
+                raw);
+        return EResult.ok(DynUtil.regToValue(b.code(), boxed, this));
+    }
+
+    @Override
+    public EResult<CodeValue> typeCastTo(ExprContext xx, QExprId loc, CodeValue cv, Type destType) {
+        if (destType.typeIsEqual(xx, this)) return EResult.ok(cv);
+        var selfRes = DynUtil.valueReg(loc, cv);
+        if (selfRes.hasErrors()) return selfRes.reerr();
+        var b = new JavaBytecodeBuilder(loc);
+        var raw = b.invokeVirtual(
+                JavaInternalName.fromClass(Boolean.class),
+                "booleanValue",
+                JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_BOOL, TList.of()),
+                b.reg(selfRes.requireValue("selfDyn")));
+        return EResult.ok(DynUtil.regToValue(b.code(), raw, new TypeBoolDynamic()));
     }
 
     @Override

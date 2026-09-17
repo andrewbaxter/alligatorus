@@ -9,10 +9,8 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
@@ -20,11 +18,9 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectIterable;
@@ -75,9 +71,6 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldListConst<>(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightListConst<>(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicListConst<>(this));
@@ -165,12 +158,7 @@ public final class TypeListConst<T extends Type> implements Aspect, Type {
     };
 
     EResult<CodeValue> dynamicCv(ExprContext xx, QExprId loc, CodeValue self) {
-        var dynRes = new AspectConsumeDynamicListConst<>(this).aspectConsumeDynamicToDynamic(xx, loc, self);
-        if (dynRes.hasErrors()) return dynRes.reerr();
-        var dynType = GenLists.listDynamic(xx, elementType);
-        return EResult.ok(new CodeValue(
-                Code.target(dynRes.requireValue("TypeListConst::dynamicCv")),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, dynType))));
+        return new AspectConsumeDynamicListConst<>(this).aspectConsumeDynamicToDynamic(xx, loc, self);
     }
 
     @Override

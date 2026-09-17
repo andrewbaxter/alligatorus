@@ -8,10 +8,8 @@ import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.BindingCode;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -24,9 +22,9 @@ public record AspectConsumeDynamicCodeDynamic(TypeCodeDynamic type) implements A
     }
 
     @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        if (DynUtil.dynamicHasCode(cv)) {
-            return DynUtil.dynamicConsumeToDynamic(loc, cv);
+    public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+        if (cv.value().optIsSome() && DynUtil.sourceOf(cv.value().optUnwrap()).optIsSome()) {
+            return EResult.ok(cv);
         }
         if (cv.value().optIsNone()) {
             return EResult.err(loc, "TypeCodeDynamic::toDynamic: CodeValue has no value");
@@ -37,6 +35,10 @@ public record AspectConsumeDynamicCodeDynamic(TypeCodeDynamic type) implements A
         var key = new BindingId();
         var id = key;
         xx.vx.externals.add(new EvalContext.ExternalEntry(key, type, new External(Code.class, codeObj)));
-        return EResult.ok(BindingCode.bindingUse(new CodeLoc.Some(loc), id));
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, cv.code());
+        if (carryRes.hasErrors()) return carryRes.reerr();
+        var loaded = b.load(id, JavaDataDescriptor.fromClass(Code.class));
+        return EResult.ok(DynUtil.regToValue(b.code(), loaded, type));
     }
 }

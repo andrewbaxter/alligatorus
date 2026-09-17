@@ -1,21 +1,25 @@
 package compilerxyz.main.eval.value.tuple;
 
+import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.AspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
+import compilerxyz.main.gen.Value;
+import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
 public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDynamic {
@@ -39,21 +43,19 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
     }
 
     @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        var carry = cv.code();
+    public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
         if (cv.value().optIsNone()) {
             throw new IllegalStateException("Tuple::toDynamic: CodeValue has no value");
         }
         var someValue = cv.value().optUnwrap();
         if (someValue instanceof ValueDynamic) {
-            return DynUtil.dynamicConsumeToDynamic(loc, cv);
+            return EResult.ok(cv);
         }
         if (!(someValue instanceof Tuple tuple)) {
             throw new IllegalStateException("Tuple::toDynamic: expected Tuple value, got " + someValue.getClass());
         }
         if (tuple.base.optIsSome()) {
-            return DynUtil.wrapWithCarry(
-                    loc, carry, tuple.base.optUnwrap().source().valueDynamicSourceRealize(loc));
+            return EResult.ok(cv);
         }
         var types = new TList<Type>(type.elements.size());
         for (var e : type.elements) {
@@ -68,8 +70,11 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
         if (tuple.elements.size() != types.size()) {
             throw new IllegalStateException("Tuple::toDynamic: arity mismatch between value and type");
         }
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, cv.code());
+        if (carryRes.hasErrors()) return carryRes.reerr();
         TList<ExprErr> errors = null;
-        var dynamicElements = new TList<CodeDynamic>(tuple.elements.size());
+        var elementRegs = new TList<JavaBytecodeReg>(tuple.elements.size());
         for (int i = 0; i < tuple.elements.size(); i++) {
             var elem = tuple.elements.get(i);
             var elemType = types.get(i);
@@ -92,33 +97,35 @@ public record AspectConsumeDynamicTuple(Tuple type) implements AspectConsumeDyna
                 lookup.drainInto(errors);
                 continue;
             }
-            var toDyn = lookup.requireValue("Tuple::toDynamic consume aspect");
-            var lowered = toDyn.aspectConsumeDynamicToDynamic(xx, loc, elemCv);
+            var lowered = lookup.requireValue("Tuple::toDynamic consume aspect")
+                    .aspectConsumeDynamicToDynamic(xx, loc, elemCv);
             if (lowered.hasErrors()) {
                 if (errors == null) errors = new TList<>();
                 lowered.drainInto(errors);
                 continue;
             }
-            var loweredCode = lowered.requireValue("Tuple::toDynamic element lowered");
-            dynamicElements.add(loweredCode);
+            var loweredReg = DynUtil.valueReg(loc, lowered.requireValue("Tuple::toDynamic element lowered"));
+            if (loweredReg.hasErrors()) {
+                if (errors == null) errors = new TList<>();
+                loweredReg.drainInto(errors);
+                continue;
+            }
+            elementRegs.add(b.reg(loweredReg.requireValue("Tuple::toDynamic element reg")));
         }
         if (errors != null && !errors.isEmpty()) {
             return EResult.errs(errors);
         }
         var slotOf = Tuple.slotOfIndex(xx, types);
         var sortedTypes = Tuple.sortTupleTypes(xx, types);
-        @SuppressWarnings("unchecked")
-        CodeDynamic[] sortedCodesArr = new CodeDynamic[types.size()];
+        var sortedRegs = new TList<JavaBytecodeReg>(types.size());
+        for (int i = 0; i < types.size(); i++) sortedRegs.add(null);
         for (int i = 0; i < types.size(); i++) {
-            sortedCodesArr[slotOf.get(i)] = dynamicElements.get(i);
+            sortedRegs.set(slotOf.get(i), elementRegs.get(i));
         }
-        var sortedCodes = new TList<CodeDynamic>(types.size());
-        for (var c : sortedCodesArr) sortedCodes.add(c);
         var klass = JavaInternalName.of(CompositeClassEmitter.internalNameFor(xx, sortedTypes));
-        var argSeq = new JavaBytecodeSequence();
-        for (var c : sortedCodes) argSeq.add(c);
         var ctorDesc = CompositeClassEmitter.constructorDesc(xx, sortedTypes);
-        return DynUtil.wrapWithCarry(
-                loc, carry, JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, new CodeDynamic(loc, argSeq)));
+        var obj = b.newInstance(klass, ctorDesc, sortedRegs);
+        Value result = new Tuple(Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Reg(obj))), type.elements);
+        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.ofValue(result)));
     }
 }

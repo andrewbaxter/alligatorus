@@ -24,11 +24,10 @@ import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectBindDynamicDefault;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
 import compilerxyz.main.eval.aspect.AspectConsumeDynamicObject;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.MatchDynamic;
@@ -37,7 +36,6 @@ import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectSet;
@@ -165,9 +163,6 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
         if (key.equals(GenAspectSet.AspectId)) {
             return Opt.some(new AspectSetSourceUnionDynamic(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(AspectConsumeDynamicObject.INSTANCE);
         }
@@ -200,18 +195,19 @@ public final class TypeSourceUnionDynamic implements Aspect, Type, MatchDynamic 
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicTest(QExprId loc, int variantIndex) {
-        return EResult.ok(JavaBytecodeUtils.instanceOf(loc, variantInternal(variantIndex)));
+    public EResult<CodeDynamicReg> matchDynamicTest(QExprId loc, JavaBytecodeReg base, int variantIndex) {
+        var b = new JavaBytecodeBuilder(loc);
+        return EResult.ok(b.code(b.instanceOf(variantInternal(variantIndex), base)));
     }
 
     @Override
-    public EResult<CodeDynamic> matchDynamicExtract(ExprContext xx, QExprId loc, int variantIndex, Type variantType) {
+    public EResult<CodeDynamicReg> matchDynamicExtract(
+            ExprContext xx, QExprId loc, JavaBytecodeReg base, int variantIndex, Type variantType) {
         var internal = variantInternal(variantIndex);
         var payloadDesc = SourceUnionEmitter.payloadDescriptor(xx, variantType);
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.cast(loc, JavaDataDescriptor.fromInternalName(internal)));
-        seq.add(JavaBytecodeUtils.accessField(loc, internal, SourceUnionEmitter.PAYLOAD_FIELD, payloadDesc));
-        return EResult.ok(new CodeDynamic(loc, seq));
+        var b = new JavaBytecodeBuilder(loc);
+        var variant = b.checkcast(JavaDataDescriptor.fromInternalName(internal), base);
+        return EResult.ok(b.code(b.getField(internal, SourceUnionEmitter.PAYLOAD_FIELD, payloadDesc, variant)));
     }
 
     @Override

@@ -15,10 +15,10 @@ import compilerxyz.main.eval.Scope;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DefSetFunctionsEmitter;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
@@ -178,18 +178,15 @@ public final class SourceFunctionData {
         }
         var convertedCv = convertedResult.requireValue("SourceFunctionData::compile typecheckConvert");
         CodeDynamic bodyCode;
+        Opt<JavaBytecodeReg> bodyResult;
         if (convertedCv.value().optIsSome()) {
-            var valueType = convertedCv.value().optUnwrap().valueType();
-            var consumeResult = GenAspectConsumeDynamic.get(funcXx, rootLoc, valueType);
-            if (consumeResult.hasErrors()) {
-                return consumeResult.reerr();
-            }
-            var consume = consumeResult.requireValue("SourceFunctionData::compile consume aspect");
-            var dynResult = consume.aspectConsumeDynamicToDynamic(funcXx, rootLoc, convertedCv);
+            var dynResult = DynUtil.materialize(funcXx, rootLoc, convertedCv);
             if (dynResult.hasErrors()) {
                 return dynResult.reerr();
             }
-            bodyCode = dynResult.requireValue("SourceFunctionData::compile consume.toDynamic");
+            var dyn = dynResult.requireValue("SourceFunctionData::compile materialize");
+            bodyCode = dyn.code();
+            bodyResult = Opt.some(dyn.reg());
         } else {
             var bodyCodeRes = CodeDynamic.castRequired(
                     rootLoc,
@@ -204,10 +201,12 @@ public final class SourceFunctionData {
                             "Definition set function '" + nameStr
                                     + "' body produces no value but declares a non-null return type");
                 }
-                var padded = new JavaBytecodeSequence();
+                var padded = new JavaBytecodeBuilder(rootLoc);
                 padded.add(bodyCode);
-                padded.add(JavaBytecodeUtils.literalNull(rootLoc));
-                bodyCode = new CodeDynamic(new CodeLoc.Some(rootLoc), padded);
+                bodyResult = Opt.some(padded.constNull());
+                bodyCode = padded.code();
+            } else {
+                bodyResult = Opt.none();
             }
         }
 
@@ -228,7 +227,7 @@ public final class SourceFunctionData {
             }
         }
         functionSpec = Opt.some(new DefSetFunctionsEmitter.FunctionSpec(
-                jvmMethodName, argSlots, retDesc, bodyCode, TList.from(captured)));
+                jvmMethodName, argSlots, retDesc, bodyCode, bodyResult, TList.from(captured)));
         return EResult.ok(null);
     }
 

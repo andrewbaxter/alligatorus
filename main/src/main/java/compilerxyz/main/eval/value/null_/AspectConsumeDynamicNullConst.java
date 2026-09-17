@@ -4,8 +4,8 @@ import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.gen.AspectConsumeDynamic;
@@ -21,7 +21,11 @@ public final class AspectConsumeDynamicNullConst implements AspectConsumeDynamic
     }
 
     @Override
-    public EResult<CodeDynamic> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
-        return EResult.ok(JavaBytecodeUtils.literalNull(loc));
+    public EResult<CodeValue> aspectConsumeDynamicToDynamic(ExprContext xx, QExprId loc, CodeValue cv) {
+        var b = new JavaBytecodeBuilder(loc);
+        var carryRes = b.addCode(loc, cv.code());
+        if (carryRes.hasErrors()) return carryRes.reerr();
+        var raw = b.constNull();
+        return EResult.ok(DynUtil.regToValue(b.code(), raw, new TypeNullDynamic()));
     }
 }

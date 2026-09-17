@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.prelude.util.TList;
+import org.objectweb.asm.Type;
 
 public final class JavaMethodDescriptor {
     public static final JavaMethodDescriptor VOID_NOARGS = new JavaMethodDescriptor("()V");
@@ -30,6 +31,16 @@ public final class JavaMethodDescriptor {
     public static JavaMethodDescriptor fromParts(
             JavaDataDescriptor returnDescriptor, JavaDataDescriptor... argDescriptors) {
         return fromParts(returnDescriptor, TList.of(argDescriptors));
+    }
+
+    public JavaDataDescriptor returnDescriptor() {
+        return new JavaDataDescriptor(value.substring(value.indexOf(')') + 1));
+    }
+
+    public TList<JavaDataDescriptor> argumentDescriptors() {
+        var out = new TList<JavaDataDescriptor>();
+        for (var t : Type.getArgumentTypes(value)) out.add(new JavaDataDescriptor(t.getDescriptor()));
+        return out;
     }
 
     @Override

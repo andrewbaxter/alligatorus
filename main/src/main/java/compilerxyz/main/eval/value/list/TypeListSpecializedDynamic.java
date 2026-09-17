@@ -9,16 +9,15 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.CodeDynamicReg;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
@@ -27,7 +26,6 @@ import compilerxyz.main.gen.GenAspectIterable;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
-import org.objectweb.asm.Opcodes;
 
 public final class TypeListSpecializedDynamic<T extends Type> implements Aspect, ListDynamic {
 
@@ -55,20 +53,18 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
         return JavaMethodDescriptor.fromParts(JavaDataDescriptor.DESC_VOID, TList.of(elementDescriptor(xx)));
     }
 
-    public CodeDynamic emitNew(ExprContext xx, QExprId loc, TList<CodeDynamic> elements) {
+    public JavaDataDescriptor storeDescriptor() {
+        return JavaDataDescriptor.fromInternalName(storeName);
+    }
+
+    public CodeDynamicReg emitNew(ExprContext xx, QExprId loc, TList<CodeDynamicReg> elements) {
         var pushDesc = pushDescriptor(xx);
-        var seq = new JavaBytecodeSequence();
-        seq.add(JavaBytecodeUtils.instantiate(
-                loc,
-                storeName,
-                JavaMethodDescriptor.fromConstructorParts(TList.of()),
-                new CodeDynamic(loc, new JavaBytecodeSequence())));
-        for (var element : elements) {
-            seq.add(JavaBytecodeUtils.inst(loc, Opcodes.DUP));
-            seq.add(element);
-            seq.add(JavaBytecodeUtils.callMethod(loc, storeName, "push", pushDesc));
-        }
-        return new CodeDynamic(loc, seq);
+        var b = new JavaBytecodeBuilder(loc);
+        var regs = new TList<JavaBytecodeReg>(elements.size());
+        for (var element : elements) regs.add(b.reg(element));
+        var list = b.newInstance(storeName, JavaMethodDescriptor.fromConstructorParts(TList.of()));
+        for (var reg : regs) b.invokeVirtualVoid(storeName, "push", pushDesc, list, reg);
+        return b.code(list);
     }
 
     @Override
@@ -92,9 +88,6 @@ public final class TypeListSpecializedDynamic<T extends Type> implements Aspect,
         }
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldListSpecializedDynamic<>(this));
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightListSpecializedDynamic<>(this));
         }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicListSpecializedDynamic<>(this));

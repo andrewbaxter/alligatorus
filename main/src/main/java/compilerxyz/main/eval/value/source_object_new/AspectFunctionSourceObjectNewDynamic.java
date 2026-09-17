@@ -8,11 +8,11 @@ import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
+import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 
@@ -35,23 +35,16 @@ public record AspectFunctionSourceObjectNewDynamic(TypeSourceObjectNewDynamic ty
             return EResult.errs(erb.errors());
         }
         var converted = convertedOpt.optUnwrap();
-        var consumeRes = GenAspectConsumeDynamic.get(xx, loc, underlyingType);
-        if (consumeRes.hasErrors()) return consumeRes.reerr();
-        var underlyingJsRes = consumeRes
-                .requireValue("TypeSourceObjectNewDynamic::call consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, converted);
-        if (underlyingJsRes.hasErrors()) return underlyingJsRes.reerr();
-        var underlyingJs = underlyingJsRes.requireValue("TypeSourceObjectNewDynamic::call toDynamic");
+        var underlyingRes = DynUtil.materialize(xx, loc, converted);
+        if (underlyingRes.hasErrors()) return underlyingRes.reerr();
         Type resultType = type.type();
-
-        var objInternalName = type.type().internalName();
-        var klass = JavaInternalName.of(objInternalName);
-        var underlyingDesc = consumeRes
-                .requireValue("TypeSourceObjectNewDynamic::call underlying desc")
-                .aspectConsumeDynamicJvmClass(xx);
+        var klass = JavaInternalName.of(type.type().internalName());
+        var underlyingDesc = JvmSort.descriptor(xx, underlyingType);
         var ctorDesc = JavaMethodDescriptor.fromConstructorParts(TList.of(underlyingDesc));
-        var newInstance = JavaBytecodeUtils.instantiate(loc, klass, ctorDesc, underlyingJs);
-        return EResult.ok(DynUtil.dynamicStackToValue(xx, newInstance, resultType));
+        var b = new JavaBytecodeBuilder(loc);
+        var out = b.newInstance(
+                klass, ctorDesc, b.reg(underlyingRes.requireValue("TypeSourceObjectNewDynamic::call underlying")));
+        return EResult.ok(DynUtil.regToValue(b.code(), out, resultType));
     }
 
     @Override

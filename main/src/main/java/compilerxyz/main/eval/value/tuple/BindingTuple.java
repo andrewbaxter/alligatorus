@@ -4,12 +4,17 @@ import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr.Opaque;
 import compilerxyz.main.eval.QExprId;
-import compilerxyz.main.eval.dynamic.BindingCode;
+import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
+import compilerxyz.main.eval.dynamic.JavaInternalName;
+import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.gen.Binding;
 import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.prelude.util.Opt;
@@ -20,8 +25,18 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         Opt<TupleBaseDynamic> base;
+        Code baseCode = Code.none(loc);
         if (jsKey.optIsSome()) {
-            base = Opt.some(new TupleBaseDynamic(BindingCode.slotRef(loc, jsKey.optUnwrap(), setter)));
+            var dynamicTypes = new TList<Type>();
+            for (var e : elements) {
+                switch (e) {
+                    case TupleScopeField.Dynamic d -> dynamicTypes.add(d.type());
+                    default -> {}
+                }
+            }
+            var desc = JavaDataDescriptor.fromInternalName(JavaInternalName.of(
+                    CompositeClassEmitter.internalNameFor(xx, Tuple.sortTupleTypes(xx, dynamicTypes))));
+            base = Opt.some(new TupleBaseDynamic(new ValueDynamicSource.Slot(jsKey.optUnwrap(), desc, setter)));
         } else {
             base = Opt.none();
         }
@@ -39,7 +54,9 @@ public record BindingTuple(TList<TupleScopeField> elements, Opt<BindingId> jsKey
                     };
             resultElements.add(te);
         }
-        return new CodeValue(Code.none(loc), EvalOutcome.ofValue(new Tuple(base, resultElements)));
+        var combined = Eval.codeConcat(xx, loc, code, baseCode);
+        return new CodeValue(
+                combined.requireValue("BindingTuple use"), EvalOutcome.ofValue(new Tuple(base, resultElements)));
     }
 
     @Override

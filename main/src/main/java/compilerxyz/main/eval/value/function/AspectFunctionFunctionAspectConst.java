@@ -1,30 +1,23 @@
 package compilerxyz.main.eval.value.function;
 
 import compilerxyz.main.eval.BindingId;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
 import compilerxyz.main.eval.EvalContext;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.External;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
-import compilerxyz.main.eval.dynamic.BindingCode;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.CodeLoc;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
+import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
 import compilerxyz.main.gen.AspectFunction;
-import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenType;
 import compilerxyz.prelude.util.Opt;
@@ -74,32 +67,26 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
         var subjectConvertedRes = Eval.typecheckConvert(xx, loc, anyDyn, subjectCv);
         if (subjectConvertedRes.hasErrors()) return subjectConvertedRes.reerr();
         var subjectConverted = subjectConvertedRes.requireValue("aspect_lookup subject convert");
-        var subjectConsumeRes = GenAspectConsumeDynamic.get(xx, loc, anyDyn);
-        if (subjectConsumeRes.hasErrors()) return subjectConsumeRes.reerr();
-        var subjectDynRes = subjectConsumeRes
-                .requireValue("aspect_lookup subject consume")
-                .aspectConsumeDynamicToDynamic(xx, loc, subjectConverted);
+        var subjectDynRes = DynUtil.materialize(xx, loc, subjectConverted);
         if (subjectDynRes.hasErrors()) return subjectDynRes.reerr();
-        var subjectDyn = subjectDynRes.requireValue("aspect_lookup subject toDynamic");
-        var xxDynRes = DynUtil.dynamicConsumeToDynamic(loc, xxCv);
+        var xxDynRes = DynUtil.valueReg(loc, xxCv);
         if (xxDynRes.hasErrors()) return xxDynRes.reerr();
-        var xxDyn = xxDynRes.requireValue("xxDyn");
 
         var uniqueKey = new BindingId();
-        var uniqueId = uniqueKey;
         xx.vx.externals.add(new EvalContext.ExternalEntry(uniqueKey, type, new External(Unique.class, auq)));
-        var uniqueLoad = BindingCode.bindingUse(new CodeLoc.Some(loc), uniqueId);
 
-        var seq = new JavaBytecodeSequence();
-        seq.add(subjectDyn);
-        seq.add(xxDyn);
-        seq.add(uniqueLoad);
-        seq.add(JavaBytecodeUtils.callInterfaceMethod(
-                loc, TypeFunctionAspectConst.INTNAME_TYPE, "typeAspect", TypeFunctionAspectConst.DESC_TYPE_ASPECT));
-
-        return EResult.ok(new CodeValue(
-                Code.target(new CodeDynamic(new CodeLoc.Some(loc), seq)),
-                EvalOutcome.ofValue(ValueDynamic.stack(xx, new TypeOptionDynamic(aspTa)))));
+        var b = new JavaBytecodeBuilder(loc);
+        var subject = b.reg(subjectDynRes.requireValue("aspect_lookup subject toDynamic"));
+        var xxReg = b.reg(xxDynRes.requireValue("xxDyn"));
+        var uniqueLoad = b.load(uniqueKey, JavaDataDescriptor.fromClass(Unique.class));
+        var out = b.invokeInterface(
+                TypeFunctionAspectConst.INTNAME_TYPE,
+                "typeAspect",
+                TypeFunctionAspectConst.DESC_TYPE_ASPECT,
+                subject,
+                xxReg,
+                uniqueLoad);
+        return EResult.ok(DynUtil.regToValue(b.code(), out, new TypeOptionDynamic(aspTa)));
     }
 
     @Override

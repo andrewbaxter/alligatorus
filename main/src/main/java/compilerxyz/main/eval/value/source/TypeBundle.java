@@ -8,9 +8,7 @@ import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.gen.GenAspectBind;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.syntax.SourceSpecAbsolute;
@@ -33,14 +31,8 @@ public record TypeBundle(SourceSpecAbsolute.Remote base) implements Aspect, Type
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldBundle(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectBind.AspectId)) {
             return Opt.some(AspectBindBundle.INSTANCE);
-        }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(this);
         }
         return Opt.none();
     }

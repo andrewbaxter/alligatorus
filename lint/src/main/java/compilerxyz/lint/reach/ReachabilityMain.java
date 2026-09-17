@@ -110,9 +110,19 @@ public final class ReachabilityMain {
         }
         for (CtInvocation<?> inv : index.invocations) {
             String invName = inv.getExecutable().getSimpleName();
-            if (!"callStaticMethod".equals(invName) && !"callStaticInterfaceMethod".equals(invName)) continue;
+            int nameIdx;
+            switch (invName) {
+                case "invokeStatic", "invokeVirtual", "invokeVirtualVoid", "invokeInterface", "invokeSpecialVoid" ->
+                    nameIdx = 1;
+                case "invoke" -> nameIdx = 2;
+                default -> {
+                    continue;
+                }
+            }
             List<CtExpression<?>> args = inv.getArguments();
-            if (args.size() > 2 && args.get(2) instanceof CtLiteral<?> lit && lit.getValue() instanceof String n) {
+            if (args.size() > nameIdx
+                    && args.get(nameIdx) instanceof CtLiteral<?> lit
+                    && lit.getValue() instanceof String n) {
                 dynMethodNames.add(n);
             }
         }

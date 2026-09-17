@@ -21,24 +21,22 @@ public interface Target {
 
     EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type);
 
-    EResult<Opt<TargetOperandParked>> targetOperandPark(ExprContext xx, QExprId loc, CodeValue operand);
+    boolean targetValueIsRuntime(ExprContext xx, Value value);
 
-    EResult<Code> targetLabeledStart(QExprId loc, JumpKey end);
+    EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, Opt<Type> argument, CodeValue value);
 
-    EResult<Code> targetExit(ExprContext xx, QExprId loc, JumpKey dest, JumpKey labeled, CodeValue value);
+    EResult<CodeValue> targetLand(ExprContext xx, QExprId loc, JumpKey dest, Opt<Type> argument);
 
     EResult<Code> targetSeq(QExprId loc, TList<Code> entries);
 
     EResult<Code> targetJump(QExprId loc, JumpKey dest);
-
-    EResult<Code> targetLand(QExprId loc, JumpKey dest);
 
     EResult<Code> targetGuarded(QExprId loc, JumpKey dest, Code inner);
 
     EResult<Code> targetExcCleanup(ExprContext xx, QExprId loc, JumpKey self, Code cleanup, Opt<JumpKey> parent);
 
     EResult<Code> targetExitTrampoline(
-            ExprContext xx, QExprId loc, JumpKey self, Opt<Type> carryType, Code cleanup, JumpKey next);
+            ExprContext xx, QExprId loc, JumpKey self, Opt<Type> argument, Code cleanup, JumpKey next);
 
     EResult<Code> targetDrop(ExprContext xx, QExprId loc, CodeValue cv);
 
@@ -49,15 +47,13 @@ public interface Target {
 
     EResult<CodeValue> targetIf(ExprContext xx, QExprId loc, TList<IfBranch> conditions, Opt<CodeValue> else_);
 
-    EResult<Code> targetTryCatchFinally(
+    EResult<CodeValue> targetTryCatchFinally(
             ExprContext xx,
             QExprId loc,
             CodeValue body,
             Opt<TryCatchClause> catch_,
             Opt<JumpKey> catchHandler,
             Opt<Code> finallyNormal);
-
-    EResult<Code> targetFresh(QExprId loc, Code code);
 
     EResult<CodeValue> targetMatch(
             ExprContext xx, QExprId loc, CodeValue base, TList<TargetCase> cases, Opt<TargetMatchFallback> fallback);

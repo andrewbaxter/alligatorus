@@ -11,16 +11,13 @@ import compilerxyz.main.eval.Type;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectLookup;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
+import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectBindDynamic;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
 import compilerxyz.main.gen.GenAspectDropDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectDynamicConst;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectFieldUseDynamic;
@@ -78,9 +75,6 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldListBoxedDynamic<>(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(new AspectDropDynamicLightListBoxedDynamic<>(this));
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicListBoxedDynamic<>(this));
         }
@@ -124,13 +118,14 @@ public final class TypeListBoxedDynamic<T extends Type> implements Aspect, ListD
         return m;
     }
 
-    CodeDynamic elementDecodeCast(ExprContext xx, QExprId loc) {
-        var decodeSeq = new JavaBytecodeSequence();
+    DynUtil.ElementDecode elementDecodeCast(ExprContext xx) {
         var elemDesc = JvmSort.descriptor(xx, elementType);
-        if (elemDesc.isReference() && !elemDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
-            decodeSeq.add(JavaBytecodeUtils.cast(loc, elemDesc));
-        }
-        return new CodeDynamic(loc, decodeSeq);
+        return (b, raw) -> {
+            if (elemDesc.isReference() && !elemDesc.value().equals(JvmConstants.DESC_OBJECT.value())) {
+                return b.checkcast(elemDesc, raw);
+            }
+            return raw;
+        };
     }
 
     @Override

@@ -8,10 +8,8 @@ import compilerxyz.main.artifact.ArtifactSupport;
 import compilerxyz.main.artifact.Artifactable;
 import compilerxyz.main.artifact.ExporterRoot;
 import compilerxyz.main.artifact.ExporterRootDelegate;
-import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
-import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -19,18 +17,13 @@ import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.aspect.Aspect;
 import compilerxyz.main.eval.aspect.AspectArtifactObjectConst;
 import compilerxyz.main.eval.aspect.AspectBindViaTarget;
-import compilerxyz.main.eval.aspect.AspectDropDynamicLightDefault;
 import compilerxyz.main.eval.aspect.AspectLookup;
 import compilerxyz.main.eval.aspect.PostDeserializeIdentity;
-import compilerxyz.main.eval.dynamic.CodeDynamic;
 import compilerxyz.main.eval.dynamic.DynUtil;
-import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaBytecodeUtils;
-import compilerxyz.main.eval.value.ValueDynamic;
+import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
 import compilerxyz.main.gen.GenAspectConsumeDynamic;
-import compilerxyz.main.gen.GenAspectDropDynamicLight;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
@@ -76,9 +69,6 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         if (key.equals(GenAspectField.AspectId)) {
             return Opt.some(new AspectFieldTypeSourceInterfaceDynamic(this));
         }
-        if (key.equals(GenAspectDropDynamicLight.AspectId)) {
-            return Opt.some(AspectDropDynamicLightDefault.INSTANCE);
-        }
         if (key.equals(GenAspectConsumeDynamic.AspectId)) {
             return Opt.some(new AspectConsumeDynamicTypeSourceInterfaceDynamic(this));
         }
@@ -117,15 +107,13 @@ public record TypeTypeSourceInterfaceDynamic(Opt<TypeSourceInterfaceDynamic> typ
         }
         if (destType.typeAspect(xx, GenTrivialIdentityAspects.INTERFACE_CELL_IDENTITY)
                 .optIsSome()) {
-            var sourceCodeRes = DynUtil.dynamicConsumeToDynamic(loc, cv);
-            if (sourceCodeRes.hasErrors()) return sourceCodeRes.reerr();
-            var sourceCode = sourceCodeRes.requireValue("sourceCode");
-            var seq = new JavaBytecodeSequence();
-            seq.add(sourceCode);
-            seq.add(JavaBytecodeUtils.callMethod(
-                    loc, GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL));
-            return EResult.ok(new CodeValue(
-                    Code.target(new CodeDynamic(loc, seq)), EvalOutcome.ofValue(ValueDynamic.stack(xx, destType))));
+            var sourceRes = DynUtil.valueReg(loc, cv);
+            if (sourceRes.hasErrors()) return sourceRes.reerr();
+            var b = new JavaBytecodeBuilder(loc);
+            var out = b.invokeVirtual(
+                    GenCodegenDescriptors.TYPE_SOURCE_INTERFACE_DYNAMIC_GET_INTERFACE_CELL,
+                    b.reg(sourceRes.requireValue("sourceCode")));
+            return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
         }
         return EResult.err(loc, "Cannot cast interface to " + destType.typeDesc());
     }
