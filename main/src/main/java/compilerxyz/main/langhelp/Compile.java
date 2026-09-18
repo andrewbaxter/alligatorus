@@ -1,7 +1,7 @@
 package compilerxyz.main.langhelp;
 
 import compilerxyz.main.eval.CompileId;
-import compilerxyz.main.eval.CompileImport;
+import compilerxyz.main.eval.CompileModule;
 import compilerxyz.main.eval.CompileResResult;
 import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
@@ -41,7 +41,7 @@ public final class Compile {
         gx.compiles.compilesPrepare(rootCompileId);
         var res = gx.compiles.compilesGetOrCompute(rootCompileId, () -> {
             var module = SourceModuleToModule.sourceModuleToModule(lookup.id(), lookup.module());
-            var cir = CompileImport.compileImportId(gx, rootImportState, module, new TList<>(), entry);
+            var cir = CompileModule.compileModuleId(gx, rootImportState, module, new TList<>(), entry);
             return new Compiles.CompileProduct(cir.res(), lookup.local(), cir.localDeps());
         });
 

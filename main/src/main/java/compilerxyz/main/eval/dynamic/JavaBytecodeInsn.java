@@ -30,6 +30,11 @@ public final class JavaBytecodeInsn implements JavaBytecode {
                     throw new IllegalArgumentException("VarIndexed instruction shape mismatch");
                 }
             }
+            case JavaBytecodeInsnBody.External e -> {
+                if (!args.isEmpty() || out.optIsNone()) {
+                    throw new IllegalArgumentException("External instruction takes no operands and defines a register");
+                }
+            }
             case JavaBytecodeInsnBody.Op o -> {}
             case JavaBytecodeInsnBody.Node n -> {}
         }

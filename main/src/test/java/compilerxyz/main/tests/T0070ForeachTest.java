@@ -85,44 +85,46 @@ public final class T0070ForeachTest {
             NEW compilerxyz/main/gen/ListStoreInt
             DUP
             INVOKESPECIAL compilerxyz/main/gen/ListStoreInt.<init> ()V
-            DUP
-            LDC 1
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
-            DUP
-            LDC 2
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
-            DUP
-            LDC 7
-            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
             ASTORE 0
             ALOAD 0
+            LDC 1
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            ALOAD 0
+            LDC 2
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            ALOAD 0
+            LDC 7
+            INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.push (I)V
+            ALOAD 0
             ASTORE 1
-            LDC 0
-            ISTORE 2
-           L0
-            ILOAD 2
             ALOAD 1
+            ASTORE 2
+            LDC 0
+            ISTORE 3
+           L0
+            ILOAD 3
+            ALOAD 2
             INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.size ()I
             IF_ICMPGE L1
-            ALOAD 1
-            ILOAD 2
+            ALOAD 2
+            ILOAD 3
             INVOKEVIRTUAL compilerxyz/main/gen/ListStoreInt.get (I)I
-            ISTORE 3
+            ISTORE 4
             GETSTATIC compilerxyz/main/eval/gen/EvalRoot$0.__exprContext : Lcompilerxyz/main/eval/ExprContext;
             GETFIELD compilerxyz/main/eval/ExprContext.vx : Lcompilerxyz/main/eval/EvalContext;
-            ILOAD 3
+            ILOAD 4
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
-            ILOAD 2
+            ILOAD 3
             LDC 1
             IADD
-            ISTORE 2
+            ISTORE 3
             GOTO L0
            L1
             ACONST_NULL
             ARETURN
-            MAXSTACK = 3
-            MAXLOCALS = 4
+            MAXSTACK = 2
+            MAXLOCALS = 5
         }
         """,
                 Helpers.disassembled(ok, "compilerxyz.main.eval.gen.EvalRoot$0"));

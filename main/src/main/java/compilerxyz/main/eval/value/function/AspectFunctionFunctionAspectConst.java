@@ -13,7 +13,6 @@ import compilerxyz.main.eval.TypeAspect;
 import compilerxyz.main.eval.Unique;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
 import compilerxyz.main.eval.value.option.TypeOptionDynamic;
 import compilerxyz.main.eval.value.source_interface.TypeSourceInterfaceDynamic;
@@ -72,13 +71,13 @@ public record AspectFunctionFunctionAspectConst(TypeFunctionAspectConst type) im
         var xxDynRes = DynUtil.valueReg(loc, xxCv);
         if (xxDynRes.hasErrors()) return xxDynRes.reerr();
 
-        var uniqueKey = new BindingId();
-        xx.vx.externals.add(new EvalContext.ExternalEntry(uniqueKey, type, new External(Unique.class, auq)));
+        var uniqueEntry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Unique.class, auq));
+        xx.vx.externals.add(uniqueEntry);
 
         var b = new JavaBytecodeBuilder(loc);
         var subject = b.reg(subjectDynRes.requireValue("aspect_lookup subject toDynamic"));
         var xxReg = b.reg(xxDynRes.requireValue("xxDyn"));
-        var uniqueLoad = b.load(uniqueKey, JavaDataDescriptor.fromClass(Unique.class));
+        var uniqueLoad = b.external(uniqueEntry);
         var out = b.invokeInterface(
                 TypeFunctionAspectConst.INTNAME_TYPE,
                 "typeAspect",

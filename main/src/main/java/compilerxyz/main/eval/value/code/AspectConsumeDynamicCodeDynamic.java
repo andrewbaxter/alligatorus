@@ -32,13 +32,12 @@ public record AspectConsumeDynamicCodeDynamic(TypeCodeDynamic type) implements A
         if (!(cv.value().optUnwrap() instanceof ValueObjectConst voc) || !(voc.data() instanceof Code codeObj)) {
             return EResult.err(loc, "TypeCodeDynamic::toDynamic: value is not a compile-time Code");
         }
-        var key = new BindingId();
-        var id = key;
-        xx.vx.externals.add(new EvalContext.ExternalEntry(key, type, new External(Code.class, codeObj)));
+        var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(Code.class, codeObj));
+        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.hasErrors()) return carryRes.reerr();
-        var loaded = b.load(id, JavaDataDescriptor.fromClass(Code.class));
+        var loaded = b.external(entry);
         return EResult.ok(DynUtil.regToValue(b.code(), loaded, type));
     }
 }

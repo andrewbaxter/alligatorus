@@ -105,7 +105,7 @@ public final class ImportRun {
                 newPath.addAll(ix.compilePath);
                 var compileRes = gx.compiles.compilesGetOrCompute(compileId, () -> {
                     var module = SourceModuleToModule.sourceModuleToModule(m.id(), m.module());
-                    var cir = CompileImport.compileImportId(gx, ix.importState, module, newPath, abs);
+                    var cir = CompileModule.compileModuleId(gx, ix.importState, module, newPath, abs);
                     return new Compiles.CompileProduct(cir.res(), m.local(), cir.localDeps());
                 });
                 yield EResult.ok(new SpecOutcome.ModuleOut(compileId, abs, compileRes));

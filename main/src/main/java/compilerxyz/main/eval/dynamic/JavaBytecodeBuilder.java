@@ -16,6 +16,7 @@ import static org.objectweb.asm.Opcodes.PUTFIELD;
 import compilerxyz.main.eval.BindingId;
 import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.EResult;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.main.eval.JumpKey;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.prelude.util.Opt;
@@ -136,6 +137,12 @@ public final class JavaBytecodeBuilder {
 
     public void store(BindingId slot, JavaBytecodeReg value) {
         insnVoid(new JavaBytecodeInsnBody.Var(value.desc.storeOpcode(), slot), value);
+    }
+
+    public JavaBytecodeReg external(EvalContext.ExternalEntry entry) {
+        return insn(
+                new JavaBytecodeInsnBody.External(entry),
+                JavaDataDescriptor.fromClass(entry.external().externalHostClass()));
     }
 
     public JavaBytecodeReg loadIndexed(int index, JavaDataDescriptor desc) {

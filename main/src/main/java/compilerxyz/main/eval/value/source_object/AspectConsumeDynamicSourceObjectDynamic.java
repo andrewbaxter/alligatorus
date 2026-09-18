@@ -44,13 +44,12 @@ public record AspectConsumeDynamicSourceObjectDynamic(TypeSourceObjectDynamic ty
         if (type.set != null) {
             xx.vx.definitionSets.putIfAbsent(type.set.defSetId, type.set);
         }
-        var key = new BindingId();
-        var id = key;
-        xx.vx.externals.add(new EvalContext.ExternalEntry(key, type, new External(hostValue.getClass(), hostValue)));
+        var entry = new EvalContext.ExternalEntry(new BindingId(), type, new External(hostValue.getClass(), hostValue));
+        xx.vx.externals.add(entry);
         var b = new JavaBytecodeBuilder(loc);
         var carryRes = b.addCode(loc, cv.code());
         if (carryRes.hasErrors()) return carryRes.reerr();
-        var loaded = b.load(id, JavaDataDescriptor.fromClass(hostValue.getClass()));
+        var loaded = b.external(entry);
         return EResult.ok(DynUtil.regToValue(b.code(), loaded, type));
     }
 }

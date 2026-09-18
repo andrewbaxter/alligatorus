@@ -1,8 +1,10 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.BindingId;
+import compilerxyz.main.eval.EvalContext;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
+import compilerxyz.prelude.util.TMap;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.MethodNode;
@@ -42,10 +44,25 @@ public final class JavaBytecodeUtils {
         };
     }
 
+    public static TMap<BindingId, JavaStaticFieldRef> externalFields(
+            JavaInternalName owner, String prefix, TList<EvalContext.ExternalEntry> externals) {
+        var out = new TMap<BindingId, JavaStaticFieldRef>();
+        for (int i = 0; i < externals.size(); i++) {
+            var entry = externals.get(i);
+            out.put(
+                    entry.key(),
+                    new JavaStaticFieldRef(
+                            owner,
+                            prefix + Prefixes.EXTERNAL_PREFIX + i,
+                            JavaDataDescriptor.fromClass(entry.external().externalHostClass())));
+        }
+        return out;
+    }
+
     public static void renderMethod(JavaBytecodeSequence seq, MethodVisitor mv, TList<BindingId> initialIndexes) {
         var slots = new TList<JavaBytecodeSequence.InitialSlot>(initialIndexes.size());
         for (var k : initialIndexes) slots.add(new JavaBytecodeSequence.InitialSlot(k));
-        seq.renderInternal(mv, slots);
+        seq.renderInternal(mv, slots, new TMap<>());
         mv.visitMaxs(0, 0);
         mv.visitEnd();
     }
@@ -55,20 +72,24 @@ public final class JavaBytecodeUtils {
             MethodVisitor mv,
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
             String context,
-            JavaMethodDescriptor descriptor) {
+            JavaMethodDescriptor descriptor,
+            TMap<BindingId, JavaStaticFieldRef> externalFields) {
         try {
-            seq.renderInternal(mv, initialSlots);
+            seq.renderInternal(mv, initialSlots, externalFields);
             mv.visitMaxs(0, 0);
             mv.visitEnd();
         } catch (RuntimeException e) {
             throw new IllegalStateException(
-                    "bytecode rendering failed for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor), e);
+                    "bytecode rendering failed for " + context + ":\n"
+                            + dumpMethod(seq, initialSlots, descriptor, externalFields),
+                    e);
         }
         if (DUMP_BYTECODE) {
-            System.err.println("bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor));
+            System.err.println(
+                    "bytecode for " + context + ":\n" + dumpMethod(seq, initialSlots, descriptor, externalFields));
         }
         if (VERIFY_BYTECODE) {
-            var dump = dumpMethod(seq, initialSlots, descriptor);
+            var dump = dumpMethod(seq, initialSlots, descriptor, externalFields);
             if (!dump.startsWith("analyzer: ok")) {
                 throw new IllegalStateException("bytecode verification failed for " + context + ":\n" + dump);
             }
@@ -78,11 +99,12 @@ public final class JavaBytecodeUtils {
     public static String dumpMethod(
             JavaBytecodeSequence seq,
             TList<JavaBytecodeSequence.InitialSlot> initialSlots,
-            JavaMethodDescriptor descriptor) {
+            JavaMethodDescriptor descriptor,
+            TMap<BindingId, JavaStaticFieldRef> externalFields) {
         var node = new MethodNode(Opcodes.ASM9, Opcodes.ACC_PUBLIC, "dump", descriptor.value(), null, null);
         var sb = new StringBuilder();
         try {
-            seq.renderInternal(node, initialSlots);
+            seq.renderInternal(node, initialSlots, externalFields);
         } catch (RuntimeException e) {
             sb.append("render: ").append(e.getMessage()).append('\n');
         }

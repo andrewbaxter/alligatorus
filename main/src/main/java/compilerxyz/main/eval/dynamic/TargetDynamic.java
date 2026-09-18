@@ -453,11 +453,11 @@ public final class TargetDynamic implements Target {
     public EResult<CodeValue> targetStage(
             ExprContext xx, QExprId loc, Expr tree, TList<CodeValue> lowerValues, TList<CodeValue> graftValues) {
         var treeCell = new StagedExprCell(tree);
-        var treeKey = new BindingId();
-        var treeExprType = new TypeExpr();
-        xx.vx.externals.add(
-                new EvalContext.ExternalEntry(treeKey, treeExprType, new External(StagedExprCell.class, treeCell)));
+        var treeEntry = new EvalContext.ExternalEntry(
+                new BindingId(), new TypeExpr(), new External(StagedExprCell.class, treeCell));
+        xx.vx.externals.add(treeEntry);
         var b = new JavaBytecodeBuilder(loc);
+        var treeReg = b.external(treeEntry);
         var restElements = new TList<JavaBytecodeReg>();
         for (var cv : lowerValues) {
             if (!DynUtil.dynamicHasCode(cv)) {
@@ -465,11 +465,11 @@ public final class TargetDynamic implements Target {
                     return EResult.err(loc, "TargetDynamic::stage: lower CodeValue has no value");
                 }
                 var cell = new StagedExprCell(cv.value().optUnwrap());
-                var key = new BindingId();
-                xx.vx.externals.add(
-                        new EvalContext.ExternalEntry(key, new TypeExpr(), new External(StagedExprCell.class, cell)));
+                var entry = new EvalContext.ExternalEntry(
+                        new BindingId(), new TypeExpr(), new External(StagedExprCell.class, cell));
+                xx.vx.externals.add(entry);
                 restElements.add(b.constNull());
-                restElements.add(b.load(key, JvmConstants.DESC_OBJECT));
+                restElements.add(b.external(entry));
             } else {
                 if (cv.value().optIsNone()) {
                     return EResult.err(loc, "TargetDynamic::stage: dynamic lower CodeValue has no value");
@@ -477,23 +477,23 @@ public final class TargetDynamic implements Target {
                 var vtype = cv.value().optUnwrap().valueType();
                 var liftCell =
                         new StageLiftCell(loc, xx.vx, xx.importState, xx.scope, vtype, xx.currentExceptionType, this);
-                var liftKey = new BindingId();
-                xx.vx.externals.add(
-                        new EvalContext.ExternalEntry(liftKey, vtype, new External(StageLiftCell.class, liftCell)));
+                var liftEntry = new EvalContext.ExternalEntry(
+                        new BindingId(), vtype, new External(StageLiftCell.class, liftCell));
+                xx.vx.externals.add(liftEntry);
                 var innerRes = DynUtil.materialize(xx, loc, cv);
                 if (innerRes.hasErrors()) return innerRes.reerr();
-                restElements.add(b.load(liftKey, JvmConstants.DESC_OBJECT));
+                restElements.add(b.external(liftEntry));
                 restElements.add(b.reg(innerRes.requireValue("stage lower value")));
             }
         }
         for (var cv : graftValues) {
             if (!DynUtil.dynamicHasCode(cv)) {
                 var graftCv = new CodeValue(Code.none(loc), cv.outcome());
-                var key = new BindingId();
                 var graftType = cv.value().optIsSome() ? cv.value().optUnwrap().valueType() : new TypeNullDynamic();
-                xx.vx.externals.add(
-                        new EvalContext.ExternalEntry(key, graftType, new External(CodeValue.class, graftCv)));
-                restElements.add(b.load(key, JvmConstants.DESC_OBJECT));
+                var entry = new EvalContext.ExternalEntry(
+                        new BindingId(), graftType, new External(CodeValue.class, graftCv));
+                xx.vx.externals.add(entry);
+                restElements.add(b.external(entry));
             } else {
                 if (cv.value().optIsNone()) {
                     return EResult.err(loc, "TargetDynamic::stage: dynamic graft CodeValue has no value");
@@ -503,7 +503,6 @@ public final class TargetDynamic implements Target {
                 restElements.add(b.reg(innerRes.requireValue("stage graft value")));
             }
         }
-        var treeReg = b.load(treeKey, JvmConstants.DESC_OBJECT);
         var countReg = b.constInt(lowerValues.size());
         var arrayReg = b.newObjectArray(restElements);
         var staged = b.invokeStatic(GenCodegenDescriptors.DYN_RUNTIME_STAGE, treeReg, countReg, arrayReg);

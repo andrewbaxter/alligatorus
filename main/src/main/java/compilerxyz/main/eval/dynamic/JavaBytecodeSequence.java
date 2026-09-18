@@ -5,7 +5,7 @@ import static org.objectweb.asm.Opcodes.ANEWARRAY;
 import static org.objectweb.asm.Opcodes.ASTORE;
 import static org.objectweb.asm.Opcodes.ATHROW;
 import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.DUP2;
+import static org.objectweb.asm.Opcodes.GETSTATIC;
 import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 import static org.objectweb.asm.Opcodes.NEW;
@@ -20,13 +20,13 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TMap;
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
@@ -83,13 +83,12 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         int lastUse = -1;
         int def = -1;
         RegKind kind = RegKind.DEAD;
-        boolean dupOk = true;
-        int remaining;
     }
 
     private record Prefix(int consumer, int arg) {}
 
-    TMap<Integer, QExprId> renderInternal(MethodVisitor out, TList<InitialSlot> initialSlots) {
+    TMap<Integer, QExprId> renderInternal(
+            MethodVisitor out, TList<InitialSlot> initialSlots, TMap<BindingId, JavaStaticFieldRef> externalFields) {
         var locMap = new TMap<Integer, QExprId>();
 
         var flat = new TList<Item>();
@@ -183,19 +182,10 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         for (int i = 0; i < flat.size(); i++) {
             var item = flat.get(i);
             barriersBefore[i + 1] = barriersBefore[i];
-            {
-                var args = argsOf(item);
-                boolean plainInsn =
-                        switch (item) {
-                            case Item.Insn ins -> !hasSeg0(ins.n());
-                            default -> false;
-                        };
-                for (int k = 0; k < args.size(); k++) {
-                    var info = infos.computeIfAbsent(args.get(k), key -> new RegInfo());
-                    info.uses += 1;
-                    if (i > info.lastUse) info.lastUse = i;
-                    if (k != 0 || !plainInsn) info.dupOk = false;
-                }
+            for (var a : argsOf(item)) {
+                var info = infos.computeIfAbsent(a, key -> new RegInfo());
+                info.uses += 1;
+                if (i > info.lastUse) info.lastUse = i;
             }
             switch (item) {
                 case Item.Insn ins -> {}
@@ -218,99 +208,139 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         }
 
         var chainStart = new int[flat.size()];
-        var argAt = new int[flat.size()][];
-        var dupAt = new boolean[flat.size()];
-        var chainDupStart = new boolean[flat.size()];
-        while (true) {
-            for (var info : infos.values()) {
-                info.def = -1;
-                info.kind = RegKind.DEAD;
-                info.remaining = info.uses;
-            }
-            Arrays.fill(dupAt, false);
-            Arrays.fill(chainDupStart, false);
+        var argPos = new int[flat.size()][];
+        {
             var stack = new TList<JavaBytecodeReg>();
-            try {
-                for (int i = 0; i < flat.size(); i++) {
-                    var item = flat.get(i);
-                    chainStart[i] = i;
-                    var args = argsOf(item);
-                    argAt[i] = new int[args.size()];
-                    switch (item) {
-                        case Item.Insn ins -> {
-                            consume(flat, i, infos, stack, args, chainStart, argAt, dupAt, chainDupStart);
-                            if (ins.n().out.optIsSome()) {
-                                var o = ins.n().out.optUnwrap();
-                                var info = infos.computeIfAbsent(o, k -> new RegInfo());
-                                if (info.def >= 0) {
-                                    throw new IllegalStateException("register defined twice\n" + listing(flat, i));
-                                }
-                                info.def = i;
-                                boolean noBarrier =
-                                        info.uses > 0 && barriersBefore[info.lastUse] == barriersBefore[i + 1];
-                                if (info.uses == 0) {
-                                    info.kind = RegKind.DEAD;
-                                } else if (info.uses > 1 && info.dupOk && noBarrier) {
-                                    info.kind = RegKind.STACK;
-                                    stack.add(o);
-                                } else if (info.uses > 1) {
-                                    info.kind = RegKind.LOCAL;
-                                } else if (noBarrier
-                                        && switch (ins.n().body) {
-                                            case JavaBytecodeInsnBody.Op op ->
-                                                ins.n().args.isEmpty();
-                                            case JavaBytecodeInsnBody.Node nd ->
-                                                ins.n().args.isEmpty() && nd.node() instanceof LdcInsnNode;
-                                            case JavaBytecodeInsnBody.Var v -> false;
-                                            case JavaBytecodeInsnBody.VarIndexed v -> false;
-                                            case JavaBytecodeInsnBody.New nw -> false;
-                                            case JavaBytecodeInsnBody.ArrayNew an -> false;
-                                        }) {
-                                    info.kind = RegKind.DEFER;
-                                } else {
-                                    info.kind = RegKind.STACK;
-                                    stack.add(o);
-                                }
-                            }
-                        }
-                        case Item.Land land -> {
-                            spillAll(infos, stack);
-                            for (var p : land.n().params) {
-                                var info = infos.computeIfAbsent(p, k -> new RegInfo());
-                                if (info.def >= 0) {
-                                    throw new IllegalStateException(
-                                            "landing parameter defined twice\n" + listing(flat, i));
-                                }
-                                info.def = i;
-                                info.kind = RegKind.PARAM;
-                            }
-                        }
-                        case Item.Jump j -> {
-                            consume(flat, i, infos, stack, args, chainStart, argAt, dupAt, chainDupStart);
-                            spillAll(infos, stack);
-                        }
-                        case Item.Branch b -> {
-                            consume(flat, i, infos, stack, args, chainStart, argAt, dupAt, chainDupStart);
-                            spillAll(infos, stack);
-                        }
-                        case Item.Return r -> {
-                            consume(flat, i, infos, stack, args, chainStart, argAt, dupAt, chainDupStart);
-                            spillAll(infos, stack);
-                        }
-                        case Item.Throw t -> {
-                            consume(flat, i, infos, stack, args, chainStart, argAt, dupAt, chainDupStart);
-                            spillAll(infos, stack);
-                        }
-                        case Item.Line l -> {}
-                        case Item.RangeLabel l -> {}
-                        case Item.TryRange tr -> {}
+            for (int i = 0; i < flat.size(); i++) {
+                var item = flat.get(i);
+                var args = argsOf(item);
+                for (var a : args) {
+                    var info = infos.get(a);
+                    if (info == null || info.def < 0) {
+                        throw new IllegalStateException("register used before its definition\n" + listing(flat, i));
                     }
                 }
-                spillAll(infos, stack);
-            } catch (DupRetry retry) {
-                continue;
+                int n = args.size();
+                int s = 0;
+                var pos = new int[n];
+                {
+                    int next = i;
+                    for (int k = n - 1; k >= 0; k--) {
+                        var info = infos.get(args.get(k));
+                        if (info.kind == RegKind.STACK) {
+                            s++;
+                            next = chainStart[info.def];
+                        }
+                        pos[k] = next;
+                    }
+                }
+                boolean inPlace = stack.size() >= s;
+                for (int k = n - 1, d = 0; inPlace && k >= 0; k--) {
+                    var info = infos.get(args.get(k));
+                    switch (info.kind) {
+                        case STACK -> {
+                            d++;
+                            if (stack.get(stack.size() - d).key != args.get(k).key) inPlace = false;
+                        }
+                        case LOCAL -> {
+                            if (info.def >= pos[k]) inPlace = false;
+                        }
+                        case PARAM -> {}
+                        case DEFER -> {}
+                        case DEAD -> throw new AssertionError("dead register used");
+                    }
+                }
+                if (inPlace) {
+                    for (int k = 0; k < s; k++) stack.remove(stack.size() - 1);
+                } else {
+                    for (var a : args) {
+                        var info = infos.get(a);
+                        if (info.kind != RegKind.STACK) continue;
+                        info.kind = RegKind.LOCAL;
+                        for (int k = stack.size() - 1; k >= 0; k--) {
+                            if (stack.get(k).key == a.key) {
+                                stack.remove(k);
+                                break;
+                            }
+                        }
+                    }
+                    for (int k = 0; k < n; k++) pos[k] = i;
+                }
+                argPos[i] = pos;
+                chainStart[i] = n > 0 ? pos[0] : i;
+                switch (item) {
+                    case Item.Insn ins -> {
+                        if (ins.n().out.optIsNone()) break;
+                        var o = ins.n().out.optUnwrap();
+                        var info = infos.computeIfAbsent(o, k -> new RegInfo());
+                        if (info.def >= 0) {
+                            throw new IllegalStateException("register defined twice\n" + listing(flat, i));
+                        }
+                        info.def = i;
+                        if (info.uses == 0) {
+                            info.kind = RegKind.DEAD;
+                        } else if (info.uses == 1
+                                && switch (ins.n().body) {
+                                    case JavaBytecodeInsnBody.Op op ->
+                                        ins.n().args.isEmpty();
+                                    case JavaBytecodeInsnBody.Node nd ->
+                                        ins.n().args.isEmpty() && nd.node() instanceof LdcInsnNode;
+                                    case JavaBytecodeInsnBody.External e -> true;
+                                    case JavaBytecodeInsnBody.Var v -> false;
+                                    case JavaBytecodeInsnBody.VarIndexed v -> false;
+                                    case JavaBytecodeInsnBody.New nw -> false;
+                                    case JavaBytecodeInsnBody.ArrayNew an -> false;
+                                }) {
+                            info.kind = RegKind.DEFER;
+                        } else if (info.uses == 1 && barriersBefore[info.lastUse] == barriersBefore[i + 1]) {
+                            info.kind = RegKind.STACK;
+                            stack.add(o);
+                        } else {
+                            info.kind = RegKind.LOCAL;
+                        }
+                    }
+                    case Item.Land land -> {
+                        if (!stack.isEmpty()) {
+                            throw new AssertionError("operand stack not empty at a landing\n" + listing(flat, i));
+                        }
+                        for (var p : land.n().params) {
+                            var info = infos.computeIfAbsent(p, k -> new RegInfo());
+                            if (info.def >= 0) {
+                                throw new IllegalStateException("landing parameter defined twice\n" + listing(flat, i));
+                            }
+                            info.def = i;
+                            info.kind = RegKind.PARAM;
+                        }
+                    }
+                    case Item.Jump j -> {
+                        if (!stack.isEmpty()) {
+                            throw new AssertionError("operand stack not empty at a jump\n" + listing(flat, i));
+                        }
+                    }
+                    case Item.Branch b -> {
+                        if (!stack.isEmpty()) {
+                            throw new AssertionError("operand stack not empty at a branch\n" + listing(flat, i));
+                        }
+                    }
+                    case Item.Return r -> {
+                        if (!stack.isEmpty()) {
+                            throw new AssertionError("operand stack not empty at a return\n" + listing(flat, i));
+                        }
+                    }
+                    case Item.Throw t -> {
+                        if (!stack.isEmpty()) {
+                            throw new AssertionError("operand stack not empty at a throw\n" + listing(flat, i));
+                        }
+                    }
+                    case Item.Line l -> {}
+                    case Item.RangeLabel l -> {}
+                    case Item.TryRange tr -> {}
+                }
             }
-            break;
+            if (!stack.isEmpty()) {
+                throw new AssertionError(
+                        "operand stack not empty at end of method body\n" + listing(flat, flat.size() - 1));
+            }
         }
 
         {
@@ -348,11 +378,8 @@ public final class JavaBytecodeSequence implements JavaBytecode {
 
         var prefixes = new TMap<Integer, TList<Prefix>>();
         for (int i = 0; i < flat.size(); i++) {
-            var args = argsOf(flat.get(i));
-            if (dupAt[i])
-                prefixes.computeIfAbsentT(chainStart[i], key -> new TList<>()).add(new Prefix(i, -1));
-            for (int k = 0; k < args.size(); k++) {
-                prefixes.computeIfAbsentT(argAt[i][k], key -> new TList<>()).add(new Prefix(i, k));
+            for (int k = 0; k < argPos[i].length; k++) {
+                prefixes.computeIfAbsentT(argPos[i][k], key -> new TList<>()).add(new Prefix(i, k));
             }
         }
 
@@ -400,19 +427,21 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                         : Integer.compare(x.arg(), y.arg()));
                 for (var p : scheduled) {
                     var consumer = flat.get(p.consumer());
-                    if (p.arg() < 0) {
-                        var retained = argsOf(consumer).get(0);
-                        node.instructions.add(new InsnNode(retained.desc.isWide() ? DUP2 : DUP));
-                        continue;
-                    }
                     switch (consumer) {
                         case Item.Insn ins -> {
-                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots)
+                            for (var n : segmentsOf(segments, p.consumer(), ins.n(), slots, externalFields)
                                     .get(p.arg())) {
                                 node.instructions.add(n);
                             }
                         }
-                        default -> {}
+                        case Item.Jump j -> {}
+                        case Item.Branch b -> {}
+                        case Item.Return r -> {}
+                        case Item.Throw t -> {}
+                        case Item.Land l -> throw new AssertionError("landing has no operands");
+                        case Item.Line l -> throw new AssertionError("line marker has no operands");
+                        case Item.RangeLabel l -> throw new AssertionError("range label has no operands");
+                        case Item.TryRange tr -> throw new AssertionError("try range has no operands");
                     }
                     var a = argsOf(consumer).get(p.arg());
                     var info = infos.get(a);
@@ -426,14 +455,15 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                         }
                         case DEFER -> {
                             var def = ((Item.Insn) flat.get(info.def)).n();
-                            for (var pn :
-                                    segmentsOf(segments, info.def, def, slots).get(0)) node.instructions.add(pn);
+                            for (var pn : segmentsOf(segments, info.def, def, slots, externalFields)
+                                    .get(0)) node.instructions.add(pn);
                         }
                         case DEAD -> throw new AssertionError("dead register used");
                     }
                 }
             }
             var item = flat.get(i);
+            var args = argsOf(item);
             switch (item) {
                 case Item.Insn ins -> {
                     var n = ins.n();
@@ -446,6 +476,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                             && switch (n.body) {
                                 case JavaBytecodeInsnBody.Var v -> true;
                                 case JavaBytecodeInsnBody.VarIndexed v -> true;
+                                case JavaBytecodeInsnBody.External e -> true;
                                 case JavaBytecodeInsnBody.Op o -> n.args.isEmpty();
                                 case JavaBytecodeInsnBody.Node nd ->
                                     n.args.isEmpty() && nd.node() instanceof LdcInsnNode;
@@ -454,7 +485,9 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                             }) {
                         break;
                     }
-                    for (var pn : segmentsOf(segments, i, n, slots).get(n.args.size())) node.instructions.add(pn);
+                    for (var pn :
+                            segmentsOf(segments, i, n, slots, externalFields).get(args.size()))
+                        node.instructions.add(pn);
                     if (outInfo != null) {
                         var o = n.out.optUnwrap();
                         switch (outInfo.kind) {
@@ -505,8 +538,9 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                     node.visitJumpInsn(GOTO, labels.computeIfAbsent(key, k -> new Label()));
                     reachable = false;
                 }
-                case Item.Branch b ->
+                case Item.Branch b -> {
                     node.visitJumpInsn(b.n().opcode, labels.computeIfAbsent(b.n().jumpKey, k -> new Label()));
+                }
                 case Item.Return r -> {
                     if (r.n().value.optIsSome()) {
                         node.instructions.add(
@@ -527,7 +561,7 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 case Item.RangeLabel l -> node.visitLabel(l.label());
                 case Item.TryRange tr -> tryRanges.add(tr);
             }
-            for (var a : argsOf(item)) {
+            for (var a : args) {
                 var info = infos.get(a);
                 if (info.kind == RegKind.LOCAL && info.lastUse == i) {
                     var slot = regSlots.remove(a);
@@ -564,7 +598,11 @@ public final class JavaBytecodeSequence implements JavaBytecode {
     }
 
     private static TList<TList<AbstractInsnNode>> segmentsOf(
-            TMap<Integer, TList<TList<AbstractInsnNode>>> cache, int index, JavaBytecodeInsn n, SlotAllocator slots) {
+            TMap<Integer, TList<TList<AbstractInsnNode>>> cache,
+            int index,
+            JavaBytecodeInsn n,
+            SlotAllocator slots,
+            TMap<BindingId, JavaStaticFieldRef> externalFields) {
         var existing = cache.getOrNull(index);
         if (existing != null) return existing;
         int argc = n.args.size();
@@ -581,6 +619,14 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                 segs.get(argc).add(new VarInsnNode(v.opcode(), slots.named(v.slot(), wide)));
             }
             case JavaBytecodeInsnBody.VarIndexed v -> segs.get(argc).add(new VarInsnNode(v.opcode(), v.index()));
+            case JavaBytecodeInsnBody.External e -> {
+                var field = externalFields.getOrNull(e.entry().key());
+                if (field == null) {
+                    throw new IllegalStateException("external is not a static field of the class being rendered: "
+                            + e.entry().external().externalHostClass().getSimpleName());
+                }
+                segs.get(argc).add(new FieldInsnNode(GETSTATIC, field.owner.value, field.name, field.descriptor.value));
+            }
             case JavaBytecodeInsnBody.New nw -> {
                 segs.get(0).add(new TypeInsnNode(NEW, nw.klass().value));
                 segs.get(0).add(new InsnNode(DUP));
@@ -607,150 +653,6 @@ public final class JavaBytecodeSequence implements JavaBytecode {
         if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) return new IntInsnNode(Opcodes.BIPUSH, value);
         if (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE) return new IntInsnNode(Opcodes.SIPUSH, value);
         return new LdcInsnNode(value);
-    }
-
-    private static boolean hasSeg0(JavaBytecodeInsn n) {
-        return switch (n.body) {
-            case JavaBytecodeInsnBody.New nw -> true;
-            case JavaBytecodeInsnBody.ArrayNew an -> true;
-            case JavaBytecodeInsnBody.Op o -> false;
-            case JavaBytecodeInsnBody.Node nd -> false;
-            case JavaBytecodeInsnBody.Var v -> false;
-            case JavaBytecodeInsnBody.VarIndexed v -> false;
-        };
-    }
-
-    private static final class DupRetry extends RuntimeException {
-        DupRetry() {
-            super(null, null, false, false);
-        }
-    }
-
-    private static void spillReg(RegInfo info) {
-        if (info.remaining < info.uses) {
-            info.dupOk = false;
-            throw new DupRetry();
-        }
-        info.kind = RegKind.LOCAL;
-    }
-
-    private static void consume(
-            TList<Item> flat,
-            int index,
-            IdentityHashMap<JavaBytecodeReg, RegInfo> infos,
-            TList<JavaBytecodeReg> stack,
-            TList<JavaBytecodeReg> args,
-            int[] chainStart,
-            int[][] argAt,
-            boolean[] dupAt,
-            boolean[] chainDupStart) {
-        for (var a : args) {
-            var info = infos.get(a);
-            if (info == null || info.def < 0) {
-                throw new IllegalStateException("register used before its definition\n" + listing(flat, index));
-            }
-        }
-        int n = args.size();
-        boolean seg0 =
-                switch (flat.get(index)) {
-                    case Item.Insn ins -> hasSeg0(ins.n());
-                    default -> false;
-                };
-        var at = new int[n];
-        int s = n;
-        int depth = 0;
-        int nextChain = index;
-        while (s > 0) {
-            var info = infos.get(args.get(s - 1));
-            if (info.kind == RegKind.STACK) {
-                if (stack.size() > depth && stack.get(stack.size() - 1 - depth).key == args.get(s - 1).key) {
-                    depth++;
-                    nextChain = chainStart[info.def];
-                    at[s - 1] = nextChain;
-                    s--;
-                } else {
-                    break;
-                }
-            } else {
-                at[s - 1] = nextChain;
-                s--;
-            }
-        }
-        int firstStack = -1;
-        for (int k = s; k < n; k++) {
-            if (infos.get(args.get(k)).kind == RegKind.STACK) {
-                firstStack = k;
-                break;
-            }
-        }
-        boolean retain = s == 0
-                && firstStack == 0
-                && !seg0
-                && infos.get(args.get(0)).dupOk
-                && infos.get(args.get(0)).remaining > 1;
-        int cs = index;
-        for (int k = s; k < n; k++) {
-            if (k == 0 && retain) continue;
-            if (infos.get(args.get(k)).kind == RegKind.STACK) cs = Math.min(cs, chainStart[infos.get(args.get(k)).def]);
-        }
-        if (retain) {
-            for (int k = 1; k < n; k++) {
-                if (at[k] == chainStart[infos.get(args.get(0)).def]) at[k] = cs;
-            }
-        }
-        for (int k = 0; k < s; k++) at[k] = cs;
-        boolean inPlace = true;
-        if (firstStack >= 0 && !retain && chainDupStart[infos.get(args.get(firstStack)).def]) {
-            for (int k = 0; k < firstStack; k++) inPlace = false;
-            if (seg0) inPlace = false;
-        }
-        for (int k = 0; inPlace && k < n; k++) {
-            var info = infos.get(args.get(k));
-            if (k >= s && info.kind == RegKind.STACK) continue;
-            int pos = at[k];
-            inPlace = switch (info.kind) {
-                case STACK -> false;
-                case LOCAL -> info.def < pos;
-                case PARAM -> true;
-                case DEFER -> true;
-                case DEAD -> throw new AssertionError("dead register used");
-            };
-        }
-        if (!inPlace) {
-            for (var a : args) {
-                var info = infos.get(a);
-                if (info.kind != RegKind.STACK) continue;
-                spillReg(info);
-                for (int k = stack.size() - 1; k >= 0; k--) {
-                    if (stack.get(k).key == a.key) {
-                        stack.remove(k);
-                        break;
-                    }
-                }
-            }
-            cs = index;
-            s = n;
-            retain = false;
-            for (int k = 0; k < n; k++) at[k] = index;
-        } else {
-            for (int k = n - 1; k >= s; k--) {
-                var info = infos.get(args.get(k));
-                info.remaining -= 1;
-                if (info.kind != RegKind.STACK) continue;
-                if (k == 0 && retain) break;
-                stack.remove(stack.size() - 1);
-            }
-        }
-        chainStart[index] = cs;
-        argAt[index] = at;
-        dupAt[index] = retain;
-        chainDupStart[index] =
-                retain || (s == 0 && firstStack == 0 && !seg0 && chainDupStart[infos.get(args.get(0)).def]);
-    }
-
-    private static void spillAll(IdentityHashMap<JavaBytecodeReg, RegInfo> infos, TList<JavaBytecodeReg> stack) {
-        for (var r : stack) spillReg(infos.get(r));
-        stack.clear();
     }
 
     private static final class SlotAllocator {
@@ -824,6 +726,12 @@ public final class JavaBytecodeSequence implements JavaBytecode {
                                                 case JavaBytecodeInsnBody.New nw -> "new " + nw.klass();
                                                 case JavaBytecodeInsnBody.ArrayNew an ->
                                                     "newarray " + an.elementClass();
+                                                case JavaBytecodeInsnBody.External e ->
+                                                    "external "
+                                                            + e.entry()
+                                                                    .external()
+                                                                    .externalHostClass()
+                                                                    .getSimpleName();
                                             });
                                     sb.append('(');
                                     for (int i = 0; i < n.args.size(); i++) {

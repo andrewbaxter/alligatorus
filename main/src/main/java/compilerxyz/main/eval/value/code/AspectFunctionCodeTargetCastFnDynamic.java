@@ -43,14 +43,14 @@ public record AspectFunctionCodeTargetCastFnDynamic(TypeCodeTargetCastFnDynamic 
         }
         var selfRes = DynUtil.valueReg(loc, self);
         if (selfRes.hasErrors()) return selfRes.reerr();
-        var locKey = new BindingId();
-        xx.vx.externals.add(
-                new EvalContext.ExternalEntry(locKey, GenQExprId.dynamicType(), new External(QExprId.class, loc)));
+        var locEntry = new EvalContext.ExternalEntry(
+                new BindingId(), GenQExprId.dynamicType(), new External(QExprId.class, loc));
+        xx.vx.externals.add(locEntry);
         var b = new JavaBytecodeBuilder(loc);
         var selfReg = b.reg(selfRes.requireValue("selfDyn"));
         var argRes = b.addCode(loc, argument.code());
         if (argRes.hasErrors()) return argRes.reerr();
-        var locReg = b.load(locKey, JavaDataDescriptor.fromClass(QExprId.class));
+        var locReg = b.external(locEntry);
         var classReg = b.node(
                 new LdcInsnNode(org.objectweb.asm.Type.getType(destDesc.value())),
                 JavaDataDescriptor.fromClass(Class.class));

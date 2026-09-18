@@ -463,13 +463,6 @@ public final class DefinitionSet implements Artifactable {
                                     emmDataFieldDesc,
                                     pb.loadIndexed(0, soeDesc));
                             pb.store(selfLocal, data);
-                            for (int i = 0; i < method.capturedExternals.size(); i++) {
-                                var emmEntry = method.capturedExternals.get(i);
-                                var fieldName = emmPrefix + Prefixes.EXTERNAL_PREFIX + i;
-                                var fieldDesc = JavaDataDescriptor.fromClass(
-                                        emmEntry.external().externalHostClass());
-                                pb.store(emmEntry.key(), pb.getStatic(soeInternalName, fieldName, fieldDesc));
-                            }
                             seq.add(pb.code());
                         }
                         var initialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
@@ -491,7 +484,12 @@ public final class DefinitionSet implements Artifactable {
                             seq.add(rb.code());
                         }
                         JavaBytecodeUtils.renderMethodTyped(
-                                seq, mv, initialSlots, obj.typeDesc() + "." + methodName, descriptor);
+                                seq,
+                                mv,
+                                initialSlots,
+                                obj.typeDesc() + "." + methodName,
+                                descriptor,
+                                JavaBytecodeUtils.externalFields(soeInternalName, emmPrefix, method.capturedExternals));
                     }
                 }
                 for (int soeImplIdx = 0; soeImplIdx < obj.interfaceImpls.size(); soeImplIdx++) {
@@ -558,13 +556,6 @@ public final class DefinitionSet implements Artifactable {
                                         innerDesc,
                                         pb.loadIndexed(0, eimSoeDesc));
                                 pb.store(eimSelfId, data);
-                                for (int i = 0; i < m.capturedExternals.size(); i++) {
-                                    var eimEntry = m.capturedExternals.get(i);
-                                    var eimFieldName = eimPrefix + Prefixes.EXTERNAL_PREFIX + i;
-                                    var eimFieldDesc = JavaDataDescriptor.fromClass(
-                                            eimEntry.external().externalHostClass());
-                                    pb.store(eimEntry.key(), pb.getStatic(soeInternalName, eimFieldName, eimFieldDesc));
-                                }
                                 eimSeq.add(pb.code());
                             }
                             var eimInitialSlots = new TList<JavaBytecodeSequence.InitialSlot>();
@@ -594,7 +585,8 @@ public final class DefinitionSet implements Artifactable {
                                     eimMv,
                                     eimInitialSlots,
                                     obj.typeDesc() + "." + eimMethodName,
-                                    eimDescriptor);
+                                    eimDescriptor,
+                                    JavaBytecodeUtils.externalFields(soeInternalName, eimPrefix, m.capturedExternals));
                         }
                     }
                 }
@@ -874,17 +866,6 @@ public final class DefinitionSet implements Artifactable {
             var loc = CodeLoc.Infallible.INSTANCE;
             var seq = new JavaBytecodeSequence();
             var ownerInternal = JavaInternalName.of(internalName);
-            {
-                var pb = new JavaBytecodeBuilder(loc);
-                for (int efmI = 0; efmI < spec.externals().size(); efmI++) {
-                    var efmEntry = spec.externals().get(efmI);
-                    var fieldName = efmPrefix + Prefixes.EXTERNAL_PREFIX + efmI;
-                    var fieldDesc =
-                            JavaDataDescriptor.fromClass(efmEntry.external().externalHostClass());
-                    pb.store(efmEntry.key(), pb.getStatic(ownerInternal, fieldName, fieldDesc));
-                }
-                seq.add(pb.code());
-            }
             target.emit(seq, ctx, spec.bodyCode());
             {
                 var rb = new JavaBytecodeBuilder(loc);
@@ -906,7 +887,8 @@ public final class DefinitionSet implements Artifactable {
                     mv,
                     initialSlots,
                     internalName + "." + spec.methodName(),
-                    JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs));
+                    JavaMethodDescriptor.fromParts(spec.retDesc(), argDescs),
+                    JavaBytecodeUtils.externalFields(ownerInternal, efmPrefix, spec.externals()));
         }
         cw.visitEnd();
         var emitted = new DefSetFunctionsEmitter.EmittedFunctions(

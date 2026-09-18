@@ -1,6 +1,7 @@
 package compilerxyz.main.eval.dynamic;
 
 import compilerxyz.main.eval.BindingId;
+import compilerxyz.main.eval.EvalContext;
 import org.objectweb.asm.tree.AbstractInsnNode;
 
 public sealed interface JavaBytecodeInsnBody {
@@ -15,4 +16,6 @@ public sealed interface JavaBytecodeInsnBody {
     record New(JavaInternalName klass, JavaMethodDescriptor ctor) implements JavaBytecodeInsnBody {}
 
     record ArrayNew(JavaInternalName elementClass) implements JavaBytecodeInsnBody {}
+
+    record External(EvalContext.ExternalEntry entry) implements JavaBytecodeInsnBody {}
 }

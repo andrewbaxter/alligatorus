@@ -42,12 +42,12 @@ import java.util.ArrayDeque;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 
-public final class CompileImport {
-    private CompileImport() {}
+public final class CompileModule {
+    private CompileModule() {}
 
-    public record CompileImportResult(CompileRes res, TList<CompileId> localDeps) {}
+    public record CompileModuleResult(CompileRes res, TList<CompileId> localDeps) {}
 
-    public static CompileImportResult compileImportId(
+    public static CompileModuleResult compileModuleId(
             GlobalContext gx,
             ImportStateId importState,
             Expr.Module source,
@@ -228,15 +228,13 @@ public final class CompileImport {
                     var fieldDescriptors = new TOrderedMap<String, JavaDataDescriptor>();
                     fieldDescriptors.put(EvalRootEmitter.EXPR_CONTEXT_FIELD, EvalRootEmitter.DESC_EXPR_CONTEXT);
                     var externalFieldNames = new TList<String>(evalVx.externals.size());
-                    var externalFieldDescs = new TList<JavaDataDescriptor>(evalVx.externals.size());
                     for (int ereI = 0; ereI < evalVx.externals.size(); ereI++) {
                         var ereEntry = evalVx.externals.get(ereI);
                         var fieldName = Prefixes.EXTERNAL_PREFIX + ereI;
                         externalFieldNames.add(fieldName);
-                        var desc =
-                                JavaDataDescriptor.fromClass(ereEntry.external().externalHostClass());
-                        externalFieldDescs.add(desc);
-                        fieldDescriptors.put(fieldName, desc);
+                        fieldDescriptors.put(
+                                fieldName,
+                                JavaDataDescriptor.fromClass(ereEntry.external().externalHostClass()));
                     }
                     for (var fieldEntry : fieldDescriptors.entrySet()) {
                         cw.visitField(
@@ -253,16 +251,7 @@ public final class CompileImport {
                     var ctx = new EmitCtx(internalName, 0);
                     var ereSeq = new JavaBytecodeSequence();
                     var ownerInternal = JavaInternalName.of(internalName);
-                    {
-                        var pb = new JavaBytecodeBuilder(CodeLoc.Infallible.INSTANCE);
-                        for (int i = 0; i < evalVx.externals.size(); i++) {
-                            var entry = evalVx.externals.get(i);
-                            pb.store(
-                                    entry.key(),
-                                    pb.getStatic(ownerInternal, externalFieldNames.get(i), externalFieldDescs.get(i)));
-                        }
-                        ereSeq.add(pb.code());
-                    }
+                    var externalFields = JavaBytecodeUtils.externalFields(ownerInternal, "", evalVx.externals);
                     var stage1 = stage1Code.optUnwrap();
                     evalTarget.emit(ereSeq, ctx, stage1.code());
                     {
@@ -279,7 +268,8 @@ public final class CompileImport {
                             mv,
                             TList.of(),
                             ownerInternal.value() + ".run",
-                            JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of()));
+                            JavaMethodDescriptor.fromParts(JvmConstants.DESC_OBJECT, TList.of()),
+                            externalFields);
                     cw.visitEnd();
                     var bytecode = cw.toByteArray();
                     var staticFields = new TOrderedMap<String, Object>();
@@ -357,7 +347,7 @@ public final class CompileImport {
             }
             switch (evalResult) {
                 case EvalOutcome.Err err -> {
-                    return new CompileImportResult(
+                    return new CompileModuleResult(
                             new CompileRes(allLogs, new CompileResResult.Err(err.errors())), cix.localDependencies);
                 }
                 case EvalOutcome.Ok ok -> {
@@ -365,7 +355,7 @@ public final class CompileImport {
                     if (!isStage) {
                         if (compilePath.isEmpty()
                                 && (ok.producedDynamicRoot() || ok.value().optIsNone())) {
-                            return new CompileImportResult(
+                            return new CompileModuleResult(
                                     new CompileRes(
                                             allLogs,
                                             new CompileResResult.Ok(new Artifact.Body(new ArtifactBody(
@@ -380,7 +370,7 @@ public final class CompileImport {
                         if (ok.value().optIsNone()) {
                             exportErrors.add(new ExprErr(
                                     rootLoc, TList.of(new ExprSubErr.Opaque("Module yields no value to export"))));
-                            return new CompileImportResult(
+                            return new CompileModuleResult(
                                     new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
                                     cix.localDependencies);
                         }
@@ -388,16 +378,16 @@ public final class CompileImport {
                                 xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
-                            return new CompileImportResult(
+                            return new CompileModuleResult(
                                     new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
                                     cix.localDependencies);
                         }
                         var artifact = exportArt.requireValue("ArtifactSupport::exportArtifact artifact");
-                        return new CompileImportResult(
+                        return new CompileModuleResult(
                                 new CompileRes(allLogs, new CompileResResult.Ok(artifact)), cix.localDependencies);
                     }
                     if (ok.value().optIsNone()) {
-                        return new CompileImportResult(
+                        return new CompileModuleResult(
                                 new CompileRes(
                                         allLogs,
                                         new CompileResResult.Err(TList.of(new ExprErr(
