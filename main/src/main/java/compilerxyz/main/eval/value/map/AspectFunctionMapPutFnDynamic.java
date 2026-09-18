@@ -1,8 +1,10 @@
 package compilerxyz.main.eval.value.map;
 
+import compilerxyz.main.eval.Code;
 import compilerxyz.main.eval.CodeValue;
 import compilerxyz.main.eval.EResult;
 import compilerxyz.main.eval.Eval;
+import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
@@ -11,7 +13,6 @@ import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
 import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.gen.AspectFunction;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.prelude.util.Opt;
@@ -60,8 +61,7 @@ public record AspectFunctionMapPutFnDynamic(TypeMapPutFnDynamic type) implements
         var k = b.reg(keyDynRes.requireValue("toDynamic key"));
         var v = b.reg(valDynRes.requireValue("toDynamic value"));
         b.invokeInterface(mapName, "put", putDesc, selfReg, k, v);
-        var out = b.constNull();
-        return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), out, new TypeNullDynamic()));
+        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 
     @Override

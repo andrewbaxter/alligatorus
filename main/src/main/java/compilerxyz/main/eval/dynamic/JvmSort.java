@@ -17,8 +17,4 @@ public final class JvmSort {
                         "JvmSort: type (" + type.typeDesc() + ") does not implement AspectConsumeDynamic");
         };
     }
-
-    public static int storeOpcode(ExprContext xx, Type type) {
-        return descriptor(xx, type).storeOpcode();
-    }
 }

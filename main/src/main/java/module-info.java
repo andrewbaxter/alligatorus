@@ -21,7 +21,6 @@ module compilerxyz.main {
     exports compilerxyz.main.eval.definition_set;
     exports compilerxyz.main.eval.dynamic;
     exports compilerxyz.main.eval.expr;
-    exports compilerxyz.main.eval.push;
     exports compilerxyz.main.eval.value;
     exports compilerxyz.main.eval.value.argrecord;
     exports compilerxyz.main.eval.value.binding;

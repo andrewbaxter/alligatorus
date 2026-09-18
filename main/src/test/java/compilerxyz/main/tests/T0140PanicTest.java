@@ -58,7 +58,7 @@ public final class T0140PanicTest {
                 new SourceModule.V1(mb.seqOf(
                         mb.bind("f", panickyFn(mb, "uncatchable")),
                         mb.tryCatchFinally(
-                                mb.call(mb.scopeUse("f"), mb.tupleOf()),
+                                mb.seqOf(mb.call(mb.scopeUse("f"), mb.tupleOf())),
                                 Opt.some(new TestMb.Catch(
                                         "e", mb.builtin("types", "string"), mb.call(mb.log(), mb.str("caught")))),
                                 Opt.none()))));
@@ -106,7 +106,7 @@ public final class T0140PanicTest {
                                         mb.call(mb.field(mb.scopeUse("d"), mb.str("finish")), mb.tupleOf()),
                                         mb.return_(mb.scopeUse("f"))))),
                         mb.tryCatchFinally(
-                                mb.call(mb.scopeUse("f"), mb.tupleOf()),
+                                mb.seqOf(mb.call(mb.scopeUse("f"), mb.tupleOf())),
                                 Opt.some(new TestMb.Catch(
                                         "e",
                                         mb.builtin("types", "string"),

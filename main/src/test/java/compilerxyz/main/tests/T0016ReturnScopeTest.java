@@ -65,7 +65,10 @@ public final class T0016ReturnScopeTest {
         var err = assertThrows(
                 AssertionError.class,
                 () -> run(libTail(e, e.cat(e.s("lo")), e.cat(e.s("hi"))), tmp),
-                "a dynamic string return plus a unit fallthrough must fail block result conversion");
-        assertTrue(err.getMessage().contains("cannot convert to dest dynamic string"), err.getMessage());
+                "a dynamic string return plus a valueless fallthrough must fail");
+        assertTrue(
+                err.getMessage()
+                        .contains("return sites yield a value but the end of the block is reachable without one"),
+                err.getMessage());
     }
 }

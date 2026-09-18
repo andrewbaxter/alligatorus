@@ -8,6 +8,7 @@ import compilerxyz.main.eval.EvalOutcome;
 import compilerxyz.main.eval.ExprContext;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
 import compilerxyz.main.eval.dynamic.JvmSort;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
@@ -17,7 +18,12 @@ import compilerxyz.main.gen.BindingSetter;
 import compilerxyz.main.gen.Value;
 import compilerxyz.prelude.util.TList;
 
-public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements Binding {
+public record BindingDynamicBinding(BindingId dynamicKey, Type type) implements Binding, BindingDynamicSlot {
+    @Override
+    public BindingId bindingDynamicSlotKey() {
+        return dynamicKey;
+    }
+
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {
         Value value =

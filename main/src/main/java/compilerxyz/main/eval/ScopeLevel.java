@@ -110,7 +110,7 @@ public sealed interface ScopeLevel {
         public record Pending(JumpKey self, DestKey key) {}
     }
 
-    record Arrival(QExprId loc, Value value, Scope scope) {}
+    record Arrival(QExprId loc, Opt<Value> value, Scope scope) {}
 
     final class Landing {
         public final TList<Arrival> arrivals = new TList<>();

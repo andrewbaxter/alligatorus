@@ -92,6 +92,7 @@ public final class GenMain {
         var outRoot = Path.of(args[0]);
         var runtimeSourceRoot = Path.of(args[1]);
         var utilSourceRoot = Path.of(args[2]);
+        var dispatchRoots = new TSet<String>();
         if (Files.exists(outRoot)) {
             try (var walk = Files.walk(outRoot)) {
                 walk.sorted(Comparator.reverseOrder()).forEach(p -> {
@@ -715,6 +716,7 @@ public final class GenMain {
                                     ClassName.get("compilerxyz.main.eval.dynamic", "JavaInternalName"),
                                     hostClass);
                             var methodVar = "method_" + suffix;
+                            dispatchRoots.add(hostClass.reflectionName() + "#" + method.hostMethodName());
                             b.addStatement(
                                     "var $L = new $T($N, $L, $L, $L, $S, $L, $T.class.isInterface(), $L)",
                                     methodVar,
@@ -1229,6 +1231,7 @@ public final class GenMain {
                                             break _paramsExpr;
                                         }
                                     }
+                                    dispatchRoots.add(fl.ownerInternalName().replace('/', '.') + "#" + fl.methodName());
                                     var innerExpr = CodeBlock.of(
                                             "new $T($L, $L, $T.of($S), $S, $L)",
                                             BuiltinTreeGen.TYPE_FUNCTION_DYNAMIC,
@@ -2004,7 +2007,16 @@ public final class GenMain {
                     .build();
             GenMain.write(outRoot, file, formatter);
         }
+        var sortedRoots = TList.<String>from(dispatchRoots);
+        sortedRoots.sort(Comparator.naturalOrder());
+        Files.writeString(
+                outRoot.resolve(DISPATCH_ROOTS_FILE),
+                String.join("\n", sortedRoots) + "\n",
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING);
     }
+
+    public static final String DISPATCH_ROOTS_FILE = "dispatch-roots.txt";
 
     static void write(Path outRoot, JavaFile file, Formatter formatter) throws IOException {
         var raw = file.toString();

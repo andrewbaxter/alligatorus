@@ -59,14 +59,11 @@ public record AspectFieldTuple(Tuple type) implements AspectField {
                 switch (e) {
                     case TupleElement.Dynamic d -> d.type();
                     case TupleElement.EvalRes r -> {
-                        var inner = r.result();
-                        if (!inner.hasErrors()) {
-                            var innerCv = inner.requireValue("Tuple::fieldTypeOpt inner");
-                            if (innerCv.value().optIsSome()) {
-                                yield innerCv.value().optUnwrap().valueType();
-                            }
+                        var innerOpt = r.result().valueOpt();
+                        if (innerOpt.optIsSome() && innerOpt.optUnwrap().value().optIsSome()) {
+                            yield innerOpt.optUnwrap().value().optUnwrap().valueType();
                         }
-                        yield (Type) new Tuple(Opt.none(), new TList<>());
+                        throw new IllegalStateException("Tuple field type: element has no value");
                     }
                 };
         return Opt.some(t);

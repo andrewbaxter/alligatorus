@@ -293,9 +293,7 @@ public final class T0010DefineFuncTest {
             ILOAD 0
             INVOKESTATIC compilerxyz/main/eval/value/numeric/NumericFormat.formatInt (I)Ljava/lang/String;
             INVOKESTATIC compilerxyz/main/eval/builtin/BuiltinBodies.log (Lcompilerxyz/main/eval/EvalContext;Ljava/lang/String;)V
-            NEW compilerxyz/main/eval/gen/Composite$0
-            DUP
-            INVOKESPECIAL compilerxyz/main/eval/gen/Composite$0.<init> ()V
+            ACONST_NULL
             ARETURN
             MAXSTACK = 2
             MAXLOCALS = 1

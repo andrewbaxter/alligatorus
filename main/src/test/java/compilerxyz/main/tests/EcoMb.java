@@ -261,10 +261,6 @@ public final class EcoMb {
         return mb.operatorEq(a, b);
     }
 
-    public SourceExpr codeNone() {
-        return mb.call(mb.builtin("eval", "code_none"), fld(v("arg"), "loc"));
-    }
-
     public SourceExpr aspectDispatch(SourceExpr... aspectIds) {
         var branches = new TList<TestMb.Branch>(aspectIds.length);
         for (var id : aspectIds) {

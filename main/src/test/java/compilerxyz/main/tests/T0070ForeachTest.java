@@ -119,9 +119,7 @@ public final class T0070ForeachTest {
             ISTORE 2
             GOTO L0
            L1
-            NEW compilerxyz/main/eval/gen/Composite$0
-            DUP
-            INVOKESPECIAL compilerxyz/main/eval/gen/Composite$0.<init> ()V
+            ACONST_NULL
             ARETURN
             MAXSTACK = 3
             MAXLOCALS = 4

@@ -24,7 +24,6 @@ import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.dynamic.JvmConstants;
 import compilerxyz.main.eval.dynamic.Prefixes;
 import compilerxyz.main.eval.dynamic.TargetDynamic;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.string.TypeStringConst;
 import compilerxyz.main.eval.value.string.TypeStringDynamic;
 import compilerxyz.main.gen.Binding;
@@ -129,7 +128,7 @@ public final class CompileImport {
                 var cv = evalRes.cv();
                 Opt<CodeDynamicReg> stage1Code;
                 Opt<Value> fallbackValue;
-                Type valueType;
+                Opt<Type> valueType;
                 if (cv.value().optIsNone()) {
                     var codeDynCast = CodeDynamic.castOpt(evalRootLoc, cv.code());
                     if (codeDynCast.hasErrors()) {
@@ -137,22 +136,17 @@ public final class CompileImport {
                         break evalBlock;
                     }
                     if (codeDynCast.requireValue("codeDyn").optIsNone()) {
-                        evalResult = new EvalOutcome.Err(TList.of(new ExprErr(
-                                evalRootLoc,
-                                TList.of(new ExprSubErr.Opaque(
-                                        "eval: const_eval produced no compile-time value and no dynamic code")))));
-                        break evalBlock;
+                        stage1Code = Opt.none();
+                    } else {
+                        var nb = new JavaBytecodeBuilder(evalRootLoc);
+                        nb.add(codeDynCast.requireValue("codeDyn").optUnwrap());
+                        stage1Code = Opt.some(nb.code(nb.constNull()));
                     }
-                    var codeDyn = codeDynCast.requireValue("codeDyn").optUnwrap();
-                    var nullType = new TypeNullDynamic();
-                    var nb = new JavaBytecodeBuilder(evalRootLoc);
-                    nb.add(codeDyn);
-                    stage1Code = Opt.some(nb.code(nb.constNull()));
                     fallbackValue = Opt.none();
-                    valueType = nullType;
+                    valueType = Opt.none();
                 } else {
                     var cvValue = cv.value().optUnwrap();
-                    valueType = cvValue.valueType();
+                    valueType = Opt.some(cvValue.valueType());
                     if (!DynUtil.dynamicHasCode(cv)) {
                         stage1Code = Opt.none();
                         fallbackValue = Opt.some(cvValue);
@@ -168,10 +162,7 @@ public final class CompileImport {
                     }
                 }
                 if (stage1Code.optIsNone() && evalVx.definitionSets.isEmpty()) {
-                    if (fallbackValue.optIsNone()) {
-                        throw new IllegalStateException("eval: no dynamic code but also no fallback value");
-                    }
-                    evalResult = new EvalOutcome.Ok(fallbackValue.optUnwrap(), new TList<>(), false);
+                    evalResult = new EvalOutcome.Ok(fallbackValue, new TList<>(), false);
                     break evalBlock;
                 }
                 var dependencyLoaders = new TList<DefinitionSetClassLoader>();
@@ -217,10 +208,7 @@ public final class CompileImport {
                 Object rawResult;
                 try {
                     if (stage1Code.optIsNone()) {
-                        if (fallbackValue.optIsNone()) {
-                            throw new IllegalStateException("eval: no stage1 code and no fallback value");
-                        }
-                        evalResult = new EvalOutcome.Ok(fallbackValue.optUnwrap(), evalVx.logs, false);
+                        evalResult = new EvalOutcome.Ok(fallbackValue, evalVx.logs, false);
                         break evalBlock;
                     }
                     var internalName = EvalRootEmitter.toInternalName(evalBinaryName);
@@ -346,11 +334,13 @@ public final class CompileImport {
                     }
                 } finally {
                 }
-                Value finalValue;
+                Opt<Value> finalValue;
                 if (fallbackValue.optIsSome()) {
-                    finalValue = fallbackValue.optUnwrap();
+                    finalValue = fallbackValue;
+                } else if (valueType.optIsNone()) {
+                    finalValue = Opt.none();
                 } else {
-                    var liftRes = GenAspectLift.get(evalXx, evalRootLoc, valueType);
+                    var liftRes = GenAspectLift.get(evalXx, evalRootLoc, valueType.optUnwrap());
                     if (liftRes.hasErrors()) {
                         evalResult = new EvalOutcome.Err(liftRes.errorsOpt().optUnwrap());
                         break evalBlock;
@@ -361,7 +351,7 @@ public final class CompileImport {
                         evalResult = new EvalOutcome.Err(liftedRes.errorsOpt().optUnwrap());
                         break evalBlock;
                     }
-                    finalValue = liftedRes.requireValue("Eval::eval lift result");
+                    finalValue = Opt.some(liftedRes.requireValue("Eval::eval lift result"));
                 }
                 evalResult = new EvalOutcome.Ok(finalValue, evalVx.logs, true);
             }
@@ -373,7 +363,8 @@ public final class CompileImport {
                 case EvalOutcome.Ok ok -> {
                     allLogs.addAll(ok.logs());
                     if (!isStage) {
-                        if (compilePath.isEmpty() && ok.producedDynamicRoot()) {
+                        if (compilePath.isEmpty()
+                                && (ok.producedDynamicRoot() || ok.value().optIsNone())) {
                             return new CompileImportResult(
                                     new CompileRes(
                                             allLogs,
@@ -386,7 +377,15 @@ public final class CompileImport {
                         var target = new TargetDynamic();
                         var xx = new ExprContext(rootScope, target, vx, importState, Opt.some(new TypeStringDynamic()));
                         var exportErrors = new TList<ExprErr>();
-                        var exportArt = Artifactable.exportArtifact(xx, rootLoc, ok.value());
+                        if (ok.value().optIsNone()) {
+                            exportErrors.add(new ExprErr(
+                                    rootLoc, TList.of(new ExprSubErr.Opaque("Module yields no value to export"))));
+                            return new CompileImportResult(
+                                    new CompileRes(allLogs, new CompileResResult.Err(exportErrors)),
+                                    cix.localDependencies);
+                        }
+                        var exportArt = Artifactable.exportArtifact(
+                                xx, rootLoc, ok.value().optUnwrap());
                         if (exportArt.hasErrors()) {
                             exportArt.drainInto(exportErrors);
                             return new CompileImportResult(
@@ -397,7 +396,16 @@ public final class CompileImport {
                         return new CompileImportResult(
                                 new CompileRes(allLogs, new CompileResResult.Ok(artifact)), cix.localDependencies);
                     }
-                    rootExpr = mustCast(Expr.class, ok.value());
+                    if (ok.value().optIsNone()) {
+                        return new CompileImportResult(
+                                new CompileRes(
+                                        allLogs,
+                                        new CompileResResult.Err(TList.of(new ExprErr(
+                                                rootLoc,
+                                                TList.of(new ExprSubErr.Opaque("Stage yields no expression")))))),
+                                cix.localDependencies);
+                    }
+                    rootExpr = mustCast(Expr.class, ok.value().optUnwrap());
                 }
             }
         }
@@ -498,7 +506,7 @@ public final class CompileImport {
 
     public sealed interface EvalOutcome {
 
-        record Ok(Value value, TList<LogEntry> logs, boolean producedDynamicRoot) implements EvalOutcome {}
+        record Ok(Opt<Value> value, TList<LogEntry> logs, boolean producedDynamicRoot) implements EvalOutcome {}
 
         record Err(TList<ExprErr> errors) implements EvalOutcome {}
     }

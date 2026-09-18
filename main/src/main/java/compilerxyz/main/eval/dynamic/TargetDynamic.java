@@ -41,14 +41,11 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
 import org.objectweb.asm.Opcodes;
 
 public final class TargetDynamic implements Target {
     private static final JavaInternalName INTNAME_DYN_EXCEPTION = JavaInternalName.fromClass(DynException.class);
     private static final JavaDataDescriptor DESC_THROWABLE = JavaDataDescriptor.fromClass(Throwable.class);
-
-    private final IdentityHashMap<Binding, BindingId> initialBindSlots = new IdentityHashMap<>();
 
     public TargetDynamic() {}
 
@@ -74,12 +71,9 @@ public final class TargetDynamic implements Target {
     public EResult<Binding> targetInitialBind(ExprContext xx, QExprId loc, Type type) {
         var aspectRes = GenAspectInitialBindDynamic.get(xx, loc, type);
         if (aspectRes.hasErrors()) return aspectRes.reerr();
-        var key = new BindingId();
-        var binding = aspectRes
+        return EResult.ok(aspectRes
                 .requireValue("targetInitialBind AspectInitialBindDynamic")
-                .aspectInitialBindDynamicInitialBindDynamic(key);
-        initialBindSlots.put(binding, key);
-        return EResult.ok(binding);
+                .aspectInitialBindDynamicInitialBindDynamic(new BindingId()));
     }
 
     @Override
@@ -115,12 +109,11 @@ public final class TargetDynamic implements Target {
         return EResult.ok(DynUtil.regToTypedValue(xx, loc, b.code(), param, type));
     }
 
-    private BindingId initialBindSlot(Binding binding) {
-        var key = initialBindSlots.get(binding);
-        if (key == null) {
+    private static BindingId initialBindSlot(Binding binding) {
+        if (!(binding instanceof BindingDynamicSlot slot)) {
             throw new IllegalStateException("binding was not made by targetInitialBind: " + binding.getClass());
         }
-        return key;
+        return slot.bindingDynamicSlotKey();
     }
 
     public BindResultSlot bindSlot(QExprId loc, BindSubDynamic sub) {
@@ -337,6 +330,9 @@ public final class TargetDynamic implements Target {
             }
         }
         if (elseMissing) allControlEnded = false;
+        if (elseMissing && anyValue) {
+            return EResult.err(loc, what + ": branches yield a value but there is no else");
+        }
         if (anyValue && anyNoValue) {
             return EResult.err(loc, what + ": some branches yield a value and some don't");
         }
@@ -399,8 +395,6 @@ public final class TargetDynamic implements Target {
         if (else_.optIsSome()) {
             var elseRes = emitBranchBody(xx, loc, b, else_.optUnwrap(), shape, endKey);
             if (elseRes.hasErrors()) return elseRes.reerr();
-        } else if (shape.anyValue()) {
-            b.jump(endKey, b.constNull());
         }
         return EResult.ok(finishArms(xx, loc, b, shape, endKey));
     }

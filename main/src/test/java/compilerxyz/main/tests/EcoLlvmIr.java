@@ -1348,7 +1348,7 @@ public final class EcoLlvmIr {
                             appendCode(e, e.v("out"), cveCode(e, a(e, "self"))),
                             appendCode(e, e.v("out"), cveCode(e, e.v("v"))),
                             push(e, e.v("out"), storeInst(e, lvalOf(e, e.v("v")), lvMem(e, e.v("sl")))),
-                            e.ret(cvOf(e, codeOf(e, e.v("out")), mkArg(e, "lunit", e.nil())))));
+                            e.ret(cvNo(e, codeOf(e, e.v("out"))))));
             fnImpl(
                     e,
                     x,
@@ -1801,7 +1801,7 @@ public final class EcoLlvmIr {
                                     e.matchOf(
                                             e.callM(reinterpret(e, e.v("r0"), "linst"), "k", e.nil()),
                                             "p",
-                                            Opt.some(e.nil()),
+                                            Opt.some(e.seq()),
                                             e.p("label", e.callM(e.v("refs"), "put", e.tup(p(e, "name"), num(e, 0)))))),
                             e.foreach(
                                     e.v("arg"),
@@ -1809,7 +1809,7 @@ public final class EcoLlvmIr {
                                     e.matchOf(
                                             e.callM(reinterpret(e, e.v("r1"), "linst"), "k", e.nil()),
                                             "p",
-                                            Opt.some(e.nil()),
+                                            Opt.some(e.seq()),
                                             e.p("br", countRef(e, p(e, "name"))),
                                             e.p("condbr", e.seq(countRef(e, p(e, "t")), countRef(e, p(e, "f")))))),
                             e.foreach(

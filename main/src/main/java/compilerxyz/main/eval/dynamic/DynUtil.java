@@ -14,7 +14,6 @@ import compilerxyz.main.eval.binding.BindingValue;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.binding.BindingDynamicBinding;
-import compilerxyz.main.eval.value.null_.TypeNullDynamic;
 import compilerxyz.main.eval.value.record.Record;
 import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.eval.value.tuple.TupleElement;
@@ -346,8 +345,7 @@ public final class DynUtil {
                 b.putField(field.klass(), field.field(), field.desc(), base, newValue);
             }
         }
-        var nullReg = b.constNull();
-        return EResult.ok(regToTypedValue(xx, loc, b.code(), nullReg, new TypeNullDynamic()));
+        return EResult.ok(new CodeValue(Code.target(b.code()), EvalOutcome.NO_VALUE));
     }
 
     public static boolean zeroArgSignature(ExprContext xx, Type argType) {

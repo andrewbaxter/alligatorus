@@ -28,9 +28,7 @@ import compilerxyz.main.eval.dynamic.CompositeSlotSort;
 import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
@@ -45,10 +43,10 @@ import compilerxyz.main.gen.GenAspectElementUseDynamic;
 import compilerxyz.main.gen.GenAspectField;
 import compilerxyz.main.gen.GenAspectInitialBindDynamic;
 import compilerxyz.main.gen.GenAspectLift;
-import compilerxyz.main.gen.GenAspectNull;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectTuple;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.safejson.JsonValue;
@@ -59,6 +57,7 @@ import compilerxyz.main.safejson.JsonValueNumber;
 import compilerxyz.main.safejson.JsonValueObject;
 import compilerxyz.main.safejson.JsonValueString;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -287,14 +286,12 @@ public final class Tuple implements Aspect, Type, Value {
                     switch (e) {
                         case TupleElement.Dynamic d -> d.type();
                         case TupleElement.EvalRes r -> {
-                            var er = r.result();
-                            if (!er.hasErrors()) {
-                                var elemCv = er.requireValue("Tuple::valueType element");
-                                if (elemCv.value().optIsSome()) {
-                                    yield elemCv.value().optUnwrap().valueType();
-                                }
+                            var elemOpt = r.result().valueOpt();
+                            if (elemOpt.optIsSome()
+                                    && elemOpt.optUnwrap().value().optIsSome()) {
+                                yield elemOpt.optUnwrap().value().optUnwrap().valueType();
                             }
-                            yield new Tuple(Opt.none(), new TList<>());
+                            throw new IllegalStateException("Tuple::valueType: element has no value");
                         }
                     };
             slotTypes.add(new TupleElement.Dynamic(slot));
@@ -325,6 +322,7 @@ public final class Tuple implements Aspect, Type, Value {
         return true;
     }
 
+    @CodegenDescriptor
     public static Tuple newDynamic(Object[] elems) {
         var out = new TList<TupleElement>(elems.length);
         for (var raw : elems) {
@@ -396,7 +394,6 @@ public final class Tuple implements Aspect, Type, Value {
 
     @Override
     public boolean typeCanCastTo(ExprContext xx, QExprId loc, Type destType) {
-        if (elements.isEmpty() && GenAspectNull.getMaybe(xx, destType).optIsSome()) return true;
         return destType.typeAspect(xx, GenTrivialIdentityAspects.TYPE_IDENTITY).optIsSome() && tupleElementsAllTypes();
     }
 
@@ -442,13 +439,7 @@ public final class Tuple implements Aspect, Type, Value {
                 elems.add(b.reg(lowered.requireValue("Tuple::typeCastTo element lowered")));
             }
             var array = b.newObjectArray(elems);
-            var out = b.invokeStatic(
-                    JavaInternalName.of(Tuple.class.getName().replace('.', '/')),
-                    "newDynamic",
-                    JavaMethodDescriptor.fromParts(
-                            JavaDataDescriptor.fromClass(Tuple.class),
-                            TList.of(JavaDataDescriptor.fromClass(Object[].class))),
-                    array);
+            var out = b.invokeStatic(GenCodegenDescriptors.TUPLE_NEW_DYNAMIC, array);
             return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
         }
         var nb = new JavaBytecodeBuilder(loc);

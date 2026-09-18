@@ -31,13 +31,10 @@ import compilerxyz.main.eval.dynamic.DynUtil;
 import compilerxyz.main.eval.dynamic.JavaBytecodeBuilder;
 import compilerxyz.main.eval.dynamic.JavaBytecodeReg;
 import compilerxyz.main.eval.dynamic.JavaBytecodeSequence;
-import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
-import compilerxyz.main.eval.dynamic.JavaMethodDescriptor;
 import compilerxyz.main.eval.value.ValueDynamic;
 import compilerxyz.main.eval.value.ValueDynamicSource;
 import compilerxyz.main.eval.value.object.ValueObjectConst;
-import compilerxyz.main.eval.value.tuple.Tuple;
 import compilerxyz.main.gen.AspectLift;
 import compilerxyz.main.gen.GenAspectArtifact;
 import compilerxyz.main.gen.GenAspectBind;
@@ -52,12 +49,14 @@ import compilerxyz.main.gen.GenAspectPostDeserialize;
 import compilerxyz.main.gen.GenAspectRecord;
 import compilerxyz.main.gen.GenAspectStackValueDynamic;
 import compilerxyz.main.gen.GenAspectType;
+import compilerxyz.main.gen.GenCodegenDescriptors;
 import compilerxyz.main.gen.GenTrivialIdentityAspects;
 import compilerxyz.main.gen.Value;
 import compilerxyz.main.gen.codec.ArtifactRecordTypeCodec;
 import compilerxyz.main.safejson.JsonValue;
 import compilerxyz.main.safejson.JsonValueNull;
 import compilerxyz.prelude.annotations.BuiltinFull;
+import compilerxyz.prelude.annotations.CodegenDescriptor;
 import compilerxyz.prelude.util.MustCast;
 import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.Result;
@@ -780,14 +779,9 @@ public final class Record implements Aspect, Type, Value {
         return switch (f) {
             case RecordField.Dynamic d -> d.type();
             case RecordField.EvalRes er -> {
-                var inner = er.result();
-                if (!inner.hasErrors()
-                        && inner.requireValue("Record::recordFieldType inner")
-                                .value()
-                                .optIsSome()) {
-                    var v = inner.requireValue("Record::recordFieldType inner")
-                            .value()
-                            .optUnwrap();
+                var innerOpt = er.result().valueOpt();
+                if (innerOpt.optIsSome() && innerOpt.optUnwrap().value().optIsSome()) {
+                    var v = innerOpt.optUnwrap().value().optUnwrap();
                     if (v instanceof Type asType) {
                         yield asType;
                     }
@@ -796,7 +790,7 @@ public final class Record implements Aspect, Type, Value {
                     }
                     yield v.valueType();
                 }
-                yield new Tuple(Opt.none(), new TList<>());
+                throw new IllegalStateException("Record::recordFieldType: field has no value");
             }
         };
     }
@@ -863,18 +857,13 @@ public final class Record implements Aspect, Type, Value {
                 elems.add(loweredReg);
             }
             var array = b.newObjectArray(elems);
-            var out = b.invokeStatic(
-                    JavaInternalName.of(Record.class.getName().replace('.', '/')),
-                    "newDynamic",
-                    JavaMethodDescriptor.fromParts(
-                            JavaDataDescriptor.fromClass(Record.class),
-                            TList.of(JavaDataDescriptor.fromClass(Object[].class))),
-                    array);
+            var out = b.invokeStatic(GenCodegenDescriptors.RECORD_NEW_DYNAMIC, array);
             return EResult.ok(DynUtil.regToValue(b.code(), out, destType));
         }
         return EResult.ok(cv);
     }
 
+    @CodegenDescriptor
     public static Record newDynamic(Object[] pairs) {
         var fields = new TOrderedMap<ConstKey, RecordField>();
         for (int i = 0; i < pairs.length; i += 2) {

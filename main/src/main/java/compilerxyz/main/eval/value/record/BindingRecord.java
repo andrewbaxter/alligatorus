@@ -12,6 +12,7 @@ import compilerxyz.main.eval.ExprErr;
 import compilerxyz.main.eval.ExprSubErr;
 import compilerxyz.main.eval.QExprId;
 import compilerxyz.main.eval.Type;
+import compilerxyz.main.eval.dynamic.BindingDynamicSlot;
 import compilerxyz.main.eval.dynamic.CompositeClassEmitter;
 import compilerxyz.main.eval.dynamic.JavaDataDescriptor;
 import compilerxyz.main.eval.dynamic.JavaInternalName;
@@ -22,7 +23,15 @@ import compilerxyz.prelude.util.Opt;
 import compilerxyz.prelude.util.TList;
 import compilerxyz.prelude.util.TOrderedMap;
 
-public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey) implements Binding {
+public record BindingRecord(TOrderedMap<ConstKey, RecordScopeField> fields, Opt<BindingId> jsKey)
+        implements Binding, BindingDynamicSlot {
+    @Override
+    public BindingId bindingDynamicSlotKey() {
+        if (jsKey.optIsNone()) {
+            throw new IllegalStateException("BindingRecord: binding has no dynamic slot");
+        }
+        return jsKey.optUnwrap();
+    }
 
     @Override
     public CodeValue bindingUse(ExprContext xx, QExprId loc, BindingSetter setter, Code code) {

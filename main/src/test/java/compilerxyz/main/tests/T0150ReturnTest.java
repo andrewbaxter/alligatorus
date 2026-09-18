@@ -432,14 +432,13 @@ public final class T0150ReturnTest {
     }
 
     @Test
-    public void test01680ImplicitEmptyTupleReturnFromNoValueReturn() {
+    public void test01680NoValueReturnYieldsNoValue() {
         var mb = new TestMb();
         var modules = new TMap<String, SourceModule>();
         modules.put(
                 "main",
-                new SourceModule.V1(mb.seqOf(
-                        mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
-                        mb.call(mb.log(), mb.str("done")))));
+                new SourceModule.V1(
+                        mb.seqOf(mb.labeled("out", mb.seqOf(mb.returnEmpty())), mb.call(mb.log(), mb.str("done")))));
         var gx = Helpers.newGx(modules);
         var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
         Result.Ok<Compile.CompileResult, TList<ExprErr>> okRes414;
@@ -453,5 +452,27 @@ public final class T0150ReturnTest {
         var ok = okRes414.value();
         assertEquals(1, ok.logs().size());
         assertEquals("done", ok.logs().get(0).message());
+    }
+
+    @Test
+    public void test01690BindOfNoValueReturnBlockErrors() {
+        var mb = new TestMb();
+        var modules = new TMap<String, SourceModule>();
+        modules.put(
+                "main",
+                new SourceModule.V1(mb.seqOf(
+                        mb.bind("t", mb.labeled("out", mb.seqOf(mb.returnEmpty()))),
+                        mb.call(mb.log(), mb.str("done")))));
+        var gx = Helpers.newGx(modules);
+        var res = Compile.compile(gx, new SourceSpecAbsolute.Virtual("main"));
+        assertTrue(
+                switch (res) {
+                    case Result.Err<?, ?> ignored -> true;
+                    case Result.Ok<?, ?> ignored -> false;
+                },
+                () -> "expected a compile error, got: " + res);
+        assertTrue(
+                res.toString().contains("Cannot bind an expression that yields no value"),
+                () -> "unexpected error: " + res);
     }
 }

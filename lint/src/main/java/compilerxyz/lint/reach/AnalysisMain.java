@@ -64,6 +64,15 @@ public final class AnalysisMain {
             }
         }
 
+        Set<String> dispatchRoots = new HashSet<>();
+        for (String module : modules) {
+            Path rootsFile = base.resolve(module + "/target/generated-sources/codegen/dispatch-roots.txt");
+            if (!Files.exists(rootsFile)) continue;
+            for (String line : Files.readAllLines(rootsFile)) {
+                if (!line.isEmpty()) dispatchRoots.add(line);
+            }
+        }
+
         Set<String> classpath = new LinkedHashSet<>();
         for (String module : modules) {
             Path cpFile = base.resolve(module + "/target/analysis-classpath.txt");
@@ -118,7 +127,7 @@ public final class AnalysisMain {
         System.out.println("  (per-location detail in " + conventionsReport + ")");
         System.out.println();
 
-        int reachabilityFindings = new ReachabilityMain(generatedFiles).run(model, index);
+        int reachabilityFindings = new ReachabilityMain(generatedFiles, dispatchRoots).run(model, index);
 
         int total = conventionFindings.size() + reachabilityFindings;
         if (total > 0) {

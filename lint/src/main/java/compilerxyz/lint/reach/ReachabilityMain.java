@@ -16,11 +16,9 @@ import java.util.Set;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtExecutableReferenceExpression;
-import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldRead;
 import spoon.reflect.code.CtFieldWrite;
 import spoon.reflect.code.CtInvocation;
-import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtNewClass;
 import spoon.reflect.declaration.CtAnonymousExecutable;
 import spoon.reflect.declaration.CtClass;
@@ -41,9 +39,11 @@ import spoon.reflect.visitor.filter.TypeFilter;
 public final class ReachabilityMain {
 
     private final Set<String> generatedFiles;
+    private final Set<String> dispatchRoots;
 
-    public ReachabilityMain(Set<String> generatedFiles) {
+    public ReachabilityMain(Set<String> generatedFiles, Set<String> dispatchRoots) {
         this.generatedFiles = generatedFiles;
+        this.dispatchRoots = dispatchRoots;
     }
 
     private final Set<String> junit = Set.of(
@@ -90,50 +90,21 @@ public final class ReachabilityMain {
                 }
             }
         }
-        Set<String> dynMethodNames = new HashSet<>();
-        for (CtConstructorCall<?> cc : index.constructorCalls) {
-            String ctorType = cc.getType().getSimpleName();
-            int nameIdx;
-            switch (ctorType) {
-                case "TypeMethodDynamic" -> nameIdx = 4;
-                case "TypeFunctionConst" -> nameIdx = 3;
-                default -> {
-                    continue;
-                }
-            }
-            List<CtExpression<?>> args = cc.getArguments();
-            if (args.size() > nameIdx
-                    && args.get(nameIdx) instanceof CtLiteral<?> lit
-                    && lit.getValue() instanceof String n) {
-                dynMethodNames.add(n);
-            }
-        }
-        for (CtInvocation<?> inv : index.invocations) {
-            String invName = inv.getExecutable().getSimpleName();
-            int nameIdx;
-            switch (invName) {
-                case "invokeStatic", "invokeVirtual", "invokeVirtualVoid", "invokeInterface", "invokeSpecialVoid" ->
-                    nameIdx = 1;
-                case "invoke" -> nameIdx = 2;
-                default -> {
-                    continue;
-                }
-            }
-            List<CtExpression<?>> args = inv.getArguments();
-            if (args.size() > nameIdx
-                    && args.get(nameIdx) instanceof CtLiteral<?> lit
-                    && lit.getValue() instanceof String n) {
-                dynMethodNames.add(n);
-            }
-        }
+        Set<String> unmatchedRoots = new HashSet<>(dispatchRoots);
         for (CtType<?> t : types) {
             for (CtExecutable<?> ex : executablesOf(t)) {
-                if (ex instanceof CtMethod<?> m && dynMethodNames.contains(m.getSimpleName())) {
-                    String k = key(ex);
-                    genReferenced.add(k);
-                    if (reachable.add(k)) work.add(k);
-                }
+                if (!(ex instanceof CtMethod<?> m)) continue;
+                String rootKey = t.getQualifiedName() + "#" + m.getSimpleName();
+                if (!dispatchRoots.contains(rootKey)) continue;
+                unmatchedRoots.remove(rootKey);
+                String k = key(ex);
+                genReferenced.add(k);
+                if (reachable.add(k)) work.add(k);
+                onCall(m.getReference(), m.getParameters().size(), work, true);
             }
+        }
+        if (!unmatchedRoots.isEmpty()) {
+            throw new IllegalStateException("dispatch roots not found in the model: " + unmatchedRoots);
         }
         Set<String> fieldInitDone = new HashSet<>();
         while (!work.isEmpty()) {
