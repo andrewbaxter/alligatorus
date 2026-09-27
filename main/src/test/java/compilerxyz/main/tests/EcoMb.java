@@ -140,6 +140,26 @@ public final class EcoMb {
         return mb.optSomeType(typeExpr);
     }
 
+    public SourceExpr optionTypeLet() {
+        return let("option_type", mb.call(mb.typesOption(), mb.evalType()));
+    }
+
+    public SourceExpr optionTypeSome(SourceExpr typeExpr) {
+        return callM(v("option_type"), "some", typeExpr);
+    }
+
+    public SourceExpr optionTypeNone() {
+        return callM(v("option_type"), "none", mb.tupleOf());
+    }
+
+    public SourceExpr optionTypeLoweredSome(SourceExpr typeExpr) {
+        return callM(lowerV("option_type"), "some", typeExpr);
+    }
+
+    public SourceExpr optionTypeLoweredNone() {
+        return callM(lowerV("option_type"), "none", mb.tupleOf());
+    }
+
     public SourceExpr stage(SourceExpr expr) {
         return mb.stage(expr);
     }

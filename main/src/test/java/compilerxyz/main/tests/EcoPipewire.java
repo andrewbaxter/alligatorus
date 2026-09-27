@@ -163,6 +163,7 @@ public final class EcoPipewire {
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
 
         exprs.add(e.let("d", e.define()));
+        exprs.add(e.optionTypeLet());
         exprs.add(e.let("pw_o", e.defObject(e.v("d"), "pipewire 1.6")));
         var innerFields = new TList<EcoMb.P>();
         var members = new TList<String>();
@@ -184,12 +185,16 @@ public final class EcoPipewire {
         exprs.add(e.callM(e.v("pw_o"), "set_inner", e.rec(innerFields.toArray(EcoMb.P[]::new))));
         for (var m : refMembers) {
             exprs.add(e.methodImpl(
-                    e.v("pw_o"), m, e.tup(), e.retSome(e.fld(e.v("llvm"), "ref_t")), e.stage(e.fld(e.v("inner"), m))));
+                    e.v("pw_o"),
+                    m,
+                    e.tup(),
+                    e.optionTypeSome(e.fld(e.v("llvm"), "ref_t")),
+                    e.stage(e.fld(e.v("inner"), m))));
             exprs.add(e.methodImpl(
                     e.v("pw_o"),
                     m + "_t",
                     e.tup(),
-                    e.retSome(e.mb.evalType()),
+                    e.optionTypeSome(e.mb.evalType()),
                     e.stage(e.fld(e.v("inner"), m + "_t"))));
         }
         for (var s : STRUCTS) {
@@ -197,7 +202,7 @@ public final class EcoPipewire {
                     e.v("pw_o"),
                     s.name(),
                     e.tup(),
-                    e.retSome(e.mb.evalType()),
+                    e.optionTypeSome(e.mb.evalType()),
                     e.stage(e.fld(e.v("inner"), s.name()))));
         }
 
@@ -256,7 +261,7 @@ public final class EcoPipewire {
         exprs.add(e.funcImpl(
                 e.v("pw_builder"),
                 e.fld(e.v("llvm"), "mod_t"),
-                e.retSome(e.fld(e.v("pw_o"), "type")),
+                e.optionTypeSome(e.fld(e.v("pw_o"), "type")),
                 e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));

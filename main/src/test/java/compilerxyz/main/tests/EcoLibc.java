@@ -21,6 +21,7 @@ public final class EcoLibc {
         exprs.add(e.let("llvm", e.importLocal("llvm", "llvm-ir-22.at")));
 
         exprs.add(e.let("d", e.define()));
+        exprs.add(e.optionTypeLet());
         exprs.add(e.let("libc_o", e.defObject(e.v("d"), "libc 2.42")));
         var innerFields = new TList<EcoMb.P>();
         for (var ex : EXTERNS) {
@@ -33,13 +34,13 @@ public final class EcoLibc {
                     e.v("libc_o"),
                     ex.name(),
                     e.tup(),
-                    e.retSome(e.fld(e.v("llvm"), "ref_t")),
+                    e.optionTypeSome(e.fld(e.v("llvm"), "ref_t")),
                     e.stage(e.fld(e.v("inner"), ex.name()))));
             exprs.add(e.methodImpl(
                     e.v("libc_o"),
                     ex.name() + "_t",
                     e.tup(),
-                    e.retSome(e.mb.evalType()),
+                    e.optionTypeSome(e.mb.evalType()),
                     e.stage(e.fld(e.v("inner"), ex.name() + "_t"))));
         }
 
@@ -57,7 +58,7 @@ public final class EcoLibc {
         exprs.add(e.funcImpl(
                 e.v("libc_builder"),
                 e.fld(e.v("llvm"), "mod_t"),
-                e.retSome(e.fld(e.v("libc_o"), "type")),
+                e.optionTypeSome(e.fld(e.v("libc_o"), "type")),
                 e.stage(e.mb.seq(body))));
 
         exprs.add(e.finish(e.v("d")));

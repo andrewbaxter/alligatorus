@@ -322,10 +322,6 @@ public final class EcoLlvmIr {
         return e.intOf(v);
     }
 
-    private static SourceExpr optNoneType(EcoMb e) {
-        return e.optNone(e.mb.evalType());
-    }
-
     private static SourceExpr opId(EcoMb e, String op) {
         return e.evalBuiltin("aspect_operator_" + op + "_id");
     }
@@ -350,7 +346,7 @@ public final class EcoLlvmIr {
             out.add(e.callM(
                     e.v(name),
                     "func",
-                    e.rec(e.p("name", e.s(m.key())), e.p("arg", e.tup()), e.p("ret", e.retSome(m.value())))));
+                    e.rec(e.p("name", e.s(m.key())), e.p("arg", e.tup()), e.p("ret", e.optionTypeSome(m.value())))));
         }
     }
 
@@ -373,7 +369,7 @@ public final class EcoLlvmIr {
             SourceExpr argType,
             SourceExpr ret,
             SourceExpr body) {
-        out.add(e.methodImpl(e.v(obj), name, argType, e.retSome(ret), e.stage(body)));
+        out.add(e.methodImpl(e.v(obj), name, argType, e.optionTypeSome(ret), e.stage(body)));
     }
 
     private static SourceExpr retM(EcoMb e, SourceExpr value) {
@@ -444,7 +440,7 @@ public final class EcoLlvmIr {
     private static SourceExpr fnDef(EcoMb e, TList<SourceExpr> out, String name, SourceExpr argType, SourceExpr ret) {
         out.add(e.let(name + "_b", e.defFunc(e.v("d"), "llvm." + name)));
         out.add(e.let(name, e.fld(e.v(name + "_b"), "func")));
-        e.fnSigs.put(name, new SourceExpr[] {argType, e.retSome(ret)});
+        e.fnSigs.put(name, new SourceExpr[] {argType, e.optionTypeSome(ret)});
         return e.v(name);
     }
 
@@ -688,7 +684,7 @@ public final class EcoLlvmIr {
                 e.v(obj),
                 aspIface(e, "function"),
                 e.p("call", body(e, parts.toArray(SourceExpr[]::new))),
-                e.p("exception_type", optNoneType(e))));
+                e.p("exception_type", e.optionTypeLoweredNone())));
     }
 
     private static SourceExpr whenSt(EcoMb e, String marker, SourceExpr result) {
@@ -747,7 +743,7 @@ public final class EcoLlvmIr {
                                                         e.callM(e.v("mod"), "slot", cveType(e, e.v("bv")))),
                                                 e.mb.set(
                                                         e.fld(e.v("st"), "ty"),
-                                                        e.optSome(e.mb.evalType(), cveType(e, e.v("bv")))),
+                                                        e.optionTypeLoweredSome(cveType(e, e.v("bv")))),
                                                 e.mb.set(e.fld(e.v("st"), "has"), num(e, 1)))),
                                 appendCode(e, e.v("out"), cveCode(e, e.v("bv"))),
                                 push(e, e.v("out"), storeInst(e, lvalOf(e, e.v("bv")), e.fld(e.v("st"), "slot"))))),
@@ -884,6 +880,7 @@ public final class EcoLlvmIr {
     public static SourceExpr module(EcoMb e) {
         var x = new TList<SourceExpr>();
         x.add(e.let("d", e.define()));
+        x.add(e.optionTypeLet());
         {
             defIface(e, x, "ltype", e.p("ir", str(e)), e.p("ssa", ty(e)));
             defIface(e, x, "lint", e.p("bits", intT(e)), e.p("signed", boolT(e)));
@@ -1048,7 +1045,7 @@ public final class EcoLlvmIr {
             x.add(e.let("h_append", e.fld(e.v("h_append_b"), "func")));
             e.fnSigs.put(
                     "h_append",
-                    new SourceExpr[] {e.rec(e.p("out", instsT(e)), e.p("code", codeT(e))), e.mb.optNoneType()});
+                    new SourceExpr[] {e.rec(e.p("out", instsT(e)), e.p("code", codeT(e))), e.optionTypeNone()});
             fnDef(e, x, "h_is_llvm", e.rec(e.p("xx", xxT(e)), e.p("cv", cveT(e))), e.mb.typesBool());
             fnDef(
                     e,
@@ -1504,7 +1501,12 @@ public final class EcoLlvmIr {
                     body(
                             e,
                             e.let("fields", acc(e, xx(e), a(e, "st"), "lstruct", "fields")),
-                            e.let("st", e.rec(e.p("i", num(e, 0)), e.p("idx", num(e, -1)), e.p("fty", optNoneType(e)))),
+                            e.let(
+                                    "st",
+                                    e.rec(
+                                            e.p("i", num(e, 0)),
+                                            e.p("idx", num(e, -1)),
+                                            e.p("fty", e.optionTypeLoweredNone()))),
                             e.foreach(
                                     e.v("fields"),
                                     "f0",
@@ -1516,8 +1518,7 @@ public final class EcoLlvmIr {
                                                             e.mb.set(e.fld(e.v("st"), "idx"), e.fld(e.v("st"), "i")),
                                                             e.mb.set(
                                                                     e.fld(e.v("st"), "fty"),
-                                                                    e.optSome(
-                                                                            e.mb.evalType(),
+                                                                    e.optionTypeLoweredSome(
                                                                             e.callM(e.v("f"), "ty", e.tup()))))),
                                             e.incr(e.fld(e.v("st"), "i")))),
                             e.ifOnly(
@@ -1637,7 +1638,7 @@ public final class EcoLlvmIr {
                     e.v("lmod"),
                     "set_xx",
                     e.typesExprContext(),
-                    e.mb.optNoneType(),
+                    e.optionTypeNone(),
                     e.stage(e.mb.set(in(e, "xx"), e.optSome(e.typesExprContext(), e.v("arg"))))));
             method(
                     e,
@@ -3023,7 +3024,7 @@ public final class EcoLlvmIr {
                                                                     cveT(e))))),
                                     appendCode(e, e.v("out"), cveCode(e, e.v("g"))),
                                     e.ret(okCve(e, cvOf(e, codeOf(e, e.v("out")), lvalOf(e, e.v("g"))))))),
-                    e.p("type_opt", optNoneType(e)),
+                    e.p("type_opt", e.optionTypeLoweredNone()),
                     e.p("keys", e.listNew(e.mb.typesConstkey()))));
 
             selfType(
@@ -3183,7 +3184,7 @@ public final class EcoLlvmIr {
                                     e.let("r", lvRef(e, lvalOf(e, e.v("g")))),
                                     e.ret(okCve(
                                             e, cvOf(e, codeOf(e, e.v("out")), lvalMem(e, in(e, "elem"), e.v("r"))))))),
-                    e.p("type_opt", optNoneType(e)),
+                    e.p("type_opt", e.optionTypeLoweredNone()),
                     e.p("keys", e.listNew(e.mb.typesConstkey()))));
 
             selfType(
@@ -3318,7 +3319,7 @@ public final class EcoLlvmIr {
                                                             cveT(e)))),
                                     appendCode(e, e.v("out"), cveCode(e, e.v("g"))),
                                     e.ret(okCve(e, cvOf(e, codeOf(e, e.v("out")), lvalOf(e, e.v("g"))))))),
-                    e.p("type_opt", optNoneType(e)),
+                    e.p("type_opt", e.optionTypeLoweredNone()),
                     e.p("keys", e.listNew(e.mb.typesConstkey()))));
 
             selfType(
@@ -3546,7 +3547,7 @@ public final class EcoLlvmIr {
                                                     e.p("args", e.v("args")))),
                                     e.ret(okCve(
                                             e, cvOf(e, codeOf(e, e.v("out")), lvalNew(e, in(e, "ret"), e.v("r"))))))),
-                    e.p("exception_type", optNoneType(e))));
+                    e.p("exception_type", e.optionTypeLoweredNone())));
 
             selfType(
                     e,
@@ -3749,7 +3750,7 @@ public final class EcoLlvmIr {
                                                         e.p("loc", loc(e)),
                                                         e.p("self", gval(e, a(e, "self"))),
                                                         e.p("argument", a(e, "argument"))))))),
-                        e.p("exception_type", optNoneType(e))));
+                        e.p("exception_type", e.optionTypeLoweredNone())));
                 x.add(e.implInterface(
                         e.v("lt_global"),
                         aspIface(e, "field"),
@@ -3976,7 +3977,7 @@ public final class EcoLlvmIr {
                                                             e.p("t", in(e, "t")),
                                                             e.p("code", cveCode(e, e.v("a2"))),
                                                             e.p("n", lvalOf(e, e.v("a2"))))))))),
-                    e.p("exception_type", optNoneType(e))));
+                    e.p("exception_type", e.optionTypeLoweredNone())));
 
             rtType(e, x, "lloop_t", "loop", "lloop_m", e.aspectDispatch(lv(e, "lloop_m_id"), aspId(e, "iterable")));
             x.add(e.implInterface(e.v("lloop_t"), t(e, "lloop_m")));
@@ -4128,7 +4129,7 @@ public final class EcoLlvmIr {
                                                     e.p("has", num(e, 0)),
                                                     e.p("novalue", num(e, 0)),
                                                     e.p("slot", e.dstr("")),
-                                                    e.p("ty", optNoneType(e)))),
+                                                    e.p("ty", e.optionTypeLoweredNone()))),
                                     e.foreach(
                                             a(e, "conditions"),
                                             "br",
@@ -4212,7 +4213,7 @@ public final class EcoLlvmIr {
         x.add(e.funcImpl(
                 e.v("llvm_b"),
                 e.tup(),
-                e.retSome(t(e, "lmod")),
+                e.optionTypeSome(t(e, "lmod")),
                 e.stage(e.seq(
                         e.let(
                                 "m",
